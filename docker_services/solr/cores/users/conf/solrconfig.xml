@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
     <abortOnConfigurationError>${solr.abortOnConfigurationError:true}</abortOnConfigurationError>
-    <luceneMatchVersion>4.9</luceneMatchVersion>
+    <luceneMatchVersion>5.5.0</luceneMatchVersion>
     <dataDir>${solr.data.dir:}</dataDir>
     <directoryFactory name="DirectoryFactory"
             class="${solr.directoryFactory:solr.NRTCachingDirectoryFactory}"/>
@@ -10,11 +10,11 @@
     <indexConfig>
         <lockType>${solr.lock.type:native}</lockType>
         <infoStream>true</infoStream>
-        <checkIntegrityAtMerge>false</checkIntegrityAtMerge>
     </indexConfig>
     <updateHandler class="solr.DirectUpdateHandler2">
         <updateLog>
             <str name="dir">${solr.ulog.dir:}</str>
+            <int name="numVersionBuckets">${solr.ulog.numVersionBuckets:65536}</int>
         </updateLog>
         <autoCommit>
             <maxTime>${solr.autoCommit.maxTime:15000}</maxTime>
