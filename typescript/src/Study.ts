@@ -1573,9 +1573,9 @@ module StudyD {
     var remakeMainGraphAreaCalls = 0;
 
     function remakeMainGraphArea(force?:boolean) {
-        //stop spinner. 
+        //stop spinner.
         this.spinner.stop();
-        // loader settings
+        
         var postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,
             dataPointsTotal = 0,
