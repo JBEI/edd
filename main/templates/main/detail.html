@@ -11,6 +11,7 @@
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
+     <script type="text/javascript" src="{% static 'main/js/lib/spin/spin.min.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
@@ -185,7 +186,7 @@
         <div class="active absoverlay">Data Overview</div>
         <div class="active">Data Overview</div>
     </div>
-    <div class="pageSection pageSectionTabContent" id="overviewSection">
+    <div class="pageSection pageSectionTabContent overview" id="overviewSection">
         <div class="sectionContent">
             <div class="btn-toolbar">
                 <div class="btn-group" data-toggle="buttons" id="chartType">
@@ -229,6 +230,7 @@
                 <label><input type="checkbox" value="" />hide y-axis</label>
             </div>
         </div>
+        <div class="blankSvg"></div>
         <div id="maingraph" class="graphContainer"></div>
 
         <div class="sectionChapter disclose discloseHide">

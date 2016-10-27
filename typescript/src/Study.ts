@@ -96,7 +96,6 @@ module StudyD {
             this.proteinFilters = [];
             this.geneFilters = [];
             this.measurementFilters = [];
-
             this.metaboliteDataProcessed = false;
             this.proteinDataProcessed = false;
             this.geneDataProcessed = false;
@@ -489,7 +488,6 @@ module StudyD {
                 });
                 return false;
             });
-
             this.scrollZoneDiv = $("<div>").addClass('filterCriteriaScrollZone')[0];
             this.filteringTable = $("<table>")
                 .addClass('filterCriteriaTable dragboxes')
@@ -1256,6 +1254,23 @@ module StudyD {
             metaRow.remove();
         });
         $(window).on('load', preparePermissions);
+
+        var opts = {
+                lines: 9, // number of lines on the spinner
+                length: 9,
+                width: 5,
+                radius: 14, // radius of inner circle
+                color: '#1875A6', // color of spinner  (blue)
+                speed: 1.9, // Rounds per second
+                trail: 40, // Afterglow percentage
+                className: 'spinner',
+                zIndex: 2e9,
+                position: 'absolute',
+                top: '30%',
+                left: '50%'
+            };
+
+            this.spinner = new Spinner(opts).spin(document.getElementById("overviewSection"));
     }
 
     function preparePermissions() {
@@ -1347,27 +1362,13 @@ module StudyD {
     // Called by DataGrid after the Lines table is rendered
     export function prepareAfterLinesTable() {
         var csIDs;
-        var opts = {
-          lines: 9, // number of lines on the spinner
-          length: 9,
-          width: 5,
-          radius: 14, // radius of inner circle
-          color: '#1875A6', // color of spinner  (blue)
-          speed: 1.9, // Rounds per second
-          trail: 40, // Afterglow percentage
-          className: 'spinner',
-          zIndex: 2e9,
-          position: 'relative',
-          top: '70%',
-          left: '50%'
-        };
 
         // Prepare the main data overview graph at the top of the page
         if (this.mainGraphObject === null && $('#maingraph').length === 1) {
             this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
             //load spinner
-            this.spinner = new Spinner(opts).spin(document.getElementById("overviewSection"));
+
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
 
@@ -1573,9 +1574,11 @@ module StudyD {
     var remakeMainGraphAreaCalls = 0;
 
     function remakeMainGraphArea(force?:boolean) {
-        //stop spinner.
-        this.spinner.stop();
-        
+
+        //stop spinner
+       this.spinner.stop();
+        $('.blankSvg').hide();
+
         var postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,
             dataPointsTotal = 0,

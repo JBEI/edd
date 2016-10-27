@@ -20,6 +20,11 @@
     z-index: -1; position:relative;
 }
 
+.blankSvg {
+    height:302px;
+    width:447px;
+}
+
 .btn-default {
     outline: none;
     border-color: #fff;
