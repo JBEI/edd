@@ -16,14 +16,10 @@ module StudyD {
 
     var mainGraphObject:any;
     var progressiveFilteringWidget: ProgressiveFilteringWidget;
-
     var spinner: Spinner;
-
     var mainGraphRefreshTimerID:any;
-
     var linesActionPanelRefreshTimer:any;
     var assaysActionPanelRefreshTimer:any;
-
     var attachmentIDs:any;
     var attachmentsByID:any;
     var prevDescriptionEditElement:any;
@@ -74,12 +70,10 @@ module StudyD {
         proteinFilters: GenericFilterSection[];
         geneFilters: GenericFilterSection[];
         measurementFilters: GenericFilterSection[];
-
         metaboliteDataProcessed: boolean;
         proteinDataProcessed: boolean;
         geneDataProcessed: boolean;
         genericDataProcessed: boolean;
-
         filterTableJQ: JQuery;
         studyDObject: any;
         mainGraphObject: any;
@@ -89,7 +83,6 @@ module StudyD {
         constructor(studyDObject: any) {
 
             this.studyDObject = studyDObject;
-
             this.allFilters = [];
             this.assayFilters = [];
             this.metaboliteFilters = [];
@@ -100,7 +93,6 @@ module StudyD {
             this.proteinDataProcessed = false;
             this.geneDataProcessed = false;
             this.genericDataProcessed = false;
-
             this.filterTableJQ = null;
         }
 
@@ -1269,7 +1261,7 @@ module StudyD {
                 top: '30%',
                 left: '50%'
             };
-
+            //load spinner
             this.spinner = new Spinner(opts).spin(document.getElementById("overviewSection"));
     }
 
@@ -1367,8 +1359,6 @@ module StudyD {
         if (this.mainGraphObject === null && $('#maingraph').length === 1) {
             this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
-            //load spinner
-
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
 
