@@ -2,6 +2,7 @@
 <schema name="edd_study" version="1.4">
     <types>
         <fieldType name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true" />
+        <fieldType name="uuid" class="solr.UUIDField" indexed="true" />
         <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true" omitNorms="true" />
         <fieldType name="tlong" class="solr.TrieLongField" precisionStep="8" omitNorms="true"
                 positionIncrementGap="0" />
@@ -108,6 +109,8 @@
           -->
         <!-- a unique key for the study document -->
         <field name="id" type="string" indexed="true" stored="true" required="true" />
+        <field name="uuid" type="uuid" indexed="true" stored="true" required="true" />
+        <field name="slug" type="string" indexed="false" stored="true" required="true" />
         <!-- name of the study -->
         <field name="name" type="text_lower" indexed="true" stored="true" />
         <!-- description of the study -->

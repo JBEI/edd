@@ -1,45 +1,66 @@
-from django.conf.urls import url
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+from django.conf.urls import include, url
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.views.generic.base import RedirectView
 
-from main import autocomplete
-from main import views
+from main import autocomplete, views
 
+
+study_url_patterns = [
+    url(r'^assaydata/$', login_required(views.study_assay_table_data)),
+    url(r'^edddata/$', login_required(views.study_edddata)),
+    url(
+        r'^measurements/(?P<protocol>\d+)/$',
+        include([
+            url(r'^$', login_required(views.study_measurements)),
+            url(r'^(?P<assay>\d+)/$', login_required(views.study_assay_measurements)),
+        ])
+    ),
+    url(r'^map/$', login_required(views.study_map)),
+    url(r'^permissions/$', login_required(views.permissions)),
+    url(
+        r'^import/$',
+        include([
+            url(r'^$', login_required(views.study_import_table)),
+            # TODO these should be folded into the main import page at some point
+            url(r'^rnaseq/$', login_required(views.study_import_rnaseq)),
+            url(r'^rnaseq/parse/$', login_required(views.study_import_rnaseq_parse)),
+            url(r'^rnaseq/process/$', login_required(views.study_import_rnaseq_process)),
+            url(r'^rnaseq/edgepro$', login_required(views.study_import_rnaseq_edgepro)),
+        ])
+    ),
+    url(r'^lines/$', login_required(autocomplete.search_study_lines)),
+]
 
 urlpatterns = [
     url(r'^$', login_required(views.StudyIndexView.as_view()), name='index'),
-    url(r'^study/$',
+    url(
+        r'^study/$',
         login_required(views.StudyCreateView.as_view()),
         name='create_study'
-        ),
+    ),
     url(r'^study/search/$', login_required(views.study_search)),
-    url(r'^study/(?P<pk>\d+)/$',
-        login_required(views.StudyDetailView.as_view()),
-        name='detail'
-        ),
-    url(r'^study/(?P<study>\d+)/assaydata/$', login_required(views.study_assay_table_data)),
-    url(r'^study/(?P<study>\d+)/edddata/$', login_required(views.study_edddata)),
-    url(r'^study/(?P<study>\d+)/measurements/(?P<protocol>\d+)/$',
-        login_required(views.study_measurements),
-        ),
-    url(r'^study/(?P<study>\d+)/measurements/(?P<protocol>\d+)/(?P<assay>\d+)/$',
-        login_required(views.study_assay_measurements),
-        ),
-    url(r'^study/(?P<study>\d+)/map/$', login_required(views.study_map)),
-    url(r'^study/(?P<study>\d+)/permissions/$', login_required(views.permissions)),
-    # FIXME make a module/app just for import?
-    # url(r'^study/(?P<study>\d+)/import/$', include('main.import.urls', namespace='edd-import'))
-    url(r'^study/(?P<study>\d+)/import$', login_required(views.study_import_table)),
-    url(r'^study/(?P<study>\d+)/import/rnaseq$', login_required(views.study_import_rnaseq)),
-    url(r'^study/(?P<study>\d+)/import/rnaseq/parse$',
-        login_required(views.study_import_rnaseq_parse)),
-    url(r'^study/(?P<study>\d+)/import/rnaseq/process$',
-        login_required(views.study_import_rnaseq_process)),
-    url(r'^study/(?P<study>\d+)/import/rnaseq/edgepro$',
-        login_required(views.study_import_rnaseq_edgepro)),
-    url(r'^study/(?P<study_pk>\d+)/lines/$',
-        login_required(autocomplete.search_study_lines)),
+
+    # Individual study-specific pages loaded by primary key
+    url(
+        r'^study/(?P<study_pk>\d+)/',
+        include(
+            [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail_by_pk', )] +
+            study_url_patterns
+        )
+    ),
+
+    # Individual study-specific pages loaded by slug
+    url(
+        r'^study/(?P<slug>[-\w]+)/',
+        include(
+            [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail', )] +
+            study_url_patterns
+        )
+    ),
 
     url(r'^export/$', login_required(views.ExportView.as_view()), name='export'),
     url(r'^worklist/$', login_required(views.WorklistView.as_view()), name='worklist'),

@@ -50,7 +50,10 @@ from .utilities import (
     get_edddata_misc, get_edddata_strains, get_edddata_study, get_edddata_users,
 )
 
+
 logger = logging.getLogger(__name__)
+CAN_VIEW = [StudyPermission.READ, StudyPermission.WRITE]
+CAN_EDIT = [StudyPermission.WRITE]
 
 
 @register.filter(name='lookup')
@@ -75,16 +78,25 @@ def formula(molecular_formula):
         )
 
 
-def load_study(request, study_id, permission_type=['R', 'W', ]):
-    """ Loads a study as a request user; throws a 404 if the study does not exist OR if no valid
-        permissions are set for the user on the study. """
-    if request.user.is_superuser:
-        return get_object_or_404(Study, pk=study_id)
-    return get_object_or_404(
-        Study.objects.distinct(),
-        Study.user_permission_q(request.user, permission_type),
-        pk=study_id,
-    )
+def load_study(request, study_pk=None, slug=None, permission_type=CAN_VIEW):
+    """
+    Function used with the main.urls.study_url_patterns view functions to load a study either from
+    a numeric primary key or a slug.
+    :param request: the request from the view function
+    :param study_pk: any matched value from the url pattern for the primary key
+    :param slug: any matched value from the url pattern for the slug
+    :param permission_type: iterable of permissions to pass to main.models.Study.user_permission_q
+    :return: the Study object matching the URL, or a django.http.Http404 if the study does not
+        exist OR if no valid permissions are set for the requesting user
+    """
+    permission = Q()
+    if not request.user.is_superuser:
+        permission = Study.user_permission_q(request.user, permission_type)
+    if study_pk is not None:
+        return get_object_or_404(Study.objects.distinct(), permission, Q(pk=study_pk))
+    elif slug is not None:
+        return get_object_or_404(Study.objects.distinct(), permission, Q(slug=slug))
+    raise Http404()
 
 
 class StudyCreateView(generic.edit.CreateView):
@@ -114,7 +126,7 @@ class StudyCreateView(generic.edit.CreateView):
         return kwargs
 
     def get_success_url(self):
-        return reverse('main:detail', kwargs={'pk': self.object.pk})
+        return reverse('main:detail', kwargs={'slug': self.object.slug})
 
 
 class StudyIndexView(StudyCreateView):
@@ -169,9 +181,7 @@ class StudyDetailView(generic.DetailView):
         qs = super(StudyDetailView, self).get_queryset()
         if self.request.user.is_superuser:
             return qs
-        return qs.filter(Study.user_permission_q(
-            self.request.user, (StudyPermission.READ, StudyPermission.WRITE, ),
-        )).distinct()
+        return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
 
     def handle_assay(self, request, context, *args, **kwargs):
         assay_id = request.POST.get('assay-assay_id', None)
@@ -528,7 +538,7 @@ class StudyDetailView(generic.DetailView):
     def post_response(self, request, context, form_valid):
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(reverse('main:detail', kwargs={'pk': self.object.pk}))
+            return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': self.object.slug}))
         return self.render_to_response(context)
 
     def _get_assay(self, assay_id):
@@ -694,20 +704,20 @@ class SbmlView(EDDExportView):
 
 
 # /study/<study_id>/lines/
-def study_lines(request, study):
+def study_lines(request, study_pk=None, slug=None):
     """ Request information on lines in a study. """
-    obj = load_study(request, study)
+    obj = load_study(request, study_pk=study_pk, slug=slug)
     return JsonResponse(Line.objects.filter(study=obj), encoder=JSONDecimalEncoder)
 
 
 # /study/<study_id>/measurements/<protocol_id>/
-def study_measurements(request, study, protocol):
+def study_measurements(request, study_pk=None, slug=None, protocol=None):
     """ Request measurement data in a study. """
-    obj = load_study(request, study)
+    obj = load_study(request, study_pk=study_pk, slug=slug)
     measure_types = MeasurementType.objects.filter(
         measurement__assay__line__study=obj,
         measurement__assay__protocol_id=protocol,
-        ).distinct()
+    ).distinct()
     # stash QuerySet to use in both measurements and total_measures below
     qmeasurements = Measurement.objects.filter(
         assay__line__study=obj,
@@ -715,7 +725,7 @@ def study_measurements(request, study, protocol):
         active=True,
         assay__active=True,
         assay__line__active=True,
-        )
+    )
     # Limit the measurements returned to keep browser performant
     measurements = qmeasurements.order_by('id')[:5000]
     total_measures = qmeasurements.values('assay_id').annotate(count=Count('assay_id'))
@@ -747,9 +757,9 @@ def study_measurements(request, study, protocol):
 
 
 # /study/<study_id>/measurements/<protocol_id>/<assay_id>/
-def study_assay_measurements(request, study, protocol, assay):
+def study_assay_measurements(request, study_pk=None, slug=None, protocol=None, assay=None):
     """ Request measurement data in a study, for a single assay. """
-    obj = load_study(request, study)
+    obj = load_study(request, study_pk=study_pk, slug=slug)
     measure_types = MeasurementType.objects.filter(
         measurement__assay__line__study=obj,
         measurement__assay__protocol_id=protocol,
@@ -757,7 +767,7 @@ def study_assay_measurements(request, study, protocol, assay):
         ).distinct()
     # stash QuerySet to use in both measurements and total_measures below
     qmeasurements = Measurement.objects.filter(
-        assay__line__study_id=study,
+        assay__line__study_id=obj.pk,
         assay__protocol_id=protocol,
         assay=assay,
         active=True,
@@ -769,7 +779,7 @@ def study_assay_measurements(request, study, protocol, assay):
     total_measures = qmeasurements.values('assay_id').annotate(count=Count('assay_id'))
     measure_list = list(measurements)
     values = MeasurementValue.objects.filter(
-        measurement__assay__line__study_id=study,
+        measurement__assay__line__study_id=obj.pk,
         measurement__assay__protocol_id=protocol,
         measurement__assay=assay,
         measurement__active=True,
@@ -802,17 +812,17 @@ def study_search(request):
     # loop through results and attach URL to each
     query_response = data['response']
     for doc in query_response['docs']:
-        doc['url'] = reverse('main:detail', kwargs={'pk': doc['id']})
+        doc['url'] = reverse('main:detail', kwargs={'slug': doc['slug']})
     return JsonResponse(query_response, encoder=JSONDecimalEncoder)
 
 
 # /study/<study_id>/edddata/
-def study_edddata(request, study):
+def study_edddata(request, study_pk=None, slug=None):
     """
     Various information (both global and study-specific) that populates the
     EDDData JS object on the client.
     """
-    model = load_study(request, study)
+    model = load_study(request, study_pk=study_pk, slug=slug)
     data_misc = get_edddata_misc()
     data_study = get_edddata_study(model)
     data_study.update(data_misc)
@@ -820,9 +830,9 @@ def study_edddata(request, study):
 
 
 # /study/<study_id>/assaydata/
-def study_assay_table_data(request, study):
+def study_assay_table_data(request, study_pk=None, slug=None):
     """ Request information on assays associated with a study. """
-    model = load_study(request, study)
+    model = load_study(request, study_pk=study_pk, slug=slug)
     # FIXME filter protocols?
     protocols = Protocol.objects.all()
     lines = model.line_set.all()
@@ -837,9 +847,9 @@ def study_assay_table_data(request, study):
 
 
 # /study/<study_id>/map/
-def study_map(request, study):
+def study_map(request, study_pk=None, slug=None):
     """ Request information on metabolic map associated with a study. """
-    obj = load_study(request, study)
+    obj = load_study(request, study_pk=study_pk, slug=slug)
     try:
         mmap = SBMLTemplate.objects.get(study=obj)
         return JsonResponse(
@@ -856,7 +866,7 @@ def study_map(request, study):
         raise e
 
 
-def permissions(request, study):
+def permissions(request, study_pk=None, slug=None):
     """
     Implements the REST-style view for /study/<study>/permissions/
     :param request: the HttpRequest
@@ -864,13 +874,13 @@ def permissions(request, study):
     :return: the response
     """
     logger.info('Start of main.views.permissions(request, study)')
-    study_model = load_study(request, study)
+    study = load_study(request, study_pk=study_pk, slug=slug)
     if request.method == 'HEAD':
         return HttpResponse(status=200)
     elif request.method == 'GET':
-        return JsonResponse([p.to_json() for p in study_model.get_combined_permission()])
+        return JsonResponse([p.to_json() for p in study.get_combined_permission()])
     elif request.method == 'PUT' or request.method == 'POST':
-        if not study_model.user_can_write(request.user):
+        if not study.user_can_write(request.user):
             return HttpResponseForbidden("You do not have permission to modify this study.")
         try:
             perms = json.loads(request.POST['data'])
@@ -883,14 +893,14 @@ def permissions(request, study):
                     manager = None
                     lookup = {}
                     if group is not None:
-                        lookup = {'group_id': group.get('id', 0), 'study_id': study_model.pk}
-                        manager = study_model.grouppermission_set.filter(**lookup)
+                        lookup = {'group_id': group.get('id', 0), 'study_id': study.pk}
+                        manager = study.grouppermission_set.filter(**lookup)
                     elif user is not None:
-                        lookup = {'user_id': user.get('id', 0), 'study_id': study_model.pk}
-                        manager = study_model.userpermission_set.filter(**lookup)
+                        lookup = {'user_id': user.get('id', 0), 'study_id': study.pk}
+                        manager = study.userpermission_set.filter(**lookup)
                     elif everyone is not None:
-                        lookup = {'study_id': study}
-                        manager = study_model.everyonepermission_set.filter(**lookup)
+                        lookup = {'study_id': study.pk}
+                        manager = study.everyonepermission_set.filter(**lookup)
                     if manager is None:
                         logger.warning('Invalid permission type for add')
                     elif ptype == StudyPermission.NONE:
@@ -903,13 +913,13 @@ def permissions(request, study):
             return HttpResponse(status=500)
         return HttpResponse(status=204)
     elif request.method == 'DELETE':
-        if not study_model.user_can_write(request.user):
+        if not study.user_can_write(request.user):
             return HttpResponseForbidden("You do not have permission to modify this study.")
         try:
             with transaction.atomic():
-                study_model.everyonepermission_set.all().delete()
-                study_model.grouppermission_set.all().delete()
-                study_model.userpermission_set.all().delete()
+                study.everyonepermission_set.all().delete()
+                study.grouppermission_set.all().delete()
+                study.userpermission_set.all().delete()
         except Exception as e:
             logger.exception('Error deleting study (%s) permissions: %s', study, e)
             return HttpResponse(status=500)
@@ -921,11 +931,11 @@ def permissions(request, study):
 # /study/<study_id>/import
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
-def study_import_table(request, study):
+def study_import_table(request, study_pk=None, slug=None):
     """ View for importing tabular data (replaces AssayTableData.cgi).
     :raises: Exception if an error occurrs during the import attempt
     """
-    model = load_study(request, study, permission_type=[StudyPermission.WRITE, ])
+    study = load_study(request, study_pk=study_pk, slug=slug, permission_type=CAN_EDIT)
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
     if request.method == "POST":
@@ -953,7 +963,7 @@ def study_import_table(request, study):
         request,
         "main/import.html",
         context={
-            "study": model,
+            "study": study,
             "protocols": protocols,
         },
     )
@@ -1004,11 +1014,11 @@ def utilities_parse_import_file(request):
 # /study/<study_id>/import/rnaseq
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
-def study_import_rnaseq(request, study):
+def study_import_rnaseq(request, study_pk=None, slug=None):
     """ View for importing multiple sets of RNA-seq measurements in various simple tabular formats
         defined by us.  Handles both GET and POST. """
     messages = {}
-    model = load_study(request, study, permission_type=['W', ])
+    model = load_study(request, study_pk=study_pk, slug=slug, permission_type=CAN_EDIT)
     lines = model.line_set.all()
     if request.method == "POST":
         try:
@@ -1031,11 +1041,11 @@ def study_import_rnaseq(request, study):
 # /study/<study_id>/import/rnaseq/edgepro
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
-def study_import_rnaseq_edgepro(request, study):
+def study_import_rnaseq_edgepro(request, study_pk=None, slug=None):
     """ View for importing a single set of RNA-seq measurements from the EDGE-pro pipeline,
         attached to an existing Assay.  Handles both GET and POST. """
     messages = {}
-    model = load_study(request, study, permission_type=['W', ])
+    study = load_study(request, study_pk=study_pk, slug=slug, permission_type=CAN_EDIT)
     assay_id = None
     if request.method == "GET":
         assay_id = request.POST.get("assay", None)
@@ -1044,7 +1054,7 @@ def study_import_rnaseq_edgepro(request, study):
         try:
             if assay_id is None or assay_id == "":
                 raise ValueError("Assay ID required for form submission.")
-            result = import_rnaseq_edgepro.from_form(request=request, study=model)
+            result = import_rnaseq_edgepro.from_form(request=request, study=study)
             messages["success"] = result.format_message()
         except ValueError as e:
             messages["error"] = str(e)
@@ -1072,18 +1082,18 @@ def study_import_rnaseq_edgepro(request, study):
             "selected_assay_id": assay_id,
             "assays": assay_info,
             "messages": messages,
-            "study": model,
+            "study": study,
         },
     )
 
 
 # /study/<study_id>/import/rnaseq/parse
 # FIXME should have trailing slash?
-def study_import_rnaseq_parse(request, study):
+def study_import_rnaseq_parse(request, study_pk=None, slug=None):
     """ Parse raw data from an uploaded text file, and return JSON object of processed result.
         Result is identical to study_import_rnaseq_process, but this method is invoked by
         drag-and-drop of a file (via filedrop.js). """
-    model = load_study(request, study, permission_type=['W', ])
+    study = load_study(request, study_pk=study_pk, slug=slug, permission_type=CAN_EDIT)
     referrer = request.META['HTTP_REFERER']
     result = None
     # XXX slightly gross: using HTTP_REFERER to dictate choice of parsing
@@ -1093,7 +1103,7 @@ def study_import_rnaseq_parse(request, study):
             result = interpret_edgepro_data(raw_data=request.read())
             result['format'] = "edgepro"
         else:
-            result = interpret_raw_rna_seq_data(raw_data=request.read(), study=model)
+            result = interpret_raw_rna_seq_data(raw_data=request.read(), study=study)
             result['format'] = "generic"
     except ValueError as e:
         return JsonResponse({"python_error": str(e)})
@@ -1103,10 +1113,10 @@ def study_import_rnaseq_parse(request, study):
 
 # /study/<study_id>/import/rnaseq/process
 # FIXME should have trailing slash?
-def study_import_rnaseq_process(request, study):
+def study_import_rnaseq_process(request, study_pk=None, slug=None):
     """ Process form submission containing either a file or text field, and return JSON object of
         processed result. """
-    model = load_study(request, study, permission_type=['W', ])
+    study = load_study(request, study_pk=study_pk, slug=slug, permission_type=CAN_EDIT)
     assert(request.method == "POST")
     try:
         data = request.POST.get("data", "").strip()
@@ -1120,9 +1130,9 @@ def study_import_rnaseq_process(request, study):
             file_name = data_file.name
         result = None
         if request.POST.get("format") == "htseq-combined":
-            result = interpret_raw_rna_seq_data(raw_data=data, study=model, file_name=file_name)
+            result = interpret_raw_rna_seq_data(raw_data=data, study=study, file_name=file_name)
         elif request.POST.get("format") == "edgepro":
-            result = interpret_edgepro_data(raw_data=data, study=model, file_name=file_name)
+            result = interpret_edgepro_data(raw_data=data, study=study, file_name=file_name)
         else:
             raise ValueError("Format needs to be specified!")
     except ValueError as e:

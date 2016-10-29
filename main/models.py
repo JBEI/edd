@@ -312,8 +312,7 @@ class MetadataType(models.Model, EDDSerialize):
     # type of data saved, None defaults to a bare string
     type_class = models.CharField(max_length=255, blank=True, null=True)
     # linking together EDD instances will be easier later if we define UUIDs now
-    # TODO: set editable=False after migration sets initial UUID on existing objects
-    uuid = models.UUIDField(default=pyuuid.uuid4, unique=True)
+    uuid = models.UUIDField(editable=False, unique=True)
 
     @classmethod
     def all_types_on_instances(cls, instances=[]):
@@ -516,8 +515,7 @@ class EDDObject(EDDMetadata, EDDSerialize):
     created = models.ForeignKey(Update, related_name='object_created', editable=False)
     updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
     # linking together EDD instances will be easier later if we define UUIDs now
-    # TODO: set editable=False after migration sets initial UUID on existing objects
-    uuid = models.UUIDField(default=pyuuid.uuid4, unique=True)
+    uuid = models.UUIDField(editable=False, unique=True)
 
     @property
     def mod_epoch(self):
@@ -661,6 +659,8 @@ class Study(EDDObject):
         updated = self.updated
         return {
             'id': self.pk,
+            'uuid': self.uuid,
+            'slug': self.slug,
             'name': self.name,
             'description': self.description,
             'creator': created.mod_by_id,
@@ -816,11 +816,8 @@ class Study(EDDObject):
             a counter and trying new slugs. """
         max_length = self._meta.get_field('slug').max_length
         frag_length = 4
-        request = get_current_request()
-        user = request.user if request else None
-        initials = user.initials if user else ''
         name = name if name is not None else self.name if self.name else ''
-        base_slug = self._slug_append(initials, self.name)
+        base_slug = self._slug_append(self.name)
         slug = base_slug
         # test uniqueness, add more stuff to end if not unique
         if self._slug_exists(base_slug):
@@ -1330,8 +1327,7 @@ class MeasurementType(models.Model, EDDSerialize):
         Datasource, blank=True, null=True,
     )
     # linking together EDD instances will be easier later if we define UUIDs now
-    # TODO: set editable=False after migration sets initial UUID on existing objects
-    uuid = models.UUIDField(default=pyuuid.uuid4, unique=True)
+    uuid = models.UUIDField(editable=False, unique=True)
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id': self.pk, 'name': self.type_name}
@@ -1351,6 +1347,7 @@ class MeasurementType(models.Model, EDDSerialize):
             source_name = self.type_source.name
         return {
             'id': self.id,
+            'uuid': self.uuid,
             'name': self.type_name,
             'code': self.short_name,
             'family': self.type_group,
@@ -1361,6 +1358,7 @@ class MeasurementType(models.Model, EDDSerialize):
     def to_json(self, depth=0):
         return {
             "id": self.pk,
+            "uuid": self.uuid,
             "name": self.type_name,
             "sn": self.short_name,
             "family": self.type_group,
