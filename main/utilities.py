@@ -17,6 +17,7 @@ from six import string_types
 from threadlocals.threadlocals import get_current_request
 from uuid import UUID
 
+from . import models
 from .importer.table import import_task
 from .models import (
     CarbonSource, GeneIdentifier, MeasurementUnit, Metabolite, MetadataType, ProteinIdentifier,
@@ -186,26 +187,20 @@ def get_edddata_study(study):
 
 
 def get_edddata_misc():
-    # XXX should these be stored elsewhere (postgres, other module)?
-    measurement_compartments = {i: comp for i, comp in enumerate([
-        {"name": "", "sn": ""},
-        {"name": "Intracellular/Cytosol (Cy)", "sn": "IC"},
-        {"name": "Extracellular", "sn": "EC"},
-    ])}
-    users = get_edddata_users()
     mdtypes = MetadataType.objects.all().select_related('group')
     unit_types = MeasurementUnit.objects.all()
+    # TODO: find if any of these are still needed on front-end, could eliminate call
     return {
         # Measurement units
         "UnitTypes": {ut.id: ut.to_json() for ut in unit_types},
         # media types
         "MediaTypes": media_types,
         # Users
-        "Users": users,
+        "Users": get_edddata_users(),
         # Assay metadata
         "MetaDataTypes": {m.id: m.to_json() for m in mdtypes},
         # compartments
-        "MeasurementTypeCompartments": measurement_compartments,
+        "MeasurementTypeCompartments": models.Measurement.Compartment.to_json(),
     }
 
 
