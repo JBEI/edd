@@ -97,6 +97,20 @@ StudyDGraphing = {
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[2]), 'x');
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[3]), 'name');
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'measurement');
+        //rectangle selectors for each bar svg.
+        var rectAssayBar = d3.selectAll('.barAssay rect')[0];
+        var rectMeasBar = d3.selectAll('.barMeasurement rect')[0];
+        var rectTimeBar = d3.selectAll('.barTime rect')[0];
+        //make sure there is a message to display - please filter - if there are no bars showing on bar graph. 
+        if ($(selector[2]).css('display') === 'block') {
+            StudyHelper.svgWidth(selector[2], rectTimeBar);
+        }
+        if ($(selector[3]).css('display') === 'block') {
+            StudyHelper.svgWidth(selector[3], rectAssayBar);
+        }
+        if ($(selector[4]).css('display') === 'block') {
+            StudyHelper.svgWidth(selector[4], rectMeasBar);
+        }
         if (!newSet.label) {
             $('#debug').text('Failed to fetch series.');
             return;

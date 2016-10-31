@@ -37,8 +37,8 @@ StudyHelper = {
             }
         });
         if (sum === 0) {
-            $(selector).prepend("<p class=' tooMuchData'>Too many data points to display- please " +
-                "filter</p>")
+            $(selector).prepend("<p class=' tooMuchData'>Too many data points to display" +
+                "</p><p  class=' tooMuchData'>Recommend filtering by protocol</p>");
         }
     },
 
