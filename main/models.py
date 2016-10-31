@@ -6,7 +6,6 @@ import json
 import logging
 import os.path
 import re
-import uuid as pyuuid
 import warnings
 
 from builtins import str
@@ -24,6 +23,7 @@ from functools import reduce
 from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
+from uuid import uuid4
 
 from jbei.rest.clients.edd.constants import (
     METADATA_CONTEXT_ASSAY, METADATA_CONTEXT_LINE, METADATA_CONTEXT_STUDY,
@@ -380,6 +380,11 @@ class MetadataType(models.Model, EDDSerialize):
     def __str__(self):
         return self.type_name
 
+    def save(self, *args, **kwargs):
+        if self.uuid is None:
+            self.uuid = uuid4()
+        super(MetadataType, self).save(*args, **kwargs)
+
     def to_json(self, depth=0):
         # TODO: refactor to have sane names in EDDDataInterface.ts
         return {
@@ -582,6 +587,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
             update = Update.load_update()
         if self.created_id is None:
             self.created = update
+        if self.uuid is None:
+            self.uuid = uuid4()
         self.updated = update
         super(EDDObject, self).save(*args, **kwargs)
         # must ensure EDDObject is saved *before* attempting to add to updates
@@ -1329,6 +1336,11 @@ class MeasurementType(models.Model, EDDSerialize):
     # linking together EDD instances will be easier later if we define UUIDs now
     uuid = models.UUIDField(editable=False, unique=True)
 
+    def save(self, *args, **kwargs):
+        if self.uuid is None:
+            self.uuid = uuid4()
+        super(MeasurementType, self).save(*args, **kwargs)
+
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id': self.pk, 'name': self.type_name}
 
@@ -1647,6 +1659,13 @@ class Measurement(EDDMetadata, EDDSerialize):
         short_names = ["", "IC", "EC"]
         names = ["N/A", "Intracellular/Cytosol (Cy)", "Extracellular"]
         CHOICE = [('%s' % i, cn) for i, cn in enumerate(names)]
+
+        @classmethod
+        def to_json(cls):
+            return {
+                i: {"name": cls.names[i], "sn": cls.short_names[i]}
+                for i in range(3)
+            }
 
     class Format(object):
         """ Enumeration of formats measurement values can take.
