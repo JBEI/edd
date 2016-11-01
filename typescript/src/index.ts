@@ -476,18 +476,6 @@ class DGStudiesSearchWidget extends DGSearchWidget {
         this._spec = spec;
 	}
 
-	// This is called to append the widget elements beneath the given element.
-	// If the elements have not been created yet, they are created, and the uniqueID is passed along.
-	appendElements(container:HTMLElement, uniqueID:string):void {
-		super.appendElements(container, uniqueID);
-        var span:HTMLSpanElement = document.createElement("span");
-        var spanID:string = this.dataGridSpec.tableSpec.id+'SearchDisc'+uniqueID;
-        span.setAttribute('id', spanID);
-        span.className = 'searchDisclosure';
-        this.searchDisclosureElement = span;
-		container.appendChild(this.searchDisclosureElement);
-	}
-
     // OVERRIDE
     // HEY GUYS WE DON'T NEED TO FILTER HERE ANYMORE
     applyFilterToIDs(rowIDs:string[]):string[] {
