@@ -47,10 +47,6 @@ services:
 #    ports:
 #      - '5555:5555'
 
-# Override settings for EDD base image
-  edd:
-    environment:
-
 # Override settings for EDD application container(s).
   appserver:
     environment:
