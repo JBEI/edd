@@ -36,28 +36,51 @@ var DataGrid = (function () {
         // First step: Blow away the old contents of the table
         $(this._table).empty()
             .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-            .addClass('dataTable sortable dragboxes hastablecontrols')
+            .addClass('dataTable sortable dragboxes hastablecontrols table-bordered')
             .append(tableBody);
-        var tHeadRow = $(document.createElement('thead'));
-        var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
-        var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
-            .appendTo(tableHeaderRow);
-        if (dataGridSpec.tableSpec.name) {
-            $(this.tableTitleSpan = document.createElement("span")).text(dataGridSpec.tableSpec.name).appendTo(tableHeaderCell);
+        var homePageText = $('.pageName').text();
+        if (homePageText.indexOf("Experiment Data Depot") !== -1) {
+            var tHeadRow = $(document.createElement('div'));
+            tHeadRow.addClass('searchStudies');
+            var tableHeaderRow = $(document.createElement("span")).addClass('header').appendTo(tHeadRow);
+            var tableHeaderCell = $(this._tableHeaderCell = document.createElement("span"))
+                .appendTo(tableHeaderRow);
+            var waitBadge = $(this._waitBadge = document.createElement("span"))
+                .addClass('waitbadge wait').appendTo(tableHeaderCell);
+            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                tableHeaderCell.attr('colspan', this._totalColumnCount);
+            }
+            // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
+            if (dataGridSpec.tableSpec.showHeader) {
+                var pageSection = $(tableBody).parent().parent();
+                tHeadRow.insertBefore(pageSection);
+            }
+            // Apply the default column visibility settings.
+            this.prepareColumnVisibility();
+            var test = $(document.createElement("thead"));
+            var headerRows = this._headerRows = this._buildTableHeaders();
+            test.append(headerRows);
+            $(test).insertBefore(this._tableBody);
         }
-        var waitBadge = $(this._waitBadge = document.createElement("span"))
-            .addClass('waitbadge wait').appendTo(tableHeaderCell);
-        if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-            tableHeaderCell.attr('colspan', this._totalColumnCount);
+        else {
+            var tHeadRow = $(document.createElement('thead'));
+            var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
+            var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
+                .appendTo(tableHeaderRow);
+            var waitBadge = $(this._waitBadge = document.createElement("span"))
+                .addClass('waitbadge wait').appendTo(tableHeaderCell);
+            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                tableHeaderCell.attr('colspan', this._totalColumnCount);
+            }
+            // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
+            if (dataGridSpec.tableSpec.showHeader) {
+                tHeadRow.insertBefore(tableBody);
+            }
+            // Apply the default column visibility settings.
+            this.prepareColumnVisibility();
+            var headerRows = this._headerRows = this._buildTableHeaders();
+            this._headerRows.forEach(function (v) { return tHeadRow.append(v); });
         }
-        // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-        if (dataGridSpec.tableSpec.showHeader) {
-            tHeadRow.insertBefore(tableBody);
-        }
-        // Apply the default column visibility settings.
-        this.prepareColumnVisibility();
-        var headerRows = this._headerRows = this._buildTableHeaders();
-        this._headerRows.forEach(function (v) { return tHeadRow.append(v); });
         setTimeout(function () { return _this._initializeTableData(); }, 1);
     }
     // Breaking up the initial table creation into two stages allows the browser to render a preliminary
@@ -212,7 +235,7 @@ var DataGrid = (function () {
             .attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
         var menuLabel = $(this._optionsLabel = document.createElement("div"))
             .addClass('pulldownMenuLabelOff')
-            .text('View\u25BE')
+            .text('View options \u25BE')
             .click(function () { if (menuLabel.hasClass('pulldownMenuLabelOff'))
             _this._showOptMenu(); })
             .appendTo(mainSpan);
@@ -1578,8 +1601,8 @@ var DGPagingWidget = (function (_super) {
     DGPagingWidget.prototype.appendElements = function (container, uniqueID) {
         var _this = this;
         if (!this.createdElements()) {
-            $(this.widgetElement = document.createElement('div'))
-                .appendTo(container);
+            $(this.widgetElement = document.createElement('div'));
+            $('.searchStudies').append(this.widgetElement);
             $(this.labelElement = document.createElement('span'))
                 .appendTo(this.widgetElement);
             $(this.prevElement = document.createElement('a'))
@@ -1599,6 +1622,7 @@ var DGPagingWidget = (function (_super) {
                 return false;
             });
             this.createdElements(true);
+            $(this.widgetElement).addClass('studyPrevNext');
         }
         this.refreshWidget();
     };
@@ -1665,9 +1689,6 @@ var DataGridColumnSpec = (function () {
         this.createdDataCellObjects[index] = c.slice(0);
         return c;
     };
-    // clearEntireIndex(index:number):void {
-    //     this.createdDataCellObjects = {};
-    // }
     DataGridColumnSpec.prototype.clearIndexAtID = function (index) {
         delete this.createdDataCellObjects[index];
     };

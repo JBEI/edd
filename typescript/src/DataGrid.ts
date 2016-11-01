@@ -64,33 +64,59 @@ class DataGrid {
         $(this._table).empty()
             .attr({ 'cellpadding': 0, 'cellspacing': 0 })
             // TODO: Most of these classes are probably not needed now
-            .addClass('dataTable sortable dragboxes hastablecontrols')
+            .addClass('dataTable sortable dragboxes hastablecontrols table-bordered')
             .append(tableBody);
 
-        var tHeadRow = $(document.createElement('thead'));
-        var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
-        var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
-            .appendTo(tableHeaderRow);
-        if (dataGridSpec.tableSpec.name) {
-            $(this.tableTitleSpan = document.createElement("span")).text(dataGridSpec.tableSpec.name).appendTo(tableHeaderCell);
+        var homePageText = $('.pageName').text();
+
+        if (homePageText.indexOf("Experiment Data Depot") !== -1) {
+            var tHeadRow = $(document.createElement('div'));
+            tHeadRow.addClass('searchStudies');
+            var tableHeaderRow = $(document.createElement("span")).addClass('header').appendTo(tHeadRow);
+            var tableHeaderCell = $(this._tableHeaderCell = document.createElement("span"))
+                .appendTo(tableHeaderRow);
+            var waitBadge = $(this._waitBadge = document.createElement("span"))
+                .addClass('waitbadge wait').appendTo(tableHeaderCell);
+            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                tableHeaderCell.attr('colspan', this._totalColumnCount);
+            }
+
+            // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
+            if (dataGridSpec.tableSpec.showHeader) {
+                var pageSection = $(tableBody).parent().parent();
+                tHeadRow.insertBefore(pageSection);
+            }
+
+            // Apply the default column visibility settings.
+            this.prepareColumnVisibility();
+            var test = $(document.createElement("thead"));
+            var headerRows = this._headerRows = this._buildTableHeaders();
+            test.append(headerRows);
+             $(test).insertBefore(this._tableBody);
+        } else {
+
+            var tHeadRow = $(document.createElement('thead'));
+            var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
+            var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
+                .appendTo(tableHeaderRow);
+            var waitBadge = $(this._waitBadge = document.createElement("span"))
+                .addClass('waitbadge wait').appendTo(tableHeaderCell);
+            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                tableHeaderCell.attr('colspan', this._totalColumnCount);
+            }
+
+            // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
+            if (dataGridSpec.tableSpec.showHeader) {
+                tHeadRow.insertBefore(tableBody);
+            }
+
+            // Apply the default column visibility settings.
+            this.prepareColumnVisibility();
+
+            var headerRows = this._headerRows = this._buildTableHeaders();
+            this._headerRows.forEach((v) => tHeadRow.append(v));
+
         }
-        var waitBadge = $(this._waitBadge = document.createElement("span"))
-            .addClass('waitbadge wait').appendTo(tableHeaderCell);
-        if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-            tableHeaderCell.attr('colspan', this._totalColumnCount);
-        }
-
-        // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-        if (dataGridSpec.tableSpec.showHeader) {
-            tHeadRow.insertBefore(tableBody);
-        }
-
-        // Apply the default column visibility settings.
-        this.prepareColumnVisibility();
-
-        var headerRows = this._headerRows = this._buildTableHeaders();
-        this._headerRows.forEach((v) => tHeadRow.append(v));
-
         setTimeout( () => this._initializeTableData(), 1 );
     }
 
@@ -277,7 +303,7 @@ class DataGrid {
 
         var menuLabel = $(this._optionsLabel = document.createElement("div"))
             .addClass('pulldownMenuLabelOff')
-            .text('View\u25BE')
+            .text('View options \u25BE')
             .click(() => { if (menuLabel.hasClass('pulldownMenuLabelOff')) this._showOptMenu(); })
             .appendTo(mainSpan);
 
@@ -1938,8 +1964,8 @@ class DGPagingWidget extends DataGridHeaderWidget {
     // If the elements have not been created yet, they are created, and the uniqueID is passed along.
     appendElements(container:HTMLElement, uniqueID:string):void {
         if (!this.createdElements()) {
-            $(this.widgetElement = document.createElement('div'))
-                .appendTo(container);
+            $(this.widgetElement = document.createElement('div'));
+            $('.searchStudies').append(this.widgetElement);
             $(this.labelElement = document.createElement('span'))
                 .appendTo(this.widgetElement);
             $(this.prevElement = document.createElement('a'))
@@ -1959,6 +1985,7 @@ class DGPagingWidget extends DataGridHeaderWidget {
                     return false;
                 });
             this.createdElements(true);
+            $(this.widgetElement).addClass('studyPrevNext')
         }
         this.refreshWidget();
     }
@@ -2077,12 +2104,6 @@ class DataGridColumnSpec {
         this.createdDataCellObjects[index] = c.slice(0);
           return c;
     }
-
-
-    // clearEntireIndex(index:number):void {
-    //     this.createdDataCellObjects = {};
-    // }
-
 
     clearIndexAtID(index:string):void {
         delete this.createdDataCellObjects[index];
@@ -2216,11 +2237,11 @@ class DataGridSpecBase {
         return [
             new DataGridColumnSpec(1, (gridSpec:DataGridSpecBase, index:string):DataGridDataCell[] => {
                    // Create cell(s) for a given record ID, for column 1
-                return [new DataGridDataCell(gridSpec, index)]; 
+                return [new DataGridDataCell(gridSpec, index)];
                }),
             new DataGridColumnSpec(2, (gridSpec:DataGridSpecBase, index:string):DataGridDataCell[] => {
                    // Create cell(s) for a given record ID, for column 2
-                return [new DataGridDataCell(gridSpec, index)]; 
+                return [new DataGridDataCell(gridSpec, index)];
                }),
         ];
     }
@@ -2344,5 +2365,4 @@ class DataGridSpecBase {
     }
 
 }
-
 

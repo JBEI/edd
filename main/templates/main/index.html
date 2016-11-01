@@ -6,6 +6,8 @@
     <!-- jQuery-UI needed for autocomplete2 -->
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}"/>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
     <!-- -->
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
@@ -25,7 +27,7 @@
 
 {% block content %}
     {% if can_create %}
-    <div class="pageSection disclose discloseHide" id="addNewStudyMain">
+    <div class="newPageSection disclose discloseHide" id="addNewStudyMain">
         <div class="sectionHead">
             <span class="discloseLink"><a href="#">Add A New Study</a></span>
         </div>
@@ -36,13 +38,19 @@
                 <button type="submit">Add Study</button>
             </form>
         </div>
+    <button type="submit" class="btn addButton btn-lg">Add New </br>Experimental Study</button>
     </div>
     {% endif %}
-    <p>Last viewed:
-    {% for study in latest_viewed_studies %}
-        <a href="{% url 'main:detail' study.id %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
+    <div>
+    <p class="lastViewed">Recently viewed studies:</p>
+     <div class="lastViewed">
+        {% for study in latest_viewed_studies %}
+            <a class="lastViewed" href="{% url 'main:detail' study.id %}">{{ study.name }}</a>
+            {% if not forloop.last %}{% endif %}
     {% endfor %}
-    </p>
+     </div>
+    </div>
+    <p class="lastViewed">All EDD studies:
     <div class="pageSection">
         <table id="studiesTable"></table>
     </div>

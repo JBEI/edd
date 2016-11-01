@@ -10,7 +10,6 @@
     {% block js_css %}
     {% if user.is_authenticated %}
     <script type="text/javascript">
-
         window.EDDData = window.EDDData || {};
         EDDData.currentUserID = {{ user.id }};
 
@@ -19,7 +18,7 @@
     {% endblock js_css%}
 </head>
 <body style="background-color:
-                {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %} #f4fef4
+                {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %}  #f4fef4
                 {% elif request.edd_deployment|slice:":4" == "TEST" %} #fff0f2
                 {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %} #fff6e5
                 {% endif %}">
@@ -39,24 +38,14 @@
             {% if user.is_authenticated %}
                 <div>
                     <span class="user_welcome">{{ user.first_name }} {{ user.last_name }}</span>
-                </div>
-                <div>
+                    </br>
                     <a href="{% url 'account_logout' %}">Logout</a>
                 </div>
-                {% if user.is_staff %}
-                    <div><a href="{% url 'admin:index' %}">Administration</a></div>
-                {% endif %}
             {% else %}
                 <div>
                     <a href="{% url 'account_login' %}">Login</a>
                 </div>
             {% endif %}
-            <div><a href="{% url 'edd_utils:index' %}">Utilities</a></div>
-            <div>
-            {% block top_help %}
-            <a href="{% static 'main/help/index.html' %}">Help</a>
-            {% endblock top_help %}
-            </div>
         </div>
     </div>
     <div class="statusMessage">
@@ -83,6 +72,15 @@
         <div class="footer-text">
             <span class="footer-text-app">JBEI Experiment Data Depot {{ request.edd_deployment }}</span>
             <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
+            {% if user.is_staff %}
+                    <span><a href="{% url 'admin:index' %}">Administration</a></span>
+                {% endif %}
+         <span><a href="{% url 'edd_utils:index' %}">Utilities</a></span>
+            <span>
+            {% block top_help %}
+            <a href="{% static 'main/help/index.html' %}">Help</a>
+            {% endblock top_help %}
+            </span>
         </div>
     </div>
 </body>

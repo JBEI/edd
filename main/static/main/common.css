@@ -8,8 +8,8 @@ tfoot, tr, th, td {
     font-size: inherit;
     margin: 0;
     padding: 0;
-    vertical-align: baseline;
-}   
+    vertical-align: top;
+}
 body {
     line-height: 1;
 }
@@ -173,9 +173,13 @@ div.topBanner {
     flex-direction: row;
     align-items: top;
     justify-content: space-between;
+    border-bottom: 2px solid lightgray;
+    padding-bottom: 20px;
+    background-color: #fafafa;
 }
 div.topBanner > div.siteLogo {
     flex-shrink: 0;
+    padding-left: 20px;
 }
 div.topBanner > div.pageName {
     color: #6c6c6c;
@@ -188,6 +192,7 @@ div.topBanner > div.pageName {
 div.topBanner > div.userMenu {
     flex-shrink: 0;
     padding: 10px;
+    margin-right: 30px;
     white-space: nowrap;
 }
 div.topBanner > div.userMenu > div {
@@ -298,38 +303,25 @@ div.helpBadgeDiv:hover div.helpContent {
 /* Page sections */
 div.pageSection {
     background: #fcfcfc;
-    margin:10px 8px 3px 8px;
-    border-width:1px;
-    border-style:solid;
-    border-color:#a0a0a0;/*#6CA5E9;*/
-/*  border-radius: 6px;
-    -webkit-border-radius: 6px;
-    -moz-border-radius: 6px;*/
+    margin:10px 40px 3px 20px;
+    border: 1px solid lightgray;
+}
+
+div.newPageSection {
+    margin:10px 40px 3px 20px;
 }
 div.pageSection div.sectionHead {
     color:#606060;/*#0C4589;*/
-    font-size:16px;
+    font-size:14px;
     font-weight:bold;
     padding:4px 4px 4px 6px;
-    background: linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    background: -o-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    background: -moz-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    background: -webkit-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    background: -ms-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    /*border-radius: 6px 6px 0px 0px;
-    -webkit-border-radius: 6px 6px 0px 0px;
-    -moz-border-radius: 6px 6px 0px 0px;*/
+
 }
 div.pageSection div.sectionChapter {
     color:#a0a0a0;/*#1C5294;*/
-    font-size:16px;
+    font-size:14px;
     margin:0px;
     padding:3px;
-    background: linear-gradient(top, rgba(180,180,180,0.2) 0%, rgba(200,200,200,0.3) 50%, rgba(220,220,220,0.1) 100%);
-    background: -o-linear-gradient(top, rgba(220,220,220,0.2) 0%, rgba(220,220,220,0.3) 50%, rgba(220,220,220,0.1) 100%);
-    background: -moz-linear-gradient(top, rgba(220,220,220,0.2) 0%, rgba(220,220,220,0.3) 50%, rgba(220,220,220,0.1) 100%);
-    background: -webkit-linear-gradient(top, rgba(220,220,220,0.2) 0%, rgba(220,220,220,0.3) 50%, rgba(220,220,220,0.1) 100%);
-    background: -ms-linear-gradient(top, rgba(220,220,220,0.2) 0%, rgba(220,220,220,0.3) 50%, rgba(220,220,220,0.1) 100%);
     border-style:solid;
     border-width:1px 0px 0px 0px;
     border-color:rgba(255,255,255,0.9);
@@ -378,7 +370,7 @@ div.pageSection.minor div.sectionHead {
 div.bare-header {
     margin: 10px 8px 3px 8px;
     padding: 4px 4px 4px 6px;
-    font-size:16px;
+    font-size:14px;
     font-weight:bold;
     padding:4px 4px 4px 6px;
 }
@@ -390,35 +382,21 @@ table.dataTable {
 }
 table.dataTable tr.header > th {
     text-align:left;
+    vertical-align: top;
     color:rgb(12, 69, 137);
     font-size:14px;
     height:19px;
     font-weight:bold;
     padding:1px 2px 1px 6px;
-    background: linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    background: -o-linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    background: -moz-linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    background: -webkit-linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    background: -ms-linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    /*border-radius: 6px 6px 0px 0px;
-    -webkit-border-radius: 6px 6px 0px 0px;
-    -moz-border-radius: 6px 6px 0px 0px;*/
 }
 table.dataTable tr.columnLabels > th {
     /*padding:2px 4px 2px 4px;*/
-    padding: 4px;
+    padding: 10px;
     vertical-align:top;
-    font-size:12px;
+    font-size:14px;
     color:rgb(12,69,137);
     font-weight:normal;
-    border-style:solid;
-    border-width:0px 1px 0px 0px;
-    border-color:rgba(164,164,164,0.3);
-    background: linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
-    background: -o-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
-    background: -moz-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
-    background: -webkit-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
-    background: -ms-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
+    border: 1px solid lightgray;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -426,9 +404,7 @@ table.dataTable tr.columnLabels > th {
     -ms-user-select: none;
     user-select: none;
 }
-table.dataTable tr.columnLabels > th:last-child {
-    border-right-width: 0;
-}
+
 /* Table sorting components */
 table.dataTable tr.columnLabels > th.sortheader {
     cursor: pointer;
@@ -442,7 +418,7 @@ table.dataTable tr.columnLabels > th.sortheader.center {
     text-align: center;
 }
 table.dataTable tr.columnLabels > th.smaller {
-    font-size:11px;
+    font-size:14px;
 }
 table.dataTable tr.columnLabels > th.sortheader:hover {
     text-decoration:underline;
@@ -459,7 +435,7 @@ table.dataTable tr.columnLabels > th.sorteddown > div {
     background-position: center right;
 }
 table.dataTable tr.columnLabels > th.sortwait > div {
-    background-image: url(images/wait.png);    
+    background-image: url(images/wait.png);
     background-repeat: no-repeat;
     background-position: center right;
 }
@@ -469,9 +445,9 @@ table.dataTable tr.columnLabels > th.sortwait > div:hover {
 }
 /* Data table regular cells */
 table.dataTable tr > td {
-    padding:4px 4px 4px 8px;
+    padding:8px 4px 4px 8px;
     margin:0px;
-    font-size:12px;
+    font-size:14px;
     font-family: Helvetica, sans-serif;
     vertical-align:top;
 }
@@ -529,7 +505,7 @@ table.dataTable tr.groupHeader > td > div {
 
 /* Data table controls for DataGrids.  These can fit inside "sectionHeads" or the "header" row of a "dataTable" */
 span.tableControl {
-    float:right;
+    float:left;
     font-weight:normal;
     margin:0px 1px 0px 16px;
     padding:0px;
@@ -537,6 +513,7 @@ span.tableControl {
     color:#444444;
     font-size:12px;
     vertical-align:bottom;
+    display: none;
 }
 span.tableControl > input[type="checkbox"] {
     margin:0px 4px 0px 0px;
@@ -553,39 +530,36 @@ span.tableControl > select {
     padding:0px;
     font-size:10px;
 }
+
+span.tableHeader {
+    float: left;
+    margin-right: 10px;
+}
+
 input[type="button"].tableControl {
-    float:right;
+    float:left;
     margin:1px 1px 0px 16px;
     font-size:10px;
 }
 input[type="text"].searchBox {
     margin:0px 1px 0px 0px;
     padding:0px 4px 0px 4px;
-    font-size:11px;
+    font-size:14px;
     border-radius: 7px;
     -webkit-border-radius: 7px;
     -moz-border-radius: 7px;
+    background-image: url("images/magnifying_glass.png");
+    background-repeat: no-repeat;
+    background-size: 15px 15px;
+    background-position: right 5px top 1px;
 }
 input[type="text"].searchBox.tableControl {
-    float:right;
-}
-input[type="text"].searchBox.wait {
-    background-repeat: no-repeat;
-    background-position: center right;
-}
-span.searchDisclosure {
-    float:right;
-    margin:0px 1px 0px 16px;
-    padding:3px 1px 0px 1px;
-    display:inline-block;
-    width:18px;
-    height:13px;
-    text-align:center;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-image: url(images/search_disclosure.png)
+    float:left;
 }
 
+div.searchStudies {
+    margin-left: 20px;
+}
 
 /* DataGrid header checkboxes.  To make a checkbox in a table header, do <label class="tableCheckbox"><input ... />LABEL</label> */
 .tableCheckbox {
@@ -612,12 +586,13 @@ span.pulldownMenu {
     margin:0px 1px 0px 6px;
     padding:0px;
     font-weight:normal;
-    font-size:12px;
-    float:right;
+    font-size:14px;
+    float:left;
 }
 div.pulldownMenuLabelOff {
     display:block;
     cursor: pointer;
+    font-size: 14px;
     margin:1px 1px 0px 1px;
     border:0px;
     padding:0px 5px 0px 5px;
@@ -702,6 +677,10 @@ div.filterTable > div.filterColumn {
     border:none;
     vertical-align:top;
 }
+.studyPrevNext {
+    margin: 0px 40px 0px 20px;
+    float: right;
+}
 div.filterTable > div.filterColumn div.filterCriteriaScrollZone {
     max-height: 264px;
     overflow-x: visible;
@@ -732,6 +711,28 @@ table.filterCriteriaTable tr.nodata:hover {
 table.filterCriteriaTable input[type="checkbox"] {
     margin-left: 4px;
     margin-right: 4px;
+}
+p.lastViewed {
+    font-size: 24px;
+    margin-bottom: 10px;
+    margin-left: 15px;
+    font-weight: bold;
+}
+div.lastViewed {
+    margin-left: 20px;
+    margin-right: 50%;
+}
+a.lastViewed {
+    display: inline-block;
+    background-color: white;
+    margin-bottom: 5px;
+    font-weight: normal;
+    border: 1px solid #f1f1f1;
+    padding: 9px 10px;
+    font-size: 14px;
+    line-height: normal;
+    border-radius: 3px;
+    margin-right: 10px;
 }
 div.filterHead {
     padding:4px 8px 2px 2px;
@@ -778,7 +779,7 @@ div.filterHeadSearch > input[type="text"] {
 /* Tab sets for page sections */
 div.pageSectionTabs {
     padding:0px;
-    margin:10px 8px 0px 8px;
+    margin:10px 40px 3px 20px;
     z-index:3;
 }
 div.pageSectionTabs > div {
@@ -787,11 +788,6 @@ div.pageSectionTabs > div {
     font-size:13px;
     font-weight:bold;
     margin:0px;
-    background: linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
-    background: -o-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
-    background: -moz-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
-    background: -webkit-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
-    background: -ms-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
     border-style:solid;
     border-color:#a0a0a0;
     border-radius: 6px 6px 0px 0px;
@@ -833,7 +829,7 @@ div.pageSectionTabs > div.inactive:hover {
      The "relative" element is also six pixels _narrower_ than the "absolute" element,
    which causes the "absolute" elements to overlap each other, making the layout of the tabs
    more cohesive.
-     Finally, the "active" tab is given a higher z-index, so its borders are always on top. 
+     Finally, the "active" tab is given a higher z-index, so its borders are always on top.
 */
 div.pageSectionTabs > div.absoverlay {
     padding-top:1px;
@@ -843,7 +839,7 @@ div.pageSectionTabs > div.absoverlay {
 }
 /* This overrides some of the settings in the pageSection style */
 div.pageSectionTabContent {
-    margin:0px 8px 3px 8px;
+    margin:10px 40px 3px 20px;
     border-radius: 0px 6px 6px 6px;
     -webkit-border-radius: 0px 6px 6px 6px;
     -moz-border-radius: 0px 6px 6px 6px;
@@ -921,13 +917,6 @@ td.popupcell div.p > div.q > div.s > div.t {
     z-index:2;
     box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
     border-radius: 3px;
-    -webkit-border-radius: 3px;
-    -moz-border-radius: 3px;
-    transform: translate(-4px,-4px);
-    -ms-transform: translate(-4px,-4px);
-    -webkit-transform: translate(-4px,-4px);
-    -o-transform: translate(-4px,-4px);
-    -moz-transform: translate(-4px,-4px);
 }
 td.popupcell:hover div.p > div.q > div.s > div.t {
     display:block;
@@ -961,8 +950,6 @@ td.popupcell ul.popupmenu {
 td.popupcell:hover ul.popupmenu {
     display: inline-block;
 }
-
-
 /* Tables for filling out forms */
 table.formTable {
     margin:3px 0px 0px 3px;
@@ -1014,6 +1001,21 @@ table.formTable tr > td textarea {
     padding:0px;
 }
 
+#studiesTable td:nth-child(2) {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    width: 40%;
+    overflow: hidden;
+    max-width: 200px;
+}
+
+#studiesTable td:first-child {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    width: 40%;
+    overflow: hidden;
+    max-width: 200px;
+}
 
 tr.multientrybuttonrow:hover div.multientrybutton {
     opacity: 1;
@@ -1022,6 +1024,12 @@ div.multientrybutton {
     opacity: 0;
 }
 
+.addButton {
+    background-color: #6CA5E9;
+    float: right;
+    color: white;
+    text-align: center;
+}
 
 /* Autocomplete input element styling */
 
@@ -1427,11 +1435,11 @@ form.comments textarea {
 }
 
 div.footer {
-    border-top: 1px solid #6CA5E9;
+    border-top: 1px solid #CCC;
     color: #CCC;
     font-size: 0.85em;
-    margin-top: 2em;
-    padding: 1em;
+    margin-top: 20px;
+    padding: 20px;
 }
 div.footer > div.footer-text {
     margin: 0px auto;
@@ -1448,7 +1456,7 @@ div.footer > div.footer-text > span {
 .fd-zone {
     background-repeat: no-repeat;
     background-attachment: scroll;
-    background-position: center; 
+    background-position: center;
     background-image: url(images/dropzone-excel_csv.png);
 }
 .fd-zone.over {
