@@ -9,11 +9,15 @@ from django.views.generic.base import RedirectView
 from main import autocomplete, views
 
 
+# These are the URL endpoints nested under a link to a specific Study, for use with include() in
+#   the two URL paths for study below. Because this list is included twice, there should be no
+#   URL with the name kwarg here, as that will result in conflicts looking up URLs by name.
 study_url_patterns = [
     url(r'^assaydata/$', login_required(views.study_assay_table_data)),
     url(r'^edddata/$', login_required(views.study_edddata)),
     url(
-        r'^measurements/(?P<protocol>\d+)/$',
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
+        r'^measurements/(?P<protocol>\d+)/',
         include([
             url(r'^$', login_required(views.study_measurements)),
             url(r'^(?P<assay>\d+)/$', login_required(views.study_assay_measurements)),
@@ -22,7 +26,8 @@ study_url_patterns = [
     url(r'^map/$', login_required(views.study_map)),
     url(r'^permissions/$', login_required(views.permissions)),
     url(
-        r'^import/$',
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
+        r'^import/',
         include([
             url(r'^$', login_required(views.study_import_table)),
             # TODO these should be folded into the main import page at some point
@@ -36,6 +41,7 @@ study_url_patterns = [
 ]
 
 urlpatterns = [
+    # "homepage" URLs
     url(r'^$', login_required(views.StudyIndexView.as_view()), name='index'),
     url(
         r'^study/$',
@@ -46,6 +52,7 @@ urlpatterns = [
 
     # Individual study-specific pages loaded by primary key
     url(
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^study/(?P<study_pk>\d+)/',
         include(
             [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail_by_pk', )] +
@@ -55,6 +62,7 @@ urlpatterns = [
 
     # Individual study-specific pages loaded by slug
     url(
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^study/(?P<slug>[-\w]+)/',
         include(
             [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail', )] +
@@ -62,10 +70,12 @@ urlpatterns = [
         )
     ),
 
+    # "export" URLs
     url(r'^export/$', login_required(views.ExportView.as_view()), name='export'),
     url(r'^worklist/$', login_required(views.WorklistView.as_view()), name='worklist'),
     url(r'^sbml/$', login_required(views.SbmlView.as_view()), name='sbml'),
 
+    # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
     url(r'^file/download/(?P<file_id>\d+)$', login_required(views.download)),
     url(r'^file/delete/(?P<file_id>\d+)$', login_required(views.delete_file)),
     url(r'^utilities/parsefile$', login_required(views.utilities_parse_import_file)),
@@ -82,6 +92,10 @@ urlpatterns = [
     url(r'^data/users/$', login_required(views.data_users)),
     url(r'^search/$', login_required(views.search)),
     url(r'^search/(?P<model>\w+)/$', login_required(views.model_search)),
+
+    # Call-out for the favicon, which would normally only be accessible via a URL like:
+    #   https://edd.example.org/static/favicon.ico
+    # This way, browsers can load the favicon from the standard link.
     url(r'^favicon\.ico$',
         RedirectView.as_view(
             url=staticfiles_storage.url('favicon.ico'),
