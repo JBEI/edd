@@ -555,6 +555,8 @@ class StudyDetailView(generic.DetailView):
             logger.warning('Failed to load (line, study) combo (%s,%s)' % (line_id, study.pk))
         return None
 
+class StudyDetailViewV2(StudyDetailView):
+    template_name = 'main/detail2.html'
 
 class EDDExportView(generic.TemplateView):
     """ Base view for exporting EDD information. """

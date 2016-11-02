@@ -304,7 +304,6 @@ div.helpBadgeDiv:hover div.helpContent {
 div.pageSection {
     background: #fcfcfc;
     margin:10px 40px 3px 20px;
-    border: 1px solid lightgray;
 }
 
 div.newPageSection {
@@ -366,12 +365,17 @@ div.pageSection.minor div.sectionHead {
     background: transparent;
 }
 
+ul.studyTabs {
+    margin-left: 20px
+}
+
 /* mimic the appearance of sectionHeader, independently of a pageSection */
 div.bare-header {
     margin: 10px 8px 3px 8px;
     padding: 4px 4px 4px 6px;
     font-size:14px;
     font-weight:bold;
+    float: right;
     padding:4px 4px 4px 6px;
 }
 
@@ -839,7 +843,7 @@ div.pageSectionTabs > div.absoverlay {
 }
 /* This overrides some of the settings in the pageSection style */
 div.pageSectionTabContent {
-    margin:10px 40px 3px 20px;
+    margin: 0px 40px 3px 20px;
     border-radius: 0px 6px 6px 6px;
     -webkit-border-radius: 0px 6px 6px 6px;
     -moz-border-radius: 0px 6px 6px 6px;
