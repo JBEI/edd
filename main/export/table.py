@@ -238,6 +238,29 @@ def value_str(value):
     return ':'.join(map(str, map(float, value)))
 
 
+class CellQuote(object):
+    """ Object defining how to quote table cell values. """
+    def __init__(self, always_quote=False, separator_string=',', quote_string='"'):
+        """ Defines how to quote values.
+            :param always_quote: if True, always quote values, instead of conditionally quote
+            :param separator_string: sequence that separates cell values, requiring quotation
+            :param quote_string: sequence used to surround quoted values
+        """
+        self.always_quote = always_quote
+        self.separator_string = separator_string
+        self.quote_string = quote_string
+
+    def quote(self, value):
+        """ Quotes a value based on object parameters. """
+        if self.always_quote or self.separator_string in value:
+            # wrap in quotes, replace any quote sequences with a doubled sequence
+            return '%(quote)s%(value)s%(quote)s' % {
+                'quote': self.quote_string,
+                'value': value.replace(self.quote_string, self.quote_string * 2),
+            }
+        return value
+
+
 class TableExport(object):
     """ Outputs tables for export of EDD objects. """
     def __init__(self, selection, options, worklist=None):
@@ -265,15 +288,15 @@ class TableExport(object):
         table_separator = '\n\n'
         row_separator = '\n'
         cell_separator = self.options.separator
+        cell_format = CellQuote(separator_string=cell_separator)
         if layout == ExportOption.DATA_COLUMN_BY_POINT:
             # data is already in correct orientation, join and return
             return table_separator.join([
                 row_separator.join([
-                    cell_separator.join([
-                        str(cell) for cell in rrow
-                        ]) for rkey, rrow in ttable.items()
-                    ]) for tkey, ttable in tables.items()
-                ])
+                    cell_separator.join(map(cell_format.quote, rrow))
+                    for rkey, rrow in ttable.items()
+                ]) for tkey, ttable in tables.items()
+            ])
         # both LINE_COLUMN_BY_DATA and DATA_COLUMN_BY_LINE are constructed similarly
         # each table in LINE_COLUMN_BY_DATA is transposed
         out = []
@@ -290,7 +313,7 @@ class TableExport(object):
             if layout == ExportOption.LINE_COLUMN_BY_DATA:
                 rows = zip(*rows)
             # join the cells
-            rows = [cell_separator.join(row) for row in rows]
+            rows = [cell_separator.join(map(cell_format.quote, row)) for row in rows]
             # join the rows
             out.append(row_separator.join(rows))
         return table_separator.join(out)
