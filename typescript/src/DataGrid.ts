@@ -66,57 +66,46 @@ class DataGrid {
             // TODO: Most of these classes are probably not needed now
             .addClass('dataTable sortable dragboxes hastablecontrols table-bordered')
             .append(tableBody);
+            if ((this._table.getAttribute('id')).slice(7) === 'assaystable') {
+                var tHeadRow = $(document.createElement('thead'));
+                var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
+                var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
+                    .appendTo(tableHeaderRow);
+                var waitBadge = $(this._waitBadge = document.createElement("span"))
+                    .addClass('waitbadge wait').appendTo(tableHeaderCell);
+                if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                    tableHeaderCell.attr('colspan', this._totalColumnCount);
+                }
+                // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
+                if (dataGridSpec.tableSpec.showHeader) {
+                    tHeadRow.insertBefore(tableBody);
+                }
+            } else {
 
-        var homePageText = $('.pageName').text();
+                var tHeadRow = $(document.createElement('div'));
+                tHeadRow.addClass('searchStudies');
+                var tableHeaderRow = $(document.createElement("span")).addClass('header').appendTo(tHeadRow);
+                var tableHeaderCell = $(this._tableHeaderCell = document.createElement("span"))
+                    .appendTo(tableHeaderRow);
+                var waitBadge = $(this._waitBadge = document.createElement("span"))
+                    .addClass('waitbadge wait').appendTo(tableHeaderCell);
+                if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                    tableHeaderCell.attr('colspan', this._totalColumnCount);
+                }
 
-        if (homePageText.indexOf("Experiment Data Depot") !== -1) {
-            var tHeadRow = $(document.createElement('div'));
-            tHeadRow.addClass('searchStudies');
-            var tableHeaderRow = $(document.createElement("span")).addClass('header').appendTo(tHeadRow);
-            var tableHeaderCell = $(this._tableHeaderCell = document.createElement("span"))
-                .appendTo(tableHeaderRow);
-            var waitBadge = $(this._waitBadge = document.createElement("span"))
-                .addClass('waitbadge wait').appendTo(tableHeaderCell);
-            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-                tableHeaderCell.attr('colspan', this._totalColumnCount);
+                // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
+                if (dataGridSpec.tableSpec.showHeader) {
+                    var pageSection = $(tableBody).parent().parent();
+                    tHeadRow.insertBefore(pageSection);
+                }
             }
-
-            // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-            if (dataGridSpec.tableSpec.showHeader) {
-                var pageSection = $(tableBody).parent().parent();
-                tHeadRow.insertBefore(pageSection);
-            }
-
             // Apply the default column visibility settings.
             this.prepareColumnVisibility();
-            var test = $(document.createElement("thead"));
+            var tHead = $(document.createElement("thead"));
             var headerRows = this._headerRows = this._buildTableHeaders();
-            test.append(headerRows);
-             $(test).insertBefore(this._tableBody);
-        } else {
+            tHead.append(headerRows);
+             $(tHead).insertBefore(this._tableBody);
 
-            var tHeadRow = $(document.createElement('thead'));
-            var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
-            var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
-                .appendTo(tableHeaderRow);
-            var waitBadge = $(this._waitBadge = document.createElement("span"))
-                .addClass('waitbadge wait').appendTo(tableHeaderCell);
-            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-                tableHeaderCell.attr('colspan', this._totalColumnCount);
-            }
-
-            // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-            if (dataGridSpec.tableSpec.showHeader) {
-                tHeadRow.insertBefore(tableBody);
-            }
-
-            // Apply the default column visibility settings.
-            this.prepareColumnVisibility();
-
-            var headerRows = this._headerRows = this._buildTableHeaders();
-            this._headerRows.forEach((v) => tHeadRow.append(v));
-
-        }
         setTimeout( () => this._initializeTableData(), 1 );
     }
 

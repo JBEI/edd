@@ -50,17 +50,17 @@
 
 
 {% block content %}
+    <div class="btn-toolbar bare-header">
+        <div class="btn-group">
+            <a class="btn addButton btn-lg" href="/study/{{ study.id }}/import">Import Files</a>
+        </div>
+    </div>
     <ul class="nav nav-pills studyTabs">
       <li id="overviewTab" role="presentation"><a href="#">Overview</a></li>
       <li id="linesTab" role="presentation"><a href="#">Lines</a></li>
       <li id="dataTab" role="presentation" class="active"><a href="#">Data</a></li>
     </ul>
     </br>
-        <div class="btn-toolbar bare-header">
-        <div class="btn-group">
-            <a class="btn btn-sm btn-info" href="/study/{{ study.id }}/import">Import Files</a>
-        </div>
-    </div>
     <div id="dataDisplay">
     <ul class="nav nav-tabs studyTabs">
       <li id="studyGraph" role="presentation" class="active"><a href="#">Graph</a></li>
@@ -126,34 +126,6 @@
             <!-- individual protocol assay sections inserted here -->
             <div id="assaysActionPanel" class="sectionActions off">
                 <div class="assay-section">
-                <div class="btn-group" data-toggle="buttons" id="chartType">
-                    <label class="btn btn-default btn-sm active line" >
-                        <input value="linechart" type="radio" autocomplete="off" checked>
-                        <img src="../../static/main/images/chart_curve.png" />
-                         </label>
-                    <label class="btn btn-default btn-sm" style="margin-right: 20px;">
-                        <input type="radio" autocomplete="off">
-                        <img src="../../static/main/images/chart_bar.png"/>
-                    </label>
-                    <label class="btn btn-default btn-sm groupByTimeBar hidden">
-                        <input value="barTime" type="radio" autocomplete="off">Time
-                    </label>
-                    <label class="btn btn-default btn-sm groupByProteinBar hidden">
-                        <input type="radio" autocomplete="off"
-                               value="barAssay">Line
-                    </label>
-                    <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
-                        <input type="radio" value="barMeasurement"
-                         autocomplete="off">Measurement
-                    </label>
-                    </div>
-                    <div class="chartIds">
-                        <div></div>
-                        <div class="linechart"></div>
-                        <div class="barTime"></div>
-                        <div class="barAssay"></div>
-                        <div class="barMeasurement"></div>
-                    </div>
             </div>
                 <span id="assaysSelectedCell">0 selected</span>
                 {% if writable %}
@@ -203,7 +175,7 @@
         </div>
         {% endif %}
     </form>
-
+ </div>
     {% if writable %}
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
         
@@ -225,12 +197,12 @@
     </div>
     {% endif %}
 
-    </div>
-    <form action="" class="line-action" method="POST">
+
+    <form action="" class="line-action" style="display:none" method="POST">
         {% csrf_token %}
         <div class="pageSection">
             {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-            <table id="studyLinesTable" style="display:none"></table>
+            <table id="studyLinesTable"></table>
             <div id="linesActionPanel" class="sectionActions off">
                 <span id="linesSelectedCell">0 selected</span>
                 {% if writable %}

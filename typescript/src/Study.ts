@@ -2697,66 +2697,10 @@ class DataGridAssays extends DataGrid {
         try {
             this.triggerDataReset();
             this.recordsCurrentlyInvalidated = [];
-            this.queueGraphRemake();
+            // this.queueGraphRemake();
         } catch (e) {
             console.log('Failed to execute records refresh: ' + e);
         }
-    }
-
-
-    private _cancelGraph() {
-        if (this.graphRefreshTimerID) {
-            clearTimeout(this.graphRefreshTimerID);
-            delete this.graphRefreshTimerID;
-        }
-    }
-
-
-    // Start a timer to wait before calling the routine that remakes the graph.
-    queueGraphRemake() {
-        this._cancelGraph();
-        this.graphRefreshTimerID = setTimeout( () => this.remakeGraphArea(), 100 );
-    }
-
-
-    remakeGraphArea() {
-        var spec:DataGridSpecAssays = this.getSpec(), g, convert, compare;
-        // if called directly, cancel any pending requests in "queue"
-        this._cancelGraph();
-
-        if (!StudyDGraphing || !spec || !spec.graphObject) {
-            return;
-        }
-
-        g = spec.graphObject;
-        var colorObj = EDDData['color'];
-        var dataSets = [];
-        spec.getRecordIDs().forEach((id) => {
-            var assay:any = EDDData.Assays[id] || {},
-                line:any = EDDData.Lines[assay.lid] || {},
-                measures;
-            if (!assay.active || !line.active) { return; }
-            measures = assay.measures || [];
-            measures.forEach((m) => {
-                var measure = EDDData.AssayMeasurements[m], set;
-                var name = assay.name;
-                var color = colorObj[assay.lid];
-                var lineName = line.name;
-                var dataObj = {
-                    'measure': measure,
-                    'data': EDDData,
-                    'name': name,
-                    'color': color,
-                    'lineName': lineName
-                };
-                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(dataObj);
-
-                if (line.control) singleAssayObj.iscontrol = true;
-                dataSets.push(singleAssayObj);
-            });
-        });
-
-        g.addNewSet(dataSets);
     }
 }
 
@@ -2944,11 +2888,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             });
         });
 
-        this.graphAreaHeaderSpec = new DataGridHeaderSpec(8 + metaDataHeaders.length,
-                'hAssaysGraph' + this.protocolID, { 'colspan': 7 + metaDataHeaders.length });
-
         var leftSide:DataGridHeaderSpec[] = [
-            this.graphAreaHeaderSpec,
             new DataGridHeaderSpec(1, 'hAssaysName'+this.protocolID, {
                 'name': 'Name',
                 'headerRow': 2,
@@ -3447,7 +3387,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                     $(clonedButtons).appendTo(this.graphAreaHeaderSpec.element);
                     $(clonedClasses).appendTo(this.graphAreaHeaderSpec.element);
                     $(this.graphAreaHeaderSpec.element).append(dom);
-                    
+
                 // Initialize the graph object
                 this.graphObject = Object.create(StudyDGraphing);
                 this.graphObject.Setup(graphid);

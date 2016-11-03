@@ -23,7 +23,7 @@ StudyDGraphing = {
             $('#dataTab').removeClass('active');
             $(this).addClass('active');
             $('#dataDisplay').css('display','none');
-            $('#studyLinesTable').css('display', 'block');
+            $('.line-action').css('display', 'block');
         });
 
         $('#dataTab').click(function(event) {
@@ -31,8 +31,8 @@ StudyDGraphing = {
             $('#overviewTab').removeClass('active');
             $('#linesTab').removeClass('active');
             $(this).addClass('active');
-            $('#studyLinesTable').css('display', 'none');
             $('#dataDisplay').css('display','block');
+            $('.line-action').css('display', 'none');
         });
 
         $('#studyGraph').click(function(event) {

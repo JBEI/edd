@@ -2338,59 +2338,10 @@ var DataGridAssays = (function (_super) {
         try {
             this.triggerDataReset();
             this.recordsCurrentlyInvalidated = [];
-            this.queueGraphRemake();
         }
         catch (e) {
             console.log('Failed to execute records refresh: ' + e);
         }
-    };
-    DataGridAssays.prototype._cancelGraph = function () {
-        if (this.graphRefreshTimerID) {
-            clearTimeout(this.graphRefreshTimerID);
-            delete this.graphRefreshTimerID;
-        }
-    };
-    // Start a timer to wait before calling the routine that remakes the graph.
-    DataGridAssays.prototype.queueGraphRemake = function () {
-        var _this = this;
-        this._cancelGraph();
-        this.graphRefreshTimerID = setTimeout(function () { return _this.remakeGraphArea(); }, 100);
-    };
-    DataGridAssays.prototype.remakeGraphArea = function () {
-        var spec = this.getSpec(), g, convert, compare;
-        // if called directly, cancel any pending requests in "queue"
-        this._cancelGraph();
-        if (!StudyDGraphing || !spec || !spec.graphObject) {
-            return;
-        }
-        g = spec.graphObject;
-        var colorObj = EDDData['color'];
-        var dataSets = [];
-        spec.getRecordIDs().forEach(function (id) {
-            var assay = EDDData.Assays[id] || {}, line = EDDData.Lines[assay.lid] || {}, measures;
-            if (!assay.active || !line.active) {
-                return;
-            }
-            measures = assay.measures || [];
-            measures.forEach(function (m) {
-                var measure = EDDData.AssayMeasurements[m], set;
-                var name = assay.name;
-                var color = colorObj[assay.lid];
-                var lineName = line.name;
-                var dataObj = {
-                    'measure': measure,
-                    'data': EDDData,
-                    'name': name,
-                    'color': color,
-                    'lineName': lineName
-                };
-                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(dataObj);
-                if (line.control)
-                    singleAssayObj.iscontrol = true;
-                dataSets.push(singleAssayObj);
-            });
-        });
-        g.addNewSet(dataSets);
     };
     return DataGridAssays;
 }(DataGrid));
@@ -2534,9 +2485,7 @@ var DataGridSpecAssays = (function (_super) {
                 'sortAfter': 1
             });
         });
-        this.graphAreaHeaderSpec = new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hAssaysGraph' + this.protocolID, { 'colspan': 7 + metaDataHeaders.length });
         var leftSide = [
-            this.graphAreaHeaderSpec,
             new DataGridHeaderSpec(1, 'hAssaysName' + this.protocolID, {
                 'name': 'Name',
                 'headerRow': 2,

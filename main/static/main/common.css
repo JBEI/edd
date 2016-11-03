@@ -302,7 +302,6 @@ div.helpBadgeDiv:hover div.helpContent {
 
 /* Page sections */
 div.pageSection {
-    background: #fcfcfc;
     margin:10px 40px 3px 20px;
 }
 
@@ -366,7 +365,7 @@ div.pageSection.minor div.sectionHead {
 }
 
 ul.studyTabs {
-    margin-left: 20px
+    margin: 15px 0px 10px 20px;
 }
 
 /* mimic the appearance of sectionHeader, independently of a pageSection */
@@ -611,11 +610,10 @@ div.pulldownMenuLabelOn {
     position:relative;
     margin:0px 0px 0px 0px;
     border-style:solid;
-    border-color:black;
     padding:0px 5px 0px 5px;
     text-decoration:underline;
     border-width:1px 1px 0px 1px;
-    background-color:rgb(229,240,255);
+    background-color:white;
     cursor: pointer;
     z-index:4;
 }
@@ -624,12 +622,12 @@ div.pulldownMenuMenuBlock {
     position:absolute;
     margin:0px;
     border:1px black solid;
-    padding:0px 8px 0px 8px;
+    padding:5px 8px 0px 8px;
     text-decoration:none;
-    background-color:rgb(229,240,255);
+    background-color:white;
     text-shadow:none;
     color:black;
-    font-size:12px;
+    font-size:14px;
     font-weight:normal;
     z-index:3;
     box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
