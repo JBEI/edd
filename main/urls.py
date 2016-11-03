@@ -53,7 +53,7 @@ urlpatterns = [
     # Individual study-specific pages loaded by primary key
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<study_pk>\d+)/',
+        r'^study/(?P<pk>\d+)/',
         include(
             [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail_by_pk', )] +
             study_url_patterns
