@@ -6,6 +6,7 @@ import logging
 import os
 import re
 
+from builtins import str
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse, JsonResponse
@@ -45,7 +46,7 @@ def gcms_parse(request):
         assert isinstance(json_result, dict)
         return JsonResponse(json_result)
     except (AttributeError, KeyError, ValueError) as e:
-        return JsonResponse({'python_error': '%s' % e, })
+        return JsonResponse({'python_error': '%s' % e, }, status=500)
 
 
 def gcms_merge(request):
@@ -53,7 +54,7 @@ def gcms_merge(request):
     try:
         return JsonResponse(gc_ms_workbench.finalize_gc_ms_spreadsheet(data))
     except RuntimeError as e:
-        return JsonResponse({'python_error': '%s' % e, })
+        return JsonResponse({'python_error': '%s' % e, }, status=500)
 
 
 def gcms_export(request):
@@ -89,9 +90,10 @@ def skyline_parse(request):
     try:
         result = parser.export(request.FILES['file'])
         assert (result is not None)
-        return JsonResponse(result.export())
+        return JsonResponse(result)
     except Exception as e:
-        return JsonResponse({'python_error': '%s' % e, })
+        logger.exception('Problem parsing skyline file: %s', e)
+        return JsonResponse({'python_error': '%s' % e, }, status=500)
 
 
 ########################################################################
@@ -117,16 +119,16 @@ def cytometry_parse(request):
             for sheet in parsed.get('worksheets', []):
                 for ws in sheet:
                     header = ws.get('headers', [])
-                    table = [u'\t'.join(map(replace, map(unicode, header))) ] if header else []
+                    table = [u'\t'.join(map(replace, map(str, header)))] if header else []
                     for row in ws.get('values', []):
-                        table.append(u'\t'.join(map(replace, map(unicode, row))))
+                        table.append(u'\t'.join(map(replace, map(str, row))))
                     tables.append(u'\n'.join(table))
             return JsonResponse({'data': u'\n\n'.join(tables), })
         else:
             # try to parse as plain text
             return JsonResponse({'data': upload.read(), })
     except Exception as e:
-        return JsonResponse({'python_error': '%s' % e, })
+        return JsonResponse({'python_error': '%s' % e, }, status=500)
 
 
 def cytometry_import(request):
