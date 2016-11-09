@@ -33,12 +33,12 @@ var DataGrid = (function () {
         this._table = dataGridSpec.tableElement;
         this._timers = {};
         var tableBody = $(this._tableBody = document.createElement("tbody"));
-        // First step: Blow away the old contents of the table
-        $(this._table).empty()
-            .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-            .addClass('dataTable sortable dragboxes hastablecontrols table-bordered')
-            .append(tableBody);
         if ((this._table.getAttribute('id')).slice(7) === 'assaystable') {
+            // First step: Blow away the old contents of the table
+            $(this._table).empty()
+                .attr({ 'cellpadding': 0, 'cellspacing': 0 })
+                .addClass('dataTable sortable dragboxes hastablecontrols')
+                .append(tableBody);
             var tHeadRow = $(document.createElement('thead'));
             var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
             var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
@@ -54,6 +54,11 @@ var DataGrid = (function () {
             }
         }
         else {
+            // First step: Blow away the old contents of the table
+            $(this._table).empty()
+                .attr({ 'cellpadding': 0, 'cellspacing': 0 })
+                .addClass('dataTable sortable dragboxes hastablecontrols table-bordered')
+                .append(tableBody);
             var tHeadRow = $(document.createElement('div'));
             tHeadRow.addClass('searchStudies');
             var tableHeaderRow = $(document.createElement("span")).addClass('header').appendTo(tHeadRow);

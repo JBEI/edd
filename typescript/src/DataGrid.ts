@@ -60,13 +60,13 @@ class DataGrid {
 
         var tableBody:JQuery = $(this._tableBody = document.createElement("tbody"));
 
-        // First step: Blow away the old contents of the table
-        $(this._table).empty()
-            .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-            // TODO: Most of these classes are probably not needed now
-            .addClass('dataTable sortable dragboxes hastablecontrols table-bordered')
-            .append(tableBody);
             if ((this._table.getAttribute('id')).slice(7) === 'assaystable') {
+                 // First step: Blow away the old contents of the table
+                $(this._table).empty()
+                    .attr({ 'cellpadding': 0, 'cellspacing': 0 })
+                    // TODO: Most of these classes are probably not needed now
+                    .addClass('dataTable sortable dragboxes hastablecontrols')
+                    .append(tableBody);
                 var tHeadRow = $(document.createElement('thead'));
                 var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
                 var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
@@ -81,6 +81,13 @@ class DataGrid {
                     tHeadRow.insertBefore(tableBody);
                 }
             } else {
+
+                 // First step: Blow away the old contents of the table
+                $(this._table).empty()
+                    .attr({ 'cellpadding': 0, 'cellspacing': 0 })
+                    // TODO: Most of these classes are probably not needed now
+                    .addClass('dataTable sortable dragboxes hastablecontrols table-bordered')
+                    .append(tableBody);
 
                 var tHeadRow = $(document.createElement('div'));
                 tHeadRow.addClass('searchStudies');

@@ -12,6 +12,8 @@ tfoot, tr, th, td {
 }
 body {
     line-height: 1;
+    padding-left: 20px;
+    padding-right: 20px;
 }
 table {
     border-collapse: collapse;
@@ -365,7 +367,7 @@ div.pageSection.minor div.sectionHead {
 }
 
 ul.studyTabs {
-    margin: 15px 0px 10px 20px;
+    margin: 15px 0px 10px 0px;
 }
 
 /* mimic the appearance of sectionHeader, independently of a pageSection */
@@ -477,6 +479,7 @@ table.dataTable tr > td ul > li:first-child {
 table.dataTable tr > td span {
     margin:0px;
     padding:3px 3px 0px 0px;
+    white-space: nowrap;
 }
 table.dataTable tr > td p {
     margin:3px 3px 0px 0px;
@@ -545,7 +548,7 @@ input[type="button"].tableControl {
     font-size:10px;
 }
 input[type="text"].searchBox {
-    margin:0px 1px 0px 0px;
+    margin:0px 5px 0px 0px;
     padding:0px 4px 0px 4px;
     font-size:14px;
     border-radius: 7px;

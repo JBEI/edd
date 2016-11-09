@@ -14,7 +14,7 @@ module StudyD {
     'use strict';
 
     var mainGraphObject:any;
-    var progressiveFilteringWidget: ProgressiveFilteringWidget;
+    export var progressiveFilteringWidget: ProgressiveFilteringWidget;
 
     var mainGraphRefreshTimerID:any;
 
@@ -1208,14 +1208,14 @@ module StudyD {
                     protocolsWithMeasurements[assay.pid] = true;
                 });
                 // For each protocol with measurements, create a DataGridAssays object.
-                $.each(EDDData.Protocols, (id, protocol) => {
-                    var spec;
-                    if (protocolsWithMeasurements[id]) {
-                        this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(protocol.id);
+                // $.each(EDDData.Protocols, (id, protocol) => {
+                       var spec;
+                //     if (protocolsWithMeasurements[id]) {
+                        this.assaysDataGridSpecs = spec = new DataGridSpecAssays(EDDData.Assays);
                         spec.init();
-                        this.assaysDataGrids[id] = new DataGridAssays(spec);
-                    }
-                });
+                        this.assaysDataGrids = new DataGridAssays(spec);
+                //     }
+                // });
             }
         });
 
@@ -2709,9 +2709,9 @@ class DataGridAssays extends DataGrid {
 // The spec object that will be passed to DataGrid to create the Assays table(s)
 class DataGridSpecAssays extends DataGridSpecBase {
 
-    protocolID:any;
+    assayID:any;
     protocolName:string;
-    assayIDsInProtocol:number[];
+    filteredIdsInTable:number[];
     metaDataIDsUsedInAssays:any;
     maximumXValueInData:number;
 
@@ -2723,10 +2723,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
     graphObject:any;
 
 
-    constructor(protocolID) {
+    constructor(assayID) {
         super();
-        this.protocolID = protocolID;
-        this.protocolName = EDDData.Protocols[protocolID].name;
+        this.assayID = assayID;
+        this.protocolName = 'test';
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
         this.graphAreaHeaderSpec = null;
@@ -2741,26 +2741,30 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
 
+    //pass in filtered ids. this.assayIDsInProtocol change to this.filteredIDsInTable
     refreshIDList():void {
+        //filtered measurements from graph filter
+        var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
         // Find out which protocols have assays with measurements - disabled or no
-        this.assayIDsInProtocol = [];
+        this.filteredIdsInTable = [];
+        console.log(postFilteringMeasurements);
         $.each(EDDData.Assays, (assayId:string, assay:AssayRecord):void => {
             var line:LineRecord;
             // skip assays for other protocols
-            if (this.protocolID === assay.pid) {
-                line = EDDData.Lines[assay.lid];
-                // skip assays without a valid line or with a disabled line
-                if (line && line.active) {
-                    this.assayIDsInProtocol.push(assay.id);
-                }
+            // if (this.protocolID === assay.pid) {
+            line = EDDData.Lines[assay.lid];
+             // skip assays without a valid line or with a disabled line
+            if (line && line.active) {
+                this.filteredIdsInTable.push(assay.id);
             }
+            //}
         });
     }
 
 
     // An array of unique identifiers, used to identify the records in the data set being displayed
     getRecordIDs():any[] {
-        return this.assayIDsInProtocol;
+        return this.filteredIdsInTable;
     }
 
 
@@ -2777,33 +2781,33 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table
     // content will be removed.
-    getTableElement() {
-        var section, protocolDiv, titleDiv, titleLink, table,
-            p = this.protocolID,
-            tableID:string = 'pro' + p + 'assaystable';
+        getTableElement() {
+        // var section, protocolDiv, titleDiv, titleLink, table,
+        //     p = this.protocolID,
+        //     tableID:string = 'pro' + p + 'assaystable';
         // If we can't find a table, we insert a click-to-disclose div, and then a table directly
         // after it.
-        if ($('#' + tableID).length === 0) {
-            section = $('#assaysSection');
-            protocolDiv = $('<div>').addClass('disclose discloseHide').appendTo(section);
-            this.undisclosedSectionDiv = protocolDiv[0];
-            titleDiv = $('<div>').addClass('sectionChapter').appendTo(protocolDiv);
-            titleLink = $('<span>').addClass('discloseLink')
-                    .text(this.protocolName + ' Assays')
-                    .appendTo(titleDiv);
-            table = $(document.createElement("table"))
-                    .attr('id', tableID).addClass('discloseBody')
-                    .appendTo(protocolDiv);
+        // if ($('#' + tableID).length === 0) {
+            var section = $('#assaysSection');
+            // protocolDiv = $('<div>').addClass('disclose').append('</br>').appendTo(section);
+            // this.undisclosedSectionDiv = protocolDiv[0];
+            // titleDiv = $('<div>').addClass('sectionChapter').appendTo(protocolDiv);
+            // titleLink = $('<span>').addClass('discloseLink')
+            //         .text(this.protocolName + ' Assays')
+            //         .appendTo(titleDiv);
+            var table = $(document.createElement("table"))
+                    .attr('id', 'assayTable');
+            $(section).append(table);
             // Make sure the actions panel remains at the bottom.
-            $('#assaysActionPanel').appendTo(section);
-        }
-        return document.getElementById(tableID);
+            $('#assaysActionPanel').appendTo(table);
+       // }
+        return document.getElementById('assaysSection');
     }
 
 
     // Specification for the table as a whole
     defineTableSpec():DataGridTableSpec {
-        return new DataGridTableSpec('assays'+this.protocolID, {
+        return new DataGridTableSpec('assays', {
             'defaultSort': 1
         });
     }
@@ -2879,7 +2883,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // map all metadata IDs to HeaderSpec objects
         var metaDataHeaders:DataGridHeaderSpec[] = this.metaDataIDsUsedInAssays.map((id, index) => {
             var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridHeaderSpec(2 + index, 'hAssaysMeta'+this.protocolID+'id' + id, {
+            return new DataGridHeaderSpec(2 + index, 'hAssaysMetaid' + id, {
                 'name': mdType.name,
                 'headerRow': 2,
                 'size': 's',
@@ -2888,8 +2892,11 @@ class DataGridSpecAssays extends DataGridSpecBase {
             });
         });
 
+         this.graphAreaHeaderSpec = new DataGridHeaderSpec(8 + metaDataHeaders.length,
+                'hAssaysGraph', { 'colspan': 7 + metaDataHeaders.length });
+
         var leftSide:DataGridHeaderSpec[] = [
-            new DataGridHeaderSpec(1, 'hAssaysName'+this.protocolID, {
+            new DataGridHeaderSpec(1, 'hAssaysName', {
                 'name': 'Name',
                 'headerRow': 2,
                 'sortBy': this.loadAssayName
@@ -2897,21 +2904,21 @@ class DataGridSpecAssays extends DataGridSpecBase {
         ];
 
         this.measuringTimesHeaderSpec = new DataGridHeaderSpec(5 + metaDataHeaders.length,
-                'hAssaysMTimes'+this.protocolID, { 'name': 'Measuring Times', 'headerRow': 2 });
+                'hAssaysMTimes', { 'name': 'Measuring Times', 'headerRow': 2 });
 
         var rightSide = [
             new DataGridHeaderSpec(2 + metaDataHeaders.length,
-                    'hAssaysMName' + this.protocolID,
+                    'hAssaysMName',
                     { 'name': 'Measurement', 'headerRow': 2 }),
             new DataGridHeaderSpec(3 + metaDataHeaders.length,
-                    'hAssaysUnits' + this.protocolID,
+                    'hAssaysUnits',
                     { 'name': 'Units', 'headerRow': 2 }),
             new DataGridHeaderSpec(4 + metaDataHeaders.length,
-                    'hAssaysCount' + this.protocolID,
+                    'hAssaysCount',
                     { 'name': 'Count', 'headerRow': 2 }),
             this.measuringTimesHeaderSpec,
             new DataGridHeaderSpec(6 + metaDataHeaders.length,
-                    'hAssaysExperimenter' + this.protocolID,
+                    'hAssaysExperimenter',
                     {
                         'name': 'Experimenter',
                         'headerRow': 2,
@@ -2919,7 +2926,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                         'sortAfter': 1
                     }),
             new DataGridHeaderSpec(7 + metaDataHeaders.length,
-                    'hAssaysModified' + this.protocolID,
+                    'hAssaysModified',
                     {
                         'name': 'Last Modified',
                         'headerRow': 2,
@@ -3374,25 +3381,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
             $(this.undisclosedSectionDiv).click(() => dataGrid.clickedDisclose(true));
         }
 
-        var p = this.protocolID;
-        var graphid = "pro" + p + "graph";
-          if (this.graphAreaHeaderSpec) {
-            if (this.measuringTimesHeaderSpec.element) {
-                //html for the different graphs
-                    var html =
-                        '<div class="graphContainer" id= ' + graphid + '></div>'
-                    var dom = $( html );
-                    var clonedButtons = $('.assay-section:first').clone();
-                    var clonedClasses = $('.chartIds:first').clone();
-                    $(clonedButtons).appendTo(this.graphAreaHeaderSpec.element);
-                    $(clonedClasses).appendTo(this.graphAreaHeaderSpec.element);
-                    $(this.graphAreaHeaderSpec.element).append(dom);
-
-                // Initialize the graph object
-                this.graphObject = Object.create(StudyDGraphing);
-                this.graphObject.Setup(graphid);
-            }
-        }
         // Run it once in case the page was generated with checked Assays
         StudyD.queueAssaysActionPanelShow();
     }
