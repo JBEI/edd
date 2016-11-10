@@ -315,7 +315,7 @@ def handle_line_pre_delete(sender, instance, **kwargs):
 
     line = instance
     with transaction.atomic():
-        instance.pre_delete_study_id = line.study.pk
+        instance.pre_delete_study = line.study
         instance.pre_delete_study_timestamp = line.study.created.mod_time
         instance.pre_delete_strains = Strain.objects.filter(line__id=line.pk)
 
@@ -343,13 +343,14 @@ def handle_line_post_delete(sender, instance, **kwargs):
     # extract study-related data cached prior to the line deletion. Note that line deletion signals
     # are also sent during/after study deletion, so this information may not be in the database
     # any more
-    study_pk = line.pre_delete_study_id
+    study = line.pre_delete_study
+    study_pk = study.pk
     study_creation_datetime = line.pre_delete_study_timestamp
 
     # build a list of strains that are no longer associated with this study due to deletion of
     # the line.
     post_delete_strain_ids = [strain.pk for strain in
-                              Strain.objects.filter(line__study_id=study_pk).all()]
+                              Strain.objects.filter(line__study_id=study_pk).distinct()]
     removed_strains = [strain for strain in line.pre_delete_strains if
                        strain.pk not in post_delete_strain_ids]
 
@@ -386,12 +387,12 @@ def handle_line_post_delete(sender, instance, **kwargs):
     # Note that if we don't wait, the Celery task can run before it commits, at which point its
     # initial DB query
     # will indicate an inconsistent database state. This happened repeatably during testing.
-    partial = functools.partial(_post_commit_unlink_ice_entry_from_study, user_email, study_pk,
+    partial = functools.partial(_post_commit_unlink_ice_entry_from_study, user_email, study,
                                 study_creation_datetime, removed_strains)
     connection.on_commit(partial)
 
 
-def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creation_datetime,
+def _post_commit_unlink_ice_entry_from_study(user_email, study, study_creation_datetime,
                                              removed_strains):
     """
     Helper method to do the final work in scheduling a Celery task or ICE REST API call to remove
@@ -405,7 +406,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     if not settings.USE_CELERY:
         ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email))
 
-    study_url = get_abs_study_url(study_pk)
+    study_url = get_abs_study_url(study)
     index = 0
 
     try:
@@ -423,7 +424,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
                     "database entry for this strain doesn't have enough data to remove the "
                     "corresponding study link from ICE. It's possible (though unlikely) that the "
                     "EDD strain has been modified since an ICE link was created for it.",
-                    strain.pk, study_pk
+                    strain.pk, study.pk
                 )
                 index += 1
                 continue
@@ -439,13 +440,13 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
             workaround_strain_id = parse_entry_id(strain.registry_url)
 
             if settings.USE_CELERY:
-                async_result = unlink_ice_entry_from_study.delay(user_email, study_pk, study_url,
+                async_result = unlink_ice_entry_from_study.delay(user_email, study.pk, study_url,
                                                                  strain.registry_url,
                                                                  workaround_strain_id)
                 track_celery_task_submission(async_result)
             else:
                 ice.write_enabled = True
-                ice.unlink_entry_from_study(workaround_strain_id, study_pk, study_url, logger)
+                ice.unlink_entry_from_study(workaround_strain_id, study.pk, study_url, logger)
             change_count += 1
             index += 1
 
@@ -458,7 +459,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     # administrators
     except Exception as err:
         strain_pks = [strain.pk for strain in removed_strains]
-        _handle_ice_post_commit_error(err, 'remove', study_pk, strain_pks, index)
+        _handle_ice_post_commit_error(err, 'remove', study.pk, strain_pks, index)
 
 
 def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
@@ -476,7 +477,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     index = 0
 
     try:
-        study_url = get_abs_study_url(study.pk)
+        study_url = get_abs_study_url(study)
 
         # loop over strains and perform / schedule work needed
         for strain in linked_strains:
@@ -726,7 +727,7 @@ def handle_line_strain_post_remove(line, pk_set):
             partial = functools.partial(
                 _post_commit_unlink_ice_entry_from_study,  # callback
                 # args below
-                user_email, study.pk, study.created.mod_time, remove_on_commit,
+                user_email, study, study.created.mod_time, remove_on_commit,
             )
             connection.on_commit(partial)
     except ChangeFromFixture:
@@ -788,9 +789,9 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
     logger.debug("End %s(): %s", handle_line_strain_changed.__name__, action)
 
 
-def get_abs_study_url(study_pk):
+def get_abs_study_url(study):
     # Note: urlreverse is an alias for reverse() to avoid conflict with named parameter
-    study_relative_url = urlreverse('main:detail', kwargs={'pk': study_pk})
+    study_relative_url = urlreverse('main:detail', kwargs={'slug': study.slug})
     return get_absolute_url(study_relative_url)
 
 
