@@ -31,7 +31,6 @@ var StudyD;
     var linesDataGrid;
     // Table spec and table objects, one each per Protocol, for Assays.
     var assaysDataGridSpecs;
-    var assaysDataGrids;
     // For the filtering section on the main graph
     var ProgressiveFilteringWidget = (function () {
         // MeasurementGroupCode: Need to initialize each filter list.
@@ -59,7 +58,8 @@ var StudyD;
             var seenInLinesHash = {};
             var seenInAssaysHash = {};
             var aIDsToUse = [];
-            this.filterTableJQ = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection'));
+            this.filterTableJQ = $('<div>').addClass('filterTable');
+            $('#mainFilterSection').append(this.filterTableJQ);
             // First do some basic sanity filtering on the list
             $.each(EDDData.Assays, function (assayId, assay) {
                 var line = EDDData.Lines[assay.lid];
@@ -1273,9 +1273,9 @@ var StudyD;
         if (count_rec < count_total) {
         }
         // invalidate assays on all DataGrids; redraws the affected rows
-        $.each(this.assaysDataGrids, function (protocolId, dataGrid) {
-            dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
-        });
+        // $.each(this.assaysDataGrids, (protocolId, dataGrid) => {
+        //     dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
+        // });
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
         this.queueMainGraphRemake(false);
@@ -2350,44 +2350,59 @@ var DataGridSpecAssays = (function (_super) {
     function DataGridSpecAssays(assayID) {
         _super.call(this);
         this.assayID = assayID;
-        this.protocolName = 'test';
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
         this.graphAreaHeaderSpec = null;
     }
     DataGridSpecAssays.prototype.init = function () {
-        this.refreshIDList();
+        this.refreshIDList(StudyD.progressiveFilteringWidget.buildFilteredMeasurements());
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
         _super.prototype.init.call(this);
     };
     //pass in filtered ids. this.assayIDsInProtocol change to this.filteredIDsInTable
-    DataGridSpecAssays.prototype.refreshIDList = function () {
-        var _this = this;
-        //filtered measurements from graph filter
-        var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
+    DataGridSpecAssays.prototype.refreshIDList = function (postFilteringMeasurements) {
         // Find out which protocols have assays with measurements - disabled or no
         this.filteredIdsInTable = [];
-        console.log(postFilteringMeasurements);
-        $.each(EDDData.Assays, function (assayId, assay) {
+        if (postFilteringMeasurements.length === 0) {
+            this.filterIdsInTable(this.filteredIdsInTable, EDDData.Assays);
+        }
+        else {
+            //convert EDD.AssayMeasurements ids to filtered EDDData.Assays;
+            var assays = this.convertPostFilteringMeasurements(postFilteringMeasurements);
+            this.filterIdsInTable(this.filteredIdsInTable, assays);
+        }
+    };
+    DataGridSpecAssays.prototype.convertPostFilteringMeasurements = function (postFilteringMeasurements) {
+        //array of assays
+        var filteredAssayMeasurements = [];
+        var assays = [];
+        _.each(postFilteringMeasurements, function (meas) {
+            filteredAssayMeasurements.push(EDDData.AssayMeasurements[meas].assay);
+        });
+        _.each(filteredAssayMeasurements, function (assay) {
+            assays.push(EDDData.Assays[assay]);
+        });
+        return assays;
+    };
+    DataGridSpecAssays.prototype.filterIdsInTable = function (filteredTables, assays) {
+        $.each(assays, function (assayId, assay) {
             var line;
-            // skip assays for other protocols
-            // if (this.protocolID === assay.pid) {
             line = EDDData.Lines[assay.lid];
             // skip assays without a valid line or with a disabled line
             if (line && line.active) {
-                _this.filteredIdsInTable.push(assay.id);
+                filteredTables.push(assay.id);
             }
-            //}
         });
     };
     // An array of unique identifiers, used to identify the records in the data set being displayed
     DataGridSpecAssays.prototype.getRecordIDs = function () {
         return this.filteredIdsInTable;
     };
-    // This is an override.  Called when a data rest is triggered, but before the table rows are
+    // This is an override.  Called when a data reset is triggered, but before the table rows are
     // rebuilt.
     DataGridSpecAssays.prototype.onDataReset = function (dataGrid) {
+        this.refreshIDList(StudyD.progressiveFilteringWidget.buildFilteredMeasurements());
         this.findMaximumXValueInData();
         if (this.measuringTimesHeaderSpec && this.measuringTimesHeaderSpec.element) {
             $(this.measuringTimesHeaderSpec.element).children(':first').text('Measuring Times (Range 0 to ' + this.maximumXValueInData + ')');
@@ -2455,10 +2470,11 @@ var DataGridSpecAssays = (function (_super) {
     DataGridSpecAssays.prototype.loadAssayName = function (index) {
         // In an old typical EDDData.Assays record this string is currently pre-assembled and stored
         // in 'fn'. But we're phasing that out.
+        var protocolNaming = EDDData.Protocols[this.assayID[index].pid].name;
         var assay, line;
         if ((assay = EDDData.Assays[index])) {
             if ((line = EDDData.Lines[assay.lid])) {
-                return [line.n, this.protocolName, assay.name].join('-').toUpperCase();
+                return [line.n, protocolNaming, assay.name].join('-').toUpperCase();
             }
         }
         return '';
@@ -2547,7 +2563,7 @@ var DataGridSpecAssays = (function (_super) {
             '<a href="/export?assayId=' + index + '">Export Data as CSV/etc</a>'
         ];
         // TODO we probably don't want to special-case like this by name
-        if (gridSpec.protocolName == "Transcriptomics") {
+        if (EDDData.Protocols[record.pid].name == "Transcriptomics") {
             sideMenuItems.push('<a href="import/rnaseq/edgepro?assay=' + index + '">Import RNA-seq data from EDGE-pro</a>');
         }
         return [
@@ -2558,7 +2574,7 @@ var DataGridSpecAssays = (function (_super) {
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': [line.name, gridSpec.protocolName, record.name].join('-')
+                'contentString': [line.name, EDDData.Protocols[record.pid].name, record.name].join('-')
             })
         ];
     };

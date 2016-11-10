@@ -46,6 +46,7 @@ StudyDGraphing = {
 
         $('#studyTable').click(function(event) {
             event.preventDefault();
+            StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
             $('#studyGraph').removeClass('active');
             $(this).addClass('active');
             $('#assaysSection').css('display', 'block');

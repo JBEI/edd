@@ -60,7 +60,8 @@ class DataGrid {
 
         var tableBody:JQuery = $(this._tableBody = document.createElement("tbody"));
 
-            if ((this._table.getAttribute('id')).slice(7) === 'assaystable') {
+            if ((this._table.getAttribute('id')) === "studyLinesTable" ||
+                (this._table.getAttribute('id')) === "assaysSection") {
                  // First step: Blow away the old contents of the table
                 $(this._table).empty()
                     .attr({ 'cellpadding': 0, 'cellspacing': 0 })

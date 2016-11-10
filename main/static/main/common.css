@@ -394,8 +394,7 @@ table.dataTable tr.header > th {
     font-weight:bold;
     padding:1px 2px 1px 6px;
 }
-table.dataTable tr.columnLabels > th {
-    /*padding:2px 4px 2px 4px;*/
+tr.columnLabels > th {
     padding: 10px;
     vertical-align:top;
     font-size:14px;
@@ -411,98 +410,88 @@ table.dataTable tr.columnLabels > th {
 }
 
 /* Table sorting components */
-table.dataTable tr.columnLabels > th.sortheader {
+tr.columnLabels > th.sortheader {
     cursor: pointer;
     text-align: left;
     text-decoration:none;
 }
-table.dataTable tr.columnLabels > th.sortheader.right {
+tr.columnLabels > th.sortheader.right {
     text-align: right;
 }
-table.dataTable tr.columnLabels > th.sortheader.center {
+tr.columnLabels > th.sortheader.center {
     text-align: center;
 }
-table.dataTable tr.columnLabels > th.smaller {
+tr.columnLabels > th.smaller {
     font-size:14px;
 }
 table.dataTable tr.columnLabels > th.sortheader:hover {
     text-decoration:underline;
     background-color:#CCF;
 }
-table.dataTable tr.columnLabels > th.sortedup > div {
+tr.columnLabels > th.sortedup > div {
     background-image: url(images/sortup-dark.png);
     background-repeat: no-repeat;
     background-position: center right;
 }
-table.dataTable tr.columnLabels > th.sorteddown > div {
+tr.columnLabels > th.sorteddown > div {
     background-image: url(images/sortdown-dark.png);
     background-repeat: no-repeat;
     background-position: center right;
 }
-table.dataTable tr.columnLabels > th.sortwait > div {
+tr.columnLabels > th.sortwait > div {
     background-image: url(images/wait.png);
     background-repeat: no-repeat;
     background-position: center right;
 }
-table.dataTable tr.columnLabels > th.sortwait > div:hover {
+tr.columnLabels > th.sortwait > div:hover {
     text-decoration:underline;
     background-color:rgba(108,164,233,0.6);
 }
 /* Data table regular cells */
-table.dataTable tr > td {
+tr > td {
     padding:8px 4px 4px 8px;
     margin:0px;
     font-size:14px;
     font-family: Helvetica, sans-serif;
     vertical-align:top;
 }
-table.dataTable tr > td input[type="checkbox"] {
+tr > td input[type="checkbox"] {
     padding:0px;
     margin:0px 5px 0px 0px;
 }
-table.dataTable tr > td input[type="text"] {
+tr > td input[type="text"] {
     padding:0px;
     margin:1px 0px 0px 0px;
 }
-table.dataTable tr > td ul {
+tr > td ul {
     list-style-type:none;
     padding:0px;
     margin:0px;
 }
-table.dataTable tr > td ul > li {
+tr > td ul > li {
     padding:2px 0px 0px 0px;
     margin:0px;
 }
-table.dataTable tr > td ul > li:first-child {
+tr > td ul > li:first-child {
     padding:0px 0px 0px 0px;
 }
-table.dataTable tr > td span {
+tr > td span {
     margin:0px;
     padding:3px 3px 0px 0px;
     white-space: nowrap;
 }
-table.dataTable tr > td p {
+tr > td p {
     margin:3px 3px 0px 0px;
     padding:0px;
 }
-table.dataTable tr.groupHeader.replicate > td:before {
+tr.groupHeader.replicate > td:before {
     padding:0;
     content: '▼';
 }
 
-table.dataTable tr.groupHeader > td:before {
+tr.groupHeader > td:before {
     padding: 0;
     content: '►';
-}
-table.dataTable tr.groupHeader > td > div {
-    font-weight:bold;
-    padding:3px 6px;
-    cursor: pointer;
-    background: linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
-    background: -o-linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
-    background: -moz-linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
-    background: -webkit-linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
-    background: -ms-linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
 }
 
 .replicateLineShow {
@@ -1005,6 +994,7 @@ table.formTable tr > td textarea {
     margin:0px 9px 0px 0px;
     padding:0px;
 }
+
 
 #studiesTable td:nth-child(2) {
     white-space: nowrap;
