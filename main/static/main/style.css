@@ -134,4 +134,18 @@ div.tooltip2 {
     margin-left: 10px;
 }
 
+.nav-pills {
+    color: black;
+    font-size: 20px;
+}
 
+.nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
+    background-color: white;
+    color: black;
+    border-bottom: thick solid #6CA5E9;
+    font-size: 20px;
+}
+
+.dataDisplay {
+    margin: 40px 0px 0px 55px;
+}

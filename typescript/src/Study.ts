@@ -1550,6 +1550,8 @@ module StudyD {
             clearTimeout(this.mainGraphRefreshTimerID);
         }
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
+        //refresh assay table
+        StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
     }
 
     var remakeMainGraphAreaCalls = 0;
@@ -3392,6 +3394,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
         $(table).on('change', ':checkbox', () => StudyD.queueAssaysActionPanelShow());
+        $(table).on('change', ':checkbox', () => this.refreshIDList( StudyD.progressiveFilteringWidget.buildFilteredMeasurements()));
 
         if (this.undisclosedSectionDiv) {
             $(this.undisclosedSectionDiv).click(() => dataGrid.clickedDisclose(true));

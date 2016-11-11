@@ -449,7 +449,7 @@ tr.columnLabels > th.sortwait > div:hover {
 }
 /* Data table regular cells */
 tr > td {
-    padding:8px 4px 4px 8px;
+    padding: 14px 27px 11px 8px;
     margin:0px;
     font-size:14px;
     font-family: Helvetica, sans-serif;
@@ -502,7 +502,7 @@ tr.groupHeader > td:before {
 span.tableControl {
     float:left;
     font-weight:normal;
-    margin:0px 1px 0px 16px;
+    margin:10px 5px 10px 0px;
     padding:0px;
     height:15px;
     color:#444444;
@@ -511,7 +511,7 @@ span.tableControl {
     display: none;
 }
 span.tableControl > input[type="checkbox"] {
-    margin:0px 4px 0px 0px;
+    margin:10px 5px 10px 0px;
     padding:0px;
     font-size:11px;
 }
@@ -533,11 +533,11 @@ span.tableHeader {
 
 input[type="button"].tableControl {
     float:left;
-    margin:1px 1px 0px 16px;
+    margin:10px 5px 10px 0px;
     font-size:10px;
 }
 input[type="text"].searchBox {
-    margin:0px 5px 0px 0px;
+    margin:10px 5px 10px 0px;
     padding:0px 4px 0px 4px;
     font-size:14px;
     border-radius: 7px;
@@ -578,7 +578,7 @@ div.searchStudies {
 
 /* DataGrid header pulldown menus */
 span.pulldownMenu {
-    margin:0px 1px 0px 6px;
+    margin:10px 5px 10px 0px;
     padding:0px;
     font-weight:normal;
     font-size:14px;
@@ -588,7 +588,7 @@ div.pulldownMenuLabelOff {
     display:block;
     cursor: pointer;
     font-size: 14px;
-    margin:1px 1px 0px 1px;
+    margin:2px 5px 0px 0px;
     border:0px;
     padding:0px 5px 0px 5px;
     text-decoration:none;
@@ -600,7 +600,7 @@ div.pulldownMenuLabelOff:hover {
 div.pulldownMenuLabelOn {
     display:block;
     position:relative;
-    margin:0px 0px 0px 0px;
+    margin:10px 5px 10px 0px;
     border-style:solid;
     padding:0px 5px 0px 5px;
     text-decoration:underline;
@@ -833,7 +833,7 @@ div.pageSectionTabs > div.absoverlay {
 }
 /* This overrides some of the settings in the pageSection style */
 div.pageSectionTabContent {
-    margin: 0px 40px 3px 20px;
+    margin: 30px 40px 3px 20px;
     border-radius: 0px 6px 6px 6px;
     -webkit-border-radius: 0px 6px 6px 6px;
     -moz-border-radius: 0px 6px 6px 6px;
@@ -988,6 +988,7 @@ table.formTable tr > td p {
     margin: 0.25em;
     padding: 0 8px;
 }
+
 table.formTable tr > td textarea {
     vertical-align:top;
     font-size:8.5pt;

@@ -55,12 +55,14 @@
             <a class="btn addButton btn-lg" href="/study/{{ study.id }}/import">Import Files</a>
         </div>
     </div>
-    <ul class="nav nav-pills studyTabs">
+    <div class="col-md-4 text-center"></div>
+    <ul class="nav nav-pills navbar-nav studyTabs">
       <li id="overviewTab" role="presentation"><a href="#">Overview</a></li>
       <li id="linesTab" role="presentation"><a href="#">Lines</a></li>
       <li id="dataTab" role="presentation" class="active"><a href="#">Data</a></li>
     </ul>
-    <div id="dataDisplay">
+    </div>
+    <div id="dataDisplay" class="dataDisplay">
     <ul class="nav nav-tabs studyTabs">
       <li id="studyGraph" role="presentation" class="active"><a href="#">Graph</a></li>
       <li id="studyTable" role="presentation"><a href="#">Table</a></li>
@@ -110,18 +112,13 @@
             </div>
         </div>
         <div id="maingraph" class="graphContainer"></div>
-
-        <div class="sectionChapter">
-            <span class="tableControl" id="pointsDisplayedSpan"></span>
-            <div id="mainFilterSection" class="filteringSection discloseBody">
-            </div>
-        </div>
     </div>
+
 
 
     <form action="" class="assay-action" method="POST">
         {% csrf_token %}
-        <div class="pageSection" id="assaysSection" style="display:none">
+        <table class="pageSection" id="assaysSection" style="display:none">
             <!-- individual protocol assay sections inserted here -->
             <div id="assaysActionPanel" class="sectionActions off">
                 <div class="assay-section">
@@ -148,8 +145,12 @@
                 <button name="action" type="submit" value="assay_action">Take Action</button>
                 <div class="clear"></div>
             </div>
+        </table>
+<div class="sectionChapter">
+            <span class="tableControl" id="pointsDisplayedSpan"></span>
+            <div id="mainFilterSection" class="filteringSection discloseBody">
+            </div>
         </div>
-
         {% if writable %}
         <div class="pageSection minor disclose{% if not new_assay.is_editing %} discloseHide{% endif %}" id="assayMain">
             <div class="sectionHead">
@@ -175,6 +176,7 @@
         {% endif %}
     </form>
  </div>
+
     {% if writable %}
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
         

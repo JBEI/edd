@@ -1351,6 +1351,8 @@ var StudyD;
             clearTimeout(this.mainGraphRefreshTimerID);
         }
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
+        //refresh assay table
+        StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     var remakeMainGraphAreaCalls = 0;
@@ -2914,9 +2916,11 @@ var DataGridSpecAssays = (function (_super) {
     };
     // This is called after everything is initialized, including the creation of the table content.
     DataGridSpecAssays.prototype.onInitialized = function (dataGrid) {
+        var _this = this;
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
         $(table).on('change', ':checkbox', function () { return StudyD.queueAssaysActionPanelShow(); });
+        $(table).on('change', ':checkbox', function () { return _this.refreshIDList(StudyD.progressiveFilteringWidget.buildFilteredMeasurements()); });
         if (this.undisclosedSectionDiv) {
             $(this.undisclosedSectionDiv).click(function () { return dataGrid.clickedDisclose(true); });
         }
