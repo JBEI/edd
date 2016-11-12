@@ -10,15 +10,16 @@
     <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
+     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
     <script type="text/javascript">
 
         EDDData.currentStudyID = {{ study.id }};
 
     </script>
+    <script type="text/javascript" src="{% static 'main/js/clickHandler.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GraphHelperMethods.js' %}"></script>
@@ -52,7 +53,7 @@
 {% block content %}
     <div class="btn-toolbar bare-header">
         <div class="btn-group">
-            <a class="btn addButton btn-lg" href="/study/{{ study.id }}/import">Import Files</a>
+            <a class="btn addButton btn-lg" href="/study/{{ study.id }}/import">Import</a>
         </div>
     </div>
     <div class="col-md-4 text-center"></div>
@@ -199,17 +200,18 @@
     {% endif %}
 
 
-    <form action="" class="line-action" style="display:none" method="POST">
+    <form id="line-action-form" action="" class="line-action" style="display:none" method="POST">
         {% csrf_token %}
         <div class="pageSection">
             {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
             <table id="studyLinesTable"></table>
-            <div id="linesActionPanel" class="sectionActions off">
+            <div id="linesActionPanel" class="sectionActions">
                 <span id="linesSelectedCell">0 selected</span>
                 {% if writable %}
-                <button id="cloneLineButton" type="submit" name="action" value="clone">Clone Line</button>
-                <button id="editLineButton">Edit Line</button>
-                <button id="groupLineButton" type="submit" name="action" value="group">Group As Replicates</button>
+                    <div id="disabledButtons">
+                <button id="cloneLineButton" type="submit" name="action" disabled="true" value="clone">Clone Line</button>
+                <button id="editLineButton" disabled="true">Edit Line</button>
+                <button id="groupLineButton" type="submit" disabled="true" name="action" value="group">Group As Replicates</button>
                 <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
                 <label for="line_action_mark">
                     <span>Mark as</span>
@@ -218,9 +220,12 @@
                         <option value="false">Enabled</option>
                     </select>
                 </label>
+                    </div>
                 {% endif %}
-                <input type="radio" id="line_action_export" name="line_action" value="export" />
-                <label for="line_action_export">
+
+        <div id="line-popup" title="Export as">
+             <input type="radio" id="line_action_export" name="line_action" value="export" />
+            <label for="line_action_export">
                     <span>Export Data</span>
                     <select name="export">
                         <option value="csv">as CSV/etc</option>
@@ -229,10 +234,12 @@
                         <option value="study">to New Study</option>
                     </select>
                 </label>
-                <button type="submit" name="action" value="line_action">Take Action</button>
+             <button type="submit" name="action" value="line_action">Take Action</button>
+        </div>
+            <span class="noLineSelected">Please select line(s) first</span></br>
+       <button type="button" id="line-export" class="btn btn-primary btn-lg">Export</button>
             </div>
         </div>
-
     </form>
 
 {% endblock content %}

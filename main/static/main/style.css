@@ -147,5 +147,24 @@ div.tooltip2 {
 }
 
 .dataDisplay {
-    margin: 40px 0px 0px 55px;
+    margin: 0px 0px 0px 55px;
+}
+
+
+#line-export {
+    float: right;
+    margin-top: 10px;
+    background-color: #6CA5E9;
+    color: white;
+    border: 1px solid;
+    text-align: center;
+}
+
+#disabledButtons {
+    margin-top: 10px;
+}
+
+.noLineSelected {
+    color: red;
+    float: right;
 }

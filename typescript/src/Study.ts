@@ -1300,7 +1300,7 @@ module StudyD {
                 return false;
             })
             .find(':radio').trigger('change').end()
-            .removeClass('off');
+           // .removeClass('off');
     }
 
 
@@ -1493,7 +1493,6 @@ module StudyD {
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
         checkedLen = checkedBoxes.length;
-        linesActionPanel = $('#linesActionPanel').toggleClass('off', !checkedLen);
         $('#linesSelectedCell').empty().text(checkedLen + ' selected');
         // enable singular/plural changes
         $('#cloneLineButton').text('Clone Line' + (checkedLen > 1 ? 's' : ''));
@@ -1501,7 +1500,18 @@ module StudyD {
             'count': checkedLen,
             'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
         });
-        $('#groupLineButton').toggleClass('off', checkedLen < 2);
+
+        if (checkedLen) {
+            $("#disabledButtons").children().prop('disabled',false);
+            $('.noLineSelected').hide();
+        } else {
+             $("#disabledButtons").children().prop('disabled', true);
+            $('.noLineSelected').show();
+        }
+        if (checkedLen < 2) {
+            $('#groupLineButton').prop('disabled', true);
+        }
+
     }
 
 

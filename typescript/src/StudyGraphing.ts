@@ -17,6 +17,7 @@ StudyDGraphing = {
 			this.graphDiv = $("#graphDiv");
         }
 
+
         $('#linesTab').click(function(event) {
             event.preventDefault();
             $('#overviewTab').removeClass('active');

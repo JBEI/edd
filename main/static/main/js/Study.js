@@ -1122,8 +1122,8 @@ var StudyD;
             });
             return false;
         })
-            .find(':radio').trigger('change').end()
-            .removeClass('off');
+            .find(':radio').trigger('change').end();
+        // .removeClass('off');
     }
     function processCarbonBalanceData() {
         // Prepare the carbon balance graph
@@ -1299,7 +1299,6 @@ var StudyD;
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
         checkedLen = checkedBoxes.length;
-        linesActionPanel = $('#linesActionPanel').toggleClass('off', !checkedLen);
         $('#linesSelectedCell').empty().text(checkedLen + ' selected');
         // enable singular/plural changes
         $('#cloneLineButton').text('Clone Line' + (checkedLen > 1 ? 's' : ''));
@@ -1307,7 +1306,17 @@ var StudyD;
             'count': checkedLen,
             'ids': checkedBoxes.map(function (box) { return box.value; })
         });
-        $('#groupLineButton').toggleClass('off', checkedLen < 2);
+        if (checkedLen) {
+            $("#disabledButtons").children().prop('disabled', false);
+            $('.noLineSelected').hide();
+        }
+        else {
+            $("#disabledButtons").children().prop('disabled', true);
+            $('.noLineSelected').show();
+        }
+        if (checkedLen < 2) {
+            $('#groupLineButton').prop('disabled', true);
+        }
     }
     function queueAssaysActionPanelShow() {
         // Start a timer to wait before calling the routine that remakes the graph.
