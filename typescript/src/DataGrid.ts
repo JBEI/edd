@@ -1382,9 +1382,9 @@ class DataGridDataCell {
         if (this.hoverEffect) {
             cellClasses.push('popupcell');
         }
-        if (this.nowrap) {
-            cellClasses.push('nowrap');
-        }
+
+        cellClasses.push('nowrap');
+
         if (this.minWidth) {
             c.style.minWidth = this.minWidth + 'px';
         }

@@ -48,6 +48,15 @@ $(function(event) {
      return false;
          });
 
+//click handler for filtering section
+$(function(event) {
+            $(".caret").click(function() {
+               $("#mainFilterSection").slideDown(500);
+                return false;
+            });
+        });
+
+
 $(function() {
       //work around for generating worklist click handler
       $('#line_worklist').click(function() {
@@ -75,7 +84,7 @@ $(function() {
           $('#linesTab').removeClass('active');
           $(this).addClass('active');
           $('#dataDisplay').css('display', 'block');
-          $('#measurementMain').css('display', 'block');
+          $('#measurementMain').css('display', 'inline-block');
           $('.line-action').css('display', 'none');
           //$('#addNewLine').css('display', 'none') see above
       });

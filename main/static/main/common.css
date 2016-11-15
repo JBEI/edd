@@ -319,7 +319,6 @@ div.pageSection div.sectionHead {
 }
 div.pageSection div.sectionChapter {
     color:#a0a0a0;/*#1C5294;*/
-    font-size:14px;
     margin:0px;
     padding:3px;
     border-style:solid;
@@ -334,7 +333,6 @@ div.pageSection div.sectionContent.sectionRight {
     text-align: right;
 }
 div.pageSection div.sectionContent div.subSectionChapter {
-    font-size:14px;
     margin:2px 0px 0px 4px;
     padding:0px 1px 0px 1px;
     border-style:solid;
@@ -451,7 +449,7 @@ tr.columnLabels > th.sortwait > div:hover {
 tr > td {
     padding: 5px 27px 11px 8px;
     margin:0px;
-    font-size:14px;
+    font-size:12px;
     font-family: Helvetica, sans-serif;
     vertical-align:top;
 }
@@ -650,11 +648,10 @@ div.pulldownMenuMenuBlock ul > li > input[type="checkbox"] {
 
 /* Styling for a special-purpose "filter criteria" table */
 div.filteringSection {
-    border:none;
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    margin:0px 2px 0px 2px;
+    margin:20px 2px 0px 2px;
     max-height: 289px;
 }
 div.filterTable {

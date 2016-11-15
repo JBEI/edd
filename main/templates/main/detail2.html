@@ -54,10 +54,9 @@
     <div class="btn-toolbar bare-header">
         <div style="text-align: right">
             <button type="button" id="addNewLine" style="display:none" class="btn btn-primary btn-lg actionButton">Add New </br>Line</button>
-            <a class="btn importExport btn-lg" href="/study/{{ study.id }}/import">Import</a>
+            <a class="btn btn-primary btn-lg" href="/study/{{ study.id }}/import">Import</a>
         </div>
     </div>
-    <div class="col-md-4 text-center"></div>
     <ul class="nav nav-pills navbar-nav studyTabs">
       <li id="overviewTab" role="presentation"><a href="#">Overview</a></li>
       <li id="linesTab" role="presentation"><a href="#">Lines</a></li>
@@ -115,8 +114,6 @@
         </div>
         <div id="maingraph" class="graphContainer"></div>
     </div>
-    <button  type="button" id="measurementMain" class="btn btn-primary btn-lg" >Add Measurements to </br>
-                        Selected Assays</button>
 
     <form action="" class="assay-action" method="POST">
         {% csrf_token %}
@@ -148,11 +145,18 @@
                 <div class="clear"></div>
             </div>
         </table>
-<div class="sectionChapter">
+        <div class="sectionChapter" id="graphFilter">
             <span class="tableControl" id="pointsDisplayedSpan"></span>
+            </br>
+            <span>Filter options</span>
             <div id="mainFilterSection" class="filteringSection discloseBody">
             </div>
+            <div style="text-align:right">
+     <button  type="button" id="measurementMain" class="btn btn-primary btn-lg actionButton" >Add Measurements to </br>
+         Selected Assays</button>
+    </div>
         </div>
+
 
         {% if writable %}
             <div id="addMeasToAssay" title="Add Measurements to Selected Assays">
@@ -245,10 +249,10 @@
         </div>
             <span class="noLineSelected">Please select line(s) first</span></br>
             <div style="text-align: right">
-                <button type="button" id="line_worklist" class="btn btn-primary btn-lg actionButton ">Generate  </br>
-                    Worklist</button>
                 <button type="button"  id="addAssayToLine" class="btn btn-primary btn-lg actionButton">Add Assays To
                     </br> Selected Lines</button>
+                <button type="button" id="line_worklist" class="btn btn-primary btn-lg actionButton ">Generate  </br>
+                    Worklist</button>
                 <button type="button" id="line-export" class="btn btn-primary btn-lg">Export</button>
             </div>
             </div>
