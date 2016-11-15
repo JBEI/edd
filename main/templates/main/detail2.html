@@ -52,8 +52,9 @@
 
 {% block content %}
     <div class="btn-toolbar bare-header">
-        <div class="btn-group">
-            <a class="btn addButton btn-lg" href="/study/{{ study.id }}/import">Import</a>
+        <div style="text-align: right">
+            <button type="button" id="addNewLine" style="display:none" class="btn btn-primary btn-lg actionButton">Add New </br>Line</button>
+            <a class="btn importExport btn-lg" href="/study/{{ study.id }}/import">Import</a>
         </div>
     </div>
     <div class="col-md-4 text-center"></div>
@@ -114,8 +115,8 @@
         </div>
         <div id="maingraph" class="graphContainer"></div>
     </div>
-
-
+    <button  type="button" id="measurementMain" class="btn btn-primary btn-lg" >Add Measurements to </br>
+                        Selected Assays</button>
 
     <form action="" class="assay-action" method="POST">
         {% csrf_token %}
@@ -152,28 +153,14 @@
             <div id="mainFilterSection" class="filteringSection discloseBody">
             </div>
         </div>
-        {% if writable %}
-        <div class="pageSection minor disclose{% if not new_assay.is_editing %} discloseHide{% endif %}" id="assayMain">
-            <div class="sectionHead">
-                <span class="discloseLink"><a href="#">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}</a></span>
-            </div>
-            <div class="sectionContent discloseBody assay-edit edd-form">
-                {{ new_assay.as_p }}
-                <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
-            </div>
-        </div>
-        {% endif %}
 
         {% if writable %}
-        <div class="pageSection minor disclose{% if not new_measurement.errors %} discloseHide{% endif %}" id="measurementMain">
-            <div class="sectionHead">
-                <span class="discloseLink"><a href="#">Add Measurements To Selected Assays</a></span>
+            <div id="addMeasToAssay" title="Add Measurements to Selected Assays">
+                <div class="sectionContent discloseBody measurement-create edd-form">
+                    {{ new_measurement.as_p }}
+                    <button type="submit" name="action" value="measurement">Add Measurement</button>
+                </div>
             </div>
-            <div class="sectionContent discloseBody measurement-create edd-form">
-                {{ new_measurement.as_p }}
-                <button type="submit" name="action" value="measurement">Add Measurement</button>
-            </div>
-        </div>
         {% endif %}
     </form>
  </div>
@@ -199,7 +186,25 @@
     </div>
     {% endif %}
 
-
+    {% if writable %}
+        <div id="addNewLineForm" title="Add New Line">
+        <div class="sectionContent discloseBody">
+            <form action="" class="line-edit edd-form" method="POST">
+                {% csrf_token %}
+                {{ new_line.as_p }}
+                <p class="line-edit-meta">
+                    <span class="edd-label">
+                        <input type="text" class="autocomp autocomp_ltype" placeholder="Metadata Type" size="14" />
+                        <input type="hidden" class="line-meta-type" value="" />
+                    </span>
+                    <input type="text" class="line-meta-value" placeholder="Metadata Value" />
+                    <button class="line-meta-add">Add Value</button>
+                </p>
+                <button type="submit" name="action" value="line">{% if new_line.is_editing %}Edit Line{% else %}Add Line{% endif %}</button>
+            </form>
+        </div>
+        </div>
+    {% endif %}
     <form id="line-action-form" action="" class="line-action" style="display:none" method="POST">
         {% csrf_token %}
         <div class="pageSection">
@@ -212,6 +217,7 @@
                 <button id="cloneLineButton" type="submit" name="action" disabled="true" value="clone">Clone Line</button>
                 <button id="editLineButton" disabled="true">Edit Line</button>
                 <button id="groupLineButton" type="submit" disabled="true" name="action" value="group">Group As Replicates</button>
+                         </br> </br>
                 <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
                 <label for="line_action_mark">
                     <span>Mark as</span>
@@ -220,11 +226,12 @@
                         <option value="false">Enabled</option>
                     </select>
                 </label>
+                    <button type="submit" name="action" value="line_action">Take Action</button>
                     </div>
                 {% endif %}
 
         <div id="line-popup" title="Export as">
-             <input type="radio" id="line_action_export" name="line_action" value="export" />
+             <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
             <label for="line_action_export">
                     <span>Export Data</span>
                     <select name="export">
@@ -237,9 +244,29 @@
              <button type="submit" name="action" value="line_action">Take Action</button>
         </div>
             <span class="noLineSelected">Please select line(s) first</span></br>
-       <button type="button" id="line-export" class="btn btn-primary btn-lg">Export</button>
+            <div style="text-align: right">
+                <button type="button" id="line_worklist" class="btn btn-primary btn-lg actionButton ">Generate  </br>
+                    Worklist</button>
+                <button type="button"  id="addAssayToLine" class="btn btn-primary btn-lg actionButton">Add Assays To
+                    </br> Selected Lines</button>
+                <button type="button" id="line-export" class="btn btn-primary btn-lg">Export</button>
+            </div>
+            </div>
             </div>
         </div>
+
+
+        {% if writable %}
+        <div id="assayMain" title="{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}">
+            <div class="sectionHead">
+                <span class="discloseLink"><a href="#"></a></span>
+            </div>
+            <div class="sectionContent discloseBody assay-edit edd-form">
+                {{ new_assay.as_p }}
+                <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
+            </div>
+        </div>
+        {% endif %}
     </form>
 
 {% endblock content %}

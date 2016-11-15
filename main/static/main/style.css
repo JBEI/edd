@@ -151,11 +151,20 @@ div.tooltip2 {
 }
 
 
-#line-export {
-    float: right;
+.importExport {
+    display: inline-block;
     margin-top: 10px;
     background-color: #6CA5E9;
     color: white;
+    border: 1px solid;
+    text-align: center;
+}
+
+.actionButton {
+    display: inline-block;
+    margin: 10px 10px 0px 0px;
+    background-color: white;
+    color: grey;
     border: 1px solid;
     text-align: center;
 }

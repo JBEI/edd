@@ -1488,7 +1488,7 @@ module StudyD {
 
     function linesActionPanelShow() {
         // Figure out how many lines are selected.
-        var checkedBoxes = [], checkedLen, linesActionPanel;
+        var checkedBoxes = [], checkedLen;
         if (this.linesDataGrid) {
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }

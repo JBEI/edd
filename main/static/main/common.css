@@ -351,7 +351,7 @@ div.subSectionContent {
    with form elements representing actions you can take on content in above sections */
 div.pageSection div.sectionActions {
     border-top:1px solid rgba(164,164,164,0.7);
-    margin: 0px 0px 100px 0px;
+    margin: 0px;
     padding:10px 0px 0px 0px;
     background-color:rgba(233,233,233,0.18);
 }
@@ -449,7 +449,7 @@ tr.columnLabels > th.sortwait > div:hover {
 }
 /* Data table regular cells */
 tr > td {
-    padding: 14px 27px 11px 8px;
+    padding: 5px 27px 11px 8px;
     margin:0px;
     font-size:14px;
     font-family: Helvetica, sans-serif;
@@ -1022,11 +1022,6 @@ div.multientrybutton {
 
 .line-action {
     margin-top: 10px;
-}
-
-.addButton {
-    float: right;
-    margin: 60px 30px 0px 0px;
 }
 
 .btn-lg {

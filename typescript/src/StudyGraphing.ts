@@ -16,44 +16,6 @@ StudyDGraphing = {
 		} else {
 			this.graphDiv = $("#graphDiv");
         }
-
-
-        $('#linesTab').click(function(event) {
-            event.preventDefault();
-            $('#overviewTab').removeClass('active');
-            $('#dataTab').removeClass('active');
-            $(this).addClass('active');
-            $('#dataDisplay').css('display','none');
-            $('.line-action').css('display', 'block');
-        });
-
-        $('#dataTab').click(function(event) {
-            event.preventDefault();
-            $('#overviewTab').removeClass('active');
-            $('#linesTab').removeClass('active');
-            $(this).addClass('active');
-            $('#dataDisplay').css('display','block');
-            $('.line-action').css('display', 'none');
-        });
-
-        $('#studyGraph').click(function(event) {
-            event.preventDefault();
-            $('#studyTable').removeClass('active');
-            $(this).addClass('active');
-            $('#overviewSection').css('display', 'block');
-            $('#assaysSection').css('display', 'none');
-            return false
-        });
-
-        $('#studyTable').click(function(event) {
-            event.preventDefault();
-            StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
-            $('#studyGraph').removeClass('active');
-            $(this).addClass('active');
-            $('#assaysSection').css('display', 'block');
-            $('#overviewSection').css('display', 'none');
-            return false
-        });
 	},
 
 	clearAllSets:function() {
