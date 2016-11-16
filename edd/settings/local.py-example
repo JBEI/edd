@@ -33,9 +33,12 @@ except:
 #     'allauth.socialaccount.providers.linkedin_oauth2',
 # )
 
+# Uncomment below to use DEBUG mode and include the debug toolbar
+# DEBUG = True
+
 # Add the Django Debug Toolbar to local instance
 if DEBUG:  # noqa
-    INSTALLED_APPS = INSTALLED_APPS + ('debug_toolbar', )
+    INSTALLED_APPS = INSTALLED_APPS + ('debug_toolbar', )  # noqa
     MIDDLEWARE_CLASSES = (
         'debug_toolbar.middleware.DebugToolbarMiddleware',
     ) + MIDDLEWARE_CLASSES  # noqa
@@ -45,7 +48,7 @@ if DEBUG:  # noqa
 
 USE_CELERY = True
 
-# disable the initial new REST API by default since it's insecure. Only needed to support 
+# disable the initial new REST API by default since it's insecure. Only needed to support
 # create_lines.py and maintain_ice_links.py
 PUBLISH_REST_API = False
 
