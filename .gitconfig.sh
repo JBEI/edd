@@ -1,6 +1,5 @@
-#!/usr/bin/env bash
-
-# This script will take the contents of ./.gitconfig and include it in the local repo config.
-
-git config --local include.path '../.gitconfig'
-
+[filter "ts-timestamp"]
+    clean = "sed -e \"/^\\/\\/ Compiled to JS on: .*$/d\" -e \"/^\\/\\/ File last modified on: .*$/d\" -e \"/^\\/\\/# sourceMappingURL=.*$/d\""
+    smudge = cat
+[merge]
+    renormalize=true

@@ -1258,7 +1258,7 @@ module StudyD {
                 className: 'spinner',
                 zIndex: 2e9,
                 position: 'absolute',
-                top: '30%',
+                top: '100%',
                 left: '50%'
             };
             //load spinner
