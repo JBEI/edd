@@ -3,4 +3,3 @@
     smudge = cat
 [merge]
     renormalize=true
-

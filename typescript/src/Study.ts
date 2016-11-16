@@ -7,7 +7,7 @@
 /// <reference path="StudyGraphing.ts" />
 /// <reference path="GraphHelperMethods.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>
-/// <reference path="../typings/spin/spin.d.ts"/>;
+/// <reference path="../typings/spin/spin.d.ts"/>
 
 declare var EDDData:EDDData;
 

@@ -16,8 +16,6 @@ StudyDGraphing = {
 		} else {
 			this.graphDiv = $("#graphDiv");
         }
-        // var selector = $('.sectionContent')[0];
-        // GraphHelperMethods.createSvg(selector);
 	},
 
 	clearAllSets:function() {
