@@ -143,10 +143,8 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'main.utilities.EDDSettingsMiddleware',
-    'main.utilities.EDDImportCheckMiddleware',
+    'edd.profile.middleware.TaskNotification',
 )
-
-MESSAGE_STORAGE = 'messages_extends.storages.FallbackStorage'
 
 
 ###################################################################################################

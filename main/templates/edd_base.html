@@ -13,6 +13,13 @@
 
         window.EDDData = window.EDDData || {};
         EDDData.currentUserID = {{ user.id }};
+        $(document).on('click', '.statusMessage a.close', function (ev) {
+            var link = $(this), token = $('.statusMessage [name=csrfmiddlewaretoken]').first().val();
+            ev.preventDefault();
+            $.post(link.attr('close-href'), {'csrfmiddlewaretoken': token}, function () {
+                link.parent().fadeOut();
+            });
+        });
 
     </script>
     {% endif %}
@@ -69,8 +76,14 @@
         {% endif %}
     {% block status %}
         {% if messages %}
+            {% csrf_token %}
             {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>
+                <a class="close"
+                        data-dismiss="alert"
+                        {% if message.pk %} close-href="{% url message_mark_read message.pk %}"{% endif %}>×</a>
+                {{ message }}
+            </p>
             {% endfor %}
         {% endif %}
     {% endblock status %}
