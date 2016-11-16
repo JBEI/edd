@@ -92,6 +92,7 @@ $(function() {
       //show hide for clicking graph tab under data
       $('#studyGraph').click(function (event) {
           event.preventDefault();
+          // $('#assaysSection').prev().hide()
           $('#studyTable').removeClass('active');
           $(this).addClass('active');
           $('#overviewSection').css('display', 'block');
@@ -103,6 +104,7 @@ $(function() {
       $('#studyTable').click(function (event) {
           event.preventDefault();
           StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+          // $('#assaysSection').prev().show();
           $('#studyGraph').removeClass('active');
           $(this).addClass('active');
           $('#assaysSection').css('display', 'block');

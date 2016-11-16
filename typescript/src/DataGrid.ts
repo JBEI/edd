@@ -114,7 +114,7 @@ class DataGrid {
             tHead.append(headerRows);
              $(tHead).insertBefore(this._tableBody);
 
-        setTimeout( () => this._initializeTableData(), 1 );
+            setTimeout( () => this._initializeTableData(), 1 );
     }
 
 

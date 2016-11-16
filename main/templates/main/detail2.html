@@ -4,8 +4,6 @@
 
 {% block js_css %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
@@ -13,6 +11,8 @@
      <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
     <script type="text/javascript">
 
@@ -117,7 +117,8 @@
 
     <form action="" class="assay-action" method="POST">
         {% csrf_token %}
-        <table class="pageSection" id="assaysSection" style="display:none">
+
+        <table class="pageSection scroll" id="assaysSection" style="display:none">
             <!-- individual protocol assay sections inserted here -->
             <div id="assaysActionPanel" class="sectionActions off">
                 <div class="assay-section">
@@ -213,7 +214,9 @@
         {% csrf_token %}
         <div class="pageSection">
             {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+        <div class="scroll">
             <table id="studyLinesTable"></table>
+        </div>
             <div id="linesActionPanel" class="sectionActions">
                 <span id="linesSelectedCell">0 selected</span>
                 {% if writable %}

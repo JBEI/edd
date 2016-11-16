@@ -134,6 +134,9 @@ div.tooltip2 {
     margin-left: 10px;
 }
 
+/*
+  New UI CSS below 
+*/
 .nav-pills {
     color: black;
     font-size: 16px;
@@ -192,11 +195,20 @@ div.tooltip2 {
     margin-top: 5px;
 }
 
-#mainFilterSection tr > td {
+#mainFilterSection table.filterCriteriaTable tr > td {
     font-size: 10px;
+    margin: 0px;
+    padding: 3px;
 }
 
 #graphFilter {
     margin-top: 20px;
     border-top: 2px solid lightgrey;
+}
+
+.scroll {
+    display: block;
+    height: 500px;
+    max-height: 300px;
+    overflow-y: scroll;
 }

@@ -598,7 +598,7 @@ div.pulldownMenuLabelOff:hover {
 div.pulldownMenuLabelOn {
     display:block;
     position:relative;
-    margin:10px 5px 10px 0px;
+    margin:0px;
     border-style:solid;
     padding:0px 5px 0px 5px;
     text-decoration:underline;
