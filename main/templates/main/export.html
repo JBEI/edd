@@ -17,7 +17,34 @@
     dataArea = $('#textData').hide();
     tables = dataArea.val().split('\n\n');
     sep = $('#id_separator').val();
-    rsplit = function (row) { return row.split(sep); };
+    rsplit = function (row) {
+      var sections, cells = [''], last = 0, i = 0, scratch;
+      // split first on quotes
+      sections = row.split('"');
+      // make a pass to merge back cells containing doubled-quotes
+      for (i = 0; i < sections.length; ++i) {
+        // quoted sections concatenate to last cell
+        if (i % 2) {
+          cells[last] = cells[last] + sections[i];
+        }
+        // empty string sections merge following section to last cell with a quote added
+        else if (sections[i] === '') {
+          cells[last] = cells[last] + '"' + sections[++i];
+        }
+        // all others, split on sep and trim whitespace
+        else {
+          scratch = sections[i].split(sep);
+          // concatenate first value to last cell
+          cells[last] = cells[last] + scratch[0].trim();
+          // append all other values
+          last = Array.prototype.push.apply(
+            cells,
+            $.map(scratch.slice(1), function (c) { return c.trim(); })
+          ) - 1;
+        }
+      }
+      return cells;
+    };
     tables = $(tables.map(function (table) {
       var rows, container, hot;
       rows = table.split('\n');
@@ -76,7 +103,7 @@
 
 {% block body_title %}
   Data Export For {% for study in selection.studies %}
-   <a href="{% url 'main:detail' study.id %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
+   <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
   {% endfor %}
 {% endblock body_title %}
 

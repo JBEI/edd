@@ -16,12 +16,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, HStoreField
 from django.db import models
 from django.db.models import F, Func, Q
+from django.template.defaultfilters import slugify
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from functools import reduce
 from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
+from uuid import uuid4
 
 from jbei.rest.clients.edd.constants import (
     METADATA_CONTEXT_ASSAY, METADATA_CONTEXT_LINE, METADATA_CONTEXT_STUDY,
@@ -63,6 +65,7 @@ class EDDSerialize(object):
             database identifier. """
         return {
             'id': self.pk,
+            'klass': self.__class__.__name__,
         }
 
 
@@ -308,6 +311,8 @@ class MetadataType(models.Model, EDDSerialize):
     for_context = models.CharField(max_length=8, choices=CONTEXT_SET)
     # type of data saved, None defaults to a bare string
     type_class = models.CharField(max_length=255, blank=True, null=True)
+    # linking together EDD instances will be easier later if we define UUIDs now
+    uuid = models.UUIDField(editable=False, unique=True)
 
     @classmethod
     def all_types_on_instances(cls, instances=[]):
@@ -374,6 +379,11 @@ class MetadataType(models.Model, EDDSerialize):
 
     def __str__(self):
         return self.type_name
+
+    def save(self, *args, **kwargs):
+        if self.uuid is None:
+            self.uuid = uuid4()
+        super(MetadataType, self).save(*args, **kwargs)
 
     def to_json(self, depth=0):
         # TODO: refactor to have sane names in EDDDataInterface.ts
@@ -509,6 +519,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
     # these are used often enough we should save extra queries by including as fields
     created = models.ForeignKey(Update, related_name='object_created', editable=False)
     updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
+    # linking together EDD instances will be easier later if we define UUIDs now
+    uuid = models.UUIDField(editable=False, unique=True)
 
     @property
     def mod_epoch(self):
@@ -575,6 +587,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
             update = Update.load_update()
         if self.created_id is None:
             self.created = update
+        if self.uuid is None:
+            self.uuid = uuid4()
         self.updated = update
         super(EDDObject, self).save(*args, **kwargs)
         # must ensure EDDObject is saved *before* attempting to add to updates
@@ -620,8 +634,12 @@ class Study(EDDObject):
     # 1. linking to a specific user in EDD
     # 2. "This is data I got from 'Improving unobtanium production in Bio-Widget using foobar'
     #    published in Feb 2016 Bio-Widget Journal, paper has hpotter@hogwarts.edu as contact"
-    contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                related_name='contact_study_set')
+    contact = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        related_name='contact_study_set'
+    )
     contact_extra = models.TextField()
     metabolic_map = models.ForeignKey('SBMLTemplate', blank=True, null=True)
     # NOTE: this is NOT a field for a definitive list of Protocols on a Study; it is for Protocols
@@ -629,6 +647,8 @@ class Study(EDDObject):
     #   pre-filled with the Protocols to be used. Get definitive list by doing union of this field
     #   and Protocols linked via Assay-Line-Study chain.
     protocols = models.ManyToManyField('Protocol', blank=True, db_table='study_protocol')
+    # create a slug for a more human-readable URL
+    slug = models.SlugField(null=True, unique=True)
 
     @classmethod
     def export_columns(cls, instances=[]):
@@ -646,6 +666,8 @@ class Study(EDDObject):
         updated = self.updated
         return {
             'id': self.pk,
+            'uuid': self.uuid,
+            'slug': self.slug,
             'name': self.name,
             'description': self.description,
             'creator': created.mod_by_id,
@@ -787,6 +809,49 @@ class Study(EDDObject):
             'metabolic_map': self.get_attr_depth('metabolic_map', depth),
         })
         return json_dict
+
+    def save(self, *args, **kwargs):
+        # build the slug: use profile initials, study name; if needed, partial UUID, counter
+        if self.slug is None:
+            self.slug = self._build_slug(self.name, self.uuid.hex)
+        # now we can continue save
+        super(Study, self).save(*args, **kwargs)
+
+    def _build_slug(self, name=None, uuid=None):
+        """ Builds a slug for this Study; by default uses initials-study-name. If there is a
+            collision, append truncated UUID; if there is still a collision, keep incrementing
+            a counter and trying new slugs. """
+        max_length = self._meta.get_field('slug').max_length
+        frag_length = 4
+        name = name if name is not None else self.name if self.name else ''
+        base_slug = self._slug_append(self.name)
+        slug = base_slug
+        # test uniqueness, add more stuff to end if not unique
+        if self._slug_exists(base_slug):
+            # try with last 4 of UUID appended, trimming off space if needed
+            uuid = uuid if uuid is not None else self.uuid.hex if self.uuid else ''
+            base_slug = self._slug_append(
+                base_slug[:max_length - (frag_length + 1)],
+                uuid[-frag_length:],
+            )
+            slug = base_slug
+            i = 1
+            # keep incrementing number at end if even partial UUID causes collision
+            while self._slug_exists(slug):
+                slug = self._slug_append(
+                    base_slug[:max_length - (len(str(i)) + 1)],
+                    i,
+                )
+                i += 1
+        return slug
+
+    def _slug_append(self, *items):
+        max_length = self._meta.get_field('slug').max_length
+        base = ' '.join((str(i) for i in items))
+        return slugify(base)[:max_length]
+
+    def _slug_exists(self, slug):
+        return Study.objects.filter(slug=slug).exists()
 
 
 @python_2_unicode_compatible
@@ -1268,6 +1333,13 @@ class MeasurementType(models.Model, EDDSerialize):
     type_source = models.ForeignKey(
         Datasource, blank=True, null=True,
     )
+    # linking together EDD instances will be easier later if we define UUIDs now
+    uuid = models.UUIDField(editable=False, unique=True)
+
+    def save(self, *args, **kwargs):
+        if self.uuid is None:
+            self.uuid = uuid4()
+        super(MeasurementType, self).save(*args, **kwargs)
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id': self.pk, 'name': self.type_name}
@@ -1287,6 +1359,7 @@ class MeasurementType(models.Model, EDDSerialize):
             source_name = self.type_source.name
         return {
             'id': self.id,
+            'uuid': self.uuid,
             'name': self.type_name,
             'code': self.short_name,
             'family': self.type_group,
@@ -1297,6 +1370,7 @@ class MeasurementType(models.Model, EDDSerialize):
     def to_json(self, depth=0):
         return {
             "id": self.pk,
+            "uuid": self.uuid,
             "name": self.type_name,
             "sn": self.short_name,
             "family": self.type_group,
@@ -1585,6 +1659,13 @@ class Measurement(EDDMetadata, EDDSerialize):
         short_names = ["", "IC", "EC"]
         names = ["N/A", "Intracellular/Cytosol (Cy)", "Extracellular"]
         CHOICE = [('%s' % i, cn) for i, cn in enumerate(names)]
+
+        @classmethod
+        def to_json(cls):
+            return {
+                i: {"name": cls.names[i], "sn": cls.short_names[i]}
+                for i in range(3)
+            }
 
     class Format(object):
         """ Enumeration of formats measurement values can take.

@@ -39,19 +39,26 @@ if [ ! -f "$DIR/secrets.env" ]; then
     # replacing the secret{n} values
     while [ $COUNTER -lt 5 ]; do
         EDD_SECRET=`echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32`
-        sed -i -e "s/secret${COUNTER}/${EDD_SECRET}/" "$DIR/secrets.env"
+        # in-place edit, save backup to .bak file
+        sed -i.bak -e "s/secret${COUNTER}/${EDD_SECRET}/" "$DIR/secrets.env"
         let COUNTER=COUNTER+1
     done
     # replace Django secret
     EDD_SECRET=`echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32`
-    set -i -e "s/put some random secret text here/${EDD_SECRET}/" "$DIR/secrets.env"
+    # in-place edit, save backup to .bak file
+    sed -i.bak -e "s/put some random secret text here/${EDD_SECRET}/" "$DIR/secrets.env"
+    # remove backup file
+    rm "$DIR/secrets.env.bak"
 fi
 
 if [ ! -f "$DIR/edd/settings/local.py" ]; then
     echo "Copying example local.py settings …"
     cp "$DIR/edd/settings/local.py-example" "$DIR/edd/settings/local.py"
-    sed -i -e "s/'Jay Bay'/'${EDD_USER}'/;s/'admin@example.org'/'${EDD_EMAIL}'/" \
+    # in-place edit, save backup to .bak file
+    sed -i.bak -e "s/'Jay Bay'/'${EDD_USER}'/;s/'admin@example.org'/'${EDD_EMAIL}'/" \
         "$DIR/edd/settings/local.py"
+    # remove backup file
+    rm "$DIR/edd/settings.local.py.bak"
 fi
 
 if [ ! -f "$DIR/docker-compose.override.yml" ]; then

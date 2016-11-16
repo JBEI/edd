@@ -47,13 +47,13 @@
     <p class="lastViewed">Recently viewed studies:</p>
      <div class="lastViewed">
         {% for study in latest_viewed_studies %}
-            <a class="lastViewed" href="{% url 'main:detail' study.id %}">{{ study.name }}</a>
+            <a class="lastViewed" href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a>
             {% if not forloop.last %}{% endif %}
     {% endfor %}
      </div>
     </div>
     </br>
-    <p class="lastViewed">All EDD studies:
+    <p class="lastViewed">All EDD studies:</p>
     <div class="pageSection">
         <table id="studiesTable"></table>
     </div>

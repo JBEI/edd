@@ -67,6 +67,11 @@ elif [ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]; then
 else
     echo "Skipping database restore. No dump source specified."
 fi
+
+# Ensure the uuid-ossp extension is enabled on existing EDD databases
+echo 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";' | \
+    psql -h postgres -U postgres edd
+
 unset PGPASSWORD
 unset POSTGRES_DUMP_FILE
 unset POSTGRES_DUMP_URL
