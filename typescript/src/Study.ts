@@ -1492,24 +1492,30 @@ module StudyD {
         if (this.linesDataGrid) {
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
-        checkedLen = checkedBoxes.length;
-        $('#linesSelectedCell').empty().text(checkedLen + ' selected');
-        // enable singular/plural changes
-        $('#cloneLineButton').text('Clone Line' + (checkedLen > 1 ? 's' : ''));
-        $('#editLineButton').text('Edit Line' + (checkedLen > 1 ? 's' : '')).data({
-            'count': checkedLen,
-            'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
-        });
-
-        if (checkedLen) {
-            $("#disabledButtons").children().prop('disabled',false);
-            $('.noLineSelected').hide();
+        if (_.keys(EDDData.Lines).length === 0) {
+            $('#line-action-form').css('display', 'none');
+            $('.lineExplanation').css('display', 'block');
         } else {
-             $("#disabledButtons").children().prop('disabled', true);
-            $('.noLineSelected').show();
-        }
-        if (checkedLen < 2) {
-            $('#groupLineButton').prop('disabled', true);
+            checkedLen = checkedBoxes.length;
+            $('#linesSelectedCell').empty().text(checkedLen + ' selected');
+            // enable singular/plural changes
+            $('#cloneLineButton').text('Clone Line' + (checkedLen > 1 ? 's' : ''));
+            $('#editLineButton').text('Edit Line' + (checkedLen > 1 ? 's' : '')).data({
+                'count': checkedLen,
+                'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
+            });
+
+            if (checkedLen) {
+                $("#disabledButtons").children().prop('disabled',false);
+                $('.noLineSelected').hide();
+            } else {
+                 $("#disabledButtons").children().prop('disabled', true);
+                $('.noLineSelected').show();
+            }
+            if (checkedLen < 2) {
+                $('#groupLineButton').prop('disabled', true);
+            }
+
         }
 
     }
