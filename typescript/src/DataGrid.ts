@@ -17,6 +17,8 @@ class DataGrid {
     private _tableHeaderCell:HTMLElement;
     private _waitBadge:HTMLElement;
     private tableTitleSpan:HTMLElement;
+    private _classes:string;
+    private _section:JQuery;
 
     private _headerRows:HTMLElement[];
     private _totalColumnCount:number;
@@ -57,37 +59,14 @@ class DataGrid {
         this._spec = dataGridSpec;
         this._table = dataGridSpec.tableElement;
         this._timers = {};
+        this._classes = 'dataTable sortable dragboxes hastablecontrols table-bordered';
 
         var tableBody:JQuery = $(this._tableBody = document.createElement("tbody"));
-
-            if ((this._table.getAttribute('id')) === "studyLinesTable" ||
-                (this._table.getAttribute('id')) === "assaysSection") {
                  // First step: Blow away the old contents of the table
                 $(this._table).empty()
                     .attr({ 'cellpadding': 0, 'cellspacing': 0 })
+                    .addClass(this._getClasses())
                     // TODO: Most of these classes are probably not needed now
-                    .addClass('dataTable sortable dragboxes hastablecontrols')
-                    .append(tableBody);
-                var tHeadRow = $(document.createElement('thead'));
-                var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
-                var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
-                    .appendTo(tableHeaderRow);
-                var waitBadge = $(this._waitBadge = document.createElement("span"))
-                    .addClass('waitbadge wait').appendTo(tableHeaderCell);
-                if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-                    tableHeaderCell.attr('colspan', this._totalColumnCount);
-                }
-                // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-                if (dataGridSpec.tableSpec.showHeader) {
-                    tHeadRow.insertBefore(tableBody);
-                }
-            } else {
-
-                 // First step: Blow away the old contents of the table
-                $(this._table).empty()
-                    .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-                    // TODO: Most of these classes are probably not needed now
-                    .addClass('dataTable sortable dragboxes hastablecontrols table-bordered')
                     .append(tableBody);
 
                 var tHeadRow = $(document.createElement('div'));
@@ -100,13 +79,12 @@ class DataGrid {
                 if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
                     tableHeaderCell.attr('colspan', this._totalColumnCount);
                 }
-
+                this._section = $(tableBody).parent().parent();
                 // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
                 if (dataGridSpec.tableSpec.showHeader) {
-                    var pageSection = $(tableBody).parent().parent();
-                    tHeadRow.insertBefore(pageSection);
+                    tHeadRow.insertBefore(this._getDivForTableHeaders());
                 }
-            }
+
             // Apply the default column visibility settings.
             this.prepareColumnVisibility();
             var tHead = $(document.createElement("thead"));
@@ -117,6 +95,17 @@ class DataGrid {
             setTimeout( () => this._initializeTableData(), 1 );
     }
 
+    _getTableBody():HTMLElement {
+        return this._tableBody;
+    }
+
+    _getDivForTableHeaders():any {
+        return this._section;
+    }
+
+    _getClasses():string {
+        return this._classes;
+    }
 
     // Breaking up the initial table creation into two stages allows the browser to render a preliminary
     // version of the table with a header but no data rows, then continue loading other assets in parallel.
@@ -1051,8 +1040,19 @@ class DataGrid {
 
 }
 
+class Results extends DataGrid {
+    classes:string;
+    section:HTMLElement;
+    constructor(dataGridSpec:DataGridSpecBase) {
+        super(dataGridSpec);
+        this.classes = 'dataTable sortable dragboxes hastablecontrols';
+        this.section = this._getTableBody();
+        this._getClasses();
+        this._getDivForTableHeaders();
+    }
 
 
+}
 // Type definition for the records contained in a DataGrid
 class DataGridRecordSet {
     [index:string]:DataGridRecord;

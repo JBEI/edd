@@ -37,8 +37,7 @@
         <div class="userMenu">
             {% if user.is_authenticated %}
                 <div>
-                    <span class="user_welcome">{{ user.first_name }} {{ user.last_name }}</span>
-                    </br>
+                    <div class="user_welcome">{{ user.first_name }} {{ user.last_name }}</div>
                     <a href="{% url 'account_logout' %}">Logout</a>
                 </div>
             {% else %}
