@@ -1042,11 +1042,14 @@ var StudyD;
                 });
                 //stop spinner
                 $('#loadingDiv').hide();
+                //show message if there are now lines in this study
                 if (_.keys(EDDData.Lines).length === 0) {
+                    $('#chartType').hide();
                     $('#overviewSection').prepend("<div class='noData'>There are no lines in this study. Add some now!</div>");
                 }
                 else {
                     $('.blankSvg').hide();
+                    $('#chartType').show();
                 }
                 // For each protocol with measurements, create a DataGridAssays object.
                 $.each(EDDData.Protocols, function (id, protocol) {
