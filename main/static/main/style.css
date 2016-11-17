@@ -22,7 +22,8 @@
 
 .blankSvg {
     height:302px;
-    width:447px;
+    width: auto;
+    position: relative;
 }
 
 .btn-default {
