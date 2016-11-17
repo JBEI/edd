@@ -1181,6 +1181,7 @@ module StudyD {
             'url': 'edddata/',
             'type': 'GET',
             'error': (xhr, status, e) => {
+                $('#overviewSection').prepend("<div class='noData'>Error. Please reload</div>");
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
             'success': (data) => {
@@ -1198,6 +1199,18 @@ module StudyD {
                     if (!line || !line.active) return;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
+
+                //stop spinner
+                $('#loadingDiv').hide();
+                //show message if there are now lines in this study
+                if (_.keys(EDDData.Lines).length === 0) {
+                    $('#chartType').hide();
+                    $('#overviewSection').prepend("<div class='noData'>There are no lines in this study. Add some now!</div>");
+                } else {
+                  $('.blankSvg').hide();
+                  $('#chartType').show()
+                }
+
                 // For each protocol with measurements, create a DataGridAssays object.
                 $.each(EDDData.Protocols, (id, protocol) => {
                     var spec;
@@ -1546,9 +1559,6 @@ module StudyD {
 
     function remakeMainGraphArea(force?:boolean) {
 
-        //stop spinner
-        $('#loadingDiv').hide();
-        $('.blankSvg').hide();
 
         var postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,

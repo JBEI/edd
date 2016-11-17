@@ -126,6 +126,11 @@ a:hover {
     top: 30%;
     left: 50%;
 }
+
+.noData {
+    margin: 30px;
+}
+
 .test {
     color: mediumvioletred;
     font-size: 12px;
