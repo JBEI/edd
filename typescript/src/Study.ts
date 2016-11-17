@@ -1201,13 +1201,12 @@ module StudyD {
                 });
 
                 //stop spinner
-                $('#loadingDiv').hide();
                 //show message if there are now lines in this study
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('#chartType').hide();
-                    $('#overviewSection').prepend("<div class='noData'>There are no lines in this study. Add some now!</div>");
+                    $('#loadingDiv').hide();
+                    $('#overviewSection').prepend("<div class='noData'>There are no lines in this study.</div>");
                 } else {
-                  $('.blankSvg').hide();
                   $('#chartType').show()
                 }
 
@@ -1569,6 +1568,9 @@ module StudyD {
             return;
         }
 
+        //stop spinner
+        $('#loadingDiv').hide();
+        $('.blankSvg').hide();
         //remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);

@@ -1041,14 +1041,13 @@ var StudyD;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
                 //stop spinner
-                $('#loadingDiv').hide();
                 //show message if there are now lines in this study
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('#chartType').hide();
-                    $('#overviewSection').prepend("<div class='noData'>There are no lines in this study. Add some now!</div>");
+                    $('#loadingDiv').hide();
+                    $('#overviewSection').prepend("<div class='noData'>There are no lines in this study.</div>");
                 }
                 else {
-                    $('.blankSvg').hide();
                     $('#chartType').show();
                 }
                 // For each protocol with measurements, create a DataGridAssays object.
@@ -1373,6 +1372,9 @@ var StudyD;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
+        //stop spinner
+        $('#loadingDiv').hide();
+        $('.blankSvg').hide();
         //remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);
