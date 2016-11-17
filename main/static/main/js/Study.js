@@ -7,7 +7,6 @@
 /// <reference path="StudyGraphing.ts" />
 /// <reference path="GraphHelperMethods.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>
-/// <reference path="../typings/spin/spin.d.ts"/>
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -18,7 +17,6 @@ var StudyD;
     'use strict';
     var mainGraphObject;
     var progressiveFilteringWidget;
-    var spinner;
     var mainGraphRefreshTimerID;
     var linesActionPanelRefreshTimer;
     var assaysActionPanelRefreshTimer;
@@ -1080,22 +1078,6 @@ var StudyD;
             metaRow.remove();
         });
         $(window).on('load', preparePermissions);
-        var opts = {
-            lines: 9,
-            length: 9,
-            width: 5,
-            radius: 14,
-            color: '#1875A6',
-            speed: 1.9,
-            trail: 40,
-            className: 'spinner',
-            zIndex: 2e9,
-            position: 'absolute',
-            top: '100%',
-            left: '50%'
-        };
-        //load spinner
-        this.spinner = new Spinner(opts).spin(document.getElementById("overviewSection"));
     }
     StudyD.prepareIt = prepareIt;
     function preparePermissions() {
@@ -1376,8 +1358,7 @@ var StudyD;
     function remakeMainGraphArea(force) {
         var _this = this;
         //stop spinner
-        this.spinner.stop();
-        //hide div
+        $('#loadingDiv').hide();
         $('.blankSvg').hide();
         var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {

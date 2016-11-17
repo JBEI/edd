@@ -7,7 +7,6 @@
 /// <reference path="StudyGraphing.ts" />
 /// <reference path="GraphHelperMethods.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>
-/// <reference path="../typings/spin/spin.d.ts"/>
 
 declare var EDDData:EDDData;
 
@@ -16,7 +15,6 @@ module StudyD {
 
     var mainGraphObject:any;
     var progressiveFilteringWidget: ProgressiveFilteringWidget;
-    var spinner: Spinner;
     var mainGraphRefreshTimerID:any;
     var linesActionPanelRefreshTimer:any;
     var assaysActionPanelRefreshTimer:any;
@@ -1246,23 +1244,6 @@ module StudyD {
             metaRow.remove();
         });
         $(window).on('load', preparePermissions);
-
-        var opts = {
-                lines: 9, // number of lines on the spinner
-                length: 9,
-                width: 5,
-                radius: 14, // radius of inner circle
-                color: '#1875A6', // color of spinner  (blue)
-                speed: 1.9, // Rounds per second
-                trail: 40, // Afterglow percentage
-                className: 'spinner',
-                zIndex: 2e9,
-                position: 'absolute',
-                top: '100%',
-                left: '50%'
-            };
-            //load spinner
-            this.spinner = new Spinner(opts).spin(document.getElementById("overviewSection"));
     }
 
     function preparePermissions() {
@@ -1566,8 +1547,7 @@ module StudyD {
     function remakeMainGraphArea(force?:boolean) {
 
         //stop spinner
-        this.spinner.stop();
-        //hide div
+        $('#loadingDiv').hide();
         $('.blankSvg').hide();
 
         var postFilteringMeasurements:any[],
