@@ -12,6 +12,7 @@
      showStudyGraph();
      showStudyTable();
  });
+
 //click handler for export modal
 function lineModal(event) {
            var dlg = $("#line-popup").dialog({
@@ -25,7 +26,7 @@ function lineModal(event) {
      return false;
          };
 
-
+//click handler for adding assay to line
 function assayModal(event) {
            var dlg = $("#assayMain").dialog({
                autoOpen: false
@@ -69,9 +70,8 @@ function filteringSectionSlideDown(event) {
             });
         };
 
-
+//work around for generating worklist click handler
 function generateWorkList() {
-    //work around for generating worklist click handler
     $('#line_worklist').click(function () {
         $('select[name="export"]').val('worklist')
         var test = $('button[value="line_action"]')[1];
@@ -79,8 +79,8 @@ function generateWorkList() {
     });
 }
 
+//show hide divs clicking lines button
 function showLines() {
-    //show hide divs clicking lines button
     $('#linesTab').click(function (event) {
         event.preventDefault();
         $('#overviewTab').removeClass('active');
@@ -92,9 +92,8 @@ function showLines() {
         // $('#addNewLine').css('display', 'block'); hiding this for now until we figure out where to add it
     });
 }
-
+//show hide divs clicking data button
 function showDataDiv() {
-    //show hide divs clicking data button
     $('#dataTab').click(function (event) {
         event.preventDefault();
         $('#overviewTab').removeClass('active');
@@ -107,8 +106,8 @@ function showDataDiv() {
     });
 }
 
+//show hide for clicking graph tab under data
 function showStudyGraph() {
-    //show hide for clicking graph tab under data
     $('#studyGraph').click(function (event) {
         event.preventDefault();
         // $('#assaysSection').prev().hide()
@@ -119,7 +118,8 @@ function showStudyGraph() {
         return false
     });
 }
-      //show hide for clicking table tab under data
+
+//show hide for clicking table tab under data
 function showStudyTable() {
     $('#studyTable').click(function (event) {
           event.preventDefault();

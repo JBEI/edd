@@ -17,12 +17,8 @@ class DataGrid {
     private _tableBodyJquery: JQuery;
     private _tableHeaderCell:HTMLElement;
     private _waitBadge:HTMLElement;
-    private tableTitleSpan:HTMLElement;
     private _classes:string;
     private _section:JQuery;
-    private _tableHeaderRow:JQuery;
-    private _tHeadRow:JQuery;
-    private _tHeadCell:JQuery;
 
     private _headerRows:HTMLElement[];
     private _totalColumnCount:number;
