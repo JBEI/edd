@@ -86,6 +86,7 @@ class Update(models.Model, EDDSerialize):
         settings.AUTH_USER_MODEL,
         editable=False,
         help_text=_('The user performing the update.'),
+        on_delete=models.PROTECT,
         null=True,
         verbose_name=_('User'),
     )
@@ -214,6 +215,7 @@ class Datasource(models.Model):
         Update,
         editable=False,
         help_text=_('Update object logging the creation of this Datasource.'),
+        on_delete=models.PROTECT,
         related_name='datasource',
         verbose_name=_('Created'),
     )
@@ -235,7 +237,11 @@ class Comment(models.Model):
     """ Text blob attached to an EDDObject by a given user at a given time/Update. """
     class Meta:
         db_table = 'comment'
-    object_ref = models.ForeignKey('EDDObject', related_name='comments')
+    object_ref = models.ForeignKey(
+        'EDDObject',
+        on_delete=models.CASCADE,
+        related_name='comments',
+    )
     body = models.TextField(
         help_text=_('Content of the comment.'),
         verbose_name=_('Comment'),
@@ -243,6 +249,7 @@ class Comment(models.Model):
     created = models.ForeignKey(
         Update,
         help_text=_('Update object logging the creation of this Comment.'),
+        on_delete=models.PROTECT,
         verbose_name=_('Created'),
     )
 
@@ -263,7 +270,11 @@ class Attachment(models.Model):
     """ File uploads attached to an EDDObject; include MIME, file name, and description. """
     class Meta:
         db_table = 'attachment'
-    object_ref = models.ForeignKey('EDDObject', related_name='files')
+    object_ref = models.ForeignKey(
+        'EDDObject',
+        on_delete=models.CASCADE,
+        related_name='files',
+    )
     file = models.FileField(
         help_text=_('Path to file data.'),
         max_length=255,
@@ -278,6 +289,7 @@ class Attachment(models.Model):
     created = models.ForeignKey(
         Update,
         help_text=_('Update used to create the attachment.'),
+        on_delete=models.PROTECT,
         verbose_name=_('Created'),
     )
     description = models.TextField(
@@ -374,6 +386,7 @@ class MetadataType(models.Model, EDDSerialize):
         blank=True,
         help_text=_('Group for this Metadata Type'),
         null=True,
+        on_delete=models.PROTECT,
         verbose_name=_('Group'),
     )
     # a default label for the type; should normally use i18n lookup for display
@@ -690,6 +703,7 @@ class EDDObject(EDDMetadata, EDDSerialize):
         Update,
         editable=False,
         help_text=_('Update used to create this object.'),
+        on_delete=models.PROTECT,
         related_name='object_created',
         verbose_name=_('Created'),
     )
@@ -697,6 +711,7 @@ class EDDObject(EDDMetadata, EDDSerialize):
         Update,
         editable=False,
         help_text=_('Update used to last modify this object.'),
+        on_delete=models.PROTECT,
         related_name='object_updated',
         verbose_name=_('Last Modified'),
     )
@@ -825,6 +840,7 @@ class Study(EDDObject):
         blank=True,
         help_text=_('EDD User to contact about this study.'),
         null=True,
+        on_delete=models.PROTECT,
         related_name='contact_study_set',
         verbose_name=_('Contact'),
     )
@@ -838,6 +854,7 @@ class Study(EDDObject):
         blank=True,
         help_text=_('Metabolic map used by default in this Study.'),
         null=True,
+        on_delete=models.SET_NULL,
         verbose_name=_('Metabolic Map'),
     )
     # NOTE: this is NOT a field for a definitive list of Protocols on a Study; it is for Protocols
@@ -1080,6 +1097,7 @@ class StudyPermission(models.Model):
     study = models.ForeignKey(
         Study,
         help_text=_('Study this permission applies to.'),
+        on_delete=models.CASCADE,
         verbose_name=_('Study'),
     )
     permission_type = models.CharField(
@@ -1128,6 +1146,7 @@ class UserPermission(StudyPermission):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         help_text=_('User this permission applies to.'),
+        on_delete=models.CASCADE,
         related_name='userpermission_set',
         verbose_name=_('User'),
     )
@@ -1158,6 +1177,7 @@ class GroupPermission(StudyPermission):
     group = models.ForeignKey(
         'auth.Group',
         help_text=_('Group this permission applies to.'),
+        on_delete=models.CASCADE,
         related_name='grouppermission_set',
         verbose_name=_('Group'),
     )
@@ -1225,6 +1245,7 @@ class Protocol(EDDObject):
     owned_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         help_text=_('Owner / maintainer of this Protocol'),
+        on_delete=models.PROTECT,
         related_name='protocol_set',
         verbose_name=_('Owner'),
     )
@@ -1233,6 +1254,7 @@ class Protocol(EDDObject):
         blank=True,
         help_text=_('Link to another original Protocol used as basis for this Protocol.'),
         null=True,
+        on_delete=models.PROTECT,
         related_name='derived_set',
         verbose_name=_('Variant of Protocol'),
     )
@@ -1241,6 +1263,7 @@ class Protocol(EDDObject):
         blank=True,
         help_text=_('Default units for values measured with this Protocol.'),
         null=True,
+        on_delete=models.SET_NULL,
         related_name="protocol_set",
         verbose_name=_('Default Units'),
     )
@@ -1285,6 +1308,7 @@ class WorklistTemplate(EDDObject):
     protocol = models.ForeignKey(
         Protocol,
         help_text=_('Default protocol for this Template.'),
+        on_delete=models.PROTECT,
         verbose_name=_('Protocol'),
     )
 
@@ -1300,6 +1324,7 @@ class WorklistColumn(models.Model):
     template = models.ForeignKey(
         WorklistTemplate,
         help_text=_('Parent Worklist Template for this column.'),
+        on_delete=models.CASCADE,
         verbose_name=_('Template'),
     )
     # if meta_type is None, treat default_value as format string
@@ -1308,6 +1333,7 @@ class WorklistColumn(models.Model):
         blank=True,
         help_text=_('Type of Metadata in this column.'),
         null=True,
+        on_delete=models.PROTECT,
         verbose_name=_('Metadata Type'),
     )
     # if None, default to meta_type.type_name or ''
@@ -1492,6 +1518,7 @@ class Line(EDDObject):
     study = models.ForeignKey(
         Study,
         help_text=_('The Study containing this Line.'),
+        on_delete=models.CASCADE,
         verbose_name=_('Study'),
     )
     control = models.BooleanField(
@@ -1504,6 +1531,7 @@ class Line(EDDObject):
         blank=True,
         help_text=_('Indicates that this Line is a (biological) replicate of another Line.'),
         null=True,
+        on_delete=models.PROTECT,
         verbose_name=_('Replicate'),
     )
 
@@ -1513,6 +1541,7 @@ class Line(EDDObject):
         blank=True,
         help_text=_('EDD User to contact about this Line.'),
         null=True,
+        on_delete=models.PROTECT,
         related_name='line_contact_set',
         verbose_name=_('Contact'),
     )
@@ -1526,6 +1555,7 @@ class Line(EDDObject):
         blank=True,
         help_text=_('EDD User that set up the experimental conditions of this Line.'),
         null=True,
+        on_delete=models.PROTECT,
         related_name='line_experimenter_set',
         verbose_name=_('Experimenter'),
     )
@@ -1539,8 +1569,8 @@ class Line(EDDObject):
     protocols = models.ManyToManyField(
         Protocol,
         help_text=_('Protocol(s) used to Assay this Line.'),
-        verbose_name=_('Protocol(s)'),
         through='Assay',
+        verbose_name=_('Protocol(s)'),
     )
     strains = models.ManyToManyField(
         Strain,
@@ -1706,6 +1736,7 @@ class MeasurementType(models.Model, EDDSerialize):
         blank=True,
         help_text=_('Datasource used for characterizing this Measurement Type.'),
         null=True,
+        on_delete=models.PROTECT,
         verbose_name=_('Datasource'),
     )
     # linking together EDD instances will be easier later if we define UUIDs now
@@ -2005,6 +2036,7 @@ class Phosphor(MeasurementType):
         blank=True,
         help_text=_('Link to another Measurement Type used as a reference for this type.'),
         null=True,
+        on_delete=models.PROTECT,
         related_name='phosphor_set',
         verbose_name=_('Reference'),
     )
@@ -2086,11 +2118,13 @@ class Assay(EDDObject):
     line = models.ForeignKey(
         Line,
         help_text=_('The Line used for this Assay.'),
+        on_delete=models.CASCADE,
         verbose_name=_('Line'),
     )
     protocol = models.ForeignKey(
         Protocol,
         help_text=_('The Protocol used to create this Assay.'),
+        on_delete=models.PROTECT,
         verbose_name=_('Protocol'),
     )
     experimenter = models.ForeignKey(
@@ -2098,6 +2132,7 @@ class Assay(EDDObject):
         blank=True,
         help_text=_('EDD User that set up the experimental conditions of this Assay.'),
         null=True,
+        on_delete=models.PROTECT,
         related_name='assay_experimenter_set',
         verbose_name=_('Experimenter'),
     )
@@ -2165,6 +2200,7 @@ class Measurement(EDDMetadata, EDDSerialize):
     assay = models.ForeignKey(
         Assay,
         help_text=_('The Assay creating this Measurement.'),
+        on_delete=models.CASCADE,
         verbose_name=_('Assay'),
     )
     experimenter = models.ForeignKey(
@@ -2172,29 +2208,34 @@ class Measurement(EDDMetadata, EDDSerialize):
         blank=True,
         help_text=_('EDD User that set up the experimental conditions of this Measurement.'),
         null=True,
+        on_delete=models.PROTECT,
         related_name='measurement_experimenter_set',
         verbose_name=_('Experimenter'),
     )
     measurement_type = models.ForeignKey(
         MeasurementType,
         help_text=_('The type of item measured for this Measurement.'),
+        on_delete=models.PROTECT,
         verbose_name=_('Type'),
     )
     x_units = models.ForeignKey(
         MeasurementUnit,
         help_text=_('The units of the X-axis for this Measurement.'),
+        on_delete=models.PROTECT,
         related_name='+',
         verbose_name=_('X Units'),
     )
     y_units = models.ForeignKey(
         MeasurementUnit,
         help_text=_('The units of the Y-axis for this Measurement.'),
+        on_delete=models.PROTECT,
         related_name='+',
         verbose_name=_('Y Units'),
     )
     update_ref = models.ForeignKey(
         Update,
         help_text=_('The Update triggering the setting of this Measurement.'),
+        on_delete=models.PROTECT,
         verbose_name=_('Updated'),
     )
     active = models.BooleanField(
@@ -2326,7 +2367,12 @@ class MeasurementValue(models.Model):
     """ Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of a measurement """
     class Meta:
         db_table = 'measurement_value'
-    measurement = models.ForeignKey(Measurement)
+    measurement = models.ForeignKey(
+        Measurement,
+        help_text=_('The Measurement containing this point of data.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Measurement'),
+    )
     x = ArrayField(
         models.DecimalField(max_digits=16, decimal_places=5),
         help_text=_('X-axis value(s) for this point.'),
@@ -2340,6 +2386,7 @@ class MeasurementValue(models.Model):
     updated = models.ForeignKey(
         Update,
         help_text=_('The Update triggering the setting of this point.'),
+        on_delete=models.PROTECT,
         verbose_name=_('Updated'),
     )
 
@@ -2401,6 +2448,7 @@ class SBMLTemplate(EDDObject):
         blank=True,
         help_text=_('The Attachment containing the SBML model file.'),
         null=True,
+        on_delete=models.PROTECT,
         verbose_name=_('SBML Model'),
     )
 
@@ -2460,6 +2508,7 @@ class MetaboliteExchange(models.Model):
     sbml_template = models.ForeignKey(
         SBMLTemplate,
         help_text=_('The SBML Model containing this exchange reaction.'),
+        on_delete=models.CASCADE,
         verbose_name=_('SBML Model'),
     )
     measurement_type = models.ForeignKey(
@@ -2467,6 +2516,7 @@ class MetaboliteExchange(models.Model):
         blank=True,
         help_text=_('Measurement type linked to this exchange reaction in the model.'),
         null=True,
+        on_delete=models.CASCADE,
         verbose_name=_('Measurement Type'),
     )
     reactant_name = VarCharField(
@@ -2496,15 +2546,17 @@ class MetaboliteSpecies(models.Model):
         )
     sbml_template = models.ForeignKey(
         SBMLTemplate,
-        help_text=_(''),
-        verbose_name=_(''),
+        help_text=_('The SBML Model defining this species link to a Measurement Type.'),
+        on_delete=models.PROTECT,
+        verbose_name=_('SBML Model'),
     )
     measurement_type = models.ForeignKey(
         MeasurementType,
         blank=True,
         help_text=_('Mesurement type linked to this species in the model.'),
-        verbose_name=_('Measurement Type'),
+        on_delete=models.CASCADE,
         null=True,
+        verbose_name=_('Measurement Type'),
     )
     species = VarCharField(
         help_text=_('Species name used in the model for this metabolite.'),
