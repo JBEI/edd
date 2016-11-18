@@ -1029,7 +1029,7 @@ var StudyD;
                 _this.linesDataGridSpec = new DataGridSpecLines();
                 _this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
-                _this.linesDataGrid = new DataGrid(_this.linesDataGridSpec);
+                _this.linesDataGrid = new Results(_this.linesDataGridSpec);
                 // Find out which protocols have assays with measurements - disabled or no
                 var protocolsWithMeasurements = {};
                 $.each(EDDData.Assays, function (assayId, assay) {
@@ -1038,15 +1038,10 @@ var StudyD;
                         return;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
-                // For each protocol with measurements, create a DataGridAssays object.
-                // $.each(EDDData.Protocols, (id, protocol) => {
                 var spec;
-                //     if (protocolsWithMeasurements[id]) {
                 _this.assaysDataGridSpecs = spec = new DataGridSpecAssays(EDDData.Assays);
                 spec.init();
                 _this.assaysDataGrids = new DataGridAssays(spec);
-                //     }
-                // });
             }
         });
         $('form.line-edit').on('change', '.line-meta > :input', function (ev) {
@@ -2360,7 +2355,7 @@ var DataGridAssays = (function (_super) {
         }
     };
     return DataGridAssays;
-}(DataGrid));
+}(Results));
 // The spec object that will be passed to DataGrid to create the Assays table(s)
 var DataGridSpecAssays = (function (_super) {
     __extends(DataGridSpecAssays, _super);
@@ -2428,25 +2423,11 @@ var DataGridSpecAssays = (function (_super) {
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table
     // content will be removed.
     DataGridSpecAssays.prototype.getTableElement = function () {
-        // var section, protocolDiv, titleDiv, titleLink, table,
-        //     p = this.protocolID,
-        //     tableID:string = 'pro' + p + 'assaystable';
-        // If we can't find a table, we insert a click-to-disclose div, and then a table directly
-        // after it.
-        // if ($('#' + tableID).length === 0) {
         var section = $('#assaysSection');
-        // protocolDiv = $('<div>').addClass('disclose').append('</br>').appendTo(section);
-        // this.undisclosedSectionDiv = protocolDiv[0];
-        // titleDiv = $('<div>').addClass('sectionChapter').appendTo(protocolDiv);
-        // titleLink = $('<span>').addClass('discloseLink')
-        //         .text(this.protocolName + ' Assays')
-        //         .appendTo(titleDiv);
-        var table = $(document.createElement("table"))
-            .attr('id', 'assayTable');
+        var table = $(document.createElement("table")).attr('id', 'assayTable');
         $(section).append(table);
         // Make sure the actions panel remains at the bottom.
         $('#assaysActionPanel').appendTo(table);
-        // }
         return document.getElementById('assaysSection');
     };
     // Specification for the table as a whole

@@ -39,11 +39,10 @@ var DataGrid = (function () {
             .attr({ 'cellpadding': 0, 'cellspacing': 0 })
             .addClass(this._getClasses())
             .append(tableBody);
-        var tHeadRow = $(document.createElement('div'));
-        tHeadRow.addClass('searchStudies');
-        var tableHeaderRow = $(document.createElement("span")).addClass('header').appendTo(tHeadRow);
-        var tableHeaderCell = $(this._tableHeaderCell = document.createElement("span"))
-            .appendTo(tableHeaderRow);
+        this._tableBodyJquery = tableBody;
+        var tHeadRow = this._getTHeadRow();
+        var tableHeaderRow = this._getTableHeaderRow().appendTo(tHeadRow);
+        var tableHeaderCell = $(this._tableHeaderCell = this._getTableHeaderCell()).appendTo(tableHeaderRow);
         var waitBadge = $(this._waitBadge = document.createElement("span"))
             .addClass('waitbadge wait').appendTo(tableHeaderCell);
         if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
@@ -62,6 +61,18 @@ var DataGrid = (function () {
         $(tHead).insertBefore(this._tableBody);
         setTimeout(function () { return _this._initializeTableData(); }, 1);
     }
+    DataGrid.prototype._getTableBody = function () {
+        return this._tableBodyJquery;
+    };
+    DataGrid.prototype._getTableHeaderCell = function () {
+        return document.createElement("span");
+    };
+    DataGrid.prototype._getTableHeaderRow = function () {
+        return $(document.createElement("span")).addClass('header');
+    };
+    DataGrid.prototype._getTHeadRow = function () {
+        return $(document.createElement('div')).addClass('searchStudies');
+    };
     DataGrid.prototype._getDivForTableHeaders = function () {
         return this._section;
     };
@@ -896,9 +907,27 @@ var Results = (function (_super) {
     __extends(Results, _super);
     function Results(dataGridSpec) {
         _super.call(this, dataGridSpec);
-        this.classes = 'dataTable sortable dragboxes hastablecontrols';
         this._getClasses();
+        this._getDivForTableHeaders();
+        this._getTableHeaderRow();
+        this._getTHeadRow();
+        this._getTableHeaderCell();
     }
+    Results.prototype._getTHeadRow = function () {
+        return $(document.createElement('thead'));
+    };
+    Results.prototype._getTableHeaderRow = function () {
+        return $(document.createElement("tr")).addClass('header');
+    };
+    Results.prototype._getTableHeaderCell = function () {
+        return document.createElement("th");
+    };
+    Results.prototype._getDivForTableHeaders = function () {
+        return this._getTableBody();
+    };
+    Results.prototype._getClasses = function () {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    };
     return Results;
 }(DataGrid));
 // Type definition for the records contained in a DataGrid

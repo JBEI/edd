@@ -14,11 +14,15 @@ class DataGrid {
 
     private _table:HTMLElement;
     private _tableBody:HTMLElement;
+    private _tableBodyJquery: JQuery;
     private _tableHeaderCell:HTMLElement;
     private _waitBadge:HTMLElement;
     private tableTitleSpan:HTMLElement;
     private _classes:string;
     private _section:JQuery;
+    private _tableHeaderRow:JQuery;
+    private _tHeadRow:JQuery;
+    private _tHeadCell:JQuery;
 
     private _headerRows:HTMLElement[];
     private _totalColumnCount:number;
@@ -68,16 +72,14 @@ class DataGrid {
                     .addClass(this._getClasses())
                     // TODO: Most of these classes are probably not needed now
                     .append(tableBody);
-
-                var tHeadRow = $(document.createElement('div'));
-                tHeadRow.addClass('searchStudies');
-                var tableHeaderRow = $(document.createElement("span")).addClass('header').appendTo(tHeadRow);
-                var tableHeaderCell = $(this._tableHeaderCell = document.createElement("span"))
-                    .appendTo(tableHeaderRow);
+                this._tableBodyJquery = tableBody;
+                var tHeadRow = this._getTHeadRow();
+                var tableHeaderRow = this._getTableHeaderRow().appendTo(tHeadRow);
+                var tableHeaderCell = $(this._tableHeaderCell = this._getTableHeaderCell()).appendTo(tableHeaderRow);
                 var waitBadge = $(this._waitBadge = document.createElement("span"))
                     .addClass('waitbadge wait').appendTo(tableHeaderCell);
                 if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-                    tableHeaderCell.attr('colspan', this._totalColumnCount);
+                     tableHeaderCell.attr('colspan', this._totalColumnCount);
                 }
                 this._section = $(tableBody).parent().parent();
                 // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
@@ -95,8 +97,20 @@ class DataGrid {
             setTimeout( () => this._initializeTableData(), 1 );
     }
 
-    _getTableBody():HTMLElement {
-        return this._tableBody;
+    _getTableBody():JQuery {
+        return this._tableBodyJquery;
+    }
+
+    _getTableHeaderCell():HTMLElement {
+        return document.createElement("span")
+    }
+
+    _getTableHeaderRow():JQuery {
+        return $(document.createElement("span")).addClass('header');
+    }
+
+    _getTHeadRow():JQuery {
+        return $(document.createElement('div')).addClass('searchStudies');
     }
 
     _getDivForTableHeaders():any {
@@ -1041,16 +1055,34 @@ class DataGrid {
 }
 
 class Results extends DataGrid {
-    classes:string;
-    section:HTMLElement;
+
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
-        this.classes = 'dataTable sortable dragboxes hastablecontrols';
-        this.section = this._getTableBody();
         this._getClasses();
         this._getDivForTableHeaders();
+        this._getTableHeaderRow();
+        this._getTHeadRow();
+        this._getTableHeaderCell();
+    }
+    _getTHeadRow():JQuery {
+        return $(document.createElement('thead'));
     }
 
+    _getTableHeaderRow():JQuery {
+        return $(document.createElement("tr")).addClass('header');
+    }
+
+    _getTableHeaderCell():HTMLElement {
+        return document.createElement("th");
+    }
+
+    _getDivForTableHeaders():any {
+        return this._getTableBody();
+    }
+
+    _getClasses():string {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    }
 
 }
 // Type definition for the records contained in a DataGrid
