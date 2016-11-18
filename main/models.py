@@ -2246,7 +2246,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         UNKNOWN, INTRACELLULAR, EXTRACELLULAR = map(str, range(3))
         short_names = ["", "IC", "EC"]
         names = [_("N/A"), _("Intracellular/Cytosol (Cy)"), _("Extracellular"), ]
-        CHOICE = [('%s' % i, cn) for i, cn in enumerate(names)]
+        CHOICE = [(str(i), cn) for i, cn in enumerate(names)]
 
         @classmethod
         def to_json(cls):
@@ -2266,7 +2266,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         """
         SCALAR, VECTOR, HISTOGRAM, SIGMA = map(str, range(4))
         names = [_('scalar'), _('vector'), _('histogram'), _('sigma'), ]
-        CHOICE = [('%s' % i, n) for i, n in enumerate(names)]
+        CHOICE = [(str(i), n) for i, n in enumerate(names)]
 
     assay = models.ForeignKey(
         Assay,
