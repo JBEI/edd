@@ -1964,7 +1964,12 @@ class ProteinIdentifier(MeasurementType):
     #   short_name = accession code ID portion; e.g. P12345
     #   accession_id = "full" accession ID if available; e.g. sp|P12345|AATM_RABIT
     #       if "full" version unavailable, repeat the short_name
-    accession_id = VarCharField(blank=True, null=True)
+    accession_id = VarCharField(
+        blank=True,
+        help_text=_('Accession ID for protein characterized in e.g. UniProt.'),
+        null=True,
+        verbose_name=_('Accession ID')
+    )
     length = models.IntegerField(
         blank=True,
         help_text=_('sequence length'),
