@@ -7,7 +7,7 @@ from django.db import models, migrations
 
 
 def set_categorization(apps, schema_editor):
-    from main.models import Protocol
+    Protocol = apps.get_model('main', 'Protocol')
     for p in Protocol.objects.all():
         name = p.name.upper()
         if name == "OD600":
