@@ -5,15 +5,15 @@ from __future__ import unicode_literals
 from django.db import migrations, models
 from django.db.models.deletion import CASCADE
 
-from main import models as edd_models
-
 
 def move_source(apps, schema_editor):
     # could not get this to work with a direct update, so doing in a loop
-    for m in edd_models.Metabolite.objects.exclude(source_id__isnull=True):
+    Metabolite = apps.get_model('main', 'Metabolite')
+    for m in Metabolite.objects.exclude(source_id__isnull=True):
         m.type_source_id = m.source_id
         m.save()
-    for p in edd_models.ProteinIdentifier.objects.exclude(source_id__isnull=True):
+    ProteinIdentifier = apps.get_model('main', 'ProteinIdentifier')
+    for p in ProteinIdentifier.objects.exclude(source_id__isnull=True):
         p.type_source_id = p.source_id
         p.save()
 

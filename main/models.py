@@ -6,9 +6,9 @@ import json
 import logging
 import os.path
 import re
+import uuid
 import warnings
-
-from builtins import str
+from builtins import len, str
 from collections import defaultdict
 from django import forms
 from django.conf import settings
@@ -312,7 +312,7 @@ class MetadataType(models.Model, EDDSerialize):
     # type of data saved, None defaults to a bare string
     type_class = models.CharField(max_length=255, blank=True, null=True)
     # linking together EDD instances will be easier later if we define UUIDs now
-    uuid = models.UUIDField(editable=False, unique=True)
+    uuid = models.UUIDField(editable=False, default=uuid.uuid4, unique=True)
 
     @classmethod
     def all_types_on_instances(cls, instances=[]):
@@ -520,7 +520,7 @@ class EDDObject(EDDMetadata, EDDSerialize):
     created = models.ForeignKey(Update, related_name='object_created', editable=False)
     updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
     # linking together EDD instances will be easier later if we define UUIDs now
-    uuid = models.UUIDField(editable=False, unique=True)
+    uuid = models.UUIDField(editable=False, default=uuid.uuid4, unique=True)
 
     @property
     def mod_epoch(self):
@@ -1123,7 +1123,7 @@ class Strain(EDDObject, LineProperty):
     class Meta:
         db_table = 'strain'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    registry_id = models.UUIDField(blank=True, null=True)
+    registry_id = models.UUIDField(blank=True, null=True)  # value comes from ICE
     registry_url = models.URLField(max_length=255, blank=True, null=True)
 
     def __str__(self):
@@ -1334,7 +1334,7 @@ class MeasurementType(models.Model, EDDSerialize):
         Datasource, blank=True, null=True,
     )
     # linking together EDD instances will be easier later if we define UUIDs now
-    uuid = models.UUIDField(editable=False, unique=True)
+    uuid = models.UUIDField(editable=False, default=uuid.uuid4, unique=True)
 
     def save(self, *args, **kwargs):
         if self.uuid is None:

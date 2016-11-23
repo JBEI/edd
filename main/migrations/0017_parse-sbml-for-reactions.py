@@ -15,7 +15,7 @@ def parse_sbml_for_reactions(apps, schema_editor):
     # these we can load from migration-derived classes
     MetaboliteExchange = apps.get_model('main', 'MetaboliteExchange')
     MetaboliteSpecies = apps.get_model('main', 'MetaboliteSpecies')
-    for template in SBMLTemplate.objects.all():
+    for template in Template.objects.all():
         _template = Template.objects.get(pk=template.pk)
         try:
             doc = template.parseSBML()
