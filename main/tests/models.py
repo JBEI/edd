@@ -530,7 +530,7 @@ class ImportTests(TestCase):
         p_id = str(Protocol.objects.get(name="GC-MS").pk)
         l_id = str(Line.objects.get(name="L1").pk)
         m_id_a = str(Metabolite.objects.get(short_name="ac").pk)
-        m_id_b = str(Metabolite.objects.get(short_name="glc-D").pk)
+        m_id_b = str(Metabolite.objects.get(short_name="glc__D").pk)
         u_id = str(MeasurementUnit.objects.get(unit_name="mM").pk)
         # breaking up big text blob
         json = (
@@ -547,24 +547,24 @@ class ImportTests(TestCase):
             '"comp_name":"ic",'
             '"comp_id":"1",'
             '"units_name":"units",'
-            '"units_id":"%(units_id)s",',
-            '"metadata":\{\},',
-            '"data":[[0,"0.1"],[1,"0.2"],[2,"0.4"],[4,"1.7"],[8,"5.9"]]',
-            '},{',
-            '"kind":"std",',
+            '"units_id":"%(units_id)s",'
+            '"metadata":\{\},'
+            '"data":[[0,"0.1"],[1,"0.2"],[2,"0.4"],[4,"1.7"],[8,"5.9"]]'
+            '},{'
+            '"kind":"std",'
             '"protocol_name":"GC-MS",'
             '"protocol_id":"%(protocol_id)s",'
             '"line_name":"",'
             '"line_id":"%(line_id)s",'
             '"assay_name":"Column 0",'
-            '"assay_id":"named_or_new",',
-            '"measurement_name":"glc-D",'
+            '"assay_id":"named_or_new",'
+            '"measurement_name":"glc__D",'
             '"measurement_id":"%(measurement_id_b)s",'
             '"comp_name":"ic",'
-            '"comp_id":"1",',
+            '"comp_id":"1",'
             '"units_name":"units",'
-            '"units_id":"%(units_id)s",',
-            '"metadata":\{\},',
+            '"units_id":"%(units_id)s",'
+            '"metadata":\{\},'
             '"data":[[0,"0.2"],[1,"0.4"],[2,"0.6"],[4,"0.8"],[8,"1.2"]]}]'
         ) % {
             'line_id': l_id,
@@ -834,20 +834,6 @@ b0006                     5683            6459           183.9             565  
 
 class SBMLUtilTests(TestCase):
     """ Unit tests for various utilities used in SBML export """
-    def setUp(self):
-        SBMLTemplate.objects.create(
-            name="R_Ec_biomass_iJO1366_core_53p95M",
-            biomass_calculation=33.19037,
-            biomass_exchange_name="R_Ec_biomass_iJO1366_core_53p95M")
-        Metabolite.objects.create(
-            type_name="Optical Density", short_name="OD", type_group="m", charge=0, carbon_count=0,
-            molecular_formula="", molar_mass=0)
-
-    def test_metabolite_name(self):
-        guesses = sbml_export.generate_species_name_guesses_from_metabolite_name("acetyl-CoA")
-        self.assertTrue(
-            guesses == ['acetyl-CoA', 'acetyl_DASH_CoA', 'M_acetyl-CoA_c',
-                        'M_acetyl_DASH_CoA_c', 'M_acetyl_DASH_CoA_c_'])
 
     def test_sbml_notes(self):
         try:
@@ -856,31 +842,19 @@ class SBMLUtilTests(TestCase):
             warnings.warn('%s' % e)
         else:
             libsbml.SBML_DOCUMENT  # check to make sure it loaded
-            notes = sbml_export.create_sbml_notes_object({
+            builder = sbml_export.SbmlBuilder()
+            notes = builder.create_note_body()
+            notes = builder.update_note_body(notes, **{
                 "CONCENTRATION_CURRENT": [0.5, ],
                 "CONCENTRATION_HIGHEST": [1.0, ],
                 "CONCENTRATION_LOWEST": [0.01, ],
             })
-            notes_dict = sbml_export.parse_sbml_notes_to_dict(notes)
-            self.assertTrue(dict(notes_dict) == {
-                'CONCENTRATION_CURRENT': ['0.5'],
-                'CONCENTRATION_LOWEST': ['0.01'],
-                'CONCENTRATION_HIGHEST': ['1.0'],
+            notes_dict = builder.parse_note_body(notes)
+            self.assertEqual(dict(notes_dict), {
+                'CONCENTRATION_CURRENT': '0.5',
+                'CONCENTRATION_LOWEST': '0.01',
+                'CONCENTRATION_HIGHEST': '1.0',
             })
-
-    def test_sbml_setup(self):
-        try:
-            import libsbml
-        except ImportError as e:
-            warnings.warn('%s' % e)
-        else:
-            libsbml.SBML_DOCUMENT  # check to make sure it loaded
-            dir_name = os.path.dirname(__file__)
-            sbml_file = os.path.join(dir_name, "../fixtures", "misc_data", "simple.sbml")
-            s = sbml_export.sbml_info(i_template=0, sbml_file=sbml_file)
-            self.assertEquals(s.n_sbml_species, 4)
-            self.assertEquals(s.n_sbml_reactions, 5)
-            # TODO lots more
 
 
 class ExportTests(TestCase):
@@ -898,55 +872,12 @@ class ExportTests(TestCase):
         pass
 
     def test_sbml_export(self):
-        try:
-            import libsbml
-        except ImportError as e:
-            warnings.warn('%s' % e)
-        else:
-            study = Study.objects.get(name="Test Study 1")
-            data = sbml_export.line_sbml_export(
-                study=study,
-                lines=[Line.objects.get(name="Line 1"), ],
-                form={"chosenmap": 0})
-            dir_name = os.path.dirname(__file__)
-            sbml_file = os.path.join(dir_name, "../fixtures", "misc_data", "simple.sbml")
-            data.run(test_mode=True, sbml_file=sbml_file)
-            sbml_out = data.as_sbml(8.0)
-            sbml_in = libsbml.readSBMLFromString(sbml_out)
-            model = sbml_in.getModel()
-            self.assertTrue(model is not None)
-            # TODO test contents of file output
+        # TODO tests using main.export.sbml.SbmlExport
+        pass
 
     def test_data_export_errors(self):
-        # now start removing data (testing for deliberate failure)
-        study = Study.objects.get(name="Test Study 1")
-        od = Assay.objects.get(name="OD measurement")
-        odm = od.measurement_set.all()[0]
-        odm.measurementvalue_set.filter(x__0__gt=0).delete()
-        try:
-            data = sbml_export.line_sbml_export(
-                study=study,
-                lines=[Line.objects.get(name="Line 1"), ],
-                form={})
-            data.run(test_mode=True)
-        except ValueError as e:
-            self.assertTrue("Selected Optical Data contains less than two defined data points!" in (
-                '%s' % e))
-        else:
-            raise Exception("Should have caught an exception here!")
-        # now delete the assay altogether
-        od.delete()
-        try:
-            data = sbml_export.line_sbml_export(
-                study=study,
-                lines=[Line.objects.get(name="Line 1"), ],
-                form={})
-            data.run(test_mode=True)
-        except ValueError as e:
-            self.assertTrue("Line selection does not contain any OD600 Assays"
-                            in ('%s' % e))
-        else:
-            raise Exception("Should have caught an exception here!")
+        # TODO tests using main.export.sbml.SbmlExport
+        pass
 
 
 class UtilityTests(TestCase):
@@ -975,7 +906,7 @@ class UtilityTests(TestCase):
 
     def test_interpolate(self):
         assay = Assay.objects.get(name="Assay 1")
-        mt1 = Metabolite.objects.get(type_name="Acetate")
+        mt1 = Metabolite.objects.get(short_name="ac")
         meas = assay.measurement_set.get(measurement_type=mt1)
         data = meas.data()
         self.assertTrue(abs(interpolate_at(data, 10)-0.3) < 0.00001)

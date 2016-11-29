@@ -74,7 +74,7 @@ class TableImport(object):
         self._datasource = models.Datasource(name=self._user.username)
         if not self._study.user_can_write(user):
             raise PermissionDenied(
-                '%s does not have write access to study "%s"' % (user.username, self.study.name)
+                '%s does not have write access to study "%s"' % (user.username, study.name)
             )
 
     @transaction.atomic(savepoint=False)

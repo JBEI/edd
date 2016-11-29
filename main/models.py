@@ -776,6 +776,19 @@ class EDDObject(EDDMetadata, EDDSerialize):
         """ Returns a query set sorted by the name field in case-insensitive order. """
         return cls.objects.order_by(Func(F('name'), function='LOWER'))
 
+    def ensure_update(self, update=None):
+        if update is None:
+            update = Update.load_update()
+        if self.created_id is None:
+            self.created = update
+        self.updated = update
+        return update
+
+    def ensure_uuid(self):
+        if self.uuid is None:
+            self.uuid = uuid4()
+        return self.uuid
+
     def update_name_from_form(self, form, key):
         """ Set the 'name' field from a posted form, with error checking. """
         name = form.get(key, "").strip()
@@ -784,14 +797,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
         self.name = name
 
     def save(self, *args, **kwargs):
-        update = kwargs.get('update', None)
-        if update is None:
-            update = Update.load_update()
-        if self.created_id is None:
-            self.created = update
-        if self.uuid is None:
-            self.uuid = uuid4()
-        self.updated = update
+        self.ensure_update(kwargs.get('update', None))
+        self.ensure_uuid()
         super(EDDObject, self).save(*args, **kwargs)
         # must ensure EDDObject is saved *before* attempting to add to updates
         self.updates.add(self.updated)
@@ -1040,6 +1047,7 @@ class Study(EDDObject):
     def save(self, *args, **kwargs):
         # build the slug: use profile initials, study name; if needed, partial UUID, counter
         if self.slug is None:
+            self.ensure_uuid()
             self.slug = self._build_slug(self.name, self.uuid.hex)
         # now we can continue save
         super(Study, self).save(*args, **kwargs)
@@ -2656,7 +2664,7 @@ def User_profile(self):
 
 
 def User_initials(self):
-    return self.profile.initials if self.profile else _('?')
+    return self.profile.initials if self.profile else _u('?')
 
 
 def User_institution(self):
