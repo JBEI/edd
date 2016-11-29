@@ -11,6 +11,7 @@
      showDataDiv();
      showStudyGraph();
      showStudyTable();
+     whatIsALine();
  });
 
 //click handler for export modal
@@ -132,3 +133,23 @@ function showStudyTable() {
           return false
       });
   };
+
+//show hide for what is a line description
+function whatIsALine() {
+    $('#hide').click(function (event) {
+          event.preventDefault();
+          $(this).val() == "hide" ? show_int() : show_hide();
+          return false
+      });
+}
+
+function show_int() {
+    $('#hide').val("show");
+    $('#lineDescription').css('display', 'none');
+    // do play
+}
+
+function show_hide() {
+    $('#hide').val("hide");
+    $('#lineDescription').css('display', 'block');
+}

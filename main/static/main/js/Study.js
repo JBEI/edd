@@ -1038,6 +1038,9 @@ var StudyD;
                         return;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
+                if (_.keys(EDDData.Lines).length == 0) {
+                    $('.noLines').css('display', 'block');
+                }
                 var spec;
                 _this.assaysDataGridSpecs = spec = new DataGridSpecAssays(EDDData.Assays);
                 spec.init();
