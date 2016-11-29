@@ -1342,6 +1342,7 @@ module StudyD {
 
     // Called by DataGrid after the Lines table is rendered
     export function prepareAfterLinesTable() {
+
         var csIDs;
         // Prepare the main data overview graph at the top of the page
         if (this.mainGraphObject === null && $('#maingraph').length === 1) {
@@ -1350,6 +1351,13 @@ module StudyD {
 
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
+
+        //show possible next steps div and hide assay graphs and table if there are no Assay Measuremnets
+        if (EDDData.AssayMeasurements === undefined) {
+            $('#assayMeasurementShow').css('display', 'none');
+            $('#nextSteps').css('display', 'block');
+        }
+
 
         $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
                 .on('keydown', filterTableKeyDown.bind(this));
@@ -1513,9 +1521,7 @@ module StudyD {
             if (checkedLen < 2) {
                 $('#groupLineButton').prop('disabled', true);
             }
-
         }
-
     }
 
 
@@ -1531,7 +1537,7 @@ module StudyD {
 
 
     function assaysActionPanelShow() {
-            var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
+        var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
         panel = $('#assaysActionPanel');
         if (!panel.length) {
             return;
