@@ -1168,11 +1168,6 @@ var StudyD;
             this.mainGraphObject.Setup('maingraph');
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
-        //show possible next steps div and hide assay graphs and table if there are no Assay Measuremnets
-        if (EDDData.AssayMeasurements === undefined) {
-            $('#assayMeasurementShow').css('display', 'none');
-            $('#nextSteps').css('display', 'block');
-        }
         $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
             .on('keydown', filterTableKeyDown.bind(this));
         // Enable edit lines button

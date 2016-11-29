@@ -208,7 +208,7 @@
         </div>
         </div>
     {% endif %}
-    <form id="line-action-form" action="" class="line-action" method="POST">
+    <form id="line-action-form" action="" class="line-action" style="display:none" method="POST">
         {% csrf_token %}
         <div class="pageSection">
             {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
