@@ -87,8 +87,8 @@ class Update(models.Model, EDDSerialize):
         settings.AUTH_USER_MODEL,
         editable=False,
         help_text=_('The user performing the update.'),
-        on_delete=models.PROTECT,
         null=True,
+        on_delete=models.PROTECT,
         verbose_name=_('User'),
     )
     path = models.TextField(
@@ -1811,22 +1811,13 @@ class MeasurementType(models.Model, EDDSerialize):
     def is_phosphor(self):
         return self.type_group == MeasurementType.Group.PHOSPHOR
 
-    @classmethod
-    def proteins(cls):
-        """ Return all instances of protein measurements. """
-        return cls.objects.filter(type_group=MeasurementType.Group.PROTEINID)
-
-    @classmethod
-    def proteins_by_name(cls):
-        """ Generate a dictionary of proteins keyed by name. """
-        return {p.type_name: p for p in cls.proteins().order_by("type_name")}
-
+    # TODO: replace use of this in tests, then remove
     @classmethod
     def create_protein(cls, type_name, short_name=None):
         return cls.objects.create(
-            type_name=type_name,
             short_name=short_name,
-            type_group=MeasurementType.Group.PROTEINID
+            type_group=MeasurementType.Group.PROTEINID,
+            type_name=type_name,
         )
 
 
@@ -1921,8 +1912,8 @@ class GeneIdentifier(MeasurementType):
     location_in_genome = models.TextField(
         blank=True,
         help_text=_('Location of this Gene in the organism genome.'),
-        verbose_name=_('Location'),
         null=True,
+        verbose_name=_('Location'),
     )
     positive_strand = models.BooleanField(
         default=True,
@@ -1932,20 +1923,20 @@ class GeneIdentifier(MeasurementType):
     location_start = models.IntegerField(
         blank=True,
         help_text=_('Offset location for gene start.'),
-        verbose_name=_('Start'),
         null=True,
+        verbose_name=_('Start'),
     )
     location_end = models.IntegerField(
         blank=True,
         help_text=_('Offset location for gene end.'),
-        verbose_name=_('End'),
         null=True,
+        verbose_name=_('End'),
     )
     gene_length = models.IntegerField(
         blank=True,
         help_text=_('Length of the gene nucleotides.'),
-        verbose_name=_('Length'),
         null=True,
+        verbose_name=_('Length'),
     )
 
     @classmethod
@@ -2156,8 +2147,8 @@ class MeasurementUnit(models.Model):
         choices=MeasurementType.Group.GROUP_CHOICE,
         default=MeasurementType.Group.GENERIC,
         help_text=_('Type of measurement for which this unit is used.'),
-        verbose_name=_('Group'),
         max_length=8,
+        verbose_name=_('Group'),
     )
 
     # TODO: this should be somehow rolled up into the unit definition
@@ -2326,15 +2317,15 @@ class Measurement(EDDMetadata, EDDSerialize):
         choices=Compartment.CHOICE,
         default=Compartment.UNKNOWN,
         help_text=_('Compartment of the cell for this Measurement.'),
-        verbose_name=_('Compartment'),
         max_length=1,
+        verbose_name=_('Compartment'),
     )
     measurement_format = models.CharField(
         choices=Format.CHOICE,
         default=Format.SCALAR,
         help_text=_('Enumeration of value formats for this Measurement.'),
-        verbose_name=_('Format'),
         max_length=2,
+        verbose_name=_('Format'),
     )
 
     @classmethod
@@ -2506,11 +2497,11 @@ class SBMLTemplate(EDDObject):
         db_table = "sbml_template"
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     biomass_calculation = models.DecimalField(
-        default=-1,
         decimal_places=5,
+        default=-1,
         help_text=_('The calculated multiplier converting OD to weight of biomass.'),
-        verbose_name=_('Biomass Factor'),
         max_digits=16,
+        verbose_name=_('Biomass Factor'),
     )
     biomass_calculation_info = models.TextField(
         default='',
@@ -2633,8 +2624,8 @@ class MetaboliteSpecies(models.Model):
         MeasurementType,
         blank=True,
         help_text=_('Mesurement type linked to this species in the model.'),
-        on_delete=models.CASCADE,
         null=True,
+        on_delete=models.CASCADE,
         verbose_name=_('Measurement Type'),
     )
     species = VarCharField(
