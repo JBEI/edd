@@ -6,7 +6,7 @@
 /// <reference path="DataGrid.ts" />
 /// <reference path="StudyGraphing.ts" />
 /// <reference path="GraphHelperMethods.ts" />
-/// <reference path="../typings/d3/d3.d.ts"/>;
+/// <reference path="../typings/d3/d3.d.ts"/>
 
 declare var EDDData:EDDData;
 
@@ -15,12 +15,9 @@ module StudyD {
 
     var mainGraphObject:any;
     var progressiveFilteringWidget: ProgressiveFilteringWidget;
-
     var mainGraphRefreshTimerID:any;
-
     var linesActionPanelRefreshTimer:any;
     var assaysActionPanelRefreshTimer:any;
-
     var attachmentIDs:any;
     var attachmentsByID:any;
     var prevDescriptionEditElement:any;
@@ -71,12 +68,10 @@ module StudyD {
         proteinFilters: GenericFilterSection[];
         geneFilters: GenericFilterSection[];
         measurementFilters: GenericFilterSection[];
-
         metaboliteDataProcessed: boolean;
         proteinDataProcessed: boolean;
         geneDataProcessed: boolean;
         genericDataProcessed: boolean;
-
         filterTableJQ: JQuery;
         studyDObject: any;
         mainGraphObject: any;
@@ -86,19 +81,16 @@ module StudyD {
         constructor(studyDObject: any) {
 
             this.studyDObject = studyDObject;
-
             this.allFilters = [];
             this.assayFilters = [];
             this.metaboliteFilters = [];
             this.proteinFilters = [];
             this.geneFilters = [];
             this.measurementFilters = [];
-
             this.metaboliteDataProcessed = false;
             this.proteinDataProcessed = false;
             this.geneDataProcessed = false;
             this.genericDataProcessed = false;
-
             this.filterTableJQ = null;
         }
 
@@ -486,7 +478,6 @@ module StudyD {
                 });
                 return false;
             });
-
             this.scrollZoneDiv = $("<div>").addClass('filterCriteriaScrollZone')[0];
             this.filteringTable = $("<table>")
                 .addClass('filterCriteriaTable dragboxes')
@@ -1190,6 +1181,7 @@ module StudyD {
             'url': 'edddata/',
             'type': 'GET',
             'error': (xhr, status, e) => {
+                $('#overviewSection').prepend("<div class='noData'>Error. Please reload</div>");
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
             'success': (data) => {
@@ -1207,6 +1199,17 @@ module StudyD {
                     if (!line || !line.active) return;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
+
+                //stop spinner
+                //show message if there are now lines in this study
+                if (_.keys(EDDData.Lines).length === 0) {
+                    $('#chartType').hide();
+                    $('#loadingDiv').hide();
+                    $('#overviewSection').prepend("<div class='noData'>There are no lines in this study.</div>");
+                } else {
+                  $('#chartType').show()
+                }
+
                 // For each protocol with measurements, create a DataGridAssays object.
                 $.each(EDDData.Protocols, (id, protocol) => {
                     var spec;
@@ -1344,11 +1347,11 @@ module StudyD {
     // Called by DataGrid after the Lines table is rendered
     export function prepareAfterLinesTable() {
         var csIDs;
+
         // Prepare the main data overview graph at the top of the page
         if (this.mainGraphObject === null && $('#maingraph').length === 1) {
             this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
-
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
 
@@ -1555,6 +1558,7 @@ module StudyD {
 
     function remakeMainGraphArea(force?:boolean) {
 
+
         var postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,
             dataPointsTotal = 0,
@@ -1564,6 +1568,9 @@ module StudyD {
             return;
         }
 
+        //stop spinner
+        $('#loadingDiv').hide();
+        $('.blankSvg').hide();
         //remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);

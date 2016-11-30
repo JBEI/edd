@@ -117,6 +117,20 @@ a:hover {
     vertical-align:-25%;
 }
 
+.spinner {
+    height: 50px;
+    width: 50px;
+    position: absolute;
+    margin-left: -25px;
+    margin-top: -25px;
+    top: 30%;
+    left: 50%;
+}
+
+.noData {
+    margin: 30px;
+}
+
 .test {
     color: mediumvioletred;
     font-size: 12px;
@@ -605,7 +619,6 @@ span.searchDisclosure {
     left: -5px;
     top: -1px;
 }
-
 
 /* DataGrid header pulldown menus */
 span.pulldownMenu {
