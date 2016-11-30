@@ -180,10 +180,18 @@ class Migration(migrations.Migration):
         # Create system User
         migrations.RunPython(code=create_system_user, reverse_code=remove_system_user),
 
-        # Create linked Metadata Types
+        # Create linked MetadataType objects
         migrations.RunPython(code=create_linked_metadata, reverse_code=remove_linked_metadata),
 
-        # Create measurement types
+        # Create MeasurementType objects
         migrations.RunPython(code=insert_bigg, reverse_code=remove_bigg),
         migrations.RunPython(code=insert_uniprot, reverse_code=remove_uniprot),
+
+        # Create MeasurementUnit objects
+
+        # Create Protocol objects
+
+        # Create SBMLTemplate for 904 model
+
+        # Create example WorklistTemplate and WorklistColumn objects
     ]
