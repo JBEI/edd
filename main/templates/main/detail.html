@@ -184,7 +184,7 @@
     <div class="pageSectionTabs" id="graphTabsOverviewSelected">
         <div>Data Overview</div>
     </div>
-    <div class="pageSection pageSectionTabContent" id="overviewSection">
+    <div class="pageSection pageSectionTabContent overview" id="overviewSection">
         <div class="sectionContent">
             <div class="btn-toolbar">
                 <div class="btn-group" data-toggle="buttons" id="chartType">
@@ -227,6 +227,9 @@
             <div class="checkbox y-checkbox" style="display:none">
                 <label><input type="checkbox" value="" />hide y-axis</label>
             </div>
+        </div>
+        <div class="blankSvg">
+            <img id="loadingDiv" src="{% static 'main/images/spinner-big.gif' %}" class="spinner"/>
         </div>
         <div id="maingraph" class="graphContainer"></div>
 

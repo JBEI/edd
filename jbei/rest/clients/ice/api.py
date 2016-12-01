@@ -26,6 +26,7 @@ from urlparse import urlunparse, ParseResult, parse_qs
 from jbei.rest.api import RestApiClient
 from jbei.rest.sessions import PagedResult, PagedSession, Session
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -1038,7 +1039,6 @@ class IceApi(RestApiClient):
         # whether SYNBIO-1196 changes (see associated
         # comments). Currently, there's no need to provide the link ID at all when adding/updating.
 
-
         logger.info(
             "Requesting part-> study link from ICE (id=%s): %s" %
             (link_id, entry_experiments_url)
@@ -1330,7 +1330,6 @@ class IcePagedResult(PagedResult):
             # extract elements of the query URL so we can reconstruct it using paging parameters
             url_elts, query_params_dict = parse_query_url(query_url)
             # if paging parameters aren't already defined, try extracting them from query_url
-            print('%s' % (query_params_dict, ))
             if not result_limit:
                 result_limit = extract_int_parameter(query_params_dict, RESULT_LIMIT_PARAMETER)
             if offset is None:

@@ -372,7 +372,7 @@ class StudyDetailView(generic.DetailView):
         form = LineForm(request.POST, prefix='line', study=self.get_object())
         if form.is_valid():
             form.save()
-            messages.success(request, "Added Line '%(name)s" % {'name': form['name'].value()})
+            messages.success(request, "Added Line '%(name)s'" % {'name': form['name'].value()})
             return True
         else:
             context['new_line'] = form
