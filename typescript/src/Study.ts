@@ -26,7 +26,7 @@ module StudyD {
     var prevDescriptionEditElement:any;
 
     // We can have a valid metabolic map but no valid biomass calculation.
-    // If they try to show carbon balance in that case, we'll bring up the UI to 
+    // If they try to show carbon balance in that case, we'll bring up the UI to
     // calculate biomass for the specified metabolic map.
     export var metabolicMapID:any;
     export var metabolicMapName:any;
@@ -44,7 +44,6 @@ module StudyD {
     var assaysDataGridSpecs;
     export var assaysDataGrids;
 
-
     // Utility interface used by GenericFilterSection#updateUniqueIndexesHash
     export interface ValueToUniqueID {
         [index: string]: number;
@@ -59,7 +58,6 @@ module StudyD {
     export interface RecordIDToBoolean {
         [index: string]: boolean;
     }
-
 
     // For the filtering section on the main graph
     export class ProgressiveFilteringWidget {
@@ -81,7 +79,6 @@ module StudyD {
         studyDObject: any;
         mainGraphObject: any;
 
-
         // MeasurementGroupCode: Need to initialize each filter list.
         constructor(studyDObject: any) {
 
@@ -101,7 +98,6 @@ module StudyD {
 
             this.filterTableJQ = null;
         }
-
 
         // Read through the Lines, Assays, and AssayMeasurements structures to learn what types are present,
         // then instantiate the relevant subclasses of GenericFilterSection, to create a series of
@@ -137,7 +133,7 @@ module StudyD {
             assayFilters.push(new CarbonLabelingFilterSection());
             assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
             // convert seen metadata IDs to FilterSection objects, and push to end of assayFilters
-            assayFilters.push.apply(assayFilters, 
+            assayFilters.push.apply(assayFilters,
                 $.map(seenInAssaysHash, (_, id: string) => new AssayMetaDataFilterSection(id)));
             assayFilters.push.apply(assayFilters,
                 $.map(seenInLinesHash, (_, id: string) => new LineMetaDataFilterSection(id)));
@@ -174,7 +170,6 @@ module StudyD {
             this.repopulateFilteringSection();
         }
 
-
         // Clear out any old filters in the filtering section, and add in the ones that
         // claim to be "useful".
         repopulateFilteringSection(): void {
@@ -189,7 +184,6 @@ module StudyD {
                 }
             });
         }
-
 
         // Given a set of measurement records and a dictionary of corresponding types
         // (passed down from the server as a result of a data request), sort them into
@@ -243,7 +237,6 @@ module StudyD {
             this.repopulateFilteringSection();
         }
 
-
         // Build a list of all the non-disabled Assay IDs in the Study.
         buildAssayIDSet(): any[] {
             var assayIds: any[] = [];
@@ -255,7 +248,6 @@ module StudyD {
             });
             return assayIds;
         }
-     
 
         // Starting with a list of all the non-disabled Assay IDs in the Study, we loop it through the
         // Line and Assay-level filters, causing the filters to refresh their UI, narrowing the set down.
@@ -368,7 +360,6 @@ module StudyD {
         }
     }
 
-
     // A generic version of a filtering column in the filtering section beneath the graph area on the page,
     // meant to be subclassed for specific criteria.
     // When initialized with a set of record IDs, the column is filled with labeled checkboxes, one for each
@@ -376,7 +367,7 @@ module StudyD {
     // During use, another set of record IDs is passed in, and if any checkboxes are checked, the ID set is
     // narrowed down to only those records that contain the checked values.
     // Checkboxes whose values are not represented anywhere in the given IDs are temporarily disabled,
-    // visually indicating to a user that those values are not available for further filtering. 
+    // visually indicating to a user that those values are not available for further filtering.
     // The filters are meant to be called in sequence, feeding each returned ID set into the next,
     // progressively narrowing down the enabled checkboxes.
     // MeasurementGroupCode: Need to subclass this for each group type.
@@ -448,13 +439,11 @@ module StudyD {
             this.anyCheckboxesChecked = false;
         }
 
-
         configure(title: string='Generic Filter', shortLabel: string='gf'): void {
             this.sectionTitle = title;
             this.sectionShortLabel = shortLabel;
             this.createContainerObjects();
         }
-
 
         // Create all the container HTML objects
         createContainerObjects(): void {
@@ -495,7 +484,6 @@ module StudyD {
                 .append(this.tableBodyElement = <HTMLTableElement>$("<tbody>")[0]);
         }
 
-
         populateFilterFromRecordIDs(ids: string[]): void {
             var usedValues: ValueToUniqueID, crSet: number[], cHash: UniqueIDToValue,
                 previousIds: string[];
@@ -524,7 +512,6 @@ module StudyD {
             }
         }
 
-
         // In this function are running through the given list of measurement IDs and examining
         // their records and related records, locating the particular field we are interested in,
         // and creating a list of all the unique values for that field.  As we go, we mark each
@@ -536,7 +523,6 @@ module StudyD {
             this.uniqueIndexes = this.uniqueIndexes || {};
         }
 
-
         // If we didn't come up with 2 or more criteria, there is no point in displaying the filter.
         isFilterUseful():boolean {
             if (this.uniqueValuesOrder.length < 2) {
@@ -545,22 +531,18 @@ module StudyD {
             return true;
         }
 
-
         addToParent(parentDiv):void {
             parentDiv.appendChild(this.filterColumnDiv);
         }
-
 
         detach():void {
             $(this.filterColumnDiv).detach();
         }
 
-
         applyBackgroundStyle(darker:boolean):void {
             $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
             $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
         }
-
 
         // Runs through the values in uniqueValuesOrder, adding a checkbox and label for each
         // filtering value represented.  If there are more than 15 values, the filter gets
@@ -589,19 +571,19 @@ module StudyD {
 
             var graphHelper = Object.create(GraphHelperMethods);
             var colorObj = graphHelper.renderColor(EDDData.Lines);
-            
-            //add color obj to EDDData 
+
+            //add color obj to EDDData
             EDDData['color'] = colorObj;
-            
-            // line label color based on graph color of line 
+
+            // line label color based on graph color of line
             if (this.sectionTitle === "Line") {    // TODO: Find a better way to identify this section
                 var colors:any = {};
 
-                //create new colors object with line names a keys and color hex as values 
+                //create new colors object with line names a keys and color hex as values
                 for (var key in EDDData.Lines) {
                     colors[EDDData.Lines[key].name] = colorObj[key]
                 }
-                
+
                 this.uniqueValuesOrder.forEach((uniqueId: number): void => {
                 var cboxName, cell, p, q, r;
                 cboxName = ['filter', this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
@@ -630,7 +612,7 @@ module StudyD {
                     this.checkboxes[uniqueId] = $("<input type='checkbox'>")
                         .attr({ 'name': cboxName, 'id': cboxName })
                         .appendTo(cell);
-    
+
                     $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId])
                         .appendTo(cell);
                 });
@@ -639,7 +621,6 @@ module StudyD {
             // even if the user isn't hitting the label or the checkbox itself.
             Dragboxes.initTable(this.filteringTable);
         }
-
 
         // Returns true if any of the checkboxes show a different state than when this function was
         // last called
@@ -667,7 +648,7 @@ module StudyD {
                 this.previousSearchSelection = v;
                 changed = true;
             }
-            
+
             if (!changed) {
                 // If we haven't detected any change so far, there is one more angle to cover:
                 // Checkboxes that used to exist, but have since been removed from the set.
@@ -681,7 +662,6 @@ module StudyD {
             this.previousCheckboxState = currentCheckboxState;
             return changed;
         }
-
 
         // Takes a set of record IDs, and if any checkboxes in the filter's UI are checked,
         // the ID set is narrowed down to only those records that contain the checked values.
@@ -769,7 +749,6 @@ module StudyD {
             return idsPostFiltering;
         }
 
-
         _assayIdToAssay(assayId:string) {
             return EDDData.Assays[assayId];
         }
@@ -789,12 +768,10 @@ module StudyD {
         }
     }
 
-
     export class StrainFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Strain', 'st');
         }
-
 
         updateUniqueIndexesHash(ids: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -814,12 +791,10 @@ module StudyD {
         }
     }
 
-
     export class CarbonSourceFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Carbon Source', 'cs');
         }
-
 
         updateUniqueIndexesHash(ids: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -839,12 +814,10 @@ module StudyD {
         }
     }
 
-
     export class CarbonLabelingFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Labeling', 'l');
         }
-
 
         updateUniqueIndexesHash(ids: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -864,12 +837,10 @@ module StudyD {
         }
     }
 
-
     export class LineNameFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Line', 'ln');
         }
-
 
         updateUniqueIndexesHash(ids: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -885,12 +856,10 @@ module StudyD {
         }
     }
 
-
     export class ProtocolFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Protocol', 'p');
         }
-
 
         updateUniqueIndexesHash(ids: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -906,12 +875,10 @@ module StudyD {
         }
     }
 
-
     export class AssaySuffixFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Assay Suffix', 'a');
         }
-
 
         updateUniqueIndexesHash(ids: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -927,7 +894,6 @@ module StudyD {
         }
     }
 
-
     export class MetaDataFilterSection extends GenericFilterSection {
 
         metaDataID:string;
@@ -942,12 +908,10 @@ module StudyD {
             this.post = MDT.post || '';
         }
 
-
         configure():void {
             super.configure(EDDData.MetaDataTypes[this.metaDataID].name, 'md'+this.metaDataID);
         }
     }
-
 
     export class LineMetaDataFilterSection extends MetaDataFilterSection {
 
@@ -966,7 +930,6 @@ module StudyD {
         }
     }
 
-
     export class AssayMetaDataFilterSection extends MetaDataFilterSection {
 
         updateUniqueIndexesHash(ids: string[]): void {
@@ -984,13 +947,11 @@ module StudyD {
         }
     }
 
-
     export class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         configure():void {
             super.configure('Compartment', 'com');
         }
-
 
         updateUniqueIndexesHash(amIDs: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -1006,7 +967,6 @@ module StudyD {
             });
         }
     }
-
 
     export class MeasurementFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
@@ -1040,7 +1000,6 @@ module StudyD {
         }
     }
 
-
     export class MetaboliteFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         loadPending:boolean;
@@ -1050,12 +1009,10 @@ module StudyD {
             super.configure('Metabolite', 'me');
         }
 
-
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         isFilterUseful(): boolean {
             return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
-
 
         updateUniqueIndexesHash(amIDs: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -1076,7 +1033,6 @@ module StudyD {
         }
     }
 
-
     export class ProteinFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         loadPending:boolean;
@@ -1086,12 +1042,10 @@ module StudyD {
             super.configure('Protein', 'pr');
         }
 
-
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         isFilterUseful():boolean {
             return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
-
 
         updateUniqueIndexesHash(amIDs: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -1112,7 +1066,6 @@ module StudyD {
         }
     }
 
-
     export class GeneFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         loadPending:boolean;
@@ -1122,12 +1075,10 @@ module StudyD {
             super.configure('Gene', 'gn');
         }
 
-
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         isFilterUseful():boolean {
             return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
-
 
         updateUniqueIndexesHash(amIDs: string[]): void {
             this.uniqueIndexes = this.uniqueIndexes || {};
@@ -1147,7 +1098,6 @@ module StudyD {
             this.loadPending = false;
         }
     }
-
 
     // Called when the page loads.
     export function prepareIt() {
@@ -1301,7 +1251,6 @@ module StudyD {
            // .removeClass('off');
     }
 
-
     export function processCarbonBalanceData() {
         // Prepare the carbon balance graph
         this.carbonBalanceData = new CarbonBalance.Display();
@@ -1322,7 +1271,6 @@ module StudyD {
         this.linesDataGridSpec.highlightCarbonBalanceWidget(highlightCarbonBalanceWidget);
     }
 
-
     function filterTableKeyDown(e) {
         switch (e.keyCode) {
             case 38: // up
@@ -1339,7 +1287,6 @@ module StudyD {
         }
     }
 
-
     // Called by DataGrid after the Lines table is rendered
     export function prepareAfterLinesTable() {
 
@@ -1351,7 +1298,6 @@ module StudyD {
 
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
-
 
         $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
                 .on('keydown', filterTableKeyDown.bind(this));
@@ -1407,7 +1353,6 @@ module StudyD {
             success: processMeasurementData.bind(this, protocol)
         });
     }
-
 
     function processMeasurementData(protocol, data) {
         var assaySeen = {},
@@ -1470,12 +1415,10 @@ module StudyD {
         this.queueMainGraphRemake(false);
     }
 
-
     export function carbonBalanceColumnRevealedCallback(spec:DataGridSpecLines,
             dataGridObj:DataGrid) {
         StudyD.rebuildCarbonBalanceGraphs();
     }
-
 
     // Start a timer to wait before calling the routine that shows the actions panel.
     export function queueLinesActionPanelShow() {
@@ -1484,7 +1427,6 @@ module StudyD {
         }
         this.linesActionPanelRefreshTimer = setTimeout(linesActionPanelShow.bind(this), 150);
     }
-
 
     function linesActionPanelShow() {
         // Figure out how many lines are selected.
@@ -1518,7 +1460,6 @@ module StudyD {
         }
     }
 
-
     export function queueAssaysActionPanelShow() {
         // Start a timer to wait before calling the routine that remakes the graph.
         // This way we're not bothering the user with the long redraw process when
@@ -1528,7 +1469,6 @@ module StudyD {
         }
         this.assaysActionPanelRefreshTimer = setTimeout(assaysActionPanelShow.bind(this), 150);
     }
-
 
     function assaysActionPanelShow() {
         var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
@@ -1556,7 +1496,6 @@ module StudyD {
         }
     }
 
-
     // Start a timer to wait before calling the routine that remakes a graph. This way we're not
     // bothering the user with the long redraw process when they are making fast edits.
     export function queueMainGraphRemake(force?:boolean) {
@@ -1564,11 +1503,43 @@ module StudyD {
             clearTimeout(this.mainGraphRefreshTimerID);
         }
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
-        //refresh assay table
-        StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
     }
 
     var remakeMainGraphAreaCalls = 0;
+
+     //this function shows and hides rows based on filtered data.
+    function showHideAssayRows(progressiveFilteringMeasurements):void {
+
+        var assays = _.keys(EDDData.Assays);
+
+        var hideArray = _.filter(assays, function( el ) {
+          return !progressiveFilteringMeasurements.includes( parseInt(el) );
+        });
+        var showArray =_.filter(assays, function( el ) {
+          return progressiveFilteringMeasurements.includes( parseInt(el) );
+        });
+        //hide elements not in progressive filtering measurements
+        _.each(hideArray, function(assayId) {
+            $( "input[value='" + assayId + "']").parent().parent().hide();
+        });
+        //show elements in progressive filtering measurements
+        _.each(showArray, function(assayId) {
+            $( "input[value='" + assayId + "']").parent().parent().show();
+        });
+    }
+
+
+    //convert post filtered measuremnts to array of assay ids
+    function convertPostFilteringMeasurements(postFilteringMeasurements) {
+        //array of assays
+        var filteredAssayMeasurements:any[] = [];
+
+        _.each(postFilteringMeasurements, function(meas:any) {
+            filteredAssayMeasurements.push(EDDData.AssayMeasurements[meas].assay)
+        });
+        return filteredAssayMeasurements;
+    }
+
 
     function remakeMainGraphArea(force?:boolean) {
 
@@ -1588,6 +1559,10 @@ module StudyD {
         //Gives ids of lines to show.
         var dataSets = [], prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
+        //hide filtered data here.
+        var filteredA = convertPostFilteringMeasurements(postFilteringMeasurements);
+        //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
+        showHideAssayRows( filteredA);
         $.each(postFilteringMeasurements, (i, measurementId) => {
 
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -1762,7 +1737,6 @@ module StudyD {
         return color;
     }
 
-
     function clearAssayForm():JQuery {
         var form:JQuery = $('#id_assay-assay_id').closest('.disclose');
         form.find('[name^=assay-]').not(':checkbox, :radio').val('');
@@ -1914,7 +1888,6 @@ module StudyD {
         scrollToForm(form);
     }
 
-
     export function onChangedMetabolicMap() {
         if (this.metabolicMapName) {
             // Update the UI to show the new filename for the metabolic map.
@@ -1933,7 +1906,6 @@ module StudyD {
             this.rebuildCarbonBalanceGraphs();
         }
     }
-
 
     export function rebuildCarbonBalanceGraphs() {
         var cellObjs:DataGridDataCell[],
@@ -1955,7 +1927,6 @@ module StudyD {
         this.carbonBalanceDisplayIsFresh = true;
     }
 
-
     // They want to select a different metabolic map.
     export function onClickedMetabolicMapName():void {
         var ui:StudyMetabolicMapChooser,
@@ -1976,8 +1947,6 @@ module StudyD {
     }
 };
 
-
-
 // The spec object that will be passed to DataGrid to create the Lines table
 class DataGridSpecLines extends DataGridSpecBase {
 
@@ -1988,23 +1957,19 @@ class DataGridSpecLines extends DataGridSpecBase {
     carbonBalanceCol:DataGridColumnGroupSpec;
     carbonBalanceWidget:DGShowCarbonBalanceWidget;
 
-
     init() {
         this.findMetaDataIDsUsedInLines();
         this.findGroupIDsAndNames();
         super.init();
     }
 
-
     highlightCarbonBalanceWidget(v:boolean):void {
         this.carbonBalanceWidget.highlight(v);
     }
 
-
     enableCarbonBalanceWidget(v:boolean):void {
         this.carbonBalanceWidget.enable(v);
     }
-
 
     findMetaDataIDsUsedInLines() {
         var seenHash:any = {};
@@ -2018,7 +1983,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         // store all metadata IDs seen
         this.metaDataIDsUsedInLines = Object.keys(seenHash);
     }
-
 
     findGroupIDsAndNames() {
         var rowGroups = {};
@@ -2046,12 +2010,10 @@ class DataGridSpecLines extends DataGridSpecBase {
         $.each(this.groupIDsInOrder, (index, group) => this.groupIDsToGroupIndexes[group] = index);
     }
 
-
     // Specification for the table as a whole
     defineTableSpec():DataGridTableSpec {
         return new DataGridTableSpec('lines', { 'name': 'Lines' });
     }
-
 
     private loadLineName(index:string):string {
         var line;
@@ -2060,7 +2022,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return '';
     }
-
 
     private loadStrainName(index:string):string {
         // ensure a strain ID exists on line, is a known strain, uppercase first found name or '?'
@@ -2072,7 +2033,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return '?';
     }
-
 
     private loadFirstCarbonSource(index:string):any {
         // ensure carbon source ID(s) exist on line, ensure at least one source ID, ensure first ID
@@ -2086,7 +2046,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         return undefined;
     }
 
-
     private loadCarbonSource(index:string):string {
         var source = this.loadFirstCarbonSource(index);
         if (source) {
@@ -2095,7 +2054,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         return '?';
     }
 
-
     private loadCarbonSourceLabeling(index:string):string {
         var source = this.loadFirstCarbonSource(index);
         if (source) {
@@ -2103,7 +2061,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return '?';
     }
-
 
     private loadExperimenterInitials(index:string):string {
         // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
@@ -2116,7 +2073,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         return '?';
     }
 
-
     private loadLineModification(index:string):number {
         var line;
         if ((line = EDDData.Lines[index])) {
@@ -2124,7 +2080,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return undefined;
     }
-
 
     // Specification for the headers along the top of the table
     defineHeaderSpec():DataGridHeaderSpec[] {
@@ -2178,7 +2133,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         return leftSide.concat(metaDataHeaders, rightSide);
     }
 
-
     private makeMetaDataSortFunction(id:string) {
         return (i:string) => {
             var line = EDDData.Lines[i];
@@ -2189,14 +2143,12 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
     }
 
-
     // The colspan value for all the cells that are not 'carbon source' or 'labeling'
     // is based on the number of carbon sources for the respective record.
     // Specifically, it's either the number of carbon sources, or 1, whichever is higher.
     private rowSpanForRecord(index) {
         return (EDDData.Lines[index].carbon || []).length || 1;
     }
-
 
     generateLineNameCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line = EDDData.Lines[index];
@@ -2217,7 +2169,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         ];
     }
 
-
     generateStrainNameCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line, content = [];
         if ((line = EDDData.Lines[index])) {
@@ -2234,7 +2185,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         ];
     }
 
-
     generateCarbonSourceCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line, strings = ['--'];
         if ((line = EDDData.Lines[index])) {
@@ -2246,7 +2196,6 @@ class DataGridSpecLines extends DataGridSpecBase {
             return new DataGridDataCell(gridSpec, index, { 'contentString': name })
         });
     }
-
 
     generateCarbonSourceLabelingCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line, strings = ['--'];
@@ -2260,7 +2209,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         });
     }
 
-
     generateCarbonBalanceBlankCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
@@ -2269,7 +2217,6 @@ class DataGridSpecLines extends DataGridSpecBase {
             })
         ];
     }
-
 
     generateExperimenterInitialsCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line, exp, content;
@@ -2286,7 +2233,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         ];
     }
 
-
     generateModificationDateCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
@@ -2295,7 +2241,6 @@ class DataGridSpecLines extends DataGridSpecBase {
             })
         ];
     }
-
 
     makeMetaDataCellsGeneratorFunction(id) {
         return (gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] => {
@@ -2311,7 +2256,6 @@ class DataGridSpecLines extends DataGridSpecBase {
             ];
         }
     }
-
 
     // Specification for each of the data columns that will make up the body of the table
     defineColumnSpec():DataGridColumnSpec[] {
@@ -2342,7 +2286,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         return leftSide.concat(metaDataCols, rightSide);
     }
 
-
     // Specification for each of the groups that the headers and data columns are organized into
     defineColumnGroupSpec():DataGridColumnGroupSpec[] {
         var topSection:DataGridColumnGroupSpec[] = [
@@ -2371,7 +2314,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         return topSection.concat(metaDataColGroups, bottomSection);
     }
 
-
     // Specification for the groups that rows can be gathered into
     defineRowGroupSpec():any {
 
@@ -2394,13 +2336,11 @@ class DataGridSpecLines extends DataGridSpecBase {
         return document.getElementById("studyLinesTable");
     }
 
-
     // An array of unique identifiers (numbers, not strings), used to identify the records in the
     // data set being displayed
     getRecordIDs() {
         return Object.keys(EDDData.Lines);
     }
-
 
     // This is called to generate the array of custom header widgets. The order of the array will be
     // the order they are added to the header bar. It's perfectly fine to return an empty array.
@@ -2426,7 +2366,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         return widgetSet;
     }
 
-
     // This is called to generate the array of custom options menu widgets. The order of the array
     // will be the order they are displayed in the menu. Empty array = OK.
     createCustomOptionsWidgets(dataGrid:DataGrid):DataGridOptionWidget[] {
@@ -2439,7 +2378,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         widgetSet.push(disabledLinesWidget);
         return widgetSet;
     }
-
 
     // This is called after everything is initialized, including the creation of the table content.
     onInitialized(dataGrid:DataGrid):void {
@@ -2457,8 +2395,6 @@ class DataGridSpecLines extends DataGridSpecBase {
     }
 }
 
-
-
 // When unchecked, this hides the set of Lines that are marked as disabled.
 class DGDisabledLinesWidget extends DataGridOptionWidget {
 
@@ -2473,7 +2409,6 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
         this.labelElement = this._createLabel('Show Disabled', cbID);;
         this._createdElements = true;
     }
-
 
     applyFilterToIDs(rowIDs:string[]):string[] {
 
@@ -2498,15 +2433,12 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
         return filteredIDs;
     }
 
-
     initialFormatRowElementsForID(dataRowObjects:any, rowID:string):any {
         if (!EDDData.Lines[rowID].active) {
             $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
         }
     }
 }
-
-
 
 // A widget to toggle replicate grouping on and off
 class DGGroupStudyReplicatesWidget extends DataGridOptionWidget {
@@ -2533,20 +2465,16 @@ class DGGroupStudyReplicatesWidget extends DataGridOptionWidget {
     }
 }
 
-
-
 // This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
 // options for additional data types, querying the server for results.
 class DGLinesSearchWidget extends DGSearchWidget {
 
     searchDisclosureElement:any;
 
-
     constructor(dataGridOwnerObject:any, dataGridSpec:any, placeHolder:string, size:number,
             getsFocus:boolean) {
         super(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
     }
-
 
     // The uniqueID is provided to assist the widget in avoiding collisions when creating input
     // element labels or other things requiring an ID.
@@ -2554,7 +2482,6 @@ class DGLinesSearchWidget extends DGSearchWidget {
         super.createElements(uniqueID);
         this.createdElements(true);
     }
-
 
     // This is called to append the widget elements beneath the given element. If the elements have
     // not been created yet, they are created, and the uniqueID is passed along.
@@ -2565,8 +2492,6 @@ class DGLinesSearchWidget extends DGSearchWidget {
         container.appendChild(this.element);
     }
 }
-
-
 
 // A header widget to prepare the Carbon Balance table cells, and show or hide them.
 class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
@@ -2585,7 +2510,6 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
         this.highlighted = false;
         this._lineSpec = dataGridSpec;
     }
-
 
     createElements(uniqueID:any):void {
         var cbID:string = this.dataGridSpec.tableSpec.id + 'CarBal' + uniqueID;
@@ -2662,10 +2586,7 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
     }
 }
 
-
-
 class DataGridAssays extends Results {
-
 
     sectionCurrentlyDisclosed:boolean;
     graphRefreshTimerID:any;
@@ -2673,13 +2594,11 @@ class DataGridAssays extends Results {
     // checking to see if it's non-empty.
     recordsCurrentlyInvalidated:number[];
 
-
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
         this.recordsCurrentlyInvalidated = [];
         this.sectionCurrentlyDisclosed = false;
     }
-
 
     invalidateAssayRecords(records:number[]):void {
         this.recordsCurrentlyInvalidated = this.recordsCurrentlyInvalidated.concat(records);
@@ -2690,7 +2609,6 @@ class DataGridAssays extends Results {
             this.triggerAssayRecordsRefresh();
         }
     }
-
 
     clickedDisclose(disclose:boolean):void {
         var spec:DataGridSpecAssays = this.getSpec();
@@ -2709,7 +2627,6 @@ class DataGridAssays extends Results {
         }
     }
 
-
     triggerAssayRecordsRefresh():void {
         try {
             this.triggerDataReset();
@@ -2720,8 +2637,6 @@ class DataGridAssays extends Results {
     }
 }
 
-
-
 // The spec object that will be passed to DataGrid to create the Assays table(s)
 class DataGridSpecAssays extends DataGridSpecBase {
 
@@ -2729,7 +2644,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
     filteredIdsInTable:number[];
     metaDataIDsUsedInAssays:any;
     maximumXValueInData:number;
-    protocolName: string;
     undisclosedSectionDiv:any;
 
     measuringTimesHeaderSpec:DataGridHeaderSpec;
@@ -2745,39 +2659,19 @@ class DataGridSpecAssays extends DataGridSpecBase {
         this.graphAreaHeaderSpec = null;
     }
 
-
     init() {
-        this.refreshIDList( StudyD.progressiveFilteringWidget.buildFilteredMeasurements());
+        this.refreshIDList();
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
         super.init();
     }
 
     //pass in filtered ids. this.assayIDsInProtocol change to this.filteredIDsInTable
-    refreshIDList(postFilteringMeasurements):void {
+    refreshIDList():void {
         // Find out which protocols have assays with measurements - disabled or no
         this.filteredIdsInTable = [];
-        if (postFilteringMeasurements.length === 0) {
-            this.filterIdsInTable(this.filteredIdsInTable, EDDData.Assays)
-        }  else {
-            //convert EDD.AssayMeasurements ids to filtered EDDData.Assays;
-            var assays = this.convertPostFilteringMeasurements(postFilteringMeasurements);
-            this.filterIdsInTable(this.filteredIdsInTable, assays);
-        }
-    }
+        this.filterIdsInTable(this.filteredIdsInTable, EDDData.Assays)
 
-    convertPostFilteringMeasurements(postFilteringMeasurements):Array<number> {
-        //array of assays
-        var filteredAssayMeasurements:any[] = [];
-        var assays:any[] = [];
-
-        _.each(postFilteringMeasurements, function(meas:any) {
-            filteredAssayMeasurements.push(EDDData.AssayMeasurements[meas].assay)
-        });
-        _.each(filteredAssayMeasurements, function(assay:any) {
-            assays.push(EDDData.Assays[assay])
-        });
-        return assays;
     }
 
     filterIdsInTable(filteredTables, assays):void {
@@ -2791,24 +2685,21 @@ class DataGridSpecAssays extends DataGridSpecBase {
         });
     }
 
-
     // An array of unique identifiers, used to identify the records in the data set being displayed
     getRecordIDs():any[] {
         return this.filteredIdsInTable;
     }
 
-
     // This is an override.  Called when a data reset is triggered, but before the table rows are
     // rebuilt.
     onDataReset(dataGrid:DataGrid):void {
-        this.refreshIDList( StudyD.progressiveFilteringWidget.buildFilteredMeasurements());
+
         this.findMaximumXValueInData();
         if (this.measuringTimesHeaderSpec && this.measuringTimesHeaderSpec.element) {
             $(this.measuringTimesHeaderSpec.element).children(':first').text(
                     'Measuring Times (Range 0 to ' + this.maximumXValueInData + ')');
         }
     }
-
 
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table
     // content will be removed.
@@ -2821,14 +2712,12 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return document.getElementById('assaysSection');
     }
 
-
     // Specification for the table as a whole
     defineTableSpec():DataGridTableSpec {
         return new DataGridTableSpec('assays', {
             'defaultSort': 1
         });
     }
-
 
     findMetaDataIDsUsedInAssays() {
         var seenHash:any = {};
@@ -2839,7 +2728,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         });
         [].push.apply(this.metaDataIDsUsedInAssays, Object.keys(seenHash));
     }
-
 
     findMaximumXValueInData():void {
         var maxForAll:number = 0;
@@ -2864,7 +2752,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         this.maximumXValueInData = maxForAll || 1;
     }
 
-
     private loadAssayName(index:any):string {
         // In an old typical EDDData.Assays record this string is currently pre-assembled and stored
         // in 'fn'. But we're phasing that out.
@@ -2878,7 +2765,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return '';
     }
 
-
     private loadExperimenterInitials(index:any):string {
         // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
         var assay, experimenter;
@@ -2890,11 +2776,9 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return '?';
     }
 
-
     private loadAssayModification(index:any):number {
         return EDDData.Assays[index].mod;
     }
-
 
     // Specification for the headers along the top of the table
     defineHeaderSpec():DataGridHeaderSpec[] {
@@ -2956,7 +2840,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return leftSide.concat(metaDataHeaders, rightSide);
     }
 
-
     private makeMetaDataSortFunction(id) {
         return (i) => {
             var record = EDDData.Assays[i];
@@ -2966,7 +2849,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
             return '';
         }
     }
-
 
     // The colspan value for all the cells that are assay-level (not measurement-level) is based on
     // the number of measurements for the respective record. Specifically, it's the number of
@@ -2980,7 +2862,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
                         ((rec.proteins       || []).length ? 1 : 0)   ) || 1;
         return v;
     }
-
 
     generateAssayNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
         var record = EDDData.Assays[index], line = EDDData.Lines[record.lid], sideMenuItems = [
@@ -3005,7 +2886,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         ];
     }
 
-
     makeMetaDataCellsGeneratorFunction(id) {
         return (gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] => {
             var contentStr = '', assay = EDDData.Assays[index], type = EDDData.MetaDataTypes[id];
@@ -3020,7 +2900,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
             ];
         }
     }
-
 
     private generateMeasurementCells(gridSpec:DataGridSpecAssays, index:string,
             opt:any):DataGridDataCell[] {
@@ -3079,7 +2958,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return cells;
     }
 
-
     generateMeasurementNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             'metaboliteToValue': (measureId) => {
@@ -3115,7 +2993,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         });
     }
 
-
     generateUnitsCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             'metaboliteToValue': (measureId) => {
@@ -3145,7 +3022,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
             }
         });
     }
-
 
     generateCountCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
         // function to use in Array#reduce to count all the values in a set of measurements
@@ -3180,7 +3056,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
             }
         });
     }
-
 
     generateMeasuringTimesCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
         var svgCellForTimeCounts = (ids:any[]) => {
@@ -3229,7 +3104,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         });
     }
 
-
     generateExperimenterCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
         var exp = EDDData.Assays[index].exp;
         var uRecord = EDDData.Users[exp];
@@ -3241,7 +3115,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         ];
     }
 
-
     generateModificationDateCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
@@ -3250,7 +3123,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
             })
         ];
     }
-
 
     assembleSVGStringForDataPoints(points, format:string):string {
         var svg = '<svg xmlns="http://www.w3.org/2000/svg" version="1.2" width="100%" height="10px"\
@@ -3286,7 +3158,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         paths.push('</svg>');
         return paths.join('\n');
     }
-
 
     // Specification for each of the data columns that will make up the body of the table
     defineColumnSpec():DataGridColumnSpec[] {
@@ -3326,7 +3197,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return leftSide.concat(metaDataCols, rightSide);
     }
 
-
     // Specification for each of the groups that the headers and data columns are organized into
     defineColumnGroupSpec():DataGridColumnGroupSpec[] {
         var topSection:DataGridColumnGroupSpec[] = [
@@ -3351,7 +3221,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return topSection.concat(metaDataColGroups, bottomSection);
     }
 
-
     // This is called to generate the array of custom header widgets.
     // The order of the array will be the order they are added to the header bar.
     // It's perfectly fine to return an empty array.
@@ -3366,7 +3235,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
         deselectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(deselectAllWidget);
-        
+
         // A "select all" button
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
@@ -3374,7 +3243,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
         return widgetSet;
     }
-
 
     // This is called to generate the array of custom options menu widgets.
     // The order of the array will be the order they are displayed in the menu.
@@ -3387,14 +3255,13 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return widgetSet;
     }
 
-
     // This is called after everything is initialized, including the creation of the table content.
     onInitialized(dataGrid:DataGridAssays):void {
 
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
         $(table).on('change', ':checkbox', () => StudyD.queueAssaysActionPanelShow());
-        $(table).on('change', ':checkbox', () => this.refreshIDList( StudyD.progressiveFilteringWidget.buildFilteredMeasurements()));
+        $(table).on('change', ':checkbox', () => this.refreshIDList());
 
         if (this.undisclosedSectionDiv) {
             $(this.undisclosedSectionDiv).click(() => dataGrid.clickedDisclose(true));
@@ -3404,8 +3271,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         StudyD.queueAssaysActionPanelShow();
     }
 }
-
-
 
 // When unchecked, this hides the set of Assays that are marked as disabled.
 class DGDisabledAssaysWidget extends DataGridOptionWidget {
@@ -3421,7 +3286,6 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
         this.labelElement = this._createLabel('Show Disabled', cbID);;
         this._createdElements = true;
     }
-
 
     applyFilterToIDs(rowIDs:string[]):string[] {
 
@@ -3442,7 +3306,6 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
         return filteredIDs;
     }
 
-
     initialFormatRowElementsForID(dataRowObjects:any, rowID:any):any {
         if (!EDDData.Assays[rowID].active) {
             $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
@@ -3450,20 +3313,16 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
     }
 }
 
-
-
 // This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
 // options for additional data types, querying the server for results.
 class DGAssaysSearchWidget extends DGSearchWidget {
 
     searchDisclosureElement:any;
 
-
     constructor(dataGridOwnerObject:any, dataGridSpec:any, placeHolder:string, size:number,
             getsFocus:boolean) {
         super(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
     }
-
 
     // The uniqueID is provided to assist the widget in avoiding collisions when creating input
     // element labels or other things requiring an ID.
@@ -3471,7 +3330,6 @@ class DGAssaysSearchWidget extends DGSearchWidget {
         super.createElements(uniqueID);
         this.createdElements(true);
     }
-
 
     // This is called to append the widget elements beneath the given element. If the elements have
     // not been created yet, they are created, and the uniqueID is passed along.
@@ -3482,7 +3340,6 @@ class DGAssaysSearchWidget extends DGSearchWidget {
         container.appendChild(this.element);
     }
 }
-
 
 // use JQuery ready event shortcut to call prepareIt when page is ready
 $(() => StudyD.prepareIt());

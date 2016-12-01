@@ -293,7 +293,7 @@ var StudyD;
     // During use, another set of record IDs is passed in, and if any checkboxes are checked, the ID set is
     // narrowed down to only those records that contain the checked values.
     // Checkboxes whose values are not represented anywhere in the given IDs are temporarily disabled,
-    // visually indicating to a user that those values are not available for further filtering. 
+    // visually indicating to a user that those values are not available for further filtering.
     // The filters are meant to be called in sequence, feeding each returned ID set into the next,
     // progressively narrowing down the enabled checkboxes.
     // MeasurementGroupCode: Need to subclass this for each group type.
@@ -436,12 +436,12 @@ var StudyD;
             this.checkboxes = {};
             var graphHelper = Object.create(GraphHelperMethods);
             var colorObj = graphHelper.renderColor(EDDData.Lines);
-            //add color obj to EDDData 
+            //add color obj to EDDData
             EDDData['color'] = colorObj;
-            // line label color based on graph color of line 
+            // line label color based on graph color of line
             if (this.sectionTitle === "Line") {
                 var colors = {};
-                //create new colors object with line names a keys and color hex as values 
+                //create new colors object with line names a keys and color hex as values
                 for (var key in EDDData.Lines) {
                     colors[EDDData.Lines[key].name] = colorObj[key];
                 }
@@ -1364,11 +1364,36 @@ var StudyD;
             clearTimeout(this.mainGraphRefreshTimerID);
         }
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
-        //refresh assay table
-        StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     var remakeMainGraphAreaCalls = 0;
+    //this function shows and hides rows based on filtered data.
+    function showHideAssayRows(progressiveFilteringMeasurements) {
+        var assays = _.keys(EDDData.Assays);
+        var hideArray = _.filter(assays, function (el) {
+            return !progressiveFilteringMeasurements.includes(parseInt(el));
+        });
+        var showArray = _.filter(assays, function (el) {
+            return progressiveFilteringMeasurements.includes(parseInt(el));
+        });
+        //hide elements not in progressive filtering measurements
+        _.each(hideArray, function (assayId) {
+            $("input[value='" + assayId + "']").parent().parent().hide();
+        });
+        //show elements in progressive filtering measurements
+        _.each(showArray, function (assayId) {
+            $("input[value='" + assayId + "']").parent().parent().show();
+        });
+    }
+    //convert post filtered measuremnts to array of assay ids
+    function convertPostFilteringMeasurements(postFilteringMeasurements) {
+        //array of assays
+        var filteredAssayMeasurements = [];
+        _.each(postFilteringMeasurements, function (meas) {
+            filteredAssayMeasurements.push(EDDData.AssayMeasurements[meas].assay);
+        });
+        return filteredAssayMeasurements;
+    }
     function remakeMainGraphArea(force) {
         var _this = this;
         var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
@@ -1382,6 +1407,10 @@ var StudyD;
         //Gives ids of lines to show.
         var dataSets = [], prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
+        //hide filtered data here.
+        var filteredA = convertPostFilteringMeasurements(postFilteringMeasurements);
+        //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
+        showHideAssayRows(filteredA);
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
@@ -2370,35 +2399,16 @@ var DataGridSpecAssays = (function (_super) {
         this.graphAreaHeaderSpec = null;
     }
     DataGridSpecAssays.prototype.init = function () {
-        this.refreshIDList(StudyD.progressiveFilteringWidget.buildFilteredMeasurements());
+        this.refreshIDList();
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
         _super.prototype.init.call(this);
     };
     //pass in filtered ids. this.assayIDsInProtocol change to this.filteredIDsInTable
-    DataGridSpecAssays.prototype.refreshIDList = function (postFilteringMeasurements) {
+    DataGridSpecAssays.prototype.refreshIDList = function () {
         // Find out which protocols have assays with measurements - disabled or no
         this.filteredIdsInTable = [];
-        if (postFilteringMeasurements.length === 0) {
-            this.filterIdsInTable(this.filteredIdsInTable, EDDData.Assays);
-        }
-        else {
-            //convert EDD.AssayMeasurements ids to filtered EDDData.Assays;
-            var assays = this.convertPostFilteringMeasurements(postFilteringMeasurements);
-            this.filterIdsInTable(this.filteredIdsInTable, assays);
-        }
-    };
-    DataGridSpecAssays.prototype.convertPostFilteringMeasurements = function (postFilteringMeasurements) {
-        //array of assays
-        var filteredAssayMeasurements = [];
-        var assays = [];
-        _.each(postFilteringMeasurements, function (meas) {
-            filteredAssayMeasurements.push(EDDData.AssayMeasurements[meas].assay);
-        });
-        _.each(filteredAssayMeasurements, function (assay) {
-            assays.push(EDDData.Assays[assay]);
-        });
-        return assays;
+        this.filterIdsInTable(this.filteredIdsInTable, EDDData.Assays);
     };
     DataGridSpecAssays.prototype.filterIdsInTable = function (filteredTables, assays) {
         $.each(assays, function (assayId, assay) {
@@ -2417,7 +2427,6 @@ var DataGridSpecAssays = (function (_super) {
     // This is an override.  Called when a data reset is triggered, but before the table rows are
     // rebuilt.
     DataGridSpecAssays.prototype.onDataReset = function (dataGrid) {
-        this.refreshIDList(StudyD.progressiveFilteringWidget.buildFilteredMeasurements());
         this.findMaximumXValueInData();
         if (this.measuringTimesHeaderSpec && this.measuringTimesHeaderSpec.element) {
             $(this.measuringTimesHeaderSpec.element).children(':first').text('Measuring Times (Range 0 to ' + this.maximumXValueInData + ')');
@@ -2919,7 +2928,7 @@ var DataGridSpecAssays = (function (_super) {
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
         $(table).on('change', ':checkbox', function () { return StudyD.queueAssaysActionPanelShow(); });
-        $(table).on('change', ':checkbox', function () { return _this.refreshIDList(StudyD.progressiveFilteringWidget.buildFilteredMeasurements()); });
+        $(table).on('change', ':checkbox', function () { return _this.refreshIDList(); });
         if (this.undisclosedSectionDiv) {
             $(this.undisclosedSectionDiv).click(function () { return dataGrid.clickedDisclose(true); });
         }

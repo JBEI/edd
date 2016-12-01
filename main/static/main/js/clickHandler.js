@@ -122,9 +122,12 @@ function showStudyGraph() {
 
 //show hide for clicking table tab under data
 function showStudyTable() {
+    $( "#studyTable" ).one( "click", function() {
+    StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+    });
     $('#studyTable').click(function (event) {
           event.preventDefault();
-          StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+          //StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
           // $('#assaysSection').prev().show();
           $('#studyGraph').removeClass('active');
           $(this).addClass('active');
@@ -146,7 +149,6 @@ function whatIsALine() {
 function show_int() {
     $('#hide').val("show");
     $('#lineDescription').css('display', 'none');
-    // do play
 }
 
 function show_hide() {
