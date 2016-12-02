@@ -125,7 +125,7 @@ fi
 # Start up the application server
 echo
 echo "$SEPARATOR"
-if [ "$EDD_DEPLOYMENT_ENVIRONMENT" = "DEVELOPMENT" ]; then
+if [[ $EDD_DEPLOYMENT_ENVIRONMENT =~ DEVELOPMENT.* ]]; then
     echo "Starting development apppserver"
     echo "$SEPARATOR"
     python manage.py runserver 0.0.0.0:8000

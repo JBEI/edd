@@ -12,6 +12,7 @@ from django.utils.translation import ugettext
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from jbei.rest.clients.edd.constants import METADATA_CONTEXT_LINE
+from jbei.rest.clients.ice.utils import make_entry_url
 from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TerminalFormats
 
 os.environ.setdefault('ICE_SETTINGS_MODULE', 'jbei.edd.rest.scripts.settings')
@@ -576,11 +577,7 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
                 new_strain = edd.create_strain(name=ice_part.name,
                                                description=ice_part.short_description,
                                                registry_id=ice_part.uuid,
-                                               registry_url='%(base_url)s/entry/%(local_part_id)d' %
-                                               {
-                                                   'base_url': ICE_URL,
-                                                   'local_part_id': ice_part.id,
-                                               })
+                                               registry_url=make_entry_url(ICE_URL, ice_part.id))
                 strains_by_part_number[ice_part.part_id] = new_strain
             created_strain_count += 1
         print('Created %d new strains in EDD' % created_strain_count)

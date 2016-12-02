@@ -1019,6 +1019,8 @@ class Protocol(EDDObject):
         if self.name in ['', None, ]:
             raise ValueError("Protocol name required.")
         p = Protocol.objects.filter(name=self.name)
+
+        # enforce unique protocol naming
         if ((self.id is not None and p.count() > 1) or
                 (self.id is None and p.count() > 0)):
             raise ValueError("There is already a protocol named '%s'." % self.name)
