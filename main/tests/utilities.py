@@ -34,7 +34,8 @@ class CombinatorialCreationTests(TestCase):
         A simplified integration test that exercises much of the EDD code responsible for
         combinatorial line creation based on a typical anticipated use case for the
         planned combinatorial line creation GUI.  Test input here is very similar to that displayed
-        in the combinatorial GUI mockup attached to EDD-257.
+        in the combinatorial GUI mockup attached to EDD-257. Note that this test doesn't actually
+        verify the line/assay metadata since that requires a lot more code
 
         Testing the full code path for EDD's template file support requires having a
         corresponding ICE deployment to use as part of the test, so it's not addressed here.
@@ -92,6 +93,11 @@ class CombinatorialCreationTests(TestCase):
         # Define JSON test input
         ############################################################################################
 
+        LB = 'LB'
+        EZ = 'EZ'
+        GLU = '1% Glucose'
+        GAL = '1% Galactose'
+
         # working carbon source (via metadata) example
         gui_mockup_example = {  # TODO: replace string literals with constants
             'name_elements': {
@@ -119,7 +125,7 @@ class CombinatorialCreationTests(TestCase):
                 growth_temp_meta.pk: 30,  # degrees C
             }, 'combinatorial_line_metadata': {
                 self.media_metadata.pk: ['EZ', 'LB'],  # media
-                carbon_source_metadata.pk: ['1% Glucose', '1% Galactose'],
+                carbon_source_metadata.pk: [GAL, GLU],
             }, 'protocol_to_combinatorial_metadata': {
                 targeted_proteomics.pk: {
                     self.assay_time.pk: [8, 24],  # hours
@@ -130,13 +136,75 @@ class CombinatorialCreationTests(TestCase):
             },
         }
 
-        study = Study.objects.create(name='Unit Test Study')
+        ############################################################################################
+        # Expected results of the test
+        ############################################################################################
         expected_line_names = ['58-EZ-GLU-1', '58-EZ-GLU-2', '58-EZ-GLU-3', '58-EZ-GAL-1',
                                '58-EZ-GAL-2', '58-EZ-GAL-3', '58-LB-GLU-1', '58-LB-GLU-2',
                                '58-LB-GLU-3', '58-LB-GAL-1', '58-LB-GAL-2', '58-LB-GAL-3',
                                '27-EZ-GLU-1', '27-EZ-GLU-2', '27-EZ-GLU-3', '27-EZ-GAL-1',
                                '27-EZ-GAL-2', '27-EZ-GAL-3', '27-LB-GLU-1', '27-LB-GLU-2',
                                '27-LB-GLU-3', '27-LB-GAL-1', '27-LB-GAL-2', '27-LB-GAL-3', ]
+
+        # expected line metadata (as all strings  at the line level to match hstore field of created
+        # model objects)
+        media_pk = str(self.media_metadata.pk)
+        temp_pk = str(growth_temp_meta.pk)
+        carbon_source_pk = str(carbon_source_metadata.pk)
+
+        temp = str(30)
+        ez_glu = {carbon_source_pk: GLU, media_pk: EZ, temp_pk: temp}
+        ez_gal = {carbon_source_pk: GAL, media_pk: EZ, temp_pk: temp}
+        lb_glu = {carbon_source_pk: GLU, media_pk: LB, temp_pk: temp}
+        lb_gal = {carbon_source_pk: GAL, media_pk: LB, temp_pk: temp}
+
+        expected_line_metadata = {'58-EZ-GLU-1': ez_glu,
+                                  '58-EZ-GLU-2': ez_glu,
+                                  '58-EZ-GLU-3': ez_glu,
+                                  '58-EZ-GAL-1': ez_gal,
+                                  '58-EZ-GAL-2': ez_gal,
+                                  '58-EZ-GAL-3': ez_gal,
+                                  '58-LB-GLU-1': lb_glu,
+                                  '58-LB-GLU-2': lb_glu,
+                                  '58-LB-GLU-3': lb_glu,
+                                  '58-LB-GAL-1': lb_gal,
+                                  '58-LB-GAL-2': lb_gal,
+                                  '58-LB-GAL-3': lb_gal,
+                                  '27-EZ-GLU-1': ez_glu,
+                                  '27-EZ-GLU-2': ez_glu,
+                                  '27-EZ-GLU-3': ez_glu,
+                                  '27-EZ-GAL-1': ez_gal,
+                                  '27-EZ-GAL-2': ez_gal,
+                                  '27-EZ-GAL-3': ez_gal,
+                                  '27-LB-GLU-1': lb_glu,
+                                  '27-LB-GLU-2': lb_glu,
+                                  '27-LB-GLU-3': lb_glu,
+                                  '27-LB-GAL-1': lb_gal,
+                                  '27-LB-GAL-2': lb_gal,
+                                  '27-LB-GAL-3': lb_gal, }
+
+        # expected assay metadata (4 assays per line!)
+        # (as all strings  at the assay level to match hstore field of created model objects)
+        time_pk = str(self.assay_time.pk)
+        assay_metadata = {
+            targeted_proteomics.pk: [{time_pk: '8'}, {time_pk: '24'}],
+            metabolomics.pk: [{time_pk: '4'}, {time_pk: '6'}, ]
+        }
+
+        expected_assay_metadata = {}
+        for line_name in expected_line_names:
+            protocol_to_assay_to_meta = {}
+            expected_assay_metadata[line_name] = protocol_to_assay_to_meta
+            for protocol_pk, assay_meta in assay_metadata.items():
+
+                assay_to_meta = {}
+                protocol_to_assay_to_meta[protocol_pk] = assay_to_meta
+
+                for meta in assay_metadata[protocol_pk]:
+                    assay_name = '%(line_name)s-%(time)sh' % {
+                        'line_name': line_name,
+                        'time': meta[time_pk]}
+                    assay_to_meta[assay_name] = meta
 
         expected_assay_suffixes = {
             targeted_proteomics.pk: ['8h', '24h'],
@@ -147,13 +215,18 @@ class CombinatorialCreationTests(TestCase):
             strain1.pk: strain1, strain2.pk: strain2,
         }
 
+        study = Study.objects.create(name='Unit Test Study')
+
         self._test_combinatorial_json_creation(study, gui_mockup_example, expected_line_names,
-                                               expected_assay_suffixes, strains_by_pk)
+                                               expected_assay_suffixes, strains_by_pk,
+                                               expected_line_metadata,
+                                               expected_assay_metadata)
 
     def _test_combinatorial_creation(self, study, combinatorial_inputs, expected_line_names,
                                      expected_protocols_to_assay_suffixes, strains_by_pk,
                                      protocols_by_pk=None, line_metadata_types=None,
-                                     assay_metadata_types=None):
+                                     assay_metadata_types=None, expected_line_metadata=None,
+                                     expected_assay_metadata=None):
 
         if protocols_by_pk is None:
             protocols_by_pk = {protocol.pk: protocol for protocol in Protocol.objects.all()}
@@ -180,6 +253,7 @@ class CombinatorialCreationTests(TestCase):
         # This name preview capability will support the eventual combinatorial line creation GUI
         # (EDD-257)
 
+        unique_planned_line_names = {}
         for index, inputs in enumerate(combinatorial_inputs):
             print('Combinatorial Inputs %d' % (index + 1))
             pprint(vars(inputs))
@@ -197,6 +271,8 @@ class CombinatorialCreationTests(TestCase):
                     'num': line_index + 1, 'name': line_name,
                 })
 
+                unique_planned_line_names[line_name] = True
+
                 if naming_results.line_to_protocols_to_assays_list:
                     for protocol_pk, assays_list in (
                             naming_results.line_to_protocols_to_assays_list[line_name].items()):
@@ -210,6 +286,11 @@ class CombinatorialCreationTests(TestCase):
             for planned_line_name in naming_results.line_names:
                 self.assertTrue(planned_line_name in expected_line_names,
                                 "Line name %s wasn't expected" % planned_line_name)
+
+            # verify that planned line names are unique...this capability isn't designed /
+            # shouldn't be used to create indistinguishable-but-identically-named lines
+            self.assertEqual(len(unique_planned_line_names), len(naming_results.line_names),
+                             'Expected line names to be unique, but they werent')
 
             print('Naming results')
             pprint(vars(naming_results))
@@ -226,6 +307,8 @@ class CombinatorialCreationTests(TestCase):
         print(_SEPARATOR)
         print('Testing line/assay creation')
         print(_SEPARATOR)
+
+        all_creation_results = []
 
         for index, inputs in enumerate(combinatorial_inputs):
             print('Combinatorial Inputs %d' % (index + 1))
@@ -285,11 +368,32 @@ class CombinatorialCreationTests(TestCase):
                         print('\t\tAssay %s' % assay.name)
                         self.assertEquals(assay.name, planned_assay_name)
 
-         # TODO: test resulting assay metadata. Probably sufficient for now to do this in the UI,
-         # since it's likely to be noticed if it doesn't work as expected
+            # if provided by the test code, verify that assay/line metadata match our expectations.
+            # above tests verify the naming only, which is generally a result of the metadata,
+            # but best to directly verify the metadata as well. However, the metadata can be a lot
+            # of information to encode, so likely that not all tests will include it.
+            if expected_line_metadata:
+                for line in creation_results.lines_created:
+                    expected_metadata = expected_line_metadata.get(line.name)
+                    self.assertEqual(expected_metadata, line.meta_store)
+
+            if expected_assay_metadata:
+                for line_name, protocol_to_assay in \
+                        creation_results.line_to_protocols_to_assays_list.items():
+                    for protocol, assays_list in protocol_to_assay.items():
+                        for assay in assays_list:
+                            expected_metadata = expected_assay_metadata[line_name][protocol][
+                                assay.name]
+                            self.assertEqual(expected_metadata, assay.meta_store)
+
+        # for future tests that may want access to creation results, (e.g. to spot check large
+        # assay metadata sets instead of exhaustively specifying), return them
+        return all_creation_results
 
     def _test_combinatorial_json_creation(self, study, json_input, expected_line_names,
-                                          expected_assay_suffixes, strains_by_pk):
+                                          expected_assay_suffixes, strains_by_pk,
+                                          expected_line_metadata=None,
+                                          expected_assay_metadata=None):
 
         """ A helper/workhorse method for testing combinatorial line/assay creation. """
 
@@ -333,7 +437,8 @@ class CombinatorialCreationTests(TestCase):
         self._test_combinatorial_creation(
                 study, combinatorial_inputs, expected_line_names,
                 expected_assay_suffixes, strains_by_pk, protocols_by_pk,
-                line_metadata_types, assay_metadata_types)
+                line_metadata_types, assay_metadata_types, expected_line_metadata,
+                expected_assay_metadata)
 
     def _test_assay_names(self, line_name, naming_results, protocol_pk, expected_suffixes,
                           protocols_by_pk):
@@ -407,13 +512,17 @@ class CombinatorialCreationTests(TestCase):
             'combinatorial_strain_id_groups': [strain.pk],
             # 'combinatorial_line_metadata': {},
             'common_line_metadata': {
-                str(self.media_metadata.pk): ['LB'],  # json only supports string keys
+                str(self.media_metadata.pk): 'LB',  # json only supports string keys
             }
         }
 
         expected_line_names = ['181-aceF-R1', '181-aceF-R2', '181-aceF-R3']
         expected_assay_suffixes = {}
 
+        expected_line_metadata = {line_name:{str(self.media_metadata.pk): 'LB'} for line_name in
+                                  expected_line_names}
+
         self._test_combinatorial_json_creation(study, test_input, expected_line_names,
-                                               expected_assay_suffixes, strains_by_pk)
+                                               expected_assay_suffixes, strains_by_pk,
+                                               expected_line_metadata)
 
