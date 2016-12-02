@@ -15,8 +15,7 @@ ALPHANUM_REGEX = '[0-9a-fA-F]'
 
 DOCKER_HOST_ENV_VARIABLE = 'DOCKER_HOST'
 
-# for best UUID results, use UUID(string) in a try/catch. TODO: confirm whether try/catch is
-# significantly slower, then delete this if possible.
+# WARNING: for best UUID results, prefer using UUID(string) initializer in a try/catch when possible
 TYPICAL_UUID_REGEX = (
     r'%(alphanum)s8}\-%(alphanum)s{4}\-%(alphanum)s{4}\-%(alphanum)s{4}\-%(alphanum)s{12}' % {
         'alphanum': ALPHANUM_REGEX})
@@ -27,6 +26,14 @@ PK_OR_TYPICAL_UUID_REGEX = r'(?:\d+)|%(uuid_regex)s' % {
 
 TYPICAL_UUID_PATTERN = re.compile(TYPICAL_UUID_REGEX, re.UNICODE)
 PK_OR_TYPICAL_UUID_PATTERN = re.compile(PK_OR_TYPICAL_UUID_REGEX, re.UNICODE)
+
+# WARNING: for best results, always refer to ICE parts by UUID when possible rather than by part
+# number, which isn't guaranteed to be unique across deployments. Sometimes it will be
+# necessary to use part numbers for simplicity in user input, or this pattern to test the
+# format of user input (e.g. in URLs). This pattern was exhaustively
+# tested against existing ICE entries in JBEI's private ICE instance on 3/31/16.
+TYPICAL_JBEI_ICE_PART_NUMBER_REGEX = r'\s*([A-Z]+_[A-Z]?\d{4,6}[A-Z]?)\s*'
+TYPICAL_JBEI_ICE_PART_NUMBER_PATTERN = re.compile(TYPICAL_JBEI_ICE_PART_NUMBER_REGEX, re.IGNORECASE)
 
 # colors to help user prompts stand out in the mess of (helpful, but overwhelming) output from this
 # script. See http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
