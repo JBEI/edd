@@ -78,12 +78,12 @@
             if (val === 'meta') {
                 auto = EDD_auto.create_autocomplete(auto);
                 auto.next().attr('name', 'meta' + colId);
-                EDD_auto.setup_field_autocomplete(auto, 'MetadataType');
+                EDDAuto.BaseAuto.createFromElements(auto, 'MetadataType');
                 auto.focus();
             } else if (val === 'avg') {
                 auto = EDD_auto.create_autocomplete(auto);
                 auto.next().attr('name', 'type' + colId);
-                EDD_auto.setup_field_autocomplete(auto, 'Phosphor');
+                EDDAuto.BaseAuto.createFromElements(auto, 'Phosphor');
                 auto.focus().toggleClass('autocomp_signal', val === 'avg');
             } else if (val === 'std' || val === 'cv') {
                 auto = $('<select>').addClass('column_std_disam')
@@ -187,7 +187,7 @@
         });
         // set up study selection input
         _auto = $('#id_study_0');
-        EDD_auto.setup_field_autocomplete(_auto, 'StudyWrite');
+        EDDAuto.BaseAuto.createFromElements(_auto, 'StudyWritable');
         _auto.on('mcautocompleteselect', function (ev, ui) {
             ui.item && fetchStudyInfo(ui.item.id);
             _auto.blur();

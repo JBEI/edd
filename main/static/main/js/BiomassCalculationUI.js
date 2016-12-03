@@ -234,8 +234,10 @@ var BiomassCalculationUI = (function () {
                 speciesColumn = table.addColumn();
                 speciesColumn.innerHTML = species.sbmlSpeciesName;
                 metaboliteColumn = table.addColumn();
-                autoComp = EDD_auto.create_autocomplete(metaboliteColumn);
-                autoComp.addClass('autocomp_metabol');
+                autoComp = new EDDAuto.Metabolite({
+                    container: $(metaboliteColumn),
+                });
+                autoComp.visibleInput.addClass('autocomp_metabol');
                 inputs.push(autoComp);
             });
             _this._dialogBox.clearContents();
@@ -249,9 +251,6 @@ var BiomassCalculationUI = (function () {
             okButton.appendChild(document.createTextNode('OK'));
             $(okButton).click(function () { return _this._onFinishedBiomassSpeciesEntry(speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback); });
             _this._dialogBox.addElement(okButton);
-            inputs.forEach(function (input) {
-                EDD_auto.setup_field_autocomplete(input, 'Metabolite', EDDData.MetaboliteTypes || {});
-            });
         }, function (error) {
             _this._dialogBox.showMessage(error, function () { return callback.call({}, error); });
         });
@@ -260,7 +259,7 @@ var BiomassCalculationUI = (function () {
     BiomassCalculationUI.prototype._onFinishedBiomassSpeciesEntry = function (speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback) {
         var _this = this;
         // Are the inputs all filled in?
-        var numEmpty = inputs.filter(function (input) { return input.val() === ''; }).length;
+        var numEmpty = inputs.filter(function (input) { return input.visibleInput.val() === ''; }).length;
         if ($(errorStringElement).css('visibility') === 'hidden') {
             // Show them an error message, but next time they click OK, just do the biomass
             // calculation anyway.
@@ -277,7 +276,7 @@ var BiomassCalculationUI = (function () {
         var matches = {};
         inputs.forEach(function (input, i) {
             var spName = speciesList[i].sbmlSpeciesName, id, met;
-            id = input.next('input[type=hidden]').val();
+            id = input.val();
             met = EDDData.MetaboliteTypes[id] || {};
             matches[spName] = met.name || '';
         });

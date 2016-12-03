@@ -101,7 +101,7 @@ def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW):
 
 class StudyCreateView(generic.edit.CreateView):
     """
-    View for request to create a study, and the index page.
+    View for request to create a study.
     """
     form_class = CreateStudyForm
     model = Study
@@ -129,7 +129,11 @@ class StudyCreateView(generic.edit.CreateView):
         return reverse('main:detail', kwargs={'slug': self.object.slug})
 
 
-class StudyIndexView(StudyCreateView):
+class StudyIndexView(generic.list.ListView):
+    """
+    View for the the index page.
+    """
+    model = Study
     template_name = 'main/index.html'
 
     def get_context_data(self, **kwargs):
@@ -143,25 +147,21 @@ class StudyIndexView(StudyCreateView):
         latest = map(lambda pk: latest_by_pk.get(pk, None), lvs)
         # filter out the Nones
         context['latest_viewed_studies'] = filter(bool, latest)
+        context['can_create'] = Study.user_can_create(self.request.user)
         return context
 
 
-class StudyDetailView(generic.DetailView):
+class StudyDetailBaseView(generic.DetailView):
     """ Study details page, displays line/assay data. """
     model = Study
-    template_name = 'main/detail.html'
+    template_name = 'main/overview.html'
 
     def get_context_data(self, **kwargs):
-        context = super(StudyDetailView, self).get_context_data(**kwargs)
+        context = super(StudyDetailBaseView, self).get_context_data(**kwargs)
         instance = self.get_object()
         lvs = redis.LatestViewedStudies(self.request.user)
         lvs.viewed_study(instance)
-        context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
-        context['new_assay'] = AssayForm(prefix='assay')
-        context['new_attach'] = CreateAttachmentForm()
-        context['new_comment'] = CreateCommentForm()
-        context['new_line'] = LineForm(prefix='line')
-        context['new_measurement'] = MeasurementForm(prefix='measurement')
+        # TODO: Replace 'self.get_object()' with 'instance'?
         context['writable'] = self.get_object().user_can_write(self.request.user)
         return context
 
@@ -171,17 +171,110 @@ class StudyDetailView(generic.DetailView):
         if hasattr(self, '_detail_object') and queryset is None:
             return self._detail_object
         # call parents
-        obj = super(StudyDetailView, self).get_object(queryset)
+        obj = super(StudyDetailBaseView, self).get_object(queryset)
         # save parents result if no filtering queryset
         if queryset is None:
             self._detail_object = obj
         return obj
 
     def get_queryset(self):
-        qs = super(StudyDetailView, self).get_queryset()
+        qs = super(StudyDetailBaseView, self).get_queryset()
         if self.request.user.is_superuser:
             return qs
         return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
+    def handle_unknown(self, request, context, *args, **kwargs):
+        messages.error(
+            request, 'Unknown action, or you do not have permission to modify this study.'
+        )
+        return False
+
+
+class StudyOverviewView(StudyDetailBaseView):
+    """ Study overview page, displays study name, description, comments, attachments, permissions. """
+    template_name = 'main/overview.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(StudyOverviewView, self).get_context_data(**kwargs)
+        instance = self.get_object()
+        context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
+        context['new_attach'] = CreateAttachmentForm()
+        context['new_comment'] = CreateCommentForm()
+        return context
+
+    def handle_attach(self, request, context, *args, **kwargs):
+        form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
+        if form.is_valid():
+            form.save()
+            return True
+        else:
+            context['new_attach'] = form
+        return False
+
+    def handle_comment(self, request, context, *args, **kwargs):
+        form = CreateCommentForm(request.POST, edd_object=self.get_object())
+        if form.is_valid():
+            form.save()
+            return True
+        else:
+            context['new_comment'] = form
+        return False
+
+    def handle_update(self, request, context, *args, **kwargs):
+        study = self.get_object()
+        form = CreateStudyForm(request.POST or None, instance=study, prefix='study')
+        if form.is_valid():
+            self.object = form.save()  # make sure we're updating the view object
+            return True
+        return False
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        action = request.POST.get('action', None)
+        context = self.get_context_data(object=self.object, action=action, request=request)
+        can_write = self.object.user_can_write(request.user)
+        # actions that may not require write permissions
+        action_lookup = {
+            'comment': self.handle_comment,
+        }
+        # actions that require write permissions
+        writable_lookup = {
+            'attach': self.handle_attach,
+            'update': self.handle_update,
+        }
+        if can_write:
+            action_lookup.update(writable_lookup)
+        # find appropriate handler function for the submitted action
+        view_or_valid = action_lookup.get(action, self.handle_unknown)(
+            request, context, *args, **kwargs
+        )
+        if type(view_or_valid) == bool:
+            # boolean means a response to same page, with flag noting whether form was valid
+            return self.post_response(request, context, view_or_valid)
+        elif isinstance(view_or_valid, HttpResponse):
+            # got a response, directly return
+            return view_or_valid
+        else:
+            # otherwise got a view function, call it
+            return view_or_valid(request, *args, **kwargs)
+
+    def post_response(self, request, context, form_valid):
+        if form_valid:
+            study_modified.send(sender=self.__class__, study=self.object)
+            return HttpResponseRedirect(reverse('main:overview', kwargs={'pk': self.object.pk}))
+        return self.render_to_response(context)
+
+
+class StudyDetailView(StudyDetailBaseView):
+    """ Study details page, displays line/assay data. """
+    template_name = 'main/detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(StudyDetailView, self).get_context_data(**kwargs)
+        instance = self.get_object()
+        context['new_assay'] = AssayForm(prefix='assay')
+        context['new_line'] = LineForm(prefix='line')
+        context['new_measurement'] = MeasurementForm(prefix='measurement')
+        return context
 
     def handle_assay(self, request, context, *args, **kwargs):
         assay_id = request.POST.get('assay-assay_id', None)
@@ -245,15 +338,6 @@ class StudyDetailView(generic.DetailView):
             })
         return True
 
-    def handle_attach(self, request, context, *args, **kwargs):
-        form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
-        if form.is_valid():
-            form.save()
-            return True
-        else:
-            context['new_attach'] = form
-        return False
-
     def handle_clone(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
@@ -274,15 +358,6 @@ class StudyDetailView(generic.DetailView):
             'total': len(ids),
             })
         return True
-
-    def handle_comment(self, request, context, *args, **kwargs):
-        form = CreateCommentForm(request.POST, edd_object=self.get_object())
-        if form.is_valid():
-            form.save()
-            return True
-        else:
-            context['new_comment'] = form
-        return False
 
     def handle_disable(self, request):
         ids = request.POST.getlist('lineId', [])
@@ -484,20 +559,6 @@ class StudyDetailView(generic.DetailView):
             return self.handle_measurement_edit_response(request, lines, measures)
         return self.post_response(request, context, True)
 
-    def handle_unknown(self, request, context, *args, **kwargs):
-        messages.error(
-            request, 'Unknown action, or you do not have permission to modify this study.'
-        )
-        return False
-
-    def handle_update(self, request, context, *args, **kwargs):
-        study = self.get_object()
-        form = CreateStudyForm(request.POST or None, instance=study, prefix='study')
-        if form.is_valid():
-            self.object = form.save()  # make sure we're updating the view object
-            return True
-        return False
-
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         action = request.POST.get('action', None)
@@ -506,18 +567,15 @@ class StudyDetailView(generic.DetailView):
         # actions that may not require write permissions
         action_lookup = {
             'assay_action': self.handle_assay_action,
-            'comment': self.handle_comment,
             'line_action': self.handle_line_action,
         }
         # actions that require write permissions
         writable_lookup = {
             'assay': self.handle_assay,
-            'attach': self.handle_attach,
             'clone': self.handle_clone,
             'group': self.handle_group,
             'line': self.handle_line,
             'measurement': self.handle_measurement,
-            'update': self.handle_update,
         }
         if can_write:
             action_lookup.update(writable_lookup)
@@ -1336,7 +1394,7 @@ meta_pattern = re.compile(r'(\w*)MetadataType$')
 # /search
 def search(request):
     """ Naive implementation of model-independent server-side autocomplete backend,
-        paired with autocomplete2.js on the client side. Call out to Solr or ICE where
+        paired with EDDAutocomplete.js on the client side. Call out to Solr or ICE where
         needed. """
     return model_search(request, request.GET["model"])
 
@@ -1348,8 +1406,8 @@ AUTOCOMPLETE_VIEW_LOOKUP = {
     'MetaboliteExchange': autocomplete.search_sbml_exchange,
     'MetaboliteSpecies': autocomplete.search_sbml_species,
     'Strain': autocomplete.search_strain,
-    'StudyWrite': autocomplete.search_study_writable,
-    'StudyLines': autocomplete.search_study_lines,
+    'StudyWritable': autocomplete.search_study_writable,
+    'StudyLine': autocomplete.search_study_lines,
     'User': autocomplete.search_user,
 }
 

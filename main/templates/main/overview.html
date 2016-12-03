@@ -1,0 +1,209 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+
+{% block js_css %}
+    {{ block.super }}
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
+    <script type="text/javascript">
+
+        EDDData.currentStudyID = {{ study.id }};
+        EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
+        EDDData.Studies = EDDData.Studies || {};
+        EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
+
+    </script>
+    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/EDDEditableElement.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Overview.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
+{% endblock js_css %}
+
+
+{% block head_title %}
+    {{ study.name }} - Experiment Data Depot
+{% endblock head_title %}
+
+
+{% block body_title %}
+    <h1>{{ study.name }}</h1>
+{% endblock body_title %}
+
+
+{% block content %}
+
+<div>Overview</div>
+
+<form action="" class="edd-form" enctype="multipart/form-data" method="POST">
+    {% csrf_token %}
+
+    {{ edit_study.non_field_errors }}
+
+    <table class="formTable">
+        <tr>
+            <td class="form-label">
+                <label for="{{ edit_study.name.id_for_label }}">Name:</label>
+                {{ edit_study.name.errors }}
+            </td>
+            <td>
+                <div class="editable-field inactive" id="editable-study-name">
+                    {{ study.name }}
+                    {{ edit_study.name }}
+                </div>
+            </td>
+            <td class="form-label">
+                <label for="{{ edit_study.contact.id_for_label }}">Contact:</label>
+                {{ edit_study.contact.errors }}
+            </td>
+            <td>
+                <div class="editable-field inactive" id="editable-study-contact">
+                    {% if study.contact %}
+                        {% if writable %}
+                            {{ study.contact.first_name }} {{ study.contact.last_name }}
+                        {% else %}
+                            <a href="mailto:{{ study.contact.email }}">
+                                {{ study.contact.first_name }} {{ study.contact.last_name }}
+                            </a>
+                        {% endif %}
+                    {% elif study.contact_extra %}
+                        {{ study.contact_extra }}
+                    {% else %}
+                        (None)
+                    {% endif %}
+                    {{ edit_study.contact }}
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td class="form-label">
+                <label for="{{ edit_study.description.id_for_label }}">Description:</label>
+                {{ edit_study.description.errors }}
+            </td>
+            <td>
+                <div class="editable-field inactive" id="editable-study-description">
+                    {% firstof study.description "<i>(None)</i>"|safe %}
+                    {{ edit_study.description }}
+                </div>
+            </td>
+            <td>
+                <div>
+                    Next step:
+                </div>
+            </td>
+            <td>
+                <div>
+                    Next step button here
+                </div>
+            </td>
+        </tr>
+    </table>
+</form>
+
+<div class="pageSectionTabs">
+    {% if writable %}
+        <div class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %} absoverlay">Permissions</div>
+        <div class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %}"
+            for="permissionsSection">Permissions</div>
+    {% endif %}
+    <div class="{% if new_attach.errors %}active{% endif %} absoverlay">Attachments ({{ study.attachments|length }})</div>
+    <div class="{% if new_attach.errors %}active{% endif %}"
+        for="attachmentsSection">Attachments ({{ study.attachments|length }})</div>
+    <div class="{% if new_comment.errors %}active{% endif %} absoverlay">Comments ({{ study.comment_list|length }})</div>
+    <div class="{% if new_comment.errors %}active{% endif %}"
+        for="commentsSection">Comments ({{ study.comment_list|length }})</div>
+</div>
+
+{% if writable %}
+    <div class="pageSection pageSectionTabContent {% if new_attach.errors or new_comment.errors %}off{% endif %}" id="permissionsSection">
+        <div class="sectionContent">
+            {% with perms=study.get_combined_permission %}
+                {% if perms %}
+                <table cellpadding="0" cellspacing="0" class="dataTable sortable">
+                    <tr class="columnLabels">
+                        <th class="sortheader smaller">Who</th>
+                        <th class="sortheader smaller">Level</th>
+                    </tr>
+                    {% for perm in perms %}
+                    <tr class="stripeRow{% cycle 'A' 'B' %}">
+                        <td>{{ perm.get_who_label }}</td>
+                        <td>{{ perm.get_type_label }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+            {% endwith %}
+            <div class="sectionActions">
+                <form method="POST" enctype="multipart/form-data" class="permissions edd-form off" action="">
+                    {% csrf_token %}
+                    <span id="permission_user_box">
+                    <label for="permission_user">
+                        <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
+                        <span>User</span>
+                    </label>
+                    </span>
+                    <span id="permission_group_box">
+                    <label for="permission_group">
+                        <input type="radio" id="permission_group" name="class" value="Group"/>
+                        <span>Group</span>
+                    </label>
+                    </span>
+                    <span id="permission_public_box">
+                    <label for="permission_public">
+                        <input type="radio" id="permission_public" name="class" value="Public"/>
+                        <span>Public</span>
+                    </label>
+                    </span>
+                    <select name="type">
+                        <option value="N">None</option>
+                        <option value="R">Read</option>
+                        <option value="W">Write</option>
+                    </select>
+                    <button id="set_permission">Set Permission</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<div class="pageSection pageSectionTabContent {% if not new_attach.errors %}off{% endif %}" id="attachmentsSection">
+    <div class="sectionContent">
+        {% with attachments=study.attachments %}
+            {% include "main/include_attachments.html" %}
+        {% endwith %}
+        {% if writable %}
+        <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
+            {% csrf_token %}
+            {{ new_attach.as_p }}
+            <p><button type="submit" name="action" value="attach">Attach File</button></p>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="pageSection pageSectionTabContent {% if not new_comment.errors %}off{% endif %}" id="commentsSection">
+    <div class="sectionContent">
+        <ol class="comment-list">
+            {% for comment in study.comment_list reversed %}
+                <li>
+                    <span>{{ comment.created.full_name }} at {{ comment.created.format_timestamp }}</span>
+                    <p>{{ comment.body }}</p>
+                </li>
+            {% endfor %}
+        </ol>
+        <div class="sectionActions">
+            <form method="POST" class="comments edd-form" action="">
+                {% csrf_token %}
+                {{ new_comment.as_p }}
+                <p><button type="submit" name="action" value="comment">Comment</button></p>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

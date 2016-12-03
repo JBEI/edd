@@ -419,7 +419,7 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
         ]
 
     def get_merge_autowidget(self):
-        opt = {'text_attr': {'class': 'autocomp autocomp_metabol'}}
+        opt = {'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Metabolite'}}
         return MeasurementTypeAutocompleteWidget(opt=opt)
 
     def get_queryset(self, request):
@@ -475,7 +475,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
         ]
 
     def get_merge_autowidget(self):
-        opt = {'text_attr': {'class': 'autocomp autocomp_protein'}}
+        opt = {'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Protein'}}
         return MeasurementTypeAutocompleteWidget(opt=opt)
 
     def get_queryset(self, request):
@@ -507,7 +507,7 @@ class GeneAdmin(MeasurementTypeAdmin):
         ]
 
     def get_merge_autowidget(self):
-        opt = {'text_attr': {'class': 'autocomp autocomp_gene'}}
+        opt = {'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Gene'}}
         return MeasurementTypeAutocompleteWidget(opt=opt)
 
 
@@ -526,7 +526,7 @@ class PhosphorAdmin(MeasurementTypeAdmin):
         ]
 
     def get_merge_autowidget(self):
-        opt = {'text_attr': {'class': 'autocomp autocomp_phosphor'}}
+        opt = {'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Phosphor'}}
         return MeasurementTypeAutocompleteWidget(opt=opt)
 
 

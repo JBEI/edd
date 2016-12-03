@@ -39,7 +39,7 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
         js = (
             'main/js/lib/jquery/jquery.js',
             'main/js/lib/jquery-ui/jquery-ui.min.js',
-            'main/js/autocomplete2.js',
+            'main/js/EDDAutocomplete.js',
             )
         css = {
             'all': (
@@ -127,14 +127,14 @@ class MultiAutocompleteWidget(AutocompleteWidget):
 class UserAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Users """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp autocomp_user', }, })
+        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'User'}, })
         super(UserAutocompleteWidget, self).__init__(attrs=attrs, model=User, opt=opt)
 
 
 class GroupAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Groups """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp autocomp_group', }, })
+        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Group'}, })
         super(GroupAutocompleteWidget, self).__init__(attrs=attrs, model=Group, opt=opt)
 
 
@@ -206,7 +206,7 @@ class RegistryValidator(object):
 class RegistryAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Registry strains """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp autocomp_reg', }, })
+        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Registry'}, })
         super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
 
     def decompress(self, value):
@@ -229,7 +229,7 @@ class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompl
 class CarbonSourceAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for carbon sources """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp autocomp_carbon', }, })
+        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'CarbonSource'}, })
         super(CarbonSourceAutocompleteWidget, self).__init__(
             attrs=attrs, model=CarbonSource, opt=opt)
 
@@ -244,7 +244,7 @@ class MultiCarbonSourceAutocompleteWidget(MultiAutocompleteWidget, CarbonSourceA
 class MetadataTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp autocomp_type', }, })
+        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'MetadataType'}, })
         super(MetadataTypeAutocompleteWidget, self).__init__(
             attrs=attrs, model=MetadataType, opt=opt)
 
@@ -253,7 +253,7 @@ class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
     def __init__(self, attrs=None, opt={}):
         """ Set opt with {'text_attr': {'class': 'autocomp autocomp_XXX'}} to override. """
-        my_opt = {'text_attr': {'class': 'autocomp autocomp_measure', }, }
+        my_opt = {'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'MeasurementType'}, }
         my_opt.update(**opt)
         super(MeasurementTypeAutocompleteWidget, self).__init__(
             attrs=attrs, model=MeasurementType, opt=my_opt,
@@ -304,7 +304,7 @@ class SbmlInfoAutocompleteWidget(AutocompleteWidget):
 class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
     """ Autocomplete widget for Exchanges in an SBMLTemplate """
     def __init__(self, template, attrs=None, opt={}):
-        opt.update(text_attr={'class': 'autocomp autocomp_sbml_r'})
+        opt.update(text_attr={'class': 'autocomp', 'eddautocompletetype': 'MetaboliteExchange'})
         super(SbmlExchangeAutocompleteWidget, self).__init__(
             template=template, attrs=attrs, model=MetaboliteExchange, opt=opt
         )
@@ -317,7 +317,7 @@ class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
 class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
     """ Autocomplete widget for Species in an SBMLTemplate """
     def __init__(self, template, attrs=None, opt={}):
-        opt.update(text_attr={'class': 'autocomp autocomp_sbml_s'})
+        opt.update(text_attr={'class': 'autocomp', 'eddautocompletetype': 'MetaboliteSpecies'})
         super(SbmlSpeciesAutocompleteWidget, self).__init__(
             template=template, attrs=attrs, model=MetaboliteSpecies, opt=opt
         )
@@ -353,7 +353,7 @@ class CreateStudyForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
-        self._user = kwargs.pop('user', None)
+        self._user = kwargs.pop('user', None)   # Q: Why are we assigning this to self?
         super(CreateStudyForm, self).__init__(*args, **kwargs)
         # self.fields exists after super.__init__()
         if self._user:

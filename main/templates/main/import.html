@@ -36,7 +36,8 @@
   EDDData.currentStudyID = {{ study.id }};
 
   </script>
-  <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
+  <script type="text/javascript" src="/static/main/js/EDDAutocomplete.js"></script>
+  <script type="text/javascript" src="/static/main/js/EDDEditableElement.js"></script>
   <link rel="stylesheet" type="text/css" href="{% static 'main/style.css' %}">
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
@@ -498,14 +499,17 @@
           <tr>
             <td>
               <input class="autocomp" type="text" size="20" name="masterMComp" id="masterMComp"
+                  eddautocompletetype="MeasurementCompartment"
                   value="" style="margin-right: 2px;">
               <input type="hidden" id="masterMCompValue" name="masterMCompValue">
             </td><td>
               <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
+                  eddautocompletetype="GenericOrMetabolite"
                   value="" style="margin-right: 2px;">
               <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
             </td><td>
               <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
+                  eddautocompletetype="MeasurementUnit"
                   value="">
               <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
             </td>
@@ -521,7 +525,9 @@
         <tr>
           <td>
             <label for="masterUnits">
-              <input type="text" size="15" name="masterUnits" id="masterUnits" value="" />
+              <input type="text" size="15" name="masterUnits" id="masterUnits"
+                  eddautocompletetype="MeasurementUnit"
+                  value="" />
               <input type="hidden" name="masterUnitsValue" />
             </label>
           </td>

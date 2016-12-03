@@ -399,20 +399,29 @@ table.dataTable {
 }
 table.dataTable tr.header > th {
     text-align:left;
-    vertical-align: top;
     color:rgb(12, 69, 137);
     font-size:14px;
     height:19px;
     font-weight:bold;
-    padding:1px 2px 1px 6px;
+    padding:4px 4px 1px 6px;
+    background: linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
+    background: -o-linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
+    background: -moz-linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
+    background: -webkit-linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
+    background: -ms-linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
 }
-tr.columnLabels > th {
-    padding: 10px;
+table.dataTable tr.columnLabels > th {
+    padding: 4px 6px 4px 6px;
     vertical-align:top;
-    font-size:14px;
+    font-size:12px;
     color:rgb(12,69,137);
     font-weight:normal;
-    border: 1px solid lightgray;
+    border-width:0px;
+    background: linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
+    background: -o-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
+    background: -moz-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
+    background: -webkit-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
+    background: -ms-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -460,39 +469,39 @@ tr.columnLabels > th.sortwait > div:hover {
     background-color:rgba(108,164,233,0.6);
 }
 /* Data table regular cells */
-tr > td {
-    padding: 5px 27px 11px 8px;
+table.dataTable tr > td {
+    padding:4px 4px 4px 8px;
     margin:0px;
     font-size:12px;
     font-family: Helvetica, sans-serif;
     vertical-align:top;
 }
-tr > td input[type="checkbox"] {
+table.dataTable tr > td input[type="checkbox"] {
     padding:0px;
     margin:0px 5px 0px 0px;
 }
-tr > td input[type="text"] {
+table.dataTable tr > td input[type="text"] {
     padding:0px;
     margin:1px 0px 0px 0px;
 }
-tr > td ul {
+table.dataTable tr > td ul {
     list-style-type:none;
     padding:0px;
     margin:0px;
 }
-tr > td ul > li {
+table.dataTable tr > td ul > li {
     padding:2px 0px 0px 0px;
     margin:0px;
 }
-tr > td ul > li:first-child {
+table.dataTable tr > td ul > li:first-child {
     padding:0px 0px 0px 0px;
 }
-tr > td span {
+table.dataTable tr > td span {
     margin:0px;
     padding:3px 3px 0px 0px;
     white-space: nowrap;
 }
-tr > td p {
+table.dataTable tr > td p {
     margin:3px 3px 0px 0px;
     padding:0px;
 }
@@ -789,31 +798,32 @@ div.pageSectionTabs {
 div.pageSectionTabs > div {
     display:inline-block;
     color:#6c6c6c;
-    font-size:13px;
-    font-weight:bold;
+    font-size:14px;
     margin:0px;
+    background-color: #ffffff;
     border-style:solid;
-    border-color:#a0a0a0;
-    border-radius: 6px 6px 0px 0px;
-    -webkit-border-radius: 6px 6px 0px 0px;
-    -moz-border-radius: 6px 6px 0px 0px;
-    padding-top:0px;
-    padding-left:7px;
-    padding-right:7px;
+    border-color:#d0d0d0;
+    border-radius: 8px 8px 0px 0px;
+    -webkit-border-radius: 8px 8px 0px 0px;
+    -moz-border-radius: 8px 8px 0px 0px;
+    padding-top:5px;
+    padding-left:10px;
+    padding-right:10px;
 }
 div.pageSectionTabs > div.active {
-    border-width:1px 1px 0px 1px;
-    padding-bottom:1px;
+    border-width:2px 2px 0px 2px;
+    padding-bottom:6px;
+    background: linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
+    background: -o-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
+    background: -moz-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
+    background: -webkit-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(255,255,255,1) 100%);
+    background: -ms-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
     z-index:4;
 }
-div.pageSectionTabs > div.inactive {
+div.pageSectionTabs > div:not(.active) {
     cursor: pointer;
-    border-width:1px;
-    padding-bottom:0px;
-}
-div.pageSectionTabs > div.inactive:hover {
-    background:none;    /* To cancel the gradient. */
-    background-color:#CECEFF;
+    border-width:1px 1px 0px 1px;
+    padding-bottom:5px;
 }
 
 
@@ -833,20 +843,18 @@ div.pageSectionTabs > div.inactive:hover {
      The "relative" element is also six pixels _narrower_ than the "absolute" element,
    which causes the "absolute" elements to overlap each other, making the layout of the tabs
    more cohesive.
-     Finally, the "active" tab is given a higher z-index, so its borders are always on top.
+     Finally, the "active" tab is given a higher z-index, so its borders are always on top. 
 */
 div.pageSectionTabs > div.absoverlay {
-    padding-top:1px;
+    padding-top:7px;
     position:absolute;
     padding-left:10px;
     padding-right:10px;
 }
 /* This overrides some of the settings in the pageSection style */
 div.pageSectionTabContent {
-    margin: 30px 40px 3px 20px;
-    border-radius: 0px 6px 6px 6px;
-    -webkit-border-radius: 0px 6px 6px 6px;
-    -moz-border-radius: 0px 6px 6px 6px;
+    margin:0px 8px 3px 8px;
+    border-width:2px 0px 0px 0px;
     z-index:0;
 }
 
@@ -954,17 +962,27 @@ td.popupcell ul.popupmenu {
 td.popupcell:hover ul.popupmenu {
     display: inline-block;
 }
+
+
 /* Tables for filling out forms */
 table.formTable {
-    margin:3px 0px 0px 3px;
+    margin:3px 3px 3px 3px;
     border:none;
-    font-size:12px;
+    font-size:16px;
 }
 table.formTable tr > td {
     text-align:left;
-    vertical-align:middle;
-    padding:0px 0px 3px 0px;
+    vertical-align:top;
+    padding:4px 6px 4px 4px;
 }
+table.formTable tr > td.form-label {
+    word-break: keep-all;
+    color:#a0a0a0;
+    font-size:15px;
+    padding-top:7px;
+    padding-left:16px;
+}
+
 table.formTable tr > td input {
     padding:0px;
     margin:0px 9px 0px 0px;
@@ -1166,23 +1184,12 @@ div.graphClickWidget {
 
 
 /* Classes for editable fields */
-div.form-label {
-    word-break: break-word;
-    word-wrap: break-word;
-    display: inline-block;
-    max-width: 100%;
-    position: relative;
-    vertical-align: top;
-    padding: 2px 4px 2px 2px;
-}
 div.form-value {
-    word-break: break-word;
+    word-break: break-all;
     word-wrap: break-word;
     display: inline-block;
-    max-width: 100%;
-    position: relative;
+/*    max-width: 100%; */
     white-space:pre-wrap;
-    vertical-align: top;
 }
 div.editable-field {
     -moz-box-sizing: border-box;
@@ -1191,10 +1198,10 @@ div.editable-field {
     border-radius: 2.01px;
     cursor: text;
     display: inline-block;
-    max-width: 100%;
+/*    max-width: 100%; */
     position: relative;
     vertical-align: top;
-    word-break: break-word;
+    word-break: break-all;
 }
 div.editable-field.inactive {
     padding-right: 27px;
@@ -1204,6 +1211,9 @@ div.editable-field.inactive {
     -webkit-transition: box-shadow 150ms ease-in 0ms;
     transition: box-shadow 150ms ease-in 0ms;
     box-shadow: 0 0 0 0 transparent;
+}
+div.editable-field.inactive input, div.editable-field.inactive textarea {
+    display:none;
 }
 div.editable-field:hover, .editable-field.saving {
     box-shadow: 0 0 0 1px rgba(108,164,233,0.6);
