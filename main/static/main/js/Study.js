@@ -1088,11 +1088,12 @@ var StudyD;
     StudyD.prepareIt = prepareIt;
     function preparePermissions() {
         var user, group;
-        // TODO the DOM traversing and filtering here is very hacky, do it better later
-        user = EDD_auto.create_autocomplete($('#permission_user_box'));
-        group = EDD_auto.create_autocomplete($('#permission_group_box'));
-        EDD_auto.setup_field_autocomplete(user, 'User');
-        EDD_auto.setup_field_autocomplete(group, 'Group');
+        user = new EDDAuto.User({
+            container: $('#permission_user_box')
+        });
+        group = new EDDAuto.Group({
+            container: $('#permission_group_box')
+        });
         $('form.permissions')
             .on('change', ':radio', function (ev) {
             var radio = $(ev.target);
