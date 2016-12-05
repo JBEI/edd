@@ -42,7 +42,9 @@
       <li id="dataTab" role="presentation"><a href="/study/{{ study.slug }}/">Data</a></li>
     </ul>
 </div>
-
+<div style="text-align: right">
+        <button class="btn btn-primary btn-lg">Next step: Add lines</button>
+    </div>
 <form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;">
     {% csrf_token %}
 
@@ -51,7 +53,7 @@
     <table class="formTable">
         <tr>
             <td class="form-label">
-                <label for="{{ edit_study.name.id_for_label }}">Name:</label>
+                <label for="{{ edit_study.name.id_for_label }}"></label>
                 {{ edit_study.name.errors }}
             </td>
             <td>
@@ -61,7 +63,7 @@
                 </div>
             </td>
             <td class="form-label">
-                <label for="{{ edit_study.contact.id_for_label }}">Contact:</label>
+                <label for="{{ edit_study.contact.id_for_label }}"></label>
                 {{ edit_study.contact.errors }}
             </td>
             <td>
@@ -77,7 +79,7 @@
                     {% elif study.contact_extra %}
                         {{ study.contact_extra }}
                     {% else %}
-                        (None)
+                        (Enter Description)
                     {% endif %}
                     {{ edit_study.contact }}
                 </div>
@@ -85,29 +87,18 @@
         </tr>
         <tr>
             <td class="form-label">
-                <label for="{{ edit_study.description.id_for_label }}">Description:</label>
+                <label for="{{ edit_study.description.id_for_label }}"></label>
                 {{ edit_study.description.errors }}
             </td>
             <td>
                 <div class="editable-field inactive" id="editable-study-description">
-                    {% firstof study.description "<i>(None)</i>"|safe %}
+                    {% firstof study.description "<i>(Enter Descrption)</i>"|safe %}
                     {{ edit_study.description }}
-                </div>
-            </td>
-            <td>
-                <div>
-                    Next step:
-                </div>
-            </td>
-            <td>
-                <div>
-                    Next step button here
                 </div>
             </td>
         </tr>
     </table>
 </form>
-
 <div class="pageSectionTabs">
     {% if writable %}
         <div class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %} absoverlay">Permissions</div>

@@ -74,7 +74,7 @@ function filteringSectionSlideDown(event) {
 //work around for generating worklist click handler
 function generateWorkList() {
     $('#line_worklist').click(function () {
-        $('select[name="export"]').val('worklist')
+        $('select[name="export"]').val('worklist');
         var test = $('button[value="line_action"]')[1];
         $(test).click();
     });
@@ -88,8 +88,10 @@ function showLines() {
         $('#dataTab').removeClass('active');
         $(this).addClass('active');
         $('#dataDisplay').css('display', 'none');
+        $('#graphFilter').css('display', 'none');
         $('#measurementMain').css('display', 'none');
         $('.line-action').css('display', 'block');
+        $('#assaysSection').css('display', 'none');
         // $('#addNewLine').css('display', 'block'); hiding this for now until we figure out where to add it
     });
 }
@@ -103,6 +105,7 @@ function showDataDiv() {
         $('#dataDisplay').css('display', 'block');
         $('#measurementMain').css('display', 'inline-block');
         $('.line-action').css('display', 'none');
+        $('#graphFilter').css('display', 'block');
         //$('#addNewLine').css('display', 'none') see above
     });
 }
@@ -111,7 +114,7 @@ function showDataDiv() {
 function showStudyGraph() {
     $('#studyGraph').click(function (event) {
         event.preventDefault();
-        // $('#assaysSection').prev().hide()
+        $('#assaysSection').prev().hide()
         $('#studyTable').removeClass('active');
         $(this).addClass('active');
         $('#overviewSection').css('display', 'block');
@@ -127,8 +130,7 @@ function showStudyTable() {
     });
     $('#studyTable').click(function (event) {
           event.preventDefault();
-          //StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
-          // $('#assaysSection').prev().show();
+          //$('#assaysSection').prev().show();
           $('#studyGraph').removeClass('active');
           $(this).addClass('active');
           $('#assaysSection').css('display', 'block');
