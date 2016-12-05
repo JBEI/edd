@@ -79,7 +79,7 @@ url(r'^study/search/$', login_required(views.study_search)),
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^study/(?P<pk>\d+)/lines',
         include(
-            [url(r'^$', login_required(views.StudyLineView.as_view()), name='line_by_pk', )] +
+            [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines_by_pk', )] +
             study_url_patterns
         )
     ),
@@ -89,7 +89,7 @@ url(r'^study/search/$', login_required(views.study_search)),
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^study/(?P<slug>[-\w]+)/lines',
         include(
-            [url(r'^$', login_required(views.StudyLineView.as_view()), name='line', )] +
+            [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines', )] +
             study_url_patterns
         )
     ),

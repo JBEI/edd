@@ -58,12 +58,14 @@
     </div>
 </div>
 
-<div id="assayMeasurementShow">
-    <ul class="nav nav-pills navbar-nav studyTabs">
-      <li class="overviewTab" role="presentation"><a href="/study/{{ study.slug }}/overview">Overview</a></li>
-      <li class="linesTab" role="presentation" class="active"><a href="/study/{{ study.slug }}/lines">Lines</a></li>
-      <li class="dataTab" role="presentation"><a href="/study/{{ study.slug }}">Data</a></li>
-    </ul>
+<div class="pageSectionTabs">
+    <span>
+        <a href="/study/{{ study.slug }}/overview">Overview</a>
+    </span><span class="active">
+        <a href="/study/{{ study.slug }}/lines">Lines</a>
+    </span><span>
+        <a href="/study/{{ study.slug }}/">Data</a>
+    </span>
 </div>
 
 {% if writable %}

@@ -264,12 +264,12 @@ class StudyOverviewView(StudyDetailBaseView):
         return self.render_to_response(context)
 
 
-class StudyLineView(StudyDetailBaseView):
+class StudyLinesView(StudyDetailBaseView):
     """ Study details displays line data. """
-    template_name = 'main/line.html'
+    template_name = 'main/lines.html'
 
     def get_context_data(self, **kwargs):
-        context = super(StudyLineView, self).get_context_data(**kwargs)
+        context = super(StudyLinesView, self).get_context_data(**kwargs)
         instance = self.get_object()
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_line'] = LineForm(prefix='line')
