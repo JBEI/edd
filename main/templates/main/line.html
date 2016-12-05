@@ -60,12 +60,12 @@
 
 <div id="assayMeasurementShow">
     <ul class="nav nav-pills navbar-nav studyTabs">
-      <li id="overviewTab" role="presentation"><a href="/study/{{ study.slug }}/overview">Overview</a></li>
-      <li id="linesTab" role="presentation" class="active"><a href="/study/{{ study.slug }}/lines">Lines</a></li>
-      <li id="dataTab" role="presentation"><a href="#">Data</a></li>
+      <li class="overviewTab" role="presentation"><a href="/study/{{ study.slug }}/overview">Overview</a></li>
+      <li class="linesTab" role="presentation" class="active"><a href="/study/{{ study.slug }}/lines">Lines</a></li>
+      <li class="dataTab" role="presentation"><a href="/study/{{ study.slug }}">Data</a></li>
     </ul>
 </div>
-    
+
 {% if writable %}
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
 

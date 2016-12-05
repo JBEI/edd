@@ -1154,14 +1154,17 @@ module StudyD {
                 });
 
                 //stop spinner
-                //show message if there are now lines in this study
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('.noLines').css('display', 'block');
-                    $('#chartType').hide();
+                    $('.dataTab').hide();
                     $('#loadingDiv').hide();
-                    $('#overviewSection').prepend("<div class='noData'>There are no lines in this study.</div>");
+                    $('#graphFilter').hide();
+                    $('#dataDisplay').hide();
                 } else {
-                  $('#chartType').show()
+                  $('#chartType').show();
+                  $('#graphFilter').show();
+                  $('#dataDisplay').show();
+                  $('.dataTab').show();
                 }
 
                 var spec;

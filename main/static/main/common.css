@@ -966,7 +966,7 @@ td.popupcell:hover ul.popupmenu {
 
 /* Tables for filling out forms */
 table.formTable {
-    margin:3px 3px 3px 3px;
+    margin:50px 3px 50px 3px;
     border:none;
     font-size:16px;
 }

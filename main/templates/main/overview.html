@@ -8,6 +8,8 @@
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <script type="text/javascript">
 
         EDDData.currentStudyID = {{ study.id }};
@@ -37,14 +39,18 @@
 
 <div id="assayMeasurementShow">
     <ul class="nav nav-pills navbar-nav studyTabs">
-      <li id="overviewTab" role="presentation" class="active"><a href="#">Overview</a></li>
-      <li id="linesTab" role="presentation"><a href="/study/{{ study.slug }}/">Lines</a></li>
-      <li id="dataTab" role="presentation"><a href="/study/{{ study.slug }}/">Data</a></li>
+      <li class="overviewTab" role="presentation" class="active"><a href="#">Overview</a></li>
+      <li class="linesTab" role="presentation"><a href="/study/{{ study.slug }}/lines">Lines</a></li>
+      <li class="dataTab" role="presentation"><a href="/study/{{ study.slug }}/">Data</a></li>
     </ul>
 </div>
-<div style="text-align: right">
-        <button class="btn btn-primary btn-lg">Next step: Add lines</button>
+
+<div class="btn-toolbar bare-header">
+    <div style="text-align: right;">
+        <a class="btn btn-primary btn-lg" href="/study/{{ study.slug }}/lines">Next Step: </br> Add Lines</a>
     </div>
+</div>
+
 <form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;">
     {% csrf_token %}
 
@@ -79,7 +85,7 @@
                     {% elif study.contact_extra %}
                         {{ study.contact_extra }}
                     {% else %}
-                        (Enter Description)
+                        <i>(Enter Contact)</i>
                     {% endif %}
                     {{ edit_study.contact }}
                 </div>
@@ -92,7 +98,7 @@
             </td>
             <td>
                 <div class="editable-field inactive" id="editable-study-description">
-                    {% firstof study.description "<i>(Enter Descrption)</i>"|safe %}
+                    {% firstof study.description "<i>(Enter Description)</i>"|safe %}
                     {{ edit_study.description }}
                 </div>
             </td>
@@ -135,24 +141,24 @@
             <div class="sectionActions">
                 <form method="POST" enctype="multipart/form-data" class="permissions edd-form off" action="">
                     {% csrf_token %}
-                    <span id="permission_user_box">
+                    <div id="permission_user_box">
                     <label for="permission_user">
                         <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
                         <span>User</span>
                     </label>
-                    </span>
-                    <span id="permission_group_box">
+                    </div>
+                    <div id="permission_group_box">
                     <label for="permission_group">
                         <input type="radio" id="permission_group" name="class" value="Group"/>
                         <span>Group</span>
                     </label>
-                    </span>
-                    <span id="permission_public_box">
+                    </div>
+                    <div id="permission_public_box">
                     <label for="permission_public">
                         <input type="radio" id="permission_public" name="class" value="Public"/>
-                        <span>Public</span>
+                        <span>Everyone</span>
                     </label>
-                    </span>
+                    </div>
                     <select name="type">
                         <option value="N">None</option>
                         <option value="R">Read</option>

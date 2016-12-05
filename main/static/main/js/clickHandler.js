@@ -7,8 +7,6 @@
      addNewLineModal();
      filteringSectionSlideDown();
      generateWorkList();
-     showLines();
-     showDataDiv();
      showStudyGraph();
      showStudyTable();
      whatIsALine();
@@ -77,36 +75,6 @@ function generateWorkList() {
         $('select[name="export"]').val('worklist');
         var test = $('button[value="line_action"]')[1];
         $(test).click();
-    });
-}
-
-//show hide divs clicking lines button
-function showLines() {
-    $('#linesTab').click(function (event) {
-        event.preventDefault();
-        $('#overviewTab').removeClass('active');
-        $('#dataTab').removeClass('active');
-        $(this).addClass('active');
-        $('#dataDisplay').css('display', 'none');
-        $('#graphFilter').css('display', 'none');
-        $('#measurementMain').css('display', 'none');
-        $('.line-action').css('display', 'block');
-        $('#assaysSection').css('display', 'none');
-        // $('#addNewLine').css('display', 'block'); hiding this for now until we figure out where to add it
-    });
-}
-//show hide divs clicking data button
-function showDataDiv() {
-    $('#dataTab').click(function (event) {
-        event.preventDefault();
-        $('#overviewTab').removeClass('active');
-        $('#linesTab').removeClass('active');
-        $(this).addClass('active');
-        $('#dataDisplay').css('display', 'block');
-        $('#measurementMain').css('display', 'inline-block');
-        $('.line-action').css('display', 'none');
-        $('#graphFilter').css('display', 'block');
-        //$('#addNewLine').css('display', 'none') see above
     });
 }
 
