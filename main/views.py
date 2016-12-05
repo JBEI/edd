@@ -629,7 +629,18 @@ class StudyDetailView(StudyDetailBaseView):
             return self.handle_measurement_edit_response(request, lines, measures)
         return self.post_response(request, context, True)
 
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        # redirect to overview page if there are no lines or assays
+        if self.object.line_set.count() == 0:
+            return HttpResponseRedirect(reverse('main:overview', kwargs={'slug': self.object.slug}))
+        # redirect to lines page if there are no assays
+        if Assay.objects.filter(line__study=self.object).count() == 0:
+            return HttpResponseRedirect(reverse('main:lines', kwargs={'slug': self.object.slug}))
+        return super(StudyDetailView, self).get(request, *args, **kwargs)
+
     def post(self, request, *args, **kwargs):
+
         self.object = self.get_object()
         action = request.POST.get('action', None)
         context = self.get_context_data(object=self.object, action=action, request=request)

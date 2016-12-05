@@ -144,7 +144,7 @@ module EDDEditable {
 
 
 		blankLabel(): string {
-			return '(not set)';
+			return '(Please enter value)';
 		}
 
 

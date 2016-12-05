@@ -42,6 +42,14 @@ module StudyOverview {
             return false;
         });
 
+        //show possible next steps div and hide assay graphs and table if there are no Assays
+        if (_.keys(EDDData.Lines).length === 0) {
+            $('#line-action-form').css('display', 'block');
+            $('#nextSteps').css('display', 'block');
+        } else {
+          $('#nextSteps').css('display', 'none');
+        }
+
         $.ajax({
             'url': '/study/' + EDDData.currentStudyID + '/edddata/',
             'type': 'GET',

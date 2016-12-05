@@ -13,8 +13,6 @@ from main import autocomplete, views
 #   the two URL paths for study below. Because this list is included twice, there should be no
 #   URL with the name kwarg here, as that will result in conflicts looking up URLs by name.
 study_url_patterns = [
-    url(r'^overview/$', login_required(views.StudyOverviewView.as_view())),
-    # url(r'^lines/$', login_required(views.StudyLinesView.as_view())),
     url(r'^assaydata/$', login_required(views.study_assay_table_data)),
     url(r'^edddata/$', login_required(views.study_edddata)),
     url(
@@ -94,6 +92,25 @@ url(r'^study/search/$', login_required(views.study_search)),
         )
     ),
 
+    # Individual study-specific pages loaded by primary key
+    url(
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
+        r'^study/(?P<pk>\d+)/overview',
+        include(
+            [url(r'^$', login_required(views.StudyOverviewView.as_view()), name='overview_by_pk', )] +
+            study_url_patterns
+        )
+    ),
+
+    # Individual study-specific pages loaded by slug
+    url(
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
+        r'^study/(?P<slug>[-\w]+)/overview',
+        include(
+            [url(r'^$', login_required(views.StudyOverviewView.as_view()), name='overview', )] +
+            study_url_patterns
+        )
+    ),
     # "export" URLs
     url(r'^export/$', login_required(views.ExportView.as_view()), name='export'),
     url(r'^worklist/$', login_required(views.WorklistView.as_view()), name='worklist'),

@@ -99,7 +99,7 @@ var EDDEditable;
         EditableElement.prototype.onSuccess = function (value) {
         };
         EditableElement.prototype.blankLabel = function () {
-            return '(not set)';
+            return '(Please enter value)';
         };
         EditableElement.prototype.makeFormData = function (value) {
             var formData = new FormData();

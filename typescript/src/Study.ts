@@ -1154,8 +1154,7 @@ module StudyD {
                 });
 
                 //stop spinner
-                if (_.keys(EDDData.Lines).length === 0) {
-                    $('.noLines').css('display', 'block');
+                if (_.keys(EDDData.Assays).length === 0) {
                     $('.dataTab').hide();
                     $('#loadingDiv').hide();
                     $('#graphFilter').hide();
