@@ -101,16 +101,16 @@
 </form>
 <div class="pageSectionTabs">
     {% if writable %}
-        <div class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %} absoverlay">Permissions</div>
-        <div class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %}"
-            for="permissionsSection">Permissions</div>
+        <span class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %}" for="permissionsSection">
+            Permissions
+        </span>
     {% endif %}
-    <div class="{% if new_attach.errors %}active{% endif %} absoverlay">Attachments ({{ study.attachments|length }})</div>
-    <div class="{% if new_attach.errors %}active{% endif %}"
-        for="attachmentsSection">Attachments ({{ study.attachments|length }})</div>
-    <div class="{% if new_comment.errors %}active{% endif %} absoverlay">Comments ({{ study.comment_list|length }})</div>
-    <div class="{% if new_comment.errors %}active{% endif %}"
-        for="commentsSection">Comments ({{ study.comment_list|length }})</div>
+    <span class="{% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
+            Attachments ({{ study.attachments|length }})
+    </span>
+    <span class="{% if new_comment.errors %}active{% endif %}" for="commentsSection">
+        Comments ({{ study.comment_list|length }})
+    </span>
 </div>
 
 {% if writable %}

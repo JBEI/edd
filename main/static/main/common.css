@@ -795,24 +795,43 @@ div.pageSectionTabs {
     margin:10px 40px 3px 20px;
     z-index:3;
 }
-div.pageSectionTabs > div {
-    display:inline-block;
+div.pageSectionTabs > span {
     color:#6c6c6c;
     font-size:14px;
     margin:0px;
     background-color: #ffffff;
     border-style:solid;
     border-color:#d0d0d0;
-    border-radius: 8px 8px 0px 0px;
-    -webkit-border-radius: 8px 8px 0px 0px;
-    -moz-border-radius: 8px 8px 0px 0px;
-    padding-top:5px;
+    border-top-width:1px;
+    border-bottom-width:1px;
+    border-left-width:1px;
+    border-right-width:0px;
+    padding-top:6px;
+    padding-bottom:6px;
     padding-left:10px;
     padding-right:10px;
 }
-div.pageSectionTabs > div.active {
-    border-width:2px 2px 0px 2px;
-    padding-bottom:6px;
+div.pageSectionTabs > span:first-of-type {
+    border-top-left-radius:8px;
+    border-bottom-left-radius:8px;
+}
+div.pageSectionTabs > span:last-of-type {
+    border-right-width:1px;
+    border-top-right-radius:8px;
+    border-bottom-right-radius:8px;
+}
+div.pageSectionTabs > span.active:last-of-type {
+    border-right-width:2px;
+}
+div.pageSectionTabs > span.active {
+    border-top-width:2px;
+    border-bottom-width:2px;
+    border-left-width:2px;
+    border-right-width:1px;
+    padding-top:5px;
+    padding-bottom:5px;
+    padding-left:9px;
+    padding-right:9px;
     background: linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
     background: -o-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
     background: -moz-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
@@ -820,37 +839,11 @@ div.pageSectionTabs > div.active {
     background: -ms-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
     z-index:4;
 }
-div.pageSectionTabs > div:not(.active) {
+div.pageSectionTabs > span:not(.active) {
     cursor: pointer;
-    border-width:1px 1px 0px 1px;
-    padding-bottom:5px;
 }
 
 
-/* On the page, we will be generating a copy of each tab element, with the copy immediately
-   following the original in the DOM.  The original will be positioned "absolute",
-   and the copy will be the default "relative".
-     Why do this?
-     Because the "absolute" element can be subject to z-index positioning, allowing it to
-   rest on top of surrounding blocks.
-     Meanwhile, the "relative" element creates space in the layout to make room for the
-   next tab - but not exactly the same amount of space.
-     The "relative" element is designed to be exactly two pixels _shorter_ than the "absolute"
-   element, which makes the "absolute" element overlap the pageSectionTabContent div that occurs
-   farther down the page, by two pixels.  This is enough to obscure the solid border line
-   in the pageSectionTabContent div with the light-colored background of the tab, making it
-   look like the tab is selected.
-     The "relative" element is also six pixels _narrower_ than the "absolute" element,
-   which causes the "absolute" elements to overlap each other, making the layout of the tabs
-   more cohesive.
-     Finally, the "active" tab is given a higher z-index, so its borders are always on top. 
-*/
-div.pageSectionTabs > div.absoverlay {
-    padding-top:7px;
-    position:absolute;
-    padding-left:10px;
-    padding-right:10px;
-}
 /* This overrides some of the settings in the pageSection style */
 div.pageSectionTabContent {
     margin:0px 8px 3px 8px;
@@ -1078,7 +1071,7 @@ ul.edd-autocomplete-list {
 ul.edd-autocomplete-list > li {
     display:table-row;
 }
-ul.edd-autocomplete-list > li.not(.odd) {
+ul.edd-autocomplete-list > li:not(.odd) {
     background-color:#FCFCFC;
 }
 ul.edd-autocomplete-list > li > div {
