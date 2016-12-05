@@ -242,7 +242,7 @@ var EDDEditable;
         // and clears it of all content, then re-adds the basic edit control widgets.
         EditableElement.prototype.clearElementForEditing = function () {
             // Clear the element out
-            this.elementJQ.children().detach();
+            this.elementJQ.contents().detach(); // children() does not capture text nodes
             // Re-add the controls area
             this.element.appendChild(this.editControlsPositioner);
             $(this.editControlsContainer).children().detach();
