@@ -25,22 +25,25 @@
     <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
 {% endblock js_css %}
 
-
 {% block head_title %}
     {{ study.name }} - Experiment Data Depot
 {% endblock head_title %}
-
 
 {% block body_title %}
     <h1>{{ study.name }}</h1>
 {% endblock body_title %}
 
-
 {% block content %}
 
-<div>Overview</div>
+<div id="assayMeasurementShow">
+    <ul class="nav nav-pills navbar-nav studyTabs">
+      <li id="overviewTab" role="presentation" class="active"><a href="#">Overview</a></li>
+      <li id="linesTab" role="presentation"><a href="/study/{{ study.slug }}/">Lines</a></li>
+      <li id="dataTab" role="presentation"><a href="/study/{{ study.slug }}/">Data</a></li>
+    </ul>
+</div>
 
-<form action="" class="edd-form" enctype="multipart/form-data" method="POST">
+<form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;">
     {% csrf_token %}
 
     {{ edit_study.non_field_errors }}

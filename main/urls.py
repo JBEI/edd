@@ -13,6 +13,7 @@ from main import autocomplete, views
 #   the two URL paths for study below. Because this list is included twice, there should be no
 #   URL with the name kwarg here, as that will result in conflicts looking up URLs by name.
 study_url_patterns = [
+    url(r'^overview/$', login_required(views.StudyOverviewView.as_view())),
     url(r'^assaydata/$', login_required(views.study_assay_table_data)),
     url(r'^edddata/$', login_required(views.study_edddata)),
     url(

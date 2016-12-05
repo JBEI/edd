@@ -143,6 +143,29 @@ div.tooltip2 {
 /*
   New UI CSS below
 */
+
+.nav>li>a {
+    color: lightgray;
+    position: relative;
+    display: block;
+    padding: 10px 15px;
+}
+.nav {
+    list-style: none;
+    padding-left: 0;
+}
+
+.nav>li {
+    position: relative;
+    display: block;
+}
+
+.nav-pills>li{float:left}
+.nav-pills>li>a{border-radius:4px}
+.nav-pills>li+li{margin-left:2px}
+.nav-pills>.active>a>.badge{color:#337ab7;background-color:#fff}
+.nav-pills>li>a>.badge{margin-left:3px}
+
 .nav-pills {
     color: black;
     font-size: 16px;
@@ -152,10 +175,6 @@ div.tooltip2 {
     background-color: white;
     color: gray;
     font-size: 16px;
-}
-
-.nav>li>a {
-    color: lightgray
 }
 
 .dataDisplay {
