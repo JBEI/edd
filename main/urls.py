@@ -14,6 +14,7 @@ from main import autocomplete, views
 #   URL with the name kwarg here, as that will result in conflicts looking up URLs by name.
 study_url_patterns = [
     url(r'^overview/$', login_required(views.StudyOverviewView.as_view())),
+    # url(r'^lines/$', login_required(views.StudyLinesView.as_view())),
     url(r'^assaydata/$', login_required(views.study_assay_table_data)),
     url(r'^edddata/$', login_required(views.study_edddata)),
     url(
@@ -66,17 +67,19 @@ urlpatterns = [
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^study/(?P<slug>[-\w]+)/',
         include(
-            [url(r'^$', login_required(views.StudyDetailViewV2.as_view()), name='detail', )] +
+            [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail', )] +
             study_url_patterns
         )
     ),
 
+url(r'^study/search/$', login_required(views.study_search)),
+
     # Individual study-specific pages loaded by primary key
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<pk>\d+)/data/',
+        r'^study/(?P<pk>\d+)/lines',
         include(
-            [url(r'^$', login_required(views.StudyDetailViewV2.as_view()), name='detail2_by_pk', )] +
+            [url(r'^$', login_required(views.StudyLineView.as_view()), name='line_by_pk', )] +
             study_url_patterns
         )
     ),
@@ -84,9 +87,9 @@ urlpatterns = [
     # Individual study-specific pages loaded by slug
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<slug>[-\w]+)/data/',
+        r'^study/(?P<slug>[-\w]+)/lines',
         include(
-            [url(r'^$', login_required(views.StudyDetailViewV2.as_view()), name='detail2', )] +
+            [url(r'^$', login_required(views.StudyLineView.as_view()), name='line', )] +
             study_url_patterns
         )
     ),

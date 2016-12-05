@@ -16,60 +16,60 @@
 
 //click handler for export modal
 function lineModal(event) {
-           var dlg = $("#line-popup").dialog({
-               autoOpen: false
-            });
-            $("#line-export").click(function() {
-               $("#line-popup").dialog( "open" );
-                return false;
-            });
-     dlg.parent().appendTo('#line-action-form');
-     return false;
-         };
+   var dlg = $("#line-popup").dialog({
+       autoOpen: false
+    });
+    $("#line-export").click(function() {
+       $("#line-popup").dialog( "open" );
+        return false;
+    });
+    dlg.parent().appendTo('#line-action-form');
+    return false;
+};
 
 //click handler for adding assay to line
 function assayModal(event) {
-           var dlg = $("#assayMain").dialog({
-               autoOpen: false
-            });
-            $("#addAssayToLine").click(function() {
-               $("#assayMain").dialog( "open" );
-                return false;
-            });
-     return false;
-         };
+   var dlg = $("#assayMain").dialog({
+       autoOpen: false
+    });
+    $("#addAssayToLine").click(function() {
+       $("#assayMain").dialog( "open" );
+        return false;
+    });
+    return false;
+};
 
 //click handler for add measurements to selected assays modal
 function measurementToAssayModal(event) {
-           var dlg = $("#addMeasToAssay").dialog({
-               autoOpen: false
-            });
-            $("#measurementMain").click(function() {
-               $("#addMeasToAssay").dialog( "open" );
-                return false;
-            });
-     return false;
-         };
+   var dlg = $("#addMeasToAssay").dialog({
+       autoOpen: false
+    });
+    $("#measurementMain").click(function() {
+       $("#addMeasToAssay").dialog( "open" );
+        return false;
+    });
+    return false;
+};
 
 //click handler for adding new line
 function addNewLineModal(event) {
-           var dlg = $("#addNewLineForm").dialog({
-               autoOpen: false
-            });
-            $("#addNewLine").click(function() {
-               $("#addNewLineForm").dialog( "open" );
-                return false;
-            });
-     return false;
-         };
+   var dlg = $("#addNewLineForm").dialog({
+       autoOpen: false
+    });
+    $("#addNewLine").click(function() {
+       $("#addNewLineForm").dialog( "open" );
+        return false;
+    });
+    return false;
+};
 
 //click handler for filtering section
 function filteringSectionSlideDown(event) {
     $(document).on('click', '.caret', function () {
-               $("#mainFilterSection").slideDown(500);
-                return false;
-            });
-        };
+           $("#mainFilterSection").slideDown(500);
+            return false;
+        });
+};
 
 //work around for generating worklist click handler
 function generateWorkList() {

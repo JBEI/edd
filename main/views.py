@@ -264,79 +264,17 @@ class StudyOverviewView(StudyDetailBaseView):
         return self.render_to_response(context)
 
 
-class StudyDetailView(StudyDetailBaseView):
-    """ Study details page, displays line/assay data. """
-    template_name = 'main/detail.html'
+class StudyLineView(StudyDetailBaseView):
+    """ Study details displays line data. """
+    template_name = 'main/line.html'
 
     def get_context_data(self, **kwargs):
-        context = super(StudyDetailView, self).get_context_data(**kwargs)
+        context = super(StudyLineView, self).get_context_data(**kwargs)
         instance = self.get_object()
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_line'] = LineForm(prefix='line')
         context['new_measurement'] = MeasurementForm(prefix='measurement')
         return context
-
-    def handle_assay(self, request, context, *args, **kwargs):
-        assay_id = request.POST.get('assay-assay_id', None)
-        assay = self._get_assay(assay_id) if assay_id else None
-        if assay:
-            form = AssayForm(request.POST, instance=assay, lines=[assay.line_id], prefix='assay')
-        else:
-            ids = request.POST.getlist('lineId', [])
-            form = AssayForm(request.POST, lines=ids, prefix='assay')
-            if len(ids) == 0:
-                form.add_error(None, ValidationError(
-                    _('Must select at least one line to add Assay'),
-                    code='no-lines-selected'
-                    ))
-        context['new_assay'] = form
-        if form.is_valid():
-            form.save()
-            return True
-        return False
-
-    def handle_assay_action(self, request, context, *args, **kwargs):
-        assay_action = request.POST.get('assay_action', None)
-        can_write = self.object.user_can_write(request.user)
-        form_valid = False
-        # allow any who can view to export
-        if assay_action == 'export':
-            export_type = request.POST.get('export', 'csv')
-            if export_type == 'sbml':
-                return SbmlView.as_view()
-            else:
-                return ExportView.as_view()
-        # but not edit
-        elif not can_write:
-            messages.error(request, 'You do not have permission to modify this study.')
-        elif assay_action == 'mark':
-            form_valid = self.handle_assay_mark(request)
-        elif assay_action == 'delete':
-            form_valid = self.handle_measurement_delete(request)
-        elif assay_action == 'edit':
-            return self.handle_measurement_edit(request)
-        elif assay_action == 'update':
-            return self.handle_measurement_update(request, context)
-        else:
-            messages.error(request, 'Unknown assay action %s' % (assay_action))
-        return form_valid
-
-    def handle_assay_mark(self, request):
-        ids = request.POST.getlist('assayId', [])
-        study = self.get_object()
-        disable = request.POST.get('disable', None)
-        if disable == 'true':
-            active = False
-        elif disable == 'false':
-            active = True
-        else:
-            messages.error(request, 'Invalid action specified, doing nothing')
-            return True
-        count = Assay.objects.filter(pk__in=ids, line__study=study).update(active=active)
-        messages.success(request, 'Updated %(count)s Assays' % {
-            'count': count,
-            })
-        return True
 
     def handle_clone(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('lineId', [])
@@ -452,6 +390,138 @@ class StudyDetailView(StudyDetailBaseView):
         else:
             context['new_line'] = form
         return False
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        action = request.POST.get('action', None)
+        context = self.get_context_data(object=self.object, action=action, request=request)
+        can_write = self.object.user_can_write(request.user)
+        # actions that may not require write permissions
+        action_lookup = {
+            'assay_action': self.handle_assay_action,
+            'line_action': self.handle_line_action,
+        }
+        # actions that require write permissions
+        writable_lookup = {
+            'assay': self.handle_assay,
+            'clone': self.handle_clone,
+            'group': self.handle_group,
+            'line': self.handle_line,
+            'measurement': self.handle_measurement,
+        }
+        if can_write:
+            action_lookup.update(writable_lookup)
+        # find appropriate handler function for the submitted action
+        view_or_valid = action_lookup.get(action, self.handle_unknown)(
+            request, context, *args, **kwargs
+        )
+        if type(view_or_valid) == bool:
+            # boolean means a response to same page, with flag noting whether form was valid
+            return self.post_response(request, context, view_or_valid)
+        elif isinstance(view_or_valid, HttpResponse):
+            # got a response, directly return
+            return view_or_valid
+        else:
+            # otherwise got a view function, call it
+            return view_or_valid(request, *args, **kwargs)
+
+    def post_response(self, request, context, form_valid):
+        if form_valid:
+            study_modified.send(sender=self.__class__, study=self.object)
+            return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': self.object.slug}))
+        return self.render_to_response(context)
+
+    def _get_export_types(self):
+        return {
+            'csv': ExportView.as_view(),
+            'sbml': SbmlView.as_view(),
+            'study': StudyCreateView.as_view(),
+            'worklist': WorklistView.as_view(),
+        }
+
+    def _get_line(self, line_id):
+        study = self.get_object()
+        try:
+            return Line.objects.get(pk=line_id, study=study)
+        except Line.DoesNotExist:
+            logger.warning('Failed to load (line, study) combo (%s,%s)' % (line_id, study.pk))
+        return None
+
+
+class StudyDetailView(StudyDetailBaseView):
+    """ Study details page, displays graph/assay data. """
+    template_name = 'main/detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(StudyDetailView, self).get_context_data(**kwargs)
+        instance = self.get_object()
+        context['new_assay'] = AssayForm(prefix='assay')
+        context['new_line'] = LineForm(prefix='line')
+        context['new_measurement'] = MeasurementForm(prefix='measurement')
+        return context
+
+    def handle_assay(self, request, context, *args, **kwargs):
+        assay_id = request.POST.get('assay-assay_id', None)
+        assay = self._get_assay(assay_id) if assay_id else None
+        if assay:
+            form = AssayForm(request.POST, instance=assay, lines=[assay.line_id], prefix='assay')
+        else:
+            ids = request.POST.getlist('lineId', [])
+            form = AssayForm(request.POST, lines=ids, prefix='assay')
+            if len(ids) == 0:
+                form.add_error(None, ValidationError(
+                    _('Must select at least one line to add Assay'),
+                    code='no-lines-selected'
+                    ))
+        context['new_assay'] = form
+        if form.is_valid():
+            form.save()
+            return True
+        return False
+
+    def handle_assay_action(self, request, context, *args, **kwargs):
+        assay_action = request.POST.get('assay_action', None)
+        can_write = self.object.user_can_write(request.user)
+        form_valid = False
+        # allow any who can view to export
+        if assay_action == 'export':
+            export_type = request.POST.get('export', 'csv')
+            if export_type == 'sbml':
+                return SbmlView.as_view()
+            else:
+                return ExportView.as_view()
+        # but not edit
+        elif not can_write:
+            messages.error(request, 'You do not have permission to modify this study.')
+        elif assay_action == 'mark':
+            form_valid = self.handle_assay_mark(request)
+        elif assay_action == 'delete':
+            form_valid = self.handle_measurement_delete(request)
+        elif assay_action == 'edit':
+            return self.handle_measurement_edit(request)
+        elif assay_action == 'update':
+            return self.handle_measurement_update(request, context)
+        else:
+            messages.error(request, 'Unknown assay action %s' % (assay_action))
+        return form_valid
+
+    def handle_assay_mark(self, request):
+        ids = request.POST.getlist('assayId', [])
+        study = self.get_object()
+        disable = request.POST.get('disable', None)
+        if disable == 'true':
+            active = False
+        elif disable == 'false':
+            active = True
+        else:
+            messages.error(request, 'Invalid action specified, doing nothing')
+            return True
+        count = Assay.objects.filter(pk__in=ids, line__study=study).update(active=active)
+        messages.success(request, 'Updated %(count)s Assays' % {
+            'count': count,
+            })
+        return True
+
 
     def handle_measurement(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('assayId', [])
@@ -607,24 +677,6 @@ class StudyDetailView(StudyDetailBaseView):
             logger.warning('Failed to load assay,study combo %s,%s' % (assay_id, study.pk))
         return None
 
-    def _get_export_types(self):
-        return {
-            'csv': ExportView.as_view(),
-            'sbml': SbmlView.as_view(),
-            'study': StudyCreateView.as_view(),
-            'worklist': WorklistView.as_view(),
-        }
-
-    def _get_line(self, line_id):
-        study = self.get_object()
-        try:
-            return Line.objects.get(pk=line_id, study=study)
-        except Line.DoesNotExist:
-            logger.warning('Failed to load (line, study) combo (%s,%s)' % (line_id, study.pk))
-        return None
-
-class StudyDetailViewV2(StudyDetailView):
-    template_name = 'main/detail2.html'
 
 class EDDExportView(generic.TemplateView):
     """ Base view for exporting EDD information. """

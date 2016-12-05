@@ -28,18 +28,12 @@
 {% block content %}
     {% if can_create %}
     <div class="newPageSection disclose discloseHide" id="addNewStudyMain">
-        <div class="sectionHead">
-            <span class="discloseLink"><a href="#">Add A New Study</a></span>
-        </div>
-        <div class="sectionContent discloseBody">
+        <div style="float: right">
             <form action="{% url 'main:create_study' %}" class="edd-form" method="POST">
                 {% csrf_token %}
                 {{ form.as_p }}
-                <button type="submit">Add Study</button>
-            </form>
-        </div>
-        <div style="float: right">
             <button type="submit" class="btn addButton btn-lg">Add New </br>Study</button>
+                </form>
         </div>
         </div>
     {% endif %}

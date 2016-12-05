@@ -4,22 +4,26 @@
 
 {% block js_css %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript">
 
         EDDData.currentStudyID = {{ study.id }};
+        EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
+        EDDData.Studies = EDDData.Studies || {};
+        EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
 
     </script>
     <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/EDDEditableElement.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/clickHandler.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GraphHelperMethods.js' %}"></script>
@@ -39,95 +43,147 @@
     <script type="text/javascript" src="{% static 'main/js/barGraphHelperMethods.js' %}"></script>
 {% endblock js_css %}
 
-
 {% block head_title %}
     {{ study.name }} - Experiment Data Depot
 {% endblock head_title %}
-
 
 {% block body_title %}
     <h1>{{ study.name }}</h1>
 {% endblock body_title %}
 
-
 {% block content %}
-    <div class="pageSectionTabs" id="graphTabsOverviewSelected">
-        <div>Data Overview</div>
+<div class="btn-toolbar bare-header">
+    <div style="text-align: right">
+        <a class="btn btn-primary btn-lg" href="/study/{{ study.id }}/import">Import</a>
     </div>
-    <div class="pageSection pageSectionTabContent overview" id="overviewSection">
-        <div class="sectionContent">
-            <div class="btn-toolbar">
-                <div class="btn-group" data-toggle="buttons" id="chartType">
-                    <label class="btn btn-default btn-sm active line">
-                        <input value="linechart" type="radio" autocomplete="off" checked />
-                        <img src="{% static 'main/images/chart_curve.png' %}" />
-                    </label>
-                    <label class="btn btn-default btn-sm" style="margin-right: 20px;">
-                        <input type="radio" autocomplete="off" />
-                        <img src="{% static 'main/images/chart_bar.png' %}" />
-                    </label>
-                    <label class="btn btn-default btn-sm groupByTimeBar hidden">
-                        <input value="timeBar" type="radio" autocomplete="off" />Time
-                    </label>
-                    <label class="btn btn-default btn-sm groupByProteinBar hidden">
-                        <input type="radio" autocomplete="off" value="barAssay" />Line
-                    </label>
-                    <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
-                        <input type="radio" value="groupedMeasurement" autocomplete="off" />Measurement
-                    </label>
-                </div>
-            </div>
-        </div>
-        <div class="linechart">
-            <div style="display:none" class="checkbox y-checkbox">
-                <label><input type="checkbox" value="" />hide y-axis</label>
-            </div>
-        </div>
-        <div class="barTime">
-            <div style="display:none" class="checkbox y-checkbox">
-                <label><input type="checkbox" value="" />hide y-axis</label>
-            </div>
-        </div>
-        <div class="barAssay">
-            <div style="display:none" class="checkbox y-checkbox">
-                <label><input type="checkbox" value="" />hide y-axis</label>
-            </div>
-        </div>
-        <div class="barMeasurement">
-            <div class="checkbox y-checkbox" style="display:none">
-                <label><input type="checkbox" value="" />hide y-axis</label>
-            </div>
-        </div>
-        <div class="blankSvg">
-            <img id="loadingDiv" src="{% static 'main/images/spinner-big.gif' %}" class="spinner"/>
-        </div>
-        <div id="maingraph" class="graphContainer"></div>
+</div>
+<div id="assayMeasurementShow">
+    <ul class="nav nav-pills navbar-nav studyTabs">
+      <li id="overviewTab" role="presentation"><a href="/study/{{ study.slug }}/overview">Overview</a></li>
+      <li id="linesTab" role="presentation"><a href="#">Lines</a></li>
+      <li id="dataTab" role="presentation" class="active"><a href="#">Data</a></li>
+    </ul>
+</div>
+<div id="dataDisplay" class="dataDisplay">
+    <ul class="nav nav-tabs studyTabs">
+      <li id="studyGraph" role="presentation" class="active"><a href="#">Graph</a></li>
+      <li id="studyTable" role="presentation"><a href="#">Table</a></li>
+    </ul>
 
-        <div class="sectionChapter">
-            <span class="tableControl" id="pointsDisplayedSpan"></span>
-            <div id="mainFilterSection" class="filteringSection discloseBody">
+<div class="pageSection pageSectionTabContent" id="overviewSection">
+    <div class="sectionContent">
+        <div class="btn-toolbar">
+            <div class="btn-group" data-toggle="buttons" id="chartType">
+                <label class="btn btn-default btn-sm active line">
+                    <input value="linechart" type="radio" autocomplete="off" checked />
+                    <img src="{% static 'main/images/chart_curve.png' %}" />
+                </label>
+                <label class="btn btn-default btn-sm" style="margin-right: 20px;">
+                    <input type="radio" autocomplete="off" />
+                    <img src="{% static 'main/images/chart_bar.png' %}" />
+                </label>
+                <label class="btn btn-default btn-sm groupByTimeBar hidden">
+                    <input value="timeBar" type="radio" autocomplete="off" />Time
+                </label>
+                <label class="btn btn-default btn-sm groupByProteinBar hidden">
+                    <input type="radio" autocomplete="off" value="barAssay" />Line
+                </label>
+                <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
+                    <input type="radio" value="groupedMeasurement" autocomplete="off" />Measurement
+                </label>
             </div>
+        </div>
+    </div>
+    <div class="linechart">
+        <div style="display:none" class="checkbox y-checkbox">
+            <label><input type="checkbox" value="" />hide y-axis</label>
+        </div>
+    </div>
+    <div class="barTime">
+        <div style="display:none" class="checkbox y-checkbox">
+            <label><input type="checkbox" value="" />hide y-axis</label>
+        </div>
+    </div>
+    <div class="barAssay">
+        <div style="display:none" class="checkbox y-checkbox">
+            <label><input type="checkbox" value="" />hide y-axis</label>
+        </div>
+    </div>
+    <div class="barMeasurement">
+        <div class="checkbox y-checkbox" style="display:none">
+            <label><input type="checkbox" value="" />hide y-axis</label>
+        </div>
+    </div>
+     <div class="blankSvg">
+        <img id="loadingDiv" src="{% static 'main/images/spinner-big.gif' %}" class="spinner"/>
+    </div>
+    <div id="maingraph" class="graphContainer"></div>
+</div>
+</div>
+<form action="" class="assay-action" method="POST">
+    {% csrf_token %}
+
+    <table class="pageSection scroll" id="assaysSection" style="display:none">
+        <!-- individual protocol assay sections inserted here -->
+        <div id="assaysActionPanel" class="sectionActions off">
+            <div class="assay-section">
+            </div>
+            <span id="assaysSelectedCell">0 selected</span>
+            {% if writable %}
+            <input id="assay_action_mark" type="radio" name="assay_action" value="mark" />
+            <label for="assay_action_mark">
+                <span>Mark as</span>
+                <select name="disable">
+                    <option value="true">Disabled</option>
+                    <option value="false">Enabled</option>
+                </select>
+            </label>
+            <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
+            <label for="assay_action_delete">Delete Measurements</label>
+            <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
+            <label for="assay_action_edit">Edit Measurements</label>
+            <input id="assay_action_export" type="radio" name="assay_action" value="export" />
+            {% else %}
+            <input id="assay_action_export" type="hidden" name="assay_action" value="export" />
+            {% endif %}
+            <label for="assay_action_export">Export Data</label>
+            <button name="action" type="submit" value="assay_action">Take Action</button>
+            <div class="clear"></div>
+        </div>
+    </table>
+    <div class="sectionChapter" id="graphFilter">
+        <span class="tableControl" id="pointsDisplayedSpan"></span>
+        </br>
+        <span>Filter options</span>
+        <div id="mainFilterSection" class="filteringSection discloseBody">
+        </div>
+        <div style="text-align:right">
+            <button type="button" id="measurementMain"
+                class="btn btn-primary btn-lg actionButton" >Add Measurements to </br>
+            Selected Assays</button>
         </div>
     </div>
 
     {% if writable %}
-    <div class="btn-toolbar bare-header">
-        <div class="btn-group">
-            <a class="btn btn-sm btn-info" href="/study/{{ study.id }}/import">Import Files</a>
+        <div id="addMeasToAssay" title="Add Measurements to Selected Assays">
+            <div class="sectionContent discloseBody measurement-create edd-form">
+                {{ new_measurement.as_p }}
+                <button type="submit" name="action" value="measurement">Add Measurement</button>
+            </div>
         </div>
-    </div>
+    {% endif %}
+</form>
+
+{% if writable %}
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
-        <div class="sectionHead">
-            <span class="discloseLink"><a href="#">{% if new_line.is_editing %}Edit Line{% else %}Add A New Line{% endif %}</a></span>
-            <div class="clear"></div>
-        </div>
+
         <div class="sectionContent discloseBody">
             <form action="" class="line-edit edd-form" method="POST">
                 {% csrf_token %}
                 {{ new_line.as_p }}
                 <p class="line-edit-meta">
                     <span class="edd-label">
-                        <input type="text" class="autocomp" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" size="14" />
+                        <input type="text" class="autocomp autocomp_ltype" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" size="14" />
                         <input type="hidden" class="line-meta-type" value="" />
                     </span>
                     <input type="text" class="line-meta-value" placeholder="Metadata Value" />
@@ -138,28 +194,78 @@
         </div>
     </div>
     {% endif %}
+    {% if writable %}
+        <div id="addNewLineForm" title="Add New Line">
+        <div class="sectionContent discloseBody">
+            <form action="" class="line-edit edd-form" method="POST">
+                {% csrf_token %}
+                {{ new_line.as_p }}
+                <p class="line-edit-meta">
+                    <span class="edd-label">
+                        <input type="text" class="autocomp autocomp_ltype" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" size="14" />
+                        <input type="hidden" class="line-meta-type" value="" />
+                    </span>
+                    <input type="text" class="line-meta-value" placeholder="Metadata Value" />
+                    <button class="line-meta-add">Add Value</button>
+                </p>
+                <button type="submit" name="action" value="line">{% if new_line.is_editing %}Edit Line{% else %}Add Line{% endif %}</button>
+            </form>
+        </div>
+    </div>
+{% endif %}
 
-    <form action="" class="line-action" method="POST">
-        {% csrf_token %}
-        <div class="pageSection">
-            {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+<form id="line-action-form" action="" class="line-action" style="display:none" method="POST">
+    {% csrf_token %}
+    <div class="pageSection">
+        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+        <div class="noLines" style="display: none">
+            <h3>This study has no lines.</h3>
+            <button type="button" id="addNewLine" class="btn btn-primary btn-lg actionButton">Add New </br>Line</button>
+            <h3>What is a line?
+                <input type="button" style="display:inline" id="hide" value="hide"/>
+            </h3>
+            <div id="lineDescription">
+                <p>A line describes a single culture or line of enquiry within a Study. A single flask with a E. coli strain
+                    culture, or a well of S. cerevisiae in a plate, are examples in the EDD. Lines are grouped together
+                    under a Study in the EDD hierarchy, therefore a Study contains a set of Lines.  A line defines the
+                    experimental conditions and associated meta data for a (in this example) single flask.  Some examples
+                    that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
+                    speed.  Users can manually add lines, or download the study template for bulk uploads.
+                </p>
+                <img src="{% static 'main/images/line_assay_tree.png' %}" />
+            </div>
+        </div>
+        <div class="scroll">
             <table id="studyLinesTable"></table>
-            <div id="linesActionPanel" class="sectionActions off">
-                <span id="linesSelectedCell">0 selected</span>
-                {% if writable %}
-                <button id="cloneLineButton" type="submit" name="action" value="clone">Clone Line</button>
-                <button id="editLineButton">Edit Line</button>
-                <button id="groupLineButton" type="submit" name="action" value="group">Group As Replicates</button>
-                <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
-                <label for="line_action_mark">
-                    <span>Mark as</span>
-                    <select name="disable">
-                        <option value="true">Disabled</option>
-                        <option value="false">Enabled</option>
-                    </select>
-                </label>
-                {% endif %}
-                <input type="radio" id="line_action_export" name="line_action" value="export" />
+        </div>
+        <div id="nextSteps" style="display:none">
+            <h3>Possible next steps (in no particular order)</h3>
+            <p> - Import data from completed experiment</p>
+            <p> - Generate worklist to run experiment</p>
+            <p> - Add more lines to define the study details</p>
+        </div>
+        <div id="linesActionPanel" class="sectionActions">
+            <span id="linesSelectedCell">0 selected</span>
+            {% if writable %}
+                <div id="disabledButtons">
+                    <button id="cloneLineButton" type="submit" name="action" disabled="true" value="clone">Clone Line</button>
+                    <button id="editLineButton" disabled="true">Edit Line</button>
+                    <button id="groupLineButton" type="submit" disabled="true" name="action" value="group">Group As Replicates</button>
+                         </br> </br>
+                    <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
+                    <label for="line_action_mark">
+                        <span>Mark as</span>
+                        <select name="disable">
+                            <option value="true">Disabled</option>
+                            <option value="false">Enabled</option>
+                        </select>
+                    </label>
+                    <button type="submit" name="action" value="line_action">Take Action</button>
+                </div>
+            {% endif %}
+
+            <div id="line-popup" title="Export as">
+                <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
                 <label for="line_action_export">
                     <span>Export Data</span>
                     <select name="export">
@@ -171,91 +277,29 @@
                 </label>
                 <button type="submit" name="action" value="line_action">Take Action</button>
             </div>
+            <span class="noLineSelected">Please select line(s) first</span>
+            </br>
+            <div style="text-align: right">
+                <button type="button"  id="addAssayToLine" class="btn btn-primary btn-lg actionButton">Add Assays To
+                    </br> Selected Lines</button>
+                <button type="button" id="line_worklist" class="btn btn-primary btn-lg actionButton ">Generate  </br>
+                    Worklist</button>
+                <button type="button" id="line-export" class="btn btn-primary btn-lg">Export</button>
+            </div>
         </div>
+    </div>
 
-        {% if writable %}
-        <div class="pageSection minor disclose{% if not new_assay.is_editing %} discloseHide{% endif %}" id="assayMain">
+    {% if writable %}
+        <div id="assayMain" title="{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}">
             <div class="sectionHead">
-                <span class="discloseLink"><a href="#">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}</a></span>
+                <span class="discloseLink"><a href="#"></a></span>
             </div>
             <div class="sectionContent discloseBody assay-edit edd-form">
                 {{ new_assay.as_p }}
                 <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
             </div>
         </div>
-        {% endif %}
-    </form>
-
-    <form action="" class="assay-action" method="POST">
-        {% csrf_token %}
-        <div class="pageSection" id="assaysSection">
-            <!-- individual protocol assay sections inserted here -->
-            <div id="assaysActionPanel" class="sectionActions off">
-                <div class="assay-section">
-                <div class="btn-group" data-toggle="buttons" id="chartType">
-                    <label class="btn btn-default btn-sm active line" >
-                        <input value="linechart" type="radio" autocomplete="off" checked>
-                        <img src="../../static/main/images/chart_curve.png" />
-                         </label>
-                    <label class="btn btn-default btn-sm" style="margin-right: 20px;">
-                        <input type="radio" autocomplete="off">
-                        <img src="../../static/main/images/chart_bar.png"/>
-                    </label>
-                    <label class="btn btn-default btn-sm groupByTimeBar hidden">
-                        <input value="barTime" type="radio" autocomplete="off">Time
-                    </label>
-                    <label class="btn btn-default btn-sm groupByProteinBar hidden">
-                        <input type="radio" autocomplete="off"
-                               value="barAssay">Line
-                    </label>
-                    <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
-                        <input type="radio" value="barMeasurement"
-                         autocomplete="off">Measurement
-                    </label>
-                    </div>
-                    <div class="chartIds">
-                        <div></div>
-                        <div class="linechart"></div>
-                        <div class="barTime"></div>
-                        <div class="barAssay"></div>
-                        <div class="barMeasurement"></div>
-                    </div>
-            </div>
-                <span id="assaysSelectedCell">0 selected</span>
-                {% if writable %}
-                <input id="assay_action_mark" type="radio" name="assay_action" value="mark" />
-                <label for="assay_action_mark">
-                    <span>Mark as</span>
-                    <select name="disable">
-                        <option value="true">Disabled</option>
-                        <option value="false">Enabled</option>
-                    </select>
-                </label>
-                <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
-                <label for="assay_action_delete">Delete Measurements</label>
-                <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
-                <label for="assay_action_edit">Edit Measurements</label>
-                <input id="assay_action_export" type="radio" name="assay_action" value="export" />
-                {% else %}
-                <input id="assay_action_export" type="hidden" name="assay_action" value="export" />
-                {% endif %}
-                <label for="assay_action_export">Export Data</label>
-                <button name="action" type="submit" value="assay_action">Take Action</button>
-                <div class="clear"></div>
-            </div>
-        </div>
-
-        {% if writable %}
-        <div class="pageSection minor disclose{% if not new_measurement.errors %} discloseHide{% endif %}" id="measurementMain">
-            <div class="sectionHead">
-                <span class="discloseLink"><a href="#">Add Measurements To Selected Assays</a></span>
-            </div>
-            <div class="sectionContent discloseBody measurement-create edd-form">
-                {{ new_measurement.as_p }}
-                <button type="submit" name="action" value="measurement">Add Measurement</button>
-            </div>
-        </div>
-        {% endif %}
-    </form>
+    {% endif %}
+</form>
 
 {% endblock content %}
