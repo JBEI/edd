@@ -791,8 +791,12 @@ div.filterHeadSearch > input[type="text"] {
 
 /* Tab sets for page sections */
 div.pageSectionTabs {
-    padding:0px;
-    margin:10px 40px 3px 20px;
+    padding:0px 40px 0px 20px;
+    background-repeat: repeat-x;
+    background-size: 416px 50px;
+    background-position: center;
+    background-image: url(images/tab_section_background.png);
+    margin:20px 0px 20px 0px;
     z-index:3;
 }
 div.pageSectionTabs > span {
