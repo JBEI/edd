@@ -1157,7 +1157,7 @@ module StudyD {
                 //stop spinner
                 if (_.keys(EDDData.Assays).length === 0) {
                     $('#nextSteps').css('display', 'block');
-                    $('.dataTab').hide();
+                    $('.dataTab').hide();    // TODO: This can now be done by the front-end
                     $('#loadingDiv').hide();
                     $('#graphFilter').hide();
                     $('#dataDisplay').hide();

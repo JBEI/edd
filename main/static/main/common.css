@@ -790,7 +790,7 @@ div.filterHeadSearch > input[type="text"] {
 
 
 /* Tab sets for page sections */
-div.pageSectionTabs {
+div.tabBar {
     padding:0px 40px 0px 20px;
     background-repeat: repeat-x;
     background-size: 416px 50px;
@@ -799,7 +799,7 @@ div.pageSectionTabs {
     margin:20px 0px 20px 0px;
     z-index:3;
 }
-div.pageSectionTabs > span {
+div.tabBar > span {
     color:#6c6c6c;
     font-size:14px;
     margin:0px;
@@ -815,19 +815,19 @@ div.pageSectionTabs > span {
     padding-left:10px;
     padding-right:10px;
 }
-div.pageSectionTabs > span:first-of-type {
+div.tabBar > span:first-of-type {
     border-top-left-radius:8px;
     border-bottom-left-radius:8px;
 }
-div.pageSectionTabs > span:last-of-type {
+div.tabBar > span:last-of-type {
     border-right-width:1px;
     border-top-right-radius:8px;
     border-bottom-right-radius:8px;
 }
-div.pageSectionTabs > span.active:last-of-type {
+div.tabBar > span.active:last-of-type {
     border-right-width:2px;
 }
-div.pageSectionTabs > span.active {
+div.tabBar > span.active {
     border-top-width:2px;
     border-bottom-width:2px;
     border-left-width:2px;
@@ -843,7 +843,7 @@ div.pageSectionTabs > span.active {
     background: -ms-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
     z-index:4;
 }
-div.pageSectionTabs > span:not(.active) {
+div.tabBar > span:not(.active) {
     cursor: pointer;
 }
 
@@ -963,7 +963,7 @@ td.popupcell:hover ul.popupmenu {
 
 /* Tables for filling out forms */
 table.formTable {
-    margin:50px 3px 50px 3px;
+    margin:10px 3px 20px 3px;
     border:none;
     font-size:16px;
 }

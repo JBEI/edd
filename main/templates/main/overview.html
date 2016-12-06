@@ -35,9 +35,9 @@
     <h1>{{ study.name }}</h1>
 {% endblock body_title %}
 
-{% block content %}
+{% block content %}                  
 
-<div class="pageSectionTabs">
+<div class="tabBar">
     <span class="active">
         <a href="/study/{{ study.slug }}/overview">Overview</a>
     </span>
@@ -45,74 +45,83 @@
         <span class="linesTabOverView">
             <a href="/study/{{ study.slug }}/lines">Lines</a>
         </span>
-    {%  endif %}
+    {% endif %}
     {% if assays %}
         <span class="dataTabOverView">
             <a href="/study/{{ study.slug }}/">Data</a>
         </span>
-    {%  endif %}
+    {% endif %}
 </div>
 
 <form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;">
     {% csrf_token %}
 
-    {{ edit_study.non_field_errors }}
+    <div style="
+        display:flex;
+        flex-wrap: nowrap;
+        flex-direction: row;
+        align-items: top;
+        justify-content: space-between;
+        ">
+        <div style="flex-grow:1">
+            {{ edit_study.non_field_errors }}
 
-    <table class="formTable">
-        <tr>
-            <td class="form-label">
-                <label for="{{ edit_study.name.id_for_label }}"></label>
-                {{ edit_study.name.errors }}
-            </td>
-            <td>
-                <div class="editable-field inactive" id="editable-study-name">
-                    {{ study.name }}
-                    {{ edit_study.name }}
+            <table class="formTable" style="width:90%;">
+                <tr>
+                    <td>
+                        {{ edit_study.name.errors }}
+                        <div class="editable-field inactive" id="editable-study-name">
+                            {{ study.name }}
+                            {{ edit_study.name }}
+                        </div>
+                    </td>
+                    <td class="form-label" style="width:70px;">
+                        <label for="{{ edit_study.contact.id_for_label }}">Contact:</label>
+                    </td>
+                    <td style="width:260px;">
+                        {{ edit_study.contact.errors }}
+                        <div class="editable-field inactive" id="editable-study-contact">
+                            {% if study.contact %}
+                                {% if writable %}
+                                    {{ study.contact.first_name }} {{ study.contact.last_name }}
+                                {% else %}
+                                    <a href="mailto:{{ study.contact.email }}">
+                                        {{ study.contact.first_name }} {{ study.contact.last_name }}
+                                    </a>
+                                {% endif %}
+                            {% elif study.contact_extra %}
+                                {{ study.contact_extra }}
+                            {% else %}
+                                <i>(Enter Contact)</i>
+                            {% endif %}
+                            {{ edit_study.contact }}
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="3">
+                        {{ edit_study.description.errors }}
+                        <div class="editable-field inactive" id="editable-study-description">
+                            {% firstof study.description "<i>(Click to add description)</i>"|safe %}
+                            {{ edit_study.description }}
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div style="flex-shrink:1">
+            {% if not lines %}
+                <div class="btn-toolbar bare-header">
+                    <div>
+                        <a class="btn btn-primary btn-lg" href="/study/{{ study.slug }}/lines">Next Step: </br> Add Lines</a>
+                    </div>
                 </div>
-            </td>
-            <td class="form-label">
-                <label for="{{ edit_study.contact.id_for_label }}"></label>
-                {{ edit_study.contact.errors }}
-            </td>
-            <td>
-                <div class="editable-field inactive" id="editable-study-contact">
-                    {% if study.contact %}
-                        {% if writable %}
-                            {{ study.contact.first_name }} {{ study.contact.last_name }}
-                        {% else %}
-                            <a href="mailto:{{ study.contact.email }}">
-                                {{ study.contact.first_name }} {{ study.contact.last_name }}
-                            </a>
-                        {% endif %}
-                    {% elif study.contact_extra %}
-                        {{ study.contact_extra }}
-                    {% else %}
-                        <i>(Enter Contact)</i>
-                    {% endif %}
-                    {{ edit_study.contact }}
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td class="form-label">
-                <label for="{{ edit_study.description.id_for_label }}"></label>
-                {{ edit_study.description.errors }}
-            </td>
-            <td>
-                <div class="editable-field inactive" id="editable-study-description">
-                    {% firstof study.description "<i>(Enter Description)</i>"|safe %}
-                    {{ edit_study.description }}
-                </div>
-            </td>
-        </tr>
-    <tr><div class="btn-toolbar bare-header">
-    <div style="text-align: right;">
-        <a class="btn btn-primary btn-lg" href="/study/{{ study.slug }}/lines">Next Step: </br> Add Lines</a>
+            {% endif %}
+        </div>
     </div>
-</div></tr>
-    </table>
 </form>
-<div class="pageSectionTabs">
+
+<div class="tabBar">
     {% if writable %}
         <span class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %}" for="permissionsSection">
             Permissions
