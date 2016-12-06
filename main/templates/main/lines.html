@@ -185,6 +185,17 @@
         </div>
     </div>
 
+    {% if writable %}
+        <div id="assayMain" title="{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}">
+            <div class="sectionHead">
+                <span class="discloseLink"><a href="#"></a></span>
+            </div>
+            <div class="sectionContent discloseBody assay-edit edd-form">
+                {{ new_assay.as_p }}
+                <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
+            </div>
+        </div>
+    {% endif %}
 </form>
 
 {% endblock content %}

@@ -278,6 +278,65 @@ class StudyLinesView(StudyDetailBaseView):
         context['new_measurement'] = MeasurementForm(prefix='measurement')
         return context
 
+    def handle_assay(self, request, context, *args, **kwargs):
+        assay_id = request.POST.get('assay-assay_id', None)
+        assay = self._get_assay(assay_id) if assay_id else None
+        if assay:
+            form = AssayForm(request.POST, instance=assay, lines=[assay.line_id], prefix='assay')
+        else:
+            ids = request.POST.getlist('lineId', [])
+            form = AssayForm(request.POST, lines=ids, prefix='assay')
+            if len(ids) == 0:
+                form.add_error(None, ValidationError(
+                    _('Must select at least one line to add Assay'),
+                    code='no-lines-selected'
+                    ))
+        context['new_assay'] = form
+        if form.is_valid():
+            form.save()
+            return True
+        return False
+
+    def handle_assay_action(self, request, context, *args, **kwargs):
+        assay_action = request.POST.get('assay_action', None)
+        can_write = self.object.user_can_write(request.user)
+        form_valid = False
+        # allow any who can view to export
+        if assay_action == 'export':
+            export_type = request.POST.get('export', 'csv')
+            if export_type == 'sbml':
+                return SbmlView.as_view()
+            else:
+                return ExportView.as_view()
+        # but not edit
+        elif not can_write:
+            messages.error(request, 'You do not have permission to modify this study.')
+        elif assay_action == 'mark':
+            form_valid = self.handle_assay_mark(request)
+        elif assay_action == 'delete':
+            form_valid = self.handle_measurement_delete(request)
+        elif assay_action == 'edit':
+            return self.handle_measurement_edit(request)
+        elif assay_action == 'update':
+            return self.handle_measurement_update(request, context)
+        else:
+            messages.error(request, 'Unknown assay action %s' % (assay_action))
+        return form_valid
+
+    def handle_measurement(self, request, context, *args, **kwargs):
+        ids = request.POST.getlist('assayId', [])
+        form = MeasurementForm(request.POST, assays=ids, prefix='measurement')
+        if len(ids) == 0:
+            form.add_error(None, ValidationError(
+                _('Must select at least one assay to add Measurement'),
+                code='no-assays-selected'
+                ))
+        context['new_measurement'] = form
+        if form.is_valid():
+            form.save()
+            return True
+        return False
+
     def handle_clone(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
@@ -523,7 +582,6 @@ class StudyDetailView(StudyDetailBaseView):
             'count': count,
             })
         return True
-
 
     def handle_measurement(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('assayId', [])
