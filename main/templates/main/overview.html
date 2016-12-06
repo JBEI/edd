@@ -8,6 +8,8 @@
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <script type="text/javascript">
@@ -53,8 +55,7 @@
     {% endif %}
 </ui>
 
-
-<form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;">
+<form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;" id="general">
     {% csrf_token %}
 
     <div style="
@@ -121,6 +122,21 @@
         </div>
     </div>
 </form>
+<div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;">
+    <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;color:gray;" id="templateDropZone">
+        <div></div>
+        To define your Study, drop in a <a href="#">template file</a> or continue to the <a href="/study/{{ study.slug }}/lines">Lines page</a>.
+    </div>
+    <div class="fileDropInfoArea off" id="fileDropInfoArea">
+        <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
+        <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
+        <div class="fileDropInfoSending" id="fileDropInfoSending">
+            <span id="fileUploadMessage">Sending To Server...</span>
+            <progress id="fileUploadProgressBar" />
+        </div>
+        <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
+    </div>
+</div>
 
 <div class="tabBar">
     {% if writable %}
@@ -156,7 +172,7 @@
                 {% endif %}
             {% endwith %}
             <div class="sectionActions">
-                <form method="POST" enctype="multipart/form-data" class="permissions edd-form off" action="">
+                <form method="POST" enctype="multipart/form-data" class="edd-form off" id="permissions" action="">
                     {% csrf_token %}
                     <div id="permission_user_box">
                     <label for="permission_user">

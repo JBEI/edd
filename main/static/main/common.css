@@ -1472,6 +1472,9 @@ div.footer > div.footer-text > span {
     font-weight: bold;
 }
 
+
+/* File drop-zone styling */
+
 .fd-zone {
     background-repeat: no-repeat;
     background-attachment: scroll;
@@ -1493,5 +1496,52 @@ div.footer > div.footer-text > span {
 .fd-zone.text.over {
     background-image: url(images/dropzone-text-over.png);
 }
+
+.fd-zone input[type="file"] {
+    opacity:0;
+}
+
+div.fileDropInfoArea {
+    margin:24px 8px 24px 8px;
+}
+
+div.fileDropInfoIcon {
+    height:128px;
+    background-repeat: no-repeat;
+    background-attachment: scroll;
+    background-position: center; 
+    background-image: url(images/dropzone-csv-over.png);
+}
+div.fileDropInfoIcon.text {
+    background-image: url(images/dropzone-text-over.png);
+}
+div.fileDropInfoIcon.excel {
+    background-image: url(images/dropzone-excel-over.png);
+}
+div.fileDropInfoIcon.xml {
+    background-image: url(images/dropzone-xml-over.png);
+}
+
+div.fileDropInfoName {
+    color:#8DB0E6;
+    text-align:center;
+    font-size:15px;
+    margin:1px 8px 5px 8px;
+    font-weight:bold;
+}
+
+div.fileDropInfoSending {
+    margin: 3px;
+}
+div.fileDropInfoSending span {
+    font-size:12px;
+    margin-right: 10px;
+}
+
+div.fileDropInfoLog {
+    padding:0px;
+    font-size:12px;
+}
+
 
 /* End of common styles */

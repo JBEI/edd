@@ -13,6 +13,8 @@ var StudyOverview;
     var attachmentIDs;
     var attachmentsByID;
     var prevDescriptionEditElement;
+    var activeDraggedFile;
+    var fileUploadProgressBar;
     // Called when the page loads.
     function prepareIt() {
         this.attachmentIDs = null;
@@ -29,20 +31,89 @@ var StudyOverview;
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
         });
-        $.ajax({
-            'url': '/study/' + EDDData.currentStudyID + '/edddata/',
-            'type': 'GET',
-            'error': function (xhr, status, e) {
-                console.log(['Loading EDDData failed: ', status, ';', e].join(''));
-            },
-            'success': function (data) {
-                EDDData = $.extend(EDDData || {}, data);
-            }
+        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
+        Utl.FileDropZone.create({
+            elementId: "templateDropZone",
+            fileInitFn: this.fileDropped.bind(this),
+            processRawFn: this.fileRead.bind(this),
+            url: '/study/' + EDDData.currentStudyID + '/parsetemplate/',
+            processResponseFn: this.fileReturnedFromServer.bind(this),
+            progressBar: this.fileUploadProgressBar
         });
         Utl.Tabs.prepareTabs();
         $(window).on('load', preparePermissions);
     }
     StudyOverview.prepareIt = prepareIt;
+    // This is called upon receiving a response from a file upload operation, and unlike
+    // fileRead(), is passed a processed result from the server as a second argument,
+    // rather than the raw contents of the file.
+    function fileReturnedFromServer(fileContainer, result) {
+        // Whether we clear the file info area entirely, or just update its status,
+        // we know we no longer need the 'sending' status.
+        $('#fileDropInfoSending').addClass('off');
+        if (fileContainer.fileType == "xlsx") {
+            this.clearDropZone();
+        }
+    }
+    StudyOverview.fileReturnedFromServer = fileReturnedFromServer;
+    // Here, we take a look at the type of the dropped file and decide whether to
+    // send it to the server, or process it locally.
+    // We inform the FileDropZone of our decision by setting flags in the fileContiner object,
+    // which will be inspected when this function returns.
+    function fileDropped(fileContainer) {
+        this.haveInputData = true;
+        //processingFileCallback();
+        var ft = fileContainer.fileType;
+        // We'll signal the dropzone to upload this, and receive processed results.
+        if (ft === 'xlsx') {
+            fileContainer.skipProcessRaw = true;
+            fileContainer.skipUpload = false;
+        }
+        // HPLC reports need to be sent for server-side processing
+        if (!fileContainer.skipProcessRaw || !fileContainer.skipUpload) {
+            this.showFileDropped(fileContainer);
+        }
+    }
+    StudyOverview.fileDropped = fileDropped;
+    // Reset and show the info box that appears when a file is dropped,
+    // and reveal the text entry area.
+    function showFileDropped(fileContainer) {
+        var processingMessage = '';
+        // Set the icon image properly
+        $('#fileDropInfoIcon').removeClass('xml');
+        $('#fileDropInfoIcon').removeClass('text');
+        $('#fileDropInfoIcon').removeClass('excel');
+        if (fileContainer.fileType === 'xml') {
+            $('#fileDropInfoIcon').addClass('xml');
+        }
+        else if (fileContainer.fileType === 'xlsx') {
+            $('#fileDropInfoIcon').addClass('excel');
+        }
+        else if (fileContainer.fileType === 'plaintext') {
+            $('#fileDropInfoIcon').addClass('text');
+        }
+        $('#templateDropZone').addClass('off');
+        $('#fileDropInfoArea').removeClass('off');
+        $('#fileDropInfoSending').removeClass('off');
+        $('#fileDropInfoName').text(fileContainer.file.name);
+        if (!fileContainer.skipUpload) {
+            processingMessage = 'Sending ' + Utl.JS.sizeToString(fileContainer.file.size) + ' To Server...';
+            $('#fileDropInfoLog').empty();
+        }
+        else if (!fileContainer.skipProcessRaw) {
+            processingMessage = 'Processing ' + Utl.JS.sizeToString(fileContainer.file.size) + '...';
+            $('#fileDropInfoLog').empty();
+        }
+        $('#fileUploadMessage').text(processingMessage);
+        this.activeDraggedFile = fileContainer;
+    }
+    StudyOverview.showFileDropped = showFileDropped;
+    // This function is passed the usual fileContainer object, but also a reference to the
+    // full content of the dropped file.
+    function fileRead(fileContainer, result) {
+        this.haveInputData = true;
+    }
+    StudyOverview.fileRead = fileRead;
     function preparePermissions() {
         var user, group;
         user = new EDDAuto.User({
@@ -51,10 +122,10 @@ var StudyOverview;
         group = new EDDAuto.Group({
             container: $('#permission_group_box')
         });
-        $('form.permissions')
+        $('form#permissions')
             .on('change', ':radio', function (ev) {
             var radio = $(ev.target);
-            $('.permissions').find(':radio').each(function (i, r) {
+            $('#permissions').find(':radio').each(function (i, r) {
                 $(r).closest('span').find('.autocomp').prop('disabled', !$(r).prop('checked'));
             });
             if (radio.prop('checked')) {
@@ -63,26 +134,26 @@ var StudyOverview;
         })
             .on('submit', function (ev) {
             var perm = {}, klass, auto;
-            auto = $('form.permissions').find('[name=class]:checked');
+            auto = $('form#permissions').find('[name=class]:checked');
             klass = auto.val();
-            perm.type = $('form.permissions').find('[name=type]').val();
+            perm.type = $('form#permissions').find('[name=type]').val();
             perm[klass.toLowerCase()] = { 'id': auto.closest('span').find('input:hidden').val() };
             $.ajax({
                 'url': '/study/' + EDDData.currentStudyID + '/permissions/',
                 'type': 'POST',
                 'data': {
                     'data': JSON.stringify([perm]),
-                    'csrfmiddlewaretoken': $('form.permissions').find('[name=csrfmiddlewaretoken]').val()
+                    'csrfmiddlewaretoken': $('form#permissions').find('[name=csrfmiddlewaretoken]').val()
                 },
                 'success': function () {
                     console.log(['Set permission: ', JSON.stringify(perm)].join(''));
                     $('<div>').text('Set Permission').addClass('success')
-                        .appendTo($('form.permissions')).delay(5000).fadeOut(2000);
+                        .appendTo($('form#permissions')).delay(5000).fadeOut(2000);
                 },
                 'error': function (xhr, status, err) {
                     console.log(['Setting permission failed: ', status, ';', err].join(''));
                     $('<div>').text('Server Error: ' + err).addClass('bad')
-                        .appendTo($('form.permissions')).delay(5000).fadeOut(2000);
+                        .appendTo($('form#permissions')).delay(5000).fadeOut(2000);
                 }
             });
             return false;
