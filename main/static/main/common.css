@@ -791,8 +791,12 @@ div.filterHeadSearch > input[type="text"] {
 
 /* Tab sets for page sections */
 div.pageSectionTabs {
-    padding:0px;
-    margin:10px 40px 3px 20px;
+    padding:0px 40px 0px 20px;
+    background-repeat: repeat-x;
+    background-size: 416px 50px;
+    background-position: center;
+    background-image: url(images/tab_section_background.png);
+    margin:20px 0px 20px 0px;
     z-index:3;
 }
 div.pageSectionTabs > span {
@@ -978,7 +982,7 @@ table.formTable tr > td.form-label {
 
 table.formTable tr > td input {
     padding:0px;
-    margin:0px 9px 0px 0px;
+    margin:0;
 }
 table.formTable tr > td input[type="checkbox"] {
     padding:0px;
@@ -1000,6 +1004,12 @@ table.formTable tr > td p {
     margin:3px 3px 0px 0px;
     padding:0px;
 }
+table.formTable tr > td textarea {
+    vertical-align:top;
+    margin:0;
+    padding:0;
+}
+
 #assaysMeasSelectedTD {
     border-right: 1px solid rgba(164, 164, 164, 0.7);
     float: left;
@@ -1008,13 +1018,6 @@ table.formTable tr > td p {
 #assaysMeasSelectedTD p {
     margin: 0.25em;
     padding: 0 8px;
-}
-
-table.formTable tr > td textarea {
-    vertical-align:top;
-    font-size:8.5pt;
-    margin:0px 9px 0px 0px;
-    padding:0px;
 }
 
 

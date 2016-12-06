@@ -38,21 +38,6 @@ module EDDEditable {
 		static _prevEditableElement:any = null;
 
 
-	    //static initPreexisting() {
-	    //    // Using 'for' instead of '$.each()' because TypeScript likes to monkey with 'this'. 
-	    //    var editableFields = $('div.editable-field').get();
-	    //    for ( var i = 0; i < editableFields.length; i++ ) {
-	    //        var a = editableFields[i];
-		//		var hasAuto = $(a).children('input[type="text"].autocomp').first();	// ':first-of-type' would be wrong here
-		//		if (hasAuto.length == 1) {
-		//            new EDDEditable.EditableAutocomplete(a);
-		//		} else {
-		//            new EDDEditable.EditableElement(a);
-		//		}
-	    //    }
-	    //}
-
-
 		// This constructor accepts a pre-existing editable element, in the form of
 		// a div with the class 'editable-field', or a reference to a container
 		// where the editable element will be created.
@@ -144,7 +129,7 @@ module EDDEditable {
 
 
 		blankLabel(): string {
-			return '(Please enter value)';
+			return '(click to set)';
 		}
 
 
@@ -178,11 +163,19 @@ module EDDEditable {
 		// This is called one time to do any necessary manipulation of the main element
 		// during setup.
 		setUpMainElement() {
-			// The "verticalButtons" class changes the styling of the buttons,
-			// as well as the styling of the main element itself.
-			// For example it gives each button a style of "block" instead of "inline-block",
-			// preventing the buttons from appearing side-by-side.
-			this.elementJQ.addClass('verticalButtons');
+			// We need to locate, or create, an input element before
+			// we decide which styling to apply to it.
+			this.setupInputElement();
+
+			if ($(this.inputElement).is('input')) {
+				this.elementJQ.addClass('horizontalButtons');
+			} else {
+				// The "verticalButtons" class changes the styling of the buttons,
+				// as well as the styling of the main element itself.
+				// For example it gives each button a style of "block" instead of "inline-block",
+				// preventing the buttons from appearing side-by-side.
+				this.elementJQ.addClass('verticalButtons');
+			}
 		}
 
 
@@ -263,40 +256,7 @@ module EDDEditable {
 			this.elementJQ.removeClass('saving');
 			this.elementJQ.addClass('active');
 
-			// Attempt to locate a pre-existing input element inside the
-			// editable area, and if one is located, take its value as the
-			// default value for the field.  If no element exists, make a new one,
-			// and assume it should be a textarea.
-
-			if (!this.inputElement) {
-				var potentialInput = this.elementJQ.children('input').first();
-				if (potentialInput.length == 1) {
-		            this.inputElement = potentialInput.get(0);
-		        } else {
-					this.inputElement = document.createElement("textarea");
-					this.inputElement.type = "text";
-
-					// Figure out how high to make the text edit box.
-					var desiredFontSize = this.elementJQ.css("font-size");
-					var lineHeight = parseInt( desiredFontSize, 10 );
-					var desiredNumLines = this.elementJQ.height() / lineHeight;
-					desiredNumLines = Math.floor(desiredNumLines) + 1;
-					if (this.minimumRows) {
-						desiredNumLines = Math.max(desiredNumLines, this.minimumRows)
-					}
-					if (this.maximumRows) {
-						desiredNumLines = Math.min(desiredNumLines, this.maximumRows)
-					}
-					// Copy font attributes to match.
-					$(this.inputElement).css( "font-family", this.elementJQ.css("font-family") );
-					$(this.inputElement).css( "font-size", desiredFontSize );
-					// Set width and height.
-					this.inputElement.style.width = "100%";
-					$(this.inputElement).attr('rows', desiredNumLines)
-
-					this.inputElement.value = this.getValue();
-				}
-			}
+			this.setupInputElement();
 
 			this.clearElementForEditing();
 			this.element.appendChild(this.inputElement);
@@ -312,6 +272,48 @@ module EDDEditable {
 			}, 0);
 			this.setUpKeyHandler();
 			// TODO: Handle losing focus (in which case we commit changes?)
+		}
+
+
+		// Attempt to locate a pre-existing input element inside the
+		// editable area, and if one is located, take its value as the
+		// default value for the field.  If no element exists, make a new one,
+		// and assume it should be a textarea.
+		setupInputElement() {
+			if (!this.inputElement) {
+				var potentialInput = this.elementJQ.children('input').first();
+				if (potentialInput.length == 1) {
+		            this.inputElement = potentialInput.get(0);
+		        } else {
+					// Figure out how high to make the text edit box.
+					var desiredFontSize = this.elementJQ.css("font-size");
+					var lineHeight = parseInt( desiredFontSize, 10 );
+					var desiredNumLines = this.elementJQ.height() / lineHeight;
+					desiredNumLines = Math.floor(desiredNumLines) + 1;
+					if (this.minimumRows) {
+						desiredNumLines = Math.max(desiredNumLines, this.minimumRows)
+					}
+					if (this.maximumRows) {
+						desiredNumLines = Math.min(desiredNumLines, this.maximumRows)
+					}
+
+					if (desiredNumLines > 1) {
+						this.inputElement = document.createElement("textarea");
+						$(this.inputElement).attr('rows', desiredNumLines)
+					} else {
+						this.inputElement = document.createElement("input");
+						this.inputElement.type = "text";
+					}
+
+					// Copy font attributes to match.
+					$(this.inputElement).css( "font-family", this.elementJQ.css("font-family") );
+					$(this.inputElement).css( "font-size", desiredFontSize );
+					// Set width and height.
+					this.inputElement.style.width = "100%";
+
+					this.inputElement.value = this.getValue();
+				}
+			}
 		}
 
 
@@ -513,7 +515,7 @@ module EDDEditable {
 		autoCompleteObject:EDDAuto.BaseAuto;
 
 
-		constructor(inputElement: HTMLElement) {		
+		constructor(inputElement: HTMLElement) {
 			super(inputElement);
 			this.autoCompleteObject = null;
 		}
@@ -641,14 +643,3 @@ module EDDEditable {
 		}
 	}
 }
-
-
-(function ($) { // immediately invoked function to bind jQuery to $
-
-// Not using this for now
-//$( window ).on("load", function() { // Shortcutting this to .load confuses jQuery
-//    EDDEditable.EditableElement.initPreexisting();
-//});
-
-}(jQuery));
-
