@@ -5,11 +5,17 @@
      assayModal();
      measurementToAssayModal();
      addNewLineModal();
-     filteringSectionSlideDown();
      generateWorkList();
      showStudyGraph();
      showStudyTable();
      whatIsALine();
+     if (_.keys(EDDData.Lines).length > 0) {
+        $('.linesTabOverView').css('visibility', 'visible');
+        $('.dataTabOverView').css('visibility', 'visible');
+     } else if (_.keys(EDDData.Assays).length > 1) {
+        $('.linesTabOverView').css('visibility', 'visible');
+        $('.dataTabOverView').css('visibility', 'hidden');
+     }
  });
 
 //click handler for export modal
@@ -61,13 +67,13 @@ function addNewLineModal(event) {
     return false;
 };
 
-//click handler for filtering section
-function filteringSectionSlideDown(event) {
-    $(document).on('click', '.caret', function () {
-           $("#mainFilterSection").slideDown(500);
-            return false;
-        });
-};
+// //click handler for filtering section
+// function filteringSectionSlideDown(event) {
+//     $(document).on('click', '.caret', function () {
+//            $("#mainFilterSection").slideDown(500);
+//             return false;
+//         });
+// };
 
 //work around for generating worklist click handler
 function generateWorkList() {

@@ -1153,17 +1153,30 @@ module StudyD {
                     protocolsWithMeasurements[assay.pid] = true;
                 });
 
+
                 //stop spinner
                 if (_.keys(EDDData.Assays).length === 0) {
+                    $('#nextSteps').css('display', 'block');
                     $('.dataTab').hide();
                     $('#loadingDiv').hide();
                     $('#graphFilter').hide();
                     $('#dataDisplay').hide();
                 } else {
+                  $('#nextSteps').css('display', 'none');
                   $('#chartType').show();
                   $('#graphFilter').show();
                   $('#dataDisplay').show();
                   $('.dataTab').show();
+                }
+
+                //show possible next steps div and hide assay graphs and table if there are no Assays
+                if (_.keys(EDDData.Lines).length === 0) {
+                    $('.noLines').css('display', 'block');
+                    $('#nextSteps').css('display', 'none');
+                } else {
+                  $('.dataTabOverView').css('display', 'block');
+                  $('.linesTabOverView').css('display', 'block');
+                  $('.noLines').css('display', 'none');
                 }
 
                 var spec;

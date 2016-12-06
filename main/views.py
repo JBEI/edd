@@ -163,6 +163,8 @@ class StudyDetailBaseView(generic.DetailView):
         lvs.viewed_study(instance)
         # TODO: Replace 'self.get_object()' with 'instance'?
         context['writable'] = self.get_object().user_can_write(self.request.user)
+        context['lines'] = self.get_object().line_set.count() > 0
+        context['assays'] = Assay.objects.filter(line__study=self.get_object()).count() > 0
         return context
 
     def get_object(self, queryset=None):

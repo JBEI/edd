@@ -63,7 +63,7 @@
         <a href="/study/{{ study.slug }}/overview">Overview</a>
     </span><span>
         <a href="/study/{{ study.slug }}/lines">Lines</a>
-    </span><span class="active">
+    </span><span class="dataTab active">
         <a href="/study/{{ study.slug }}/">Data</a>
     </span>
 </div>
@@ -178,118 +178,13 @@
     {% endif %}
 </form>
 
-{% if writable %}
-    <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
 
-        <div class="sectionContent discloseBody">
-            <form action="" class="line-edit edd-form" method="POST">
-                {% csrf_token %}
-                {{ new_line.as_p }}
-                <p class="line-edit-meta">
-                    <span class="edd-label">
-                        <input type="text" class="autocomp autocomp_ltype" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" size="14" />
-                        <input type="hidden" class="line-meta-type" value="" />
-                    </span>
-                    <input type="text" class="line-meta-value" placeholder="Metadata Value" />
-                    <button class="line-meta-add">Add Value</button>
-                </p>
-                <button type="submit" name="action" value="line">{% if new_line.is_editing %}Edit Line{% else %}Add Line{% endif %}</button>
-            </form>
-        </div>
-    </div>
-    {% endif %}
-    {% if writable %}
-        <div id="addNewLineForm" title="Add New Line">
-        <div class="sectionContent discloseBody">
-            <form action="" class="line-edit edd-form" method="POST">
-                {% csrf_token %}
-                {{ new_line.as_p }}
-                <p class="line-edit-meta">
-                    <span class="edd-label">
-                        <input type="text" class="autocomp autocomp_ltype" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" size="14" />
-                        <input type="hidden" class="line-meta-type" value="" />
-                    </span>
-                    <input type="text" class="line-meta-value" placeholder="Metadata Value" />
-                    <button class="line-meta-add">Add Value</button>
-                </p>
-                <button type="submit" name="action" value="line">{% if new_line.is_editing %}Edit Line{% else %}Add Line{% endif %}</button>
-            </form>
-        </div>
-    </div>
-{% endif %}
-
-<form id="line-action-form" action="" class="line-action" style="display:none" method="POST">
+<form action="" style="display:none" method="POST">
     {% csrf_token %}
     <div class="pageSection">
         {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-        <div class="noLines" style="display: none">
-            <h3>This study has no lines.</h3>
-            <button type="button" id="addNewLine" class="btn btn-primary btn-lg actionButton">Add New </br>Line</button>
-            <h3>What is a line?
-                <input type="button" style="display:inline" id="hide" value="hide"/>
-            </h3>
-            <div id="lineDescription">
-                <p>A line describes a single culture or line of enquiry within a Study. A single flask with a E. coli strain
-                    culture, or a well of S. cerevisiae in a plate, are examples in the EDD. Lines are grouped together
-                    under a Study in the EDD hierarchy, therefore a Study contains a set of Lines.  A line defines the
-                    experimental conditions and associated meta data for a (in this example) single flask.  Some examples
-                    that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
-                    speed.  Users can manually add lines, or download the study template for bulk uploads.
-                </p>
-                <img src="{% static 'main/images/line_assay_tree.png' %}" />
-            </div>
-        </div>
         <div class="scroll">
             <table id="studyLinesTable"></table>
-        </div>
-        <div id="nextSteps" style="display:none">
-            <h3>Possible next steps (in no particular order)</h3>
-            <p> - Import data from completed experiment</p>
-            <p> - Generate worklist to run experiment</p>
-            <p> - Add more lines to define the study details</p>
-        </div>
-        <div id="linesActionPanel" class="sectionActions">
-            <span id="linesSelectedCell">0 selected</span>
-            {% if writable %}
-                <div id="disabledButtons">
-                    <button id="cloneLineButton" type="submit" name="action" disabled="true" value="clone">Clone Line</button>
-                    <button id="editLineButton" disabled="true">Edit Line</button>
-                    <button id="groupLineButton" type="submit" disabled="true" name="action" value="group">Group As Replicates</button>
-                         </br> </br>
-                    <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
-                    <label for="line_action_mark">
-                        <span>Mark as</span>
-                        <select name="disable">
-                            <option value="true">Disabled</option>
-                            <option value="false">Enabled</option>
-                        </select>
-                    </label>
-                    <button type="submit" name="action" value="line_action">Take Action</button>
-                </div>
-            {% endif %}
-
-            <div id="line-popup" title="Export as">
-                <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
-                <label for="line_action_export">
-                    <span>Export Data</span>
-                    <select name="export">
-                        <option value="csv">as CSV/etc</option>
-                        <option value="sbml">as SBML</option>
-                        <option value="worklist">as Worklist</option>
-                        <option value="study">to New Study</option>
-                    </select>
-                </label>
-                <button type="submit" name="action" value="line_action">Take Action</button>
-            </div>
-            <span class="noLineSelected">Please select line(s) first</span>
-            </br>
-            <div style="text-align: right">
-                <button type="button"  id="addAssayToLine" class="btn btn-primary btn-lg actionButton">Add Assays To
-                    </br> Selected Lines</button>
-                <button type="button" id="line_worklist" class="btn btn-primary btn-lg actionButton ">Generate  </br>
-                    Worklist</button>
-                <button type="button" id="line-export" class="btn btn-primary btn-lg">Export</button>
-            </div>
         </div>
     </div>
 

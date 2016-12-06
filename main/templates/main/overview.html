@@ -40,17 +40,17 @@
 <div class="pageSectionTabs">
     <span class="active">
         <a href="/study/{{ study.slug }}/overview">Overview</a>
-    </span><span>
-        <a href="/study/{{ study.slug }}/lines">Lines</a>
-    </span><span>
-        <a href="/study/{{ study.slug }}/">Data</a>
     </span>
-</div>
-
-<div class="btn-toolbar bare-header">
-    <div style="text-align: right;">
-        <a class="btn btn-primary btn-lg" href="/study/{{ study.slug }}/lines">Next Step: </br> Add Lines</a>
-    </div>
+    {% if lines %}
+        <span class="linesTabOverView">
+            <a href="/study/{{ study.slug }}/lines">Lines</a>
+        </span>
+    {%  endif %}
+    {% if assays %}
+        <span class="dataTabOverView">
+            <a href="/study/{{ study.slug }}/">Data</a>
+        </span>
+    {%  endif %}
 </div>
 
 <form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;">
@@ -105,6 +105,11 @@
                 </div>
             </td>
         </tr>
+    <tr><div class="btn-toolbar bare-header">
+    <div style="text-align: right;">
+        <a class="btn btn-primary btn-lg" href="/study/{{ study.slug }}/lines">Next Step: </br> Add Lines</a>
+    </div>
+</div></tr>
     </table>
 </form>
 <div class="pageSectionTabs">
