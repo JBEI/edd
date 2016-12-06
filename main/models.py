@@ -2250,7 +2250,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         @classmethod
         def to_json(cls):
             return {
-                i: {"name": cls.names[i], "sn": cls.short_names[i]}
+                i: {"name": str(cls.names[i]), "sn": cls.short_names[i]}
                 for i in range(3)
             }
 
