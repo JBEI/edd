@@ -199,6 +199,7 @@ div.tooltip2 {
     color: grey;
     border: 1px solid;
     text-align: center;
+    float:right;
 }
 
 #disabledButtons {

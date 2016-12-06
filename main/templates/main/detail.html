@@ -58,15 +58,15 @@
     </div>
 </div>
 
-<div class="tabBar">
-    <span>
+<ui class="nav nav-pills navbar-nav studyTabs">
+    <li>
         <a href="/study/{{ study.slug }}/overview">Overview</a>
-    </span><span>
+    </li><li>
         <a href="/study/{{ study.slug }}/lines">Lines</a>
-    </span><span class="dataTab active">
+    </li><li class="dataTab active">
         <a href="/study/{{ study.slug }}/">Data</a>
-    </span>
-</div>
+    </li>
+</ui>
 
 <div id="dataDisplay" class="dataDisplay">
     <ul class="nav nav-tabs studyTabs">

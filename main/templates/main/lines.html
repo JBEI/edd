@@ -54,21 +54,23 @@
 {% block content %}
 <div class="btn-toolbar bare-header">
     <div style="text-align: right">
-        <a class="btn btn-primary btn-lg" href="/study/{{ study.id }}/import">Import</a>
+        <a class="btn btn-primary btn-lg" href="/study/{{ study.id }}/import">Import </br> Data</a>
     </div>
 </div>
 
-<div class="tabBar">
-    <span>
+<ui class="nav nav-pills navbar-nav studyTabs">
+    <li>
         <a href="/study/{{ study.slug }}/overview">Overview</a>
-    </span>
-    <span class="active">
+    </li><li>
         <a href="/study/{{ study.slug }}/lines">Lines</a>
-    </span>
-    <span class="dataTab">
-        <a href="/study/{{ study.slug }}/">Data</a>
-    </span>
-</div>
+    </li>
+    {% if assays %}
+        <li class="dataTab active">
+            <a href="/study/{{ study.slug }}/">Data</a>
+        </li>
+    {% endif %}
+</ui>
+
 
 {% if writable %}
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
@@ -147,7 +149,12 @@
                     <button id="cloneLineButton" type="submit" name="action" disabled="true" value="clone">Clone Line</button>
                     <button id="editLineButton" disabled="true">Edit Line</button>
                     <button id="groupLineButton" type="submit" disabled="true" name="action" value="group">Group As Replicates</button>
-                         </br> </br>
+                    <button type="button"  id="addAssayToLine" class="btn btn-primary btn-lg actionButton">Add Assays To
+                    </br> Selected Lines</button>
+                    <button type="button"id="line_worklist" class="btn btn-primary btn-lg actionButton">Generate  </br>
+                    Worklist</button>
+                    <button type="button" id="line-export"class="btn btn-primary btn-lg actionButton">Export </br> Data</button>
+                    </br> </br>
                     <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
                     <label for="line_action_mark">
                         <span>Mark as</span>
@@ -163,7 +170,7 @@
             <div id="line-popup" title="Export as">
                 <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
                 <label for="line_action_export">
-                    <span>Export Data</span>
+                    <span>Export Lines</span>
                     <select name="export">
                         <option value="csv">as CSV/etc</option>
                         <option value="sbml">as SBML</option>
@@ -172,15 +179,6 @@
                     </select>
                 </label>
                 <button type="submit" name="action" value="line_action">Take Action</button>
-            </div>
-            <span class="noLineSelected">Please select line(s) first</span>
-            </br>
-            <div style="text-align: right">
-                <button type="button"  id="addAssayToLine" class="btn btn-primary btn-lg actionButton">Add Assays To
-                    </br> Selected Lines</button>
-                <button type="button" id="line_worklist" class="btn btn-primary btn-lg actionButton ">Generate  </br>
-                    Worklist</button>
-                <button type="button" id="line-export" class="btn btn-primary btn-lg">Export</button>
             </div>
         </div>
     </div>

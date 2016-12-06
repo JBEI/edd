@@ -325,14 +325,14 @@ div.newPageSection {
     margin:10px 40px 3px 20px;
 }
 div.pageSection div.sectionHead {
-    color:#606060;/*#0C4589;*/
+    color:#606060;
     font-size:14px;
     font-weight:bold;
     padding:4px 4px 4px 6px;
 
 }
 div.pageSection div.sectionChapter {
-    color:#a0a0a0;/*#1C5294;*/
+    color:#a0a0a0;
     margin:0px;
     padding:3px;
     border-style:solid;
@@ -404,24 +404,14 @@ table.dataTable tr.header > th {
     height:19px;
     font-weight:bold;
     padding:4px 4px 1px 6px;
-    background: linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
-    background: -o-linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
-    background: -moz-linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
-    background: -webkit-linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
-    background: -ms-linear-gradient(top, rgba(255,255,255,0.2) 0%, rgba(233,233,233,0.3) 100%);
 }
-table.dataTable tr.columnLabels > th {
-    padding: 4px 6px 4px 6px;
+tr.columnLabels > th {
+    padding: 10px;
     vertical-align:top;
-    font-size:12px;
+    font-size:14px;
     color:rgb(12,69,137);
     font-weight:normal;
-    border-width:0px;
-    background: linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
-    background: -o-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
-    background: -moz-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
-    background: -webkit-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
-    background: -ms-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(230,230,230,0.8) 100%);
+    border: 1px solid lightgray;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -788,8 +778,15 @@ div.filterHeadSearch > input[type="text"] {
     -moz-border-radius: 7px;
 }
 
+.lineButtons {
+    float:right;
+}
 
 /* Tab sets for page sections */
+ul.studyTabs {
+    margin: 15px 0px 10px 0px;
+}
+
 div.tabBar {
     padding:0px 40px 0px 20px;
     background-repeat: repeat-x;
@@ -836,11 +833,6 @@ div.tabBar > span.active {
     padding-bottom:5px;
     padding-left:9px;
     padding-right:9px;
-    background: linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
-    background: -o-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
-    background: -moz-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
-    background: -webkit-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(255,255,255,1) 100%);
-    background: -ms-linear-gradient(top, rgba(243,243,243,1) 0%, rgba(255,255,255,1) 100%);
     z-index:4;
 }
 div.tabBar > span:not(.active) {

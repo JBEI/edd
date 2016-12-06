@@ -37,21 +37,22 @@
 
 {% block content %}                  
 
-<div class="tabBar">
-    <span class="active">
+<ui class="nav nav-pills navbar-nav studyTabs">
+    <li class="active">
         <a href="/study/{{ study.slug }}/overview">Overview</a>
-    </span>
+    </li>
     {% if lines %}
-        <span class="linesTabOverView">
+        <li>
             <a href="/study/{{ study.slug }}/lines">Lines</a>
-        </span>
+        </li>
     {% endif %}
     {% if assays %}
-        <span class="dataTabOverView">
+        <li class="dataTab\">
             <a href="/study/{{ study.slug }}/">Data</a>
-        </span>
+        </li>
     {% endif %}
-</div>
+</ui>
+
 
 <form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;">
     {% csrf_token %}
