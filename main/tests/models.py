@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 import arrow
 import factory
-import os.path
 import warnings
 
 from django.contrib.auth import get_user_model
@@ -18,14 +17,12 @@ from ..importer import (
 )
 from ..models import (
     Assay, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementType, MeasurementUnit,
-    Metabolite, MetadataGroup, MetadataType, Protocol, SBMLTemplate, Strain,
+    Metabolite, MetadataGroup, MetadataType, Protocol, Strain,
     Study, Update, UserPermission,
 )
 from ..solr import StudySearch
 from ..utilities import (
     extract_id_list, extract_id_list_as_form_keys, get_selected_lines,
-    get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc, get_edddata_strains,
-    get_edddata_study, get_edddata_users, interpolate_at,
 )
 
 
@@ -224,7 +221,8 @@ class SolrTests(TestCase):
 
     def test_initially_empty(self):
         result = self.solr_user.query(query='*:*')
-        self.assertEqual(result['response']['numFound'], 0, "The test index is not initially empty")
+        self.assertEqual(result['response']['numFound'], 0,
+                         "The test index is not initially empty")
 
     def test_add_and_retrieve(self):
         pre_add = self.solr_admin.query(query='description:dolor')
