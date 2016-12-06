@@ -346,66 +346,6 @@
 },
 {
   "fields": {
-    "unit_name": "hours",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 1
-},
-{
-  "fields": {
-    "unit_name": "mM",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 2
-},
-{
-  "fields": {
-    "unit_name": "n/a",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 3
-},
-{
-  "fields": {
-    "unit_name": "Cmol/L",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 4
-},
-{
-  "fields": {
-    "unit_name": "mol/L/hr",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 5
-},
-{
-  "fields": {
-    "unit_name": "counts",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 6
-},
-{
-  "fields": {
     "y": [ "0.00000" ],
     "x": [ "0.00000" ],
     "updated": 39,
