@@ -982,7 +982,7 @@ table.formTable tr > td.form-label {
 
 table.formTable tr > td input {
     padding:0px;
-    margin:0px 9px 0px 0px;
+    margin:0;
 }
 table.formTable tr > td input[type="checkbox"] {
     padding:0px;
@@ -1004,6 +1004,12 @@ table.formTable tr > td p {
     margin:3px 3px 0px 0px;
     padding:0px;
 }
+table.formTable tr > td textarea {
+    vertical-align:top;
+    margin:0;
+    padding:0;
+}
+
 #assaysMeasSelectedTD {
     border-right: 1px solid rgba(164, 164, 164, 0.7);
     float: left;
@@ -1012,13 +1018,6 @@ table.formTable tr > td p {
 #assaysMeasSelectedTD p {
     margin: 0.25em;
     padding: 0 8px;
-}
-
-table.formTable tr > td textarea {
-    vertical-align:top;
-    font-size:8.5pt;
-    margin:0px 9px 0px 0px;
-    padding:0px;
 }
 
 

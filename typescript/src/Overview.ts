@@ -31,9 +31,9 @@ module StudyOverview {
         this.metabolicMapName = null;
         this.biomassCalculation = -1;
 
-        new EDDEditable.EditableElement($('#editable-study-name').get()[0]);
+        new EditableStudyName($('#editable-study-name').get()[0]);
         new EDDEditable.EditableAutocomplete($('#editable-study-contact').get()[0]);
-        new EditableDescriptionElement($('#editable-study-description').get()[0]);
+        new EditableStudyDescription($('#editable-study-description').get()[0]);
 
 
         // put the click handler at the document level, then filter to any link inside a .disclose
@@ -139,14 +139,30 @@ module StudyOverview {
     }
 
 
-    export class EditableDescriptionElement extends EDDEditable.EditableElement {
+    // Base class for the non-autocomplete inline editing fields for the Study
+    export class EditableStudyElment extends EDDEditable.EditableElement {
 
-        editAllowed(): boolean {
-            return EDDData.currentStudyWritable;
+        editAllowed(): boolean { return EDDData.currentStudyWritable; }
+        canCommit(value): boolean { return EDDData.currentStudyWritable; }
+    }
+
+
+    export class EditableStudyName extends EditableStudyElment {
+        getValue():string {
+            return EDDData.Studies[EDDData.currentStudyID].name;
         }
 
-        canCommit(value): boolean {
-            return EDDData.currentStudyWritable;
+        setValue(value) {
+            EDDData.Studies[EDDData.currentStudyID].name = value;
+        }
+    }
+
+
+    export class EditableStudyDescription extends EditableStudyElment {
+
+        constructor(inputElement: HTMLElement) {        
+            super(inputElement);
+            this.minimumRows = 4;
         }
 
         getValue():string {
@@ -155,6 +171,26 @@ module StudyOverview {
 
         setValue(value) {
             EDDData.Studies[EDDData.currentStudyID].description = value;
+        }
+
+        blankLabel(): string {
+            return '(click to add description)';
+        }
+    }
+
+
+    export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
+
+        // Have to reproduce these here rather than using EditableStudyElment because the inheritance is different
+        editAllowed(): boolean { return EDDData.currentStudyWritable; }
+        canCommit(value): boolean { return EDDData.currentStudyWritable; }
+
+        getValue():string {
+            return EDDData.Studies[EDDData.currentStudyID].contact;
+        }
+
+        setValue(value) {
+            EDDData.Studies[EDDData.currentStudyID].contact = value;
         }
     }
 };
