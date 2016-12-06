@@ -1426,10 +1426,6 @@ module StudyD {
             // TODO not all measurements downloaded; display a message indicating this
             // explain downloading individual assay measurements too
         }
-        // invalidate assays on all DataGrids; redraws the affected rows
-        // $.each(this.assaysDataGrids, (protocolId, dataGrid) => {
-        //     dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
-        // });
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
         this.queueMainGraphRemake(false);
@@ -1469,10 +1465,8 @@ module StudyD {
 
             if (checkedLen) {
                 $("#disabledButtons").children().prop('disabled',false);
-                $('.noLineSelected').hide();
             } else {
                  $("#disabledButtons").children().prop('disabled', true);
-                $('.noLineSelected').show();
             }
             if (checkedLen < 2) {
                 $('#groupLineButton').prop('disabled', true);

@@ -787,6 +787,17 @@ ul.studyTabs {
     margin: 15px 0px 10px 0px;
 }
 
+.addNewLine {
+    background-image: url(images/plus_square.png);
+    background-color: white;
+    cursor: pointer;
+    background-size: 13px 15px;
+    border: none;
+    margin-left: 5px;
+    width: 0px;
+    height: 14px;
+}
+
 div.tabBar {
     padding:0px 40px 0px 20px;
     background-repeat: repeat-x;

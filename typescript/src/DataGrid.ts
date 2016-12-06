@@ -569,7 +569,6 @@ class DataGrid {
                 }
             });
             $(frag).insertBefore($(this._tableBody));
-
             }
 
         //hacky way to show lines that were hidden from grouping replicates
