@@ -752,8 +752,11 @@ class Study(EDDObject):
 
     @staticmethod
     def user_can_create(user):
-        if hasattr(settings, 'EDD_ONLY_SUPERUSER_CREATE') and settings.EDD_ONLY_SUPERUSER_CREATE:
-            return user.is_superuser
+        if hasattr(settings, 'EDD_ONLY_SUPERUSER_CREATE'):
+            if settings.EDD_ONLY_SUPERUSER_CREATE == 'permission':
+                return user.has_perm('main.add_study') and user.is_active
+            elif settings.EDD_ONLY_SUPERUSER_CREATE:
+                return user.is_superuser and user.is_active
         return True
 
     def get_combined_permission(self):
