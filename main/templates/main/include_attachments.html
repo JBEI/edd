@@ -19,9 +19,9 @@ TODO deleting a file may be a little too easy; should we require confirmation?
   <tr class="stripeRow{% cycle 'A' 'B' %}">
     <td class="popupcell nowrap">
       <img class="attach-icon" src="{% static 'main/images/' %}{{ attachment.icon }}"/>
-      <a href="/file/download/{{ attachment.id }}">{{ attachment.filename }}</a>
+      <a href="/file/download/{{ attachment.id }}/">{{ attachment.filename }}</a>
       <ul class="popupmenu">
-        <li><a href="/file/delete/{{ attachment.id }}?redirect={{ request.get_full_path }}">Delete</a></li>
+        <li><a href="/file/delete/{{ attachment.id }}/?redirect={{ request.get_full_path }}">Delete</a></li>
       </ul>
     </td>
     <td>{{ attachment.description }}</td>
