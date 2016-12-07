@@ -14,11 +14,12 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, HStoreField
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import F, Func, Q
 from django.template.defaultfilters import slugify
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext_lazy as _, ugettext as _u
 from functools import reduce
 from itertools import chain
 from six import string_types
@@ -1508,6 +1509,12 @@ class ProteinIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
         db_table = 'protein_identifier'
+    # protein names use:
+    #   type_name = human-readable name; e.g. AATM_RABIT
+    #   short_name = accession code ID portion; e.g. P12345
+    #   accession_id = "full" accession ID if available; e.g. sp|P12345|AATM_RABIT
+    #       if "full" version unavailable, repeat the short_name
+    accession_id = VarCharField(blank=True, null=True)
     length = models.IntegerField(
         blank=True, null=True,
         verbose_name=_('Length'), help_text=_('sequence length')
@@ -1531,6 +1538,65 @@ class ProteinIdentifier(MeasurementType):
             'p_length': self.length,
             'p_mass': self.mass,
         })
+
+    @classmethod
+    def load_or_create(cls, measurement_name, datasource):
+        # extract Uniprot accession data from the measurement name, if present
+        accession_match = cls.accession_pattern.match(measurement_name)
+        uniprot_id = accession_match.group(1) if accession_match else None
+
+        # search for proteins matching the name. we're fairly permissive during lookup to account
+        # for some small percentage of protein names that don't follow the Uniprot pattern, as well
+        # as legacy proteins in EDD's database
+        name_match_criteria = Q(type_name=measurement_name)
+
+        if getattr(settings, 'ALLOW_PERMISSIVE_PROTEIN_MATCHING', False):
+            name_match_criteria = name_match_criteria | Q(short_name=measurement_name)
+            if uniprot_id:
+                name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
+        # force query to LIMIT 2
+        proteins = models.ProteinIdentifier.objects.filter(name_match_criteria)[:2]
+
+        if len(proteins) > 1:
+            # fail if protein couldn't be uniquely matched
+            raise ValidationError(
+                _u('More than one match was found for protein name "%(type_name)s".') % {
+                    'type_name': measurement_name,
+                }
+            )
+        elif len(proteins) == 0:
+            # try to create a new protein
+            # enforce ProteinIdentifier naming conventions for new ProteinIdentifiers,
+            # if configured. this isn't as good as looking them up in Uniprot, but should
+            # help as a stopgap to curate our protein entries
+            if settings.REQUIRE_UNIPROT_ACCESSION_IDS and not accession_match:
+                raise ValidationError(
+                    _u('Protein name "%(type_name)s" is not a valid UniProt accession id.') % {
+                        'type_name': measurement_name,
+                    }
+                )
+            logger.info('Creating a new ProteinIdentifier for %(name)s' % {
+                'name': measurement_name,
+            })
+            if datasource.pk is None:
+                datasource.save()
+            # create the new protein id
+            if accession_match:
+                type_name = accession_match.group(2)
+                type_name = measurement_name if type_name is None else type_name
+                accession_id = measurement_name
+            else:
+                type_name = measurement_name
+                accession_id = uniprot_id
+            # FIXME: this blindly creates a new type; should try external lookups first?
+            p = models.ProteinIdentifier.objects.create(
+                type_name=type_name,
+                short_name=uniprot_id,
+                accession_id=accession_id,
+                type_source=datasource,
+            )
+            return p
+        return proteins[0]
 
     @classmethod
     def match_accession_id(cls, text):
