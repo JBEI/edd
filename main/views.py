@@ -41,7 +41,6 @@ from rest_framework.exceptions import MethodNotAllowed
 
 from edd_utils.parsers.experiment_def import TemplateFileParser, CombinatorialInputParser, \
     JsonInputParser
-from jbei.edd.rest.utils import find_existing_strains
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients import IceApi
 from jbei.rest.clients.ice import Strain as IceStrain
@@ -69,7 +68,8 @@ from .solr import StudySearch
 from .utilities import (
     EDDImportTasks, JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement,
     get_edddata_misc, get_edddata_strains, get_edddata_study, get_edddata_users,
-    CombinatorialCreationPerformance, CombinatorialDefinitionInput, LineAndAssayNamingVisitor)
+    CombinatorialCreationPerformance, CombinatorialDefinitionInput, LineAndAssayNamingVisitor,
+    find_existing_strains)
 
 
 logger = logging.getLogger(__name__)

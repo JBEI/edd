@@ -1,33 +1,53 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import csv
 import json
-import unittest
+import os
 from pprint import pprint
+from openpyxl import load_workbook
 
 from django.test import TestCase
 
-from edd_utils.parsers.experiment_def import JsonInputParser
+from edd_utils.parsers.experiment_def import (JsonInputParser, TemplateFileParser)
 from main.models import (
     CarbonSource, MetadataType, Protocol, Strain, Study, User)
 
 _SEPARATOR = '******************************************'
 
+main_dir = os.path.dirname(__file__),
+fixtures_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+fixtures_dir = os.path.join(fixtures_dir, 'fixtures')
+simple_template_csv = os.path.join(fixtures_dir, 'simple_template_file.csv')
+simple_template_xlsx = os.path.join(fixtures_dir, 'simple_template_file.xlsx')
 
-# TODO: rename or move this integration testing code elsewhere
+
 class CombinatorialCreationTests(TestCase):
+    """
+    Defines automated integration tests for most of the supporting back-end code for template
+    file upload and combinatorial line creation (processes are very similar/based on the same
+    code)
+    """
     def setUp(self):
         self.test_user = User.objects.create(username='test_user', email='test_user@example.com')
 
         self.system_user = User.objects.get(username='system')
 
         # Note: tests run in a transaction, so these will get removed automatically
-        self.proteomics_protocol = Protocol.objects.create(name='Proteomics',
-                                                           owned_by=self.system_user)
-        self.assay_time = MetadataType.objects.create(type_name='Time',
-                                                      for_context=MetadataType.ASSAY)
-        self.media_metadata = MetadataType.objects.create(type_name='Media',
-                                                          for_context=MetadataType.LINE)
+        self.proteomics_protocol = Protocol.objects.get_or_create(name='Proteomics',
+                                                           owned_by=self.system_user)[0]
+
+        # not currently defined in DB
+        self.metabolomics = Protocol.objects.get_or_create(name='Metabolomics',
+                                                           owned_by=self.system_user)[0]
+
+        self.targeted_proteomics = Protocol.objects.get_or_create(name='Targeted Proteomics',
+                                                                  owned_by=self.system_user)[0]
+
+        self.assay_time = MetadataType.objects.get_or_create(type_name='Time',
+                                                      for_context=MetadataType.ASSAY)[0]
+        self.media_metadata = MetadataType.objects.get_or_create(type_name='Media',
+                                                          for_context=MetadataType.LINE)[0]
 
     def test_combinatorial_gui_use_case(self):
         """
@@ -65,13 +85,6 @@ class CombinatorialCreationTests(TestCase):
                                                                    volume=10.00000)[0]
         carbon_source_galactose = CarbonSource.objects.get_or_create(name='1% Galactose',
                                                                      volume=50)[0]
-
-        # not currently defined in DB
-        metabolomics = Protocol.objects.get_or_create(name='Metabolomics',
-                                                      owned_by=self.system_user)[0]
-
-        targeted_proteomics = Protocol.objects.get_or_create(name='Targeted Proteomics',
-                                                             owned_by=self.system_user)[0]
 
         growth_temp_meta = MetadataType.objects.get_or_create(type_name='Growth Temperature',
                                                               for_context=MetadataType.LINE)[0]
@@ -119,7 +132,7 @@ class CombinatorialCreationTests(TestCase):
                     }
                 }
             }, 'replicate_count': 3,
-#            'contact': 4,  # TODO: implement/test
+            #'contact': 4,  # TODO: implement/test
             'combinatorial_strain_id_groups': [[strain1.pk], [strain2.pk]],
             'common_line_metadata': {
                 growth_temp_meta.pk: 30,  # degrees C
@@ -127,10 +140,10 @@ class CombinatorialCreationTests(TestCase):
                 self.media_metadata.pk: ['EZ', 'LB'],  # media
                 carbon_source_metadata.pk: [GAL, GLU],
             }, 'protocol_to_combinatorial_metadata': {
-                targeted_proteomics.pk: {
+                self.targeted_proteomics.pk: {
                     self.assay_time.pk: [8, 24],  # hours
                 },
-                metabolomics.pk: {
+                self.metabolomics.pk: {
                     self.assay_time.pk: [4, 6]  # hours
                 },
             },
@@ -187,8 +200,8 @@ class CombinatorialCreationTests(TestCase):
         # (as all strings  at the assay level to match hstore field of created model objects)
         time_pk = str(self.assay_time.pk)
         assay_metadata = {
-            targeted_proteomics.pk: [{time_pk: '8'}, {time_pk: '24'}],
-            metabolomics.pk: [{time_pk: '4'}, {time_pk: '6'}, ]
+            self.targeted_proteomics.pk: [{time_pk: '8'}, {time_pk: '24'}],
+            self.metabolomics.pk: [{time_pk: '4'}, {time_pk: '6'}, ]
         }
 
         expected_assay_metadata = {}
@@ -207,8 +220,8 @@ class CombinatorialCreationTests(TestCase):
                     assay_to_meta[assay_name] = meta
 
         expected_assay_suffixes = {
-            targeted_proteomics.pk: ['8h', '24h'],
-            metabolomics.pk: ['4h', '6h'],
+            self.targeted_proteomics.pk: ['8h', '24h'],
+            self.metabolomics.pk: ['4h', '6h'],
         }
 
         strains_by_pk = {
@@ -217,12 +230,12 @@ class CombinatorialCreationTests(TestCase):
 
         study = Study.objects.create(name='Unit Test Study')
 
-        self._test_combinatorial_json_creation(study, gui_mockup_example, expected_line_names,
-                                               expected_assay_suffixes, strains_by_pk,
-                                               expected_line_metadata,
-                                               expected_assay_metadata)
+        self._test_combinatorial_input(study, json.dumps(gui_mockup_example),
+                                       expected_line_names, expected_assay_suffixes, strains_by_pk,
+                                       expected_line_metadata=expected_line_metadata,
+                                       expected_assay_metadata=expected_assay_metadata)
 
-    def _test_combinatorial_creation(self, study, combinatorial_inputs, expected_line_names,
+    def _test_combinatorial_creation(self, study, inputs, expected_line_names,
                                      expected_protocols_to_assay_suffixes, strains_by_pk,
                                      protocols_by_pk=None, line_metadata_types=None,
                                      assay_metadata_types=None, expected_line_metadata=None,
@@ -254,52 +267,53 @@ class CombinatorialCreationTests(TestCase):
         # (EDD-257)
 
         unique_planned_line_names = {}
-        for index, inputs in enumerate(combinatorial_inputs):
-            print('Combinatorial Inputs %d' % (index + 1))
-            pprint(vars(inputs))
+        pprint(vars(inputs))
 
-            naming_results = inputs.compute_line_and_assay_names(study, protocols_by_pk,
-                                                                 line_metadata_types,
-                                                                 assay_metadata_types,
-                                                                 strains_by_pk)
+        naming_results = inputs.compute_line_and_assay_names(study, protocols_by_pk,
+                                                             line_metadata_types,
+                                                             assay_metadata_types,
+                                                             strains_by_pk)
 
-            planned_line_count = len(naming_results.line_names)
-            print('Lines created: %d' % len(naming_results.line_names))
+        planned_line_count = len(naming_results.line_names)
+        print('Lines created: %d' % len(naming_results.line_names))
 
-            for line_index, line_name in enumerate(naming_results.line_names):
-                print('Line %(num)d: %(name)s' % {
-                    'num': line_index + 1, 'name': line_name,
-                })
+        for line_index, line_name in enumerate(naming_results.line_names):
+            print('Line %(num)d: %(name)s' % {
+                'num': line_index + 1, 'name': line_name,
+            })
 
-                unique_planned_line_names[line_name] = True
+            unique_planned_line_names[line_name] = True
 
-                if naming_results.line_to_protocols_to_assays_list:
-                    for protocol_pk, assays_list in (
-                            naming_results.line_to_protocols_to_assays_list[line_name].items()):
-                        print('\tProtocol %s:' % protocols_by_pk.get(protocol_pk))
-                        for assay_name in assays_list:
-                            print('\t\tAssay %s' % assay_name)
+            if naming_results.line_to_protocols_to_assays_list:
+                for protocol_pk, assays_list in (
+                        naming_results.line_to_protocols_to_assays_list[line_name].items()):
+                    print('\tProtocol %s:' % protocols_by_pk.get(protocol_pk))
+                    for assay_name in assays_list:
+                        print('\t\tAssay %s' % assay_name)
 
-            # verify planned line names, while tolerating ordering differences in dict use as a
-            # result of parsing
-            self.assertEqual(len(naming_results.line_names), len(expected_line_names))
-            for planned_line_name in naming_results.line_names:
-                self.assertTrue(planned_line_name in expected_line_names,
-                                "Line name %s wasn't expected" % planned_line_name)
+        # verify planned line names, while tolerating ordering differences in dict use as a
+        # result of parsing
+        self.assertEqual(len(naming_results.line_names), len(expected_line_names))
+        for planned_line_name in naming_results.line_names:
+            self.assertTrue(planned_line_name in expected_line_names,
+                            "Line name %s wasn't expected" % planned_line_name)
 
-            # verify that planned line names are unique...this capability isn't designed /
-            # shouldn't be used to create indistinguishable-but-identically-named lines
-            self.assertEqual(len(unique_planned_line_names), len(naming_results.line_names),
-                             'Expected line names to be unique, but they werent')
+        # verify that planned line names are unique...this capability isn't designed /
+        # shouldn't be used to create indistinguishable-but-identically-named lines
+        self.assertEqual(len(unique_planned_line_names), len(naming_results.line_names),
+                         "Expected line names to be unique, but they weren't")
 
-            print('Naming results')
-            pprint(vars(naming_results))
+        print('Naming results')
+        pprint(vars(naming_results))
 
-            for line_name in expected_line_names:
-                for protocol_pk, exp_suffixes in \
-                        expected_protocols_to_assay_suffixes.items():
-                    self._test_assay_names(line_name, naming_results, protocol_pk,
-                                           exp_suffixes, protocols_by_pk)
+        for line_name in expected_line_names:
+            for protocol_pk, exp_suffixes in \
+                    expected_protocols_to_assay_suffixes.items():
+                self._test_assay_names(line_name, naming_results, protocol_pk,
+                                       exp_suffixes, protocols_by_pk)
+            if not expected_protocols_to_assay_suffixes:
+                self.assertFalse(naming_results.line_to_protocols_to_assays_list.get(line_name,
+                                                                                         False))
 
         ############################################################################################
         # Test actual line/assay creation, verifying it matches the preview computed above
@@ -308,65 +322,62 @@ class CombinatorialCreationTests(TestCase):
         print('Testing line/assay creation')
         print(_SEPARATOR)
 
-        all_creation_results = []
+        pprint(vars(inputs))
+        planned_line_count = len(naming_results.line_names)
 
-        for index, inputs in enumerate(combinatorial_inputs):
-            print('Combinatorial Inputs %d' % (index + 1))
-            pprint(vars(inputs))
+        creation_results = inputs.populate_study(study, protocols_by_pk,
+                                                 line_metadata_types, assay_metadata_types,
+                                                 strains_by_pk)
 
-            creation_results = inputs.populate_study(study, protocols_by_pk,
-                                                     line_metadata_types, assay_metadata_types,
-                                                     strains_by_pk)
+        created_line_count = len(creation_results.lines_created)
+        print('Lines created: %d' % len(creation_results.lines_created))
 
-            created_line_count = len(creation_results.lines_created)
-            print('Lines created: %d' % len(creation_results.lines_created))
+        pprint(vars(creation_results))
 
-            pprint(vars(creation_results))
+        self.assertEqual(created_line_count, planned_line_count)
 
-            self.assertEqual(created_line_count, planned_line_count)
+        for line_index, created_line in enumerate(creation_results.lines_created):
+            print('Line %(num)d: %(name)s' % {
+                'num': line_index, 'name': created_line.name,
+            })
 
-            for line_index, created_line in enumerate(creation_results.lines_created):
-                print('Line %(num)d: %(name)s' % {
-                    'num': line_index, 'name': created_line.name,
-                })
+            # verify planned line name is the same as the created one
+            planned_line_name = naming_results.line_names[line_index]
+            self.assertEqual(planned_line_name, created_line.name)
 
-                # verify planned line name is the same as the created one
-                planned_line_name = naming_results.line_names[line_index]
-                self.assertEqual(planned_line_name, created_line.name)
+            ################################################################################
+            # verify that created protocol/assay combinations match the planned ones
+            ################################################################################
+            protocol_to_assays_list = creation_results.line_to_protocols_to_assays_list.get(
+                    created_line.name, {})
 
-                ################################################################################
-                # verify that created protocol/assay combinations match the planned ones
-                ################################################################################
-                protocol_to_assays_list = creation_results.line_to_protocols_to_assays_list.get(
-                        created_line.name, {})
+            protocol_to_planned_assay_names = (
+                naming_results.line_to_protocols_to_assays_list.get(created_line.name, {}))
 
-                protocol_to_planned_assay_names = (
-                    naming_results.line_to_protocols_to_assays_list.get(created_line.name, {}))
+            self.assertEqual(len(protocol_to_assays_list),
+                             len(protocol_to_planned_assay_names))
 
-                self.assertEqual(len(protocol_to_assays_list),
-                                 len(protocol_to_planned_assay_names))
+            expected_protocol_count = len(protocol_to_planned_assay_names)
+            found_protocol_count = len(protocol_to_assays_list)
+            self.assertEqual(found_protocol_count, expected_protocol_count,
+                             'For line %(line_name)s, expected assays for %(expected)d '
+                             'protocols, but found %(found)d' % {
+                                 'line_name': created_line.name,
+                                 'expected': expected_protocol_count,
+                                 'found': found_protocol_count
+                             })
 
-                expected_protocol_count = len(protocol_to_planned_assay_names)
-                found_protocol_count = len(protocol_to_assays_list)
-                self.assertEqual(found_protocol_count, expected_protocol_count,
-                                 'For line %(line_name)s, expected assays for %(expected)d '
-                                 'protocols, but found %(found)d' % {
-                                     'line_name': created_line.name,
-                                     'expected': expected_protocol_count,
-                                     'found': found_protocol_count
-                                 })
+            for protocol_pk, assays_list in protocol_to_assays_list.items():
 
-                for protocol_pk, assays_list in protocol_to_assays_list.items():
+                planned_assay_names = protocol_to_planned_assay_names.get(protocol_pk)
 
-                    planned_assay_names = protocol_to_planned_assay_names.get(protocol_pk)
+                self.assertEquals(len(assays_list), len(planned_assay_names))
 
-                    self.assertEquals(len(assays_list), len(planned_assay_names))
-
-                    print('\tProtocol %s:' % protocols_by_pk.get(protocol_pk))
-                    for assay_index, assay in enumerate(assays_list):
-                        planned_assay_name = planned_assay_names[assay_index]
-                        print('\t\tAssay %s' % assay.name)
-                        self.assertEquals(assay.name, planned_assay_name)
+                print('\tProtocol %s:' % protocols_by_pk.get(protocol_pk))
+                for assay_index, assay in enumerate(assays_list):
+                    planned_assay_name = planned_assay_names[assay_index]
+                    print('\t\tAssay %s' % assay.name)
+                    self.assertEquals(assay.name, planned_assay_name)
 
             # if provided by the test code, verify that assay/line metadata match our expectations.
             # above tests verify the naming only, which is generally a result of the metadata,
@@ -388,20 +399,14 @@ class CombinatorialCreationTests(TestCase):
 
         # for future tests that may want access to creation results, (e.g. to spot check large
         # assay metadata sets instead of exhaustively specifying), return them
-        return all_creation_results
+        return creation_results
 
-    def _test_combinatorial_json_creation(self, study, json_input, expected_line_names,
-                                          expected_assay_suffixes, strains_by_pk,
-                                          expected_line_metadata=None,
-                                          expected_assay_metadata=None):
+    def _test_combinatorial_input(self, study, input, expected_line_names,
+                                  expected_assay_suffixes, strains_by_pk,
+                                  strains_by_part_number=None, expected_line_metadata=None,
+                                  expected_assay_metadata=None, is_template_file=False):
 
-        """ A helper/workhorse method for testing combinatorial line/assay creation. """
-
-        ############################################################################################
-        # If not provided by client, query the database for metadata types relevant to this test
-        ############################################################################################
-
-        # for now, these will just be the ones defined above, though we may eventually get a basic
+        # for now, these will just be the ones by client code, though we may eventually get a basic
         # set from migrations (EDD-506). After that, we can likely delete the above code to create
         # standard model objects.
         protocols_by_pk = {protocol.pk: protocol for protocol in Protocol.objects.all()}
@@ -413,32 +418,41 @@ class CombinatorialCreationTests(TestCase):
                                 MetadataType.objects.filter(for_context=MetadataType.ASSAY)}
 
         print(_SEPARATOR)
-        print('Testing input parsing')
+        print('Testing template input parsing')
         print(_SEPARATOR)
 
-        from pprint import pprint
-        pprint(json_input)
-
         # Parse JSON inputs
-        parser = JsonInputParser(protocols_by_pk, line_metadata_types, assay_metadata_types)
+        if is_template_file:
+            input = load_workbook(input, read_only=True, data_only=True)
+            parser = TemplateFileParser(protocols_by_pk, line_metadata_types, assay_metadata_types)
+        else:
+            from pprint import pprint
+            pprint(input)
+            parser = JsonInputParser(protocols_by_pk, line_metadata_types, assay_metadata_types)
+
         errors = {}
         warnings = {}
-        combinatorial_inputs = parser.parse(json.dumps(json_input), errors, warnings)
+        combinatorial_inputs = parser.parse(input, errors, warnings)
+
+        # if ICE part numbers were provided by the test, use them to find the corresponding EDD
+        # strains
+        if strains_by_part_number:
+            for input in combinatorial_inputs:
+                input.replace_strain_part_numbers_with_pks(strains_by_part_number, errors)
+
+        self.assertEqual(len(combinatorial_inputs), 1, 'Expected a single set of combinatorial '
+                                                       'inputs, but found %d sets'
+                                                        % len(combinatorial_inputs))
 
         # fail if there were any parse errors
         if errors:
-            from pprint import pprint
-            print('Errors encountered during parsing:')
-            pprint(errors)
-
-            self.fail('Errors occurred during JSON parsing')
+            self.fail('Errors occurred during input parsing: %s' % str(errors))
 
         # Use standard workhorse method to execute the creation test
-        self._test_combinatorial_creation(
-                study, combinatorial_inputs, expected_line_names,
-                expected_assay_suffixes, strains_by_pk, protocols_by_pk,
-                line_metadata_types, assay_metadata_types, expected_line_metadata,
-                expected_assay_metadata)
+        return self._test_combinatorial_creation(
+                study, combinatorial_inputs[0], expected_line_names,
+                expected_assay_suffixes, strains_by_pk, protocols_by_pk, line_metadata_types,
+                assay_metadata_types, expected_line_metadata, expected_assay_metadata)
 
     def _test_assay_names(self, line_name, naming_results, protocol_pk, expected_suffixes,
                           protocols_by_pk):
@@ -475,14 +489,15 @@ class CombinatorialCreationTests(TestCase):
 
     def test_basic_json(self):
         """
-        A simplified integration-level test that exercises much of the EDD code responsible for
+        A simplified integration test that exercises much of the EDD code responsible for
         combinatorial line creation based on a simplified input (just creating replicates for a
         single line with some metadata using a known strain).  Test inputs in this example
         roughly correspend to the sample template file attached to EDD-380)2
 
         Testing the full code path for EDD's
         template file support requires having a corresponding ICE deployment to use as part of
-        the test, so it's not addressed here. """
+        the test, so it's not addressed here.
+        """
 
         print()
         print()
@@ -495,7 +510,7 @@ class CombinatorialCreationTests(TestCase):
         # Create strains for this test
         ############################################################################################
 
-        strain = Strain.objects.create(name='JW0111')
+        strain = Strain.objects.get_or_create(name='JW0111')[0]
         study = Study.objects.create(name='Unit Test Study')
         strains_by_pk = {strain.pk: strain}
 
@@ -519,10 +534,49 @@ class CombinatorialCreationTests(TestCase):
         expected_line_names = ['181-aceF-R1', '181-aceF-R2', '181-aceF-R3']
         expected_assay_suffixes = {}
 
-        expected_line_metadata = {line_name:{str(self.media_metadata.pk): 'LB'} for line_name in
+        expected_line_metadata = {line_name: {str(self.media_metadata.pk): 'LB'} for line_name in
                                   expected_line_names}
 
-        self._test_combinatorial_json_creation(study, test_input, expected_line_names,
-                                               expected_assay_suffixes, strains_by_pk,
-                                               expected_line_metadata)
+        self._test_combinatorial_input(study, json.dumps(test_input), expected_line_names,
+                                       expected_assay_suffixes, strains_by_pk,
+                                       expected_line_metadata=expected_line_metadata)
+
+    def test_basic_template_xlsx(self):
+
+        print('')
+        print('')
+        print(_SEPARATOR)
+        print('test_basic_template_xlsx')
+        print(_SEPARATOR)
+        print('')
+
+        strain = Strain.objects.get_or_create(name='JW0111')[0]
+        study = Study.objects.create(name='Unit Test Study')
+        strains_by_pk = {strain.pk: strain}
+        strains_by_part_number = {'JBx_002078': strain}
+
+        expected_line_names = ['181-aceF-R1', '181-aceF-R2', '181-aceF-R3']
+        expected_assay_suffixes = {
+            self.targeted_proteomics.pk: ['8h', '24h'], self.metabolomics.pk: ['4h', '6h'],
+        }
+
+        expected_line_metadata = {line_name: {str(self.media_metadata.pk): u'LB'}
+                                  for line_name in expected_line_names}
+
+        expected_assay_metadata = {}
+        for line_name in expected_line_names:
+            expected_assay_metadata[line_name] = {
+                self.targeted_proteomics.pk
+            }
+
+        creation_results = self._test_combinatorial_input(
+                study, simple_template_xlsx, expected_line_names, expected_assay_suffixes,
+                strains_by_pk, strains_by_part_number, expected_line_metadata,
+                is_template_file=True)
+
+        # verify that line descriptions match the expected value set in the file (using database
+        # field that's in use by the GUI at the time of writing
+        for line in creation_results.lines_created:
+            self.assertEqual('Description blah blah', line.description)
+
 
