@@ -1154,27 +1154,27 @@ module StudyD {
                 });
 
 
-                //stop spinner
+
                 if (_.keys(EDDData.Assays).length === 0) {
-                    $('#nextSteps').css('display', 'block');
-                    $('.dataTab').hide();    // TODO: This can now be done by the front-end
+                    //stop spinner
                     $('#loadingDiv').hide();
-                    $('#graphFilter').hide();
-                    $('#dataDisplay').hide();
+                    //hide line action buttons like export and genearte work list if there are no lines
+                    $('#linesActionPanel').hide();
                 } else {
-                  $('#nextSteps').css('display', 'none');
                   $('#chartType').show();
-                  $('#graphFilter').show();
-                  $('#dataDisplay').show();
-                  $('.dataTab').show();
+                  $('#linesActionPanel').show();
                 }
 
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('.noLines').css('display', 'block');
+                    //hide lines table
+                    $('#studyLinesTable').hide();
+                    $('<span>  add new line</span>').insertAfter('#addNewLine')
                     $('#nextSteps').css('display', 'none');
                 } else {
                   $('.dataTabOverView').css('display', 'block');
+                  $('#studyLinesTable').show();
                   $('.linesTabOverView').css('display', 'block');
                   $('.noLines').css('display', 'none');
                 }
@@ -1465,8 +1465,13 @@ module StudyD {
 
             if (checkedLen) {
                 $("#disabledButtons").children().prop('disabled',false);
+                $('.disabled-button').removeClass('disabled-button ')
+                $('#line_worklist').removeAttr('title');
+                $('#line-export').removeAttr('title');
             } else {
                  $("#disabledButtons").children().prop('disabled', true);
+                 $('#line_worklist').attr('title', 'select line(s) first');
+                 $('#line-export').attr('title', 'select line(s) first');
             }
             if (checkedLen < 2) {
                 $('#groupLineButton').prop('disabled', true);

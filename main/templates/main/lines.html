@@ -19,6 +19,9 @@
         EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
         EDDData.Studies = EDDData.Studies || {};
         EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
+    $( function() {
+    $( document ).tooltip();
+  } );
 
     </script>
     <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
@@ -144,9 +147,10 @@
                     <button id="editLineButton" disabled="true">Edit Line</button>
                     <button id="groupLineButton" type="submit" disabled="true" name="action" value="group">Group As Replicates</button>
                     <button type="button"  id="addAssayToLine" disabled="true">Add Assays To Selected Lines</button>
-                    <button type="button"id="line_worklist" class="btn btn-primary btn-lg actionButton" disabled="true">Generate  </br>
-                    Worklist</button>
-                    <button type="button" id="line-export"class="btn btn-primary btn-lg actionButton" disabled="true">Export </br> Data</button>
+                    <button type="button"id="line_worklist" class="btn btn-primary btn-lg actionButton disabled-button"
+                            title="Select line(s) first.  Generate a worklist to carry out an experiment">Generate  </br> Worklist</button>
+                    <button type="button" id="line-export"class="btn btn-primary btn-lg actionButton disabled-button"
+                    title="Select line(s) first">Export </br> Data</button>
                     </br> </br>
                     <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
                     <label for="line_action_mark">

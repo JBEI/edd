@@ -5,6 +5,8 @@
      var tbody = $('#studyLinesTable');
      $('<button  id="addNewLine" class="addNewLine">' +
      '</button>').insertAfter(tbody);
+     $('#line_worklist').attr('title', 'select line(s) first');
+     $('#line-export').attr('title', 'select line(s) first');
      lineModal();
      assayModal();
      measurementToAssayModal();

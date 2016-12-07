@@ -787,6 +787,9 @@ ul.studyTabs {
     margin: 15px 0px 10px 0px;
 }
 
+.disabled-button {
+    opacity: 0.5;
+}
 .addNewLine {
     background-image: url(images/plus_square.png);
     background-color: white;
