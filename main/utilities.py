@@ -331,6 +331,7 @@ class NamingStrategy(object):
     """
     def __init__(self):
         self.combinatorial_input = None
+        self.fractional_time_digits = 0
 
     def get_line_name(self, strains, line_metadata, replicate_num, line_metadata_types, is_control):
         """
@@ -488,9 +489,8 @@ class AutomatedNamingStrategy(NamingStrategy):
     ABBREVIATIONS = 'abbreviations'
 
     def __init__(self, line_metadata_types_by_pk, assay_metadata_types_by_pk,
-                 assay_time_metadata_type_pk, naming_elts=None,
-                 custom_additions=None, abbreviations=None, section_separator='-',
-                 multivalue_separator='_'):
+                 assay_time_metadata_type_pk, naming_elts=None, custom_additions=None,
+                 abbreviations=None, section_separator='-', multivalue_separator='_'):
         super(AutomatedNamingStrategy, self).__init__()
         self.elements = naming_elts
         self.abbreviations = abbreviations
@@ -719,6 +719,14 @@ class CombinatorialDefinitionInput(object):
         self._assay_metadata_types = None
         self._strain_pk_to_strain = None
 
+    @property
+    def fractional_time_digits(self):
+        return self.naming_strategy.fractional_time_digits
+
+    @fractional_time_digits.setter
+    def fractional_time_digits(self, count):
+        self.naming_strategy.fractional_time_digits = count
+
     def replace_strain_part_numbers_with_pks(self, strains_by_part_number, errors,
                                              ignore_integer_values=False):
         """
@@ -728,9 +736,6 @@ class CombinatorialDefinitionInput(object):
         """
 
         UNMATCHED_PART_NUMBER_KEY = 'unmatched_part_number'
-        #
-        # if isinstance(self.naming_strategy, AutomatedNamingStrategy):  TODO: remove?
-        #     self.naming_stategy
 
         for group_index, part_number_list in enumerate(self.combinatorial_strain_id_groups):
 
@@ -1149,6 +1154,105 @@ class CombinatorialCreationPerformance(object):
         now = utcnow()
         self.total_time_delta = now - self.start_time
         self._subsection_start_time = None
+
+def find_existing_strains(ice_parts, existing_edd_strains, strains_by_part_number,
+                          non_existent_edd_strains, errors):
+    """
+    Directly queries EDD's database for existing Strains that match the UUID in each ICE entry.
+    To help with database curation, for unmatched strains,
+    the database is also  searched for existing strains with a similar URL or name before a
+    strain is determined to be missing.
+
+    This method
+    is very similar to the one used in
+    create_lines.py, but was different enough to experiment with some level of duplication here. The
+    original method in create_lines.py from which this one is derived uses EDD's REST API to avoid
+    having to have database credentials.
+
+    :param edd: an authenticated EddApi instance
+    :param ice_parts: a list of Ice Entry objects for which matching EDD Strains should be located
+    :param existing_edd_strains: an empty list that will be populated with strains found to
+    already exist in EDD's database
+    :param strains_by_part_number: an empty dictionary that maps part number -> Strain. Each
+    previously-existing strain will be added here.
+    :param non_existent_edd_strains: an empty list that will be populated with a list of strains
+    that couldn't be reliably located in EDD (though some suspected matches may have been found)
+    :return:
+    """
+    # TODO: following EDD-158, consider doing a bulk query here instead of tiptoeing around strain
+    # curation issues
+
+    for ice_entry in ice_parts.values():
+
+            # search for the strain by registry ID. Note we use search instead of .get() until the
+            # database consistently contains/requires ICE UUID's and enforces uniqueness
+            # constraints for them (EDD-158).
+            found_strains_qs = Strain.objects.filter(registry_id=ice_entry.uuid)
+
+            # if one or more strains are found with this UUID
+            if found_strains_qs:
+                if len(found_strains_qs) == 1:
+                    existing_strain = found_strains_qs.results[0]
+                    existing_edd_strains[ice_entry.part_id] = existing_strain
+                    strains_by_part_number[ice_entry.part_id] = existing_strain
+                else:
+                    NON_UNIQUE_STRAIN_UUIDS = 'non_unique_strain_uuids'
+                    non_unique = errors.get(NON_UNIQUE_STRAIN_UUIDS, None)
+                    if not non_unique:
+                        non_unique = []
+                        errors[NON_UNIQUE_STRAIN_UUIDS] = non_unique
+                    non_unique.append(ice_entry.uuid)
+
+            # if no EDD strains were found with this UUID, look for candidate strains by URL.
+            # Code from here forward is attempted workarounds for EDD-158
+            else:
+
+                logger.debug("ICE entry %s couldn't be located in EDD's database by UUID. "
+                             "Searching by name and URL to help avoid strain curation problems."
+                             % ice_entry.part_id)
+
+                non_existent_edd_strains.append(ice_entry)
+
+                url_regex = r'.*/parts/%(id)s(?:/?)'
+
+                # look for candidate strains by pk-based URL (if present: more static / reliable
+                # than name)
+                found_strains_qs = Strain.objects.filter(registry_url_iregex=url_regex %
+                                                    str(ice_entry.id))
+
+                if found_strains_qs:
+                    found_suspected_match_strain(ice_entry, 'local_pk_url_match',
+                                                 found_strains_qs, errors)
+                    continue
+
+                # look for candidate strains by UUID-based URL
+                found_strains_qs = Strain.objects.filter(registry_url_iregex=url_regex %
+                                                    str(ice_entry.uuid))
+                if found_strains_qs:
+                    found_suspected_match_strain(ice_entry, 'uuid_url_match', found_strains_qs,
+                                                 errors)
+                    continue
+
+                # if no strains were found by URL, search by name
+                empty_or_whitespace_regex = r'$\s*^'
+                no_registry_id = (Q(registry_id__isnull=True) |
+                                  Q(registry_id_regex=empty_or_whitespace_regex))
+
+                found_strains_qs = Strain.objects.filter(no_registry_id,
+                                                         name_icontains=ice_entry.name)
+
+                if found_strains_qs:
+                    found_suspected_match_strain(ice_entry, 'containing_name_exists',
+                                                 found_strains_qs, errors)
+                    continue
+
+
+def found_suspected_match_strain(ice_part, search_description, found_strains, errors):
+    SUSPECTED_MATCH_STRAINS = 'suspected_match_strains'
+    suspected_match_strains = errors[SUSPECTED_MATCH_STRAINS]
+    if not suspected_match_strains:
+        suspected_match_strains = []
+        errors[SUSPECTED_MATCH_STRAINS] = suspected_match_strains
 
 extensions_to_icons = {
     '.zip':  'icon-zip.png',
