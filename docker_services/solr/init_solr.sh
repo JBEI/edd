@@ -12,4 +12,4 @@ if ! tar -cf - -C /code/docker_services/solr/cores . | tee /tmp/cores.tar | shas
 fi
 
 # start solr
-/opt/solr/bin/solr start -f
+exec /opt/solr/bin/solr start -f
