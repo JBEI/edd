@@ -23,9 +23,8 @@ from django.conf import settings  # noqa
 # Register custom serialization code to allow us to serialize datetime objects as JSON (just
 # datetimes, for starters). Used by Celery tasks to serialize dates.
 ###################################################################################################
-EDD_SERIALIZE_NAME = 'edd-json'
 register(
-    name=EDD_SERIALIZE_NAME,
+    name=getattr(settings, 'EDD_SERIALIZE_NAME', 'edd-json'),
     encoder=utilities.JSONEncoder.dumps,
     decoder=utilities.JSONDecoder.loads,
     content_type='application/x-edd-json',

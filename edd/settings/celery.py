@@ -8,7 +8,6 @@ For Celery configuration reference, see http://docs.celeryproject.org/en/latest/
 
 from datetime import timedelta
 
-from edd.celery import EDD_SERIALIZE_NAME
 from .base import env
 
 ###################################################################################################
@@ -47,6 +46,7 @@ CELERY_SEND_TASK_ERROR_EMAILS = True
 # Broker Settings
 BROKER_URL = env('BROKER_URL')
 
+EDD_SERIALIZE_NAME = 'edd-json'
 CELERY_TASK_SERIALIZER = EDD_SERIALIZE_NAME
 CELERY_RESULT_SERIALIZER = EDD_SERIALIZE_NAME
 
