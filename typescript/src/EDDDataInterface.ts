@@ -44,6 +44,7 @@ interface AssayRecord extends EDDRecord {
     transcriptions:number[];    // Transcription measurements associated with Assay
     proteins:number[];          // Proteins measurements associated with Assay
     general: number[];          // Measurements for everything else
+    count: number;
 }
 
 

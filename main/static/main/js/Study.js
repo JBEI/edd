@@ -1260,7 +1260,7 @@ var StudyD;
         $.each(data.measures || {}, function (index, measurement) {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
             ++count_rec;
-            if (!assay || !assay.active)
+            if (!assay || !assay.active || assay.count === undefined)
                 return;
             line = EDDData.Lines[assay.lid];
             if (!line || !line.active)
@@ -1291,6 +1291,11 @@ var StudyD;
             }
         });
         this.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
+        //assays with measurements
+        var assaysWithMeasurements = _.filter(EDDData.Assays, function (assay) { return assay.count; });
+        var assayIds = _.map(assaysWithMeasurements, function (assay) { return (assay.id); });
+        //this.progressiveFilteringWidget.repopulateFilteringSection();
+        this.assaysDataGrids.invalidateAssayRecords(assayIds);
         if (count_rec < count_total) {
         }
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);

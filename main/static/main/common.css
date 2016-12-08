@@ -133,6 +133,11 @@ a:hover {
     margin: 30px;
 }
 
+.disableLink {
+    pointer-events: none;
+    cursor: default;
+    color: grey;
+}
 .test {
     color: mediumvioletred;
     font-size: 12px;

@@ -160,7 +160,6 @@ module StudyD {
                 filter.populateFilterFromRecordIDs(aIDsToUse);
                 filter.populateTable();
             });
-
             this.repopulateFilteringSection();
         }
 
@@ -1380,8 +1379,8 @@ module StudyD {
             count_total:number = 0,
             count_rec:number = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
-
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
+
         // attach measurement counts to each assay
         $.each(data.total_measures, (assayId:string, count:number):void => {
             var assay = EDDData.Assays[assayId];
@@ -1394,11 +1393,11 @@ module StudyD {
         $.each(data.measures || {}, (index, measurement) => {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
             ++count_rec;
-            if (!assay || !assay.active) return;
+            if (!assay || !assay.active || assay.count === undefined) return;
             line = EDDData.Lines[assay.lid];
             if (!line || !line.active) return;
             // attach values
-            $.extend(measurement, { 'values': data.data[measurement.id] || [] })
+            $.extend(measurement, { 'values': data.data[measurement.id] || [] });
             // store the measurements
             EDDData.AssayMeasurements[measurement.id] = measurement;
             // track which assays received updated measurements
@@ -1421,6 +1420,12 @@ module StudyD {
         });
 
         this.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
+
+        //assays with measurements
+        var assaysWithMeasurements = _.filter(EDDData.Assays, function(assay:any) { return assay.count});
+        var assayIds = _.map(assaysWithMeasurements, function(assay:any) {return (assay.id)});
+        //this.progressiveFilteringWidget.repopulateFilteringSection();
+        this.assaysDataGrids.invalidateAssayRecords(assayIds);
 
         if (count_rec < count_total) {
             // TODO not all measurements downloaded; display a message indicating this

@@ -1994,7 +1994,7 @@ class DGPagingWidget extends DataGridHeaderWidget {
                 .appendTo(this.widgetElement);
             $(this.prevElement = document.createElement('a'))
                 .attr('href', '#').css('margin', '0 5px')
-                .text('< Previous').prop('disabled', true)
+                .text('< Previous').addClass('disableLink')
                 .appendTo(this.widgetElement)
                 .click(() => {
                     this.source.pageDelta(-1).requestPageOfData(this.requestDone);
@@ -2025,8 +2025,17 @@ class DGPagingWidget extends DataGridHeaderWidget {
             labelText = 'No results found!';
         }
         $(this.labelElement).text(labelText);
-        $(this.prevElement).prop('disabled', !start);
-        $(this.nextElement).prop('disabled', start + viewSize >= totalSize);
+        if (!start) {
+           $(this.prevElement).addClass('disableLink');
+        } else {
+            $(this.prevElement).removeClass('disableLink');
+        }
+        if (start + viewSize >= totalSize) {
+            $(this.nextElement).addClass('disableLink');
+        } else {
+            $(this.nextElement).removeClass('disableLink');
+        }
+
     }
 }
 
