@@ -1426,6 +1426,7 @@ module StudyD {
             // TODO not all measurements downloaded; display a message indicating this
             // explain downloading individual assay measurements too
         }
+
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
         this.queueMainGraphRemake(false);

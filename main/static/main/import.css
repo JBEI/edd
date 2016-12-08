@@ -15,6 +15,19 @@ img.exampleImage {
 	box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
 }
 
+.stepBorder {
+	background: #fcfcfc;
+    margin: 10px 8px 3px 8px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #a0a0a0;
+}
+
+.stepSeparator {
+	border-top:1px solid #6CA5E9;
+	padding:0em 1em 3px 3em;
+}
+
 /* Formatting for the label that appears when a step is disabled or irrelevant */
 
 div.disabledStepLabel {				
@@ -32,6 +45,7 @@ div.disabledStepLabel {
 
 div.resetButtonDiv {
 	float:right;
+	cursor: pointer;
 	padding:1px 5px;
 	margin:0px 6px 0px 4px;
 	color:#400;
