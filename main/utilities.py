@@ -325,9 +325,9 @@ def get_absolute_url(relative_url):
 
 class NamingStrategy(object):
     """
-    The abstract base class for different line/assay naming strategies. Provides a basic framework
-    for future use in the combinatorial line creation GUI (EDD-257), though some extension may be
-    needed for that purpose.
+    The abstract base class for different line/assay naming strategies. Provides a generic framework
+    for use in different naming strategies used in template file upload and the eventual
+    combinatorial line creation GUI (EDD-257).
     """
     def __init__(self):
         self.combinatorial_input = None
@@ -829,13 +829,6 @@ class CombinatorialDefinitionInput(object):
             protocol_metadata[assay_metadata_pk] = metadata_values
 
         return metadata_values
-
-
-    # def get_common_assay_metadata_list(self, protocol_pk, assay_metadata_pk):
-    #     protocol_assay_metadata = self.protocol_to_assay_metadata.get(protocol_pk, {})
-    #
-    #     if not protocol_assay_metadata:
-    #         self.protocol_to_assay_metadata[protocol.pk] = protocol_assay_metadata
 
     def has_assay_metadata_type(self, protocol_pk, metadata_type_pk):
         return metadata_type_pk in self.protocol_to_assay_metadata.get(protocol_pk, [])
