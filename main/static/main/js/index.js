@@ -303,6 +303,8 @@ var DataGridSpecStudies = (function (_super) {
     // The order of the array will be the order they are added to the header bar.
     // It's perfectly fine to return an empty array.
     DataGridSpecStudies.prototype.createCustomHeaderWidgets = function (dataGrid) {
+        // override bootsrap
+        $('#hStudyMod').css('border-right', '1px solid lightgrey');
         // Create a single widget for showing disabled Studies
         var array = [
             new DGStudiesSearchWidget(dataGrid, this, 'Search Studies', 40, true),

@@ -231,12 +231,6 @@ div.tooltip2 {
     margin-top: 5px;
 }
 
-#mainFilterSection table.filterCriteriaTable tr > td {
-    font-size: 10px;
-    margin: 0px;
-    padding: 3px;
-}
-
 #graphFilter {
     margin-top: 20px;
     border-top: 2px solid lightgrey;

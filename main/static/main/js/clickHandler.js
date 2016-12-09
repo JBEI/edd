@@ -7,6 +7,7 @@
      '</button><span>  add new line</span>').insertAfter(tbody);
      $('#line_worklist').attr('title', 'select line(s) first');
      $('#line-export').attr('title', 'select line(s) first');
+
      lineModal();
      assayModal();
      measurementToAssayModal();
