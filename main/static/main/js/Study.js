@@ -1042,24 +1042,23 @@ var StudyD;
                 if (_.keys(EDDData.Assays).length === 0) {
                     //stop spinner
                     $('#loadingDiv').hide();
-                    //hide line action buttons like export and genearte work list if there are no lines
-                    $('#linesActionPanel').hide();
                 }
                 else {
                     $('#chartType').show();
-                    $('#linesActionPanel').show();
                 }
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
+                    //hide line action buttons like export and genearte work list if there are no lines
+                    $('#linesActionPanel').hide();
                     $('.noLines').css('display', 'block');
                     //hide lines table
                     $('#studyLinesTable').hide();
                     $('#nextSteps').css('display', 'none');
                 }
                 else {
-                    $('.dataTabOverView').css('display', 'block');
+                    $('#linesActionPanel').show();
                     $('#studyLinesTable').show();
-                    $('.linesTabOverView').css('display', 'block');
+                    // $('.linesTabOverView').css('display', 'block');
                     $('.noLines').css('display', 'none');
                 }
                 var spec;

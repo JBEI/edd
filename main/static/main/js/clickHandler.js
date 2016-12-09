@@ -12,7 +12,6 @@
      measurementToAssayModal();
      addNewLineModal();
      editLineModal();
-     editLineBox();
      generateWorkList();
      showStudyGraph();
      showStudyTable();
