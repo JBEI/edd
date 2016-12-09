@@ -1,7 +1,6 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
-
 {% block js_css %}
     {{ block.super }}
     <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
@@ -38,7 +37,6 @@
 {% endblock body_title %}
 
 {% block content %}                  
-
 <ui class="nav nav-pills navbar-nav studyTabs">
     <li class="active">
         <a href="/study/{{ study.slug }}/overview">Overview</a>

@@ -102,7 +102,7 @@ def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW):
 
 class StudyCreateView(generic.edit.CreateView):
     """
-    View for request to create a study.
+    View for request to create a Study.
     """
     form_class = CreateStudyForm
     model = Study
@@ -127,7 +127,7 @@ class StudyCreateView(generic.edit.CreateView):
         return kwargs
 
     def get_success_url(self):
-        return reverse('main:detail', kwargs={'slug': self.object.slug})
+        return reverse('main:overview', kwargs={'slug': self.object.slug})
 
 
 class StudyIndexView(generic.list.ListView):

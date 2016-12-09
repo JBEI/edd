@@ -91,15 +91,31 @@ module EDDEditable {
 			// For attaching to the input element
 			this.keyEnterHandler = (e) => {
 				// ENTER key. Commit the changes.
-				if (e.which == 13) { this.commitEdit(); }
+				if (e.which == 13) { this.beginEditCommit(); }
 			};
 
 			this.setUpMainElement();
 			this.generateControlsContainer();
 			this.generateControlButtons();
 
-			this.setDefaultStyling();
 			this.elementJQ.click(this.clickToEditHandler.bind(this));
+
+			// If the element is styled to be active while we're setting it up,
+			// assume that we should immediately enter 'edit' mode.
+			// Note that due to the cascading nature of the handler for triggering
+			// editing mode, only one editable element on the page will actually
+			// end up active - the last one styled as 'active' in the DOM.
+			this.setDefaultStyling();
+			if (this.elementJQ.hasClass('active')) {
+				// If this returns true, then we have failed to activate the
+				// element for editing for some reason.  Fall through to
+				// setting the element as inactive.
+				if (this.clickToEditHandler()) {
+					this.setInactiveStyling();
+				}
+			} else {
+				this.setInactiveStyling();
+			}
 		}
 
 
@@ -159,7 +175,6 @@ module EDDEditable {
 		}
 
 
-
 		// This is called one time to do any necessary manipulation of the main element
 		// during setup.
 		setUpMainElement() {
@@ -215,6 +230,16 @@ module EDDEditable {
 
 		// Changes the styling of the container element to indicate that editing is allowed,
 		// and adds a mouse-over control to engage editing.
+		setInactiveStyling() {
+			this.elementJQ.removeClass('active');
+			this.elementJQ.addClass('inactive');
+            $(this.editControlsContainer).children().detach();
+			this.editControlsContainer.appendChild(this.editButtonElement);
+		}
+
+
+		// Changes the styling of the container element to indicate that editing is allowed,
+		// and adds a mouse-over control to engage editing.
 		setDefaultStyling() {
 			this.elementJQ.addClass('editable-field');
 			if (this.editAllowed()) {
@@ -223,9 +248,7 @@ module EDDEditable {
 				this.elementJQ.removeClass('enabled');
 			}
 
-			this.elementJQ.removeClass('active');
 			this.elementJQ.removeClass('saving');
-			this.elementJQ.addClass('inactive');
 
 			this.element.setAttribute('title', 'click to edit');
 
@@ -240,9 +263,6 @@ module EDDEditable {
 			} else {
 				p.appendChild(c);
 			}
-
-            $(this.editControlsContainer).children().detach();
-			this.editControlsContainer.appendChild(this.editButtonElement);
 		}
 
 
@@ -305,14 +325,14 @@ module EDDEditable {
 						this.inputElement.type = "text";
 					}
 
-					// Copy font attributes to match.
-					$(this.inputElement).css( "font-family", this.elementJQ.css("font-family") );
-					$(this.inputElement).css( "font-size", desiredFontSize );
 					// Set width and height.
 					this.inputElement.style.width = "100%";
 
 					this.inputElement.value = this.getValue();
 				}
+				// Copy font attributes to match.
+				$(this.inputElement).css( "font-family", this.elementJQ.css("font-family") );
+				$(this.inputElement).css( "font-size", desiredFontSize );
 			}
 		}
 
@@ -379,31 +399,32 @@ module EDDEditable {
 			this.showValue();
 			// Re-add the default editing widgetry
 			this.setDefaultStyling();
+			this.setInactiveStyling();
 			EditableElement._prevEditableElement = null;
 		}
 
 
-		commitEdit() {
-
-			var debug = false;
+		beginEditCommit() {
 			var value = this.getEditedValue();
 			if (!this.canCommit(value)) {
 				return;
 			}
-			var pThis = this;
-			var element = this.element;
-
-			// Extract the new value
-			var formData = this.makeFormData(value);
-			var formURL = this.getFormURL();
-
 			this.setUpCommittingIndicator();
+			this.commit();
+		}
+
+
+		// Subclass this if your need a different submit behavior after the UI is set up.
+		commit() {
+			var debug = false;
+			var value = this.getEditedValue();
+			var pThis = this;
 
             $.ajax({
-                'url': formURL,
+                'url': this.getFormURL(),
                 'type': 'POST',
 				'cache': false,
-                'data': formData,
+                'data': this.makeFormData(value),
 				'success': function(response) {
 					if (response.type == "Success") {
 						pThis.setValue(value);
@@ -437,7 +458,7 @@ module EDDEditable {
 
 
 		clickToAcceptHandler():boolean {
-			this.commitEdit();
+			this.beginEditCommit();
 			// Stop handling the mouse click
 			return false;
 		}
