@@ -784,7 +784,6 @@ class CombinatorialDefinitionInput(object):
                 unique_strain_ids[strain_id_group] = True
         return [strain_pk for strain_pk in unique_strain_ids.keys()]
 
-
     def add_common_line_metadata(self, line_metadata_pk, value):
         self.common_line_metadata[line_metadata_pk] = value
 
@@ -1192,7 +1191,7 @@ def find_existing_strains(ice_parts, existing_edd_strains, strains_by_part_numbe
             # if one or more strains are found with this UUID
             if found_strains_qs:
                 if len(found_strains_qs) == 1:
-                    existing_strain = found_strains_qs.results[0]
+                    existing_strain = found_strains_qs.get()
                     existing_edd_strains[ice_entry.part_id] = existing_strain
                     strains_by_part_number[ice_entry.part_id] = existing_strain
                 else:

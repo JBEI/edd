@@ -1,6 +1,8 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
+from io import BytesIO
+
 import arrow
 import collections
 import copy
@@ -1198,29 +1200,28 @@ def study_define(request, pk=None, slug=None):
 
     json_response = None
     user_pk = request.user.pk
-    if request.FILES:
-        json_response_dict = define_study_task(request.read(), user_pk, pk, True)
-    else:
-        edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
-        json_response_dict = define_study_task(request.POST, user_pk, pk, False)
 
-    success = 'errors' not in json_response_dict.keys()
-    status = 200 if success else 400
+    try:
+        # if request.FILES:
+        json_response_dict = define_study_task(request, user_pk, pk, False)
+        # else:
+        #     edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
+        #     json_response_dict = define_study_task(request.POST, user_pk, pk, False)
+
+        success = 'errors' not in json_response_dict.keys()
+        status = 200 if success else 400
+
+    except RuntimeError:
+        json_response_dict = _build_errors_dict(errors, warnings)
+        status = 400 if errors else 500
+
+
 
     # if success:
     #     template = loader.get_template('polls/index.html')
     #     return HttpResponse(template.render(request, 'main/detail.html', ))
 
     return JsonResponse(json_response_dict, status=status)
-
-
-@transaction.atomic(savepoint=False)
-def define_study_from_json(request, study_pk): # TODO: check study
-    # TODO: to support combinatorial GUI, implement / use an additional NamingStrategy and
-    # associated JSON input. For now, we've assumed an explicit line naming strategy similar
-    # to the template file since it's easier to test this way than to
-
-    raise NotImplementedError()  # TODO: finish implementation, then remove
 
 
 @transaction.atomic(savepoint=False)
@@ -1259,7 +1260,7 @@ def define_study_task(input, user_pk, study_id, is_json):
     # Gather context from EDD's database
     ################################################################################################
     # get the study first, or throw a 404 if user doesn't have write permission on the study
-    user = User.objects.get(user_pk)
+    user = User.objects.get(pk=user_pk)
     study = load_study(None, study_id, StudyPermission.WRITE, user=user)
 
     # build up a dictionary of protocols with unique names (guaranteed by Protocol.save())
@@ -1291,7 +1292,7 @@ def define_study_task(input, user_pk, study_id, is_json):
                                  assay_metadata_types_by_pk, require_strains=REQUIRE_STRAINS)
     else:
         # TODO: CSV
-        input = load_workbook(input, read_only=True, data_only=True)
+        input = load_workbook(BytesIO(input.read()), read_only=True, data_only=True)
         if len(input.worksheets) == 0:
             errors['no_input'] = 'no worksheets in file'
 
@@ -1308,8 +1309,9 @@ def define_study_task(input, user_pk, study_id, is_json):
 
     # TODO: need to raise an exception here to abort the transaction, or else change the scope
     # of the transaction
-    return _define_study(study, user, line_def_inputs, protocols_by_pk, line_metadata_types_by_pk,
-                         assay_metadata_types_by_pk, performance, errors, warnings)
+    with transaction.atomic(savepoint=False): #  nested transaction lets
+        return _define_study(study, user, line_def_inputs, protocols_by_pk, line_metadata_types_by_pk,
+                             assay_metadata_types_by_pk, performance, errors, warnings)
 
 ERRORS_KEY = 'errors'
 WARNINGS_KEY = 'warnings'
@@ -1319,6 +1321,7 @@ def _build_errors_dict(errors, warnings):
     val = {ERRORS_KEY: errors}
     if warnings:
         val[WARNINGS_KEY] = warnings
+    return val
 
 
 def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metadata_types,
@@ -1349,14 +1352,16 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
     # Search ICE for entries corresponding to the part numbers in the file
     ################################################################################################
     # get an ICE connection to look up strain UUID's from part number user input
-    ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user.user_email))
+    ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user.email),
+                 verify_ssl_cert=settings.VERIFY_ICE_CERT)  # TODO: remove or implement
+                                                            # consistently to help in offsite testing against ICE
 
     # build a list of unique part numbers found in the input file. we'll query ICE to get references
     # to them. Note: ideally we'd do this externally to the @atomic block, but other EDD queries
-    # have to preceed this one
+    # have to precede this one
     unique_part_numbers_dict = collections.OrderedDict()
-    for input in combinatorial_inputs:
-        for part_number in combinatorial_inputs.get_unique_strain_ids(unique_part_numbers_dict):
+    for combo in combinatorial_inputs:
+        for part_number in combo.get_unique_strain_ids(unique_part_numbers_dict):
             unique_part_numbers_dict[part_number] = True
 
     # maps part id -> Entry for those found in ICE
@@ -1383,8 +1388,8 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
     ################################################################################################
     # Create any missing strains in EDD's database
     ################################################################################################
-    create_missing_strains(non_existent_edd_strains, strains_by_part_number)
-    strains_by_pk = {strain.pk:strain for part_number, strain in strains_by_part_number}
+    create_missing_strains(non_existent_edd_strains, strains_by_part_number, errors)
+    strains_by_pk = {strain.pk: strain for strain in strains_by_part_number.values()}
     performance.end_edd_strain_creation()
 
     ################################################################################################
@@ -1413,7 +1418,6 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
     # Create requested lines and assays in the study
     ################################################################################################
     created_lines_list = []
-    created_line_to_assays_list = {}
     total_assay_count = 0
     for input_set in combinatorial_inputs:
 
@@ -1421,11 +1425,12 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
             creation_visitor = input_set.populate_study(
                     study, errors, warnings, line_metadata_types=line_metadata_types,
                     assay_metadata_types=assay_metadata_types, strains_by_pk=strains_by_pk)
-            created_lines_list.extend(creation_visitor.created_lines)
+            created_lines_list.extend(creation_visitor.lines_created)
 
-            for line_pk, created_assays in creation_visitor.line_to_assays_list:
-                created_line_to_assays_list[line_pk] = created_assays
-                total_assay_count += len(created_assays)
+            for line_pk, protocol_to_assays_list in \
+                    creation_visitor.line_to_protocols_to_assays_list.items():
+                for protocol, assays_list in protocol_to_assays_list.items():
+                    total_assay_count += len(assays_list)
 
         except RuntimeError as rte:
             key = 'creation_exception'
@@ -1444,10 +1449,10 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
     ################################################################################################
     # TODO: consider providing additonal detail re: the results
     total_line_count = len(created_lines_list)
-    performance.overall_end(total_line_count, total_assay_count)
+    performance.overall_end()
 
     if errors:
-        return _build_errors_dict(errors, warnings)
+        raise RuntimeError('Errors occurred during study definition')
 
     return {
         'lines_created': total_line_count,
@@ -1487,7 +1492,7 @@ def prevent_duplicate_naming(study, protocols, line_metadata_types,
             else:
                 unique_input_line_names[line_name] = True
 
-        for line_name, protocol_to_assay_names in names.lines_to_protocol_to_assays_list.items():
+        for line_name, protocol_to_assay_names in names.line_to_protocols_to_assays_list.items():
             for protocol_pk, assay_names in protocol_to_assay_names.items():
 
                 for assay_name in assay_names:
@@ -1516,7 +1521,7 @@ def prevent_duplicate_naming(study, protocols, line_metadata_types,
     # query the database in bulk for any lines in the study whose names are the same as lines
     # in the input
     unique_line_names_list = [line_name for line_name in unique_input_line_names.keys()]
-    existing_lines = Line.objects.filter(study_pk=study.pk, name__in=unique_line_names_list)
+    existing_lines = Line.objects.filter(study__pk=study.pk, name__in=unique_line_names_list)
 
     if existing_lines:
         unique = {line.name: True for line in existing_lines}

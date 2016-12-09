@@ -495,19 +495,16 @@ class TemplateFileParser(CombinatorialInputParser):
 
         # if we didn't find the singular form of the column header as line metadata, look
         # for a pluralized version that we'll treat as combinatorial line creation input
-        for upper_metadata_type_name in line_metadata_types.items():
+        for upper_metadata_type_name, meta_type in line_metadata_types.items():
 
             meta_regex = _PLURALIZED_REGEX % upper_metadata_type_name
             pluralized_match = re.match(meta_regex, upper_content)
 
             if pluralized_match:
-                singular_name = pluralized_match.group(1)
-                line_metadata_type = line_metadata_types.get(singular_name, None)
-
-                if line_metadata_type:
-                    self.column_layout.set_line_metadata_type(col_index, line_metadata_type,
-                                                              is_combinatorial=True)
-                    return line_metadata_type
+                line_metadata_type = meta_type
+                self.column_layout.set_line_metadata_type(col_index, line_metadata_type,
+                                                          is_combinatorial=True)
+                return line_metadata_type
 
         return None
 

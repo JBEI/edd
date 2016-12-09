@@ -186,15 +186,32 @@ following steps in the EDD checkout directory to configure EDD and launch it for
 
            TODO: We plan to add more to this section of the documentation over time to describe
            how these entries are used and when / how to edit them.
+	* Manually set the hostname in EDD's database.
+	
+      EDD needs the hostname users will use to access it, which may the one available to EDD via the host operating system.  
+      This value will be used most often to create experiment links in ICE, so an incorrect value will cause users to see bad experiment links to EDD. 
+      Here's a set of sample commands for setting the hostname:
+	  
+	      docker-compose exec appserver python manage.py shell
+		  from django.contrib.sites.models import Site
+		  site = Site.objects.get_current()  # test whether there's an existing value
+		  Site.objects.create(name='Experiment Data Depot', domain='edd.jbei.org')
+
+	  
+	  
 
  * __Install and configure a supporting [ICE][10] deployment__
 
    EDD requires ICE as a reference for strains used in EDD's experiments. You will not be able to
    create lines in your EDD studies until EDD can successfully communicate/authenticate with ICE.
     * Follow ICE's directions for installation/setup
-    * Configure an HMAC key for EDD's use. EDD's default configuration assumes a key ID of 'edd',
-      but you can change it by overriding the value of `ICE_KEY_ID` in your `local.py`
-    * TODO: insert key generation directions here, or reference ICE directions.
+    * Create string to use as the HMAC key to sign communication from EDD to ICE. EDD's default configuration assumes a key ID of 'edd',
+      but you can change it by overriding the value of `ICE_KEY_ID` in your `local.py`. Note that this file will be stored in a Docker environment file, so avoid special characters that might impact the file's interpretation.
+    * Configure ICE with the HMAC key
+	  In the `rest-auth` folder of the linked ICE deployment, create a text file with the same name as the value of `ICE_KEY_ID` (e.g. 'edd' by default) 
+      The contents of this file will be the secret key ICE uses to authenticate your requests
+	* Configure EDD with the HMAC key
+	  Edit `secrets.env` to set the value of ICE_HMAC_KEY to the value of your secret key. Do a `docker-compose restart` if you already had Docker running.
     * See directions under Common 'Maintenance/Development Tasks' to test EDD/ICE communication
 
 

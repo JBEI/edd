@@ -36,7 +36,7 @@ var StudyOverview;
             elementId: "templateDropZone",
             fileInitFn: this.fileDropped.bind(this),
             processRawFn: this.fileRead.bind(this),
-            url: '/study/' + EDDData.currentStudyID + '/parsetemplate/',
+            url: '/study/' + EDDData.currentStudyID + '/define/',
             processResponseFn: this.fileReturnedFromServer.bind(this),
             progressBar: this.fileUploadProgressBar
         });
