@@ -1054,7 +1054,6 @@ var StudyD;
                     $('.noLines').css('display', 'block');
                     //hide lines table
                     $('#studyLinesTable').hide();
-                    $('<span>  add new line</span>').insertAfter('#addNewLine');
                     $('#nextSteps').css('display', 'none');
                 }
                 else {
@@ -1291,11 +1290,6 @@ var StudyD;
             }
         });
         this.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
-        //assays with measurements
-        var assaysWithMeasurements = _.filter(EDDData.Assays, function (assay) { return assay.count; });
-        var assayIds = _.map(assaysWithMeasurements, function (assay) { return (assay.id); });
-        //this.progressiveFilteringWidget.repopulateFilteringSection();
-        this.assaysDataGrids.invalidateAssayRecords(assayIds);
         if (count_rec < count_total) {
         }
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
@@ -1336,8 +1330,8 @@ var StudyD;
             if (checkedLen) {
                 $("#disabledButtons").children().prop('disabled', false);
                 $('.disabled-button').removeClass('disabled-button ');
-                $('#line_worklist').removeAttr('title');
-                $('#line-export').removeAttr('title');
+                $('#line_worklist').attr('title', 'Generate a worklist to carry out your experiment');
+                $('#line-export').attr('title', 'Export your lines in a file type of your choosing');
             }
             else {
                 $("#disabledButtons").children().prop('disabled', true);
@@ -1412,6 +1406,7 @@ var StudyD;
             $("input[value='" + assayId + "']").parent().parent().show();
         });
     }
+    StudyD.showHideAssayRows = showHideAssayRows;
     //convert post filtered measuremnts to array of assay ids
     function convertPostFilteringMeasurements(postFilteringMeasurements) {
         //array of assays
@@ -2211,7 +2206,6 @@ var DGDisabledLinesWidget = (function (_super) {
         }
         this.checkBoxElement = cb;
         this.labelElement = this._createLabel('Show Disabled', cbID);
-        ;
         this._createdElements = true;
     };
     DGDisabledLinesWidget.prototype.applyFilterToIDs = function (rowIDs) {
@@ -2983,7 +2977,6 @@ var DGDisabledAssaysWidget = (function (_super) {
         }
         this.checkBoxElement = cb;
         this.labelElement = this._createLabel('Show Disabled', cbID);
-        ;
         this._createdElements = true;
     };
     DGDisabledAssaysWidget.prototype.applyFilterToIDs = function (rowIDs) {

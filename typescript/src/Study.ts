@@ -1169,7 +1169,6 @@ module StudyD {
                     $('.noLines').css('display', 'block');
                     //hide lines table
                     $('#studyLinesTable').hide();
-                    $('<span>  add new line</span>').insertAfter('#addNewLine')
                     $('#nextSteps').css('display', 'none');
                 } else {
                   $('.dataTabOverView').css('display', 'block');
@@ -1421,12 +1420,6 @@ module StudyD {
 
         this.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
 
-        //assays with measurements
-        var assaysWithMeasurements = _.filter(EDDData.Assays, function(assay:any) { return assay.count});
-        var assayIds = _.map(assaysWithMeasurements, function(assay:any) {return (assay.id)});
-        //this.progressiveFilteringWidget.repopulateFilteringSection();
-        this.assaysDataGrids.invalidateAssayRecords(assayIds);
-
         if (count_rec < count_total) {
             // TODO not all measurements downloaded; display a message indicating this
             // explain downloading individual assay measurements too
@@ -1471,9 +1464,9 @@ module StudyD {
 
             if (checkedLen) {
                 $("#disabledButtons").children().prop('disabled',false);
-                $('.disabled-button').removeClass('disabled-button ')
-                $('#line_worklist').removeAttr('title');
-                $('#line-export').removeAttr('title');
+                $('.disabled-button').removeClass('disabled-button ');
+                $('#line_worklist').attr('title', 'Generate a worklist to carry out your experiment');
+                $('#line-export').attr('title', 'Export your lines in a file type of your choosing');
             } else {
                  $("#disabledButtons").children().prop('disabled', true);
                  $('#line_worklist').attr('title', 'select line(s) first');
@@ -1533,7 +1526,7 @@ module StudyD {
     var remakeMainGraphAreaCalls = 0;
 
      //this function shows and hides rows based on filtered data.
-    function showHideAssayRows(progressiveFilteringMeasurements):void {
+    export function showHideAssayRows(progressiveFilteringMeasurements):void {
 
         var assays = _.keys(EDDData.Assays);
 
@@ -2435,7 +2428,7 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
             cb.setAttribute('checked', 'checked');
         }
         this.checkBoxElement = cb;
-        this.labelElement = this._createLabel('Show Disabled', cbID);;
+        this.labelElement = this._createLabel('Show Disabled', cbID);
         this._createdElements = true;
     }
 
@@ -3312,7 +3305,7 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
             cb.setAttribute('checked', 'checked');
         }
         this.checkBoxElement = cb;
-        this.labelElement = this._createLabel('Show Disabled', cbID);;
+        this.labelElement = this._createLabel('Show Disabled', cbID);
         this._createdElements = true;
     }
 

@@ -4,7 +4,7 @@
       //i'm not sure where to put this code. appending add new line button/modal to lines table
      var tbody = $('#studyLinesTable');
      $('<button  id="addNewLine" class="addNewLine">' +
-     '</button>').insertAfter(tbody);
+     '</button><span>  add new line</span>').insertAfter(tbody);
      $('#line_worklist').attr('title', 'select line(s) first');
      $('#line-export').attr('title', 'select line(s) first');
      lineModal();

@@ -991,7 +991,6 @@ def study_search(request):
     solr = StudySearch(ident=request.user)
     query = request.GET.get('q', 'active:true')
     opt = request.GET.copy()
-    int(opt['i']) > 0
     opt['edismax'] = True
     data = solr.query(query=query, options=opt)
     # loop through results and attach URL to each

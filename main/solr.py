@@ -61,11 +61,23 @@ class SolrSearch(object):
         return obj.to_solr_json()
 
     def get_queryopt(self, query, **kwargs):
+        # do some basic bounds sanity checking
+        try:
+            start = int(kwargs.get('i', 0))
+            start = 0 if start < 0 else start
+        except Exception as e:
+            start = 0
+
+        try:
+            rows = int(kwargs.get('size', 50))
+            rows = 50 if rows < 1 else rows
+        except Exception as e:
+            rows = 50
         queryopt = {
             'indent': True,
             'q': query,
-            'start': kwargs.get('i', 0),
-            'rows': kwargs.get('size', 50),
+            'start': start,
+            'rows': rows,
             'sort': kwargs.get('sort', None),
             'wt': 'json',
             'fl': '*',
