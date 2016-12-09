@@ -1,10 +1,9 @@
 # coding: utf-8
+from __future__ import unicode_literals
 
 from django.conf import settings
 from django.contrib.postgres.fields import HStoreField
 from django.db import models
-
-from main.models import Study
 
 
 class Institution(models.Model):
@@ -35,10 +34,6 @@ class UserProfile(models.Model):
     def __str__(self):
         return str(self.user)
 
-    @property
-    def studies(self):
-        return Study.objects.filter(created__mod_by=self.user)
-
 
 class InstitutionID(models.Model):
     """
@@ -49,3 +44,13 @@ class InstitutionID(models.Model):
     institution = models.ForeignKey(Institution)
     profile = models.ForeignKey(UserProfile)
     identifier = models.CharField(max_length=255, blank=True, null=True)
+
+
+class UserTask(models.Model):
+    """ Recording of celery tasks started by a user. """
+    class Meta:
+        db_table = 'profile_task'
+    profile = models.ForeignKey(UserProfile, related_name='tasks')
+    uuid = models.UUIDField(editable=False, unique=True)
+    add_time = models.DateTimeField(auto_now_add=True, editable=False)
+    notified = models.BooleanField(default=False)

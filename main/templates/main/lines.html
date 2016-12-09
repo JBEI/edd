@@ -19,6 +19,9 @@
         EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
         EDDData.Studies = EDDData.Studies || {};
         EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
+    $( function() {
+    $( document ).tooltip();
+  } );
 
     </script>
     <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
@@ -61,11 +64,11 @@
 <ui class="nav nav-pills navbar-nav studyTabs">
     <li>
         <a href="/study/{{ study.slug }}/overview">Overview</a>
-    </li><li>
+    </li><li class="active">
         <a href="/study/{{ study.slug }}/lines">Lines</a>
     </li>
     {% if assays %}
-        <li class="dataTab active">
+        <li class="dataTab">
             <a href="/study/{{ study.slug }}/">Data</a>
         </li>
     {% endif %}
@@ -118,11 +121,10 @@
         {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
         <div class="noLines" style="display: none">
             <h3>This study has no lines.</h3>
-            <button type="button" id="addNewLine" class="btn btn-primary btn-lg actionButton">Add New </br>Line</button>
             <h3>What is a line?
-                <input type="button" style="display:inline" id="hide" value="hide"/>
+                <input type="button" style="display:inline" id="show" value="show"/>
             </h3>
-            <div id="lineDescription">
+            <div id="lineDescription" style="display:none">
                 <p>A line describes a single culture or line of enquiry within a Study. A single flask with a E. coli strain
                     culture, or a well of S. cerevisiae in a plate, are examples in the EDD. Lines are grouped together
                     under a Study in the EDD hierarchy, therefore a Study contains a set of Lines.  A line defines the
@@ -136,12 +138,7 @@
         <div class="scroll">
             <table id="studyLinesTable"></table>
         </div>
-        <div id="nextSteps" style="display:none">
-            <h3>Possible next steps (in no particular order)</h3>
-            <p> - Import data from completed experiment</p>
-            <p> - Generate worklist to run experiment</p>
-            <p> - Add more lines to define the study details</p>
-        </div>
+
         <div id="linesActionPanel" class="sectionActions">
             <span id="linesSelectedCell">0 selected</span>
             {% if writable %}
@@ -149,11 +146,11 @@
                     <button id="cloneLineButton" type="submit" name="action" disabled="true" value="clone">Clone Line</button>
                     <button id="editLineButton" disabled="true">Edit Line</button>
                     <button id="groupLineButton" type="submit" disabled="true" name="action" value="group">Group As Replicates</button>
-                    <button type="button"  id="addAssayToLine" class="btn btn-primary btn-lg actionButton">Add Assays To
-                    </br> Selected Lines</button>
-                    <button type="button"id="line_worklist" class="btn btn-primary btn-lg actionButton">Generate  </br>
-                    Worklist</button>
-                    <button type="button" id="line-export"class="btn btn-primary btn-lg actionButton">Export </br> Data</button>
+                    <button type="button"  id="addAssayToLine" disabled="true">Add Assays To Selected Lines</button>
+                    <button type="button"id="line_worklist" class="btn btn-primary btn-lg actionButton disabled-button"
+                            disabled>Generate  </br> Worklist</button>
+                    <button type="button" id="line-export"class="btn btn-primary btn-lg actionButton disabled-button"
+                            disabled>Export </br> Data</button>
                     </br> </br>
                     <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
                     <label for="line_action_mark">

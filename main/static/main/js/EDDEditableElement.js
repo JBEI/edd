@@ -63,14 +63,30 @@ var EDDEditable;
             this.keyEnterHandler = function (e) {
                 // ENTER key. Commit the changes.
                 if (e.which == 13) {
-                    _this.commitEdit();
+                    _this.beginEditCommit();
                 }
             };
             this.setUpMainElement();
             this.generateControlsContainer();
             this.generateControlButtons();
-            this.setDefaultStyling();
             this.elementJQ.click(this.clickToEditHandler.bind(this));
+            // If the element is styled to be active while we're setting it up,
+            // assume that we should immediately enter 'edit' mode.
+            // Note that due to the cascading nature of the handler for triggering
+            // editing mode, only one editable element on the page will actually
+            // end up active - the last one styled as 'active' in the DOM.
+            this.setDefaultStyling();
+            if (this.elementJQ.hasClass('active')) {
+                // If this returns true, then we have failed to activate the
+                // element for editing for some reason.  Fall through to
+                // setting the element as inactive.
+                if (this.clickToEditHandler()) {
+                    this.setInactiveStyling();
+                }
+            }
+            else {
+                this.setInactiveStyling();
+            }
         }
         EditableElement.prototype.editAllowed = function () {
             return true;
@@ -152,6 +168,14 @@ var EDDEditable;
         };
         // Changes the styling of the container element to indicate that editing is allowed,
         // and adds a mouse-over control to engage editing.
+        EditableElement.prototype.setInactiveStyling = function () {
+            this.elementJQ.removeClass('active');
+            this.elementJQ.addClass('inactive');
+            $(this.editControlsContainer).children().detach();
+            this.editControlsContainer.appendChild(this.editButtonElement);
+        };
+        // Changes the styling of the container element to indicate that editing is allowed,
+        // and adds a mouse-over control to engage editing.
         EditableElement.prototype.setDefaultStyling = function () {
             this.elementJQ.addClass('editable-field');
             if (this.editAllowed()) {
@@ -160,9 +184,7 @@ var EDDEditable;
             else {
                 this.elementJQ.removeClass('enabled');
             }
-            this.elementJQ.removeClass('active');
             this.elementJQ.removeClass('saving');
-            this.elementJQ.addClass('inactive');
             this.element.setAttribute('title', 'click to edit');
             var c = this.editControlsPositioner;
             var p = this.element;
@@ -176,8 +198,6 @@ var EDDEditable;
             else {
                 p.appendChild(c);
             }
-            $(this.editControlsContainer).children().detach();
-            this.editControlsContainer.appendChild(this.editButtonElement);
         };
         // Instantiates the form element(s) used when editing is taking place,
         // with appropriate event handlers and styling, and adds them to the
@@ -231,13 +251,13 @@ var EDDEditable;
                         this.inputElement = document.createElement("input");
                         this.inputElement.type = "text";
                     }
-                    // Copy font attributes to match.
-                    $(this.inputElement).css("font-family", this.elementJQ.css("font-family"));
-                    $(this.inputElement).css("font-size", desiredFontSize);
                     // Set width and height.
                     this.inputElement.style.width = "100%";
                     this.inputElement.value = this.getValue();
                 }
+                // Copy font attributes to match.
+                $(this.inputElement).css("font-family", this.elementJQ.css("font-family"));
+                $(this.inputElement).css("font-size", desiredFontSize);
             }
         };
         // Support function for setUpEditingMode.
@@ -295,25 +315,27 @@ var EDDEditable;
             this.showValue();
             // Re-add the default editing widgetry
             this.setDefaultStyling();
+            this.setInactiveStyling();
             EditableElement._prevEditableElement = null;
         };
-        EditableElement.prototype.commitEdit = function () {
-            var debug = false;
+        EditableElement.prototype.beginEditCommit = function () {
             var value = this.getEditedValue();
             if (!this.canCommit(value)) {
                 return;
             }
-            var pThis = this;
-            var element = this.element;
-            // Extract the new value
-            var formData = this.makeFormData(value);
-            var formURL = this.getFormURL();
             this.setUpCommittingIndicator();
+            this.commit();
+        };
+        // Subclass this if your need a different submit behavior after the UI is set up.
+        EditableElement.prototype.commit = function () {
+            var debug = false;
+            var value = this.getEditedValue();
+            var pThis = this;
             $.ajax({
-                'url': formURL,
+                'url': this.getFormURL(),
                 'type': 'POST',
                 'cache': false,
-                'data': formData,
+                'data': this.makeFormData(value),
                 'success': function (response) {
                     if (response.type == "Success") {
                         pThis.setValue(value);
@@ -344,7 +366,7 @@ var EDDEditable;
             this.elementJQ.addClass('saving');
         };
         EditableElement.prototype.clickToAcceptHandler = function () {
-            this.commitEdit();
+            this.beginEditCommit();
             // Stop handling the mouse click
             return false;
         };

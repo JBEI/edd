@@ -26,23 +26,29 @@ try:
     INTERNAL_IPS.append(socket.gethostbyname('nginx'))
 except:
     pass
-# Add the Django Debug Toolbar to local instance
 # Add login providers
 # INSTALLED_APPS = INSTALLED_APPS + (
 #     'allauth.socialaccount.providers.github',
 #     'allauth.socialaccount.providers.google',
 #     'allauth.socialaccount.providers.linkedin_oauth2',
-#     'debug_toolbar',
 # )
 
+# Uncomment below to use DEBUG mode and include the debug toolbar
+# DEBUG = True
+
 # Add the Django Debug Toolbar to local instance
-# DEBUG_TOOLBAR_CONFIG = {
-#     'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
-# }
+if DEBUG:  # noqa
+    INSTALLED_APPS = INSTALLED_APPS + ('debug_toolbar', )  # noqa
+    MIDDLEWARE_CLASSES = (
+        'debug_toolbar.middleware.DebugToolbarMiddleware',
+    ) + MIDDLEWARE_CLASSES  # noqa
+    DEBUG_TOOLBAR_CONFIG = {
+        'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
+    }
 
 USE_CELERY = True
 
-# disable the initial new REST API by default since it's insecure. Only needed to support 
+# disable the initial new REST API by default since it's insecure. Only needed to support
 # create_lines.py and maintain_ice_links.py
 PUBLISH_REST_API = False
 

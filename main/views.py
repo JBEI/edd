@@ -32,9 +32,10 @@ from django.template import RequestContext
 from django.template import loader
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
+from messages_extends import constants as msg_constants
 
 from . import autocomplete, redis
 from openpyxl import load_workbook
@@ -68,7 +69,7 @@ from .models import (
 from .signals import study_modified
 from .solr import StudySearch
 from .utilities import (
-    EDDImportTasks, JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement,
+    JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement,
     get_edddata_misc, get_edddata_strains, get_edddata_study, get_edddata_users,
     CombinatorialCreationPerformance, CombinatorialDefinitionInput, LineAndAssayNamingVisitor,
     find_existing_strains)
@@ -1157,13 +1158,14 @@ def study_import_table(request, pk=None, slug=None):
                 for key in sorted(request.POST)
             ]))
         try:
-            result = import_task.delay(study, request.user.pk, request.POST)
-            tasks = EDDImportTasks(request.session)
-            tasks.add_task_id(result.id)
-            messages.success(
+            result = import_task.delay(study.pk, request.user.pk, request.POST)
+            # save task ID for notification later
+            request.user.profile.tasks.create(uuid=result.id)
+            messages.add_message(
                 request,
-                'Data is submitted for import. You may continue to use EDD, another message will '
-                'appear once the import is complete.'
+                msg_constants.SUCCESS_PERSISTENT,
+                _('Data is submitted for import. You may continue to use EDD, another message '
+                  'will appear once the import is complete.')
             )
         except RuntimeError as e:
             logger.exception('Data import failed: %s', e.message)

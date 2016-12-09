@@ -1039,28 +1039,27 @@ var StudyD;
                         return;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
-                //stop spinner
                 if (_.keys(EDDData.Assays).length === 0) {
-                    $('#nextSteps').css('display', 'block');
-                    $('.dataTab').hide(); // TODO: This can now be done by the front-end
+                    //stop spinner
                     $('#loadingDiv').hide();
-                    $('#graphFilter').hide();
-                    $('#dataDisplay').hide();
+                    //hide line action buttons like export and genearte work list if there are no lines
+                    $('#linesActionPanel').hide();
                 }
                 else {
-                    $('#nextSteps').css('display', 'none');
                     $('#chartType').show();
-                    $('#graphFilter').show();
-                    $('#dataDisplay').show();
-                    $('.dataTab').show();
+                    $('#linesActionPanel').show();
                 }
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('.noLines').css('display', 'block');
+                    //hide lines table
+                    $('#studyLinesTable').hide();
+                    $('<span>  add new line</span>').insertAfter('#addNewLine');
                     $('#nextSteps').css('display', 'none');
                 }
                 else {
                     $('.dataTabOverView').css('display', 'block');
+                    $('#studyLinesTable').show();
                     $('.linesTabOverView').css('display', 'block');
                     $('.noLines').css('display', 'none');
                 }
@@ -1261,7 +1260,7 @@ var StudyD;
         $.each(data.measures || {}, function (index, measurement) {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
             ++count_rec;
-            if (!assay || !assay.active)
+            if (!assay || !assay.active || assay.count === undefined)
                 return;
             line = EDDData.Lines[assay.lid];
             if (!line || !line.active)
@@ -1292,12 +1291,13 @@ var StudyD;
             }
         });
         this.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
+        //assays with measurements
+        var assaysWithMeasurements = _.filter(EDDData.Assays, function (assay) { return assay.count; });
+        var assayIds = _.map(assaysWithMeasurements, function (assay) { return (assay.id); });
+        //this.progressiveFilteringWidget.repopulateFilteringSection();
+        this.assaysDataGrids.invalidateAssayRecords(assayIds);
         if (count_rec < count_total) {
         }
-        // invalidate assays on all DataGrids; redraws the affected rows
-        // $.each(this.assaysDataGrids, (protocolId, dataGrid) => {
-        //     dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
-        // });
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
         this.queueMainGraphRemake(false);
@@ -1335,11 +1335,14 @@ var StudyD;
             });
             if (checkedLen) {
                 $("#disabledButtons").children().prop('disabled', false);
-                $('.noLineSelected').hide();
+                $('.disabled-button').removeClass('disabled-button ');
+                $('#line_worklist').removeAttr('title');
+                $('#line-export').removeAttr('title');
             }
             else {
                 $("#disabledButtons").children().prop('disabled', true);
-                $('.noLineSelected').show();
+                $('#line_worklist').attr('title', 'select line(s) first');
+                $('#line-export').attr('title', 'select line(s) first');
             }
             if (checkedLen < 2) {
                 $('#groupLineButton').prop('disabled', true);

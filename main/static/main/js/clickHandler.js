@@ -1,6 +1,12 @@
 //call click event functions
 
  $(function () {
+      //i'm not sure where to put this code. appending add new line button/modal to lines table
+     var tbody = $('#studyLinesTable');
+     $('<button  id="addNewLine" class="addNewLine">' +
+     '</button>').insertAfter(tbody);
+     $('#line_worklist').attr('title', 'select line(s) first');
+     $('#line-export').attr('title', 'select line(s) first');
      lineModal();
      assayModal();
      measurementToAssayModal();
@@ -9,14 +15,7 @@
      showStudyGraph();
      showStudyTable();
      whatIsALine();
-     if (_.keys(EDDData.Lines).length > 0) {
-        $('.linesTabOverView').css('visibility', 'visible');
-        $('.dataTabOverView').css('visibility', 'visible');
-     } else if (_.keys(EDDData.Assays).length > 1) {
-        $('.linesTabOverView').css('visibility', 'visible');
-        $('.dataTabOverView').css('visibility', 'hidden');
-     }
- });
+    });
 
 //click handler for export modal
 function lineModal(event) {
@@ -67,14 +66,6 @@ function addNewLineModal(event) {
     return false;
 };
 
-// //click handler for filtering section
-// function filteringSectionSlideDown(event) {
-//     $(document).on('click', '.caret', function () {
-//            $("#mainFilterSection").slideDown(500);
-//             return false;
-//         });
-// };
-
 //work around for generating worklist click handler
 function generateWorkList() {
     $('#line_worklist').click(function () {
@@ -115,19 +106,19 @@ function showStudyTable() {
 
 //show hide for what is a line description
 function whatIsALine() {
-    $('#hide').click(function (event) {
+    $('#show').click(function (event) {
           event.preventDefault();
-          $(this).val() == "hide" ? show_int() : show_hide();
+          $(this).val() == "show" ? show_int() : show_hide();
           return false
       });
 }
 
 function show_int() {
-    $('#hide').val("show");
-    $('#lineDescription').css('display', 'none');
+    $('#show').val("hide");
+    $('#lineDescription').css('display', 'block');
 }
 
 function show_hide() {
-    $('#hide').val("hide");
-    $('#lineDescription').css('display', 'block');
+    $('#show').val("show");
+    $('#lineDescription').css('display', 'none');
 }
