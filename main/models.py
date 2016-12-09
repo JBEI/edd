@@ -823,6 +823,8 @@ class Study(EDDObject):
     def save(self, *args, **kwargs):
         # build the slug: use profile initials, study name; if needed, partial UUID, counter
         if self.slug is None:
+            if self.uuid is None:
+                self.uuid = uuid4()
             self.slug = self._build_slug(self.name, self.uuid.hex)
         # now we can continue save
         super(Study, self).save(*args, **kwargs)
