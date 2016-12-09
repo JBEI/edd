@@ -29,7 +29,11 @@
     {% if can_create %}
         <div class="newPageSection disclose discloseHide" id="addNewStudyMain">
             <div style="float: right">
-                <a href="{% url 'main:create_study' %}" class="btn addButton btn-lg">Add New </br>Study</a>
+                <form action="{% url 'main:create_study' %}" class="edd-form" method="POST">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                <button type="submit" class="btn btn-primary btn-lg">Add New </br>Study</button>
+                    </form>
             </div>
         </div>
     {% endif %}

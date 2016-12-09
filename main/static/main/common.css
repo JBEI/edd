@@ -1064,24 +1064,6 @@ div.multientrybutton {
     margin-top: 10px;
 }
 
-.btn-lg {
-    background-color: #6CA5E9;
-    color: white;
-    border: 1px solid;
-    text-align: center;
-}
-
-.btn-lg:active {
-    background-color: lightgrey;
-}
-
-.btn-lg:active:focus {
-    background-color: lightgrey;
-}
-
-.btn-lg:hover, .btn:focus, .btn.focus {
-    color: white;
-}
 /* Autocomplete input element styling */
 
 ul.edd-autocomplete-list {
