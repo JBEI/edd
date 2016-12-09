@@ -8,10 +8,8 @@ import warnings
 
 from celery import shared_task
 from collections import namedtuple
-from django.conf import settings
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Q
 from django.utils.translation import ugettext as _
 from six import string_types
 
@@ -323,11 +321,6 @@ class TableImport(object):
             )
         return compartment
 
-    def _load_datasource(self):
-        if self._datasource.pk is None:
-            self._datasource.save()
-        return self._datasource
-
     def _load_type_id(self, item):
         type_id = item.get('measurement_id', None)
         if type_id is None:
@@ -370,7 +363,7 @@ class TableImport(object):
         Attempts to infer the measurement type of the input item from the general import mode
         specified in the input / in Step 1 of the import GUI.
         :param item: a dictionary containing the JSON data for a single measurement item sent
-        from the front end
+            from the front end
         :param default: the default value to return if no better one can be inferred
         :return: the measurement type, or the specified default if no better one is found
         """
@@ -389,54 +382,8 @@ class TableImport(object):
                     'name': measurement_name,
                 })
         elif mode in (MODE_PROTEOMICS, MODE_SKYLINE):
-            # extract Uniprot accession data from the measurement name, if present
-            accession_match = models.ProteinIdentifier.accession_pattern.match(measurement_name)
-            uniprot_id = accession_match.group(1) if accession_match else None
-
-            # search for proteins matching the name. we're fairly permissive during lookup to
-            # account for some small percentage of protein names that don't follow the Uniprot,
-            # as well as legacy proteins in EDD's database
-            name_match_criteria = Q(type_name=measurement_name)
-
-            if getattr(settings, 'ALLOW_PERMISSIVE_PROTEIN_MATCHING', False):
-                name_match_criteria = name_match_criteria | Q(short_name=measurement_name)
-                if uniprot_id:
-                    name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
-            proteins = models.ProteinIdentifier.objects.filter(name_match_criteria)
-
-            if len(proteins) == 1:
-                found_type = MType(compartment, proteins[0].pk, units_id)
-            else:
-                # fail if protein couldn't be uniquely matched, but detect all non-matches before
-                # failing
-                if len(proteins) > 1:
-                    raise ValidationError('More than one match was found for protein name %s. '
-                                          'Used' % measurement_name)
-
-                # try to create a new protein
-                else:
-                    # enforce ProteinIdentifier naming conventions for new ProteinIdentifiers,
-                    # if configured. this isn't as good as looking them up in Uniprot, but should
-                    # help as a stopgap to curate our protein entries
-                    if settings.REQUIRE_UNIPROT_ACCESSION_IDS and not accession_match:
-                        raise ValidationError(
-                            'Protein name "%(type_name)s" is not a valid UniProt accession id.' % {
-                                'type_name': measurement_name,
-                            }
-                        )
-
-                    logger.info('Creating a new ProteinIdentifier for %(name)s' % {
-                        'name': measurement_name,
-                    })
-
-                    # create the new protein id
-                    # FIXME: this blindly creates a new type; should try external lookups first?
-                    p = models.ProteinIdentifier.objects.create(
-                        type_name=measurement_name,
-                        short_name=uniprot_id,
-                        type_source=self._load_datasource(),
-                    )
-                    found_type = MType(compartment, p.pk, units_id)
+            protein = models.ProteinIdentifier.load_or_create(measurement_name, self._datasource)
+            found_type = MType(compartment, protein.pk, units_id)
         return found_type
 
     def _mtype_guess_format(self, points):

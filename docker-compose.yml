@@ -69,7 +69,7 @@ services:
     expose:
       - '25'
   edd:
-    build: .
+    build: ./docker_services/edd/
     image: edd
     command: "true"
     env_file: secrets.env
@@ -82,7 +82,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: /code/docker_services/worker_entrypoint.sh
+    command: /code/docker_services/edd/worker_entrypoint.sh
     depends_on:
       - postgres
       - rabbitmq
@@ -103,7 +103,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: /code/docker_services/appserver_entrypoint.sh
+    command: /code/docker_services/edd/appserver_entrypoint.sh
     depends_on:
       - postgres
       - rabbitmq

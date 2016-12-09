@@ -449,9 +449,10 @@ class ProteinAdmin(MeasurementTypeAdmin):
             if not labels:
                 labels = {}
                 kwargs['labels'] = labels
-            labels['type_name'] = 'UniProt Accession ID'
+            labels['type_name'] = _('Protein Name')
+            labels['accession_id'] = _('UniProt Accession ID')
 
-        generated_form = super(ProteinAdmin, self).get_form(self, request, **kwargs)
+        generated_form = super(ProteinAdmin, self).get_form(request, obj, **kwargs)
 
         # require that newly-created ProteinIdentifiers have an accession ID matching the
         # expected pattern. existing ID's that don't conform should still be editable
@@ -459,19 +460,20 @@ class ProteinAdmin(MeasurementTypeAdmin):
         if new_identifier and settings.REQUIRE_UNIPROT_ACCESSION_IDS:
             generated_form.base_fields['type_name'].validators.append(RegexValidator(
                     regex=ProteinIdentifier.accession_pattern,
-                    message='New entries must be valid UniProt accession IDs'))
+                    message=_('New entries must be valid UniProt accession IDs')))
         return generated_form
 
     def get_fields(self, request, obj=None):
         return super(ProteinAdmin, self).get_fields(request, obj) + [
+            'accession_id',
             ('length', 'mass',),
-            'type_source', 'study_list',
         ]
 
     def get_list_display(self, request):
         # complete override
         return [
-            'type_name', 'short_name', 'length', 'mass', '_study_count', 'type_source',
+            'type_name', 'short_name', 'accession_id', 'length', 'mass', '_study_count',
+            'type_source',
         ]
 
     def get_merge_autowidget(self):
@@ -484,7 +486,10 @@ class ProteinAdmin(MeasurementTypeAdmin):
         return qs
 
     def get_readonly_fields(self, request, obj=None):
-        return ['type_source', 'study_list', ]
+        # only allow editing accession ID when it is not already set
+        if obj and obj.accession_id is None:
+            return ['type_source', 'study_list', ]
+        return ['accession_id', 'type_source', 'study_list', ]
 
     def get_search_results(self, request, queryset, search_term):
         search_term = ProteinIdentifier.match_accession_id(search_term)
