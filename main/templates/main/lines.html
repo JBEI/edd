@@ -107,11 +107,30 @@
                     <input type="text" class="line-meta-value" placeholder="Metadata Value" />
                     <button class="line-meta-add">Add Value</button>
                 </p>
-                <button type="submit" name="action" value="line">{% if new_line.is_editing %}Edit Line{% else %}Add Line{% endif %}</button>
+                <button type="submit" name="action" value="line">Add Line</button>
             </form>
         </div>
     </div>
-{% endif %}
+    {% endif %}
+        {% if writable %}
+            <div id="editLineForm" title="Edit Line">
+            <div class="sectionContent discloseBody">
+                <form action="" class="line-edit edd-form" method="POST">
+                    {% csrf_token %}
+                    {{ new_line.as_p }}
+                    <p class="line-edit-meta">
+                        <span class="edd-label">
+                            <input type="text" class="autocomp autocomp_ltype" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" size="14" />
+                            <input type="hidden" class="line-meta-type" value="" />
+                        </span>
+                        <input type="text" class="line-meta-value" placeholder="Metadata Value" />
+                        <button class="line-meta-add">Add Value</button>
+                    </p>
+                    <button type="submit" name="action" value="line">Edit line</button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
 
 <form id="line-action-form" action="" class="line-action" method="POST">
     {% csrf_token %}

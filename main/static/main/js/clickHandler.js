@@ -11,6 +11,8 @@
      assayModal();
      measurementToAssayModal();
      addNewLineModal();
+     editLineModal();
+     editLineBox();
      generateWorkList();
      showStudyGraph();
      showStudyTable();
@@ -61,6 +63,18 @@ function addNewLineModal(event) {
     });
     $("#addNewLine").click(function() {
        $("#addNewLineForm").dialog( "open" );
+        return false;
+    });
+    return false;
+};
+
+//click handler for editing line
+function editLineModal(event) {
+   var dlg = $("#editLineForm").dialog({
+       autoOpen: false
+    });
+    $("#editLineButton").click(function() {
+       $("#editLineForm").dialog( "open" );
         return false;
     });
     return false;

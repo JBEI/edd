@@ -1336,7 +1336,6 @@ module StudyD {
                 $.each(allMeta, (key) => insertLineMetadataRow(metaRow, key, ''));
             }
             updateUILineForm(form, data.count > 1);
-            scrollToForm(form);
             form.find('[name=line-ids]').val(data.ids.join(','));
             return false;
         });
@@ -1769,7 +1768,7 @@ module StudyD {
     }
 
     function clearLineForm() {
-        var form = $('#id_line-ids').closest('.disclose');
+        var form = $('#editLineForm');
         form.find('.line-meta').remove();
         form.find('[name^=line-]').not(':checkbox, :radio').val('');
         form.find('[name^=line-]').filter(':checkbox, :radio').prop('checked', false);
@@ -1847,24 +1846,15 @@ module StudyD {
     }
 
     function updateUILineForm(form, plural?) {
-        var title, button, text = 'Edit Line' + (plural ? 's' : '');
+        var title, text = 'Edit Line' + (plural ? 's' : '');
         // Update the disclose title to read 'Edit Line'
-        title = form.find('.discloseLink > a').text(text);
-        // Update the button to read 'Edit Line'
-        button = form.find('[name=action][value=line]').text(text);
+        $('#addNewLineForm').prop('title', text);
         if (plural) {
             form.find('.bulk').prop('checked', false).removeClass('off');
             form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
                 $(ev.target).siblings('label').find('.bulk').prop('checked', true);
             });
         }
-        // Add link to revert back to 'Add Line' form
-        $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', (ev) => {
-            clearLineForm();
-            title.text('Add A New Line');
-            button.text('Add Line');
-            return false;
-        }).insertAfter(button);
     }
 
     function insertLineMetadataRow(refRow, key, value) {
@@ -1904,7 +1894,7 @@ module StudyD {
             return;
         }
 
-        form = clearLineForm(); // "form" is actually the disclose block
+        form = clearLineForm(); // "form" is actually the edit line modal
         fillLineForm(form, record);
         updateUILineForm(form);
         scrollToForm(form);
@@ -2179,7 +2169,7 @@ class DataGridSpecLines extends DataGridSpecBase {
                 'checkboxName': 'lineId',
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
                 'sideMenuItems': [
-                    '<a href="#editline" class="line-edit-link">Edit Line</a>',
+                    '<a href="#" class="line-edit-link">Edit Line</a>',
                     '<a href="/export?lineId=' + index + '">Export Data as CSV/Excel</a>',
                     '<a href="/sbml?lineId=' + index + '">Export Data as SBML</a>'
                 ],
@@ -2287,6 +2277,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         // add click handler for menu on line name cells
         $(this.tableElement).on('click', 'a.line-edit-link', (ev) => {
             StudyD.editLine($(ev.target).closest('.popupcell').find('input').val());
+            $("#editLineForm").dialog( "open" );
             return false;
         });
         leftSide = [
