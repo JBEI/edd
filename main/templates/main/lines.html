@@ -136,18 +136,18 @@
     {% csrf_token %}
     <div class="pageSection">
         {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-        <div class="noLines" style="display: none">
-            <h3>This study has no lines.</h3>
-            <h3>What is a line?
-                <input type="button" style="display:inline" id="show" value="show"/>
+        <div class="noLines" style="display: none;">
+            <h3 style="margin-bottom:12px">This study has no lines.  Download the
+                <a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}">template file</a> to get started.</h3>
+            <h3 style="margin-bottom:12px">What is a line?
+                <input type="button" style="display:inline;" id="show" value="show"/>
             </h3>
             <div id="lineDescription" style="display:none">
-                <p>A line describes a single culture or line of enquiry within a Study. A single flask with a E. coli strain
-                    culture, or a well of S. cerevisiae in a plate, are examples in the EDD. Lines are grouped together
-                    under a Study in the EDD hierarchy, therefore a Study contains a set of Lines.  A line defines the
+                <p>A line describes the experimental details of your study. A line defines the
                     experimental conditions and associated meta data for a (in this example) single flask.  Some examples
                     that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
-                    speed.  Users can manually add lines, or download the study template for bulk uploads.
+                    speed.  Users can manually add lines, or download the <a class="dropLink"
+                    href="{% static 'sampleLineTemplate.xlsx' %}">study template</a> for bulk uploads.
                 </p>
                 <img src="{% static 'main/images/line_assay_tree.png' %}" />
             </div>
