@@ -123,7 +123,8 @@
 <div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;">
     <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;color:gray;" id="templateDropZone">
         <div></div>
-        To define your Study, drop in a <a href="#">template file</a> or continue to the <a href="/study/{{ study.slug }}/lines">Lines page</a>.
+        To define your Study details, drop in a
+        <a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}">template file</a>
     </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
@@ -134,6 +135,7 @@
         </div>
         <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
     </div>
+or continue to the <a class="dropLink" href="/study/{{ study.slug }}/lines">Lines page</a>.
 </div>
 
 <div class="tabBar">

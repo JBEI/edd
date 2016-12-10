@@ -694,6 +694,11 @@ div.filterTable > div.filterColumn {
     margin: 0px 40px 0px 20px;
     float: right;
 }
+
+.dropLink {
+    vertical-align: top;
+}
+
 div.filterTable > div.filterColumn div.filterCriteriaScrollZone {
     max-height: 264px;
     overflow-x: visible;
