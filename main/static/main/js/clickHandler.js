@@ -103,7 +103,6 @@ function generateWorkList() {
 function showStudyGraph() {
     $('#studyGraph').click(function (event) {
         event.preventDefault();
-        $('#assaysSection').prev().hide()
         $('#studyTable').removeClass('active');
         $(this).addClass('active');
         $('#overviewSection').css('display', 'block');
@@ -119,7 +118,8 @@ function showStudyTable() {
     });
     $('#studyTable').click(function (event) {
           event.preventDefault();
-          //$('#assaysSection').prev().show();
+          //on page load of table show assays search header
+          $( "input[name*='assaysSearch']" ).parents('thead').show();
           $('#studyGraph').removeClass('active');
           $(this).addClass('active');
           $('#assaysSection').css('display', 'block');

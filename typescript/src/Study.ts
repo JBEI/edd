@@ -1143,7 +1143,7 @@ module StudyD {
                 this.linesDataGridSpec = new DataGridSpecLines();
                 this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
-                this.linesDataGrid = new Results(this.linesDataGridSpec);
+                    this.linesDataGrid = new LineResults(this.linesDataGridSpec);
                 // Find out which protocols have assays with measurements - disabled or no
                 var protocolsWithMeasurements:any = {};
                 $.each(EDDData.Assays, (assayId, assay) => {
@@ -1151,8 +1151,6 @@ module StudyD {
                     if (!line || !line.active) return;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
-
-
 
                 if (_.keys(EDDData.Assays).length === 0) {
                     //stop spinner
@@ -2594,7 +2592,7 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
     }
 }
 
-class DataGridAssays extends Results {
+class DataGridAssays extends AssayResults {
 
     sectionCurrentlyDisclosed:boolean;
     graphRefreshTimerID:any;
@@ -3275,6 +3273,9 @@ class DataGridSpecAssays extends DataGridSpecBase {
             $(this.undisclosedSectionDiv).click(() => dataGrid.clickedDisclose(true));
         }
 
+
+                     //on page load of data hide assays section
+                    $( "input[name*='assaysSearch']" ).parents('thead').hide();
         // Run it once in case the page was generated with checked Assays
         StudyD.queueAssaysActionPanelShow();
     }

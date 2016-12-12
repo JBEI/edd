@@ -1049,7 +1049,7 @@ class DataGrid {
 
 }
 
-class Results extends DataGrid {
+class LineResults extends DataGrid {
 
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
@@ -1072,7 +1072,39 @@ class Results extends DataGrid {
     }
 
     _getDivForTableHeaders():any {
-        return this._getTableBody();
+        return $('#studyLinesTable').parent();
+    }
+
+    _getClasses():string {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    }
+
+}
+
+class AssayResults extends DataGrid {
+
+    constructor(dataGridSpec:DataGridSpecBase) {
+        super(dataGridSpec);
+        this._getClasses();
+        this._getDivForTableHeaders();
+        this._getTableHeaderRow();
+        this._getTHeadRow();
+        this._getTableHeaderCell();
+    }
+    _getTHeadRow():JQuery {
+        return $(document.createElement('thead'));
+    }
+
+    _getTableHeaderRow():JQuery {
+        return $(document.createElement("tr")).addClass('header');
+    }
+
+    _getTableHeaderCell():HTMLElement {
+        return document.createElement("th");
+    }
+
+    _getDivForTableHeaders():any {
+        return $('#assaysSection');
     }
 
     _getClasses():string {

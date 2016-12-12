@@ -1030,7 +1030,7 @@ var StudyD;
                 _this.linesDataGridSpec = new DataGridSpecLines();
                 _this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
-                _this.linesDataGrid = new Results(_this.linesDataGridSpec);
+                _this.linesDataGrid = new LineResults(_this.linesDataGridSpec);
                 // Find out which protocols have assays with measurements - disabled or no
                 var protocolsWithMeasurements = {};
                 $.each(EDDData.Assays, function (assayId, assay) {
@@ -2397,7 +2397,7 @@ var DataGridAssays = (function (_super) {
         }
     };
     return DataGridAssays;
-}(Results));
+}(AssayResults));
 // The spec object that will be passed to DataGrid to create the Assays table(s)
 var DataGridSpecAssays = (function (_super) {
     __extends(DataGridSpecAssays, _super);
@@ -2942,6 +2942,8 @@ var DataGridSpecAssays = (function (_super) {
         if (this.undisclosedSectionDiv) {
             $(this.undisclosedSectionDiv).click(function () { return dataGrid.clickedDisclose(true); });
         }
+        //on page load of data hide assays section
+        $("input[name*='assaysSearch']").parents('thead').hide();
         // Run it once in case the page was generated with checked Assays
         StudyD.queueAssaysActionPanelShow();
     };

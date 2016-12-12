@@ -54,7 +54,6 @@ p {
 a {
     color:#4C81C0;
     text-decoration:none;
-    vertical-align:top;
 }
 
 a.darker {
@@ -858,15 +857,12 @@ div.tabBar > span.active:last-of-type {
     border-right-width:2px;
 }
 div.tabBar > span.active {
-    border-top-width:2px;
-    border-bottom-width:2px;
-    border-left-width:2px;
-    border-right-width:1px;
     padding-top:5px;
     padding-bottom:5px;
     padding-left:9px;
     padding-right:9px;
     z-index:4;
+    background-color: lightgrey;
 }
 div.tabBar > span:not(.active) {
     cursor: pointer;
