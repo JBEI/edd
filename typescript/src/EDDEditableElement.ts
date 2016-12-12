@@ -300,13 +300,13 @@ module EDDEditable {
 		// default value for the field.  If no element exists, make a new one,
 		// and assume it should be a textarea.
 		setupInputElement() {
+			var desiredFontSize = this.elementJQ.css("font-size");
 			if (!this.inputElement) {
 				var potentialInput = this.elementJQ.children('input').first();
 				if (potentialInput.length == 1) {
 		            this.inputElement = potentialInput.get(0);
 		        } else {
 					// Figure out how high to make the text edit box.
-					var desiredFontSize = this.elementJQ.css("font-size");
 					var lineHeight = parseInt( desiredFontSize, 10 );
 					var desiredNumLines = this.elementJQ.height() / lineHeight;
 					desiredNumLines = Math.floor(desiredNumLines) + 1;

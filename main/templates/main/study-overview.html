@@ -1,57 +1,24 @@
-{% extends "edd_base.html" %}
+{% extends "main/study.html" %}
 {% load staticfiles %}
 
 {% block js_css %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
-    <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
-    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
-    <script type="text/javascript">
-
-        EDDData.currentStudyID = {{ study.id }};
-        EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
-        EDDData.Studies = EDDData.Studies || {};
-        EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
-
-    </script>
-    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDEditableElement.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Overview.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
 {% endblock js_css %}
 
 {% block head_title %}
-    {{ study.name }} - Experiment Data Depot
+    {{ block.super }}
 {% endblock head_title %}
 
 {% block body_title %}
-    <h1>{{ study.name }}</h1>
+    {{ block.super }}
 {% endblock body_title %}
 
 {% block content %}                  
-<ui class="nav nav-pills navbar-nav studyTabs">
-    <li class="active">
-        <a href="/study/{{ study.slug }}/overview">Overview</a>
-    </li>
-    {% if lines %}
-        <li>
-            <a href="/study/{{ study.slug }}/lines">Lines</a>
-        </li>
-    {% endif %}
-    {% if assays %}
-        <li class="dataTab\">
-            <a href="/study/{{ study.slug }}/">Data</a>
-        </li>
-    {% endif %}
-</ui>
+    {{ block.super }}
 
 <form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;" id="general">
     {% csrf_token %}
@@ -65,14 +32,15 @@
         ">
         <div style="flex-grow:1">
             {{ edit_study.non_field_errors }}
+            {{ edit_study.name.errors }}
 
             <table class="formTable" style="width:90%;">
                 <tr>
                     <td>
-                        {{ edit_study.name.errors }}
-                        <div class="editable-field inactive" id="editable-study-name">
-                            {{ study.name }}
-                            {{ edit_study.name }}
+                        {{ edit_study.description.errors }}
+                        <div class="editable-field inactive" id="editable-study-description">
+                            {% firstof study.description "<i>(Click to add description)</i>"|safe %}
+                            {{ edit_study.description }}
                         </div>
                     </td>
                     <td class="form-label" style="width:70px;">
@@ -98,15 +66,6 @@
                         </div>
                     </td>
                 </tr>
-                <tr>
-                    <td colspan="3">
-                        {{ edit_study.description.errors }}
-                        <div class="editable-field inactive" id="editable-study-description">
-                            {% firstof study.description "<i>(Click to add description)</i>"|safe %}
-                            {{ edit_study.description }}
-                        </div>
-                    </td>
-                </tr>
             </table>
         </div>
         <div style="flex-shrink:1">
@@ -123,7 +82,8 @@
 <div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;">
     <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;color:gray;" id="templateDropZone">
         <div></div>
-        To define your Study, drop in a <a href="#">template file</a> or continue to the <a href="/study/{{ study.slug }}/lines">Lines page</a>.
+        To define your Study details, drop in a
+        <a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}">template file</a>
     </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
@@ -134,6 +94,7 @@
         </div>
         <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
     </div>
+or continue to the <a class="dropLink" href="/study/{{ study.slug }}/lines">Lines page</a>.
 </div>
 
 <div class="tabBar">
