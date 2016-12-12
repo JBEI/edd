@@ -1053,6 +1053,7 @@ class CombinatorialCreationPerformance(object):
         self.context_queries_delta = zero_time_delta
         self.input_parse_delta = zero_time_delta
         self.ice_search_delta = zero_time_delta
+        self.naming_check_delta = zero_time_delta
         self.edd_strain_search_delta = zero_time_delta
         self.edd_strain_creation_delta = zero_time_delta
         self.study_populate_delta = zero_time_delta
@@ -1064,36 +1065,57 @@ class CombinatorialCreationPerformance(object):
         now = utcnow()
         self.context_queries_delta = now - self._subsection_start_time
         self._subsection_start_time = now
+        logger.info('Done with context queries in %0.3f seconds' %
+                    self.context_queries_delta.total_seconds())
 
     def end_input_parse(self):
         now = utcnow()
         self.input_parse_delta = now - self._subsection_start_time
         self._subsection_start_time = now
+        logger.info('Done with input parsing in %0.3f seconds' %
+                    self.input_parse_delta.total_seconds())
 
-    def end_ice_search(self):
+    def end_ice_search(self, entries_count):
         now = utcnow()
         self.ice_search_delta = now - self._subsection_start_time
         self._subsection_start_time = now
+        logger.info('Done with ICE search for %(entries_count)d entries in %(seconds)0.3f '
+                    'seconds' % {
+                        'entries_count': entries_count,
+                        'seconds': self.ice_search_delta.total_seconds(), })
 
-    def end_edd_strain_search(self):
+    def end_edd_strain_search(self, strain_count):
         now = utcnow()
         self.edd_strain_search_delta = now - self._subsection_start_time
         self._subsection_start_time = now
+        logger.info('Done with EDD search for %(strain_count)d strains in %(seconds)0.3f seconds' %
+                    {
+                        'strain_count': strain_count,
+                        'seconds': self.edd_strain_search_delta.total_seconds(),})
 
-    def end_edd_strain_creation(self):
+    def end_edd_strain_creation(self, strain_count):
         now = utcnow()
         self.edd_strain_creation_delta = now - self._subsection_start_time
         self._subsection_start_time = now
+        logger.info('Done with attempted EDD strain creation for %(strain_count)d strains in '
+                    '%(seconds)0.3f seconds' % {
+                        'strain_count': strain_count,
+                        'seconds': self.edd_strain_creation_delta.total_seconds()})
 
-    def end_study_populate(self):
+    def end_naming_check(self):
         now = utcnow()
-        self.study_populate_delta = now - self._subsection_start_time
+        self.naming_check_delta = now - self._subsection_start_time
         self._subsection_start_time = now
+        logger.info('Done with EDD naming check in %0.3f seconds' %
+                    self.naming_check_delta.total_seconds())
 
     def overall_end(self):
         now = utcnow()
         self.total_time_delta = now - self.start_time
         self._subsection_start_time = None
+        logger.info('Done with study population in %0.3f seconds' %
+                    self.total_time_delta.total_seconds())
+
 
 def find_existing_strains(ice_parts, existing_edd_strains, strains_by_part_number,
                           non_existent_edd_strains, errors):

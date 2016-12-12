@@ -1194,40 +1194,39 @@ def study_define(request, pk=None, slug=None):
 
     model = load_study(request, pk=pk, slug=slug, permission_type=[StudyPermission.WRITE, ])
 
-    from pprint import pprint
-    pprint(vars(request)) # TODO: remove debug stmt
-
     if request.method != "POST":
         raise MethodNotAllowed(request.method)
 
     json_response = None
     user_pk = request.user.pk
+    dry_run = 'dryRun' in request.POST.keys()
+
+    # collect predictable sources of error so we can return useful input to the client
+    errors = {}
+    warnings = {}
 
     try:
-        # if request.FILES:
-        json_response_dict = define_study_task(request, user_pk, pk, False)
-        # else:
-        #     edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
-        #     json_response_dict = define_study_task(request.POST, user_pk, pk, False)
+        json_response_dict = define_study_task(request, user_pk, pk, False, errors, warnings,
+                                               dry_run)
 
-        success = 'errors' not in json_response_dict.keys()
+        success = dry_run or 'errors' not in json_response_dict.keys()
         status = 200 if success else 400
 
-    except RuntimeError:
+    except RuntimeError as rte:
+        logger.exception('Exception creating study lines/assays')
+        key = 'exceptions'
+        exceptions = errors.get(key, [])
+        if not exceptions:
+            errors[key] = exceptions
+        exceptions.append(str(rte))
         json_response_dict = _build_errors_dict(errors, warnings)
-        status = 400 if errors else 500
-
-
-
-    # if success:
-    #     template = loader.get_template('polls/index.html')
-    #     return HttpResponse(template.render(request, 'main/detail.html', ))
+        status = 500
 
     return JsonResponse(json_response_dict, status=status)
 
 
 @transaction.atomic(savepoint=False)
-def define_study_task(input, user_pk, study_id, is_json):
+def define_study_task(input, user_pk, study_id, is_json, errors, warnings, dry_run=False):
     # TODO: relocate to a Celery task and add related user notifications/context-appropriate
     # error handling following initial testing.
     # This function's parameters are structured in a similar form to the Celery task, though
@@ -1240,9 +1239,7 @@ def define_study_task(input, user_pk, study_id, is_json):
     lines / assays, and are all created atomically, so any failure
     prevents  changes from taking hold.  Known sources of error are exhaustively checked and
     summarized in JSON output, even in the event of failure. Any strains
-    specified in the
-    input file,
-    and not already
+    specified in the input file, and not already
     present in EDD's local cache of ICE strains, will be automatically added iff they can be
     uniquely identified in ICE. Several caveats are:
     1) Line names must be unique within the study, or the creation task will be aborted.
@@ -1286,9 +1283,6 @@ def define_study_task(input, user_pk, study_id, is_json):
     # a good separation of concerns with this general layout.
 
     # read in the file contents (should be relatively short since they're likely manual input)
-    errors = {}
-    warnings = {}
-
     if is_json:
         parser = JsonInputParser(protocols_by_pk, line_metadata_types_by_pk,
                                  assay_metadata_types_by_pk, require_strains=REQUIRE_STRAINS)
@@ -1312,35 +1306,37 @@ def define_study_task(input, user_pk, study_id, is_json):
     # TODO: need to raise an exception here to abort the transaction, or else change the scope
     # of the transaction
     with transaction.atomic(savepoint=False): #  nested transaction lets
-        return _define_study(study, user, line_def_inputs, protocols_by_pk, line_metadata_types_by_pk,
-                             assay_metadata_types_by_pk, performance, errors, warnings)
+        return _define_study(study=study,
+                             user=user,
+                             combinatorial_inputs=line_def_inputs,
+                             protocols_by_pk=protocols_by_pk,
+                             line_metadata_types=line_metadata_types_by_pk,
+                             assay_metadata_types=assay_metadata_types_by_pk,
+                             performance=performance,
+                             errors=errors,
+                             warnings=warnings,
+                             dry_run=dry_run)
 
 ERRORS_KEY = 'errors'
 WARNINGS_KEY = 'warnings'
 
 
-def _build_errors_dict(errors, warnings):
-    val = {ERRORS_KEY: errors}
+def _build_errors_dict(errors, warnings, val=None):
+    if val is None:
+        val = {}
+    if errors:
+        val[ERRORS_KEY] = errors
     if warnings:
         val[WARNINGS_KEY] = warnings
     return val
 
 
 def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metadata_types,
-                  assay_metadata_types, performance, errors, warnings):
+                  assay_metadata_types, performance, errors, warnings, dry_run=False):
     """
     Queries EDD and ICE to verify that the required ICE strains have an entry in EDD's database.
     If not, creates them.  Once strains are created, combinatorially creates lines and assays
     within the study as specified by combinatorial_inputs.
-    :param study:
-    :param user:
-    :param combinatorial_inputs:
-    :param protocols_by_pk:
-    :param line_metadata_types:
-    :param assay_metadata_types:
-    :param performance:
-    :param errors:
-    :param warnings:
     :return: A JSON summary string that summarizes results of the attempted line/assay/strain
     creation
     :raise Exception: if an unexpected error occurs.
@@ -1355,8 +1351,7 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
     ################################################################################################
     # get an ICE connection to look up strain UUID's from part number user input
     ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user.email),
-                 verify_ssl_cert=settings.VERIFY_ICE_CERT)  # TODO: remove or implement
-                                                            # consistently to help in offsite testing against ICE
+                 verify_ssl_cert=settings.VERIFY_ICE_CERT)
 
     # build a list of unique part numbers found in the input file. we'll query ICE to get references
     # to them. Note: ideally we'd do this externally to the @atomic block, but other EDD queries
@@ -1367,12 +1362,13 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
             unique_part_numbers_dict[part_number] = True
 
     # maps part id -> Entry for those found in ICE
+    unique_part_number_count = len(unique_part_numbers_dict)
     ice_entries_dict = unique_part_numbers_dict
 
     # query ICE for UUID's part numbers found in the input file. EDD doesn't store these (see
     # EDD-431). TODO: possible future optimization: query ICE in parallel
     get_ice_entries(ice, ice_entries_dict, errors)
-    performance.end_ice_search()
+    performance.end_ice_search(unique_part_number_count)
 
     ################################################################################################
     # Search EDD for existing strains using UUID's queried from ICE
@@ -1383,16 +1379,18 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
     strains_by_part_number = collections.OrderedDict()  # maps ICE part # -> EDD Strain
 
     # query EDD for Strains by UUID's found in ICE
+    strain_search_count = len(unique_part_numbers_dict)  # may be different from above
     find_existing_strains(unique_part_numbers_dict, existing_edd_strains, strains_by_part_number,
                           non_existent_edd_strains, errors)
-    performance.end_edd_strain_search()
+    performance.end_edd_strain_search(strain_search_count)
 
     ################################################################################################
-    # Create any missing strains in EDD's database
+    # Create any missing strains in EDD's database, but go ahead with caching strain data in EDD
+    # since it's likely to be used below or referenced again (even if this is a dry run)
     ################################################################################################
     create_missing_strains(non_existent_edd_strains, strains_by_part_number, errors)
     strains_by_pk = {strain.pk: strain for strain in strains_by_part_number.values()}
-    performance.end_edd_strain_creation()
+    performance.end_edd_strain_creation(len(non_existent_edd_strains))
 
     ################################################################################################
     # Replace part-number-based strain references in the input with local primary keys usable to
@@ -1401,16 +1399,24 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
     for input_set in combinatorial_inputs:
         input_set.replace_strain_part_numbers_with_pks(strains_by_part_number, errors)
         print('###### Strain IDs: #######')
-        from pprint import pprint  # TODO: remove debug block
-        pprint(input_set.combinatorial_strain_id_groups)
 
     ################################################################################################
     # Fail if line/assay creation would create duplicate names within the study
     ################################################################################################
     # Note that line names may contain strain information that has to be looked up above before
     # the name can be determined
-    prevent_duplicate_naming(study, protocols_by_pk, line_metadata_types, assay_metadata_types,
-                             combinatorial_inputs, strains_by_pk, errors)
+    planned_names = prevent_duplicate_naming(study, protocols_by_pk, line_metadata_types,
+                                             assay_metadata_types, combinatorial_inputs,
+                                             strains_by_pk, errors)
+    performance.end_naming_check()
+
+    # return just the planned line/assay names if we're doing a dry run
+    if dry_run:
+        result = {
+            'planned_results': planned_names
+        }
+        _build_errors_dict(errors, warnings, val=result)
+        return result
 
     # if we've detected errors before modifying the study, fail before attempting the modification
     if errors:
@@ -1440,21 +1446,23 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
             if not exceptions_list:
                 errors[key] = exceptions_list
             summary = '%(cls)s: %(msg)s' % {
-                'cls': rte.__class__.name, 'msg': rte.message,
+                'cls': rte.__class__.__name__, 'msg': rte.message,
             }
             exceptions_list.add(summary)
-
-    performance.end_study_populate()
 
     ################################################################################################
     # Package up and return results
     ################################################################################################
-    # TODO: consider providing additonal detail re: the results
     total_line_count = len(created_lines_list)
     performance.overall_end()
 
     if errors:
         raise RuntimeError('Errors occurred during study definition')
+
+    logger.info('Created %(line_count)d lines and %(assay_count)d assays in %0.2(seconds)f '
+                'seconds' % {
+        
+    })
 
     return {
         'lines_created': total_line_count,
@@ -1470,34 +1478,51 @@ def prevent_duplicate_naming(study, protocols, line_metadata_types,
     database, then captures errors if any duplicate names would be created during database I/O.
     Testing for inconsistency first should be efficient in may error cases, where it prevents
     unnecessary database I/O for line/assay creation prior to detecting duplicated naming.
+    :return a dict with a hierarchical listing of all planned line/assay names (regardless of
+    whether some are duplicates)
     """
     # Check for uniqueness of planned names so that overlaps can be flagged as an error (e.g. as
     # possible in the combinatorial GUI mockup attached to EDD-257)
     unique_input_line_names = {}
     protocol_to_unique_input_assay_names = {}
     duplicated_new_line_names = []
-    duplicated_preexisting_line_names = []
-    protocol_to_preexisting_assay_names = {}
     protocol_to_duplicate_new_assay_names = {}
+
+    all_planned_names = {}  # line name -> protocol -> [assay name]. for all combinatorial inputs.
 
     # loop over the sets of combinatorial inputs, computing names of new lines/assays to be added
     # to the study, and checking for any potential overlap in the input line/assay names.
     # This step doesn't required any database I/O, so we'll do it first to check for
-    # self-inconsistent input.
+    # self-inconsistent input. While we're at it, merge results from all sets of combinatorial
+    # inputs to build a superset of planned results.
+
+    # Note that we're creating two similar dicts here for different purposes:
+    # protocol_to_unique_input_assay_names detects assay name uniqueness across all
+    # CombinatorialInputDefinitions for a single protocol.  All_planned_names is the union of all
+    #  the planned names for each CombinatorialInputDefinition (regardless of uniqueness).
     for input_set in combinatorial_inputs:
         names = input_set.compute_line_and_assay_names(study, protocols, line_metadata_types,
                                                        assay_metadata_types, strains_by_pk)
 
-        for line_name in names.line_names:
+        for line_name, protocol_to_assay_names in names.line_to_protocols_to_assays_list.items():
+
             if unique_input_line_names.get(line_name, False):
                 duplicated_new_line_names.append(line_name)
             else:
                 unique_input_line_names[line_name] = True
 
-        for line_name, protocol_to_assay_names in names.line_to_protocols_to_assays_list.items():
+            all_protocol_to_assay_names = all_planned_names.get(line_name, {})
+            if not all_protocol_to_assay_names:
+                all_planned_names[line_name] = all_protocol_to_assay_names
+
             for protocol_pk, assay_names in protocol_to_assay_names.items():
+                all_planned_assay_names = all_protocol_to_assay_names.get(protocol_pk, [])
+                if not all_planned_assay_names:
+                    all_protocol_to_assay_names[protocol_pk] = all_planned_assay_names
 
                 for assay_name in assay_names:
+                    all_planned_assay_names.append(assay_names)
+
                     unique_assay_names = protocol_to_unique_input_assay_names.get(protocol_pk, {})
                     if not unique_assay_names:
                         protocol_to_unique_input_assay_names[protocol_pk] = unique_assay_names
@@ -1510,18 +1535,18 @@ def prevent_duplicate_naming(study, protocols, line_metadata_types,
                     else:
                         unique_assay_names[assay_name] = True
 
+    # return early if the input isn't self-consistent
     if duplicated_new_line_names:
         errors['duplicate_input_line_names'] = duplicated_new_line_names
 
     if protocol_to_duplicate_new_assay_names:
         errors['duplicate_input_assay_names'] = protocol_to_duplicate_new_assay_names
 
-    # return early if the input isn't self-consistent
     if duplicated_new_line_names or protocol_to_duplicate_new_assay_names:
         return False
 
-    # query the database in bulk for any lines in the study whose names are the same as lines
-    # in the input
+    # query the database in bulk for any existing lines in the study whose names are the same as
+    # lines in the input
     unique_line_names_list = [line_name for line_name in unique_input_line_names.keys()]
     existing_lines = Line.objects.filter(study__pk=study.pk, name__in=unique_line_names_list)
 
@@ -1539,6 +1564,9 @@ def prevent_duplicate_naming(study, protocols, line_metadata_types,
             if not existing:
                 errors[existing_assay_names] = existing
             existing.extend([assay.name for assay in existing_assays])
+
+    return all_planned_names
+
 
 def create_missing_strains(non_existent_edd_strains, strains_by_part_number, errors):
     """
@@ -1591,7 +1619,6 @@ def get_ice_entries(ice, part_number_to_part_dict, errors):
             # had "JBX_*" part numbers that matched their numeric ID, but this isn't always the
             # case!
             if found_entry.part_id != local_ice_part_number:
-                # TODO: clarify this message
                 logger.error("Couldn't locate ICE entry \"%(csv_part_number)s\" "
                              "(#%(list_position)d in the file) by part number. An ICE entry was "
                              "found with numeric ID %(numeric_id)s, but its part number "
