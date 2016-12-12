@@ -2,9 +2,6 @@
 
  $(function () {
       //i'm not sure where to put this code. appending add new line button/modal to lines table
-     var tbody = $('#studyLinesTable');
-     $('<button  id="addNewLine" class="addNewLine">' +
-     '</button><span>  add new line</span>').insertAfter(tbody);
      $('#line_worklist').attr('title', 'select line(s) first');
      $('#line-export').attr('title', 'select line(s) first');
 
@@ -12,6 +9,7 @@
      assayModal();
      measurementToAssayModal();
      addNewLineModal();
+     addNewLineModal2();
      editLineModal();
      generateWorkList();
      showStudyGraph();
@@ -62,6 +60,18 @@ function addNewLineModal(event) {
        autoOpen: false
     });
     $("#addNewLine").click(function() {
+       $("#addNewLineForm").dialog( "open" );
+        return false;
+    });
+    return false;
+};
+
+//click handler for second add new line button
+function addNewLineModal2(event) {
+   var dlg = $("#addNewLineForm").dialog({
+       autoOpen: false
+    });
+    $("#addNewLineNoLines").click(function() {
        $("#addNewLineForm").dialog( "open" );
         return false;
     });

@@ -1163,17 +1163,13 @@ module StudyD {
 
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
-                    //hide line action buttons like export and genearte work list if there are no lines
-                    $('#linesActionPanel').hide();
                     $('.noLines').css('display', 'block');
-                    //hide lines table
-                    $('#studyLinesTable').hide();
-                    $('#nextSteps').css('display', 'none');
+                    $('#addNewLine').hide();
+                    $('#addNewLine').next().hide();
                 } else {
-                  $('#linesActionPanel').show();
-                  $('#studyLinesTable').show();
-                  // $('.linesTabOverView').css('display', 'block');
                   $('.noLines').css('display', 'none');
+                  $('#addNewLine').show();
+                  $('#addNewLine').next().show();
                 }
 
                 var spec;

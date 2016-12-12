@@ -68,15 +68,6 @@
                 </tr>
             </table>
         </div>
-        <div style="flex-shrink:1">
-            {% if not lines %}
-                <div class="btn-toolbar bare-header">
-                    <div>
-                        <a class="btn btn-primary btn-lg" href="/study/{{ study.slug }}/lines">Next Step: </br> Add Lines</a>
-                    </div>
-                </div>
-            {% endif %}
-        </div>
     </div>
 </form>
 <div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;">
@@ -94,7 +85,7 @@
         </div>
         <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
     </div>
-or continue to the <a class="dropLink" href="/study/{{ study.slug }}/lines">Lines page</a>.
+or continue to the <a class="dropLink" href="/study/{{ study.slug }}/lines">Lines page</a> to manually add study details.
 </div>
 
 <div class="tabBar">

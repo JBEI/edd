@@ -111,11 +111,12 @@
     <div class="pageSection">
         {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
         <div class="noLines" style="display: none;">
-            <h3 style="margin-bottom:12px">This study has no lines.  Download the
-                <a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}">template file</a> to get started.</h3>
-            <h3 style="margin-bottom:12px">What is a line?
+            <h3 style="margin-bottom:12px">This study has no lines. </h3>
+            <button  id="addNewLineNoLines" class="addNewLine"></button><span>  add new line</span>
+            <div style="color:grey; margin-top:15px">What is a line?
                 <input type="button" style="display:inline;" id="show" value="show"/>
-            </h3>
+            </div>
+        </div>
             <div id="lineDescription" style="display:none">
                 <p>A line describes the experimental details of your study. A line defines the
                     experimental conditions and associated meta data for a (in this example) single flask.  Some examples
@@ -125,11 +126,12 @@
                 </p>
                 <img src="{% static 'main/images/line_assay_tree.png' %}" />
             </div>
-        </div>
         <div class="scroll">
             <table id="studyLinesTable"></table>
         </div>
-
+        <div>
+            <button  id="addNewLine" class="addNewLine"></button><span>  add new line</span>
+        </div>
         <div id="linesActionPanel" class="sectionActions">
             <span id="linesSelectedCell">0 selected</span>
             {% if writable %}
@@ -154,7 +156,10 @@
                     <button type="submit" name="action" value="line_action">Take Action</button>
                 </div>
             {% endif %}
-
+        <div style="margin-top:15px">
+            For bulk line uploads, drag and drop your own template file in the above table or use this
+                <a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}">sample template file</a>.</h3>
+        </div>
             <div id="line-popup" title="Export as">
                 <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
                 <label for="line_action_export">

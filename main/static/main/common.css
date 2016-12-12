@@ -54,7 +54,9 @@ p {
 a {
     color:#4C81C0;
     text-decoration:none;
+    vertical-align:top;
 }
+
 a.darker {
     color:#000000;
 }
@@ -212,7 +214,7 @@ div.topBanner > div.siteLogo {
 }
 div.topBanner > div.pageName {
     color: #6c6c6c;
-    font-size: 20pt;
+    font-size: 20px;
     margin: auto 20px auto 20px;
     flex-grow:1;
     border: 0;
