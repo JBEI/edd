@@ -32,14 +32,15 @@
         ">
         <div style="flex-grow:1">
             {{ edit_study.non_field_errors }}
+            {{ edit_study.name.errors }}
 
             <table class="formTable" style="width:90%;">
                 <tr>
                     <td>
-                        {{ edit_study.name.errors }}
-                        <div class="editable-field inactive" id="editable-study-name">
-                            {{ study.name }}
-                            {{ edit_study.name }}
+                        {{ edit_study.description.errors }}
+                        <div class="editable-field inactive" id="editable-study-description">
+                            {% firstof study.description "<i>(Click to add description)</i>"|safe %}
+                            {{ edit_study.description }}
                         </div>
                     </td>
                     <td class="form-label" style="width:70px;">
@@ -62,15 +63,6 @@
                                 <i>(Enter Contact)</i>
                             {% endif %}
                             {{ edit_study.contact }}
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="3">
-                        {{ edit_study.description.errors }}
-                        <div class="editable-field inactive" id="editable-study-description">
-                            {% firstof study.description "<i>(Click to add description)</i>"|safe %}
-                            {{ edit_study.description }}
                         </div>
                     </td>
                 </tr>

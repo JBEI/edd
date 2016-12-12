@@ -29,7 +29,10 @@
 {% endblock head_title %}
 
 {% block body_title %}
-    <h1>{{ study.name }}</h1>
+<div class="editable-field inactive" id="editable-study-name">
+    {{ study.name }}
+    {{ edit_study.name }}
+</div>
 {% endblock body_title %}
 
 {% block content %}                  
