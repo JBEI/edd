@@ -216,6 +216,10 @@ div.tooltip2 {
     margin-top: 10px;
 }
 
+.assayTable {
+    padding-left: 100px;
+}
+
 .noLineSelected {
     color: red;
     float: right;
