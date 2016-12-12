@@ -155,7 +155,7 @@ class StudyIndexView(generic.list.ListView):
 class StudyDetailBaseView(generic.DetailView):
     """ Study details page, displays line/assay data. """
     model = Study
-    template_name = 'main/overview.html'
+    template_name = 'main/study-overview.html'
 
     def get_context_data(self, **kwargs):
         context = super(StudyDetailBaseView, self).get_context_data(**kwargs)
@@ -194,11 +194,12 @@ class StudyDetailBaseView(generic.DetailView):
 
 class StudyOverviewView(StudyDetailBaseView):
     """ Study overview page, displays study name, description, comments, attachments, permissions. """
-    template_name = 'main/overview.html'
+    template_name = 'main/study-overview.html'
 
     def get_context_data(self, **kwargs):
         context = super(StudyOverviewView, self).get_context_data(**kwargs)
         instance = self.get_object()
+        context['showingoverview'] = True
         context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
@@ -269,11 +270,12 @@ class StudyOverviewView(StudyDetailBaseView):
 
 class StudyLinesView(StudyDetailBaseView):
     """ Study details displays line data. """
-    template_name = 'main/lines.html'
+    template_name = 'main/study-lines.html'
 
     def get_context_data(self, **kwargs):
         context = super(StudyLinesView, self).get_context_data(**kwargs)
         instance = self.get_object()
+        context['showinglines'] = True
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_line'] = LineForm(prefix='line')
         context['new_measurement'] = MeasurementForm(prefix='measurement')
@@ -512,11 +514,12 @@ class StudyLinesView(StudyDetailBaseView):
 
 class StudyDetailView(StudyDetailBaseView):
     """ Study details page, displays graph/assay data. """
-    template_name = 'main/detail.html'
+    template_name = 'main/study-data.html'
 
     def get_context_data(self, **kwargs):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
         instance = self.get_object()
+        context['showingdata'] = True
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_line'] = LineForm(prefix='line')
         context['new_measurement'] = MeasurementForm(prefix='measurement')

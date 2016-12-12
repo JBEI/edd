@@ -1,34 +1,22 @@
-{% extends "edd_base.html" %}
+{% extends "main/study.html" %}
 {% load staticfiles %}
 
 
 {% block js_css %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript">
 
-        EDDData.currentStudyID = {{ study.id }};
-        EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
-        EDDData.Studies = EDDData.Studies || {};
-        EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
     $( function() {
-    $( document ).tooltip();
-  } );
+        $( document ).tooltip();
+    } );
 
     </script>
-    <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDEditableElement.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/clickHandler.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GraphHelperMethods.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyGraphing.js' %}"></script>
@@ -36,7 +24,6 @@
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
 
     <script type="text/javascript" src="{% static 'main/js/createMultiAxisLine.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/groupedBarMeasurement.js' %}"></script>
@@ -45,33 +32,20 @@
 {% endblock js_css %}
 
 {% block head_title %}
-    {{ study.name }} - Experiment Data Depot
+    {{ block.super }}
 {% endblock head_title %}
 
 {% block body_title %}
-    <h1>{{ study.name }}</h1>
+    {{ block.super }}
 {% endblock body_title %}
 
 {% block content %}
-<div class="btn-toolbar bare-header">
+<div class="btn-toolbar bare-header" style="float:right;">
     <div style="text-align: right">
         <a class="btn btn-primary btn-lg" href="/study/{{ study.id }}/import">Import </br> Data</a>
     </div>
 </div>
-
-<ui class="nav nav-pills navbar-nav studyTabs">
-    <li>
-        <a href="/study/{{ study.slug }}/overview">Overview</a>
-    </li><li class="active">
-        <a href="/study/{{ study.slug }}/lines">Lines</a>
-    </li>
-    {% if assays %}
-        <li class="dataTab">
-            <a href="/study/{{ study.slug }}/">Data</a>
-        </li>
-    {% endif %}
-</ui>
-
+    {{ block.super }}
 
 {% if writable %}
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">

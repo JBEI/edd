@@ -1,0 +1,163 @@
+{% extends "main/study.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    {{ block.super }}
+    <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/clickHandler.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/GraphHelperMethods.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/StudyGraphing.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/StudyGraphingHelperMethods.js'%}"></script>
+    <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Study.js' %}"></script>
+
+    <script type="text/javascript" src="{% static 'main/js/createMultiAxisLine.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/groupedBarMeasurement.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lineGraphHelperMethods.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/barGraphHelperMethods.js' %}"></script>
+{% endblock js_css %}
+
+{% block head_title %}
+    {{ block.super }}
+{% endblock head_title %}
+
+{% block body_title %}
+    {{ block.super }}
+{% endblock body_title %}
+
+{% block content %}
+<div class="btn-toolbar bare-header" style="float:right;">
+    <div style="text-align: right">
+        <a class="btn btn-primary btn-lg" href="/study/{{ study.id }}/import">Import</a>
+    </div>
+</div>
+    {{ block.super }}
+
+<div id="dataDisplay" class="dataDisplay">
+    <ul class="nav nav-tabs studyTabs">
+      <li id="studyGraph" role="presentation" class="active"><a href="#">Graph</a></li>
+      <li id="studyTable" role="presentation"><a href="#">Table</a></li>
+    </ul>
+
+    <div class="pageSection pageSectionTabContent" id="overviewSection">
+        <div class="sectionContent">
+            <div class="btn-toolbar">
+                <div class="btn-group" data-toggle="buttons" id="chartType">
+                    <label class="btn btn-default btn-sm active line">
+                        <input value="linechart" type="radio" autocomplete="off" checked />
+                        <img src="{% static 'main/images/chart_curve.png' %}" />
+                    </label>
+                    <label class="btn btn-default btn-sm" style="margin-right: 20px;">
+                        <input type="radio" autocomplete="off" />
+                        <img src="{% static 'main/images/chart_bar.png' %}" />
+                    </label>
+                    <label class="btn btn-default btn-sm groupByTimeBar hidden">
+                        <input value="timeBar" type="radio" autocomplete="off" />Time
+                    </label>
+                    <label class="btn btn-default btn-sm groupByProteinBar hidden">
+                        <input type="radio" autocomplete="off" value="barAssay" />Line
+                    </label>
+                    <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
+                        <input type="radio" value="groupedMeasurement" autocomplete="off" />Measurement
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="linechart">
+            <div style="display:none" class="checkbox y-checkbox">
+                <label><input type="checkbox" value="" />hide y-axis</label>
+            </div>
+        </div>
+        <div class="barTime">
+            <div style="display:none" class="checkbox y-checkbox">
+                <label><input type="checkbox" value="" />hide y-axis</label>
+            </div>
+        </div>
+        <div class="barAssay">
+            <div style="display:none" class="checkbox y-checkbox">
+                <label><input type="checkbox" value="" />hide y-axis</label>
+            </div>
+        </div>
+        <div class="barMeasurement">
+            <div class="checkbox y-checkbox" style="display:none">
+                <label><input type="checkbox" value="" />hide y-axis</label>
+            </div>
+        </div>
+         <div class="blankSvg">
+            <img id="loadingDiv" src="{% static 'main/images/spinner-big.gif' %}" class="spinner"/>
+        </div>
+        <div id="maingraph" class="graphContainer"></div>
+    </div>
+</div>
+<form action="" class="assay-action" method="POST">
+    {% csrf_token %}
+
+    <table class="pageSection scroll" id="assaysSection" style="display:none">
+        <!-- individual protocol assay sections inserted here -->
+        <div id="assaysActionPanel" class="sectionActions off">
+            <div class="assay-section">
+            </div>
+            <span id="assaysSelectedCell">0 selected</span>
+            {% if writable %}
+            <input id="assay_action_mark" type="radio" name="assay_action" value="mark" />
+            <label for="assay_action_mark">
+                <span>Mark as</span>
+                <select name="disable">
+                    <option value="true">Disabled</option>
+                    <option value="false">Enabled</option>
+                </select>
+            </label>
+            <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
+            <label for="assay_action_delete">Delete Measurements</label>
+            <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
+            <label for="assay_action_edit">Edit Measurements</label>
+            <input id="assay_action_export" type="radio" name="assay_action" value="export" />
+            {% else %}
+            <input id="assay_action_export" type="hidden" name="assay_action" value="export" />
+            {% endif %}
+            <label for="assay_action_export">Export Data</label>
+            <button name="action" type="submit" value="assay_action">Take Action</button>
+            <div class="clear"></div>
+        </div>
+    </table>
+    <div class="sectionChapter" id="graphFilter">
+        <span class="tableControl" id="pointsDisplayedSpan"></span>
+        </br>
+        <span>Filter options</span>
+        <div id="mainFilterSection" class="filteringSection discloseBody">
+        </div>
+        <div style="text-align:right">
+            <button type="button" id="measurementMain"
+                class="btn btn-primary btn-lg actionButton2" >Add Measurements to </br>
+            Selected Assays</button>
+        </div>
+    </div>
+
+    {% if writable %}
+        <div id="addMeasToAssay" title="Add Measurements to Selected Assays">
+            <div class="sectionContent discloseBody measurement-create edd-form">
+                {{ new_measurement.as_p }}
+                <button type="submit" name="action" value="measurement">Add Measurement</button>
+            </div>
+        </div>
+    {% endif %}
+</form>
+
+
+<form action="" style="display:none" method="POST">
+    {% csrf_token %}
+    <div class="pageSection">
+        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+        <div class="scroll">
+            <table id="studyLinesTable"></table>
+        </div>
+    </div>
+</form>
+
+{% endblock content %}

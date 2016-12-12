@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
-    {% block js_css %}
+{% block js_css %}
     {% if user.is_authenticated %}
     <script type="text/javascript">
         window.EDDData = window.EDDData || {};
@@ -30,7 +30,7 @@
 
     </script>
     {% endif %}
-    {% endblock js_css%}
+{% endblock js_css%}
 </head>
 <body style="background-color:
                 {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %} #f4fef4
@@ -41,8 +41,13 @@
         <div class="siteLogo">
             <a href="{% url 'main:index' %}">
                 <img src="{% static 'main/images/JBEI_Corner_Logo-EDD.png' %}"
-                        alt="EDD Logo - Home"/>
+                     alt="EDD Logo - Home"/>
             </a>
+        </div>
+        <div class="pageName">
+            {% block body_title %}
+            Experiment Data Depot
+            {% endblock body_title %}
         </div>
         <div class="userMenu">
             {% if user.is_authenticated %}
