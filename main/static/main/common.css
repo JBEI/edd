@@ -55,6 +55,7 @@ a {
     color:#4C81C0;
     text-decoration:none;
 }
+
 a.darker {
     color:#000000;
 }
@@ -212,7 +213,7 @@ div.topBanner > div.siteLogo {
 }
 div.topBanner > div.pageName {
     color: #6c6c6c;
-    font-size: 20pt;
+    font-size: 20px;
     margin: auto 20px auto 20px;
     flex-grow:1;
     border: 0;
@@ -856,15 +857,12 @@ div.tabBar > span.active:last-of-type {
     border-right-width:2px;
 }
 div.tabBar > span.active {
-    border-top-width:2px;
-    border-bottom-width:2px;
-    border-left-width:2px;
-    border-right-width:1px;
     padding-top:5px;
     padding-bottom:5px;
     padding-left:9px;
     padding-right:9px;
     z-index:4;
+    background-color: lightgrey;
 }
 div.tabBar > span:not(.active) {
     cursor: pointer;

@@ -1143,7 +1143,7 @@ module StudyD {
                 this.linesDataGridSpec = new DataGridSpecLines();
                 this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
-                this.linesDataGrid = new Results(this.linesDataGridSpec);
+                    this.linesDataGrid = new LineResults(this.linesDataGridSpec);
                 // Find out which protocols have assays with measurements - disabled or no
                 var protocolsWithMeasurements:any = {};
                 $.each(EDDData.Assays, (assayId, assay) => {
@@ -1151,8 +1151,6 @@ module StudyD {
                     if (!line || !line.active) return;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
-
-
 
                 if (_.keys(EDDData.Assays).length === 0) {
                     //stop spinner
@@ -1163,17 +1161,13 @@ module StudyD {
 
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
-                    //hide line action buttons like export and genearte work list if there are no lines
-                    $('#linesActionPanel').hide();
                     $('.noLines').css('display', 'block');
-                    //hide lines table
-                    $('#studyLinesTable').hide();
-                    $('#nextSteps').css('display', 'none');
+                    $('#addNewLine').hide();
+                    $('#addNewLine').next().hide();
                 } else {
-                  $('#linesActionPanel').show();
-                  $('#studyLinesTable').show();
-                  // $('.linesTabOverView').css('display', 'block');
                   $('.noLines').css('display', 'none');
+                  $('#addNewLine').show();
+                  $('#addNewLine').next().show();
                 }
 
                 var spec;
@@ -2598,7 +2592,7 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
     }
 }
 
-class DataGridAssays extends Results {
+class DataGridAssays extends AssayResults {
 
     sectionCurrentlyDisclosed:boolean;
     graphRefreshTimerID:any;
@@ -3279,6 +3273,9 @@ class DataGridSpecAssays extends DataGridSpecBase {
             $(this.undisclosedSectionDiv).click(() => dataGrid.clickedDisclose(true));
         }
 
+
+                     //on page load of data hide assays section
+                    $( "input[name*='assaysSearch']" ).parents('thead').hide();
         // Run it once in case the page was generated with checked Assays
         StudyD.queueAssaysActionPanelShow();
     }

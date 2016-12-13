@@ -903,9 +903,9 @@ var DataGrid = (function () {
     };
     return DataGrid;
 }());
-var Results = (function (_super) {
-    __extends(Results, _super);
-    function Results(dataGridSpec) {
+var LineResults = (function (_super) {
+    __extends(LineResults, _super);
+    function LineResults(dataGridSpec) {
         _super.call(this, dataGridSpec);
         this._getClasses();
         this._getDivForTableHeaders();
@@ -913,22 +913,49 @@ var Results = (function (_super) {
         this._getTHeadRow();
         this._getTableHeaderCell();
     }
-    Results.prototype._getTHeadRow = function () {
+    LineResults.prototype._getTHeadRow = function () {
         return $(document.createElement('thead'));
     };
-    Results.prototype._getTableHeaderRow = function () {
+    LineResults.prototype._getTableHeaderRow = function () {
         return $(document.createElement("tr")).addClass('header');
     };
-    Results.prototype._getTableHeaderCell = function () {
+    LineResults.prototype._getTableHeaderCell = function () {
         return document.createElement("th");
     };
-    Results.prototype._getDivForTableHeaders = function () {
-        return this._getTableBody();
+    LineResults.prototype._getDivForTableHeaders = function () {
+        return $('#studyLinesTable').parent();
     };
-    Results.prototype._getClasses = function () {
+    LineResults.prototype._getClasses = function () {
         return 'dataTable sortable dragboxes hastablecontrols';
     };
-    return Results;
+    return LineResults;
+}(DataGrid));
+var AssayResults = (function (_super) {
+    __extends(AssayResults, _super);
+    function AssayResults(dataGridSpec) {
+        _super.call(this, dataGridSpec);
+        this._getClasses();
+        this._getDivForTableHeaders();
+        this._getTableHeaderRow();
+        this._getTHeadRow();
+        this._getTableHeaderCell();
+    }
+    AssayResults.prototype._getTHeadRow = function () {
+        return $(document.createElement('thead'));
+    };
+    AssayResults.prototype._getTableHeaderRow = function () {
+        return $(document.createElement("tr")).addClass('header');
+    };
+    AssayResults.prototype._getTableHeaderCell = function () {
+        return document.createElement("th");
+    };
+    AssayResults.prototype._getDivForTableHeaders = function () {
+        return $('#assaysSection');
+    };
+    AssayResults.prototype._getClasses = function () {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    };
+    return AssayResults;
 }(DataGrid));
 // Type definition for the records contained in a DataGrid
 var DataGridRecordSet = (function () {
