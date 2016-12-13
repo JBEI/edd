@@ -70,44 +70,41 @@
         </div>
     </div>
 </form>
-    {% if not lines %}
-        <div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;color:gray;">
-            <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;" id="templateDropZone">
-                <div></div>
-                To define your Study details, drop in a
-                <a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}">template file</a> to create lines
-                <div style="float:none" class="helpBadgeDiv">Help
-      <div class="helpContent">
+
+<div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;color:gray;{% if lines %}display:none;{% endif %}">
+    <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;" id="templateDropZone">
+        <div></div>
+        To define your Study details, drop in a
+        <a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}">template file</a> to create lines
+        <div style="float:none" class="helpBadgeDiv">Help
+            <div class="helpContent">
                 <p>A line describes the experimental details of your study by defining the
                     experimental conditions and associated meta data for i.e. a single flask.  Some examples
                     that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
                     speed.  Users can manually add lines, or download the study template for bulk uploads.
                 </p>
-      </div>
-    </div>
             </div>
-            <div class="fileDropInfoArea off" id="fileDropInfoArea">
-                <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
-                <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
-                <div class="fileDropInfoSending" id="fileDropInfoSending">
-                    <span id="fileUploadMessage">Sending To Server...</span>
-                    <progress id="fileUploadProgressBar" />
-                </div>
-                <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
-            </div>
-        or <a class="dropLink" href="/study/{{ study.slug }}/lines">manually add</a> them.
         </div>
-    {%  endif %}
+    </div>
+    <div class="fileDropInfoArea off" id="fileDropInfoArea">
+        <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
+        <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
+        <div class="fileDropInfoSending" id="fileDropInfoSending">
+            <span id="fileUploadMessage">Sending To Server...</span>
+            <progress id="fileUploadProgressBar" />
+        </div>
+        <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
+    </div>
+    or <a class="dropLink" href="/study/{{ study.slug }}/lines">manually add</a> them.
+</div>
+
 <div class="tabBar">
     {% if writable %}
         <span class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %}" for="permissionsSection">
             Permissions
-        </span>
-    {% endif %}
-    <span class="{% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
-            Attachments ({{ study.attachments|length }})
-    </span>
-    <span class="{% if new_comment.errors %}active{% endif %}" for="commentsSection">
+    </span>{% endif %}<span class="{% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
+        Attachments ({{ study.attachments|length }})
+    </span><span class="{% if new_comment.errors %}active{% endif %}" for="commentsSection">
         Comments ({{ study.comment_list|length }})
     </span>
 </div>

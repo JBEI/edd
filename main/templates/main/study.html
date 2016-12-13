@@ -36,19 +36,25 @@
 {% endblock body_title %}
 
 {% block content %}                  
-<ui class="nav nav-pills navbar-nav studyTabs">
-    <li class="{% if showingoverview %}active{% endif %}">
-        <a href="/study/{{ study.slug }}/overview">Overview</a>
-    </li>
-    {% if lines %}
-        <li class="{% if showinglines %}active{% endif %}">
+<div style="
+    display:flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    justify-content: 
+    ">
+    <div class="tabBar larger" style="flex-grow:1;">
+        <span class="{% if showingoverview %}active{% endif %}">
+            <a href="/study/{{ study.slug }}/overview">Overview</a>
+        </span>{% if lines %}<span class="{% if showinglines %}active{% endif %}">
             <a href="/study/{{ study.slug }}/lines">Lines</a>
-        </li>
-    {% endif %}
-    {% if assays %}
-        <li class="{% if showingdata %}active{% endif %}">
+        </span>{% endif %}{% if assays %}<span class="{% if showingdata %}active{% endif %}">
             <a href="/study/{{ study.slug }}/">Data</a>
-        </li>
-    {% endif %}
-</ui>
+        </span>{% endif %}
+    </div>
+    <div class="tabBar larger">
+        <span class="{% if showingimport %}active{% endif %}">
+            <a href="/study/{{ study.id }}/import">Import</a>
+        </span>
+    </div>
+</div>
 {% endblock content %}

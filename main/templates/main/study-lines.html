@@ -32,11 +32,6 @@
 {% endblock body_title %}
 
 {% block content %}
-<div class="btn-toolbar bare-header" style="float:right;">
-    <div style="text-align: right">
-        <a class="btn btn-primary btn-lg" href="/study/{{ study.id }}/import">Import </br> Data</a>
-    </div>
-</div>
     {{ block.super }}
     <p style="margin-left:15px">Manually add/edit lines below, or drag and drop a<a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}"> template file</a> onto the table to create them in bulk </p>
 {% if writable %}
