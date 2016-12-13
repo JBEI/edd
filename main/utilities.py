@@ -14,6 +14,7 @@ from django.conf import settings
 from django.contrib import auth
 from django.contrib.sites.models import Site
 from django.db.models import Aggregate
+from django.db.models import Q
 from django.db.models.aggregates import Aggregate as SQLAggregate
 from six import string_types
 from threadlocals.threadlocals import get_current_request
@@ -1169,9 +1170,10 @@ def find_existing_strains(ice_parts, existing_edd_strains, strains_by_part_numbe
             # Code from here forward is attempted workarounds for EDD-158
             else:
 
-                logger.debug("ICE entry %s couldn't be located in EDD's database by UUID. "
+                logger.debug("ICE entry %(part_id)s (pk=%(pk)d) couldn't be located in EDD's "
+                             "database by UUID. "
                              "Searching by name and URL to help avoid strain curation problems."
-                             % ice_entry.part_id)
+                             % { 'part_id': ice_entry.part_id, 'pk': ice_entry.id})
 
                 non_existent_edd_strains.append(ice_entry)
 
@@ -1179,8 +1181,8 @@ def find_existing_strains(ice_parts, existing_edd_strains, strains_by_part_numbe
 
                 # look for candidate strains by pk-based URL (if present: more static / reliable
                 # than name)
-                found_strains_qs = Strain.objects.filter(registry_url_iregex=url_regex %
-                                                    str(ice_entry.id))
+                found_strains_qs = Strain.objects.filter(registry_url__iregex=url_regex % {
+                                                         'id': str(ice_entry.id)})
 
                 if found_strains_qs:
                     found_suspected_match_strain(ice_entry, 'local_pk_url_match',
@@ -1188,8 +1190,8 @@ def find_existing_strains(ice_parts, existing_edd_strains, strains_by_part_numbe
                     continue
 
                 # look for candidate strains by UUID-based URL
-                found_strains_qs = Strain.objects.filter(registry_url_iregex=url_regex %
-                                                    str(ice_entry.uuid))
+                found_strains_qs = Strain.objects.filter(
+                        registry_url__iregex=(url_regex % {'id': str(ice_entry.uuid)}))
                 if found_strains_qs:
                     found_suspected_match_strain(ice_entry, 'uuid_url_match', found_strains_qs,
                                                  errors)
@@ -1198,10 +1200,10 @@ def find_existing_strains(ice_parts, existing_edd_strains, strains_by_part_numbe
                 # if no strains were found by URL, search by name
                 empty_or_whitespace_regex = r'$\s*^'
                 no_registry_id = (Q(registry_id__isnull=True) |
-                                  Q(registry_id_regex=empty_or_whitespace_regex))
+                                  Q(registry_id__regex=empty_or_whitespace_regex))
 
                 found_strains_qs = Strain.objects.filter(no_registry_id,
-                                                         name_icontains=ice_entry.name)
+                                                         name__icontains=ice_entry.name)
 
                 if found_strains_qs:
                     found_suspected_match_strain(ice_entry, 'containing_name_exists',
