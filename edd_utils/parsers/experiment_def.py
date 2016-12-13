@@ -1,16 +1,15 @@
 from __future__ import unicode_literals
+
 import collections
 import json
 import logging
 import re
 
-from jsonschema import Draft4Validator, FormatChecker
 from builtins import (enumerate, float, len, object, range, super)
-from django.core.exceptions import ValidationError
-
-from main.models import MetadataType
-from main.utilities import (NamingStrategy, CombinatorialDefinitionInput, AutomatedNamingStrategy)
 from django.conf import settings
+from jsonschema import Draft4Validator
+
+from main.utilities import (NamingStrategy, CombinatorialDefinitionInput, AutomatedNamingStrategy)
 
 TYPICAL_ICE_PART_NUMBER_PATTERN = settings.TYPICAL_ICE_PART_NUMBER_PATTERN
 LINE_NAME_COL_LABEL = 'Line Name'
@@ -135,6 +134,12 @@ class ColumnLayout:
         if is_combinatorial:
             self.combinatorial_col_indices.append(col_index)
 
+        logger.debug('Column %(col)d matches protocol "%(protocol)s", assay metadata type '
+              '"%(meta_type)s"' % {
+                 'col': col_index + 1,
+                 'protocol': protocol.name,
+                 'meta_type': assay_meta_type.type_name})
+
     def get_assay_metadata_type(self, col_index):
         value = self.col_index_to_assay_data.get(col_index, None)
         if not value:
@@ -147,6 +152,8 @@ class ColumnLayout:
         return self.unique_assay_protocols.keys()
 
     def set_line_metadata_type(self, col_index, line_metadata_type, is_combinatorial=False):
+        logger.debug('Column %d matches line metadata type %s' % (col_index+1,
+                                                                  line_metadata_type.type_name))
         self.col_index_to_line_meta_pk[col_index] = line_metadata_type.pk
 
 
@@ -280,7 +287,8 @@ class TemplateFileParser(CombinatorialInputParser):
                 'Found some assay metadata types that differ only by case. Case-insensitive '
                 'matching in this function will arbitrarily choose one')
 
-        #TODO: also print a warning for protocols
+        # Note: uniqueness of protocol names is enforced by Protocol.save()... we'll trust that
+        # and not print a warning here.
 
         self.column_layout = None
         self.errors = []
@@ -302,6 +310,7 @@ class TemplateFileParser(CombinatorialInputParser):
         self.max_fractional_time_digits = 0
 
     def parse(self, wb, errors, warnings):
+        logger.warning('In parse(). workbook has %d sheets' % len(wb.worksheets))
 
         # Clear out state from any previous use of this parser instance
         self.column_layout = None
@@ -310,10 +319,14 @@ class TemplateFileParser(CombinatorialInputParser):
 
         # loop over rows
         parsed_row_inputs = []
-        for sheet_index, worksheet in enumerate(wb):
+        for worksheet in wb.worksheets:
 
             # loop over columns
-            for row_index, cols_list in enumerate(worksheet):
+            row_index = 0
+            for cols_list in worksheet.iter_rows():
+                row_index += 1
+
+                logger.warning('Examining row %d' % (row_index+1))
 
                 # identify columns of interest first by looking for required labels
                 if not self.column_layout:
@@ -321,10 +334,12 @@ class TemplateFileParser(CombinatorialInputParser):
 
                 # if column labels have been identified, look for line creation input data
                 else:
+                    #  remove
                     row_num = row_index + 1
                     row_inputs = self.read_template_row(cols_list, row_num)
                     if row_inputs:
                         parsed_row_inputs.append(row_inputs)
+
 
         for combinatorial_input in parsed_row_inputs:
             combinatorial_input.fractional_time_digits = self.max_fractional_time_digits
@@ -340,7 +355,9 @@ class TemplateFileParser(CombinatorialInputParser):
         :param row: the row to inspect for column headers
         :return: the column layout if required columns were found, or None otherwise
         """
+        logger.debug('in read_column_layout()')  # TODO: remove
         layout = ColumnLayout(self.errors, self.warnings)
+        # TODO: add support for control column
 
         ###########################################################################################
         # loop over columns in the current row, looking for labels that identify at least the
@@ -365,21 +382,17 @@ class TemplateFileParser(CombinatorialInputParser):
                 layout.strain_ids_col = col_index
             elif _REPLICATE_COUNT_COL_PATTERN.match(cell_content):
                 layout.replicate_count_col = col_index
-            # TODO: add support for control column
 
             # check whether the column label matches custom data defined in the database
             else:
-
                 upper_content = cell_content.upper()
 
                 # test whether this column is protocol-prefixed assay metadata
                 assay_meta_type = self._parse_assay_metadata_header(layout, upper_content,
                                                                     col_index)
-
                 # if we found the type of this column, proceed to the next
                 if assay_meta_type:
                     continue
-
                 # if this column isn't protocol-prefixed, test whether it's for line metadata
                 line_metadata_type = self._parse_line_metadata_header(layout, upper_content,
                                                                       col_index,)
@@ -395,9 +408,9 @@ class TemplateFileParser(CombinatorialInputParser):
                         'col_index': col_index, 'title:': cell_content,
                     })
 
-                # test whether we've located all the required columns
-                found_col_labels = ((layout.line_name_col is not None) and
-                                   ((not self.require_strains) or layout.strain_ids_col))
+        # test whether we've located all the required columns
+        found_col_labels = ((layout.line_name_col is not None) and
+                            ((not self.require_strains) or layout.strain_ids_col))
 
         # return the columns found in this row if at least the
         # minimum required columns were found
@@ -472,6 +485,7 @@ class TemplateFileParser(CombinatorialInputParser):
                 # in the database. This check is especially important for the Time metadata
                 # assumed by the file format.
                 else:
+                    logger.debug('Column header "%s" didnt match known metadata types')
                     UNMATCHED_HEADERS_KEY = 'unmatched_column_header_indexes'
                     errors = self.errors
                     unmatched_cols = errors.get(UNMATCHED_HEADERS_KEY, [])

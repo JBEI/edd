@@ -448,6 +448,9 @@ class CombinatorialCreationTests(TestCase):
         if errors:
             self.fail('Errors occurred during input parsing: %s' % str(errors))
 
+        if warnings:
+            self.fail('Warnings occurred during input parsing: %s' % str(warnings))
+
         # Use standard workhorse method to execute the creation test
         return self._test_combinatorial_creation(
                 study, combinatorial_inputs[0], expected_line_names,
@@ -539,7 +542,8 @@ class CombinatorialCreationTests(TestCase):
 
         self._test_combinatorial_input(study, json.dumps(test_input), expected_line_names,
                                        expected_assay_suffixes, strains_by_pk,
-                                       expected_line_metadata=expected_line_metadata)
+                                       expected_line_metadata=expected_line_metadata,
+                                       is_template_file=False)
 
     def test_basic_template_xlsx(self):
 
@@ -563,11 +567,13 @@ class CombinatorialCreationTests(TestCase):
         expected_line_metadata = {line_name: {str(self.media_metadata.pk): u'LB'}
                                   for line_name in expected_line_names}
 
-        expected_assay_metadata = {}
-        for line_name in expected_line_names:
-            expected_assay_metadata[line_name] = {
-                self.targeted_proteomics.pk
-            }
+        # TODO: complete building this dict, then pass it as a test param
+        # expected_assay_metadata = {}  # maps line name -> protocol - > assay metadata
+        # dict...needs more abstraction?
+        # for line_name in expected_line_names:
+        #     expected_assay_metadata[line_name] = {
+        #         self.targeted_proteomics.pk: [self.assay_time.pk: '8']
+        #     }
 
         creation_results = self._test_combinatorial_input(
                 study, simple_template_xlsx, expected_line_names, expected_assay_suffixes,

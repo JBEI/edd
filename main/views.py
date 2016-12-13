@@ -1200,17 +1200,26 @@ def study_define(request, pk=None, slug=None):
     if request.method != "POST":
         raise MethodNotAllowed(request.method)
 
-    json_response = None
     user_pk = request.user.pk
-    dry_run = 'dryRun' in request.POST.keys()
+    dry_run = 'dryRun' in request.META.keys()
+
+    print(request)  # TODO remove
+
+    is_excel_file = request.META[FILE_TYPE_HEADER] == 'xlsx'
+    if is_excel_file:
+        file_name = request.META['HTTP_X_FILE_NAME']
+        logger.info('Parsing template file "%s"' % file_name)
+    else:
+        logger.info('Parsing request body as JSON input')
 
     # collect predictable sources of error so we can return useful input to the client
     errors = {}
     warnings = {}
+    json_response = None
 
     try:
-        json_response_dict = define_study_task(request, user_pk, pk, False, errors, warnings,
-                                               dry_run)
+        json_response_dict = define_study_task(request, user_pk, pk, not is_excel_file, errors,
+                                               warnings, dry_run)
 
         success = dry_run or 'errors' not in json_response_dict.keys()
         status = 200 if success else 400
@@ -1275,7 +1284,6 @@ def define_study_task(input, user_pk, study_id, is_json, errors, warnings, dry_r
     line_metadata_types_by_pk = {meta_type.pk:meta_type for meta_type in line_metadata_qs}
     assay_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.ASSAY)  # TODO: I18N
     assay_metadata_types_by_pk = {meta_type.pk: meta_type for meta_type in assay_metadata_qs}
-
     performance.end_context_queries()
 
     ################################################################################################
@@ -1290,7 +1298,6 @@ def define_study_task(input, user_pk, study_id, is_json, errors, warnings, dry_r
         parser = JsonInputParser(protocols_by_pk, line_metadata_types_by_pk,
                                  assay_metadata_types_by_pk, require_strains=REQUIRE_STRAINS)
     else:
-        # TODO: CSV
         input = load_workbook(BytesIO(input.read()), read_only=True, data_only=True)
         if len(input.worksheets) == 0:
             errors['no_input'] = 'no worksheets in file'
@@ -1299,6 +1306,9 @@ def define_study_task(input, user_pk, study_id, is_json, errors, warnings, dry_r
                                     assay_metadata_types_by_pk, require_strains=REQUIRE_STRAINS)
     line_def_inputs = parser.parse(input, errors, warnings)
     performance.end_input_parse()
+
+    if not line_def_inputs:
+        errors['no_inputs'] = 'No line definition inputs were read'
 
     # if there were any file parse errors, return helpful output before attempting any
     # database insertions. Note: returning normally causes the transaction to commit, but that's
@@ -1348,6 +1358,9 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
     # TODO: to support JSON with possible mixed known/unknown strains for the combinatorial GUI,
     # test whether input resulted from JSON, then skip initial part number lookup for anything
     # that's an integer. Maybe there's a better solution?
+
+    from pprint import pprint  # TODO: remove debug stmt
+    pprint(combinatorial_inputs)
 
     ################################################################################################
     # Search ICE for entries corresponding to the part numbers in the file
@@ -1421,7 +1434,7 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
         _build_errors_dict(errors, warnings, val=result)
         return result
 
-    # if we've detected errors before modifying the study, fail before attempting the modification
+    # if we've detected errors before modifying the study, fail before attempting db mods
     if errors:
         return _build_errors_dict(errors, warnings)
 
@@ -1462,10 +1475,11 @@ def _define_study(study, user, combinatorial_inputs, protocols_by_pk, line_metad
     if errors:
         raise RuntimeError('Errors occurred during study definition')
 
-    logger.info('Created %(line_count)d lines and %(assay_count)d assays in %0.2(seconds)f '
+    logger.info('Created %(line_count)d lines and %(assay_count)d assays in %(seconds)0.2f '
                 'seconds' % {
-        
-    })
+                'line_count': total_line_count,
+                'assay_count': total_assay_count,
+                'seconds': performance.total_time_delta.total_seconds(), })
 
     return {
         'lines_created': total_line_count,
@@ -1546,7 +1560,7 @@ def prevent_duplicate_naming(study, protocols, line_metadata_types,
         errors['duplicate_input_assay_names'] = protocol_to_duplicate_new_assay_names
 
     if duplicated_new_line_names or protocol_to_duplicate_new_assay_names:
-        return False
+        return Falsee
 
     # query the database in bulk for any existing lines in the study whose names are the same as
     # lines in the input
@@ -1649,6 +1663,7 @@ def get_ice_entries(ice, part_number_to_part_dict, errors):
 
     return part_number_to_part_dict
 
+FILE_TYPE_HEADER = 'HTTP_X_EDD_FILE_TYPE'
 
 # /utilities/parsefile
 # To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
@@ -1668,7 +1683,7 @@ def utilities_parse_import_file(request):
 
     # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and
     # that guess is sent along in a custom header:
-    edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
+    edd_file_type = request.META.get(FILE_TYPE_HEADER)
     edd_import_mode = request.META.get('HTTP_X_EDD_IMPORT_MODE')
 
     parse_fn = find_parser(edd_import_mode, edd_file_type)

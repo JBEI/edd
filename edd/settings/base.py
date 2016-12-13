@@ -62,9 +62,6 @@ ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, res
 # TODO: reexamine uses / reconsider removing this when implementing EDD-258.
 TYPICAL_ICE_PART_NUMBER_PATTERN = re.compile(TYPICAL_JBEI_ICE_PART_NUMBER_REGEX, re.IGNORECASE)
 
-ICE_SEARCH_WEB_OF_REGISTRIES_FOR_PART_NUMBERS = False
-ICE_SEARCH_WEB_OF_REGISTRIES_FOR_UUIDS = False
-
 # Be very careful in changing this value!! Useful to avoid heachaches in *LOCAL* testing against a
 # non-TLS ICE deployment. Also barring another solution, useful as a temporary/risky workaround for
 # testing ICE communication from offsite...for example, `manage.py test_ice_communication` observed
