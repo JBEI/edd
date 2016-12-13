@@ -1048,11 +1048,13 @@ var StudyD;
                 }
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
+                    $('.scroll').css('height', 100);
                     $('.noLines').css('display', 'block');
                     $('#addNewLine').hide();
                     $('#addNewLine').next().hide();
                 }
                 else {
+                    $('.scroll').css('height', 300);
                     $('.noLines').css('display', 'none');
                     $('#addNewLine').show();
                     $('#addNewLine').next().show();
@@ -1393,11 +1395,11 @@ var StudyD;
         });
         //hide elements not in progressive filtering measurements
         _.each(hideArray, function (assayId) {
-            $("input[value='" + assayId + "']").parent().parent().hide();
+            $("input[value='" + assayId + "']").parents('tr').hide();
         });
         //show elements in progressive filtering measurements
         _.each(showArray, function (assayId) {
-            $("input[value='" + assayId + "']").parent().parent().show();
+            $("input[value='" + assayId + "']").parents('tr').show();
         });
     }
     StudyD.showHideAssayRows = showHideAssayRows;
@@ -1410,6 +1412,7 @@ var StudyD;
         });
         return filteredAssayMeasurements;
     }
+    StudyD.convertPostFilteringMeasurements = convertPostFilteringMeasurements;
     function remakeMainGraphArea(force) {
         var _this = this;
         var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
@@ -1426,6 +1429,13 @@ var StudyD;
         //Gives ids of lines to show.
         var dataSets = [], prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
+        //show message that there's no data to display
+        if (postFilteringMeasurements.length === 0) {
+            $('.lineNoData').show();
+        }
+        else {
+            $('.lineNoData').hide();
+        }
         //hide filtered data here.
         var filteredA = convertPostFilteringMeasurements(postFilteringMeasurements);
         //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
@@ -2389,7 +2399,12 @@ var DataGridAssays = (function (_super) {
     };
     DataGridAssays.prototype.triggerAssayRecordsRefresh = function () {
         try {
+            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
+            //show message that there's no data to display
+            //hide filtered data here.
+            var filteredA = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
             this.triggerDataReset();
+            StudyD.showHideAssayRows(filteredA);
             this.recordsCurrentlyInvalidated = [];
         }
         catch (e) {

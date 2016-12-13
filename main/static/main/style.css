@@ -78,6 +78,10 @@ div.tooltip2 {
     stroke-width: 1.5px;
 }
 
+.lineNoData {
+    margin-top: 15px;
+}
+
 .dotted-line {
     fill: none;
     stroke-dasharray: 10,10;
@@ -242,7 +246,5 @@ div.tooltip2 {
 
 .scroll {
     display: block;
-    height: 500px;
-    max-height: 300px;
     overflow-y: scroll;
 }
