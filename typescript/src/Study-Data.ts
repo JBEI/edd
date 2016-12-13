@@ -1144,13 +1144,15 @@ module StudyD {
 
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
+                    $('.scroll').css('height', 100)
                     $('.noLines').css('display', 'block');
                     $('#addNewLine').hide();
                     $('#addNewLine').next().hide();
                 } else {
-                  $('.noLines').css('display', 'none');
-                  $('#addNewLine').show();
-                  $('#addNewLine').next().show();
+                    $('.scroll').css('height', 300)
+                    $('.noLines').css('display', 'none');
+                    $('#addNewLine').show();
+                    $('#addNewLine').next().show();
                 }
 
                 var spec;
@@ -1445,17 +1447,17 @@ module StudyD {
         });
         //hide elements not in progressive filtering measurements
         _.each(hideArray, function(assayId) {
-            $( "input[value='" + assayId + "']").parent().parent().hide();
+            $( "input[value='" + assayId + "']").parents('tr').hide();
         });
         //show elements in progressive filtering measurements
         _.each(showArray, function(assayId) {
-            $( "input[value='" + assayId + "']").parent().parent().show();
+            $( "input[value='" + assayId + "']").parents('tr').show();
         });
     }
 
 
     //convert post filtered measuremnts to array of assay ids
-    function convertPostFilteringMeasurements(postFilteringMeasurements) {
+    export function convertPostFilteringMeasurements(postFilteringMeasurements) {
         //array of assays
         var filteredAssayMeasurements:any[] = [];
 
@@ -1488,10 +1490,16 @@ module StudyD {
         //Gives ids of lines to show.
         var dataSets = [], prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
+        //show message that there's no data to display
+        if (postFilteringMeasurements.length === 0) {
+            $('.lineNoData').show();
+        } else {
+            $('.lineNoData').hide();
+        }
         //hide filtered data here.
-        var filteredA = convertPostFilteringMeasurements(postFilteringMeasurements);
+        var filteredMeasurements = convertPostFilteringMeasurements(postFilteringMeasurements);
         //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
-        showHideAssayRows( filteredA);
+        showHideAssayRows( filteredMeasurements);
         $.each(postFilteringMeasurements, (i, measurementId) => {
 
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -1873,7 +1881,12 @@ class DataGridAssays extends AssayResults {
 
     triggerAssayRecordsRefresh():void {
         try {
+            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
+            //show message that there's no data to display
+            //hide filtered data here.
+            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
             this.triggerDataReset();
+            StudyD.showHideAssayRows(filteredMeasurements);
             this.recordsCurrentlyInvalidated = [];
         } catch (e) {
             console.log('Failed to execute records refresh: ' + e);
@@ -2541,16 +2554,11 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
             return rowIDs;
         }
 
-        var filteredIDs = [];
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
-            // Here is the condition that determines whether the rows associated with this ID are
-            // shown or hidden.
-            if (EDDData.Assays[id].active) {
-                filteredIDs.push(id);
-            }
+        else {
+            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
+            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
         }
-        return filteredIDs;
+        return filteredMeasurements;
     }
 
     initialFormatRowElementsForID(dataRowObjects:any, rowID:any):any {

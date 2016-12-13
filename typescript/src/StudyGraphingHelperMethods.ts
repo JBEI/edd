@@ -28,8 +28,8 @@ StudyHelper = {
      * returns message or nothing.
      */
     svgWidth: function(selector, rectArray) {
-        $('.tooMuchData').remove();
-        $('.noData').remove();
+        $('.tooMuchData').hide();
+        $('.noData').hide();
         var sum = 0;
         _.each(rectArray, function(rectElem:any) {
             if (rectElem.getAttribute("width") != 0) {

@@ -1034,11 +1034,13 @@ var StudyD;
                 }
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
+                    $('.scroll').css('height', 100);
                     $('.noLines').css('display', 'block');
                     $('#addNewLine').hide();
                     $('#addNewLine').next().hide();
                 }
                 else {
+                    $('.scroll').css('height', 300);
                     $('.noLines').css('display', 'none');
                     $('#addNewLine').show();
                     $('#addNewLine').next().show();
@@ -1310,11 +1312,11 @@ var StudyD;
         });
         //hide elements not in progressive filtering measurements
         _.each(hideArray, function (assayId) {
-            $("input[value='" + assayId + "']").parent().parent().hide();
+            $("input[value='" + assayId + "']").parents('tr').hide();
         });
         //show elements in progressive filtering measurements
         _.each(showArray, function (assayId) {
-            $("input[value='" + assayId + "']").parent().parent().show();
+            $("input[value='" + assayId + "']").parents('tr').show();
         });
     }
     StudyD.showHideAssayRows = showHideAssayRows;
@@ -1327,6 +1329,7 @@ var StudyD;
         });
         return filteredAssayMeasurements;
     }
+    StudyD.convertPostFilteringMeasurements = convertPostFilteringMeasurements;
     function remakeMainGraphArea(force) {
         var _this = this;
         var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
@@ -1343,10 +1346,17 @@ var StudyD;
         //Gives ids of lines to show.
         var dataSets = [], prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
+        //show message that there's no data to display
+        if (postFilteringMeasurements.length === 0) {
+            $('.lineNoData').show();
+        }
+        else {
+            $('.lineNoData').hide();
+        }
         //hide filtered data here.
-        var filteredA = convertPostFilteringMeasurements(postFilteringMeasurements);
+        var filteredMeasurements = convertPostFilteringMeasurements(postFilteringMeasurements);
         //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
-        showHideAssayRows(filteredA);
+        showHideAssayRows(filteredMeasurements);
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
@@ -1694,7 +1704,12 @@ var DataGridAssays = (function (_super) {
     };
     DataGridAssays.prototype.triggerAssayRecordsRefresh = function () {
         try {
+            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
+            //show message that there's no data to display
+            //hide filtered data here.
+            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
             this.triggerDataReset();
+            StudyD.showHideAssayRows(filteredMeasurements);
             this.recordsCurrentlyInvalidated = [];
         }
         catch (e) {
@@ -2277,16 +2292,11 @@ var DGDisabledAssaysWidget = (function (_super) {
         if (this.checkBoxElement.checked) {
             return rowIDs;
         }
-        var filteredIDs = [];
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
-            // Here is the condition that determines whether the rows associated with this ID are
-            // shown or hidden.
-            if (EDDData.Assays[id].active) {
-                filteredIDs.push(id);
-            }
+        else {
+            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
+            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
         }
-        return filteredIDs;
+        return filteredMeasurements;
     };
     DGDisabledAssaysWidget.prototype.initialFormatRowElementsForID = function (dataRowObjects, rowID) {
         if (!EDDData.Assays[rowID].active) {
