@@ -38,7 +38,7 @@
     </div>
 </div>
     {{ block.super }}
-
+    <p style="margin-left:15px">Manually add/edit lines below, or drag and drop a<a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}"> template file</a> onto the table to create them in bulk </p>
 {% if writable %}
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
 
@@ -144,10 +144,6 @@
                     <button type="submit" name="action" value="line_action">Take Action</button>
                 </div>
             {% endif %}
-        <div style="margin-top:15px">
-            For bulk line uploads, drag and drop your own template file in the above table or use this
-                <a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}">sample template file</a>.</h3>
-        </div>
             <div id="line-popup" title="Export as">
                 <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
                 <label for="line_action_export">
