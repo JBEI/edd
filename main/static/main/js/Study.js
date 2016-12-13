@@ -1399,6 +1399,10 @@ var StudyD;
         });
         //show elements in progressive filtering measurements
         _.each(showArray, function (assayId) {
+            //if the row does not exist, reset table 
+            if ($("input[value='" + assayId + "']").parents('tr').length === 0) {
+                StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+            }
             $("input[value='" + assayId + "']").parents('tr').show();
         });
     }
@@ -1438,7 +1442,6 @@ var StudyD;
         }
         //hide filtered data here.
         var filteredMeasurements = convertPostFilteringMeasurements(postFilteringMeasurements);
-        //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
         showHideAssayRows(filteredMeasurements);
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
@@ -2399,12 +2402,7 @@ var DataGridAssays = (function (_super) {
     };
     DataGridAssays.prototype.triggerAssayRecordsRefresh = function () {
         try {
-            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
-            //show message that there's no data to display
-            //hide filtered data here.
-            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
             this.triggerDataReset();
-            StudyD.showHideAssayRows(filteredMeasurements);
             this.recordsCurrentlyInvalidated = [];
         }
         catch (e) {

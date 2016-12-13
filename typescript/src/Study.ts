@@ -1536,6 +1536,10 @@ module StudyD {
         });
         //show elements in progressive filtering measurements
         _.each(showArray, function(assayId) {
+            //if the row does not exist, reset table 
+            if ($( "input[value='" + assayId + "']").parents('tr').length ===0) {
+                StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+            }
             $( "input[value='" + assayId + "']").parents('tr').show();
         });
     }
@@ -1583,7 +1587,6 @@ module StudyD {
         }
         //hide filtered data here.
         var filteredMeasurements = convertPostFilteringMeasurements(postFilteringMeasurements);
-        //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
         showHideAssayRows( filteredMeasurements);
         $.each(postFilteringMeasurements, (i, measurementId) => {
 
@@ -2643,12 +2646,7 @@ class DataGridAssays extends AssayResults {
 
     triggerAssayRecordsRefresh():void {
         try {
-            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
-            //show message that there's no data to display
-            //hide filtered data here.
-            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
             this.triggerDataReset();
-            StudyD.showHideAssayRows(filteredMeasurements);
             this.recordsCurrentlyInvalidated = [];
         } catch (e) {
             console.log('Failed to execute records refresh: ' + e);
@@ -3315,7 +3313,7 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
         if (this.checkBoxElement.checked) {
             return rowIDs;
         }
-
+        // If the box is unchecked, return the set filtered IDs
         else {
             var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
             var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
