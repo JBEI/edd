@@ -1582,9 +1582,9 @@ module StudyD {
             $('.lineNoData').hide();
         }
         //hide filtered data here.
-        var filteredA = convertPostFilteringMeasurements(postFilteringMeasurements);
+        var filteredMeasurements = convertPostFilteringMeasurements(postFilteringMeasurements);
         //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
-        showHideAssayRows( filteredA);
+        showHideAssayRows( filteredMeasurements);
         $.each(postFilteringMeasurements, (i, measurementId) => {
 
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -2646,9 +2646,9 @@ class DataGridAssays extends AssayResults {
             var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
             //show message that there's no data to display
             //hide filtered data here.
-            var filteredA = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
             this.triggerDataReset();
-            StudyD.showHideAssayRows(filteredA);
+            StudyD.showHideAssayRows(filteredMeasurements);
             this.recordsCurrentlyInvalidated = [];
         } catch (e) {
             console.log('Failed to execute records refresh: ' + e);
@@ -3316,16 +3316,11 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
             return rowIDs;
         }
 
-        var filteredIDs = [];
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
-            // Here is the condition that determines whether the rows associated with this ID are
-            // shown or hidden.
-            if (EDDData.Assays[id].active) {
-                filteredIDs.push(id);
-            }
+        else {
+            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
+            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
         }
-        return filteredIDs;
+        return filteredMeasurements;
     }
 
     initialFormatRowElementsForID(dataRowObjects:any, rowID:any):any {

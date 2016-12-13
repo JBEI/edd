@@ -1437,9 +1437,9 @@ var StudyD;
             $('.lineNoData').hide();
         }
         //hide filtered data here.
-        var filteredA = convertPostFilteringMeasurements(postFilteringMeasurements);
+        var filteredMeasurements = convertPostFilteringMeasurements(postFilteringMeasurements);
         //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
-        showHideAssayRows(filteredA);
+        showHideAssayRows(filteredMeasurements);
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
@@ -2402,9 +2402,9 @@ var DataGridAssays = (function (_super) {
             var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
             //show message that there's no data to display
             //hide filtered data here.
-            var filteredA = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
             this.triggerDataReset();
-            StudyD.showHideAssayRows(filteredA);
+            StudyD.showHideAssayRows(filteredMeasurements);
             this.recordsCurrentlyInvalidated = [];
         }
         catch (e) {
@@ -2987,16 +2987,11 @@ var DGDisabledAssaysWidget = (function (_super) {
         if (this.checkBoxElement.checked) {
             return rowIDs;
         }
-        var filteredIDs = [];
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
-            // Here is the condition that determines whether the rows associated with this ID are
-            // shown or hidden.
-            if (EDDData.Assays[id].active) {
-                filteredIDs.push(id);
-            }
+        else {
+            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
+            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
         }
-        return filteredIDs;
+        return filteredMeasurements;
     };
     DGDisabledAssaysWidget.prototype.initialFormatRowElementsForID = function (dataRowObjects, rowID) {
         if (!EDDData.Assays[rowID].active) {
