@@ -1,8 +1,6 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
-/// <reference path="BiomassCalculationUI.ts" />
-/// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="StudyGraphing.ts" />
 /// <reference path="GraphHelperMethods.ts" />
@@ -20,8 +18,6 @@ module StudyD {
     var mainGraphRefreshTimerID:any;
     var linesActionPanelRefreshTimer:any;
     var assaysActionPanelRefreshTimer:any;
-    var attachmentIDs:any;
-    var attachmentsByID:any;
     var prevDescriptionEditElement:any;
 
     // We can have a valid metabolic map but no valid biomass calculation.
@@ -29,9 +25,6 @@ module StudyD {
     // calculate biomass for the specified metabolic map.
     export var metabolicMapID:any;
     export var metabolicMapName:any;
-    export var biomassCalculation:number;
-    var carbonBalanceData:any;
-    var carbonBalanceDisplayIsFresh:boolean;
 
     // Table spec and table objects, one each per Protocol, for Assays.
     var assaysDataGridSpecs;
@@ -1092,18 +1085,12 @@ module StudyD {
 
         this.progressiveFilteringWidget = new ProgressiveFilteringWidget(this);
 
-        this.carbonBalanceData = null;
-        this.carbonBalanceDisplayIsFresh = false;
-
         this.mainGraphRefreshTimerID = null;
 
-        this.attachmentIDs = null;
-        this.attachmentsByID = null;
         this.prevDescriptionEditElement = null;
 
         this.metabolicMapID = -1;
         this.metabolicMapName = null;
-        this.biomassCalculation = -1;
 
         this.linesActionPanelRefreshTimer = null;
         this.assaysActionPanelRefreshTimer = null;
@@ -1145,20 +1132,28 @@ module StudyD {
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('.scroll').css('height', 100)
-                    $('.noLines').css('display', 'block');
-                    $('#addNewLine').hide();
-                    $('#addNewLine').next().hide();
                 } else {
                     $('.scroll').css('height', 300)
-                    $('.noLines').css('display', 'none');
-                    $('#addNewLine').show();
-                    $('#addNewLine').next().show();
                 }
 
                 var spec;
                 this.assaysDataGridSpecs = spec = new DataGridSpecAssays(EDDData.Assays);
                 spec.init();
                 this.assaysDataGrids = new DataGridAssays(spec);
+
+                //pulling in protocol measurements AssayMeasurements
+                $.each(EDDData.Protocols, (id, protocol) => {
+                    $.ajax({
+                        url: 'measurements/' + id + '/',
+                        type: 'GET',
+                        dataType: 'json',
+                        error: (xhr, status) => {
+                            console.log('Failed to fetch measurement data on ' + protocol.name + '!');
+                            console.log(status);
+                        },
+                        success: processMeasurementData.bind(this, protocol)
+                    });
+                });
             }
         });
 
@@ -1195,56 +1190,19 @@ module StudyD {
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
-        $(window).on('load', preparePermissions);
-    }
 
-    function preparePermissions() {
-        var user: EDDAuto.User, group: EDDAuto.Group;
-        user = new EDDAuto.User({
-            container:$('#permission_user_box')
-        });
-        group = new EDDAuto.Group({
-            container:$('#permission_group_box')
-        });
 
-        $('form.permissions')
-            .on('change', ':radio', (ev:JQueryInputEventObject):void => {
-                var radio: JQuery = $(ev.target);
-                $('.permissions').find(':radio').each((i: number, r: Element): void => {
-                    $(r).closest('span').find('.autocomp').prop('disabled', !$(r).prop('checked'));
-                });
-                if (radio.prop('checked')) {
-                    radio.closest('span').find('.autocomp:visible').focus();
-                }
-            })
-            .on('submit', (ev:JQueryEventObject): boolean => {
-                var perm: any = {}, klass: string, auto: JQuery;
-                auto = $('form.permissions').find('[name=class]:checked');
-                klass = auto.val();
-                perm.type = $('form.permissions').find('[name=type]').val();
-                perm[klass.toLowerCase()] = { 'id': auto.closest('span').find('input:hidden').val() };
-                $.ajax({
-                    'url': 'permissions/',
-                    'type': 'POST',
-                    'data': {
-                        'data': JSON.stringify([perm]),
-                        'csrfmiddlewaretoken': $('form.permissions').find('[name=csrfmiddlewaretoken]').val()
-                    },
-                    'success': (): void => {
-                        console.log(['Set permission: ', JSON.stringify(perm)].join(''));
-                        $('<div>').text('Set Permission').addClass('success')
-                            .appendTo($('form.permissions')).delay(5000).fadeOut(2000);
-                    },
-                    'error': (xhr, status, err): void => {
-                        console.log(['Setting permission failed: ', status, ';', err].join(''));
-                        $('<div>').text('Server Error: ' + err).addClass('bad')
-                            .appendTo($('form.permissions')).delay(5000).fadeOut(2000);
-                    }
-                });
-                return false;
-            })
-            .find(':radio').trigger('change').end()
-           // .removeClass('off');
+        var csIDs;
+
+        // Prepare the main data overview graph at the top of the page
+        if (this.mainGraphObject === null && $('#maingraph').length === 1) {
+            this.mainGraphObject = Object.create(StudyDGraphing);
+            this.mainGraphObject.Setup('maingraph');
+            this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
+        }
+
+        $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
+                .on('keydown', filterTableKeyDown.bind(this));
     }
 
 
@@ -1264,57 +1222,6 @@ module StudyD {
         }
     }
 
-    // Called by DataGrid after the Lines table is rendered
-    export function prepareAfterLinesTable() {
-
-        var csIDs;
-
-        // Prepare the main data overview graph at the top of the page
-        if (this.mainGraphObject === null && $('#maingraph').length === 1) {
-            this.mainGraphObject = Object.create(StudyDGraphing);
-            this.mainGraphObject.Setup('maingraph');
-            this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
-        }
-
-        $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
-                .on('keydown', filterTableKeyDown.bind(this));
-
-        // Enable edit lines button
-        $('#editLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
-            var button = $(ev.target), data = button.data(), form = clearLineForm(),
-                allMeta = {}, metaRow;
-            if (data.ids.length === 1) {
-                fillLineForm(form, EDDData.Lines[data.ids[0]]);
-            } else {
-                // compute used metadata fields on all data.ids, insert metadata rows?
-                data.ids.map((id:number) => EDDData.Lines[id] || {}).forEach((line:LineRecord) => {
-                    $.extend(allMeta, line.meta || {});
-                });
-                metaRow = form.find('.line-edit-meta');
-                // Run through the collection of metadata, and add a form element entry for each
-                $.each(allMeta, (key) => insertLineMetadataRow(metaRow, key, ''));
-            }
-            updateUILineForm(form, data.count > 1);
-            form.find('[name=line-ids]').val(data.ids.join(','));
-            return false;
-        });
-
-        // Hacky button for changing the metabolic map
-        $("#metabolicMapName").click( () => this.onClickedMetabolicMapName() );
-        //pulling in protocol measurements AssayMeasurements
-        $.each(EDDData.Protocols, (id, protocol) => {
-            $.ajax({
-                url: 'measurements/' + id + '/',
-                type: 'GET',
-                dataType: 'json',
-                error: (xhr, status) => {
-                    console.log('Failed to fetch measurement data on ' + protocol.name + '!');
-                    console.log(status);
-                },
-                success: processMeasurementData.bind(this, protocol)
-            });
-        });
-    }
 
     export function requestAssayData(assay) {
         var protocol = EDDData.Protocols[assay.pid];
@@ -1329,6 +1236,7 @@ module StudyD {
             success: processMeasurementData.bind(this, protocol)
         });
     }
+
 
     function processMeasurementData(protocol, data) {
         var assaySeen = {},
@@ -1480,26 +1388,25 @@ module StudyD {
             return;
         }
 
-        //stop spinner
+        // stop spinner
         $('#loadingDiv').hide();
         $('.blankSvg').hide();
-        //remove SVG.
+        // remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);
         colorObj = EDDData['color'];
-        //Gives ids of lines to show.
+        // Gives ids of lines to show.
         var dataSets = [], prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
-        //show message that there's no data to display
+        // show message that there's no data to display
         if (postFilteringMeasurements.length === 0) {
             $('.lineNoData').show();
         } else {
             $('.lineNoData').hide();
         }
         //hide filtered data here.
-        var filteredMeasurements = convertPostFilteringMeasurements(postFilteringMeasurements);
-        //var filteredAssays = this.convertPostFilteringMeasurements( postFilteringMeasurements);
-        showHideAssayRows( filteredMeasurements);
+        var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+        StudyD.showHideAssayRows(filteredMeasurements);
         $.each(postFilteringMeasurements, (i, measurementId) => {
 
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -1683,17 +1590,6 @@ module StudyD {
         return form;
     }
 
-    function clearLineForm() {
-        var form = $('#editLineForm');
-        form.find('.line-meta').remove();
-        form.find('[name^=line-]').not(':checkbox, :radio').val('');
-        form.find('[name^=line-]').filter(':checkbox, :radio').prop('checked', false);
-        form.find('.errorlist').remove();
-        form.find('.cancel-link').remove();
-        form.find('.bulk').addClass('off');
-        form.off('change.bulk');
-        return form;
-    }
 
     function fillAssayForm(form, record) {
         var user = EDDData.Users[record.experimenter];
@@ -1705,40 +1601,6 @@ module StudyD {
         form.find('[name=assay-experimenter_1]').val(record.experimenter);
     }
 
-    function fillLineForm(form, record) {
-        var metaRow, experimenter, contact;
-        experimenter = EDDData.Users[record.experimenter];
-        contact = EDDData.Users[record.contact.user_id];
-        form.find('[name=line-ids]').val(record.id);
-        form.find('[name=line-name]').val(record.name);
-        form.find('[name=line-description]').val(record.description);
-        form.find('[name=line-control]').prop('checked', record.control);
-        form.find('[name=line-contact_0]').val(record.contact.text || (contact && contact.uid ? contact.uid : '--'));
-        form.find('[name=line-contact_1]').val(record.contact.user_id);
-        form.find('[name=line-experimenter_0]').val(experimenter && experimenter.uid ? experimenter.uid : '--');
-        form.find('[name=line-experimenter_1]').val(record.experimenter);
-        form.find('[name=line-carbon_source_0]').val(
-                record.carbon.map((v) => (EDDData.CSources[v] || <CarbonSourceRecord>{}).name || '--').join(','));
-        form.find('[name=line-carbon_source_1]').val(record.carbon.join(','));
-        form.find('[name=line-strains_0]').val(
-                record.strain.map((v) => (EDDData.Strains[v] || <StrainRecord>{}).name || '--').join(','));
-        form.find('[name=line-strains_1]').val(
-                record.strain.map((v) => (EDDData.Strains[v] || <StrainRecord>{}).registry_id || '').join(','));
-        if (record.strain.length && form.find('[name=line-strains_1]').val() === '') {
-            $('<li>').text('Strain does not have a linked ICE entry! ' +
-                    'Saving the line without linking to ICE will remove the strain.')
-                .wrap('<ul>').parent().addClass('errorlist')
-                .appendTo(form.find('[name=line-strains_0]').parent());
-        }
-        metaRow = form.find('.line-edit-meta');
-        // Run through the collection of metadata, and add a form element entry for each
-        $.each(record.meta, (key, value) => {
-            insertLineMetadataRow(metaRow, key, value);
-        });
-        // store original metadata in initial- field
-        form.find('[name=line-meta_store]').val(JSON.stringify(record.meta));
-        form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
-    }
 
     function scrollToForm(form) {
         // make sure form is disclosed
@@ -1761,17 +1623,6 @@ module StudyD {
         }).insertAfter(button);
     }
 
-    function updateUILineForm(form, plural?) {
-        var title, text = 'Edit Line' + (plural ? 's' : '');
-        // Update the disclose title to read 'Edit Line'
-        $('#addNewLineForm').prop('title', text);
-        if (plural) {
-            form.find('.bulk').prop('checked', false).removeClass('off');
-            form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
-                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
-            });
-        }
-    }
 
     function insertLineMetadataRow(refRow, key, value) {
         var row, type, label, input, id = 'line-meta-' + key;
@@ -1801,38 +1652,6 @@ module StudyD {
         fillAssayForm(form, record);
         updateUIAssayForm(form);
         scrollToForm(form);
-    }
-
-    export function editLine(index:number):void {
-        var record = EDDData.Lines[index], form;
-        if (!record) {
-            console.log('Invalid Line record for editing: ' + index);
-            return;
-        }
-
-        form = clearLineForm(); // "form" is actually the edit line modal
-        fillLineForm(form, record);
-        updateUILineForm(form);
-        scrollToForm(form);
-    }
-
-    export function onChangedMetabolicMap() {
-        if (this.metabolicMapName) {
-            // Update the UI to show the new filename for the metabolic map.
-            $("#metabolicMapName").html(this.metabolicMapName);
-        } else {
-            $("#metabolicMapName").html('(none)');
-        }
-
-        if (this.biomassCalculation && this.biomassCalculation != -1) {
-            // Calculate carbon balances now that we can.
-            this.carbonBalanceData.calculateCarbonBalances(this.metabolicMapID,
-                    this.biomassCalculation);
-
-            // Rebuild the CB graphs.
-            this.carbonBalanceDisplayIsFresh = false;
-            this.rebuildCarbonBalanceGraphs();
-        }
     }
 };
 
@@ -1881,12 +1700,7 @@ class DataGridAssays extends AssayResults {
 
     triggerAssayRecordsRefresh():void {
         try {
-            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
-            //show message that there's no data to display
-            //hide filtered data here.
-            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
             this.triggerDataReset();
-            StudyD.showHideAssayRows(filteredMeasurements);
             this.recordsCurrentlyInvalidated = [];
         } catch (e) {
             console.log('Failed to execute records refresh: ' + e);
@@ -2524,13 +2338,13 @@ class DataGridSpecAssays extends DataGridSpecBase {
             $(this.undisclosedSectionDiv).click(() => dataGrid.clickedDisclose(true));
         }
 
-
-                     //on page load of data hide assays section
-                    $( "input[name*='assaysSearch']" ).parents('thead').hide();
+        //on page load of data hide assays section
+        $( "input[name*='assaysSearch']" ).parents('thead').hide();
         // Run it once in case the page was generated with checked Assays
         StudyD.queueAssaysActionPanelShow();
     }
 }
+
 
 // When unchecked, this hides the set of Assays that are marked as disabled.
 class DGDisabledAssaysWidget extends DataGridOptionWidget {
@@ -2554,11 +2368,16 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
             return rowIDs;
         }
 
-        else {
-            var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
-            var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+        var filteredIDs = [];
+        for (var r = 0; r < rowIDs.length; r++) {
+            var id = rowIDs[r];
+            // Here is the condition that determines whether the rows associated with this ID are
+            // shown or hidden.
+            if (EDDData.Assays[id].active) {
+                filteredIDs.push(id);
+            }
         }
-        return filteredMeasurements;
+        return filteredIDs;
     }
 
     initialFormatRowElementsForID(dataRowObjects:any, rowID:any):any {

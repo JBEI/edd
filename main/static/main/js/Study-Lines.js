@@ -70,11 +70,13 @@ var StudyLines;
                 }
                 //show possible next steps div and hide assay graphs and table if there are no Assays
                 if (_.keys(EDDData.Lines).length === 0) {
+                    $('.scroll').css('height', 100);
                     $('.noLines').css('display', 'block');
                     $('#addNewLine').hide();
                     $('#addNewLine').next().hide();
                 }
                 else {
+                    $('.scroll').css('height', 300);
                     $('.noLines').css('display', 'none');
                     $('#addNewLine').show();
                     $('#addNewLine').next().show();
