@@ -105,26 +105,35 @@
             </div>
         </div>
     {% endif %}
-
+<div class="helpBadgeDiv">line help
+    <div class="helpContent">
+                <p>A line describes the experimental details of your study by defining the
+                    experimental conditions and associated meta data for i.e. a single flask.  Some examples
+                    that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
+                    speed.  Users can manually add lines, or download the study template for bulk uploads.
+                </p>
+      </div>
+    </div>
+    </br>
 <form id="line-action-form" action="" class="line-action" method="POST">
     {% csrf_token %}
     <div class="pageSection">
         {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
         <div class="noLines" style="display: none;">
             <h3 style="margin-bottom:12px">This study has no lines. </h3>
-            <button  id="addNewLineNoLines" class="addNewLine"></button><span>  add new line</span>
-            <div style="color:grey; margin-top:15px">What is a line?
-                <input type="button" style="display:inline;" id="show" value="show"/>
-            </div>
-        </div>
-            <div id="lineDescription" style="display:none">
-                <p>A line describes the experimental details of your study. A line defines the
-                    experimental conditions and associated meta data for a (in this example) single flask.  Some examples
-                    that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
-                    speed.  Users can manually add lines, or download the <a class="dropLink"
-                    href="{% static 'sampleLineTemplate.xlsx' %}">study template</a> for bulk uploads.
-                </p>
-                <img src="{% static 'main/images/line_assay_tree.png' %}" />
+{#            <button  id="addNewLineNoLines" class="addNewLine"></button><span>  add new line</span>#}
+{#            <div style="color:grey; margin-top:15px">What is a line?#}
+{#                <input type="button" style="display:inline;" id="show" value="show"/>#}
+{#            </div>#}
+{#        </div>#}
+{#            <div id="lineDescription" style="display:none">#}
+{#                <p>A line describes the experimental details of your study. A line defines the#}
+{#                    experimental conditions and associated meta data for a (in this example) single flask.  Some examples#}
+{#                    that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking#}
+{#                    speed.  Users can manually add lines, or download the <a class="dropLink"#}
+{#                    href="{% static 'sampleLineTemplate.xlsx' %}">study template</a> for bulk uploads.#}
+{#                </p>#}
+{#                <img src="{% static 'main/images/line_assay_tree.png' %}" />#}
             </div>
         <div class="scroll">
             <table id="studyLinesTable"></table>

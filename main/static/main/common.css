@@ -399,6 +399,7 @@ div.pageSection.minor div.sectionHead {
 
 ul.studyTabs {
     margin: 15px 0px 10px 0px;
+     border-bottom: 1px solid lightgray;
 }
 
 /* mimic the appearance of sectionHeader, independently of a pageSection */
@@ -1040,6 +1041,9 @@ table.formTable tr > td textarea {
     padding: 0 8px;
 }
 
+.assay-action {
+    margin-left: 38px;
+}
 
 #studiesTable td:nth-child(2) {
     white-space: nowrap;
