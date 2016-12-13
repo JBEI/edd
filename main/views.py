@@ -521,7 +521,6 @@ class StudyDetailView(StudyDetailBaseView):
         instance = self.get_object()
         context['showingdata'] = True
         context['new_assay'] = AssayForm(prefix='assay')
-        context['new_line'] = LineForm(prefix='line')
         context['new_measurement'] = MeasurementForm(prefix='measurement')
         return context
 
@@ -712,7 +711,6 @@ class StudyDetailView(StudyDetailBaseView):
         # actions that may not require write permissions
         action_lookup = {
             'assay_action': self.handle_assay_action,
-            'line_action': self.handle_line_action,
         }
         # actions that require write permissions
         writable_lookup = {
