@@ -15,12 +15,11 @@
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Study.js' %}"></script>
-
     <script type="text/javascript" src="{% static 'main/js/createMultiAxisLine.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/groupedBarMeasurement.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lineGraphHelperMethods.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/barGraphHelperMethods.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Study-Data.js' %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -44,6 +43,7 @@
       <li id="studyGraph" role="presentation" class="active"><a href="#">Graph</a></li>
       <li id="studyTable" role="presentation"><a href="#">Table</a></li>
     </ul>
+     </hr>
 
     <div class="pageSection pageSectionTabContent" id="overviewSection">
         <div class="sectionContent">
@@ -70,6 +70,7 @@
             </div>
         </div>
         <div class="linechart">
+            <div class="lineNoData">No data selected - please filter</div>
             <div style="display:none" class="checkbox y-checkbox">
                 <label><input type="checkbox" value="" />hide y-axis</label>
             </div>

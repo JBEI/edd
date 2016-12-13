@@ -114,8 +114,9 @@ function showStudyGraph() {
 //show hide for clicking table tab under data
 function showStudyTable() {
     $( "#studyTable" ).one( "click", function() {
-    StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+        StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
     });
+
     $('#studyTable').click(function (event) {
           event.preventDefault();
           //on page load of table show assays search header

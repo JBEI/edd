@@ -293,6 +293,15 @@ class DataGrid {
                 });
             });
         }
+    //     <div class="helpBadgeDiv">line help
+    // <div class="helpContent">
+    //             <p>A line describes the experimental details of your study by defining the
+    //                 experimental conditions and associated meta data for i.e. a single flask.  Some examples
+    //                 that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
+    //                 speed.  Users can manually add lines, or download the study template for bulk uploads.
+    //             </p>
+    //   </div>
+    // </div>
 
         var mainSpan = $(this._optionsMenuElement = document.createElement("span"))
             .attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
