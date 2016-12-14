@@ -1267,8 +1267,8 @@ var StudyD;
             $('.lineNoData').hide();
         }
         //hide filtered data here.
-        var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
-        StudyD.showHideAssayRows(filteredMeasurements);
+        StudyD.progressiveFilteringWidget.filteredAssayIDs = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+        StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs);
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
