@@ -1154,6 +1154,10 @@ def study_import_table(request, pk=None, slug=None):
         },
     )
 
+        # HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
+
+
+
 
 # /utilities/parsefile
 # To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).

@@ -5,6 +5,7 @@
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
@@ -34,26 +35,25 @@
 </div>
 {% endblock body_title %}
 
-{% block content %}                  
-<div style="
-    display:flex;
-    flex-wrap: nowrap;
-    flex-direction: row;
-    justify-content:
-    ">
-    <div class="tabBar larger" style="flex-grow:1;">
-        <span class="{% if showingoverview %}active{% endif %}">
-            <a href="/study/{{ study.slug }}/overview">Overview</a>
-        </span>{% if lines %}<span class="{% if showinglines %}active{% endif %}">
-            <a href="/study/{{ study.slug }}/lines">Lines</a>
-        </span>{% endif %}{% if assays %}<span class="{% if showingdata %}active{% endif %}">
-            <a href="/study/{{ study.slug }}/">Data</a>
-        </span>{% endif %}
+{% block content %}
+    <div class="topNav">
+<ui class="nav nav-pills navbar">
+    <li class="{% if showingoverview %}active{% endif %}">
+        <a href="/study/{{ study.slug }}/overview">Overview</a>
+    </li>
+    {% if lines %}
+        <li class="{% if showinglines %}active{% endif %}">
+           <a href="/study/{{ study.slug }}/lines">Lines</a>
+        </li>
+    {% endif %}
+    {% if assays %}
+        <li class="{% if showingdata %}active{% endif %}">
+        <a href="/study/{{ study.slug }}/">Data</a>
+        </li>
+    {% endif %}
+    <li class="{% if showingimport %}active{% endif %}">
+        <a href="/study/{{ study.id }}/import">Import</a>
+    </li>
+</ui>
     </div>
-    <div class="tabBar larger">
-        <span class="{% if showingimport %}active{% endif %}">
-            <a href="/study/{{ study.id }}/import">Import</a>
-        </span>
-    </div>
-</div>
 {% endblock content %}
