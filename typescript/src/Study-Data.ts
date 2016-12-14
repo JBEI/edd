@@ -1396,6 +1396,8 @@ module StudyD {
         // stop spinner
         $('#loadingDiv').hide();
         $('.blankSvg').hide();
+        //remove disabled from table because measurements are now there
+        $('#studyTable').removeClass('disabled');
         // remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);
@@ -1409,8 +1411,9 @@ module StudyD {
         } else {
             $('.lineNoData').hide();
         }
-        //hide filtered data here.
+        //store filtered data here
         StudyD.progressiveFilteringWidget.filteredAssayIDs = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+        //show hide filtered data on assay table.
         StudyD.showHideAssayRows( StudyD.progressiveFilteringWidget.filteredAssayIDs );
         $.each(postFilteringMeasurements, (i, measurementId) => {
 

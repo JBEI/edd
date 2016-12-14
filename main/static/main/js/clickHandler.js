@@ -121,10 +121,13 @@ function showStudyTable() {
             StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs)
         }
     });
+
     $('#studyTable').click(function (event) {
           event.preventDefault();
           //on page load of table show assays search header
           $( "input[name*='assaysSearch']" ).parents('thead').show();
+          //remove sorter on measurement tab in table
+          $('#hAssaysMName').removeClass();
           $('#studyGraph').removeClass('active');
           $(this).addClass('active');
           $('#assaysSection').css('display', 'block');

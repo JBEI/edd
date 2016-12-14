@@ -1,22 +1,14 @@
-{% extends "edd_base.html" %}
+{% extends "main/study.html" %}
 {% load staticfiles %}
 
 {% block js_css %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
-  <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/GraphHelperMethods.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/StudyGraphing.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-  <script type="text/javascript"
-      src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-  <link rel="stylesheet" type="text/css"
-      href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
   <script type="text/javascript"
       src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
-  <script type="text/javascript"
-      src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
@@ -47,16 +39,16 @@
 
 
 {% block head_title %}
-    {{ study.name }} - Experiment Data Depot
+    {{ block.super }}
 {% endblock head_title %}
 
-
 {% block body_title %}
-    <h1>Data import for <a style="vertical-align:top" href="/study/{{ study.id }}/">{{ study.name }}</a></h1>
+    {{ block.super }}
 {% endblock body_title %}
 
 
 {% block content %}
+    {{ block.super }}
 <form method="post" id="assayTableForm" action="/study/{{ study.id }}/import/">
 {% csrf_token %}
 
