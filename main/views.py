@@ -42,7 +42,7 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 from rest_framework.exceptions import MethodNotAllowed
 
-from edd_utils.parsers.experiment_def import TemplateFileParser, CombinatorialInputParser, \
+from edd_utils.parsers.experiment_def import ExperimentDefFileParser, CombinatorialInputParser, \
     JsonInputParser
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients import IceApi
@@ -1300,8 +1300,8 @@ def define_study_task(input, user_pk, study_id, is_json, errors, warnings, dry_r
         if len(input.worksheets) == 0:
             errors['no_input'] = 'no worksheets in file'
 
-        parser = TemplateFileParser(protocols_by_pk, line_metadata_types_by_pk,
-                                    assay_metadata_types_by_pk, require_strains=REQUIRE_STRAINS)
+        parser = ExperimentDefFileParser(protocols_by_pk, line_metadata_types_by_pk,
+                                         assay_metadata_types_by_pk, require_strains=REQUIRE_STRAINS)
     line_def_inputs = parser.parse(input, errors, warnings)
     performance.end_input_parse()
 
