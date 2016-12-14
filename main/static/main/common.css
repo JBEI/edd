@@ -708,6 +708,13 @@ div.filterTable > div.filterColumn {
     vertical-align: top;
 }
 
+.dropImg {
+    background-image: url(images/download_icon.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
 div.filterTable > div.filterColumn div.filterCriteriaScrollZone {
     max-height: 264px;
     overflow-x: visible;
@@ -808,17 +815,6 @@ ul.studyTabs {
 .disabled-button {
     opacity: 0.5;
 }
-.addNewLine {
-    background-image: url(images/plus_square.png);
-    background-color: white;
-    cursor: pointer;
-    background-size: 13px 15px;
-    border: none;
-    margin-left: 5px;
-    width: 0px;
-    height: 14px;
-}
-
 
 div.tabBar {
     padding:0px 20px 0px 20px;
@@ -1069,6 +1065,7 @@ div.multientrybutton {
 
 .line-action {
     margin-top: 10px;
+    margin-bottom: 141px;
 }
 /* Autocomplete input element styling */
 
@@ -1468,7 +1465,7 @@ div.footer {
     border-top: 1px solid #CCC;
     color: #CCC;
     font-size: 0.85em;
-    margin-top: 20px;
+    margin: 20px 34px 0px 34px;
     padding: 20px;
 }
 div.footer > div.footer-text {
@@ -1782,6 +1779,14 @@ div.tooltip2 {
 .noLineSelected {
     color: red;
     float: right;
+}
+
+#linesActionPanel {
+    position: fixed;
+    width: 100%;
+    padding-bottom: 40px;
+    bottom: 0;
+    background-color: white;
 }
 
 #measurementMain {

@@ -293,6 +293,7 @@ module StudyLines {
                 $('#line-export').attr('title', 'Export your lines in a file type of your choosing');
             } else {
                  $("#disabledButtons").children().prop('disabled', true);
+                 $('#addNewLine').prop('disabled', false);
                  $('#line_worklist').attr('title', 'select line(s) first');
                  $('#line-export').attr('title', 'select line(s) first');
             }
