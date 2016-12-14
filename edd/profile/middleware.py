@@ -18,7 +18,10 @@ class TaskNotification(object):
         self._fake_task = celery_app.Task()
 
     def process_request(self, request):
-        if request.user and request.user.userprofile:
+        # nothing to do if there is no user or user is not authenticated
+        if not request.user or not request.user.is_authenticated():
+            return
+        if hasattr(request.user, 'userprofile'):
             tasks = request.user.userprofile.tasks
             with transaction.atomic():
                 to_check = tasks.select_for_update().filter(notified=False)
