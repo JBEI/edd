@@ -337,7 +337,8 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
     def visit_line(self, line_name, description, is_control, strain_ids, line_metadata_dict,
                    replicate_num):
 
-        hstore_compliant_dict = {str(pk): str(value) for pk, value in line_metadata_dict.items()}
+        hstore_compliant_dict = {str(pk): str(value) for pk, value in \
+                                line_metadata_dict.items() if value}
         if isinstance(strain_ids, collections.Sequence) and not isinstance(strain_ids, str):
             strains = [self.strains_by_pk[pk] for pk in strain_ids]
         else:
@@ -365,7 +366,8 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
             protocol_to_assays_list[protocol_pk] = assays_list
 
         # make sure everything gets cast to str to comply with Postgres' hstore field
-        hstore_compliant_dict = {str(pk): str(value) for pk, value in assay_metadata_dict.items()}
+        hstore_compliant_dict = {str(pk): str(value) for pk, value in assay_metadata_dict.items()
+                                 if value}
 
         assay = Assay.objects.create(name=assay_name, line_id=line.pk, protocol_id=protocol_pk,
                                      meta_store=hstore_compliant_dict)

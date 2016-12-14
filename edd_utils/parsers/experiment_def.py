@@ -356,14 +356,18 @@ class ExperimentDefFileParser(CombinatorialInputParser):
 
             cell_content = row[col_index].value
 
+            # skip this cell if the cell has no content at all
+            if cell_content is None:
+                continue
+
             # ignore non-string cells since they can't be the column headers we're looking for
             is_string = isinstance(cell_content, str) or isinstance(cell_content, unicode)
             if not is_string:
                 continue
 
-            cell_content = row[col_index].value.strip()
+            cell_content = cell_content.strip()
 
-            # skip this cell if the cell has no non-whitespace content
+            # skip this cell if it has no non-whitespace content
             if not cell_content:
                 continue
 
@@ -543,7 +547,8 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         ###################################################
         # Line name
         ###################################################
-        cell_content = cols_list[layout.line_name_col].value.strip()
+        cell_content = self._get_string_cell_content(cols_list, row_num, layout.line_name_col,
+                                                     errors)
 
         if cell_content:
             row_inputs.base_line_name = cell_content
@@ -566,7 +571,8 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         # Line description
         ###################################################
         if layout.line_description_col is not None:
-            cell_content = cols_list[layout.line_description_col].value.strip()
+            cell_content = self._get_string_cell_content(cols_list, row_num,
+                                                         layout.line_description_col, errors)
             if cell_content:
                 row_inputs.description = cell_content
 
@@ -574,7 +580,9 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         # Control
         ###################################################
         if layout.line_control_col is not None:
-            cell_content = cols_list[layout.line_control_col].value.strip().upper()
+
+            cell_content = self._get_string_cell_content(cols_list, row_num, layout.line_control_col, errors)
+
             if cell_content:
                 tokens = cell_content.split(',')
                 if len(tokens) == 1:
@@ -611,6 +619,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         # of the back end, consider removing it since it will result in creation of lines with
         # duplicate names
         if layout.strain_ids_col is not None:
+
             cell_content = cols_list[layout.strain_ids_col].value
             tokens = cell_content.split(',')
             if tokens:
@@ -679,11 +688,12 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         ###################################################
         if layout.col_index_to_line_meta_pk:
             for col_index, line_metadata_pk in layout.col_index_to_line_meta_pk.items():
-                cell_content = cols_list[col_index].value.strip()
+                cell_content = self._get_string_cell_content(cols_list, row_num, col_index, errors)
 
                 if col_index in layout.combinatorial_col_indices:
                     self._parse_combinatorial_input(row_inputs, cell_content, row_num,
-                                               col_index, line_metadata_pk, 'incorrect_format')
+                                                    col_index, line_metadata_pk,
+                                                    'incorrect_format')
                 else:
                     row_inputs.add_common_line_metadata(line_metadata_pk, cell_content)
 
@@ -696,7 +706,11 @@ class ExperimentDefFileParser(CombinatorialInputParser):
             for col_index, (protocol, assay_metadata_type) in \
                     layout.col_index_to_assay_data.items():
 
-                cell_content = cols_list[col_index].value.strip()
+                cell_content = self._get_string_cell_content(cols_list, row_num, col_index, errors)
+
+                # skip blank cells
+                if not cell_content:
+                    continue
 
                 # if this cell is in a column of for combinatorial input, add it to that list
                 if col_index in layout.combinatorial_col_indices:
@@ -720,6 +734,26 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                                                          cell_content)
 
         return row_inputs
+
+    def _get_string_cell_content(self, row, row_num, col_index, errors):
+        cell_content = row[col_index].value
+
+        if cell_content is None:
+            return cell_content
+
+        if isinstance(cell_content, str) or isinstance(cell_content, unicode):
+            return cell_content.strip()
+
+        else:
+            logger.warning('Invalid cell format for cell %s' % str(cell_content.__type__))
+            key = 'invalid_cell_format'
+            invalid_cells = errors.get(key, [])
+            if not invalid_cells:
+                errors[key] = invalid_cells
+            invalid_cells.append((row_num, col_index+1))
+
+            return None
+
 
     def _parse_combinatorial_input(self, row_inputs, cell_content, row_num, col_index,
                                    metadata_type_pk, error_key, protocol=None,
