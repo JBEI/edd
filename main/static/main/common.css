@@ -201,23 +201,21 @@ div.topBanner {
     display: flex;
     flex-wrap: nowrap;
     flex-direction: row;
-    align-items: top;
     justify-content: space-between;
-    border-bottom: 2px solid lightgray;
-    padding-bottom: 20px;
-    background-color: #fafafa;
+    padding-bottom: 10px;
 }
 div.topBanner > div.siteLogo {
     flex-shrink: 0;
-    padding-left: 20px;
+    padding: 10px 0 0 5px;
 }
 div.topBanner > div.pageName {
     color: #6c6c6c;
-    font-size: 20px;
+    font-size: 27px;
+    line-height: 1.1;   /* Multiple of font size */
     margin: auto 20px auto 20px;
     flex-grow:1;
     border: 0;
-    padding: 0;
+    padding: 5px 0 0 0;
 }
 div.topBanner > div.userMenu {
     flex-shrink: 0;
@@ -710,6 +708,13 @@ div.filterTable > div.filterColumn {
     vertical-align: top;
 }
 
+.dropImg {
+    background-image: url(images/download_icon.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
 div.filterTable > div.filterColumn div.filterCriteriaScrollZone {
     max-height: 264px;
     overflow-x: visible;
@@ -810,64 +815,53 @@ ul.studyTabs {
 .disabled-button {
     opacity: 0.5;
 }
-.addNewLine {
-    background-image: url(images/plus_square.png);
-    background-color: white;
-    cursor: pointer;
-    background-size: 13px 15px;
-    border: none;
-    margin-left: 5px;
-    width: 0px;
-    height: 14px;
-}
 
 div.tabBar {
-    padding:0px 40px 0px 20px;
+    padding:0px 20px 0px 20px;
     background-repeat: repeat-x;
-    background-size: 416px 50px;
-    background-position: center;
+    background-size: 416px 26px;
+    background-position: bottom;
     background-image: url(images/tab_section_background.png);
     margin:20px 0px 20px 0px;
     z-index:3;
 }
 div.tabBar > span {
-    color:#6c6c6c;
+    display: inline-block;
+    color:#3c3c3c;
     font-size:14px;
     margin:0px;
-    background-color: #ffffff;
     border-style:solid;
     border-color:#d0d0d0;
     border-top-width:1px;
     border-bottom-width:1px;
     border-left-width:1px;
     border-right-width:0px;
-    padding-top:6px;
-    padding-bottom:6px;
-    padding-left:10px;
-    padding-right:10px;
+    padding:8px 12px 8px 12px;
+}
+div.tabBar.larger > span {
+    font-size:17px;
+    padding:10px 14px 10px 14px;
 }
 div.tabBar > span:first-of-type {
-    border-top-left-radius:8px;
-    border-bottom-left-radius:8px;
+    border-top-left-radius:6px;
 }
 div.tabBar > span:last-of-type {
     border-right-width:1px;
-    border-top-right-radius:8px;
-    border-bottom-right-radius:8px;
-}
-div.tabBar > span.active:last-of-type {
-    border-right-width:2px;
+    border-top-right-radius:6px;
 }
 div.tabBar > span.active {
-    padding-top:5px;
-    padding-bottom:5px;
-    padding-left:9px;
-    padding-right:9px;
+    border-bottom-width:0px;
+    padding-bottom:9px;
     z-index:4;
-    background-color: lightgrey;
+    background-color: #FFFFFF;
+}
+div.tabBar.larger > span.active {
+    padding-bottom:11px;
 }
 div.tabBar > span:not(.active) {
+    background-color: #F7F7F7;
     cursor: pointer;
+    box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.09) inset;
 }
 
 
@@ -1071,6 +1065,7 @@ div.multientrybutton {
 
 .line-action {
     margin-top: 10px;
+    margin-bottom: 141px;
 }
 /* Autocomplete input element styling */
 
@@ -1470,7 +1465,7 @@ div.footer {
     border-top: 1px solid #CCC;
     color: #CCC;
     font-size: 0.85em;
-    margin-top: 20px;
+    margin: 20px 34px 0px 34px;
     padding: 20px;
 }
 div.footer > div.footer-text {
@@ -1554,6 +1549,274 @@ div.fileDropInfoSending span {
 div.fileDropInfoLog {
     padding:0px;
     font-size:12px;
+}
+
+
+/* Styles brought over from style.css */
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.axis2 path,
+.axis2 line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.axis2 text {
+    display: none;
+}
+
+.axis-text {
+    z-index: -1; position:relative;
+}
+
+.blankSvg {
+    height:302px;
+    width: auto;
+    position: relative;
+}
+
+.btn-default {
+    outline: none;
+    border-color: #fff;
+}
+
+.btn:focus, .btn:active:focus, .btn.active:focus{
+    outline:none;
+    box-shadow:none;
+    border-color: #fff;
+}
+
+.chart-img {
+    height: 24px;
+    width: 24px
+}
+
+div.tooltip2 {
+  position: absolute;
+  text-align: center;
+  width: 100px;
+  opacity: 0.5;
+  padding: 2px;
+  font: 12px sans-serif;
+  background: white;
+  border: 1px solid grey;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.grid .tick {
+    stroke: lightgrey;
+    stroke-opacity: 0.7;
+    shape-rendering: crispEdges;
+}
+
+.grid path {
+          stroke-width: 0;
+}
+
+.barAssay {
+  display: none;
+}
+
+.barMeasurement {
+    display: none;
+}
+
+.line {
+    fill: none;
+    stroke-width: 1.5px;
+}
+
+.lineNoData {
+    margin-top: 15px;
+}
+
+.dotted-line {
+    fill: none;
+    stroke-dasharray: 10,10;
+}
+
+.dotted-line-random {
+    fill: none;
+    stroke-dasharray: 20,10,5,5,5,10;
+}
+
+
+.tick text{
+  font-size: 12px;
+}
+
+.tick line{
+  opacity: 0.2;
+}
+
+.barTime {
+  display: none;
+}
+
+.rect {
+    opacity: 0.5;
+}
+.toolTip {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    position: absolute;
+    display: none;
+    width: auto;
+    height: auto;
+    background: none repeat scroll 0 0 white;
+    border: 0 none;
+    border-radius: 8px 8px 8px 8px;
+    box-shadow: -3px 3px 15px #888888;
+    color: black;
+    padding: 5px;
+    text-align: center;
+}
+
+.tooMuchData {
+    color: red;
+    text-align: center;
+    font-size: 18px;
+}
+
+.x.axis {
+    line: .1;
+}
+.x.axis path {
+  opacity: .2;
+}
+
+.y.axis path {
+  opacity: .2;
+}
+
+.y-checkbox {
+    margin-left: 10px;
+}
+
+/*
+  New UI CSS below
+*/
+
+.nav>li>a {
+    color: lightgray;
+    position: relative;
+    display: block;
+    padding: 10px 15px;
+}
+.nav {
+    list-style: none;
+    padding-left: 0;
+}
+
+.nav>li {
+    position: relative;
+    display: block;
+}
+
+.nav-pills>li{float:left}
+.nav-pills>li>a{border-radius:4px}
+.nav-pills>li+li{margin-left:2px}
+.nav-pills>.active>a>.badge{color:#337ab7;background-color:#fff}
+.nav-pills>li>a>.badge{margin-left:3px}
+
+.nav-pills {
+    color: black;
+    font-size: 16px;
+}
+
+.nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
+    background-color: white;
+    color: gray;
+    font-size: 16px;
+}
+
+.importExport {
+    background-color: #6CA5E9;
+    display: inline-block;
+    margin: 10px 0px 0px 30px;
+    padding: 20px 30px 20px 30px;
+    color: white;
+    border: 1px solid;
+    text-align: center;
+}
+
+.actionButton {
+    display: inline-block;
+    margin: 10px 10px 0px 0px;
+    background-color: white;
+    font-size: 12px;
+    color: grey;
+    border: 1px solid;
+    text-align: center;
+    float:right;
+}
+
+.actionButton2 {
+    display: inline-block;
+    margin: 10px 10px 0px 0px;
+    background-color: white;
+    font-size: 12px;
+    color: grey;
+    border: 1px solid;
+    text-align: center;
+}
+
+#disabledButtons {
+    margin-top: 10px;
+}
+
+.assayTable {
+    padding-left: 100px;
+}
+
+.noLineSelected {
+    color: red;
+    float: right;
+}
+
+#linesActionPanel {
+    position: fixed;
+    width: 100%;
+    padding-bottom: 40px;
+    bottom: 0;
+    background-color: white;
+}
+
+#measurementMain {
+    margin-right: 30px;
+}
+
+.filterHeader {
+    font-size: 12px;
+    color: grey;
+    margin-top: 5px;
+}
+
+#graphFilter {
+    margin-top: 20px;
+    border-top: 2px solid lightgrey;
+}
+
+.scroll {
+    display: block;
+    overflow-y: scroll;
+}
+
+hr {
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: auto;
+    margin-right: auto;
+    border-style: inset;
+    border-width: 1px;
 }
 
 

@@ -114,9 +114,13 @@ function showStudyGraph() {
 //show hide for clicking table tab under data
 function showStudyTable() {
     $( "#studyTable" ).one( "click", function() {
+        //first build table
         StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+        //if any checkboxes have been check in filtering section, showHide rows
+        if ($(".filterTable input:checkbox:checked").length > 0) {
+            StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs)
+        }
     });
-
     $('#studyTable').click(function (event) {
           event.preventDefault();
           //on page load of table show assays search header

@@ -62,6 +62,7 @@ module StudyD {
         filterTableJQ: JQuery;
         studyDObject: any;
         mainGraphObject: any;
+        filteredAssayIDs: any;
 
         // MeasurementGroupCode: Need to initialize each filter list.
         constructor(studyDObject: any) {
@@ -1409,8 +1410,8 @@ module StudyD {
             $('.lineNoData').hide();
         }
         //hide filtered data here.
-        var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
-        StudyD.showHideAssayRows(filteredMeasurements);
+        StudyD.progressiveFilteringWidget.filteredAssayIDs = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+        StudyD.showHideAssayRows( StudyD.progressiveFilteringWidget.filteredAssayIDs );
         $.each(postFilteringMeasurements, (i, measurementId) => {
 
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -1651,7 +1652,6 @@ module StudyD {
             console.log('Invalid Assay record for editing: ' + index);
             return;
         }
-
         form = clearAssayForm(); // "form" is actually the disclose block
         fillAssayForm(form, record);
         updateUIAssayForm(form);

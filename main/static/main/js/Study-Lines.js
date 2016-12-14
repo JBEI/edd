@@ -262,6 +262,7 @@ var StudyLines;
             }
             else {
                 $("#disabledButtons").children().prop('disabled', true);
+                $('#addNewLine').prop('disabled', false);
                 $('#line_worklist').attr('title', 'select line(s) first');
                 $('#line-export').attr('title', 'select line(s) first');
             }

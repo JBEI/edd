@@ -31,19 +31,12 @@
 {% endblock body_title %}
 
 {% block content %}
-<div class="btn-toolbar bare-header" style="float:right;">
-    <div style="text-align: right">
-        <a class="btn btn-primary btn-lg" href="/study/{{ study.id }}/import">Import</a>
-    </div>
-</div>
     {{ block.super }}
 
-<div id="dataDisplay" class="dataDisplay">
     <ul class="nav nav-tabs studyTabs">
       <li id="studyGraph" role="presentation" class="active"><a href="#">Graph</a></li>
       <li id="studyTable" role="presentation"><a href="#">Table</a></li>
     </ul>
-     </hr>
 
     <div class="pageSection pageSectionTabContent" id="overviewSection">
         <div class="sectionContent">
@@ -95,7 +88,7 @@
         </div>
         <div id="maingraph" class="graphContainer"></div>
     </div>
-</div>
+
 <form action="" class="assay-action" method="POST">
     {% csrf_token %}
 
@@ -132,12 +125,7 @@
         </br>
         <span>Filter options</span>
         <div id="mainFilterSection" class="filteringSection discloseBody">
-        </div>
-        <div style="text-align:right">
-            <button type="button" id="measurementMain"
-                class="btn btn-primary btn-lg actionButton2" >Add Measurements to </br>
-            Selected Assays</button>
-        </div>
+        </div>  
     </div>
 
     {% if writable %}
