@@ -835,7 +835,7 @@ class CombinatorialDefinitionInput(object):
                                  INVALID_ASSAY_META_PK, PARSE_ERROR)
 
     @staticmethod
-    def _verify_pk_keys(self, input_dict, reference_dict, errors, err_key, PARSE_ERROR):
+    def _verify_pk_keys(input_dict, reference_dict, errors, err_key, PARSE_ERROR):
         for key in input_dict:
             if not key in reference_dict.keys():
                 parse_errors = errors.get(PARSE_ERROR, {})
