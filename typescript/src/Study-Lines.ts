@@ -62,6 +62,15 @@ module StudyLines {
             return false;
         });
 
+        $('#worklistButton').attr('title', 'select line(s) first');
+        $('#exportButton').attr('title', 'select line(s) first');
+
+        $('#show').click(function (event) {
+            event.preventDefault();
+            $(this).val() == "show" ? show_int() : show_hide();
+            return false
+        });
+
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
@@ -81,7 +90,7 @@ module StudyLines {
                     //stop spinner
                     $('#loadingDiv').hide();
                 } else {
-                      $('#chartType').show();
+                    $('#chartType').show();
                 }
 
                 //show possible next steps div and hide assay graphs and table if there are no Assays
@@ -98,8 +107,83 @@ module StudyLines {
                 }
             }
         });
+    }
 
-        $('form.line-edit').on('change', '.line-meta > :input', (ev) => {
+
+    function show_int() {
+        $('#show').val("hide");
+        $('#lineDescription').css('display', 'block');
+    }
+
+
+    function show_hide() {
+        $('#show').val("show");
+        $('#lineDescription').css('display', 'none');
+    }
+
+
+    export function processCarbonBalanceData() {
+        // Prepare the carbon balance graph
+        this.carbonBalanceData = new CarbonBalance.Display();
+        var highlightCarbonBalanceWidget = false;
+        if ( this.biomassCalculation > -1 ) {
+            this.carbonBalanceData.calculateCarbonBalances(this.metabolicMapID,
+                    this.biomassCalculation);
+            // Highlight the "Show Carbon Balance" checkbox in red if there are CB issues.
+            if (this.carbonBalanceData.getNumberOfImbalances() > 0) {
+                highlightCarbonBalanceWidget = true;
+            }
+        } else {
+            // Highlight the carbon balance in red to indicate that we can't calculate
+            // carbon balances yet. When they click the checkbox, we'll get them to
+            // specify which SBML file to use for biomass.
+            highlightCarbonBalanceWidget = true;
+        }
+        this.linesDataGridSpec.highlightCarbonBalanceWidget(highlightCarbonBalanceWidget);
+    }
+
+
+    // Called by DataGrid after the Lines table is rendered
+    export function prepareAfterLinesTable() {
+
+        // Enable add new Line button
+        $('#addNewLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            StudyLines.editLines([]);
+            return false;
+        });
+
+        // Enable edit lines button
+        $('#editLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
+            var button = $(ev.target), data = button.data();
+            ev.preventDefault();
+            StudyLines.editLines(data.ids || []);
+            return false;
+        });
+
+        // Set up jQuery modals
+        $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
+        $("#addAssayModal").dialog({ autoOpen: false });
+        $("#exportModal").dialog({ autoOpen: false });
+
+        $("#addAssayButton").click(function() {
+            $("#addAssayModal").removeClass('off').dialog( "open" );
+            return false;
+        });
+
+        $("#exportButton").click(function() {
+            $("#exportModal").removeClass('off').dialog( "open" );
+            return false;
+        });
+
+        $('#worklistButton').click(function () {
+            $('select[name="export"]').val('worklist');
+            var test = $('button[value="line_action"]')[1];
+            $(test).click();
+        });
+
+        $('#editLineModal').on('change', '.line-meta > :input', (ev) => {
             // watch for changes to metadata values, and serialize to the meta_store field
             var form = $(ev.target).closest('form'),
                 metaIn = form.find('[name=line-meta_store]'),
@@ -131,54 +215,6 @@ module StudyLines {
             meta[key] = null;
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
-        });
-    }
-
-
-    export function processCarbonBalanceData() {
-        // Prepare the carbon balance graph
-        this.carbonBalanceData = new CarbonBalance.Display();
-        var highlightCarbonBalanceWidget = false;
-        if ( this.biomassCalculation > -1 ) {
-            this.carbonBalanceData.calculateCarbonBalances(this.metabolicMapID,
-                    this.biomassCalculation);
-            // Highlight the "Show Carbon Balance" checkbox in red if there are CB issues.
-            if (this.carbonBalanceData.getNumberOfImbalances() > 0) {
-                highlightCarbonBalanceWidget = true;
-            }
-        } else {
-            // Highlight the carbon balance in red to indicate that we can't calculate
-            // carbon balances yet. When they click the checkbox, we'll get them to
-            // specify which SBML file to use for biomass.
-            highlightCarbonBalanceWidget = true;
-        }
-        this.linesDataGridSpec.highlightCarbonBalanceWidget(highlightCarbonBalanceWidget);
-    }
-
-
-    // Called by DataGrid after the Lines table is rendered
-    export function prepareAfterLinesTable() {
-
-        var csIDs;
-
-        // Enable edit lines button
-        $('#editLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
-            var button = $(ev.target), data = button.data(), form = clearLineForm(),
-                allMeta = {}, metaRow;
-            if (data.ids.length === 1) {
-                fillLineForm(form, EDDData.Lines[data.ids[0]]);
-            } else {
-                // compute used metadata fields on all data.ids, insert metadata rows?
-                data.ids.map((id:number) => EDDData.Lines[id] || {}).forEach((line:LineRecord) => {
-                    $.extend(allMeta, line.meta || {});
-                });
-                metaRow = form.find('.line-edit-meta');
-                // Run through the collection of metadata, and add a form element entry for each
-                $.each(allMeta, (key) => insertLineMetadataRow(metaRow, key, ''));
-            }
-            updateUILineForm(form, data.count > 1);
-            form.find('[name=line-ids]').val(data.ids.join(','));
-            return false;
         });
 
         // Hacky button for changing the metabolic map
@@ -245,6 +281,7 @@ module StudyLines {
             }
         });
 
+
         if (count_rec < count_total) {
             // TODO not all measurements downloaded; display a message indicating this
             // explain downloading individual assay measurements too
@@ -254,10 +291,11 @@ module StudyLines {
         this.processCarbonBalanceData();
     }
 
-    export function carbonBalanceColumnRevealedCallback(spec:DataGridSpecLines,
-            dataGridObj:DataGrid) {
+
+    export function carbonBalanceColumnRevealedCallback(spec:DataGridSpecLines, dataGridObj:DataGrid) {
         StudyLines.rebuildCarbonBalanceGraphs();
     }
+
 
     // Start a timer to wait before calling the routine that shows the actions panel.
     export function queueLinesActionPanelShow() {
@@ -266,6 +304,7 @@ module StudyLines {
         }
         this.linesActionPanelRefreshTimer = setTimeout(linesActionPanelShow.bind(this), 150);
     }
+
 
     function linesActionPanelShow() {
         // Figure out how many lines are selected.
@@ -289,13 +328,13 @@ module StudyLines {
             if (checkedLen) {
                 $("#disabledButtons").children().prop('disabled',false);
                 $('.disabled-button').removeClass('disabled-button ');
-                $('#line_worklist').attr('title', 'Generate a worklist to carry out your experiment');
-                $('#line-export').attr('title', 'Export your lines in a file type of your choosing');
+                $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
+                $('#exportButton').attr('title', 'Export your lines in a file type of your choosing');
             } else {
                  $("#disabledButtons").children().prop('disabled', true);
                  $('#addNewLine').prop('disabled', false);
-                 $('#line_worklist').attr('title', 'select line(s) first');
-                 $('#line-export').attr('title', 'select line(s) first');
+                 $('#worklistButton').attr('title', 'select line(s) first');
+                 $('#exportButton').attr('title', 'select line(s) first');
             }
             if (checkedLen < 2) {
                 $('#groupLineButton').prop('disabled', true);
@@ -313,8 +352,9 @@ module StudyLines {
         return form;
     }
 
+
     function clearLineForm() {
-        var form = $('#editLineForm');
+        var form = $('#editLineModal');
         form.find('.line-meta').remove();
         form.find('[name^=line-]').not(':checkbox, :radio').val('');
         form.find('[name^=line-]').filter(':checkbox, :radio').prop('checked', false);
@@ -324,6 +364,7 @@ module StudyLines {
         form.off('change.bulk');
         return form;
     }
+
 
     function fillAssayForm(form, record) {
         var user = EDDData.Users[record.experimenter];
@@ -335,11 +376,12 @@ module StudyLines {
         form.find('[name=assay-experimenter_1]').val(record.experimenter);
     }
 
-    function fillLineForm(form, record) {
+
+    function fillLineForm(record) {
         var metaRow, experimenter, contact;
+        var form = $('#editLineModal');
         experimenter = EDDData.Users[record.experimenter];
         contact = EDDData.Users[record.contact.user_id];
-        form.find('[name=line-ids]').val(record.id);
         form.find('[name=line-name]').val(record.name);
         form.find('[name=line-description]').val(record.description);
         form.find('[name=line-control]').prop('checked', record.control);
@@ -370,11 +412,13 @@ module StudyLines {
         form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
     }
 
+
     function scrollToForm(form) {
         // make sure form is disclosed
         var top = form.toggleClass('discloseHide', false).offset().top;
         $('html, body').animate({ 'scrollTop': top }, 'slow');
     }
+
 
     function updateUIAssayForm(form) {
         var title, button;
@@ -391,17 +435,6 @@ module StudyLines {
         }).insertAfter(button);
     }
 
-    function updateUILineForm(form, plural?) {
-        var title, text = 'Edit Line' + (plural ? 's' : '');
-        // Update the disclose title to read 'Edit Line'
-        $('#addNewLineForm').prop('title', text);
-        if (plural) {
-            form.find('.bulk').prop('checked', false).removeClass('off');
-            form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
-                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
-            });
-        }
-    }
 
     function insertLineMetadataRow(refRow, key, value) {
         var row, type, label, input, id = 'line-meta-' + key;
@@ -421,16 +454,37 @@ module StudyLines {
     }
 
 
-    export function editLine(index:number):void {
-        var record = EDDData.Lines[index], form;
-        if (!record) {
-            console.log('Invalid Line record for editing: ' + index);
-            return;
+    export function editLines(ids:number[]):void {
+        var form = $('#editLineModal'), allMeta = {}, metaRow;
+        clearLineForm();
+
+        // Update the disclose title
+        var text = 'Add New Line';
+        if (ids.length > 0) {
+            var text = 'Edit Line' + (ids.length > 1 ? 's' : '');
         }
 
-        form = clearLineForm(); // "form" is actually the edit line modal
-        fillLineForm(form, record);
-        updateUILineForm(form);
+        form.prop('title', text);
+        if (ids.length > 1) {
+            form.find('.bulk').prop('checked', false).removeClass('off');
+            form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
+                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
+            });
+        }
+
+        if (ids.length === 1) {
+            fillLineForm(EDDData.Lines[ids[0]]);
+        } else {
+            // compute used metadata fields on all data.ids, insert metadata rows?
+            ids.map((id:number) => EDDData.Lines[id] || {}).forEach((line:LineRecord) => {
+                $.extend(allMeta, line.meta || {});
+            });
+            metaRow = form.find('.line-edit-meta');
+            // Run through the collection of metadata, and add a form element entry for each
+            $.each(allMeta, (key) => insertLineMetadataRow(metaRow, key, ''));
+        }
+        form.find('[name=line-ids]').val(ids.join(','));
+        form.removeClass('off').dialog( "open" );
         scrollToForm(form);
     }
 
@@ -813,12 +867,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         var leftSide:DataGridColumnSpec[],
             metaDataCols:DataGridColumnSpec[],
             rightSide:DataGridColumnSpec[];
-        // add click handler for menu on line name cells
-        $(this.tableElement).on('click', 'a.line-edit-link', (ev) => {
-            StudyLines.editLine($(ev.target).closest('.popupcell').find('input').val());
-            $("#editLineForm").dialog( "open" );
-            return false;
-        });
         leftSide = [
             new DataGridColumnSpec(1, this.generateLineNameCells),
             new DataGridColumnSpec(2, this.generateStrainNameCells),
@@ -937,6 +985,12 @@ class DataGridSpecLines extends DataGridSpecBase {
         // Wire up the 'action panels' for the Lines and Assays sections
         var linesTable = this.getTableElement();
         $(linesTable).on('change', ':checkbox', () => StudyLines.queueLinesActionPanelShow());
+
+        // add click handler for menu on line name cells
+        $('#studyLinesTable').on('click', 'a.line-edit-link', (ev) => {
+            StudyLines.editLines([$(ev.target).closest('.popupcell').find('input').val()]);
+            return false;
+        });
 
         // This calls down into the instantiated widget and alters its styling,
         // so we need to do it after the table has been created.

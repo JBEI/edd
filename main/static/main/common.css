@@ -1065,11 +1065,12 @@ div.multientrybutton {
 
 .line-action {
     margin-top: 10px;
-    margin-bottom: 141px;
+    margin-bottom: 10px;
 }
 /* Autocomplete input element styling */
 
 ul.edd-autocomplete-list {
+    z-index:115;
     display:table;
 }
 ul.edd-autocomplete-list > li {

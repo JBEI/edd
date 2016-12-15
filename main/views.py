@@ -492,7 +492,7 @@ class StudyLinesView(StudyDetailBaseView):
     def post_response(self, request, context, form_valid):
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': self.object.slug}))
+            return HttpResponseRedirect(reverse('main:lines', kwargs={'slug': self.object.slug}))
         return self.render_to_response(context)
 
     def _get_export_types(self):
@@ -716,8 +716,6 @@ class StudyDetailView(StudyDetailBaseView):
         writable_lookup = {
             'assay': self.handle_assay,
             'clone': self.handle_clone,
-            'group': self.handle_group,
-            'line': self.handle_line,
             'measurement': self.handle_measurement,
         }
         if can_write:
