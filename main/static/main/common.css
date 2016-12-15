@@ -1793,6 +1793,8 @@ div.tooltip2 {
 
 .pageDivider {
     border-bottom: 1px solid rgba(0,0,0,.1);
+    margin-top: -3.6em;
+    margin-bottom: 3.6em;
 }
 
 .topNav a:hover {
@@ -1800,11 +1802,13 @@ div.tooltip2 {
     border-bottom-color: rgba(0,0,0,.1);
 }
 
-.nav>li>a {
-    color: gray;
+.topNav .nav>li>a {
+    color: lightgray;
     position: relative;
     display: block;
     padding: 10px 15px;
+    border-bottom: 2px solid lightgray;
+    border-radius: 0px;
 }
 .nav {
     list-style: none;
@@ -1828,15 +1832,13 @@ div.tooltip2 {
     color: black;
 }
 
-/*.nav-pills>.active>a>.badge{color:#337ab7;background-color:#fff}*/
-/*.nav-pills>li>a>.badge{margin-left:3px}*/
-
 .topNav .nav-pills {
     color: black;
     font-size: 16px;
     display: inline-block;
     float: none;
     vertical-align: top;
+    background-color: white;
 }
 
 .topNav .nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {

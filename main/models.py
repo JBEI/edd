@@ -2262,7 +2262,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         @classmethod
         def to_json(cls):
             return {
-                i: {"name": cls.names[i], "sn": cls.short_names[i]}
+                i: {"name": str(cls.names[i]), "sn": cls.short_names[i]}
                 for i in range(3)
             }
 
@@ -2667,7 +2667,7 @@ def User_profile(self):
 
 
 def User_initials(self):
-    return self.profile.initials if self.profile else _('?')
+    return self.profile.initials if self.profile else _u('?')
 
 
 def User_institution(self):

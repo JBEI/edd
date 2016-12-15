@@ -1121,8 +1121,12 @@ def study_import_table(request, pk=None, slug=None):
     :raises: Exception if an error occurrs during the import attempt
     """
     study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+    lines = study.line_set.all()
+    assays = study.line_set.count()
+
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
+
     if request.method == "POST":
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug('\n'.join([
@@ -1145,16 +1149,21 @@ def study_import_table(request, pk=None, slug=None):
             # show the first error message to the user. continuing the import attempt to collect
             # more potentially-useful errors makes the code too complex / hard to maintain.
             messages.error(request, e)
+        # uncomment below once you can import data to test if this works
+        # return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
     return render(
         request,
         "main/import.html",
         context={
             "study": study,
             "protocols": protocols,
+            "showingimport": True,
+            "lines": lines,
+            "assays": assays,
         },
     )
 
-        # HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
+
 
 
 
