@@ -932,7 +932,7 @@ var LineResults = (function (_super) {
         return document.createElement("th");
     };
     LineResults.prototype._getDivForTableHeaders = function () {
-        return $('#studyLinesTable').parent();
+        return this._getTableBody();
     };
     LineResults.prototype._getClasses = function () {
         return 'dataTable sortable dragboxes hastablecontrols';

@@ -514,7 +514,7 @@ class StudyLinesView(StudyDetailBaseView):
     def post_response(self, request, context, form_valid):
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': self.object.slug}))
+            return HttpResponseRedirect(reverse('main:lines', kwargs={'slug': self.object.slug}))
         return self.render_to_response(context)
 
     def _get_export_types(self):
@@ -738,8 +738,6 @@ class StudyDetailView(StudyDetailBaseView):
         writable_lookup = {
             'assay': self.handle_assay,
             'clone': self.handle_clone,
-            'group': self.handle_group,
-            'line': self.handle_line,
             'measurement': self.handle_measurement,
         }
         if can_write:
@@ -1143,8 +1141,12 @@ def study_import_table(request, pk=None, slug=None):
     :raises: Exception if an error occurrs during the import attempt
     """
     study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+    lines = study.line_set.all()
+    assays = study.line_set.count()
+
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
+
     if request.method == "POST":
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug('\n'.join([
@@ -1167,12 +1169,17 @@ def study_import_table(request, pk=None, slug=None):
             # show the first error message to the user. continuing the import attempt to collect
             # more potentially-useful errors makes the code too complex / hard to maintain.
             messages.error(request, e)
+        # uncomment below once you can import data to test if this works
+        # return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
     return render(
         request,
         "main/import.html",
         context={
             "study": study,
             "protocols": protocols,
+            "showingimport": True,
+            "lines": lines,
+            "assays": assays,
         },
     )
 
@@ -1655,6 +1662,10 @@ def get_ice_entries(ice, part_number_to_part_dict, errors):
     return part_number_to_part_dict
 
 FILE_TYPE_HEADER = 'HTTP_X_EDD_FILE_TYPE'
+
+
+
+
 
 # /utilities/parsefile
 # To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).

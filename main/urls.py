@@ -71,7 +71,7 @@ urlpatterns = [
         )
     ),
 
-url(r'^study/search/$', login_required(views.study_search)),
+    url(r'^study/search/$', login_required(views.study_search)),
 
     # Individual study-specific pages loaded by primary key
     url(

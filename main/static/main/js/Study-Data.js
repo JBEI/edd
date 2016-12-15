@@ -996,6 +996,9 @@ var StudyD;
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
         });
+        measurementToAssayModal();
+        showStudyGraph();
+        showStudyTable();
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
@@ -1074,7 +1077,6 @@ var StudyD;
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
-        var csIDs;
         // Prepare the main data overview graph at the top of the page
         if (this.mainGraphObject === null && $('#maingraph').length === 1) {
             this.mainGraphObject = Object.create(StudyDGraphing);
@@ -1085,6 +1087,61 @@ var StudyD;
             .on('keydown', filterTableKeyDown.bind(this));
     }
     StudyD.prepareIt = prepareIt;
+    //click handler for add measurements to selected assays modal
+    function measurementToAssayModal() {
+        var dlg = $("#addMeasToAssay").dialog({
+            autoOpen: false
+        });
+        $("#measurementMain").click(function () {
+            $("#addMeasToAssay").dialog("open");
+            return false;
+        });
+        return false;
+    }
+    ;
+    //show hide for clicking graph tab under data
+    function showStudyGraph() {
+        $('#studyGraph').click(function (event) {
+            event.preventDefault();
+            $('#studyTable').removeClass('active');
+            $(this).addClass('active');
+            $('#overviewSection').css('display', 'block');
+            $('#assaysSection').css('display', 'none');
+            return false;
+        });
+    }
+    //show hide for clicking table tab under data
+    function showStudyTable() {
+        $("#studyTable").one("click", function () {
+            //first build table
+            StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+            //if any checkboxes have been check in filtering section, showHide rows
+            if ($(".filterTable input:checkbox:checked").length > 0) {
+                StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs);
+            }
+        });
+        $('#studyTable').click(function (event) {
+            event.preventDefault();
+            //on page load of table show assays search header
+            $("input[name*='assaysSearch']").parents('thead').show();
+            //remove sorter on measurement tab in table
+            $('#hAssaysMName').removeClass();
+            $('#studyGraph').removeClass('active');
+            $(this).addClass('active');
+            $('#assaysSection').css('display', 'block');
+            $('#overviewSection').css('display', 'none');
+            return false;
+        });
+    }
+    ;
+    function show_int() {
+        $('#show').val("hide");
+        $('#lineDescription').css('display', 'block');
+    }
+    function show_hide() {
+        $('#show').val("show");
+        $('#lineDescription').css('display', 'none');
+    }
     function filterTableKeyDown(e) {
         switch (e.keyCode) {
             case 38: // up
@@ -1252,6 +1309,8 @@ var StudyD;
         // stop spinner
         $('#loadingDiv').hide();
         $('.blankSvg').hide();
+        // remove disabled from table because measurements are now there
+        $('#studyTable').removeClass('disabled');
         // remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);
@@ -1266,8 +1325,9 @@ var StudyD;
         else {
             $('.lineNoData').hide();
         }
-        //hide filtered data here.
+        // store filtered data here.
         StudyD.progressiveFilteringWidget.filteredAssayIDs = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+        // show hide filtered data on assay table.
         StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs);
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;

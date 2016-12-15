@@ -1065,11 +1065,12 @@ div.multientrybutton {
 
 .line-action {
     margin-top: 10px;
-    margin-bottom: 141px;
+    margin-bottom: 10px;
 }
 /* Autocomplete input element styling */
 
 ul.edd-autocomplete-list {
+    z-index:115;
     display:table;
 }
 ul.edd-autocomplete-list > li {
@@ -1704,39 +1705,6 @@ div.tooltip2 {
   New UI CSS below
 */
 
-.nav>li>a {
-    color: lightgray;
-    position: relative;
-    display: block;
-    padding: 10px 15px;
-}
-.nav {
-    list-style: none;
-    padding-left: 0;
-}
-
-.nav>li {
-    position: relative;
-    display: block;
-}
-
-.nav-pills>li{float:left}
-.nav-pills>li>a{border-radius:4px}
-.nav-pills>li+li{margin-left:2px}
-.nav-pills>.active>a>.badge{color:#337ab7;background-color:#fff}
-.nav-pills>li>a>.badge{margin-left:3px}
-
-.nav-pills {
-    color: black;
-    font-size: 16px;
-}
-
-.nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
-    background-color: white;
-    color: gray;
-    font-size: 16px;
-}
-
 .importExport {
     background-color: #6CA5E9;
     display: inline-block;
@@ -1809,15 +1777,79 @@ div.tooltip2 {
     overflow-y: scroll;
 }
 
-hr {
-    display: block;
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-    margin-left: auto;
-    margin-right: auto;
-    border-style: inset;
-    border-width: 1px;
+
+.navbar .navbar-collapse {
+  text-align: center;
 }
 
+.topNav {
+    width: 100%;
+    text-align: center;
+}
+
+#topNav ul>li>a, body #categoryNav ul>li>a {
+    border-bottom-color: transparent;
+    border-bottom-style: solid;
+}
+
+.pageDivider {
+    border-bottom: 1px solid rgba(0,0,0,.1);
+    margin-top: -3.6em;
+    margin-bottom: 3.6em;
+}
+
+.topNav a:hover {
+    color: #111;
+    border-bottom-color: rgba(0,0,0,.1);
+}
+
+.topNav .nav>li>a {
+    color: lightgray;
+    position: relative;
+    display: block;
+    padding: 10px 15px;
+    border-bottom: 2px solid lightgray;
+    border-radius: 0px;
+}
+.nav {
+    list-style: none;
+    padding-left: 0;
+}
+
+.topNav .nav>li {
+    position: relative;
+    display: block;
+    margin: 0px 15px 30px 15px;
+}
+
+.topNav .navbar .nav > .active > a {
+    background:none;
+}
+.topNav .nav>li>a:hover, .nav>li>a:focus {
+    text-decoration: none;
+    background-color: transparent;
+    border-bottom: 2px solid grey;
+    border-radius: 0px;
+    color: black;
+}
+
+.topNav .nav-pills {
+    color: black;
+    font-size: 16px;
+    display: inline-block;
+    float: none;
+    vertical-align: top;
+    background-color: white;
+}
+
+.topNav .nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
+    display: inline-block;
+    float: none;
+    vertical-align: top;
+    background-color: transparent;
+    color:black;
+    border-bottom: 2px solid grey;
+    border-radius: 0px;
+}
 
 /* End of common styles */

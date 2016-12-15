@@ -1081,7 +1081,7 @@ class LineResults extends DataGrid {
     }
 
     _getDivForTableHeaders():any {
-        return $('#studyLinesTable').parent();
+        return this._getTableBody();
     }
 
     _getClasses():string {
