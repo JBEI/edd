@@ -9,14 +9,8 @@ import copy
 import json
 import logging
 import re
-from builtins import enumerate
-from builtins import float
-from builtins import isinstance
-from builtins import len
-from builtins import object
-from builtins import range
+from builtins import object, range
 
-from builtins import str
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -28,8 +22,7 @@ from django.http import (
 )
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect
-from django.template import RequestContext
-from django.template import loader
+from django.template import RequestContext, loader
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _

@@ -825,7 +825,7 @@ class IceApi(RestApiClient):
         instance (see search_entries(), and currently undocumented ICE API resource
         /rest/web/{X}/entries/{Y}).
         :param entry_id: the ICE ID for this entry (either the UUID, part number,
-        locally-unique integer primary  key)
+            locally-unique integer primary  key)
         :param suppress_errors: true to catch and log exception messages and return None instead of
             raising Exceptions.
         :return: A Part object representing the response from ICE, or None if an an Exception

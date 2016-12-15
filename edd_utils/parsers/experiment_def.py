@@ -28,7 +28,7 @@ _STRAIN_IDS_COL_PATTERN = re.compile(r'\s*%s\s*' % STRAIN_IDS_COL_LABEL, re.IGNO
 _REPLICATE_COUNT_COL_PATTERN = re.compile(r'\s*%s\s*' % REPLICATE_COUNT_COL_REGEX)
 ####################################################################################################
 
-_STRAIN_GROUPS_REGEX = r'\((:?\s*\d+\s*,?\s*)+\)'
+_STRAIN_GROUPS_REGEX = r'\((:?\s*\d+\s*;?\s*)+\)'
 _STRAIN_GROUPS_PATTERN = re.compile(_STRAIN_GROUPS_REGEX)
 
 _TIME_VALUE_REGEX = r'^\s*(\d+(?:\.\d+)?)\s*h\s*$'
@@ -141,10 +141,10 @@ class ColumnLayout:
             self.combinatorial_col_indices.append(col_index)
 
         logger.debug('Column %(col)d matches protocol "%(protocol)s", assay metadata type '
-              '"%(meta_type)s"' % {
-                 'col': col_index + 1,
-                 'protocol': protocol.name,
-                 'meta_type': assay_meta_type.type_name})
+                     '"%(meta_type)s"' % {
+                          'col': col_index + 1,
+                          'protocol': protocol.name,
+                          'meta_type': assay_meta_type.type_name})
 
     def get_assay_metadata_type(self, col_index):
         value = self.col_index_to_assay_data.get(col_index, None)
@@ -246,7 +246,6 @@ class ExperimentDefFileParser(CombinatorialInputParser):
     CombinatorialCreationInput objects.
     """
 
-    # initializer for TemplateFileParser
     def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk,
                  require_strains=False):
         super(ExperimentDefFileParser, self).__init__(protocols_by_pk, line_metadata_types_by_pk,
@@ -447,7 +446,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
 
                     # look for an exact match
                     suffix_meta_type = self.assay_metadata_types_by_name .get(assay_meta_suffix,
-                                                                             None)
+                                                                              None)
 
                     if suffix_meta_type is not None:
                         layout = self.column_layout
@@ -608,15 +607,14 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                     errors[invalid_count] = missing
                 missing.append(cell_content)
 
-
         ###################################################
-        # Strain part number(s)
+        # Strain part id(s)
         ###################################################
         # TODO: after some initial testing, consider adding custom group support for Carbon Source
-        # similar to that for strains. Since some changes to Carbon Source / Media tracking are needed,
-        # we will probably want to defer support for Carbon Sources for now.
-        # TODO: after using the combinatorial strain creation code here for some testing of other parts
-        # of the back end, consider removing it since it will result in creation of lines with
+        # similar to that for strains. Since some changes to Carbon Source / Media tracking are
+        # needed, we will probably want to defer support for Carbon Sources for now.
+        # TODO: after using the combinatorial strain creation code here for some testing of other
+        # parts of the back end, consider removing it since it will result in creation of lines with
         # duplicate names
         if layout.strain_ids_col is not None:
 
@@ -639,7 +637,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
 
                     if strain_group_match:
                         strain_group = (strain_id.strip() for strain_id in strain_group_match
-                            .group(1).split(';'))
+                                        .group(1).split(';'))
                         row_inputs.combinatorial_strain_id_groups.append(strain_group)
                     else:
                         individual_strain_ids.append(token)
@@ -653,17 +651,16 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                         PART_NUMBER_PATTERN_UNMATCHED_WARNING = 'part_number_pattern_unmatched'
                         warnings = self.warnings
                         unmatched_part_nums = warnings.get(PART_NUMBER_PATTERN_UNMATCHED_WARNING,
-                                                           None)
+                                                           [])
                         if not unmatched_part_nums:
-                            unmatched_part_nums = []
-                            warnings.append(PART_NUMBER_PATTERN_UNMATCHED_WARNING,
-                                            unmatched_part_nums)
-                            logger.warning('Expected ICE part number(s) in template file row '
-                                           '%(row_num)d, but "%(token)s" didn\'t match the '
-                                           'expected pattern. This is either bad user input,'
-                                           'or indicates that the pattern needs updating.' % {
-                                               'row_num': row_num, 'token': token})
-                        unmatched_part_nums.add(token)
+                            warnings[PART_NUMBER_PATTERN_UNMATCHED_WARNING] = unmatched_part_nums
+
+                        unmatched_part_nums.append(token)
+                        logger.warning('Expected ICE part number(s) in template file row '
+                                       '%(row_num)d, but "%(token)s" didn\'t match the '
+                                       'expected pattern. This is either bad user input,'
+                                       'or indicates that the pattern needs updating.' % {
+                                           'row_num': row_num, 'token': token})
 
                 # resolve inconsistent user entries, if present. assumption is that if any strain
                 # groups were provided, even individual strains listed separately (i.e. with no

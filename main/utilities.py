@@ -13,8 +13,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.sites.models import Site
-from django.db.models import Aggregate
-from django.db.models import Q
+from django.db.models import Aggregate, Q
 from django.db.models.aggregates import Aggregate as SQLAggregate
 from six import string_types
 from threadlocals.threadlocals import get_current_request
@@ -764,7 +763,6 @@ class CombinatorialDefinitionInput(object):
         search_dict = self.protocol_to_assay_metadata
         return self._get_or_create_nested_dict(search_dict, protocol_pk, assay_metadata_pk)
 
-
     @classmethod
     def _get_or_create_nested_dict(cls, search_dict, protocol_pk, assay_metadata_pk):
         # get or create the dict of metadata pk -> values for this protocol
@@ -788,7 +786,7 @@ class CombinatorialDefinitionInput(object):
                    protocols_by_pk, errors, INVALID_PROTOCOL_META_PK, INVALID_LINE_META_PK,
                    INVALID_ASSAY_META_PK, PARSE_ERROR):
         """
-        Examines all primary keys cached in this instance and compares them against referenece
+        Examines all primary keys cached in this instance and compares them against reference
         dictionaries provided as input.  Any primary keys that don't match the expected values
         will cause an error message to be inserted into the "errors" parameter. Note that this
         checking is necessary prior to inserting primary key values into the database's "hstore"
@@ -836,6 +834,7 @@ class CombinatorialDefinitionInput(object):
                                  assay_metadata_types_by_pk, errors,
                                  INVALID_ASSAY_META_PK, PARSE_ERROR)
 
+    @staticmethod
     def _verify_pk_keys(self, input_dict, reference_dict, errors, err_key, PARSE_ERROR):
         for key in input_dict:
             if not key in reference_dict.keys():
