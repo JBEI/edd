@@ -32,8 +32,17 @@
 
 {% block content %}
 {{ block.super }}
-<div>
-    <div style="margin-left:15px">
+<form id="line-action-form" action="" class="line-action" method="POST">
+    {% csrf_token %}
+
+<div style="display:flex;
+        flex-wrap: nowrap;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        height:100%;
+        align-content: stretch;">
+    <div style="margin-left:15px;">
         Manually add/edit lines below, or drag and drop a<a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}"> template file</a> onto the table to create them in bulk
         <div style="float:none; margin-left:15px"class="helpBadgeDiv">line help
             <div class="helpContent">
@@ -45,47 +54,85 @@
             </div>
         </div>
     </div>
-</div>
- 
-<form id="line-action-form" action="" class="line-action" method="POST">
-    {% csrf_token %}
-
-    {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-    <div class="noLines" style="display: none;">
-        <h3 style="margin-bottom:12px">This study has no lines. </h3>
+    <div style="flex: 1;overflow: auto;">
+        <div class="noLines" style="display: none;">
+            <h3 style="margin-bottom:12px">This study has no lines. </h3>
+        </div>
+        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+        <table id="studyLinesTable"></table>
     </div>
-
-    <table id="studyLinesTable"></table>
-
     <div class="sectionActions" style="
         display:flex;
         flex-wrap: nowrap;
         flex-direction: row;
         justify-content: space-between;">
-        <div id="disabledButtons" class="{% if not writable %}off{% endif %}">
-            <button id="addNewLineButton" class="btn btn-primary btn-sm">Add new line</button>
+        <div id="disabledButtons" class="flex-grow:1;">
+            <button id="addNewLineButton"
+                    class="actionButton primary {% if not writable %}off{% endif %}"
+                    title="Add a new line">
+                New line
+            </button>
             <span id="linesSelectedCell" style="padding-left:15px;">0 selected</span>
-            <button id="cloneLineButton" type="submit" name="action" disabled="true" value="clone">Clone Line</button>
-            <button id="editLineButton" disabled="true">Edit Line</button>
-            <button id="groupLineButton" type="submit" disabled="true" name="action" value="group">Group As Replicates</button>
-            <button type="button" id="addAssayButton" disabled="true">Add Assays To Selected Lines</button>
-            <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
-            <label for="line_action_mark">
-                <span>Mark as</span>
-                <select name="disable">
-                    <option value="true">Disabled</option>
-                    <option value="false">Enabled</option>
-                </select>
-            </label>
-            <button type="submit" name="action" value="line_action">Take Action</button>
+            <button id="editButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    disabled="true"
+                    title="Edit selected lines">
+                Edit
+            </button>
+            <button id="cloneButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    type="submit"
+                    name="action"
+                    disabled="true"
+                    value="clone"
+                    title="Clone selected lines">
+                Clone
+            </button>
+            <button id="groupButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    type="submit"
+                    disabled="true"
+                    name="action"
+                    value="group"
+                    title="Group selected lines as replicates">
+                Group
+            </button>
+            <button id="addAssayButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    type="button"
+                    disabled="true"
+                    title="Add an assay to selected lines">
+                Add Assay
+            </button>
+            <button id="disableButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    type="submit"
+                    name="action"
+                    value="disable"
+                    disabled="true"
+                    title="Disable selected lines">
+                Disable
+            </button>
+            <button id="enableButton"
+                    class="actionButton off"
+                    type="submit"
+                    name="action"
+                    value="enable"
+                    disabled="true"
+                    title="Re-enable selected lines">
+                Re-Enable
+            </button>
         </div>
-        <div style="flex-grow:1;margin-left:auto;" class="{% if not lines %}off{% endif %}">
-            <button style="margin-right:30px" type="button" id="worklistButton" class="btn btn-primary btn-lg actionButton">
-                Generate  </br> Worklist</button>
-            <button type="button" id="exportButton" class="btn btn-primary btn-lg actionButton">
-                Export </br> Data</button>
+        <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">
+            <button style="margin-right:30px" type="button" id="worklistButton" class="actionButton primary">
+                Generate Worklist
+            </button>
+            <button type="button" id="exportButton" class="actionButton primary">
+                Export Data
+            </button>
         </div>
     </div>
+</div>
 
 </form>
 

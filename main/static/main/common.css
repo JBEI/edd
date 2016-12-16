@@ -301,6 +301,11 @@ body > div.mainFlex > div.content {
     overflow: auto;
 }
 
+body > div.mainFlex > div.bottomBar {
+    
+}
+
+/* Footer area */
 
 body > div.mainFlex > div.footer {
     border-top: 1px solid #CCC;
@@ -319,6 +324,7 @@ body > div.mainFlex > div.footer > div.footer-text > span {
 
 
 /* Mouseover help boxes for the various steps */
+
 div.helpBadgeDiv {
     float:left;
     cursor: pointer;
@@ -413,7 +419,7 @@ div.subSectionContent {
 }
 /* A section meant for the bottom of page sections,
    with form elements representing actions you can take on content in above sections */
-div.pageSection div.sectionActions {
+div.sectionActions {
     border-top:1px solid rgba(164,164,164,0.7);
     margin: 0px;
     padding:10px 0px 0px 0px;
@@ -1752,26 +1758,36 @@ div.tooltip2 {
 .actionButton {
     display: inline-block;
     margin: 10px 10px 0px 0px;
-    background-color: white;
+    background-color: rgb(32, 77, 116);
+    border-color: rgb(18, 43, 64);
+    border-radius: 3px;
+    border-style: solid;
+    border-width: 1px;
+    box-shadow: rgba(0, 0, 0, 0.121569) 0px 3px 5px 0px inset;
+    box-sizing: border-box;
+    color: rgb(255, 255, 255);
+    cursor: pointer;
     font-size: 12px;
-    color: grey;
-    border: 1px solid;
+    font-weight: normal;
+    line-height: 18px;
+    margin: 2px 2px 0px 2px;
+    padding: 5px 10px 5px 10px;
     text-align: center;
-    float:right;
+    text-decoration: none;
+    vertical-align: middle;
+    white-space: nowrap;
 }
 
-.actionButton2 {
-    display: inline-block;
-    margin: 10px 10px 0px 0px;
-    background-color: white;
-    font-size: 12px;
-    color: grey;
-    border: 1px solid;
-    text-align: center;
+.actionButton.primary {
+    color: #fff;
+    background-color: #337ab7;
+    border-color: #2e6da4;
 }
 
-#disabledButtons {
-    margin-top: 10px;
+.actionButton:disabled {
+    background-color: #FFFFFF;
+    color: #888888;
+    border-color: #888888;
 }
 
 .assayTable {

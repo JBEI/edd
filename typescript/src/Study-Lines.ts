@@ -155,7 +155,7 @@ module StudyLines {
         });
 
         // Enable edit lines button
-        $('#editLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
+        $('#editButton').on('click', (ev:JQueryMouseEventObject):boolean => {
             var button = $(ev.target), data = button.data();
             ev.preventDefault();
             StudyLines.editLines(data.ids || []);
@@ -313,31 +313,30 @@ module StudyLines {
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
         if (_.keys(EDDData.Lines).length === 0) {
-            $('#line-action-form').css('display', 'none');
             $('.lineExplanation').css('display', 'block');
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton, #worklistButton, #exportButton").addClass('off');
         } else {
             checkedLen = checkedBoxes.length;
             $('#linesSelectedCell').empty().text(checkedLen + ' selected');
             // enable singular/plural changes
-            $('#cloneLineButton').text('Clone Line' + (checkedLen > 1 ? 's' : ''));
-            $('#editLineButton').text('Edit Line' + (checkedLen > 1 ? 's' : '')).data({
+            $('#editButton').data({
                 'count': checkedLen,
                 'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
             });
-
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportButton").removeClass('off');
             if (checkedLen) {
-                $("#disabledButtons").children().prop('disabled',false);
-                $('.disabled-button').removeClass('disabled-button ');
+                $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',false);
+                $('#addNewLine').prop('disabled', true);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
                 $('#exportButton').attr('title', 'Export your lines in a file type of your choosing');
+                if (checkedLen < 2) {
+                    $('#groupButton').prop('disabled', true);
+                }
             } else {
-                 $("#disabledButtons").children().prop('disabled', true);
-                 $('#addNewLine').prop('disabled', false);
-                 $('#worklistButton').attr('title', 'select line(s) first');
-                 $('#exportButton').attr('title', 'select line(s) first');
-            }
-            if (checkedLen < 2) {
-                $('#groupLineButton').prop('disabled', true);
+                $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',true);
+                $('#addNewLine').prop('disabled', false);
+                $('#worklistButton').attr('title', 'select line(s) first');
+                $('#exportButton').attr('title', 'select line(s) first');
             }
         }
     }
@@ -1023,8 +1022,11 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
             checked = true;
         }
         // If the box is checked, return the set of IDs unfiltered
-        if (checked) {
+        if (checked && rowIDs && EDDData.currentStudyWritable) {
+            $("#enableButton").removeClass('off');
             return rowIDs;
+        } else {
+            $("#enableButton").addClass('off');
         }
 
         var filteredIDs = [];
