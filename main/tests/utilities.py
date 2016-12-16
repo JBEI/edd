@@ -18,15 +18,14 @@ _SEPARATOR = '******************************************'
 main_dir = os.path.dirname(__file__),
 fixtures_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 fixtures_dir = os.path.join(fixtures_dir, 'fixtures')
-simple_template_csv = os.path.join(fixtures_dir, 'simple_template_file.csv')
-simple_template_xlsx = os.path.join(fixtures_dir, 'simple_template_file.xlsx')
+simple_experiment_def_xlsx = os.path.join(fixtures_dir, 'simple_experiment_definition.xlsx')
 
 
 class CombinatorialCreationTests(TestCase):
     """
-    Defines automated integration tests for most of the supporting back-end code for template
-    file upload and combinatorial line creation (processes are very similar/based on the same
-    code)
+    Defines automated integration tests for most of the supporting back-end code for experiment
+    definition file upload and combinatorial line creation (processes are very similar/based on the
+    same code)
     """
     def setUp(self):
         self.test_user = User.objects.create(username='test_user', email='test_user@example.com')
@@ -57,7 +56,7 @@ class CombinatorialCreationTests(TestCase):
         in the combinatorial GUI mockup attached to EDD-257. Note that this test doesn't actually
         verify the line/assay metadata since that requires a lot more code
 
-        Testing the full code path for EDD's template file support requires having a
+        Testing the full code path for EDD's experiment definition file support requires having a
         corresponding ICE deployment to use as part of the test, so it's not addressed here.
         """
 
@@ -404,7 +403,7 @@ class CombinatorialCreationTests(TestCase):
     def _test_combinatorial_input(self, study, input, expected_line_names,
                                   expected_assay_suffixes, strains_by_pk,
                                   strains_by_part_number=None, expected_line_metadata=None,
-                                  expected_assay_metadata=None, is_template_file=False):
+                                  expected_assay_metadata=None, is_excel_file=False):
 
         # for now, these will just be the ones by client code, though we may eventually get a basic
         # set from migrations (EDD-506). After that, we can likely delete the above code to create
@@ -418,11 +417,11 @@ class CombinatorialCreationTests(TestCase):
                                 MetadataType.objects.filter(for_context=MetadataType.ASSAY)}
 
         print(_SEPARATOR)
-        print('Testing template input parsing')
+        print('Testing experiment definition input parsing')
         print(_SEPARATOR)
 
         # Parse JSON inputs
-        if is_template_file:
+        if is_excel_file:
             input = load_workbook(input, read_only=True, data_only=True)
             parser = ExperimentDefFileParser(protocols_by_pk, line_metadata_types,
                                              assay_metadata_types)
@@ -496,11 +495,11 @@ class CombinatorialCreationTests(TestCase):
         A simplified integration test that exercises much of the EDD code responsible for
         combinatorial line creation based on a simplified input (just creating replicates for a
         single line with some metadata using a known strain).  Test inputs in this example
-        roughly correspend to the sample template file attached to EDD-380)2
+        roughly correspond to the sample experement definition file attached to EDD-380)
 
         Testing the full code path for EDD's
-        template file support requires having a corresponding ICE deployment to use as part of
-        the test, so it's not addressed here.
+        experiment definition file support requires having a corresponding ICE deployment to use as
+        part of the test, so it's not addressed here.
         """
 
         print()
@@ -544,14 +543,14 @@ class CombinatorialCreationTests(TestCase):
         self._test_combinatorial_input(study, json.dumps(test_input), expected_line_names,
                                        expected_assay_suffixes, strains_by_pk,
                                        expected_line_metadata=expected_line_metadata,
-                                       is_template_file=False)
+                                       is_excel_file=False)
 
-    def test_basic_template_xlsx(self):
+    def test_basic_experiment_definition_xlsx(self):
 
         print('')
         print('')
         print(_SEPARATOR)
-        print('test_basic_template_xlsx')
+        print('test_basic_exp_definition_xlsx')
         print(_SEPARATOR)
         print('')
 
@@ -577,9 +576,9 @@ class CombinatorialCreationTests(TestCase):
         #     }
 
         creation_results = self._test_combinatorial_input(
-                study, simple_template_xlsx, expected_line_names, expected_assay_suffixes,
+                study, simple_experiment_def_xlsx, expected_line_names, expected_assay_suffixes,
                 strains_by_pk, strains_by_part_number, expected_line_metadata,
-                is_template_file=True)
+                is_excel_file=True)
 
         # verify that line descriptions match the expected value set in the file (using database
         # field that's in use by the GUI at the time of writing

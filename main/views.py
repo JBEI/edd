@@ -1,15 +1,11 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
-from io import BytesIO
 
-import arrow
 import collections
-import copy
 import json
 import logging
 import re
-from builtins import object, range
 
 from django.conf import settings
 from django.contrib import messages
@@ -22,7 +18,6 @@ from django.http import (
 )
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect
-from django.template import RequestContext, loader
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
@@ -32,13 +27,8 @@ from messages_extends import constants as msg_constants
 
 from main.importer.experiment_def.importer import define_study, _build_errors_dict
 from . import autocomplete, redis
-from openpyxl import load_workbook, Workbook
 from rest_framework.exceptions import MethodNotAllowed
 
-from jbei.rest.auth import HmacAuth
-from jbei.rest.clients import IceApi
-from jbei.rest.clients.ice import Strain as IceStrain
-from jbei.rest.clients.ice.utils import make_entry_url
 from . import autocomplete
 from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
@@ -55,8 +45,7 @@ from .forms import (
 )
 from .models import (
     Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue, Metabolite,
-    MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study, StudyPermission, Update, User,
-    Strain)
+    MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study, StudyPermission, Update)
 from .signals import study_modified
 from .solr import StudySearch
 from .utilities import (
