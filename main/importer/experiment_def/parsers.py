@@ -5,7 +5,6 @@ import json
 import logging
 import re
 
-from builtins import (enumerate, float, len, object, range, super)
 from django.conf import settings
 
 from main.importer.experiment_def.utilities import NamingStrategy, CombinatorialDefinitionInput, \
@@ -46,6 +45,8 @@ PARSE_ERROR = 'parse_error'
 INVALID_LINE_META_PK = 'invalid_line_metadata_pks'
 INVALID_PROTOCOL_META_PK = 'invalid_protocol_pks'
 INVALID_ASSAY_META_PK = 'invalid_assay_metadata_pks'
+MISSING_LINE_NAME_ROWS_KEY = 'missing_line_name_rows'
+ROWS_MISSING_REPLICATE_COUNT = 'missing_replicate_count_rows'
 
 
 class _AssayMetadataValueParser(object):
@@ -88,6 +89,8 @@ class _DecimalTimeParser(_AssayMetadataValueParser):
 RAW_STRING_PARSER  = _RawStringValueParser()
 TIME_PARSER = _DecimalTimeParser()
 
+MISSING_LINE_NAME_ROWS_KEY = 'missing_line_name_rows'
+UNMATCHED_HEADERS_KEY = 'unmatched_column_header_indexes'
 
 class ColumnLayout:
     """
@@ -245,9 +248,8 @@ class ColumnLayout:
 
     class ExperimentDefFileParser(CombinatorialInputParser):
         """
-        File parser that takes a study "template file" as input and reads the contents into a
-        list of
-        CombinatorialCreationInput objects.
+        File parser that takes a study "experiment definition file" as input and reads the contents
+        into a list of CombinatorialCreationInput objects.
         """
 
         def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk,
@@ -265,10 +267,8 @@ class ColumnLayout:
                                                  assay_metadata_types_by_pk.items()}
 
             # print a warning for unlikely case-sensitivity-only metadata naming differences that
-            # clash with
-            # tolerant case-insensitive matching of user input in the file (which is a lot more
-            # likely to be
-            # inconsistent)
+            # clash with tolerant case-insensitive matching of user input in the file (which is a
+            # lot more likely to be inconsistent)
             if len(self.line_metadata_types_by_name) != len(line_metadata_types_by_pk):
                 logger.warning(
                         'Found some line metadata types that differ only by case. Case-insensitive '
@@ -303,7 +303,7 @@ class ColumnLayout:
             self.max_fractional_time_digits = 0
 
         def parse(self, wb, errors, warnings):
-            logger.warning('In parse(). workbook has %d sheets' % len(wb.worksheets))
+            logger.info('In parse(). workbook has %d sheets' % len(wb.worksheets))
 
             # Clear out state from any previous use of this parser instance
             self.column_layout = None
@@ -496,8 +496,7 @@ class ColumnLayout:
                     # in the database. This check is especially important for the Time metadata
                     # assumed by the file format.
                     else:
-                        logger.debug('Column header "%s" didnt match known metadata types')
-                        UNMATCHED_HEADERS_KEY = 'unmatched_column_header_indexes'
+                        logger.debug("""Column header "%s" didn't match known metadata types""")
                         errors = self.errors
                         unmatched_cols = errors.get(UNMATCHED_HEADERS_KEY, [])
                         if not unmatched_cols:
@@ -536,23 +535,17 @@ class ColumnLayout:
         def read_row(self, cols_list, row_num):
             """
             Reads a single spreadsheet row to find line creation inputs. The row is read even if
-            errors
-            occur, logging errors in the 'errors' parameter so that multiple user input errors
-            can be
-            detected and communicated during a single pass of editing the file
+            errors occur, logging errors in the 'errors' parameter so that multiple user input
+            errors can be detected and communicated during a single pass of editing the file
             :param layout: the column header layout read from the beginning of the file. Informs
-            this method
-            which optional columns have been defined, as well as what order the columns are in (
-            arbitrary
-            column order is supported).
-            :param line_metadata_types:
-            :param cols_list:
-            :param row_num:
-            :param errors:
-            :param warnings:
-            :param REQUIRE_STRAINS:
+            this method which optional columns have been defined, as well as what order the
+            columns are in (arbitrary column order is supported).
             :return:
             """
+            # TODO: improve usability by tracking errors on a per-row basis, then only add them
+            # to the global roll-up if a non-blank cell was found in this row.  There's at least
+            # one known example of Excel creating row/cell objects for rows that have to data, which
+            # then cause parsing to fail unnecessarily.
             row_inputs = _InputFileRow(self.assay_time_metadata_type_pk)
 
             errors = self.errors
@@ -563,7 +556,6 @@ class ColumnLayout:
             ###################################################
             cell_content = self._get_string_cell_content(cols_list, row_num, layout.line_name_col,
                                                          errors)
-
             if cell_content:
                 row_inputs.base_line_name = cell_content
 
@@ -574,8 +566,6 @@ class ColumnLayout:
                              'but was expected  to contain a name for the EDD line.' % {
                                  'row_num': row_num, 'col': layout.line_name_col + 1,
                              })
-
-                MISSING_LINE_NAME_ROWS_KEY = 'missing_line_name_rows'
                 self._append_to_errors_list(MISSING_LINE_NAME_ROWS_KEY, row_num)
 
             ###################################################
@@ -1206,13 +1196,6 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         :param layout: the column header layout read from the beginning of the file. Informs this method
         which optional columns have been defined, as well as what order the columns are in (arbitrary
         column order is supported).
-        :param line_metadata_types:
-        :param cols_list:
-        :param row_num:
-        :param errors:
-        :param warnings:
-        :param REQUIRE_STRAINS:
-        :return:
         """
         row_inputs = _InputFileRow(self.assay_time_metadata_type_pk)
 
@@ -1236,8 +1219,6 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                          'but was expected  to contain a name for the EDD line.' % {
                                'row_num': row_num, 'col': layout.line_name_col + 1,
                            })
-
-            MISSING_LINE_NAME_ROWS_KEY = 'missing_line_name_rows'
             self._append_to_errors_list(MISSING_LINE_NAME_ROWS_KEY, row_num)
 
         ###################################################
@@ -1284,10 +1265,9 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                     missing.append(cell_content)
             else:
                 row_inputs.replicate_count = 1
-                key = 'missing_replicate_count'
-                missing_replicate_count = warnings.get(key, [])
+                missing_replicate_count = warnings.get(ROWS_MISSING_REPLICATE_COUNT, [])
                 if not missing_replicate_count:
-                    warnings[key] = missing_replicate_count
+                    warnings[ROWS_MISSING_REPLICATE_COUNT] = missing_replicate_count
                 missing_replicate_count.append(row_num)
 
         ###################################################
@@ -1577,13 +1557,13 @@ class JsonInputParser(CombinatorialInputParser):
             try:
                 # just pass the JSON as initializer arguments. Won't verify the internal
                 # structure/expected data types, but for starters that's probably a safe bet
-                combo_input = CombinatorialDefinitionInput(naming_strategy,
-                                                           description=description,
-                                                           common_line_metadata=common_line_metadata,
-                                                           combinatorial_line_metadata=combinatorial_line_metadata,
-                                                           protocol_to_assay_metadata=protocol_to_assay_metadata,
-                                                           protocol_to_combinatorial_metadata=protocol_to_combinatorial_metadata,
-                                                           **value)
+                combo_input = CombinatorialDefinitionInput(
+                        naming_strategy, description=description,
+                        common_line_metadata=common_line_metadata,
+                        combinatorial_line_metadata=combinatorial_line_metadata,
+                        protocol_to_assay_metadata=protocol_to_assay_metadata,
+                        protocol_to_combinatorial_metadata=protocol_to_combinatorial_metadata,
+                        **value)
 
                 # inspect JSON input to find the maximum number of decimal digits in the user input
                 if self.assay_time_metadata_type_pk:
@@ -1634,6 +1614,7 @@ class JsonInputParser(CombinatorialInputParser):
             errors[PARSE_ERROR] = errs
         errs.append(msg)
 
+
 def _copy_to_numeric_elts(input_list):
     converted_list = []
     for index, element in enumerate(input_list):
@@ -1644,6 +1625,8 @@ def _copy_to_numeric_elts(input_list):
             converted_list.append(element)
 
     return converted_list
+
+
 def _copy_to_numeric_keys(input_dict):
     converted_dict = {}
     for key, value in input_dict.items():

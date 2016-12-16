@@ -30,7 +30,7 @@ from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
 
-from main.importer.experiment_def.importer import define_study_task, _build_errors_dict
+from main.importer.experiment_def.importer import define_study, _build_errors_dict
 from . import autocomplete, redis
 from openpyxl import load_workbook, Workbook
 from rest_framework.exceptions import MethodNotAllowed
@@ -1195,7 +1195,7 @@ def study_define(request, pk=None, slug=None):
     if request.method != "POST":
         raise MethodNotAllowed(request.method)
 
-    user_pk = request.user.pk
+    user = request.user
     dry_run = 'dryRun' in request.META.keys()
 
     is_excel_file = request.META[FILE_TYPE_HEADER] == 'xlsx'
@@ -1205,14 +1205,15 @@ def study_define(request, pk=None, slug=None):
     else:
         logger.info('Parsing request body as JSON input')
 
-    # collect predictable sources of error so we can return useful input to the client
+    # collect predictable sources of error so we can still return useful feedback to the client
+    # even if an exception caused the transaction to abort
     errors = {}
     warnings = {}
     json_response_dict = None
 
     try:
-        json_response_dict = define_study_task(request, user_pk, study, not is_excel_file, errors,
-                                               warnings, dry_run)
+        json_response_dict = define_study(request, user, study, not is_excel_file, errors,
+                                          warnings, dry_run)
 
         success = dry_run or 'errors' not in json_response_dict.keys()
         status = 200 if success else 400
