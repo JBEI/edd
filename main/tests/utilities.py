@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import csv
 import json
 import os
 from pprint import pprint
@@ -9,7 +8,8 @@ from openpyxl import load_workbook
 
 from django.test import TestCase
 
-from edd_utils.parsers.experiment_def import (JsonInputParser, ExperimentDefFileParser)
+from main.importer.experiment_def.parsers import ExperimentDefFileParser
+from main.importer.experiment_def.parsers import JsonInputParser
 from main.models import (
     CarbonSource, MetadataType, Protocol, Strain, Study, User)
 
@@ -424,7 +424,8 @@ class CombinatorialCreationTests(TestCase):
         # Parse JSON inputs
         if is_template_file:
             input = load_workbook(input, read_only=True, data_only=True)
-            parser = ExperimentDefFileParser(protocols_by_pk, line_metadata_types, assay_metadata_types)
+            parser = ExperimentDefFileParser(protocols_by_pk, line_metadata_types,
+                                             assay_metadata_types)
         else:
             from pprint import pprint
             pprint(input)
