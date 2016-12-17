@@ -922,6 +922,52 @@ div.tabBar > span:not(.active) {
 }
 
 
+/* Button bars (largely the same as tab bars) */
+
+div.buttonBar {
+    padding:0px 20px 0px 20px;
+    margin:20px 0px 20px 0px;
+}
+div.buttonBar > span {
+    display: inline-block;
+    color:#3c3c3c;
+    font-size:14px;
+    margin:0px;
+    border-style:solid;
+    border-color:#FFFFFF;
+    background-color: #FFFFFF;
+    border-width:1px;
+    padding:8px 12px 8px 12px;
+}
+div.buttonBar > span:hover {
+    border-color:#d0d0d0;
+}
+div.buttonBar.larger > span {
+    font-size:17px;
+    padding:10px 14px 10px 14px;
+}
+div.buttonBar > span:first-of-type {
+    border-top-left-radius:6px;
+    border-bottom-left-radius:6px;
+}
+div.buttonBar > span:last-of-type {
+    border-top-right-radius:6px;
+    border-bottom-right-radius:6px;
+}
+div.buttonBar > span.active {
+    border-color:#d0d0d0;
+    background-color: #F7F7F7;
+    box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.09) inset;
+}
+div.buttonBar > span:not(.active) {
+    color:#888888;
+    cursor: pointer;
+}
+div.buttonBar > span:not(.active) > img {
+    opacity:0.4;
+}
+
+
 /* This overrides some of the settings in the pageSection style */
 
 div.pageSectionTabContent {

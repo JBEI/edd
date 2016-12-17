@@ -174,8 +174,6 @@ var StudyLines;
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
-        // Hacky button for changing the metabolic map
-        $("#metabolicMapName").click(function () { return _this.onClickedMetabolicMapName(); });
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, function (id, protocol) {
             $.ajax({
@@ -304,7 +302,7 @@ var StudyLines;
         var h = $('#content').height(); // Height of the viewing region
         // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
         // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
-        // Also note we cannot use jQuery's "each" because of its reliance on the 'this' kewyword.
+        // Also note we cannot use jQuery's "each" because of its reliance on the 'this' keyword.
         var sh = 0;
         $('#content').children().get().forEach(function (e) { sh += e.scrollHeight; });
         if (StudyLines.actionPanelIsInBottomBar) {

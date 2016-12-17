@@ -217,8 +217,6 @@ module StudyLines {
             metaRow.remove();
         });
 
-        // Hacky button for changing the metabolic map
-        $("#metabolicMapName").click( () => this.onClickedMetabolicMapName() );
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
@@ -359,7 +357,7 @@ module StudyLines {
 
         // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
         // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
-        // Also note we cannot use jQuery's "each" because of its reliance on the 'this' kewyword.
+        // Also note we cannot use jQuery's "each" because of its reliance on the 'this' keyword.
         var sh = 0;
         $('#content').children().get().forEach((e:HTMLElement):void => { sh += e.scrollHeight; });
 
