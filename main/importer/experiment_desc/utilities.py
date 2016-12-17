@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+
+from collections import defaultdict
+
 from arrow import utcnow
 from django.db.models import Q
 import copy
@@ -353,7 +356,7 @@ class CombinatorialDescriptionInput(object):
         if common_line_metadata is None:
             common_line_metadata = {}
         if combinatorial_line_metadata is None:
-            combinatorial_line_metadata = {}
+            combinatorial_line_metadata = defaultdict(list)
         if protocol_to_assay_metadata is None:
             protocol_to_assay_metadata = {}
         if protocol_to_combinatorial_metadata is None:
@@ -474,6 +477,10 @@ class CombinatorialDescriptionInput(object):
 
     def add_common_line_metadata(self, line_metadata_pk, value):
         self.common_line_metadata[line_metadata_pk] = value
+
+    def add_combinatorial_line_metadata(self, line_metadata_pk, value):
+        values_list = self.combinatorial_line_metadata[line_metadata_pk]
+        values_list.append(value)
 
     def add_common_assay_metadata(self, protocol_pk, assay_metadata_pk, value):
         values_list = self.get_common_assay_metadata_list(protocol_pk, assay_metadata_pk)

@@ -47,6 +47,7 @@ INVALID_PROTOCOL_META_PK = 'invalid_protocol_pks'
 INVALID_ASSAY_META_PK = 'invalid_assay_metadata_pks'
 MISSING_LINE_NAME_ROWS_KEY = 'missing_line_name_rows'
 ROWS_MISSING_REPLICATE_COUNT = 'missing_replicate_count_rows'
+PART_NUMBER_PATTERN_UNMATCHED_WARNING = 'part_number_pattern_unmatched'
 
 
 class _AssayMetadataValueParser(object):
@@ -168,7 +169,11 @@ class ColumnLayout:
     def set_line_metadata_type(self, col_index, line_metadata_type, is_combinatorial=False):
         logger.debug('Column %d matches line metadata type %s' % (col_index+1,
                                                                   line_metadata_type.type_name))
+
         self.col_index_to_line_meta_pk[col_index] = line_metadata_type.pk
+
+        if is_combinatorial:
+            self.combinatorial_col_indices.append(col_index)
 
     class _ExperimentDefNamingStrategy(NamingStrategy):
         """
@@ -247,7 +252,7 @@ class ColumnLayout:
         def parse(self, input, errors, warnings):
             raise NotImplementedError()  # require subclasses to implement
 
-    class ExperimentDefFileParser(CombinatorialInputParser):
+    class ExperimentDescFileParser(CombinatorialInputParser):
         """
         File parser that takes a study "experiment description file" as input and reads the contents
         into a list of CombinatorialCreationInput objects.
@@ -255,9 +260,9 @@ class ColumnLayout:
 
         def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk,
                      require_strains=False):
-            super(ExperimentDefFileParser, self).__init__(protocols_by_pk,
-                                                          line_metadata_types_by_pk,
-                                                          assay_metadata_types_by_pk)
+            super(ExperimentDescFileParser, self).__init__(protocols_by_pk,
+                                                           line_metadata_types_by_pk,
+                                                           assay_metadata_types_by_pk)
             self.protocols_by_name = {protocol.name.upper(): protocol for protocol_pk, protocol in
                                       protocols_by_pk.items()}
 
@@ -354,10 +359,10 @@ class ColumnLayout:
             layout = ColumnLayout(self.errors, self.warnings)
             # TODO: add support for control column
 
-            ###########################################################################################
+            ########################################################################################
             # loop over columns in the current row, looking for labels that identify at least the
             # minimum set of required columns
-            ############################################################################################
+            ########################################################################################
             found_col_labels = False
             for col_index in range(len(row)):
                 print('Column index=%d' % col_index)
@@ -379,10 +384,10 @@ class ColumnLayout:
                 if not cell_content:
                     continue
 
-                ########################################################################################
+                ####################################################################################
                 # check whether column label matches one of the fixed labels specified by the file
                 # format
-                ########################################################################################
+                ####################################################################################
                 if _LINE_NAME_COL_PATTERN.match(cell_content):
                     layout.line_name_col = col_index
                 elif _LINE_DESCRIPTION_COL_PATTERN.match(cell_content):
@@ -1315,7 +1320,6 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                         part_number_match = TYPICAL_ICE_PART_NUMBER_PATTERN.match(token)
 
                         if not part_number_match:
-                            PART_NUMBER_PATTERN_UNMATCHED_WARNING = 'part_number_pattern_unmatched'
                             warnings = self.warnings
                             unmatched_part_nums = warnings.get(PART_NUMBER_PATTERN_UNMATCHED_WARNING,
                                                                [])
@@ -1419,7 +1423,6 @@ class ExperimentDefFileParser(CombinatorialInputParser):
 
             return None
 
-
     def _parse_combinatorial_input(self, row_inputs, cell_content, row_num, col_index,
                                    metadata_type_pk, error_key, protocol=None,
                                    value_parser=RAW_STRING_PARSER):
@@ -1452,7 +1455,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                     row_inputs.add_combinatorial_assay_metadata(protocol.pk, metadata_type_pk,
                                                                 parsed_value)
                 else:
-                    row_inputs.add_combinatorial_line_metadata(protocol.pk, metadata_type_pk,
+                    row_inputs.add_combinatorial_line_metadata(metadata_type_pk,
                                                                parsed_value)
             except ValueError:
                 logger.warning('ValueError parsing token "%(token)s" from cell content "%(cell)s" '

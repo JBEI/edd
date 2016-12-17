@@ -18,7 +18,7 @@ _SEPARATOR = '******************************************'
 main_dir = os.path.dirname(__file__),
 fixtures_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 fixtures_dir = os.path.join(fixtures_dir, 'fixtures')
-simple_experiment_def_xlsx = os.path.join(fixtures_dir, 'simple_experiment_description.xlsx')
+simple_experiment_def_xlsx = os.path.join(fixtures_dir, 'sample_experiment_description.xlsx')
 
 
 class CombinatorialCreationTests(TestCase):
