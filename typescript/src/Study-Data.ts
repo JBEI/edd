@@ -1131,7 +1131,7 @@ module StudyD {
                     //stop spinner
                     $('#loadingDiv').hide();
                 } else {
-                  $('#chartType').show();
+                    $('#chartType').show();
                 }
 
                 //show possible next steps div and hide assay graphs and table if there are no Assays
@@ -1446,7 +1446,6 @@ module StudyD {
 
 
     function remakeMainGraphArea(force?:boolean) {
-
 
         var postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,

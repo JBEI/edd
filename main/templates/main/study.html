@@ -25,6 +25,11 @@
     {{ study.name }} - Experiment Data Depot
 {% endblock head_title %}
 
+{% block body_prefix %}
+    {# The the 'Lines' and 'data' Study pages declare a form here that starts outside the main flex structure and ecapsulates most of the page, including the title area where the Study name is edited and the bottom bar.  The 'Overview' page cannot do this, since its lower sections need their own forms, but it still needs to encapsulate the title, so we set it up differently.  This difference is why we can't move the form up into study.html . #}
+    {{ block.super }}
+{% endblock body_prefix %}
+
 {% block body_title %}
 <div class="editable-field inactive" id="editable-study-name">
     {{ study.name }}
@@ -33,26 +38,30 @@
 {% endblock body_title %}
 
 {% block content %}
-    <div class="topNav">
-<ui class="nav nav-pills navbar">
-    <li class="{% if showingoverview %}active{% endif %}">
-        <a href="/study/{{ study.slug }}/overview">Overview</a>
-    </li>
-    {% if lines %}
-        <li class="{% if showinglines %}active{% endif %}">
-           <a href="/study/{{ study.slug }}/lines">Lines</a>
+<div class="studyNav">
+    <ui class="nav nav-pills navbar">
+        <li class="{% if showingoverview %}active{% endif %}">
+            <a href="/study/{{ study.slug }}/overview">Overview</a>
         </li>
-    {% endif %}
-    {% if assays %}
-        <li class="{% if showingdata %}active{% endif %}">
-        <a href="/study/{{ study.slug }}/">Data</a>
+        {% if lines %}
+            <li class="{% if showinglines %}active{% endif %}">
+               <a href="/study/{{ study.slug }}/lines">Lines</a>
+            </li>
+        {% endif %}
+        {% if assays %}
+            <li class="{% if showingdata %}active{% endif %}">
+            <a href="/study/{{ study.slug }}/">Data</a>
+            </li>
+        {% endif %}
+        <li class="{% if showingimport %}active{% endif %}">
+            <a href="/study/{{ study.id }}/import">Import</a>
         </li>
-    {% endif %}
-    <li class="{% if showingimport %}active{% endif %}">
-        <a href="/study/{{ study.id }}/import">Import</a>
-    </li>
-</ui>
-    </div>
+    </ui>
+</div>
 {#  line that goes through the nav bars#}
 {#    <div class="pageDivider"></div>#}
 {% endblock content %}
+
+{% block body_postfix %}
+    {{ block.super }}
+{% endblock body_postfix %}

@@ -38,6 +38,10 @@
 {#                {% elif request.edd_deployment|slice:":4" == "TEST" %} #fff0f2#}
 {#                {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %} #fff6e5#}
 {#                {% endif %}">#}
+
+{% block body_prefix %}
+{% endblock body_prefix %}
+<div class="mainFlex">
     <div class="topBanner">
         <div class="siteLogo">
             <a href="{% url 'main:index' %}">
@@ -62,35 +66,39 @@
             {% endif %}
         </div>
     </div>
-    <div class="statusMessage">
-        {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %}
-            <span class="dev">{{ request.edd_deployment}}</span>
-        {% elif request.edd_deployment|slice:":4" == "TEST" %}
-            <span class="test">{{ request.edd_deployment }}</span>
-        {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %}
-            <span class="int">{{ request.edd_deployment }}</span>
-        {% endif %}
-    {% block status %}
-        {% if messages %}
-            {% csrf_token %}
-            {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>
-                {% if message.pk %}
-                <a class="close"
-                        data-dismiss="alert"
-                        close-href="{% url message_mark_read message.pk %}">×</a>
-                {% else %}
-                <a class="close" data-dismiss="alert">×</a>
-                {% endif %}
-                {{ message }}
-            </p>
-            {% endfor %}
-        {% endif %}
-    {% endblock status %}
-    </div>
-    <div class="content">
+    <div id="content" class="content">
+        <div class="statusMessage">
+            {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %}
+                <span class="dev">{{ request.edd_deployment}}</span>
+            {% elif request.edd_deployment|slice:":4" == "TEST" %}
+                <span class="test">{{ request.edd_deployment }}</span>
+            {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %}
+                <span class="int">{{ request.edd_deployment }}</span>
+            {% endif %}
+        {% block status %}
+            {% if messages %}
+                {% csrf_token %}
+                {% for message in messages %}
+                <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>
+                    {% if message.pk %}
+                    <a class="close"
+                            data-dismiss="alert"
+                            close-href="{% url message_mark_read message.pk %}">×</a>
+                    {% else %}
+                    <a class="close" data-dismiss="alert">×</a>
+                    {% endif %}
+                    {{ message }}
+                </p>
+                {% endfor %}
+            {% endif %}
+        {% endblock status %}
+        </div>
     {% block content %}
     {% endblock content %}
+    </div>
+    <div id="bottomBar" class="bottomBar">
+        {% block bottom_bar %}
+        {% endblock bottom_bar %}
     </div>
     <div class="footer">
         <div class="footer-text">
@@ -107,5 +115,8 @@
             </span>
         </div>
     </div>
+</div>
+{% block body_postfix %}
+{% endblock body_postfix %}
 </body>
 </html>

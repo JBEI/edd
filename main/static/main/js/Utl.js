@@ -56,7 +56,7 @@ var Utl;
         }
         // Set up click-to-browse tabs
         Tabs.prepareTabs = function () {
-            // put the click handler at the document level, then filter to any link inside a .disclose
+            // declare the click handler at the document level, then filter to any link inside a .tab
             $(document).on('click', '.tabBar span:not(.active)', function (e) {
                 var targetTab = $(e.target).closest('span');
                 var activeTabs = targetTab.closest('div.tabBar').children('span.active');

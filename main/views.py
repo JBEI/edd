@@ -369,11 +369,16 @@ class StudyLinesView(StudyDetailBaseView):
             })
         return True
 
-    def handle_disable(self, request):
+    def handle_enable(self, request, context, *args, **kwargs):
+        return self.handle_enable_disable(request, 'enable')
+
+    def handle_disable(self, request, context, *args, **kwargs):
+        return self.handle_enable_disable(request, 'disable')
+
+    def handle_enable_disable(self, request, line_action):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
-        disable = request.POST.get('disable', 'true')
-        active = disable == 'false'
+        active = line_action == 'enable'
         count = Line.objects.filter(study=study, id__in=ids).update(active=active)
         messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
         return True
@@ -410,8 +415,6 @@ class StudyLinesView(StudyDetailBaseView):
         # but not edit
         elif not can_write:
             messages.error(request, 'You do not have permission to modify this study.')
-        elif line_action == 'edit':
-            form_valid = self.handle_disable(request)
         else:
             messages.error(request, 'Unknown line action %s' % (line_action))
         return form_valid
@@ -477,6 +480,8 @@ class StudyLinesView(StudyDetailBaseView):
         writable_lookup = {
             'assay': self.handle_assay,
             'clone': self.handle_clone,
+            'enable': self.handle_enable,
+            'disable': self.handle_disable,
             'group': self.handle_group,
             'line': self.handle_line,
             'measurement': self.handle_measurement,

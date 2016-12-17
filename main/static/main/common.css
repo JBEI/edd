@@ -17,11 +17,6 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0;
 }
 
-body {
-    line-height: 1;
-    padding-left: 20px;
-    padding-right: 20px;
-}
 table {
     border-collapse: collapse;
     border-spacing: 0;
@@ -38,10 +33,17 @@ HTML {
     color: #000000;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     font-size: 14px;
+    height: 100%;
 }
 H1, H2, H3, H4 {
     margin:3px;
 
+}
+body {
+    height: 100%;
+    line-height: 1;
+    padding-left: 20px;
+    padding-right: 20px;
 }
 p {
     margin:0.4em;
@@ -194,6 +196,25 @@ a:hover {
 :disabled {
     background-color: #eeeeee;
 }
+form.noMargins {
+    margin:0;
+    padding:0;
+}
+
+
+/* Main flex layout */
+
+div.mainFlex {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* align items in Main Axis */
+    align-items: stretch; /* align items in Cross Axis */
+    align-content: stretch; /* Extra space in Cross Axis */
+    flex-wrap: nowrap;
+}
+
 
 /* Top banner styling */
 
@@ -216,6 +237,7 @@ div.topBanner > div.pageName {
     flex-grow:1;
     border: 0;
     padding: 5px 0 0 0;
+    text-align: center;
 }
 div.topBanner > div.userMenu {
     flex-shrink: 0;
@@ -229,6 +251,7 @@ div.topBanner > div.userMenu > div {
 
 
 /* A section near the top of the page for reporting the result of attempted operations */
+
 div.statusMessage {
     clear: both;
     font-size:14px;
@@ -279,12 +302,36 @@ div.statusMessage > p.success, .success {
 
 
 /* Main content section */
-div.content {
-    clear: both;
+
+div.mainFlex > div.content {
+    flex: 1;
+    overflow: auto;
+}
+
+div.mainFlex > div.bottomBar {
+
+}
+
+/* Footer area */
+
+div.mainFlex > div.footer {
+    border-top: 1px solid #CCC;
+    color: #CCC;
+    font-size: 0.85em;
+    margin: 20px 15px 0px 15px;
+    padding: 20px;
+}
+div.mainFlex > div.footer > div.footer-text {
+    margin: 0px auto;
+    text-align: center;
+}
+div.mainFlex > div.footer > div.footer-text > span {
+    margin: 0 2em;
 }
 
 
 /* Mouseover help boxes for the various steps */
+
 div.helpBadgeDiv {
     float:left;
     cursor: pointer;
@@ -379,11 +426,10 @@ div.subSectionContent {
 }
 /* A section meant for the bottom of page sections,
    with form elements representing actions you can take on content in above sections */
-div.pageSection div.sectionActions {
-    border-top:1px solid rgba(164,164,164,0.7);
+div.sectionActions {
+    /* border-top:1px solid rgba(164,164,164,0.7); */
     margin: 0px;
     padding:10px 0px 0px 0px;
-    background-color:rgba(233,233,233,0.18);
 }
 div.pageSection.discloseHide.minor {
     background: transparent;
@@ -411,7 +457,9 @@ div.bare-header {
     padding:4px 4px 4px 6px;
 }
 
+
 /* Data tables and controls */
+
 table.dataTable {
     width:100%;
     border:none;
@@ -440,6 +488,7 @@ tr.columnLabels > th {
 }
 
 /* Table sorting components */
+
 tr.columnLabels > th.sortheader {
     cursor: pointer;
     text-align: left;
@@ -477,7 +526,9 @@ tr.columnLabels > th.sortwait > div:hover {
     text-decoration:underline;
     background-color:rgba(108,164,233,0.6);
 }
+
 /* Data table regular cells */
+
 table.dataTable tr > td {
     padding:4px 4px 4px 8px;
     margin:0px;
@@ -529,6 +580,7 @@ tr.groupHeader > td:before {
 }
 
 /* Data table controls for DataGrids.  These can fit inside "sectionHeads" or the "header" row of a "dataTable" */
+
 span.tableControl {
     float:left;
     font-weight:normal;
@@ -587,6 +639,7 @@ div.searchStudies {
 }
 
 /* DataGrid header checkboxes.  To make a checkbox in a table header, do <label class="tableCheckbox"><input ... />LABEL</label> */
+
 .tableCheckbox {
     display: block;
     float: right;
@@ -606,6 +659,7 @@ div.searchStudies {
 }
 
 /* DataGrid header pulldown menus */
+
 span.pulldownMenu {
     margin:10px 5px 10px 0px;
     padding:0px;
@@ -678,6 +732,7 @@ div.pulldownMenuMenuBlock ul > li > input[type="checkbox"] {
 
 
 /* Styling for a special-purpose "filter criteria" table */
+
 div.filteringSection {
     overflow-x: auto;
     overflow-y: hidden;
@@ -807,7 +862,9 @@ div.filterHeadSearch > input[type="text"] {
     float:right;
 }
 
+
 /* Tab sets for page sections */
+
 ul.studyTabs {
     margin: 15px 0px 10px 0px;
 }
@@ -865,7 +922,54 @@ div.tabBar > span:not(.active) {
 }
 
 
+/* Button bars (largely the same as tab bars) */
+
+div.buttonBar {
+    padding:0px 20px 0px 20px;
+    margin:20px 0px 20px 0px;
+}
+div.buttonBar > span {
+    display: inline-block;
+    color:#3c3c3c;
+    font-size:14px;
+    margin:0px;
+    border-style:solid;
+    border-color:#FFFFFF;
+    background-color: #FFFFFF;
+    border-width:1px;
+    padding:8px 12px 8px 12px;
+}
+div.buttonBar > span:hover {
+    border-color:#d0d0d0;
+}
+div.buttonBar.larger > span {
+    font-size:17px;
+    padding:10px 14px 10px 14px;
+}
+div.buttonBar > span:first-of-type {
+    border-top-left-radius:6px;
+    border-bottom-left-radius:6px;
+}
+div.buttonBar > span:last-of-type {
+    border-top-right-radius:6px;
+    border-bottom-right-radius:6px;
+}
+div.buttonBar > span.active {
+    border-color:#d0d0d0;
+    background-color: #F7F7F7;
+    box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.09) inset;
+}
+div.buttonBar > span:not(.active) {
+    color:#888888;
+    cursor: pointer;
+}
+div.buttonBar > span:not(.active) > img {
+    opacity:0.4;
+}
+
+
 /* This overrides some of the settings in the pageSection style */
+
 div.pageSectionTabContent {
     margin:0px 8px 3px 8px;
     border-width:2px 0px 0px 0px;
@@ -874,6 +978,7 @@ div.pageSectionTabContent {
 
 
 /* span popup info boxes */
+
 span.popup:hover {
     background-color:#CECEFF;
 }
@@ -904,6 +1009,7 @@ span.popup:hover > span.popupinfo {
 
 
 /* Table cells with popup menus */
+
 td.popupcell:hover {
     background-color:#CECEFF;
 }
@@ -979,6 +1085,7 @@ td.popupcell:hover ul.popupmenu {
 
 
 /* Tables for filling out forms */
+
 table.formTable {
     margin:10px 3px 20px 3px;
     border:none;
@@ -1063,10 +1170,7 @@ div.multientrybutton {
     opacity: 0;
 }
 
-.line-action {
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
+
 /* Autocomplete input element styling */
 
 ul.edd-autocomplete-list {
@@ -1718,26 +1822,36 @@ div.tooltip2 {
 .actionButton {
     display: inline-block;
     margin: 10px 10px 0px 0px;
-    background-color: white;
+    background-color: rgb(32, 77, 116);
+    border-color: rgb(18, 43, 64);
+    border-radius: 3px;
+    border-style: solid;
+    border-width: 1px;
+    box-shadow: rgba(0, 0, 0, 0.121569) 0px 3px 5px 0px inset;
+    box-sizing: border-box;
+    color: rgb(255, 255, 255);
+    cursor: pointer;
     font-size: 12px;
-    color: grey;
-    border: 1px solid;
+    font-weight: normal;
+    line-height: 18px;
+    margin: 2px 2px 0px 2px;
+    padding: 5px 10px 5px 10px;
     text-align: center;
-    float:right;
+    text-decoration: none;
+    vertical-align: middle;
+    white-space: nowrap;
 }
 
-.actionButton2 {
-    display: inline-block;
-    margin: 10px 10px 0px 0px;
-    background-color: white;
-    font-size: 12px;
-    color: grey;
-    border: 1px solid;
-    text-align: center;
+.actionButton.primary {
+    color: #fff;
+    background-color: #337ab7;
+    border-color: #2e6da4;
 }
 
-#disabledButtons {
-    margin-top: 10px;
+.actionButton:disabled {
+    background-color: #FFFFFF;
+    color: #888888;
+    border-color: #888888;
 }
 
 .assayTable {
@@ -1782,28 +1896,23 @@ div.tooltip2 {
   text-align: center;
 }
 
-.topNav {
+.studyNav {
     width: 100%;
     text-align: center;
 }
 
-#topNav ul>li>a, body #categoryNav ul>li>a {
-    border-bottom-color: transparent;
-    border-bottom-style: solid;
-}
-
-.pageDivider {
-    border-bottom: 1px solid rgba(0,0,0,.1);
-    margin-top: -3.6em;
-    margin-bottom: 3.6em;
-}
-
-.topNav a:hover {
+.studyNav a:hover {
     color: #111;
     border-bottom-color: rgba(0,0,0,.1);
 }
 
-.topNav .nav>li>a {
+.studyNav .nav>li {
+    position: relative;
+    display: block;
+    margin: 0px 15px 30px 15px;
+}
+
+.studyNav .nav>li>a {
     color: lightgray;
     position: relative;
     display: block;
@@ -1816,16 +1925,10 @@ div.tooltip2 {
     padding-left: 0;
 }
 
-.topNav .nav>li {
-    position: relative;
-    display: block;
-    margin: 0px 15px 30px 15px;
-}
-
-.topNav .navbar .nav > .active > a {
+.studyNav .navbar .nav > .active > a {
     background:none;
 }
-.topNav .nav>li>a:hover, .nav>li>a:focus {
+.studyNav .nav>li>a:hover, .nav>li>a:focus {
     text-decoration: none;
     background-color: transparent;
     border-bottom: 2px solid grey;
@@ -1833,7 +1936,7 @@ div.tooltip2 {
     color: black;
 }
 
-.topNav .nav-pills {
+.studyNav .nav-pills {
     color: black;
     font-size: 16px;
     display: inline-block;
@@ -1842,7 +1945,7 @@ div.tooltip2 {
     background-color: white;
 }
 
-.topNav .nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
+.studyNav .nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
     display: inline-block;
     float: none;
     vertical-align: top;
@@ -1851,5 +1954,12 @@ div.tooltip2 {
     border-bottom: 2px solid grey;
     border-radius: 0px;
 }
+
+.pageDivider {
+    border-bottom: 1px solid rgba(0,0,0,.1);
+    margin-top: -3.6em;
+    margin-bottom: 3.6em;
+}
+
 
 /* End of common styles */

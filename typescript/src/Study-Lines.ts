@@ -14,6 +14,7 @@ module StudyLines {
     'use strict';
 
     var linesActionPanelRefreshTimer:any;
+    var positionActionsBarTimer:any;
     var attachmentIDs:any;
     var attachmentsByID:any;
     var prevDescriptionEditElement:any;
@@ -33,6 +34,10 @@ module StudyLines {
     // The table spec object and table object for the Lines table.
     var linesDataGridSpec;
     var linesDataGrid;
+    // We use our own flag to ensure we don't get into an infinite event loop,
+    // switching back and forth between positions that might trigger resize events.
+    export var actionPanelIsInBottomBar;
+
 
     // Called when the page loads.
     export function prepareIt() {
@@ -54,13 +59,18 @@ module StudyLines {
         this.linesDataGridSpec = null;
         this.linesDataGrid = null;
 
+        this.actionPanelIsInBottomBar = false;
+
         this.linesActionPanelRefreshTimer = null;
+        this.positionActionsBarTimer = null;
 
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', (e) => {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
         });
+
+        $(window).on('resize', StudyLines.queuePositionActionsBar);
 
         $('#worklistButton').attr('title', 'select line(s) first');
         $('#exportButton').attr('title', 'select line(s) first');
@@ -86,24 +96,14 @@ module StudyLines {
                 // Instantiate the table itself with the spec
                 this.linesDataGrid = new LineResults(this.linesDataGridSpec);
 
-                if (_.keys(EDDData.Assays).length === 0) {
-                    //stop spinner
-                    $('#loadingDiv').hide();
-                } else {
-                    $('#chartType').show();
-                }
+                //stop spinner
+                // $('#loadingDiv').hide();
 
-                //show possible next steps div and hide assay graphs and table if there are no Assays
+                // Show possible next steps div if needed
                 if (_.keys(EDDData.Lines).length === 0) {
-                    $('.scroll').css('height', 100)
                     $('.noLines').css('display', 'block');
-                    $('#addNewLine').hide();
-                    $('#addNewLine').next().hide();
                 } else {
-                    $('.scroll').css('height', 300)
                     $('.noLines').css('display', 'none');
-                    $('#addNewLine').show();
-                    $('#addNewLine').next().show();
                 }
             }
         });
@@ -155,7 +155,7 @@ module StudyLines {
         });
 
         // Enable edit lines button
-        $('#editLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
+        $('#editButton').on('click', (ev:JQueryMouseEventObject):boolean => {
             var button = $(ev.target), data = button.data();
             ev.preventDefault();
             StudyLines.editLines(data.ids || []);
@@ -217,8 +217,6 @@ module StudyLines {
             metaRow.remove();
         });
 
-        // Hacky button for changing the metabolic map
-        $("#metabolicMapName").click( () => this.onClickedMetabolicMapName() );
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
@@ -313,31 +311,65 @@ module StudyLines {
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
         if (_.keys(EDDData.Lines).length === 0) {
-            $('#line-action-form').css('display', 'none');
             $('.lineExplanation').css('display', 'block');
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton, #worklistButton, #exportButton").addClass('off');
         } else {
             checkedLen = checkedBoxes.length;
             $('#linesSelectedCell').empty().text(checkedLen + ' selected');
             // enable singular/plural changes
-            $('#cloneLineButton').text('Clone Line' + (checkedLen > 1 ? 's' : ''));
-            $('#editLineButton').text('Edit Line' + (checkedLen > 1 ? 's' : '')).data({
+            $('#editButton').data({
                 'count': checkedLen,
                 'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
             });
-
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportButton").removeClass('off');
             if (checkedLen) {
-                $("#disabledButtons").children().prop('disabled',false);
-                $('.disabled-button').removeClass('disabled-button ');
+                $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',false);
+                $('#addNewLineButton').prop('disabled', true);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
                 $('#exportButton').attr('title', 'Export your lines in a file type of your choosing');
+                if (checkedLen < 2) {
+                    $('#groupButton').prop('disabled', true);
+                }
             } else {
-                 $("#disabledButtons").children().prop('disabled', true);
-                 $('#addNewLine').prop('disabled', false);
-                 $('#worklistButton').attr('title', 'select line(s) first');
-                 $('#exportButton').attr('title', 'select line(s) first');
+                $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',true);
+                $('#addNewLineButton').prop('disabled', false);
+                $('#worklistButton').attr('title', 'select line(s) first');
+                $('#exportButton').attr('title', 'select line(s) first');
             }
-            if (checkedLen < 2) {
-                $('#groupLineButton').prop('disabled', true);
+            StudyLines.queuePositionActionsBar();
+        }
+    }
+
+
+    // Start a timer to wait before calling the routine that moves the actions bar.
+    // Required so we don't crater the CPU with unserved resize events.
+    export function queuePositionActionsBar() {
+        if (this.positionActionsBarTimer) {
+            clearTimeout (this.positionActionsBarTimer);
+        }
+        this.positionActionsBarTimer = setTimeout(StudyLines.positionActionsBar.bind(this), 50);
+    }
+
+
+    export function positionActionsBar() {
+
+        var h = $('#content').height();            // Height of the viewing region
+
+        // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
+        // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
+        // Also note we cannot use jQuery's "each" because of its reliance on the 'this' keyword.
+        var sh = 0;
+        $('#content').children().get().forEach((e:HTMLElement):void => { sh += e.scrollHeight; });
+
+        if (StudyLines.actionPanelIsInBottomBar) {
+            if (sh < h) {
+                $('#actionsBar').appendTo('#content');
+                StudyLines.actionPanelIsInBottomBar = false;
+            }
+        } else {
+            if (sh > h) {
+                $('#actionsBar').appendTo('#bottomBar');
+                StudyLines.actionPanelIsInBottomBar = true;
             }
         }
     }
@@ -1023,8 +1055,11 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
             checked = true;
         }
         // If the box is checked, return the set of IDs unfiltered
-        if (checked) {
+        if (checked && rowIDs && EDDData.currentStudyWritable) {
+            $("#enableButton").removeClass('off');
             return rowIDs;
+        } else {
+            $("#enableButton").addClass('off');
         }
 
         var filteredIDs = [];
