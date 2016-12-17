@@ -26,120 +26,119 @@
     {{ block.super }}
 {% endblock head_title %}
 
+{% block body_prefix %}
+    {{ block.super }}
+<form action="" class="noMargins" style="height:100%;" method="POST">
+    {% csrf_token %}
+{% endblock body_prefix %}
+
 {% block body_title %}
     {{ block.super }}
 {% endblock body_title %}
 
-{% block content %}
-{{ block.super }}
-<form id="line-action-form" action="" class="line-action" method="POST">
-    {% csrf_token %}
 
-<div style="display:flex;
-        flex-wrap: nowrap;
-        flex-direction: column;
-        justify-content: flex-start;
-        align-items: stretch;
-        height:100%;
-        align-content: stretch;">
-    <div style="margin-left:15px;">
-        Manually add/edit lines below, or drag and drop a<a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}"> template file</a> onto the table to create them in bulk
-        <div style="float:none; margin-left:15px"class="helpBadgeDiv">line help
-            <div class="helpContent">
-                <p>A line describes the experimental details of your study by defining the
-                    experimental conditions and associated meta data for i.e. a single flask.  Some examples
-                    that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
-                    speed.  Users can manually add lines, or download the study template for bulk uploads.
-                </p>
-            </div>
-        </div>
-    </div>
-    <div style="flex: 1;overflow: auto;">
-        <div class="noLines" style="display: none;">
-            <h3 style="margin-bottom:12px">This study has no lines. </h3>
-        </div>
-        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-        <table id="studyLinesTable"></table>
-    </div>
-    <div class="sectionActions" style="
-        display:flex;
-        flex-wrap: nowrap;
-        flex-direction: row;
-        justify-content: space-between;">
-        <div id="disabledButtons" class="flex-grow:1;">
-            <button id="addNewLineButton"
-                    class="actionButton primary {% if not writable %}off{% endif %}"
-                    title="Add a new line">
-                New line
-            </button>
-            <span id="linesSelectedCell" style="padding-left:15px;">0 selected</span>
-            <button id="editButton"
-                    class="actionButton {% if not writable or not lines %}off{% endif %}"
-                    disabled="true"
-                    title="Edit selected lines">
-                Edit
-            </button>
-            <button id="cloneButton"
-                    class="actionButton {% if not writable or not lines %}off{% endif %}"
-                    type="submit"
-                    name="action"
-                    disabled="true"
-                    value="clone"
-                    title="Clone selected lines">
-                Clone
-            </button>
-            <button id="groupButton"
-                    class="actionButton {% if not writable or not lines %}off{% endif %}"
-                    type="submit"
-                    disabled="true"
-                    name="action"
-                    value="group"
-                    title="Group selected lines as replicates">
-                Group
-            </button>
-            <button id="addAssayButton"
-                    class="actionButton {% if not writable or not lines %}off{% endif %}"
-                    type="button"
-                    disabled="true"
-                    title="Add an assay to selected lines">
-                Add Assay
-            </button>
-            <button id="disableButton"
-                    class="actionButton {% if not writable or not lines %}off{% endif %}"
-                    type="submit"
-                    name="action"
-                    value="disable"
-                    disabled="true"
-                    title="Disable selected lines">
-                Disable
-            </button>
-            <button id="enableButton"
-                    class="actionButton off"
-                    type="submit"
-                    name="action"
-                    value="enable"
-                    disabled="true"
-                    title="Re-enable selected lines">
-                Re-Enable
-            </button>
-        </div>
-        <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">
-            <button style="margin-right:30px" type="button" id="worklistButton" class="actionButton primary">
-                Generate Worklist
-            </button>
-            <button type="button" id="exportButton" class="actionButton primary">
-                Export Data
-            </button>
+{% block content %}
+    {{ block.super }}
+
+<div style="margin-left:15px;">
+    Manually add/edit lines below, or drag and drop a<a class="dropLink" href="{% static 'sampleLineTemplate.xlsx' %}"> template file</a> onto the table to create them in bulk
+    <div style="float:none; margin-left:15px"class="helpBadgeDiv">line help
+        <div class="helpContent">
+            <p>A line describes the experimental details of your study by defining the
+                experimental conditions and associated meta data for i.e. a single flask.  Some examples
+                that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
+                speed.  Users can manually add lines, or download the study template for bulk uploads.
+            </p>
         </div>
     </div>
 </div>
+<div>
+    <div class="noLines" style="display: none;">
+        <h3 style="margin-bottom:12px">This study has no lines. </h3>
+    </div>
+    {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+    <table id="studyLinesTable"></table>
+</div>
+<div id="actionsBar" class="sectionActions" style="
+    display:flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    justify-content: space-between;">
+    <div id="disabledButtons" class="flex-grow:1;">
+        <button id="addNewLineButton"
+                class="actionButton primary {% if not writable %}off{% endif %}"
+                title="Add a new line">
+            New line
+        </button>
+        <span id="linesSelectedCell" style="padding-left:15px;">0 selected</span>
+        <button id="editButton"
+                class="actionButton {% if not writable or not lines %}off{% endif %}"
+                disabled="true"
+                title="Edit selected lines">
+            Edit
+        </button>
+        <button id="cloneButton"
+                class="actionButton {% if not writable or not lines %}off{% endif %}"
+                type="submit"
+                name="action"
+                disabled="true"
+                value="clone"
+                title="Clone selected lines">
+            Clone
+        </button>
+        <button id="groupButton"
+                class="actionButton {% if not writable or not lines %}off{% endif %}"
+                type="submit"
+                disabled="true"
+                name="action"
+                value="group"
+                title="Group selected lines as replicates">
+            Group
+        </button>
+        <button id="addAssayButton"
+                class="actionButton {% if not writable or not lines %}off{% endif %}"
+                type="button"
+                disabled="true"
+                title="Add an assay to selected lines">
+            Add Assay
+        </button>
+        <button id="disableButton"
+                class="actionButton {% if not writable or not lines %}off{% endif %}"
+                type="submit"
+                name="action"
+                value="disable"
+                disabled="true"
+                title="Disable selected lines">
+            Disable
+        </button>
+        <button id="enableButton"
+                class="actionButton off"
+                type="submit"
+                name="action"
+                value="enable"
+                disabled="true"
+                title="Re-enable selected lines">
+            Re-Enable
+        </button>
+    </div>
+    <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">
+        <button style="margin-right:30px" type="button" id="worklistButton" class="actionButton primary">
+            Generate Worklist
+        </button>
+        <button type="button" id="exportButton" class="actionButton primary">
+            Export Data
+        </button>
+    </div>
+</div>
+{% endblock content %}
 
+{% block body_postfix %}
 </form>
 
 {# FUN FACT: jQueryUI's "modal" widget actually rips the element you're turning into a modal right out of the DOM and appends it to the end, thus separating it from any form you've declared outside the modal contents.  So, we are forced to create four self-contained forms, even though the page could easily work as one. #}
 
 <div id="editLineModal" class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
-    <form id="line-action-form" action="" class="line-action" method="POST">
+    <form action="" method="POST">
         {% csrf_token %}
         {{ new_line.as_p }}
         <p class="line-edit-meta">
@@ -156,7 +155,7 @@
 
 <div id="addAssayModal" class="off"
      title="{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}">
-    <form id="line-action-form" action="" class="line-action" method="POST">
+    <form action="" method="POST">
         {% csrf_token %}
         <div class="sectionHead">
             <span class="discloseLink"><a href="#"></a></span>
@@ -169,7 +168,7 @@
 </div>
 
 <div id="exportModal" class="off" title="Export as">
-    <form id="line-action-form" action="" class="line-action" method="POST">
+    <form action="" method="POST">
         {% csrf_token %}
         <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
         <label for="line_action_export">
@@ -185,4 +184,5 @@
     </form>
 </div>
 
-{% endblock content %}
+    {{ block.super }}
+{% endblock body_postfix %}

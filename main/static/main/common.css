@@ -196,10 +196,15 @@ a:hover {
 :disabled {
     background-color: #eeeeee;
 }
+form.noMargins {
+    margin:0;
+    padding:0;
+}
+
 
 /* Main flex layout */
 
-body > div.mainFlex {
+div.mainFlex {
     width: 100%;
     height: 100%;
     display: flex;
@@ -209,6 +214,7 @@ body > div.mainFlex {
     align-content: stretch; /* Extra space in Cross Axis */
     flex-wrap: nowrap;
 }
+
 
 /* Top banner styling */
 
@@ -245,6 +251,7 @@ div.topBanner > div.userMenu > div {
 
 
 /* A section near the top of the page for reporting the result of attempted operations */
+
 div.statusMessage {
     clear: both;
     font-size:14px;
@@ -296,29 +303,29 @@ div.statusMessage > p.success, .success {
 
 /* Main content section */
 
-body > div.mainFlex > div.content {
+div.mainFlex > div.content {
     flex: 1;
     overflow: auto;
 }
 
-body > div.mainFlex > div.bottomBar {
-    
+div.mainFlex > div.bottomBar {
+
 }
 
 /* Footer area */
 
-body > div.mainFlex > div.footer {
+div.mainFlex > div.footer {
     border-top: 1px solid #CCC;
     color: #CCC;
     font-size: 0.85em;
-    margin: 20px 34px 0px 34px;
+    margin: 20px 15px 0px 15px;
     padding: 20px;
 }
-body > div.mainFlex > div.footer > div.footer-text {
+div.mainFlex > div.footer > div.footer-text {
     margin: 0px auto;
     text-align: center;
 }
-body > div.mainFlex > div.footer > div.footer-text > span {
+div.mainFlex > div.footer > div.footer-text > span {
     margin: 0 2em;
 }
 
@@ -420,10 +427,9 @@ div.subSectionContent {
 /* A section meant for the bottom of page sections,
    with form elements representing actions you can take on content in above sections */
 div.sectionActions {
-    border-top:1px solid rgba(164,164,164,0.7);
+    /* border-top:1px solid rgba(164,164,164,0.7); */
     margin: 0px;
     padding:10px 0px 0px 0px;
-    background-color:rgba(233,233,233,0.18);
 }
 div.pageSection.discloseHide.minor {
     background: transparent;
@@ -451,7 +457,9 @@ div.bare-header {
     padding:4px 4px 4px 6px;
 }
 
+
 /* Data tables and controls */
+
 table.dataTable {
     width:100%;
     border:none;
@@ -480,6 +488,7 @@ tr.columnLabels > th {
 }
 
 /* Table sorting components */
+
 tr.columnLabels > th.sortheader {
     cursor: pointer;
     text-align: left;
@@ -517,7 +526,9 @@ tr.columnLabels > th.sortwait > div:hover {
     text-decoration:underline;
     background-color:rgba(108,164,233,0.6);
 }
+
 /* Data table regular cells */
+
 table.dataTable tr > td {
     padding:4px 4px 4px 8px;
     margin:0px;
@@ -569,6 +580,7 @@ tr.groupHeader > td:before {
 }
 
 /* Data table controls for DataGrids.  These can fit inside "sectionHeads" or the "header" row of a "dataTable" */
+
 span.tableControl {
     float:left;
     font-weight:normal;
@@ -627,6 +639,7 @@ div.searchStudies {
 }
 
 /* DataGrid header checkboxes.  To make a checkbox in a table header, do <label class="tableCheckbox"><input ... />LABEL</label> */
+
 .tableCheckbox {
     display: block;
     float: right;
@@ -646,6 +659,7 @@ div.searchStudies {
 }
 
 /* DataGrid header pulldown menus */
+
 span.pulldownMenu {
     margin:10px 5px 10px 0px;
     padding:0px;
@@ -718,6 +732,7 @@ div.pulldownMenuMenuBlock ul > li > input[type="checkbox"] {
 
 
 /* Styling for a special-purpose "filter criteria" table */
+
 div.filteringSection {
     overflow-x: auto;
     overflow-y: hidden;
@@ -847,7 +862,9 @@ div.filterHeadSearch > input[type="text"] {
     float:right;
 }
 
+
 /* Tab sets for page sections */
+
 ul.studyTabs {
     margin: 15px 0px 10px 0px;
 }
@@ -906,6 +923,7 @@ div.tabBar > span:not(.active) {
 
 
 /* This overrides some of the settings in the pageSection style */
+
 div.pageSectionTabContent {
     margin:0px 8px 3px 8px;
     border-width:2px 0px 0px 0px;
@@ -914,6 +932,7 @@ div.pageSectionTabContent {
 
 
 /* span popup info boxes */
+
 span.popup:hover {
     background-color:#CECEFF;
 }
@@ -944,6 +963,7 @@ span.popup:hover > span.popupinfo {
 
 
 /* Table cells with popup menus */
+
 td.popupcell:hover {
     background-color:#CECEFF;
 }
@@ -1019,6 +1039,7 @@ td.popupcell:hover ul.popupmenu {
 
 
 /* Tables for filling out forms */
+
 table.formTable {
     margin:10px 3px 20px 3px;
     border:none;
@@ -1103,10 +1124,7 @@ div.multientrybutton {
     opacity: 0;
 }
 
-.line-action {
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
+
 /* Autocomplete input element styling */
 
 ul.edd-autocomplete-list {

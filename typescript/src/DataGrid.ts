@@ -156,7 +156,7 @@ class DataGrid {
         this._applyColumnVisibility();
 
         // Prepare the table for sorting
-           this._prepareSortable();
+        this._prepareSortable();
 
         this._spec.onInitialized(this);
         $(this._waitBadge).addClass('off');

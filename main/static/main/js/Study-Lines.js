@@ -16,6 +16,7 @@ var StudyLines;
 (function (StudyLines) {
     'use strict';
     var linesActionPanelRefreshTimer;
+    var positionActionsBarTimer;
     var attachmentIDs;
     var attachmentsByID;
     var prevDescriptionEditElement;
@@ -41,12 +42,15 @@ var StudyLines;
         this.mTypeEntries = [];
         this.linesDataGridSpec = null;
         this.linesDataGrid = null;
+        this.actionPanelIsInBottomBar = false;
         this.linesActionPanelRefreshTimer = null;
+        this.positionActionsBarTimer = null;
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', function (e) {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
         });
+        $(window).on('resize', StudyLines.queuePositionActionsBar);
         $('#worklistButton').attr('title', 'select line(s) first');
         $('#exportButton').attr('title', 'select line(s) first');
         $('#show').click(function (event) {
@@ -68,25 +72,14 @@ var StudyLines;
                 _this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
                 _this.linesDataGrid = new LineResults(_this.linesDataGridSpec);
-                if (_.keys(EDDData.Assays).length === 0) {
-                    //stop spinner
-                    $('#loadingDiv').hide();
-                }
-                else {
-                    $('#chartType').show();
-                }
-                //show possible next steps div and hide assay graphs and table if there are no Assays
+                //stop spinner
+                // $('#loadingDiv').hide();
+                // Show possible next steps div if needed
                 if (_.keys(EDDData.Lines).length === 0) {
-                    $('.scroll').css('height', 100);
                     $('.noLines').css('display', 'block');
-                    $('#addNewLine').hide();
-                    $('#addNewLine').next().hide();
                 }
                 else {
-                    $('.scroll').css('height', 300);
                     $('.noLines').css('display', 'none');
-                    $('#addNewLine').show();
-                    $('#addNewLine').next().show();
                 }
             }
         });
@@ -282,7 +275,7 @@ var StudyLines;
             $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportButton").removeClass('off');
             if (checkedLen) {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', false);
-                $('#addNewLine').prop('disabled', true);
+                $('#addNewLineButton').prop('disabled', true);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
                 $('#exportButton').attr('title', 'Export your lines in a file type of your choosing');
                 if (checkedLen < 2) {
@@ -291,12 +284,43 @@ var StudyLines;
             }
             else {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', true);
-                $('#addNewLine').prop('disabled', false);
+                $('#addNewLineButton').prop('disabled', false);
                 $('#worklistButton').attr('title', 'select line(s) first');
                 $('#exportButton').attr('title', 'select line(s) first');
             }
+            StudyLines.queuePositionActionsBar();
         }
     }
+    // Start a timer to wait before calling the routine that moves the actions bar.
+    // Required so we don't crater the CPU with unserved resize events.
+    function queuePositionActionsBar() {
+        if (this.positionActionsBarTimer) {
+            clearTimeout(this.positionActionsBarTimer);
+        }
+        this.positionActionsBarTimer = setTimeout(StudyLines.positionActionsBar.bind(this), 50);
+    }
+    StudyLines.queuePositionActionsBar = queuePositionActionsBar;
+    function positionActionsBar() {
+        var h = $('#content').height(); // Height of the viewing region
+        // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
+        // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
+        // Also note we cannot use jQuery's "each" because of its reliance on the 'this' kewyword.
+        var sh = 0;
+        $('#content').children().get().forEach(function (e) { sh += e.scrollHeight; });
+        if (StudyLines.actionPanelIsInBottomBar) {
+            if (sh < h) {
+                $('#actionsBar').appendTo('#content');
+                StudyLines.actionPanelIsInBottomBar = false;
+            }
+        }
+        else {
+            if (sh > h) {
+                $('#actionsBar').appendTo('#bottomBar');
+                StudyLines.actionPanelIsInBottomBar = true;
+            }
+        }
+    }
+    StudyLines.positionActionsBar = positionActionsBar;
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');
         form.find('[name^=assay-]').not(':checkbox, :radio').val('');
