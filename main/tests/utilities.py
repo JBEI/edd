@@ -8,8 +8,8 @@ from openpyxl import load_workbook
 
 from django.test import TestCase
 
-from main.importer.experiment_def.parsers import ExperimentDefFileParser
-from main.importer.experiment_def.parsers import JsonInputParser
+from main.importer.experiment_desc.parsers import ExperimentDefFileParser
+from main.importer.experiment_desc.parsers import JsonInputParser
 from main.models import (
     CarbonSource, MetadataType, Protocol, Strain, Study, User)
 
@@ -18,7 +18,7 @@ _SEPARATOR = '******************************************'
 main_dir = os.path.dirname(__file__),
 fixtures_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 fixtures_dir = os.path.join(fixtures_dir, 'fixtures')
-simple_experiment_def_xlsx = os.path.join(fixtures_dir, 'simple_experiment_definition.xlsx')
+simple_experiment_def_xlsx = os.path.join(fixtures_dir, 'simple_experiment_description.xlsx')
 
 
 class CombinatorialCreationTests(TestCase):
@@ -56,7 +56,7 @@ class CombinatorialCreationTests(TestCase):
         in the combinatorial GUI mockup attached to EDD-257. Note that this test doesn't actually
         verify the line/assay metadata since that requires a lot more code
 
-        Testing the full code path for EDD's experiment definition file support requires having a
+        Testing the full code path for EDD's experiment description file support requires having a
         corresponding ICE deployment to use as part of the test, so it's not addressed here.
         """
 
@@ -497,9 +497,8 @@ class CombinatorialCreationTests(TestCase):
         single line with some metadata using a known strain).  Test inputs in this example
         roughly correspond to the sample experement definition file attached to EDD-380)
 
-        Testing the full code path for EDD's
-        experiment definition file support requires having a corresponding ICE deployment to use as
-        part of the test, so it's not addressed here.
+        Testing the full code path for EDD's experiment description file support requires having
+        a corresponding ICE deployment to use as part of the test, so it's not addressed here.
         """
 
         print()

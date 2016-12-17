@@ -11,12 +11,12 @@ from jbei.rest.auth import HmacAuth
 from jbei.rest.clients import IceApi
 from jbei.rest.clients.ice.api import Strain as IceStrain
 from jbei.rest.clients.ice.utils import make_entry_url
-from main.importer.experiment_def.utilities import find_existing_strains, \
+from main.importer.experiment_desc.utilities import find_existing_strains, \
     CombinatorialCreationPerformance
 from .parsers import JsonInputParser
 from openpyxl import load_workbook
 
-from main.importer.experiment_def.parsers import ExperimentDefFileParser
+from main.importer.experiment_desc.parsers import ExperimentDefFileParser
 from main.models import Protocol, MetadataType, Strain, Assay, Line
 
 logger = logging.getLogger(__name__)
@@ -130,7 +130,7 @@ class CombinatorialCreationImporter(object):
         self.performance.end_input_parse()
 
         if not line_def_inputs:
-            self.errors['no_inputs'] = 'No line definition inputs were read'
+            self.errors['no_inputs'] = 'No line description inputs were read'
 
         # if there were any file parse errors, return helpful output before attempting any
         # database insertions. Note: returning normally causes the transaction to commit, but that's
@@ -262,7 +262,7 @@ class CombinatorialCreationImporter(object):
         performance.overall_end()
 
         if errors:
-            raise RuntimeError('Errors occurred during study definition')
+            raise RuntimeError('Errors occurred during experiment description upload')
 
         logger.info('Created %(line_count)d lines and %(assay_count)d assays in %(seconds)0.2f '
                     'seconds' % {
@@ -310,8 +310,8 @@ class CombinatorialCreationImporter(object):
 
         # Note that we're creating two similar dicts here for different purposes:
         # protocol_to_unique_input_assay_names detects assay name uniqueness across all
-        # CombinatorialInputDefinitions for a single protocol.  All_planned_names is the union of
-        # all the planned names for each CombinatorialInputDefinition (regardless of uniqueness).
+        # CombinatorialInputDescriptions for a single protocol.  All_planned_names is the union of
+        # all the planned names for each CombinatorialDescriptionInput (regardless of uniqueness).
         for input_set in combinatorial_inputs:
             names = input_set.compute_line_and_assay_names(study, protocols, line_metadata_types,
                                                            assay_metadata_types, strains_by_pk)

@@ -316,7 +316,7 @@ class AutomatedNamingStrategy(NamingStrategy):
                                    '%sh' % str(assay_time)))
 
 
-class CombinatorialDefinitionInput(object):
+class CombinatorialDescriptionInput(object):
     """
     Defines the set of inputs required to combinatorially create Lines and Assays for a Study.
     """
@@ -455,7 +455,7 @@ class CombinatorialDefinitionInput(object):
 
     def get_unique_strain_ids(self, unique_strain_ids=None):
         """
-        Gets a list of unique strain identifiers for this CombinatorialDefinitionInput. Note that
+        Gets a list of unique strain identifiers for this CombinatorialDescriptionInput. Note that
         the type of identifier in use depends on client code.
         :return: a list of unique strain identifiers
         """
@@ -591,8 +591,8 @@ class CombinatorialDefinitionInput(object):
     def compute_line_and_assay_names(self, study, protocols=None, line_metadata_types=None,
                                      assay_metadata_types=None, strains_by_pk=None):
         """
-        Computes all line and assay names that would be created by this CombinatorialDefinitionInput
-        without acutally making any database modifications.
+        Computes all line and assay names that would be created by this
+        CombinatorialDescriptionInput without acutally making any database modifications.
         :param study: the study
         :param protocols: a dictionary mapping protocol pks -> Protocol instances
         :param line_metadata_types: a dictionary mapping pk -> MetadataType for Line metadata

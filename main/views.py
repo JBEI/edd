@@ -25,7 +25,7 @@ from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
 
-from main.importer.experiment_def.importer import define_study, _build_errors_dict
+from main.importer.experiment_desc.importer import define_study, _build_errors_dict
 from . import autocomplete, redis
 from rest_framework.exceptions import MethodNotAllowed
 
