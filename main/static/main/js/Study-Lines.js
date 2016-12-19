@@ -67,11 +67,6 @@ var StudyLines;
                 _this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
                 _this.linesDataGrid = new LineResults(_this.linesDataGridSpec);
-                if (_.keys(EDDData.Lines).length > 10) {
-                    //start with the actions bar appending to bottom bar so that user always sees line actions bar.
-                    $('#actionsBar').appendTo('#bottomBar');
-                    _this.actionPanelIsInBottomBar = true;
-                }
                 // Show possible next steps div if needed
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('.noLines').css('display', 'block');
@@ -142,8 +137,8 @@ var StudyLines;
         });
         $('#worklistButton').click(function () {
             $('select[name="export"]').val('worklist');
-            var test = $('button[value="line_action"]')[1];
-            $(test).click();
+            var lineActionButton = $('button[value="line_action"]')[1];
+            $(lineActionButton).click();
         });
         $('#editLineModal').on('change', '.line-meta > :input', function (ev) {
             // watch for changes to metadata values, and serialize to the meta_store field
@@ -317,14 +312,6 @@ var StudyLines;
         }
     }
     StudyLines.positionActionsBar = positionActionsBar;
-    function clearAssayForm() {
-        var form = $('#id_assay-assay_id').closest('.disclose');
-        form.find('[name^=assay-]').not(':checkbox, :radio').val('');
-        form.find('[name^=assay-]').filter(':checkbox, :radio').prop('selected', false);
-        form.find('.cancel-link').remove();
-        form.find('.errorlist').remove();
-        return form;
-    }
     function clearLineForm() {
         var form = $('#editLineModal');
         form.find('.line-meta').remove();
@@ -335,15 +322,6 @@ var StudyLines;
         form.find('.bulk').addClass('off');
         form.off('change.bulk');
         return form;
-    }
-    function fillAssayForm(form, record) {
-        var user = EDDData.Users[record.experimenter];
-        form.find('[name=assay-assay_id]').val(record.id);
-        form.find('[name=assay-name]').val(record.name);
-        form.find('[name=assay-description]').val(record.description);
-        form.find('[name=assay-protocol]').val(record.pid);
-        form.find('[name=assay-experimenter_0]').val(user && user.uid ? user.uid : '--');
-        form.find('[name=assay-experimenter_1]').val(record.experimenter);
     }
     function fillLineForm(record) {
         var metaRow, experimenter, contact;
@@ -375,25 +353,6 @@ var StudyLines;
         // store original metadata in initial- field
         form.find('[name=line-meta_store]').val(JSON.stringify(record.meta));
         form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
-    }
-    function scrollToForm(form) {
-        // make sure form is disclosed
-        var top = form.toggleClass('discloseHide', false).offset().top;
-        $('html, body').animate({ 'scrollTop': top }, 'slow');
-    }
-    function updateUIAssayForm(form) {
-        var title, button;
-        // Update the disclose title to read Edit
-        title = form.find('.discloseLink > a').text('Edit Assay');
-        // Update the button to read Edit
-        button = form.find('[name=action][value=assay]').text('Edit Assay');
-        // Add link to revert back to 'Add Line' form
-        $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', function (ev) {
-            clearAssayForm();
-            title.text('Add Assays To Selected Lines');
-            button.text('Add Assay');
-            return false;
-        }).insertAfter(button);
     }
     function insertLineMetadataRow(refRow, key, value) {
         var row, type, label, input, id = 'line-meta-' + key;
@@ -440,7 +399,6 @@ var StudyLines;
         }
         form.find('[name=line-ids]').val(ids.join(','));
         form.removeClass('off').dialog("open");
-        scrollToForm(form);
     }
     StudyLines.editLines = editLines;
     function onChangedMetabolicMap() {

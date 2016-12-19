@@ -1119,13 +1119,6 @@ module StudyD {
             'success': (data) => {
                 EDDData = $.extend(EDDData || {}, data);
                 this.progressiveFilteringWidget.prepareFilteringSection();
-                // Find out which protocols have assays with measurements - disabled or no
-                var protocolsWithMeasurements:any = {};
-                $.each(EDDData.Assays, (assayId, assay) => {
-                    var line = EDDData.Lines[assay.lid];
-                    if (!line || !line.active) return;
-                    protocolsWithMeasurements[assay.pid] = true;
-                });
 
                 if (_.keys(EDDData.Assays).length === 0) {
                     //stop spinner
@@ -1653,7 +1646,7 @@ module StudyD {
     }
 
     function clearAssayForm():JQuery {
-        var form:JQuery = $('#id_assay-assay_id').closest('.disclose');
+        var form:JQuery = $('#assayMain');
         form.find('[name^=assay-]').not(':checkbox, :radio').val('');
         form.find('[name^=assay-]').filter(':checkbox, :radio').prop('selected', false);
         form.find('.cancel-link').remove();
@@ -1671,29 +1664,6 @@ module StudyD {
         form.find('[name=assay-experimenter_0]').val(user && user.uid ? user.uid : '--');
         form.find('[name=assay-experimenter_1]').val(record.experimenter);
     }
-
-
-    function scrollToForm(form) {
-        // make sure form is disclosed
-        var top = form.toggleClass('discloseHide', false).offset().top;
-        $('html, body').animate({ 'scrollTop': top }, 'slow');
-    }
-
-    function updateUIAssayForm(form) {
-        var title, button;
-        // Update the disclose title to read Edit
-        title = form.find('.discloseLink > a').text('Edit Assay');
-        // Update the button to read Edit
-        button = form.find('[name=action][value=assay]').text('Edit Assay');
-        // Add link to revert back to 'Add Line' form
-        $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', (ev) => {
-            clearAssayForm();
-            title.text('Add Assays To Selected Lines');
-            button.text('Add Assay');
-            return false;
-        }).insertAfter(button);
-    }
-
 
     function insertLineMetadataRow(refRow, key, value) {
         var row, type, label, input, id = 'line-meta-' + key;
@@ -1718,10 +1688,10 @@ module StudyD {
             console.log('Invalid Assay record for editing: ' + index);
             return;
         }
-        form = clearAssayForm(); // "form" is actually the disclose block
+        form = $('#assayMain');
+        clearAssayForm();
         fillAssayForm(form, record);
-        updateUIAssayForm(form);
-        scrollToForm(form);
+        form.removeClass('off').dialog( "open" );
     }
 };
 
@@ -2010,6 +1980,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
             '<a class="assay-reload-link">Reload Data</a>',
             '<a href="/export?assayId=' + index + '">Export Data as CSV/etc</a>'
         ];
+
+        // Set up jQuery modals
+        $("#assayMain").dialog({ autoOpen: false });
+
         // TODO we probably don't want to special-case like this by name
         if (EDDData.Protocols[record.pid].name == "Transcriptomics") {
             sideMenuItems.push('<a href="import/rnaseq/edgepro?assay='+index+'">Import RNA-seq data from EDGE-pro</a>');

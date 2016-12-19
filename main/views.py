@@ -180,6 +180,27 @@ class StudyDetailBaseView(generic.DetailView):
             self._detail_object = obj
         return obj
 
+    def handle_clone(self, request, context, *args, **kwargs):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        cloned = 0
+        for line_id in ids:
+            line = self._get_line(line_id)
+            if line:
+                # easy way to clone is just pretend to fill out add line form
+                initial = LineForm.initial_from_model(line)
+                # update name to indicate which is the clone
+                initial['name'] = initial['name'] + ' clone'
+                clone = LineForm(initial, study=study)
+                if clone.is_valid():
+                    clone.save()
+                    cloned += 1
+        messages.success(request, 'Cloned %(cloned)s of %(total)s Lines' % {
+            'cloned': cloned,
+            'total': len(ids),
+            })
+        return True
+
     def get_queryset(self):
         qs = super(StudyDetailBaseView, self).get_queryset()
         if self.request.user.is_superuser:
@@ -339,27 +360,6 @@ class StudyLinesView(StudyDetailBaseView):
             form.save()
             return True
         return False
-
-    def handle_clone(self, request, context, *args, **kwargs):
-        ids = request.POST.getlist('lineId', [])
-        study = self.get_object()
-        cloned = 0
-        for line_id in ids:
-            line = self._get_line(line_id)
-            if line:
-                # easy way to clone is just pretend to fill out add line form
-                initial = LineForm.initial_from_model(line)
-                # update name to indicate which is the clone
-                initial['name'] = initial['name'] + ' clone'
-                clone = LineForm(initial, study=study)
-                if clone.is_valid():
-                    clone.save()
-                    cloned += 1
-        messages.success(request, 'Cloned %(cloned)s of %(total)s Lines' % {
-            'cloned': cloned,
-            'total': len(ids),
-            })
-        return True
 
     def handle_enable(self, request, context, *args, **kwargs):
         return self.handle_enable_disable(request, 'enable')
