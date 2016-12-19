@@ -53,11 +53,6 @@ var StudyLines;
         $(window).on('resize', StudyLines.queuePositionActionsBar);
         $('#worklistButton').attr('title', 'select line(s) first');
         $('#exportButton').attr('title', 'select line(s) first');
-        $('#show').click(function (event) {
-            event.preventDefault();
-            $(this).val() == "show" ? show_int() : show_hide();
-            return false;
-        });
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
@@ -72,8 +67,11 @@ var StudyLines;
                 _this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
                 _this.linesDataGrid = new LineResults(_this.linesDataGridSpec);
-                //stop spinner
-                // $('#loadingDiv').hide();
+                if (_.keys(EDDData.Lines).length > 10) {
+                    //start with the actions bar appending to bottom bar so that user always sees line actions bar.
+                    $('#actionsBar').appendTo('#bottomBar');
+                    _this.actionPanelIsInBottomBar = true;
+                }
                 // Show possible next steps div if needed
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('.noLines').css('display', 'block');

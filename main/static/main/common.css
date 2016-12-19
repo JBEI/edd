@@ -1852,6 +1852,7 @@ div.tooltip2 {
     background-color: #FFFFFF;
     color: #888888;
     border-color: #888888;
+    cursor: not-allowed;
 }
 
 .assayTable {

@@ -75,11 +75,6 @@ module StudyLines {
         $('#worklistButton').attr('title', 'select line(s) first');
         $('#exportButton').attr('title', 'select line(s) first');
 
-        $('#show').click(function (event) {
-            event.preventDefault();
-            $(this).val() == "show" ? show_int() : show_hide();
-            return false
-        });
 
         $.ajax({
             'url': 'edddata/',
@@ -96,9 +91,11 @@ module StudyLines {
                 // Instantiate the table itself with the spec
                 this.linesDataGrid = new LineResults(this.linesDataGridSpec);
 
-                //stop spinner
-                // $('#loadingDiv').hide();
-
+                if (_.keys(EDDData.Lines).length > 10) {
+                    //if there are more than 10 lines, make sure action button is visible to user
+                    $('#actionsBar').appendTo('#bottomBar');
+                    this.actionPanelIsInBottomBar = true;
+                }
                 // Show possible next steps div if needed
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('.noLines').css('display', 'block');
