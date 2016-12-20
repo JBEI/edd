@@ -827,6 +827,7 @@ module EDDTableImport {
         // fileRead() above, is passed a processed result from the server as a second argument,
         // rather than the raw contents of the file.
         fileReturnedFromServer(fileContainer, result): void {
+
             var mode = this.selectMajorKindStep.interpretationMode;
             // Whether we clear the file info area entirely, or just update its status,
             // we know we no longer need the 'sending' status.
