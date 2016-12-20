@@ -185,7 +185,7 @@
         <div class="active absoverlay">Data Overview</div>
         <div class="active">Data Overview</div>
     </div>
-    <div class="pageSection pageSectionTabContent" id="overviewSection">
+    <div class="pageSection pageSectionTabContent overview" id="overviewSection">
         <div class="sectionContent">
             <div class="btn-toolbar">
                 <div class="btn-group" data-toggle="buttons" id="chartType">
@@ -229,6 +229,9 @@
                 <label><input type="checkbox" value="" />hide y-axis</label>
             </div>
         </div>
+        <div class="blankSvg">
+            <img id="loadingDiv" src="{% static 'main/images/spinner-big.gif' %}" class="spinner"/>
+        </div>
         <div id="maingraph" class="graphContainer"></div>
 
         <div class="sectionChapter disclose discloseHide">
@@ -244,7 +247,7 @@
     {% if writable %}
     <div class="btn-toolbar bare-header">
         <div class="btn-group">
-            <a class="btn btn-sm btn-info" href="/study/{{ study.id }}/import">Import Files</a>
+            <a class="btn btn-sm btn-info" href="/study/{{ study.id }}/import/">Import Files</a>
         </div>
     </div>
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">

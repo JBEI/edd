@@ -6,7 +6,7 @@
 /// <reference path="DataGrid.ts" />
 /// <reference path="StudyGraphing.ts" />
 /// <reference path="GraphHelperMethods.ts" />
-/// <reference path="../typings/d3/d3.d.ts"/>;
+/// <reference path="../typings/d3/d3.d.ts"/>
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1021,6 +1021,7 @@ var StudyD;
             'url': 'edddata/',
             'type': 'GET',
             'error': function (xhr, status, e) {
+                $('#overviewSection').prepend("<div class='noData'>Error. Please reload</div>");
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
             'success': function (data) {
@@ -1039,6 +1040,16 @@ var StudyD;
                         return;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
+                //stop spinner
+                //show message if there are now lines in this study
+                if (_.keys(EDDData.Lines).length === 0) {
+                    $('#chartType').hide();
+                    $('#loadingDiv').hide();
+                    $('#overviewSection').prepend("<div class='noData'>There are no lines in this study.</div>");
+                }
+                else {
+                    $('#chartType').show();
+                }
                 // For each protocol with measurements, create a DataGridAssays object.
                 $.each(EDDData.Protocols, function (id, protocol) {
                     var spec;
@@ -1361,6 +1372,9 @@ var StudyD;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
+        //stop spinner
+        $('#loadingDiv').hide();
+        $('.blankSvg').hide();
         //remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);
