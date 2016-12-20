@@ -22,14 +22,16 @@ class NamingStrategy(object):
         self.combinatorial_input = None
         self.fractional_time_digits = 0
 
-    def get_line_name(self, strains, line_metadata, replicate_num, line_metadata_types, is_control):
+    def get_line_name(self, strains, line_metadata, replicate_num, line_metadata_types,
+                      combinatorial_metadata_types, is_control):
         """
         :raises ValueError if some required input isn't available for creating the name (
         either via this method or from other properties)
         """
         raise NotImplementedError()  # require subclasses to implement
 
-    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types):
+    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types,
+                       combinatorial_metadata_types):
         """
         :raises ValueError if some required input isn't available for creating the name (
         either via this method or from other properties)
@@ -51,7 +53,7 @@ class NewLineAndAssayVisitor(object):
                    replicate_num):
         raise NotImplementedError()  # require subclasses to implement
 
-    def visit_assay(self, protocol_pk, line_pk, assay_name, assay_metadata_dict):
+    def visit_assay(self, protocol_pk, line, assay_name, assay_metadata_dict):
         raise NotImplementedError()  # require subclasses to implement
 
     def get_assays_list(self, line_name, protocol_pk):
@@ -77,8 +79,8 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
     def visit_line(self, line_name, description, is_control, strain_ids, line_metadata_dict,
                    replicate_num):
 
-        hstore_compliant_dict = {str(pk): str(value) for pk, value in \
-                                line_metadata_dict.items() if value}
+        hstore_compliant_dict = {str(pk): str(value) for pk, value in
+                                 line_metadata_dict.items() if value}
         if isinstance(strain_ids, collections.Sequence) and not isinstance(strain_ids, str):
             strains = [self.strains_by_pk[pk] for pk in strain_ids]
         else:
@@ -228,7 +230,7 @@ class AutomatedNamingStrategy(NamingStrategy):
             invalids.append(value)
 
     def get_line_name(self, strain_pks, line_metadata, replicate_num, line_metadata_types,
-                      is_control):
+                      combinatorial_metadata_types, is_control):
         line_name = None
 
         # TODO: remove debug stmt
@@ -308,7 +310,8 @@ class AutomatedNamingStrategy(NamingStrategy):
             return str(abbreviation)
         return str(raw_value)
 
-    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types):
+    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types,
+                       combinatorial_metadata_types):
 
         logger.info('Assay metadata: %s' % assay_metadata)
 
@@ -728,6 +731,7 @@ class CombinatorialDescriptionInput(object):
                 line_name = self.naming_strategy.get_line_name(strain_ids, line_metadata_dict,
                                                                replicate_num,
                                                                self._line_metadata_types,
+                                                               self.combinatorial_line_metadata,
                                                                is_control)
 
                 line = visitor.visit_line(line_name, self.description, is_control, strain_ids,
@@ -779,7 +783,7 @@ class CombinatorialDescriptionInput(object):
                                 logger.info('\t\tNo other combinations to make...visiting assays')
                                 assay_name = self.naming_strategy.get_assay_name(
                                         line, protocol_pk, assay_metadata,
-                                        self._assay_metadata_types)
+                                        self._assay_metadata_types, combinatorial_meta_dict)
                                 visitor.visit_assay(protocol_pk, line, assay_name, assay_metadata)
 
                     # if only common assay metadata were provided, create the assays for this

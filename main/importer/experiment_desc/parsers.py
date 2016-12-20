@@ -186,7 +186,7 @@ class ColumnLayout:
         """
 
         def __init__(self, assay_time_metadata_type_pk):
-            super(_ExperimentDefNamingStrategy, self).__init__()
+            super(_ExperimentDescNamingStrategy, self).__init__()
             self.base_line_name = None
             self.assay_time_metadata_type_pk = assay_time_metadata_type_pk
 
@@ -226,7 +226,7 @@ class ColumnLayout:
         """
 
         def __init__(self, assay_time_meta_pk):
-            super(_InputFileRow, self).__init__(_ExperimentDefNamingStrategy(assay_time_meta_pk))
+            super(_InputFileRow, self).__init__(_ExperimentDescNamingStrategy(assay_time_meta_pk))
 
         @property
         def base_line_name(self):
@@ -836,7 +836,7 @@ class ColumnLayout:
             inner_list.append(append_value)
 
 
-class _ExperimentDefNamingStrategy(NamingStrategy):
+class _ExperimentDescNamingStrategy(NamingStrategy):
     """
     A simple line/assay naming strategy assumed in the experiment description file use case,
     where line names are user-specified and assay names are created automatically by appending
@@ -846,16 +846,28 @@ class _ExperimentDefNamingStrategy(NamingStrategy):
     """
 
     def __init__(self, assay_time_metadata_type_pk):
-        super(_ExperimentDefNamingStrategy, self).__init__()
+        super(_ExperimentDescNamingStrategy, self).__init__()
         self.base_line_name = None
         self.assay_time_metadata_type_pk = assay_time_metadata_type_pk
 
-    def get_line_name(self, strains, line_metadata, replicate_num, line_metadata_types, is_control):
-        replicate_suffix = (('-R%d' % replicate_num)
-                            if self.combinatorial_input.replicate_count > 1
+    def get_line_name(self, strains, line_metadata, replicate_num, line_metadata_types,
+                      combinatorial_metadata_types, is_control):
+
+        # if making lines combinatorially based on line metadata, insert the combinatorial values
+        # into the line name so that line names will be unique
+        combinatorial_suffix = '-'.join([line_metadata[meta_pk].replace(' ', '_') for meta_pk
+                                        in combinatorial_metadata_types.keys()])
+        combinatorial_suffix = '-%s' % combinatorial_suffix if combinatorial_suffix else ''
+
+        # if creating more than one replicate, build a suffix to show replicate number so that
+        # line names are unique
+        replicate_suffix = (('-R%d' % replicate_num) if self.combinatorial_input.replicate_count > 1
                             else '')
-        return '%(base_line_name)s%(replicate_suffix)s' % {
-            'base_line_name': self.base_line_name, 'replicate_suffix': replicate_suffix,
+
+        return '%(base_line_name)s%(combinatorial_suffix)s%(replicate_suffix)s' % {
+            'base_line_name': self.base_line_name,
+            'combinatorial_suffix': combinatorial_suffix,
+            'replicate_suffix': replicate_suffix,
         }
 
     def _get_time_format_string(self):
@@ -863,7 +875,8 @@ class _ExperimentDefNamingStrategy(NamingStrategy):
             return '%0.' + ('%d' % self.fractional_time_digits + 'f')
         return '%d'
 
-    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types):
+    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types,
+                       combinatorial_metadata_types):
         try:
             time_hours = assay_metadata.get(self.assay_time_metadata_type_pk)
             time_str = self._get_time_format_string() % time_hours
@@ -884,7 +897,7 @@ class _InputFileRow(CombinatorialDescriptionInput):
     """
 
     def __init__(self, assay_time_meta_pk):
-        super(_InputFileRow, self).__init__(_ExperimentDefNamingStrategy(assay_time_meta_pk))
+        super(_InputFileRow, self).__init__(_ExperimentDescNamingStrategy(assay_time_meta_pk))
 
     @property
     def base_line_name(self):
@@ -1555,7 +1568,7 @@ class JsonInputParser(CombinatorialInputParser):
             else:
                 base_name = value.pop('base_name')
                 naming_strategy = template_naming_strategy = (
-                    _ExperimentDefNamingStrategy(self.assay_time_metadata_type_pk))
+                    _ExperimentDescNamingStrategy(self.assay_time_metadata_type_pk))
                 naming_strategy.base_line_name = base_name
 
             try:
