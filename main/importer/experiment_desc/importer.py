@@ -153,7 +153,7 @@ class CombinatorialCreationImporter(object):
                                       allow_duplicate_names=allow_duplicate_names, dry_run=dry_run)
 
     def _define_study(self, combinatorial_inputs, allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
-                      dry_run=F_DRY_RUN_DEFAULT):
+                      dry_run=_DRY_RUN_DEFAULT):
         """
         Queries EDD and ICE to verify that the required ICE strains have an entry in EDD's database.
         If not, creates them.  Once strains are created, combinatorially creates lines and assays
