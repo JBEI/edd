@@ -67,25 +67,21 @@ module StudyOverview {
     // fileRead(), is passed a processed result from the server as a second argument,
     // rather than the raw contents of the file.
     export function fileReturnedFromServer(fileContainer, result): void {
-        // Whether we clear the file info area entirely, or just update its status,
-        // we know we no longer need the 'sending' status.
+        //is this needed?
         $('#fileDropInfoSending').addClass('off');
 
         if (fileContainer.fileType == "xlsx") {
             this.clearDropZone();
-            // TODO: More front-end processing:
-            //var ws = result.file_data["worksheets"][0];
-            //var table = ws[0];
-            //var csv = [];
-            //if (table.headers) {
-            //    csv.push(table.headers.join());
-            //}
-            //csv = csv.concat(table.values.map((row: string[]) => row.join()));
-            //this.separatorType('csv');
-            //this.rawText(csv.join('\n'));
-            //this.reprocessRawData();
-            //return;
         }
+        var currentPath = window.location.pathname;
+        var linesPathName = currentPath.slice(0, -8) + 'lines';
+        //display success message
+        $('#general').append('<div id="successLines" style="color:red; margin-bottom: 17px;">Successfully added ' + result['lines_created'] + ' lines! ' +
+            'Redirecting you to <a style="vertical-align:top" href="/study/{{ study.slug }}/lines">Lines page</a></div>');
+        //redirect to lines page
+        setTimeout(function () {
+            window.location.pathname = linesPathName;
+        }, 3000);
     }
 
 
