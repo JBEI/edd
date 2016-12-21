@@ -53,7 +53,7 @@ PUBLISH_REST_API = False
 ##############################
 ICE_KEY_ID = 'edd'
 ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
-ICE_URL = 'https://registry.jbei.org/'
+ICE_URL = 'https://registry-test.jbei.org/'
 ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
 
 # ICE part number pattern used to verify user input formatting where part numbers are absolutely

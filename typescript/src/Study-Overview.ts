@@ -71,16 +71,21 @@ module StudyOverview {
         // we know we no longer need the 'sending' status.
         $('#fileDropInfoSending').addClass('off');
 
-        var currentPath = window.location.pathname;
-        var linesPathName = currentPath.slice(0, -8) + 'lines';
-        //display success message
-        $('#general').append('<div id="successLines" style="color:red; margin-bottom: 17px;">Successfully added ' + result['lines_created'] + ' lines! ' +
-            'Redirecting you to <a style="vertical-align: top" href="/study/{{ study.slug }}/lines">Lines page</a></div>');
-
-        //redirect to lines page
-        setTimeout(function() {
-            window.location.pathname = linesPathName;
-        }, 3000);
+        if (fileContainer.fileType == "xlsx") {
+            this.clearDropZone();
+            // TODO: More front-end processing:
+            //var ws = result.file_data["worksheets"][0];
+            //var table = ws[0];
+            //var csv = [];
+            //if (table.headers) {
+            //    csv.push(table.headers.join());
+            //}
+            //csv = csv.concat(table.values.map((row: string[]) => row.join()));
+            //this.separatorType('csv');
+            //this.rawText(csv.join('\n'));
+            //this.reprocessRawData();
+            //return;
+        }
     }
 
 

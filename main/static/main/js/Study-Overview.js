@@ -51,15 +51,9 @@ var StudyOverview;
         // Whether we clear the file info area entirely, or just update its status,
         // we know we no longer need the 'sending' status.
         $('#fileDropInfoSending').addClass('off');
-        var currentPath = window.location.pathname;
-        var linesPathName = currentPath.slice(0, -8) + 'lines';
-        //display success message
-        $('#general').append('<div id="successLines" style="color:red; margin-bottom: 17px;">Successfully added ' + result['lines_created'] + ' lines! ' +
-            'Redirecting you to <a style="vertical-align: top" href="/study/{{ study.slug }}/lines">Lines page</a></div>');
-        //redirect to lines page
-        setTimeout(function () {
-            window.location.pathname = linesPathName;
-        }, 3000);
+        if (fileContainer.fileType == "xlsx") {
+            this.clearDropZone();
+        }
     }
     StudyOverview.fileReturnedFromServer = fileReturnedFromServer;
     // Here, we take a look at the type of the dropped file and decide whether to
