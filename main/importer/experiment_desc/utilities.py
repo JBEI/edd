@@ -46,7 +46,8 @@ class NewLineAndAssayVisitor(object):
 
     def __init__(self, study_pk, replicate_count):
         self.study_pk = study_pk
-        self.line_to_protocols_to_assays_list = {}  # maps line name -> protocol_pk -> [ Assay ]
+        # maps line name -> protocol_pk -> [ Assay ]
+        self.line_to_protocols_to_assays_list = defaultdict(lambda: defaultdict(list))
         self.replicate_count = replicate_count
 
     def visit_line(self, line_name, description, is_control, strain_ids, line_metadata_dict,
@@ -99,13 +100,8 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         return line
 
     def visit_assay(self, protocol_pk, line, assay_name, assay_metadata_dict):
-        protocol_to_assays_list = self.line_to_protocols_to_assays_list.get(line.name, {})
-        if not protocol_to_assays_list:
-            self.line_to_protocols_to_assays_list[line.name] = protocol_to_assays_list
-
-        assays_list = protocol_to_assays_list.get(protocol_pk, [])
-        if not assays_list:
-            protocol_to_assays_list[protocol_pk] = assays_list
+        protocol_to_assays_list = self.line_to_protocols_to_assays_list[line.name]
+        assays_list = protocol_to_assays_list[protocol_pk]
 
         # make sure everything gets cast to str to comply with Postgres' hstore field
         hstore_compliant_dict = {str(pk): str(value) for pk, value in assay_metadata_dict.items()
@@ -124,14 +120,18 @@ class LineAndAssayNamingVisitor(NewLineAndAssayVisitor):
     """
     def __init__(self, study_pk, replicate_count):
         super(LineAndAssayNamingVisitor, self).__init__(study_pk, replicate_count)
+        # same names as in self.line_to_protocols_to_assays_list, but having this allows us to
+        # detect duplicates
         self.line_names = []
         self._first_replicate = None
 
     def visit_line(self, line_name, description, is_control, strain_ids, line_metadata_dict,
                    replicate_num):
 
-        # cache the line name
         self.line_names.append(line_name)
+
+        # cache the line name (it's a defaultdict, so this line has an effect)
+        self.line_to_protocols_to_assays_list[line_name]
 
         # construct, but don't save, a Line instance as a simple way to pass around all the
         # resultant metadata (e.g. in case it's used later in assay naming). These few lines
@@ -151,13 +151,8 @@ class LineAndAssayNamingVisitor(NewLineAndAssayVisitor):
         # note that since Lines aren't actually created, we have to use their names as a unique
         # identifier (a good assumption since we generally want / have coded the context here to
         # prevent duplicate line / assay naming via combinatorial creation tools.
-        protocol_to_assay_names = self.line_to_protocols_to_assays_list.get(line.name, {})
-        if not protocol_to_assay_names:
-            self.line_to_protocols_to_assays_list[line.name] = protocol_to_assay_names
-
-        assay_names = protocol_to_assay_names.get(protocol_pk, [])
-        if not assay_names:
-            protocol_to_assay_names[protocol_pk] = assay_names
+        protocol_to_assay_names = self.line_to_protocols_to_assays_list[line.name]
+        assay_names = protocol_to_assay_names[protocol_pk]
         assay_names.append(assay_name)
 
 

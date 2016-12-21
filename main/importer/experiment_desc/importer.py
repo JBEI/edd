@@ -1,11 +1,15 @@
 from __future__ import unicode_literals
 
+import json
 import logging
 from collections import OrderedDict
+from collections import defaultdict
 
 from django.conf import settings
 from django.db import transaction
 from io import BytesIO
+
+from requests import HTTPError
 
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients import IceApi
@@ -24,11 +28,16 @@ logger = logging.getLogger(__name__)
 ERRORS_KEY = 'errors'
 WARNINGS_KEY = 'warnings'
 NON_STRAIN_ICE_ENTRY = 'non_strain_ice_entries'
+ICE_COMMUNICATION_ERROR = 'ice_communication_error'
+
+_ALLOW_DUPLICATE_NAMES_DEFAULT = False
+_DRY_RUN_DEFAULT = False
 
 # for safety / for now get repeatable reads within this method, even though writes start much later.
 # possibility of long-running transactions as a result, but should be infrequent
 @transaction.atomic(savepoint=False)
-def define_study(input, user, study, is_json, errors, warnings, dry_run=False):
+def define_study(input, user, study, is_json, errors, warnings,
+                 allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT, dry_run=_DRY_RUN_DEFAULT):
     # TODO: relocate to a Celery task and add related user notifications/context-appropriate
     # error handling following initial testing/deployment.
     # This function's parameters are structured in a similar form to the Celery task, though
@@ -52,7 +61,7 @@ def define_study(input, user, study, is_json, errors, warnings, dry_run=False):
     raises an Exception otherwise
     """
     importer = CombinatorialCreationImporter(study, user, errors, warnings)
-    return importer.do_import(input, is_json, dry_run)
+    return importer.do_import(input, is_json, allow_duplicate_names, dry_run)
 
 
 def _build_errors_dict(errors, warnings, val=None):
@@ -90,13 +99,14 @@ class CombinatorialCreationImporter(object):
         # constraints)
         line_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.LINE)  # TODO: I18N
         self.line_metadata_types_by_pk = {meta_type.pk: meta_type for meta_type in line_metadata_qs}
-        assay_metadata_qs = MetadataType.objects.filter(
-            for_context=MetadataType.ASSAY)  # TODO: I18N
+        assay_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.ASSAY)  # TODO: I18N
+
         self.assay_metadata_types_by_pk = {meta_type.pk: meta_type for meta_type in
-                                          assay_metadata_qs}
+                                           assay_metadata_qs}
         self.performance.end_context_queries()
 
-    def do_import(self, input_data, is_json, dry_run=False):
+    def do_import(self, input_data, is_json, allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
+                  dry_run=_DRY_RUN_DEFAULT):
         """
         Performs the import, or raises an Exception if an unrecoverable error occurred
         :return: a json dict with a summary of import results (on success only)
@@ -139,9 +149,11 @@ class CombinatorialCreationImporter(object):
             return _build_errors_dict(self.errors, self.warnings)
 
         with transaction.atomic(savepoint=False):
-            return self._define_study(combinatorial_inputs=line_def_inputs, dry_run=dry_run)
+            return self._define_study(combinatorial_inputs=line_def_inputs,
+                                      allow_duplicate_names=allow_duplicate_names, dry_run=dry_run)
 
-    def _define_study(self, combinatorial_inputs, dry_run=False):
+    def _define_study(self, combinatorial_inputs, allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
+                      dry_run=F_DRY_RUN_DEFAULT):
         """
         Queries EDD and ICE to verify that the required ICE strains have an entry in EDD's database.
         If not, creates them.  Once strains are created, combinatorially creates lines and assays
@@ -175,6 +187,7 @@ class CombinatorialCreationImporter(object):
         # references to them. Note: ideally we'd do this externally to the @atomic block, but other
         # EDD queries have to precede this one
         unique_part_numbers_dict = OrderedDict()
+
         for combo in combinatorial_inputs:
             for part_number in combo.get_unique_strain_ids(unique_part_numbers_dict):
                 unique_part_numbers_dict[part_number] = True
@@ -183,8 +196,7 @@ class CombinatorialCreationImporter(object):
         unique_part_number_count = len(unique_part_numbers_dict)
         ice_entries_dict = unique_part_numbers_dict
 
-        # query ICE for UUID's part numbers found in the input file. EDD doesn't store these (see
-        # EDD-431). TODO: possible future optimization: query ICE in parallel
+        # query ICE for UUID's part numbers found in the input fil
         self.get_ice_entries(ice, ice_entries_dict)
         performance.end_ice_search(unique_part_number_count)
 
@@ -219,12 +231,16 @@ class CombinatorialCreationImporter(object):
             print('###### Strain IDs: #######')
 
         ############################################################################################
-        # Fail if line/assay creation would create duplicate names within the study
+        # Compute line/assay names if needed as output for a dry run, or if needed to proactively
+        # check for duplicates
         ############################################################################################
-        # Note that line names may contain strain information that has to be looked up above before
-        # the name can be determined
-        planned_names = self.prevent_duplicate_naming(combinatorial_inputs, strains_by_pk)
-        performance.end_naming_check()
+        # For maintenance: Note that line names may contain strain information that has to be looked
+        # up above before the name can be determined
+        planned_names = []
+        if dry_run or (not allow_duplicate_names):
+            planned_names = self._compute_and_check_names(combinatorial_inputs, strains_by_pk,
+                                                          allow_duplicate_names)
+            performance.end_naming_check()
 
         # return just the planned line/assay names if we're doing a dry run
         if dry_run:
@@ -276,7 +292,7 @@ class CombinatorialCreationImporter(object):
             'runtime_seconds': performance.total_time_delta.total_seconds()
         }
 
-    def prevent_duplicate_naming(self, combinatorial_inputs, strains_by_pk):
+    def _compute_and_check_names(self, combinatorial_inputs, strains_by_pk, allow_duplicate_names):
         """
         Tests the input for non-unique line/assay naming prior to attempting to insert it into the
         database, then captures errors if any duplicate names would be created during database I/O.
@@ -285,6 +301,7 @@ class CombinatorialCreationImporter(object):
         :return a dict with a hierarchical listing of all planned line/assay names (regardless of
         whether some are duplicates)
         """
+        logger.info('in determine_names()')
 
         # get convenient references to unclutter syntax below
         protocols = self.protocols_by_pk
@@ -294,13 +311,13 @@ class CombinatorialCreationImporter(object):
 
         # Check for uniqueness of planned names so that overlaps can be flagged as an error (e.g. as
         # possible in the combinatorial GUI mockup attached to EDD-257)
-        unique_input_line_names = {}
-        protocol_to_unique_input_assay_names = {}
-        duplicated_new_line_names = []
-        protocol_to_duplicate_new_assay_names = {}
+        unique_input_line_names = set()
+        protocol_to_unique_input_assay_names = defaultdict(dict)
+        duplicated_new_line_names = set()
+        protocol_to_duplicate_new_assay_names = defaultdict(list)
 
-        # line name -> protocol -> [assay name]. for all combinatorial inputs.
-        all_planned_names = {}
+        # line name -> protocol -> [assay name], across all combinatorial inputs.
+        all_planned_names = defaultdict(lambda: defaultdict(list))
 
         # loop over the sets of combinatorial inputs, computing names of new lines/assays to be
         # added to the study, and checking for any potential overlap in the input line/assay names.
@@ -315,55 +332,53 @@ class CombinatorialCreationImporter(object):
         for input_set in combinatorial_inputs:
             names = input_set.compute_line_and_assay_names(study, protocols, line_metadata_types,
                                                            assay_metadata_types, strains_by_pk)
+            for line_name in names.line_names:
+                protocol_to_assay_names = names.line_to_protocols_to_assays_list.get(line_name)
 
-            for line_name, protocol_to_assay_names in \
-                    names.line_to_protocols_to_assays_list.items():
-
-                if unique_input_line_names.get(line_name, False):
-                    duplicated_new_line_names.append(line_name)
+                if line_name in unique_input_line_names:
+                    duplicated_new_line_names.add(line_name)
                 else:
-                    unique_input_line_names[line_name] = True
+                    unique_input_line_names.add(line_name)
 
-                all_protocol_to_assay_names = all_planned_names.get(line_name, {})
-                if not all_protocol_to_assay_names:
-                    all_planned_names[line_name] = all_protocol_to_assay_names
+                # defaultdict, so side effect is assignment
+                all_protocol_to_assay_names = all_planned_names[line_name]
 
                 for protocol_pk, assay_names in protocol_to_assay_names.items():
-                    all_planned_assay_names = all_protocol_to_assay_names.get(protocol_pk, [])
-                    if not all_planned_assay_names:
-                        all_protocol_to_assay_names[protocol_pk] = all_planned_assay_names
+                    all_planned_assay_names = all_protocol_to_assay_names[protocol_pk]
 
                     for assay_name in assay_names:
                         all_planned_assay_names.append(assay_names)
 
-                        unique_assay_names = protocol_to_unique_input_assay_names.get(protocol_pk,
-                                                                                      {})
-                        if not unique_assay_names:
-                            protocol_to_unique_input_assay_names[protocol_pk] = unique_assay_names
+                        unique_assay_names = protocol_to_unique_input_assay_names[protocol_pk]
 
                         if assay_name in unique_assay_names.keys():
-                            duplicate_names = protocol_to_duplicate_new_assay_names.get(protocol_pk,
-                                                                                        [])
-                            if not duplicate_names:
-                                protocol_to_duplicate_new_assay_names[protocol_pk] = duplicate_names
+                            duplicate_names = protocol_to_duplicate_new_assay_names[protocol_pk]
                             duplicate_names.append(assay_name)
                         else:
                             unique_assay_names[assay_name] = True
 
-        # return early if the input isn't self-consistent
+        print('All planned line names: %s' % json.dumps(all_planned_names))  # TODO: remove debug
+        print('Duplicate line names: %s' % str(duplicated_new_line_names))
+
+        # if we're allowing duplicate names, skip further checking / DB queries for duplicates
         errors = self.errors
+        if allow_duplicate_names:
+            return all_planned_names
+
+        # return early if the input isn't self-consistent
         if duplicated_new_line_names:
-            errors['duplicate_input_line_names'] = duplicated_new_line_names
+            # Note: set isn't JSON serializable
+            errors['duplicate_input_line_names'] = list(duplicated_new_line_names)
 
         if protocol_to_duplicate_new_assay_names:
             errors['duplicate_input_assay_names'] = protocol_to_duplicate_new_assay_names
 
         if duplicated_new_line_names or protocol_to_duplicate_new_assay_names:
-            return False
+            return all_planned_names
 
         # query the database in bulk for any existing lines in the study whose names are the same as
         # lines in the input
-        unique_line_names_list = [line_name for line_name in unique_input_line_names.keys()]
+        unique_line_names_list = list(unique_input_line_names)
         existing_lines = Line.objects.filter(study__pk=study.pk, name__in=unique_line_names_list)
 
         if existing_lines:

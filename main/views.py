@@ -1191,6 +1191,7 @@ def study_define(request, pk=None, slug=None):
 
     user = request.user
     dry_run = 'dryRun' in request.META.keys()
+    allow_duplicate_names = 'allowDuplicateNames' in request.META.keys()
 
     is_excel_file = request.META[FILE_TYPE_HEADER] == 'xlsx'
     if is_excel_file:
@@ -1207,7 +1208,7 @@ def study_define(request, pk=None, slug=None):
 
     try:
         json_response_dict = define_study(request, user, study, not is_excel_file, errors,
-                                          warnings, dry_run)
+                                          warnings, allow_duplicate_names, dry_run)
 
         success = dry_run or 'errors' not in json_response_dict.keys()
         status = 200 if success else 400
