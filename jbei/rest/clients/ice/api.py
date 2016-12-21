@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # Set reasonable defaults where possible
 ###################################################################################################
 ICE_REQUEST_TIMEOUT = (10, 10)  # request and read timeout, respectively, in seconds
-ICE_URL = 'https://registry-test.jbei.org'
+ICE_URL = 'https://registry.jbei.org'
 ICE_SECRET_KEY = None
 
 ###################################################################################################
