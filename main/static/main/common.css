@@ -1454,11 +1454,17 @@ div.errorMessage {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
+
+a.close {
+    cursor: pointer;
+}
+
 div.errorMessage > a.close {
     cursor: pointer;
     float: right;
     margin: 0 5px;
 }
+
 .errorlist {
     background-color: #FFF0F0;
     border:  2px solid red !important;
@@ -1929,12 +1935,20 @@ div.tooltip2 {
 .studyNav .navbar .nav > .active > a {
     background:none;
 }
+
 .studyNav .nav>li>a:hover, .nav>li>a:focus {
     text-decoration: none;
     background-color: transparent;
     border-bottom: 2px solid grey;
     border-radius: 0px;
     color: black;
+}
+
+#studyTable .nav>li>a:hover, .nav>li>a:focus {
+    text-decoration: none;
+    background-color: transparent;
+    border-radius: 0px;
+    border-bottom: none;
 }
 
 .studyNav .nav-pills {

@@ -1108,6 +1108,7 @@ module StudyD {
         measurementToAssayModal();
         showStudyGraph();
         showStudyTable();
+        show_assay_measurements();
 
         $.ajax({
             'url': 'edddata/',
@@ -1123,15 +1124,17 @@ module StudyD {
                 if (_.keys(EDDData.Assays).length === 0) {
                     //stop spinner
                     $('#loadingDiv').hide();
-                } else {
-                    $('#chartType').show();
-                }
-
-                //show possible next steps div and hide assay graphs and table if there are no Assays
-                if (_.keys(EDDData.Lines).length === 0) {
                     $('.scroll').css('height', 100)
                 } else {
                     $('.scroll').css('height', 300)
+                    $('#chartType').show();
+                }
+
+                //show empty graph div if there are no
+                if (_.keys(EDDData.Lines).length === 0) {
+
+                } else {
+
                 }
 
                 var spec;
@@ -1234,7 +1237,10 @@ module StudyD {
             StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
             //if any checkboxes have been check in filtering section, showHide rows
             if ($(".filterTable input:checkbox:checked").length > 0) {
+                $('#showNoMeasurements').text("show all");
                 StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs)
+            } else {
+                $('#showNoMeasurements').text("show only with measurements");
             }
         });
         $('#studyTable').click(function (event) {
@@ -1251,16 +1257,43 @@ module StudyD {
          });
     };
 
+    //click handler for show assays with no measurements
+    function show_assay_measurements() {
+        $('#showNoMeasurements').click(function(event) {
+            event.preventDefault();
+            $(this).text() == "show only with measurements" ? show_hide() : show_int();
+            return false
+        })
+    }
 
     function show_int() {
-        $('#show').val("hide");
-        $('#lineDescription').css('display', 'block');
+        $('#showNoMeasurements').text("show only with measurements");
+        //function to show assays with no measurements
+        StudyD.showHideAssayRows(show_assay_no_measurements());
     }
 
 
     function show_hide() {
-        $('#show').val("show");
-        $('#lineDescription').css('display', 'none');
+        $('#showNoMeasurements').text("show all");
+        //function to show assays with measurements
+        StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs)
+
+    }
+
+    function show_assay_no_measurements() {
+        var assays = _.keys(EDDData.Assays);
+
+        var filteredIDs = [];
+        for (var r = 0; r < assays.length; r++) {
+            var id = assays[r];
+            // Here is the condition that determines whether the rows associated with this ID are
+            // shown or hidden.
+            if (EDDData.Assays[id].active) {
+                filteredIDs.push(parseInt(id));
+            }
+
+        }
+        return filteredIDs;
     }
 
 
@@ -1425,6 +1458,19 @@ module StudyD {
         });
     }
 
+    export function showAssaysWithNoMeasurements(allAssays):void {
+
+        var assays = _.keys(EDDData.Assays);
+
+        //show elements in progressive filtering measurements
+        _.each(assays, function(assayId) {
+            //if the row does not exist, reset table
+            if ($( "input[value='" + assayId + "']").parents('tr').length ===0) {
+                StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+            }
+            $( "input[value='" + assayId + "']").parents('tr').show();
+        });
+    }
 
     //convert post filtered measuremnts to array of assay ids
     export function convertPostFilteringMeasurements(postFilteringMeasurements) {
@@ -2412,20 +2458,18 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
             return rowIDs;
         }
 //         // If the box is unchecked, return the set filtered IDs
-//         else {
-//             var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
-//             var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+        else {
 
+            var filteredIDs = [];
+            for (var r = 0; r < rowIDs.length; r++) {
+                var id = rowIDs[r];
+                // Here is the condition that determines whether the rows associated with this ID are
+                // shown or hidden.
+                if (EDDData.Assays[id].active) {
+                    filteredIDs.push(id);
+                }
 
-        var filteredIDs = [];
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
-            // Here is the condition that determines whether the rows associated with this ID are
-            // shown or hidden.
-            if (EDDData.Assays[id].active) {
-                filteredIDs.push(id);
             }
-
         }
         return filteredIDs;
     }

@@ -76,7 +76,7 @@ module StudyOverview {
         var currentPath = window.location.pathname;
         var linesPathName = currentPath.slice(0, -8) + 'lines';
         //display success message
-        $('#general').append('<div id="successLines" style="color:red; margin-bottom: 17px;">Successfully added ' + result['lines_created'] + ' lines! ' +
+        $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Successfully added ' + result['lines_created'] + ' lines! ' +
             'Redirecting you to <a style="vertical-align:top" href="/study/{{ study.slug }}/lines">Lines page</a></div>');
         //redirect to lines page
         setTimeout(function () {
