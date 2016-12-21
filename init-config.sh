@@ -58,7 +58,7 @@ if [ ! -f "$DIR/edd/settings/local.py" ]; then
     sed -i.bak -e "s/'Jay Bay'/'${EDD_USER}'/;s/'admin@example.org'/'${EDD_EMAIL}'/" \
         "$DIR/edd/settings/local.py"
     # remove backup file
-    rm "$DIR/edd/settings.local.py.bak"
+    rm "$DIR/edd/settings/local.py.bak"
 fi
 
 if [ ! -f "$DIR/docker-compose.override.yml" ]; then

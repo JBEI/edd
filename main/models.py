@@ -14,11 +14,12 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, HStoreField
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import F, Func, Q
 from django.template.defaultfilters import slugify
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext_lazy as _, ugettext as _u
 from functools import reduce
 from itertools import chain
 from six import string_types
@@ -76,10 +77,32 @@ class Update(models.Model, EDDSerialize):
         lazy-load a request-scoped Update object model. """
     class Meta:
         db_table = 'update_info'
-    mod_time = models.DateTimeField(auto_now_add=True, editable=False)
-    mod_by = models.ForeignKey(settings.AUTH_USER_MODEL, editable=False, null=True)
-    path = models.TextField(blank=True, null=True)
-    origin = models.TextField(blank=True, null=True)
+    mod_time = models.DateTimeField(
+        auto_now_add=True,
+        editable=False,
+        help_text=_('Timestamp of the update.'),
+        verbose_name=_('Modified'),
+    )
+    mod_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        editable=False,
+        help_text=_('The user performing the update.'),
+        on_delete=models.PROTECT,
+        null=True,
+        verbose_name=_('User'),
+    )
+    path = models.TextField(
+        blank=True,
+        help_text=_('URL path used to trigger this update.'),
+        null=True,
+        verbose_name=_('URL Path'),
+    )
+    origin = models.TextField(
+        blank=True,
+        help_text=_('Host origin of the request triggering this update.'),
+        null=True,
+        verbose_name=_('Origin Host'),
+    )
 
     # references to self.mod_by potentially creates LOTS of queries
     # custom manager will always select_related('mod_by')
@@ -172,10 +195,31 @@ class Update(models.Model, EDDSerialize):
 class Datasource(models.Model):
     """ Defines an outside source for bits of data in the system. Initially developed to track
         where basic metabolite information originated (e.g. BIGG, KEGG, manual input). """
-    name = models.CharField(max_length=255)
-    url = models.CharField(max_length=255, blank=True, default='')
-    download_date = models.DateField(auto_now=True)
-    created = models.ForeignKey(Update, related_name='datasource', editable=False)
+    name = models.CharField(
+        help_text=_('The source used for information on a measurement type.'),
+        max_length=255,
+        verbose_name=_('Datasource'),
+    )
+    url = models.CharField(
+        blank=True,
+        default='',
+        help_text=_('URL of the source.'),
+        max_length=255,
+        verbose_name=_('URL'),
+    )
+    download_date = models.DateField(
+        auto_now=True,
+        help_text=_('Date when information was accessed and copied.'),
+        verbose_name=_('Download Date'),
+    )
+    created = models.ForeignKey(
+        Update,
+        editable=False,
+        help_text=_('Update object logging the creation of this Datasource.'),
+        on_delete=models.PROTECT,
+        related_name='datasource',
+        verbose_name=_('Created'),
+    )
 
     def __str__(self):
         return '%s <%s>' % (self.name, self.url)
@@ -194,9 +238,21 @@ class Comment(models.Model):
     """ Text blob attached to an EDDObject by a given user at a given time/Update. """
     class Meta:
         db_table = 'comment'
-    object_ref = models.ForeignKey('EDDObject', related_name='comments')
-    body = models.TextField()
-    created = models.ForeignKey(Update)
+    object_ref = models.ForeignKey(
+        'EDDObject',
+        on_delete=models.CASCADE,
+        related_name='comments',
+    )
+    body = models.TextField(
+        help_text=_('Content of the comment.'),
+        verbose_name=_('Comment'),
+    )
+    created = models.ForeignKey(
+        Update,
+        help_text=_('Update object logging the creation of this Comment.'),
+        on_delete=models.PROTECT,
+        verbose_name=_('Created'),
+    )
 
     def __str__(self):
         return self.body
@@ -215,13 +271,46 @@ class Attachment(models.Model):
     """ File uploads attached to an EDDObject; include MIME, file name, and description. """
     class Meta:
         db_table = 'attachment'
-    object_ref = models.ForeignKey('EDDObject', related_name='files')
-    file = models.FileField(max_length=255, upload_to='%Y/%m/%d')
-    filename = models.CharField(max_length=255)
-    created = models.ForeignKey(Update)
-    description = models.TextField(blank=True, null=False)
-    mime_type = models.CharField(max_length=255, blank=True, null=True)
-    file_size = models.IntegerField(default=0)
+    object_ref = models.ForeignKey(
+        'EDDObject',
+        on_delete=models.CASCADE,
+        related_name='files',
+    )
+    file = models.FileField(
+        help_text=_('Path to file data.'),
+        max_length=255,
+        upload_to='%Y/%m/%d',
+        verbose_name=_('File Path'),
+    )
+    filename = models.CharField(
+        help_text=_('Name of attachment file.'),
+        max_length=255,
+        verbose_name=_('File Name'),
+    )
+    created = models.ForeignKey(
+        Update,
+        help_text=_('Update used to create the attachment.'),
+        on_delete=models.PROTECT,
+        verbose_name=_('Created'),
+    )
+    description = models.TextField(
+        blank=True,
+        help_text=_('Description of attachment file contents.'),
+        null=False,
+        verbose_name=_('Description'),
+    )
+    mime_type = models.CharField(
+        blank=True,
+        help_text=_('MIME ContentType of the attachment.'),
+        max_length=255,
+        null=True,
+        verbose_name=_('MIME'),
+    )
+    file_size = models.IntegerField(
+        default=0,
+        help_text=_('Total byte size of the attachment.'),
+        verbose_name=_('Size'),
+    )
 
     def __str__(self):
         return self.filename
@@ -263,7 +352,12 @@ class MetadataGroup(models.Model):
     """ Group together types of metadata with a label. """
     class Meta:
         db_table = 'metadata_group'
-    group_name = models.CharField(max_length=255, unique=True)
+    group_name = models.CharField(
+        help_text=_('Name of the group/class of metadata.'),
+        max_length=255,
+        unique=True,
+        verbose_name=_('Group Name'),
+    )
 
     def __str__(self):
         return self.group_name
@@ -279,40 +373,105 @@ class MetadataType(models.Model, EDDSerialize):
     ASSAY = METADATA_CONTEXT_ASSAY  # metadata stored in an Assay
     # TODO: support metadata on other EDDObject types (Protocol, Strain, Carbon Source, etc)
     CONTEXT_SET = (
-        (STUDY, 'Study'),
-        (LINE, 'Line'),
-        (ASSAY, 'Assay'),
+        (STUDY, _('Study')),
+        (LINE, _('Line')),
+        (ASSAY, _('Assay')),
     )
 
     class Meta:
         db_table = 'metadata_type'
         unique_together = (('type_name', 'for_context', ), )
     # optionally link several metadata types into a common group
-    group = models.ForeignKey(MetadataGroup, blank=True, null=True)
+    group = models.ForeignKey(
+        MetadataGroup,
+        blank=True,
+        help_text=_('Group for this Metadata Type'),
+        null=True,
+        on_delete=models.PROTECT,
+        verbose_name=_('Group'),
+    )
     # a default label for the type; should normally use i18n lookup for display
-    type_name = models.CharField(max_length=255)
+    type_name = models.CharField(
+        help_text=_('Name for Metadata Type'),
+        max_length=255,
+        verbose_name=_('Name'),
+    )
     # an i18n lookup for type label
     # NOTE: migration 0005_SYNBIO-1120_linked_metadata adds a partial unique index to this field
     # i.e. CREATE UNIQUE INDEX … ON metadata_type(type_i18n) WHERE type_i18n IS NOT NULL
-    type_i18n = models.CharField(max_length=255, blank=True, null=True)
+    type_i18n = models.CharField(
+        blank=True,
+        help_text=_('i18n key used for naming this Metadata Type.'),
+        max_length=255,
+        null=True,
+        verbose_name=_('i18n Key'),
+    )
     # field to store metadata, or None if stored in meta_store
-    type_field = models.CharField(max_length=255, blank=True, null=True, default=None)
+    type_field = models.CharField(
+        blank=True,
+        default=None,
+        help_text=_('Model field where metadata is stored; blank stores in metadata dictionary.'),
+        max_length=255,
+        null=True,
+        verbose_name=_('Field Name'),
+    )
     # size of input text field
-    input_size = models.IntegerField(default=6)
+    input_size = models.IntegerField(
+        default=6,
+        help_text=_('Size of input fields for values of this Metadata Type.'),
+        verbose_name=_('Input Size'),
+    )
     # type of the input; support checkboxes, autocompletes, etc
-    input_type = models.CharField(max_length=255, blank=True, null=True)
+    input_type = models.CharField(
+        blank=True,
+        help_text=_('Type of input fields for values of this Metadata Type.'),
+        max_length=255,
+        null=True,
+        verbose_name=_('Input Type'),
+    )
     # a default value to use if the field is left blank
-    default_value = models.CharField(max_length=255, blank=True)
-    # label used to prefix values
-    prefix = models.CharField(max_length=255, blank=True)
+    default_value = models.CharField(
+        blank=True,
+        help_text=_('Default value for this Metadata Type.'),
+        max_length=255,
+        verbose_name=_('Default Value'),
+    )
+    # lael used to prefix values
+    prefix = models.CharField(
+        blank=True,
+        help_text=_('Prefix text appearing before values of this Metadata Type.'),
+        max_length=255,
+        verbose_name=_('Prefix'),
+    )
     # label used to postfix values (e.g. unit specifier)
-    postfix = models.CharField(max_length=255, blank=True)
+    postfix = models.CharField(
+        blank=True,
+        help_text=_('Postfix text appearing after values of this Metadata Type.'),
+        max_length=255,
+        verbose_name=_('Postfix'),
+    )
     # target object for metadata
-    for_context = models.CharField(max_length=8, choices=CONTEXT_SET)
+    for_context = models.CharField(
+        choices=CONTEXT_SET,
+        help_text=_('Type of EDD Object this Metadata Type may be added to.'),
+        max_length=8,
+        verbose_name=_('Context'),
+    )
     # type of data saved, None defaults to a bare string
-    type_class = models.CharField(max_length=255, blank=True, null=True)
+    type_class = models.CharField(
+        blank=True,
+        help_text=_('Type of data saved for this Metadata Type; blank saves a string type.'),
+        max_length=255,
+        null=True,
+        verbose_name=_('Type Class'),
+    )
     # linking together EDD instances will be easier later if we define UUIDs now
-    uuid = models.UUIDField(editable=False, unique=True)
+    uuid = models.UUIDField(
+        editable=False,
+        help_text=_('Unique identifier for this Metadata Type.'),
+        unique=True,
+        verbose_name=_('UUID'),
+    )
 
     @classmethod
     def all_types_on_instances(cls, instances=[]):
@@ -425,7 +584,12 @@ class EDDMetadata(models.Model):
         abstract = True
 
     # store arbitrary metadata as a dict with hstore extension
-    meta_store = HStoreField(blank=True, default=dict)
+    meta_store = HStoreField(
+        blank=True,
+        help_text=_('Metadata dictionary.'),
+        default=dict,
+        verbose_name=_('Metadata'),
+    )
 
     def get_metadata_json(self):
         return self.meta_store
@@ -512,15 +676,53 @@ class EDDObject(EDDMetadata, EDDSerialize):
     """ A first-class EDD object, with update trail, comments, attachments. """
     class Meta:
         db_table = 'edd_object'
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    active = models.BooleanField(default=True)
-    updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
+    name = models.CharField(
+        help_text=_('Name of this object.'),
+        max_length=255,
+        verbose_name=_('Name'),
+    )
+    description = models.TextField(
+        blank=True,
+        help_text=_('Description of this object.'),
+        null=True,
+        verbose_name=_('Description'),
+    )
+    active = models.BooleanField(
+        default=True,
+        help_text=_('Flag showing if this object is active and displayed.'),
+        verbose_name=_('Active'),
+    )
+    updates = models.ManyToManyField(
+        Update,
+        db_table='edd_object_update',
+        help_text=_('List of Update objects logging changes to this object.'),
+        related_name='+',
+        verbose_name=_('Updates'),
+    )
     # these are used often enough we should save extra queries by including as fields
-    created = models.ForeignKey(Update, related_name='object_created', editable=False)
-    updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
+    created = models.ForeignKey(
+        Update,
+        editable=False,
+        help_text=_('Update used to create this object.'),
+        on_delete=models.PROTECT,
+        related_name='object_created',
+        verbose_name=_('Created'),
+    )
+    updated = models.ForeignKey(
+        Update,
+        editable=False,
+        help_text=_('Update used to last modify this object.'),
+        on_delete=models.PROTECT,
+        related_name='object_updated',
+        verbose_name=_('Last Modified'),
+    )
     # linking together EDD instances will be easier later if we define UUIDs now
-    uuid = models.UUIDField(editable=False, unique=True)
+    uuid = models.UUIDField(
+        editable=False,
+        help_text=_('Unique identifier for this object.'),
+        unique=True,
+        verbose_name=_('UUID'),
+    )
 
     @property
     def mod_epoch(self):
@@ -637,18 +839,43 @@ class Study(EDDObject):
     contact = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         blank=True,
+        help_text=_('EDD User to contact about this study.'),
         null=True,
-        related_name='contact_study_set'
+        on_delete=models.PROTECT,
+        related_name='contact_study_set',
+        verbose_name=_('Contact'),
     )
-    contact_extra = models.TextField()
-    metabolic_map = models.ForeignKey('SBMLTemplate', blank=True, null=True)
+    contact_extra = models.TextField(
+        help_text=_('Additional field for contact information about this study (e.g. contact is '
+                    'not a User of EDD).'),
+        verbose_name=_('Contact (extra)'),
+    )
+    metabolic_map = models.ForeignKey(
+        'SBMLTemplate',
+        blank=True,
+        help_text=_('Metabolic map used by default in this Study.'),
+        null=True,
+        on_delete=models.SET_NULL,
+        verbose_name=_('Metabolic Map'),
+    )
     # NOTE: this is NOT a field for a definitive list of Protocols on a Study; it is for Protocols
     #   which may not have been paired with a Line in an Assay. e.g. when creating a blank Study
     #   pre-filled with the Protocols to be used. Get definitive list by doing union of this field
     #   and Protocols linked via Assay-Line-Study chain.
-    protocols = models.ManyToManyField('Protocol', blank=True, db_table='study_protocol')
+    protocols = models.ManyToManyField(
+        'Protocol',
+        blank=True,
+        db_table='study_protocol',
+        help_text=_('Protocols planned for use in this Study.'),
+        verbose_name=_('Protocols'),
+    )
     # create a slug for a more human-readable URL
-    slug = models.SlugField(null=True, unique=True)
+    slug = models.SlugField(
+        help_text=_('Slug text used in links to this Study.'),
+        null=True,
+        unique=True,
+        verbose_name=_('Slug'),
+    )
 
     @classmethod
     def export_columns(cls, instances=[]):
@@ -752,8 +979,11 @@ class Study(EDDObject):
 
     @staticmethod
     def user_can_create(user):
-        if hasattr(settings, 'EDD_ONLY_SUPERUSER_CREATE') and settings.EDD_ONLY_SUPERUSER_CREATE:
-            return user.is_superuser
+        if hasattr(settings, 'EDD_ONLY_SUPERUSER_CREATE'):
+            if settings.EDD_ONLY_SUPERUSER_CREATE == 'permission':
+                return user.has_perm('main.add_study') and user.is_active
+            elif settings.EDD_ONLY_SUPERUSER_CREATE:
+                return user.is_superuser and user.is_active
         return True
 
     def get_combined_permission(self):
@@ -864,12 +1094,23 @@ class StudyPermission(models.Model):
     READ = 'R'
     WRITE = 'W'
     TYPE_CHOICE = (
-        (NONE, 'None'),
-        (READ, 'Read'),
-        (WRITE, 'Write'),
+        (NONE, _('None')),
+        (READ, _('Read')),
+        (WRITE, _('Write')),
     )
-    study = models.ForeignKey(Study)
-    permission_type = models.CharField(max_length=8, choices=TYPE_CHOICE, default=NONE)
+    study = models.ForeignKey(
+        Study,
+        help_text=_('Study this permission applies to.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Study'),
+    )
+    permission_type = models.CharField(
+        choices=TYPE_CHOICE,
+        default=NONE,
+        help_text=_('Type of permission.'),
+        max_length=8,
+        verbose_name=_('Permission'),
+    )
 
     def applies_to_user(self, user):
         """ Test if permission applies to given user.
@@ -906,7 +1147,13 @@ class StudyPermission(models.Model):
 class UserPermission(StudyPermission):
     class Meta:
         db_table = 'study_user_permission'
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='userpermission_set')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        help_text=_('User this permission applies to.'),
+        on_delete=models.CASCADE,
+        related_name='userpermission_set',
+        verbose_name=_('User'),
+    )
 
     def applies_to_user(self, user):
         return self.user == user
@@ -931,7 +1178,13 @@ class UserPermission(StudyPermission):
 class GroupPermission(StudyPermission):
     class Meta:
         db_table = 'study_group_permission'
-    group = models.ForeignKey('auth.Group', related_name='grouppermission_set')
+    group = models.ForeignKey(
+        'auth.Group',
+        help_text=_('Group this permission applies to.'),
+        on_delete=models.CASCADE,
+        related_name='grouppermission_set',
+        verbose_name=_('Group'),
+    )
 
     def applies_to_user(self, user):
         return user.groups.contains(self.group)
@@ -984,21 +1237,47 @@ class Protocol(EDDObject):
     CATEGORY_RAMOS = 'RAMOS'
     CATEGORY_TPOMICS = 'TPOMICS'
     CATEGORY_CHOICE = (
-        (CATEGORY_NONE, 'None'),
-        (CATEGORY_OD, 'Optical Density'),
-        (CATEGORY_HPLC, 'HPLC'),
-        (CATEGORY_LCMS, 'LCMS'),
-        (CATEGORY_RAMOS, 'RAMOS'),
-        (CATEGORY_TPOMICS, 'Transcriptomics / Proteomics'),
+        (CATEGORY_NONE, _('None')),
+        (CATEGORY_OD, _('Optical Density')),
+        (CATEGORY_HPLC, _('HPLC')),
+        (CATEGORY_LCMS, _('LCMS')),
+        (CATEGORY_RAMOS, _('RAMOS')),
+        (CATEGORY_TPOMICS, _('Transcriptomics / Proteomics')),
     )
 
     object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
-    owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
-    variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
+    owned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        help_text=_('Owner / maintainer of this Protocol'),
+        on_delete=models.PROTECT,
+        related_name='protocol_set',
+        verbose_name=_('Owner'),
+    )
+    variant_of = models.ForeignKey(
+        'self',
+        blank=True,
+        help_text=_('Link to another original Protocol used as basis for this Protocol.'),
+        null=True,
+        on_delete=models.PROTECT,
+        related_name='derived_set',
+        verbose_name=_('Variant of Protocol'),
+    )
     default_units = models.ForeignKey(
-        'MeasurementUnit', blank=True, null=True, related_name="protocol_set")
+        'MeasurementUnit',
+        blank=True,
+        help_text=_('Default units for values measured with this Protocol.'),
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="protocol_set",
+        verbose_name=_('Default Units'),
+    )
     categorization = models.CharField(
-        max_length=8, choices=CATEGORY_CHOICE, default=CATEGORY_NONE)
+        choices=CATEGORY_CHOICE,
+        default=CATEGORY_NONE,
+        help_text=_('Category of this Protocol.'),
+        verbose_name=_('Category'),
+        max_length=8,
+    )
 
     def creator(self):
         return self.created.mod_by
@@ -1030,7 +1309,12 @@ class WorklistTemplate(EDDObject):
     """ Defines sets of metadata to use as a template on a Protocol. """
     class Meta:
         db_table = 'worklist_template'
-    protocol = models.ForeignKey(Protocol)
+    protocol = models.ForeignKey(
+        Protocol,
+        help_text=_('Default protocol for this Template.'),
+        on_delete=models.PROTECT,
+        verbose_name=_('Protocol'),
+    )
 
     def __str__(self):
         return self.name
@@ -1041,17 +1325,52 @@ class WorklistColumn(models.Model):
     """ Defines metadata defaults and layout. """
     class Meta:
         db_table = 'worklist_column'
-    template = models.ForeignKey(WorklistTemplate)
+    template = models.ForeignKey(
+        WorklistTemplate,
+        help_text=_('Parent Worklist Template for this column.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Template'),
+    )
     # if meta_type is None, treat default_value as format string
-    meta_type = models.ForeignKey(MetadataType, blank=True, null=True)
+    meta_type = models.ForeignKey(
+        MetadataType,
+        blank=True,
+        help_text=_('Type of Metadata in this column.'),
+        null=True,
+        on_delete=models.PROTECT,
+        verbose_name=_('Metadata Type'),
+    )
     # if None, default to meta_type.type_name or ''
-    heading = models.CharField(max_length=255, blank=True, null=True)
+    heading = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text=_('Column header text.'),
+        null=True,
+        verbose_name=_('Heading'),
+    )
     # potentially override the default value in templates?
-    default_value = models.CharField(max_length=255, blank=True, null=True)
+    default_value = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text=_('Default value for this column.'),
+        null=True,
+        verbose_name=_('Default Value'),
+    )
     # text to display in UI explaining how to modify column
-    help_text = models.TextField(blank=True, null=True)
+    help_text = models.TextField(
+        blank=True,
+        help_text=_('UI text to display explaining how to modify this column.'),
+        null=True,
+        verbose_name=_('Help Text'),
+    )
     # allow ordering of metadata
-    ordering = models.IntegerField(blank=True, null=True, unique=True)
+    ordering = models.IntegerField(
+        blank=True,
+        help_text=_('Order this column will appear in worklist export.'),
+        null=True,
+        unique=True,
+        verbose_name=_('Ordering'),
+    )
 
     def get_column(self, **kwargs):
         type_context = None
@@ -1123,8 +1442,19 @@ class Strain(EDDObject, LineProperty):
     class Meta:
         db_table = 'strain'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    registry_id = models.UUIDField(blank=True, null=True)
-    registry_url = models.URLField(max_length=255, blank=True, null=True)
+    registry_id = models.UUIDField(
+        blank=True,
+        help_text=_('The unique ID of this strain in the ICE Registry.'),
+        null=True,
+        verbose_name=_('Registry UUID'),
+    )
+    registry_url = models.URLField(
+        blank=True,
+        help_text=_('The URL of this strain in the ICE Registry.'),
+        max_length=255,
+        null=True,
+        verbose_name=_('Registry URL'),
+    )
 
     def __str__(self):
         return self.name
@@ -1160,8 +1490,16 @@ class CarbonSource(EDDObject, LineProperty):
         db_table = 'carbon_source'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     # Labeling is description of isotope labeling used in carbon source
-    labeling = models.TextField()
-    volume = models.DecimalField(max_digits=16, decimal_places=5)
+    labeling = models.TextField(
+        help_text=_('Description of labeling isotopes in this Carbon Source.'),
+        verbose_name=_('Labeling'),
+    )
+    volume = models.DecimalField(
+        decimal_places=5,
+        help_text=_('Volume of solution added as a Carbon Source.'),
+        max_digits=16,
+        verbose_name=_('Volume'),
+    )
 
     def to_json(self, depth=0):
         json_dict = super(CarbonSource, self).to_json(depth)
@@ -1181,19 +1519,70 @@ class Line(EDDObject):
     """ A single item to be studied (contents of well, tube, dish, etc). """
     class Meta:
         db_table = 'line'
-    study = models.ForeignKey(Study)
-    control = models.BooleanField(default=False)
-    replicate = models.ForeignKey('self', blank=True, null=True)
+    study = models.ForeignKey(
+        Study,
+        help_text=_('The Study containing this Line.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Study'),
+    )
+    control = models.BooleanField(
+        default=False,
+        help_text=_('Flag indicating whether the sample for this Line is a control.'),
+        verbose_name=_('Control'),
+    )
+    replicate = models.ForeignKey(
+        'self',
+        blank=True,
+        help_text=_('Indicates that this Line is a (biological) replicate of another Line.'),
+        null=True,
+        on_delete=models.PROTECT,
+        verbose_name=_('Replicate'),
+    )
 
     object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
     contact = models.ForeignKey(
-        settings.AUTH_USER_MODEL, blank=True, null=True, related_name='line_contact_set')
-    contact_extra = models.TextField()
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        help_text=_('EDD User to contact about this Line.'),
+        null=True,
+        on_delete=models.PROTECT,
+        related_name='line_contact_set',
+        verbose_name=_('Contact'),
+    )
+    contact_extra = models.TextField(
+        help_text=_('Additional field for contact information about this Line (e.g. contact is '
+                    'not a User of EDD).'),
+        verbose_name=_('Contact (extra)'),
+    )
     experimenter = models.ForeignKey(
-        settings.AUTH_USER_MODEL, blank=True, null=True, related_name='line_experimenter_set')
-    carbon_source = models.ManyToManyField(CarbonSource, blank=True, db_table='line_carbon_source')
-    protocols = models.ManyToManyField(Protocol, through='Assay')
-    strains = models.ManyToManyField(Strain, blank=True, db_table='line_strain')
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        help_text=_('EDD User that set up the experimental conditions of this Line.'),
+        null=True,
+        on_delete=models.PROTECT,
+        related_name='line_experimenter_set',
+        verbose_name=_('Experimenter'),
+    )
+    carbon_source = models.ManyToManyField(
+        CarbonSource,
+        blank=True,
+        db_table='line_carbon_source',
+        help_text=_('Carbon source(s) used in this Line.'),
+        verbose_name=_('Carbon Source(s)'),
+    )
+    protocols = models.ManyToManyField(
+        Protocol,
+        help_text=_('Protocol(s) used to Assay this Line.'),
+        through='Assay',
+        verbose_name=_('Protocol(s)'),
+    )
+    strains = models.ManyToManyField(
+        Strain,
+        blank=True,
+        db_table='line_strain',
+        help_text=_('Strain(s) used in this Line.'),
+        verbose_name=_('Strain(s)'),
+    )
 
     @classmethod
     def export_columns(cls, instances=[]):
@@ -1320,21 +1709,47 @@ class MeasurementType(models.Model, EDDSerialize):
         PROTEINID = 'p'
         PHOSPHOR = 'h'
         GROUP_CHOICE = (
-            (GENERIC, 'Generic'),
-            (METABOLITE, 'Metabolite'),
-            (GENEID, 'Gene Identifier'),
-            (PROTEINID, 'Protein Identifer'),
-            (PHOSPHOR, 'Phosphor'),
+            (GENERIC, _('Generic')),
+            (METABOLITE, _('Metabolite')),
+            (GENEID, _('Gene Identifier')),
+            (PROTEINID, _('Protein Identifer')),
+            (PHOSPHOR, _('Phosphor')),
         )
 
-    type_name = models.CharField(max_length=255)
-    short_name = models.CharField(max_length=255, blank=True, null=True)
-    type_group = models.CharField(max_length=8, choices=Group.GROUP_CHOICE, default=Group.GENERIC)
+    type_name = models.CharField(
+        help_text=_('Name of this Measurement Type.'),
+        max_length=255,
+        verbose_name=_('Measurement Type'),
+    )
+    short_name = models.CharField(
+        blank=True,
+        help_text=_('Short name used as an ID for the Measurement Type in SBML output.'),
+        max_length=255,
+        null=True,
+        verbose_name=_('Short Name'),
+    )
+    type_group = models.CharField(
+        choices=Group.GROUP_CHOICE,
+        default=Group.GENERIC,
+        help_text=_('Class of data for this Measurement Type.'),
+        max_length=8,
+        verbose_name=_('Type Group'),
+    )
     type_source = models.ForeignKey(
-        Datasource, blank=True, null=True,
+        Datasource,
+        blank=True,
+        help_text=_('Datasource used for characterizing this Measurement Type.'),
+        null=True,
+        on_delete=models.PROTECT,
+        verbose_name=_('Datasource'),
     )
     # linking together EDD instances will be easier later if we define UUIDs now
-    uuid = models.UUIDField(editable=False, unique=True)
+    uuid = models.UUIDField(
+        editable=False,
+        help_text=_('Unique ID for this Measurement Type.'),
+        unique=True,
+        verbose_name=_('UUID'),
+    )
 
     def save(self, *args, **kwargs):
         if self.uuid is None:
@@ -1419,12 +1834,30 @@ class Metabolite(MeasurementType):
         TODO: links to kegg files? """
     class Meta:
         db_table = 'metabolite'
-    charge = models.IntegerField()
-    carbon_count = models.IntegerField()
-    molar_mass = models.DecimalField(max_digits=16, decimal_places=5)
-    molecular_formula = models.TextField()
-    tags = ArrayField(VarCharField(), default=[])
-    source = models.ForeignKey(Datasource, blank=True, null=True)
+    charge = models.IntegerField(
+        help_text=_('The charge of this molecule.'),
+        verbose_name=_('Charge'),
+    )
+    carbon_count = models.IntegerField(
+        help_text=_('Count of carbons present in this molecule.'),
+        verbose_name=_('Carbon Count'),
+    )
+    molar_mass = models.DecimalField(
+        decimal_places=5,
+        help_text=_('Molar mass of this molecule.'),
+        max_digits=16,
+        verbose_name=_('Molar Mass'),
+    )
+    molecular_formula = models.TextField(
+        help_text=_('Formula string defining this molecule.'),
+        verbose_name=_('Formula'),
+    )
+    tags = ArrayField(
+        VarCharField(),
+        default=[],
+        help_text=_('List of tags for classifying this molecule.'),
+        verbose_name=_('Tags'),
+    )
 
     carbon_pattern = re.compile(r'C(\d*)')
 
@@ -1480,11 +1913,35 @@ class GeneIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
         db_table = 'gene_identifier'
-    location_in_genome = models.TextField(blank=True, null=True)
-    positive_strand = models.BooleanField(default=True)
-    location_start = models.IntegerField(blank=True, null=True)
-    location_end = models.IntegerField(blank=True, null=True)
-    gene_length = models.IntegerField(blank=True, null=True)
+    location_in_genome = models.TextField(
+        blank=True,
+        help_text=_('Location of this Gene in the organism genome.'),
+        verbose_name=_('Location'),
+        null=True,
+    )
+    positive_strand = models.BooleanField(
+        default=True,
+        help_text=_('Flag indicating if transcript is positive (sense).'),
+        verbose_name=_('Positive'),
+    )
+    location_start = models.IntegerField(
+        blank=True,
+        help_text=_('Offset location for gene start.'),
+        verbose_name=_('Start'),
+        null=True,
+    )
+    location_end = models.IntegerField(
+        blank=True,
+        help_text=_('Offset location for gene end.'),
+        verbose_name=_('End'),
+        null=True,
+    )
+    gene_length = models.IntegerField(
+        blank=True,
+        help_text=_('Length of the gene nucleotides.'),
+        verbose_name=_('Length'),
+        null=True,
+    )
 
     @classmethod
     def by_name(cls):
@@ -1505,17 +1962,32 @@ class ProteinIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
         db_table = 'protein_identifier'
+    # protein names use:
+    #   type_name = human-readable name; e.g. AATM_RABIT
+    #   short_name = accession code ID portion; e.g. P12345
+    #   accession_id = "full" accession ID if available; e.g. sp|P12345|AATM_RABIT
+    #       if "full" version unavailable, repeat the short_name
+    accession_id = VarCharField(
+        blank=True,
+        help_text=_('Accession ID for protein characterized in e.g. UniProt.'),
+        null=True,
+        verbose_name=_('Accession ID')
+    )
     length = models.IntegerField(
-        blank=True, null=True,
-        verbose_name=_('Length'), help_text=_('sequence length')
+        blank=True,
+        help_text=_('sequence length'),
+        null=True,
+        verbose_name=_('Length'),
     )
     mass = models.DecimalField(
-        blank=True, null=True, max_digits=16, decimal_places=5,
-        verbose_name=_('Mass'), help_text=_('of unprocessed protein, in Daltons'),
+        blank=True,
+        decimal_places=5,
+        help_text=_('of unprocessed protein, in Daltons'),
+        max_digits=16,
+        null=True,
+        verbose_name=_('Mass'),
     )
-    source = models.ForeignKey(
-        Datasource, blank=True, null=True,
-    )
+
     accession_pattern = re.compile(
         r'(?:[a-z]{2}\|)?'  # optional identifier for SwissProt or TrEMBL
         r'([OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2})'  # the ID
@@ -1528,6 +2000,65 @@ class ProteinIdentifier(MeasurementType):
             'p_length': self.length,
             'p_mass': self.mass,
         })
+
+    @classmethod
+    def load_or_create(cls, measurement_name, datasource):
+        # extract Uniprot accession data from the measurement name, if present
+        accession_match = cls.accession_pattern.match(measurement_name)
+        uniprot_id = accession_match.group(1) if accession_match else None
+
+        # search for proteins matching the name. we're fairly permissive during lookup to account
+        # for some small percentage of protein names that don't follow the Uniprot pattern, as well
+        # as legacy proteins in EDD's database
+        name_match_criteria = Q(type_name=measurement_name)
+
+        if getattr(settings, 'ALLOW_PERMISSIVE_PROTEIN_MATCHING', False):
+            name_match_criteria = name_match_criteria | Q(short_name=measurement_name)
+            if uniprot_id:
+                name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
+        # force query to LIMIT 2
+        proteins = models.ProteinIdentifier.objects.filter(name_match_criteria)[:2]
+
+        if len(proteins) > 1:
+            # fail if protein couldn't be uniquely matched
+            raise ValidationError(
+                _u('More than one match was found for protein name "%(type_name)s".') % {
+                    'type_name': measurement_name,
+                }
+            )
+        elif len(proteins) == 0:
+            # try to create a new protein
+            # enforce ProteinIdentifier naming conventions for new ProteinIdentifiers,
+            # if configured. this isn't as good as looking them up in Uniprot, but should
+            # help as a stopgap to curate our protein entries
+            if settings.REQUIRE_UNIPROT_ACCESSION_IDS and not accession_match:
+                raise ValidationError(
+                    _u('Protein name "%(type_name)s" is not a valid UniProt accession id.') % {
+                        'type_name': measurement_name,
+                    }
+                )
+            logger.info('Creating a new ProteinIdentifier for %(name)s' % {
+                'name': measurement_name,
+            })
+            if datasource.pk is None:
+                datasource.save()
+            # create the new protein id
+            if accession_match:
+                type_name = accession_match.group(2)
+                type_name = measurement_name if type_name is None else type_name
+                accession_id = measurement_name
+            else:
+                type_name = measurement_name
+                accession_id = uniprot_id
+            # FIXME: this blindly creates a new type; should try external lookups first?
+            p = models.ProteinIdentifier.objects.create(
+                type_name=type_name,
+                short_name=uniprot_id,
+                accession_id=accession_id,
+                type_source=datasource,
+            )
+            return p
+        return proteins[0]
 
     @classmethod
     def match_accession_id(cls, text):
@@ -1559,11 +2090,30 @@ class Phosphor(MeasurementType):
     class Meta:
         db_table = 'phosphor_type'
     excitation_wavelength = models.DecimalField(
-        max_digits=16, decimal_places=5, blank=True, null=True)
+        blank=True,
+        decimal_places=5,
+        help_text=_('Excitation wavelength for the material.'),
+        max_digits=16,
+        null=True,
+        verbose_name=_('Excitation'),
+    )
     emission_wavelength = models.DecimalField(
-        max_digits=16, decimal_places=5, blank=True, null=True)
+        blank=True,
+        decimal_places=5,
+        help_text=_('Emission wavelength for the material.'),
+        max_digits=16,
+        null=True,
+        verbose_name=_('Emission'),
+    )
     reference_type = models.ForeignKey(
-        MeasurementType, blank=True, null=True, related_name='phosphor_set')
+        MeasurementType,
+        blank=True,
+        help_text=_('Link to another Measurement Type used as a reference for this type.'),
+        null=True,
+        on_delete=models.PROTECT,
+        related_name='phosphor_set',
+        verbose_name=_('Reference'),
+    )
 
     def __str__(self):
         return self.type_name
@@ -1579,12 +2129,31 @@ class MeasurementUnit(models.Model):
     """ Defines a unit type and metadata on measurement values. """
     class Meta:
         db_table = 'measurement_unit'
-    unit_name = models.CharField(max_length=255, unique=True)
-    display = models.BooleanField(default=True)
-    alternate_names = models.CharField(max_length=255, blank=True, null=True)
-    type_group = models.CharField(max_length=8,
-                                  choices=MeasurementType.Group.GROUP_CHOICE,
-                                  default=MeasurementType.Group.GENERIC)
+    unit_name = models.CharField(
+        help_text=_('Name for unit of measurement.'),
+        max_length=255,
+        unique=True,
+        verbose_name=_('Name'),
+    )
+    display = models.BooleanField(
+        default=True,
+        help_text=_('Flag indicating the units should be displayed along with values.'),
+        verbose_name=_('Display'),
+    )
+    alternate_names = models.CharField(
+        blank=True,
+        help_text=_('Alternative names for the unit.'),
+        max_length=255,
+        null=True,
+        verbose_name=_('Alternate Names'),
+    )
+    type_group = models.CharField(
+        choices=MeasurementType.Group.GROUP_CHOICE,
+        default=MeasurementType.Group.GENERIC,
+        help_text=_('Type of measurement for which this unit is used.'),
+        verbose_name=_('Group'),
+        max_length=8,
+    )
 
     # TODO: this should be somehow rolled up into the unit definition
     conversion_dict = {
@@ -1619,12 +2188,34 @@ class Assay(EDDObject):
     """ An examination of a Line, containing the Protocol and set of Measurements. """
     class Meta:
         db_table = 'assay'
-    line = models.ForeignKey(Line)
-    protocol = models.ForeignKey(Protocol)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    line = models.ForeignKey(
+        Line,
+        help_text=_('The Line used for this Assay.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Line'),
+    )
+    protocol = models.ForeignKey(
+        Protocol,
+        help_text=_('The Protocol used to create this Assay.'),
+        on_delete=models.PROTECT,
+        verbose_name=_('Protocol'),
+    )
     experimenter = models.ForeignKey(
-        settings.AUTH_USER_MODEL, blank=True, null=True, related_name='assay_experimenter_set')
-    measurement_types = models.ManyToManyField(MeasurementType, through='Measurement')
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        help_text=_('EDD User that set up the experimental conditions of this Assay.'),
+        null=True,
+        on_delete=models.PROTECT,
+        related_name='assay_experimenter_set',
+        verbose_name=_('Experimenter'),
+    )
+    measurement_types = models.ManyToManyField(
+        MeasurementType,
+        help_text=_('The Measurement Types contained in this Assay.'),
+        through='Measurement',
+        verbose_name=_('Measurement Types'),
+    )
 
     def __str__(self):
         return self.name
@@ -1657,8 +2248,8 @@ class Measurement(EDDMetadata, EDDSerialize):
         """
         UNKNOWN, INTRACELLULAR, EXTRACELLULAR = map(str, range(3))
         short_names = ["", "IC", "EC"]
-        names = ["N/A", "Intracellular/Cytosol (Cy)", "Extracellular"]
-        CHOICE = [('%s' % i, cn) for i, cn in enumerate(names)]
+        names = [_("N/A"), _("Intracellular/Cytosol (Cy)"), _("Extracellular"), ]
+        CHOICE = [(str(i), cn) for i, cn in enumerate(names)]
 
         @classmethod
         def to_json(cls):
@@ -1677,26 +2268,67 @@ class Measurement(EDDMetadata, EDDSerialize):
             SIGMA = single timepoint X value, 3-item-list Y value (average, variance, sample size)
         """
         SCALAR, VECTOR, HISTOGRAM, SIGMA = map(str, range(4))
-        names = ['scalar', 'vector', 'histogram', 'sigma', ]
-        CHOICE = [('%s' % i, n) for i, n in enumerate(names)]
+        names = [_('scalar'), _('vector'), _('histogram'), _('sigma'), ]
+        CHOICE = [(str(i), n) for i, n in enumerate(names)]
 
-    assay = models.ForeignKey(Assay)
+    assay = models.ForeignKey(
+        Assay,
+        help_text=_('The Assay creating this Measurement.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Assay'),
+    )
     experimenter = models.ForeignKey(
-        settings.AUTH_USER_MODEL, blank=True, null=True,
-        related_name='measurement_experimenter_set')
-    measurement_type = models.ForeignKey(MeasurementType)
-    x_units = models.ForeignKey(MeasurementUnit, related_name='+')
-    y_units = models.ForeignKey(MeasurementUnit, related_name='+')
-    update_ref = models.ForeignKey(Update)
-    active = models.BooleanField(default=True)
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        help_text=_('EDD User that set up the experimental conditions of this Measurement.'),
+        null=True,
+        on_delete=models.PROTECT,
+        related_name='measurement_experimenter_set',
+        verbose_name=_('Experimenter'),
+    )
+    measurement_type = models.ForeignKey(
+        MeasurementType,
+        help_text=_('The type of item measured for this Measurement.'),
+        on_delete=models.PROTECT,
+        verbose_name=_('Type'),
+    )
+    x_units = models.ForeignKey(
+        MeasurementUnit,
+        help_text=_('The units of the X-axis for this Measurement.'),
+        on_delete=models.PROTECT,
+        related_name='+',
+        verbose_name=_('X Units'),
+    )
+    y_units = models.ForeignKey(
+        MeasurementUnit,
+        help_text=_('The units of the Y-axis for this Measurement.'),
+        on_delete=models.PROTECT,
+        related_name='+',
+        verbose_name=_('Y Units'),
+    )
+    update_ref = models.ForeignKey(
+        Update,
+        help_text=_('The Update triggering the setting of this Measurement.'),
+        on_delete=models.PROTECT,
+        verbose_name=_('Updated'),
+    )
+    active = models.BooleanField(
+        default=True,
+        help_text=_('Flag indicating this Measurement is active and should be displayed.'),
+        verbose_name=_('Active'),
+    )
     compartment = models.CharField(
         choices=Compartment.CHOICE,
         default=Compartment.UNKNOWN,
+        help_text=_('Compartment of the cell for this Measurement.'),
+        verbose_name=_('Compartment'),
         max_length=1,
     )
     measurement_format = models.CharField(
         choices=Format.CHOICE,
         default=Format.SCALAR,
+        help_text=_('Enumeration of value formats for this Measurement.'),
+        verbose_name=_('Format'),
         max_length=2,
     )
 
@@ -1809,10 +2441,28 @@ class MeasurementValue(models.Model):
     """ Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of a measurement """
     class Meta:
         db_table = 'measurement_value'
-    measurement = models.ForeignKey(Measurement)
-    x = ArrayField(models.DecimalField(max_digits=16, decimal_places=5))
-    y = ArrayField(models.DecimalField(max_digits=16, decimal_places=5))
-    updated = models.ForeignKey(Update)
+    measurement = models.ForeignKey(
+        Measurement,
+        help_text=_('The Measurement containing this point of data.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Measurement'),
+    )
+    x = ArrayField(
+        models.DecimalField(max_digits=16, decimal_places=5),
+        help_text=_('X-axis value(s) for this point.'),
+        verbose_name=_('X'),
+    )
+    y = ArrayField(
+        models.DecimalField(max_digits=16, decimal_places=5),
+        help_text=_('Y-axis value(s) for this point.'),
+        verbose_name=_('Y'),
+    )
+    updated = models.ForeignKey(
+        Update,
+        help_text=_('The Update triggering the setting of this point.'),
+        on_delete=models.PROTECT,
+        verbose_name=_('Updated'),
+    )
 
     def __str__(self):
         return '(%s, %s)' % (self.x, self.y)
@@ -1850,11 +2500,31 @@ class SBMLTemplate(EDDObject):
     class Meta:
         db_table = "sbml_template"
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    biomass_calculation = models.DecimalField(default=-1, decimal_places=5, max_digits=16)
-    biomass_calculation_info = models.TextField(default='')
-    biomass_exchange_name = models.TextField()
+    biomass_calculation = models.DecimalField(
+        default=-1,
+        decimal_places=5,
+        help_text=_('The calculated multiplier converting OD to weight of biomass.'),
+        verbose_name=_('Biomass Factor'),
+        max_digits=16,
+    )
+    biomass_calculation_info = models.TextField(
+        default='',
+        help_text=_('Additional information on biomass calculation.'),
+        verbose_name=_('Biomass Calculation'),
+    )
+    biomass_exchange_name = models.TextField(
+        help_text=_('The reaction name in the model for Biomass.'),
+        verbose_name=_('Biomass Reaction'),
+    )
     # FIXME would like to limit this to attachments only on parent EDDObject, and remove null=True
-    sbml_file = models.ForeignKey(Attachment, blank=True, null=True)
+    sbml_file = models.ForeignKey(
+        Attachment,
+        blank=True,
+        help_text=_('The Attachment containing the SBML model file.'),
+        null=True,
+        on_delete=models.PROTECT,
+        verbose_name=_('SBML Model'),
+    )
 
     def __str__(self):
         return self.name
@@ -1909,10 +2579,28 @@ class MetaboliteExchange(models.Model):
             ("sbml_template", "exchange_name"),
             ("sbml_template", "measurement_type"),
         )
-    sbml_template = models.ForeignKey(SBMLTemplate)
-    measurement_type = models.ForeignKey(MeasurementType, blank=True, null=True)
-    reactant_name = VarCharField()
-    exchange_name = VarCharField()
+    sbml_template = models.ForeignKey(
+        SBMLTemplate,
+        help_text=_('The SBML Model containing this exchange reaction.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('SBML Model'),
+    )
+    measurement_type = models.ForeignKey(
+        MeasurementType,
+        blank=True,
+        help_text=_('Measurement type linked to this exchange reaction in the model.'),
+        null=True,
+        on_delete=models.CASCADE,
+        verbose_name=_('Measurement Type'),
+    )
+    reactant_name = VarCharField(
+        help_text=_('The reactant name used in for this exchange reaction.'),
+        verbose_name=_('Reactant Name'),
+    )
+    exchange_name = VarCharField(
+        help_text=_('The exchange name used in the model.'),
+        verbose_name=_('Exchange Name'),
+    )
 
     def __str__(self):
         return self.exchange_name
@@ -1930,9 +2618,24 @@ class MetaboliteSpecies(models.Model):
             ("sbml_template", "species"),
             ("sbml_template", "measurement_type"),
         )
-    sbml_template = models.ForeignKey(SBMLTemplate)
-    measurement_type = models.ForeignKey(MeasurementType, blank=True, null=True)
-    species = VarCharField()
+    sbml_template = models.ForeignKey(
+        SBMLTemplate,
+        help_text=_('The SBML Model defining this species link to a Measurement Type.'),
+        on_delete=models.PROTECT,
+        verbose_name=_('SBML Model'),
+    )
+    measurement_type = models.ForeignKey(
+        MeasurementType,
+        blank=True,
+        help_text=_('Mesurement type linked to this species in the model.'),
+        on_delete=models.CASCADE,
+        null=True,
+        verbose_name=_('Measurement Type'),
+    )
+    species = VarCharField(
+        help_text=_('Species name used in the model for this metabolite.'),
+        verbose_name=_('Species'),
+    )
 
     def __str__(self):
         return self.species

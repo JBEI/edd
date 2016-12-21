@@ -31,9 +31,9 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 ###################################################################################################
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
-# help prevent developers from accidentally altering data in production). Any value that starts with
-# the prefix "DEVELOPMENT" or "TEST" will change EDD's background color and print a the value of
-# this variable at the top of each page.
+# help prevent developers from accidentally altering data in production). Any value that starts
+# with the prefix "DEVELOPMENT" or "TEST" will change EDD's background color and print a the value
+# of this variable at the top of each page.
 EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT',  default='PRODUCTION')
 
 # override to allow arbitrary text instead of requiring protein ID's to fit the pattern of Uniprot
@@ -118,6 +118,7 @@ INSTALLED_APPS = (
     'django_extensions',  # django-extensions in pip
     'rest_framework',  # djangorestframework in pip
     'form_utils',  # django-form-utils in pip
+    'messages_extends',  # django-messages-extends in pip
     # django-allauth in pip; separate apps for each provider
     'allauth',
     'allauth.account',
@@ -142,7 +143,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'main.utilities.EDDSettingsMiddleware',
-    'main.utilities.EDDImportCheckMiddleware',
+    'edd.profile.middleware.TaskNotification',
 )
 
 

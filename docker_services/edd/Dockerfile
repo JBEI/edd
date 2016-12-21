@@ -10,7 +10,8 @@ WORKDIR /code
 # include Debian packages required to build pip packages
 RUN apt-get update \
     && apt-get upgrade -y \
-    && apt-get install -y \
+    && apt-get install -y --fix-missing \
+        build-essential \
         g++ \
         gfortran \
         libatlas-dev \
