@@ -13,4 +13,3 @@ DEFAULT_BROKER_URL = 'amqp://%(user)s:%(pass)s@%(host)s:%(port)d' % {
 }
 
 BROKER_URL = os.getenv('BROKER_URL', DEFAULT_BROKER_URL)
-

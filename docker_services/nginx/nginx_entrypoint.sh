@@ -44,4 +44,4 @@ fi
 envsubst '' < /code/docker_services/nginx/nginx.conf > /etc/nginx/nginx.conf
 
 # start nginx
-nginx -g 'daemon off;'
+exec nginx -g 'daemon off;'

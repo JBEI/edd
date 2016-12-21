@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # If configured, make sure the celery app is imported when
 # Django starts so that @shared_task will use this app.
-if settings.USE_CELERY:
+if hasattr(settings, 'USE_CELERY') and settings.USE_CELERY:
     logger.info("Using Celery distributed task queue")
     from .celery import app as celery_app  # noqa
 else:
