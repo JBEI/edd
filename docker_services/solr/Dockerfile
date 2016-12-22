@@ -1,9 +1,9 @@
-FROM nginx:1.11
+FROM solr:5.5
 
 MAINTAINER William Morrell "WCMorrell@lbl.gov"
 
 COPY entrypoint.sh /usr/local/bin
 
-COPY nginx.conf /usr/local/nginx/nginx.conf
+COPY cores /tmp
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

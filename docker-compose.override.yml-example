@@ -78,6 +78,9 @@ services:
 
 # Override settings for the nginx webserver and proxy
   nginx:
+    # Uncomment the below volume to mount a folder containing TLS certificates/keys for copying
+    #volumes:
+    #  - /path/to/certs:/var/edd/ssl:ro
     # Make the http/https ports available on the Docker host external network
     ports:
       - '80:80'
