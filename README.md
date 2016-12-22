@@ -335,12 +335,13 @@ use the configuration contained in the script; you may need to install a newer v
 You may want to use an external postgres server instead of the Postgres Docker container configured in EDD's dockerfile.
 If so, you'll want to follow this general outline:
 
-* create an "edduser" postgres account and an EDD database
 * Manually run a subset of the commands in `docker_services/postgres/init.sql` to create database user and databases for user and celery data.
 * Update secrets.env with the correct database URLs for both edd and celery databases
 
 In the current version of DD, this setup will create a workable, but slightly confusing scenario where an unused postgres container is still built and run.
 At a later point we may customize EDD's dockerfile and launch scripts to prevent this from happening in deployments that don't need the postgres container.
+You can always manually edit EDD's docker configuration to remove the postgres container, but this will result in edits you'll have to maintain as you
+upgrade your EDD deployment.
 
 #### Helpful Python Packages <a name="Helpful_Python"/>
 
