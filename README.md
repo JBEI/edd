@@ -103,7 +103,7 @@ This section contains directions for setting up a production deployment for EDD 
 * As `jbeideploy`, check out code to `/usr/local/edd/` (this will be `$EDD_HOME` below)
   
     git clone https://github.com/JBEI/edd.git
-	git checkout [release_branch]
+    git checkout [release_branch]
 * Set up your local docker-machine to manage a remote EDD deployment
     * _If using Docker client on a different host, i.e. with `docker-machine`_
         * Ensure you have a public key in `jbeideploy`'s `~/.ssh/authorized_keys2` file
@@ -184,20 +184,12 @@ following steps in the EDD checkout directory to configure EDD and launch it for
         2. Configure EDD using the web interface
 
            If you need to add any custom metadata types, units, etc. not provided by the default installation, use the "Administration" link at top right
-		   to add to or remove EDD's defaults.  It's recommended that you leave defaults in place for consistency with collaborators' EDD deployments.
-	* Manually set the hostname in EDD's database.
-	
-      EDD needs the hostname users will use to access it, which may the one available to EDD via the host operating system.  
-      This value will be used most often to create experiment links in ICE, so an incorrect value will cause users to see bad experiment links to EDD. 
-      Here's a set of sample commands for setting the hostname:
-	  
-	      docker-compose exec appserver python manage.py shell
-		  from django.contrib.sites.models import Site
-		  site = Site.objects.get_current()  
-		  site # print sample site included by default
-		  site.name='Experiment Data Depot'
-		  site.domain='edd.jbei.org'
-		  site.save()
+           to add to or remove EDD's defaults.  It's recommended that you leave defaults in place for consistency with collaborators' EDD deployments.
+      * Manually set the hostname in EDD's database.
+
+      EDD needs the hostname users will use to access it, which may not be the same as the one available to EDD via the host operating system.  
+      This value will be used most often to create experiment links in ICE, so an incorrect value will cause users to see bad experiment links to EDD when viewing ICE parts.
+	  Use the "Administration" link at top right, then scroll down to the "Sites" heading and click the "sites" link under it.  Set the value, for example, to edd.jbei.org.
 
  * __Install and configure a supporting [ICE][10] deployment__
 
@@ -329,19 +321,6 @@ After cloning the repo for the first time run `.gitconfig.sh`. If updating an ex
 may need to add changed files to the index once. Some bundled git versions are outdated and cannot
 use the configuration contained in the script; you may need to install a newer version of git;
 [Homebrew](#HomeBrew) instructions above will install a more recent version on Macs.
-
-#### Using an External Postgres Server
-
-You may want to use an external postgres server instead of the Postgres Docker container configured in EDD's dockerfile.
-If so, you'll want to follow this general outline:
-
-* Manually run a subset of the commands in `docker_services/postgres/init.sql` to create database user and databases for user and celery data.
-* Update secrets.env with the correct database URLs for both edd and celery databases
-
-In the current version of DD, this setup will create a workable, but slightly confusing scenario where an unused postgres container is still built and run.
-At a later point we may customize EDD's dockerfile and launch scripts to prevent this from happening in deployments that don't need the postgres container.
-You can always manually edit EDD's docker configuration to remove the postgres container, but this will result in edits you'll have to maintain as you
-upgrade your EDD deployment.
 
 #### Helpful Python Packages <a name="Helpful_Python"/>
 
