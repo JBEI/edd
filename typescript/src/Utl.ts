@@ -84,6 +84,36 @@ module Utl {
 	}
 
 
+	// This is currently implemented almost exactly like Tabs above.
+	export class ButtonBar {
+	    // Set up click-to-browse tabs
+	    static prepareButtonBars() {
+	        // declare the click handler at the document level, then filter to any link inside a .tab
+	        $(document).on('click', '.buttonBar span:not(.active)', (e) => {
+	            var targetButton = $(e.target).closest('span');
+	            var activeButtons = targetButton.closest('div.buttonBar').children('span.active');
+
+	            activeButtons.removeClass('active');
+	            targetButton.addClass('active');
+
+	            var targetButtonContentID = targetButton.attr('for');
+	            var activeButtonEls = activeButtons.get();
+
+	            if (targetButtonContentID) {
+		            // Hide the content section for whatever buttons were active, then show the one selected
+		            for ( var i = 0; i < activeButtonEls.length; i++ ) {
+		                var a = activeButtonEls[i];
+		                var ButtonContentID = $(a).attr('for');
+		                if (ButtonContentID) {
+			                $('#'+ButtonContentID).addClass('off');
+			        	}
+		            }
+		            $('#'+targetButtonContentID).removeClass('off');
+		    	}
+	        });
+	    }
+	}
+
 
 	export class QtipHelper {
 		public create(linkElement, contentFunction, params:any):void {

@@ -4,9 +4,6 @@
 /// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
-/// <reference path="StudyGraphing.ts" />
-/// <reference path="GraphHelperMethods.ts" />
-/// <reference path="../typings/d3/d3.d.ts"/>
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }

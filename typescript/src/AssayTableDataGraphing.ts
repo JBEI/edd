@@ -1,9 +1,7 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="GraphHelperMethods.ts" />
+/// <reference path="EDDGraphingTools.ts" />
 
 var EDDATDGraphing:any;
-
-declare var createMultiLineGraph;
 
 EDDATDGraphing = {
 
@@ -22,17 +20,17 @@ EDDATDGraphing = {
 
 	addNewSet:function(newSet) {
 
-        var barAssayObj  = GraphHelperMethods.concatAssays(newSet);
+        var barAssayObj  = EDDGraphingTools.concatAssays(newSet);
 
         //data for graphs
         //data for graphs
         var graphSet = {
-            barAssayObj: GraphHelperMethods.concatAssays(newSet),
-            create_x_axis: GraphHelperMethods.createXAxis,
-            create_right_y_axis: GraphHelperMethods.createRightYAxis,
-            create_y_axis: GraphHelperMethods.createLeftYAxis,
-            x_axis: GraphHelperMethods.make_x_axis,
-            y_axis: GraphHelperMethods.make_right_y_axis,
+            barAssayObj: EDDGraphingTools.concatAssays(newSet),
+            create_x_axis: EDDGraphingTools.createXAxis,
+            create_right_y_axis: EDDGraphingTools.createRightYAxis,
+            create_y_axis: EDDGraphingTools.createLeftYAxis,
+            x_axis: EDDGraphingTools.make_x_axis,
+            y_axis: EDDGraphingTools.make_right_y_axis,
             individualData: newSet,
             assayMeasurements: barAssayObj,
             color: d3.scale.category10(),
@@ -40,7 +38,7 @@ EDDATDGraphing = {
             height: 220
         };
         //create respective graphs
-        createMultiLineGraph(graphSet, GraphHelperMethods.createSvg('.linechart'));
+        EDDGraphingTools.createMultiLineGraph(graphSet, EDDGraphingTools.createSvg('.linechart'));
 
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');

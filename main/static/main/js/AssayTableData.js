@@ -2,6 +2,7 @@
 /// <reference path="../typings/d3/d3.d.ts"/>
 /// <reference path="AssayTableDataGraphing.ts" />
 /// <reference path="EDDAutocomplete.ts" />
+/// <reference path="EDDGraphingTools.ts" />
 /// <reference path="Utl.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -1824,7 +1825,6 @@ var EDDTableImport;
             }
         };
         IdentifyStructuresStep.prototype.remakeGraphArea = function () {
-            var graphHelper = Object.create(GraphHelperMethods);
             var mode = this.selectMajorKindStep.interpretationMode;
             var sets = this.graphSets;
             var graph = $('#graphDiv');
@@ -1840,7 +1840,7 @@ var EDDTableImport;
             if ((mode === "std" || mode === 'biolector' || mode === 'hplc') && (sets.length > 0)) {
                 graph.removeClass('off');
                 sets.forEach(function (set) {
-                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set);
+                    var singleAssayObj = EDDGraphingTools.transformNewLineItem(EDDData, set);
                     dataSets.push(singleAssayObj);
                 });
                 EDDATDGraphing.addNewSet(dataSets);

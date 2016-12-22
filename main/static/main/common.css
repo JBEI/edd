@@ -99,7 +99,7 @@ a:hover {
     background-color:#FFC0C0;
 }
 .link_indicator {
-    background-image:url('./images/link_go.png');
+    background-image:url('images/link_go.png');
     background-position:right;
     background-repeat:no-repeat;
 }
@@ -120,6 +120,11 @@ a:hover {
     background-repeat: no-repeat;
     background-position: center;
     background-image: url(data:image/gif;base64,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);
+}
+.wait-larger {
+    background-repeat: no-repeat;
+    background-position: center;
+    background-image: url(images/spinner-big.gif);
 }
 .waitbadge {
     margin:0px 2px 0px 2px;
@@ -315,14 +320,14 @@ div.mainFlex > div.bottomBar {
 /* Footer area */
 
 div.mainFlex > div.footer {
+
+}
+div.mainFlex > div.footer > div.footer-text {
     border-top: 1px solid #CCC;
     color: #CCC;
     font-size: 0.85em;
     margin: 20px 15px 0px 15px;
     padding: 20px;
-}
-div.mainFlex > div.footer > div.footer-text {
-    margin: 0px auto;
     text-align: center;
 }
 div.mainFlex > div.footer > div.footer-text > span {
@@ -737,7 +742,7 @@ div.filteringSection {
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    margin:20px 2px 0px 2px;
+    margin:15px 2px 0px 2px;
     max-height: 289px;
 }
 div.filterTable {
@@ -874,7 +879,7 @@ ul.studyTabs {
 }
 
 div.tabBar {
-    padding:0px 20px 0px 20px;
+    padding:0px 10px 0px 10px;
     background-repeat: repeat-x;
     background-size: 416px 26px;
     background-position: bottom;
@@ -925,8 +930,8 @@ div.tabBar > span:not(.active) {
 /* Button bars (largely the same as tab bars) */
 
 div.buttonBar {
-    padding:0px 20px 0px 20px;
-    margin:20px 0px 20px 0px;
+    padding:0px 10px 0px 10px;
+    margin:5px 0px 5px 0px;
 }
 div.buttonBar > span {
     display: inline-block;
@@ -1141,10 +1146,6 @@ table.formTable tr > td textarea {
 #assaysMeasSelectedTD p {
     margin: 0.25em;
     padding: 0 8px;
-}
-
-.assay-action {
-    margin-left: 38px;
 }
 
 #studiesTable td:nth-child(2) {
@@ -1538,7 +1539,7 @@ ol.comment-list > li {
 
 .meta-remove {
     background-color: transparent;
-    background-image: url("./images/edit-cancel.png");
+    background-image: url("images/edit-cancel.png");
     background-position: 0 50%;
     background-repeat: no-repeat;
     cursor: pointer;
@@ -1570,21 +1571,6 @@ form.comments textarea {
 
 .hot-div {
     padding: 1em 0;
-}
-
-div.footer {
-    border-top: 1px solid #CCC;
-    color: #CCC;
-    font-size: 0.85em;
-    margin: 20px 34px 0px 34px;
-    padding: 20px;
-}
-div.footer > div.footer-text {
-    margin: 0px auto;
-    text-align: center;
-}
-div.footer > div.footer-text > span {
-    margin: 0 2em;
 }
 
 .groupReplicateRow {
@@ -1887,17 +1873,6 @@ div.tooltip2 {
     color: grey;
     margin-top: 5px;
 }
-
-#graphFilter {
-    margin-top: 20px;
-    border-top: 2px solid lightgrey;
-}
-
-.scroll {
-    display: block;
-    overflow-y: scroll;
-}
-
 
 .navbar .navbar-collapse {
   text-align: center;
