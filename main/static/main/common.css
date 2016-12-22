@@ -315,14 +315,14 @@ div.mainFlex > div.bottomBar {
 /* Footer area */
 
 div.mainFlex > div.footer {
+
+}
+div.mainFlex > div.footer > div.footer-text {
     border-top: 1px solid #CCC;
     color: #CCC;
     font-size: 0.85em;
     margin: 20px 15px 0px 15px;
     padding: 20px;
-}
-div.mainFlex > div.footer > div.footer-text {
-    margin: 0px auto;
     text-align: center;
 }
 div.mainFlex > div.footer > div.footer-text > span {
@@ -737,7 +737,7 @@ div.filteringSection {
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    margin:20px 2px 0px 2px;
+    margin:15px 2px 0px 2px;
     max-height: 289px;
 }
 div.filterTable {
@@ -874,7 +874,7 @@ ul.studyTabs {
 }
 
 div.tabBar {
-    padding:0px 20px 0px 20px;
+    padding:0px 10px 0px 10px;
     background-repeat: repeat-x;
     background-size: 416px 26px;
     background-position: bottom;
@@ -925,8 +925,8 @@ div.tabBar > span:not(.active) {
 /* Button bars (largely the same as tab bars) */
 
 div.buttonBar {
-    padding:0px 20px 0px 20px;
-    margin:20px 0px 20px 0px;
+    padding:0px 10px 0px 10px;
+    margin:5px 0px 5px 0px;
 }
 div.buttonBar > span {
     display: inline-block;
@@ -1141,10 +1141,6 @@ table.formTable tr > td textarea {
 #assaysMeasSelectedTD p {
     margin: 0.25em;
     padding: 0 8px;
-}
-
-.assay-action {
-    margin-left: 38px;
 }
 
 #studiesTable td:nth-child(2) {
@@ -1538,7 +1534,7 @@ ol.comment-list > li {
 
 .meta-remove {
     background-color: transparent;
-    background-image: url("./images/edit-cancel.png");
+    background-image: url("images/edit-cancel.png");
     background-position: 0 50%;
     background-repeat: no-repeat;
     cursor: pointer;
@@ -1570,21 +1566,6 @@ form.comments textarea {
 
 .hot-div {
     padding: 1em 0;
-}
-
-div.footer {
-    border-top: 1px solid #CCC;
-    color: #CCC;
-    font-size: 0.85em;
-    margin: 20px 34px 0px 34px;
-    padding: 20px;
-}
-div.footer > div.footer-text {
-    margin: 0px auto;
-    text-align: center;
-}
-div.footer > div.footer-text > span {
-    margin: 0 2em;
 }
 
 .groupReplicateRow {
