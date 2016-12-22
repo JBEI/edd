@@ -2,6 +2,7 @@
 /// <reference path="../typings/d3/d3.d.ts"/>
 /// <reference path="AssayTableDataGraphing.ts" />
 /// <reference path="EDDAutocomplete.ts" />
+/// <reference path="EDDGraphingTools.ts" />
 /// <reference path="Utl.ts" />
 
 
@@ -2250,7 +2251,6 @@ module EDDTableImport {
         }
 
         remakeGraphArea():void {
-            var graphHelper = Object.create(GraphHelperMethods);
             var mode = this.selectMajorKindStep.interpretationMode;
             var sets = this.graphSets;
             var graph = $('#graphDiv');
@@ -2267,7 +2267,7 @@ module EDDTableImport {
             if ((mode === "std" || mode === 'biolector' || mode === 'hplc') && (sets.length > 0)) {
                 graph.removeClass('off');
                 sets.forEach(function(set) {
-                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set);
+                    var singleAssayObj = EDDGraphingTools.transformNewLineItem(EDDData, set);
                     dataSets.push(singleAssayObj);
                 });
                 EDDATDGraphing.addNewSet(dataSets);

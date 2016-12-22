@@ -2,29 +2,31 @@
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
 /// <reference path="DataGrid.ts" />
-/// <reference path="StudyGraphing.ts" />
-/// <reference path="GraphHelperMethods.ts" />
+/// <reference path="EDDGraphingTools.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var StudyD;
-(function (StudyD) {
+var StudyDataPage;
+(function (StudyDataPage) {
     'use strict';
-    var mainGraphObject;
-    var mainGraphRefreshTimerID;
-    var linesActionPanelRefreshTimer;
+    var viewingMode; // An enum: 'linegraph', 'bargraph', or 'table'
+    var viewingModeIsStale;
+    var barGraphMode; // an enum: 'time', 'line', 'measurement'
+    var postFilteringAssays;
+    var postFilteringMeasurements;
     var assaysActionPanelRefreshTimer;
-    var prevDescriptionEditElement;
+    var refresDataDisplayIfStaleTimer;
+    var remakeMainGraphAreaCalls = 0;
+    var colorObj;
     // Table spec and table objects, one each per Protocol, for Assays.
-    var assaysDataGridSpecs;
+    var assaysDataGridSpec;
     // For the filtering section on the main graph
     var ProgressiveFilteringWidget = (function () {
         // MeasurementGroupCode: Need to initialize each filter list.
-        function ProgressiveFilteringWidget(studyDObject) {
-            this.studyDObject = studyDObject;
+        function ProgressiveFilteringWidget() {
             this.allFilters = [];
             this.assayFilters = [];
             this.metaboliteFilters = [];
@@ -255,26 +257,22 @@ var StudyD;
         };
         // redraw graph with new measurement types.
         ProgressiveFilteringWidget.prototype.checkRedrawRequired = function (force) {
-            var redraw = false;
-            // do not redraw if graph is not initialized yet
-            if (this.mainGraphObject) {
-                redraw = !!force;
-                // Walk down the filter widget list.  If we encounter one whose collective checkbox
-                // state has changed since we last made this walk, then a redraw is required. Note that
-                // we should not skip this loop, even if we already know a redraw is required, since the
-                // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
-                // widgets that we will use next time around.
-                $.each(this.allFilters, function (i, filter) {
-                    if (filter.anyCheckboxesChangedSinceLastInquiry()) {
-                        redraw = true;
-                    }
-                });
-            }
+            var redraw = !!force;
+            // Walk down the filter widget list.  If we encounter one whose collective checkbox
+            // state has changed since we last made this walk, then a redraw is required. Note that
+            // we should not skip this loop, even if we already know a redraw is required, since the
+            // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
+            // widgets that we will use next time around.
+            $.each(this.allFilters, function (i, filter) {
+                if (filter.anyCheckboxesChangedSinceLastInquiry()) {
+                    redraw = true;
+                }
+            });
             return redraw;
         };
         return ProgressiveFilteringWidget;
     }());
-    StudyD.ProgressiveFilteringWidget = ProgressiveFilteringWidget;
+    StudyDataPage.ProgressiveFilteringWidget = ProgressiveFilteringWidget;
     // A generic version of a filtering column in the filtering section beneath the graph area on the page,
     // meant to be subclassed for specific criteria.
     // When initialized with a set of record IDs, the column is filled with labeled checkboxes, one for each
@@ -423,10 +421,6 @@ var StudyD;
             $(this.tableBodyElement).empty();
             this.tableRows = {};
             this.checkboxes = {};
-            var graphHelper = Object.create(GraphHelperMethods);
-            var colorObj = graphHelper.renderColor(EDDData.Lines);
-            //add color obj to EDDData
-            EDDData['color'] = colorObj;
             // line label color based on graph color of line
             if (this.sectionTitle === "Line") {
                 var colors = {};
@@ -601,7 +595,7 @@ var StudyD;
         };
         return GenericFilterSection;
     }());
-    StudyD.GenericFilterSection = GenericFilterSection;
+    StudyDataPage.GenericFilterSection = GenericFilterSection;
     var StrainFilterSection = (function (_super) {
         __extends(StrainFilterSection, _super);
         function StrainFilterSection() {
@@ -629,7 +623,7 @@ var StudyD;
         };
         return StrainFilterSection;
     }(GenericFilterSection));
-    StudyD.StrainFilterSection = StrainFilterSection;
+    StudyDataPage.StrainFilterSection = StrainFilterSection;
     var CarbonSourceFilterSection = (function (_super) {
         __extends(CarbonSourceFilterSection, _super);
         function CarbonSourceFilterSection() {
@@ -657,7 +651,7 @@ var StudyD;
         };
         return CarbonSourceFilterSection;
     }(GenericFilterSection));
-    StudyD.CarbonSourceFilterSection = CarbonSourceFilterSection;
+    StudyDataPage.CarbonSourceFilterSection = CarbonSourceFilterSection;
     var CarbonLabelingFilterSection = (function (_super) {
         __extends(CarbonLabelingFilterSection, _super);
         function CarbonLabelingFilterSection() {
@@ -685,7 +679,7 @@ var StudyD;
         };
         return CarbonLabelingFilterSection;
     }(GenericFilterSection));
-    StudyD.CarbonLabelingFilterSection = CarbonLabelingFilterSection;
+    StudyDataPage.CarbonLabelingFilterSection = CarbonLabelingFilterSection;
     var LineNameFilterSection = (function (_super) {
         __extends(LineNameFilterSection, _super);
         function LineNameFilterSection() {
@@ -709,7 +703,7 @@ var StudyD;
         };
         return LineNameFilterSection;
     }(GenericFilterSection));
-    StudyD.LineNameFilterSection = LineNameFilterSection;
+    StudyDataPage.LineNameFilterSection = LineNameFilterSection;
     var ProtocolFilterSection = (function (_super) {
         __extends(ProtocolFilterSection, _super);
         function ProtocolFilterSection() {
@@ -733,7 +727,7 @@ var StudyD;
         };
         return ProtocolFilterSection;
     }(GenericFilterSection));
-    StudyD.ProtocolFilterSection = ProtocolFilterSection;
+    StudyDataPage.ProtocolFilterSection = ProtocolFilterSection;
     var AssaySuffixFilterSection = (function (_super) {
         __extends(AssaySuffixFilterSection, _super);
         function AssaySuffixFilterSection() {
@@ -757,7 +751,7 @@ var StudyD;
         };
         return AssaySuffixFilterSection;
     }(GenericFilterSection));
-    StudyD.AssaySuffixFilterSection = AssaySuffixFilterSection;
+    StudyDataPage.AssaySuffixFilterSection = AssaySuffixFilterSection;
     var MetaDataFilterSection = (function (_super) {
         __extends(MetaDataFilterSection, _super);
         function MetaDataFilterSection(metaDataID) {
@@ -772,7 +766,7 @@ var StudyD;
         };
         return MetaDataFilterSection;
     }(GenericFilterSection));
-    StudyD.MetaDataFilterSection = MetaDataFilterSection;
+    StudyDataPage.MetaDataFilterSection = MetaDataFilterSection;
     var LineMetaDataFilterSection = (function (_super) {
         __extends(LineMetaDataFilterSection, _super);
         function LineMetaDataFilterSection() {
@@ -794,7 +788,7 @@ var StudyD;
         };
         return LineMetaDataFilterSection;
     }(MetaDataFilterSection));
-    StudyD.LineMetaDataFilterSection = LineMetaDataFilterSection;
+    StudyDataPage.LineMetaDataFilterSection = LineMetaDataFilterSection;
     var AssayMetaDataFilterSection = (function (_super) {
         __extends(AssayMetaDataFilterSection, _super);
         function AssayMetaDataFilterSection() {
@@ -816,7 +810,7 @@ var StudyD;
         };
         return AssayMetaDataFilterSection;
     }(MetaDataFilterSection));
-    StudyD.AssayMetaDataFilterSection = AssayMetaDataFilterSection;
+    StudyDataPage.AssayMetaDataFilterSection = AssayMetaDataFilterSection;
     var MetaboliteCompartmentFilterSection = (function (_super) {
         __extends(MetaboliteCompartmentFilterSection, _super);
         function MetaboliteCompartmentFilterSection() {
@@ -842,7 +836,7 @@ var StudyD;
         };
         return MetaboliteCompartmentFilterSection;
     }(GenericFilterSection));
-    StudyD.MetaboliteCompartmentFilterSection = MetaboliteCompartmentFilterSection;
+    StudyDataPage.MetaboliteCompartmentFilterSection = MetaboliteCompartmentFilterSection;
     var MeasurementFilterSection = (function (_super) {
         __extends(MeasurementFilterSection, _super);
         function MeasurementFilterSection() {
@@ -875,7 +869,7 @@ var StudyD;
         };
         return MeasurementFilterSection;
     }(GenericFilterSection));
-    StudyD.MeasurementFilterSection = MeasurementFilterSection;
+    StudyDataPage.MeasurementFilterSection = MeasurementFilterSection;
     var MetaboliteFilterSection = (function (_super) {
         __extends(MetaboliteFilterSection, _super);
         function MetaboliteFilterSection() {
@@ -909,7 +903,7 @@ var StudyD;
         };
         return MetaboliteFilterSection;
     }(GenericFilterSection));
-    StudyD.MetaboliteFilterSection = MetaboliteFilterSection;
+    StudyDataPage.MetaboliteFilterSection = MetaboliteFilterSection;
     var ProteinFilterSection = (function (_super) {
         __extends(ProteinFilterSection, _super);
         function ProteinFilterSection() {
@@ -943,7 +937,7 @@ var StudyD;
         };
         return ProteinFilterSection;
     }(GenericFilterSection));
-    StudyD.ProteinFilterSection = ProteinFilterSection;
+    StudyDataPage.ProteinFilterSection = ProteinFilterSection;
     var GeneFilterSection = (function (_super) {
         __extends(GeneFilterSection, _super);
         function GeneFilterSection() {
@@ -977,57 +971,84 @@ var StudyD;
         };
         return GeneFilterSection;
     }(GenericFilterSection));
-    StudyD.GeneFilterSection = GeneFilterSection;
+    StudyDataPage.GeneFilterSection = GeneFilterSection;
     // Called when the page loads.
     function prepareIt() {
         var _this = this;
-        this.mainGraphObject = null;
-        this.progressiveFilteringWidget = new ProgressiveFilteringWidget(this);
-        this.mainGraphRefreshTimerID = null;
-        this.prevDescriptionEditElement = null;
-        this.metabolicMapID = -1;
-        this.metabolicMapName = null;
-        this.linesActionPanelRefreshTimer = null;
-        this.assaysActionPanelRefreshTimer = null;
-        this.assaysDataGridSpecs = {};
-        this.assaysDataGrids = {};
-        // put the click handler at the document level, then filter to any link inside a .disclose
-        $(document).on('click', '.disclose .discloseLink', function (e) {
-            $(e.target).closest('.disclose').toggleClass('discloseHide');
+        this.progressiveFilteringWidget = new ProgressiveFilteringWidget();
+        postFilteringAssays = [];
+        postFilteringMeasurements = [];
+        // By default, we always show the graph
+        viewingMode = 'linegraph';
+        barGraphMode = 'time';
+        // Start out with every display mode needing a refresh
+        viewingModeIsStale = {
+            'linegraph': true,
+            'bargraph': true,
+            'table': true
+        };
+        refresDataDisplayIfStaleTimer = null;
+        colorObj = null;
+        assaysDataGridSpec = null;
+        StudyDataPage.assaysDataGrid = null;
+        assaysActionPanelRefreshTimer = null;
+        // This only adds code that turns the other buttons off when a button is made active,
+        // and does the same to elements named in the 'for' attributes of each button.
+        // We still need to add our own responders to actually do stuff.
+        Utl.ButtonBar.prepareButtonBars();
+        $("#dataTableButton").click(function () {
+            viewingMode = 'table';
+            $("#tableActionButtons").removeClass('off');
+            $("#barGraphTypeButtons").addClass('off');
+            queueRefreshDataDisplayIfStale();
+        });
+        // This one is active by default
+        $("#lineGraphButton").click(function () {
+            viewingMode = 'linegraph';
+            $("#tableActionButtons").addClass('off');
+            $("#barGraphTypeButtons").addClass('off');
+            queueRefreshDataDisplayIfStale();
+        });
+        $("#barGraphButton").click(function () {
+            viewingMode = 'bargraph';
+            $("#tableActionButtons").addClass('off');
+            $("#barGraphTypeButtons").removeClass('off');
+            queueRefreshDataDisplayIfStale();
+        });
+        $("#timeBarGraphButton").click(function () {
+            barGraphMode = 'time';
+            queueRefreshDataDisplayIfStale();
+        });
+        $("#lineBarGraphButton").click(function () {
+            barGraphMode = 'line';
+            queueRefreshDataDisplayIfStale();
+        });
+        $("#measurementBarGraphButton").click(function () {
+            barGraphMode = 'measurement';
+            queueRefreshDataDisplayIfStale();
+        });
+        // Set up the Add Measurement to Assay modal
+        var dlg = $("#addMeasurement").dialog({
+            autoOpen: false
+        });
+        $("#addMeasurementButton").click(function () {
+            $("#addMeasurement").dialog("open");
             return false;
         });
-        measurementToAssayModal();
-        showStudyGraph();
-        showStudyTable();
-        show_assay_measurements();
+        // Callbacks to respond to the filtering section
+        $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueRefreshDataDisplayIfStale.bind(this, false))
+            .on('keydown', filterTableKeyDown.bind(this));
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
             'error': function (xhr, status, e) {
-                $('#overviewSection').prepend("<div class='noData'>Error. Please reload</div>");
+                $('#content').prepend("<div class='noData'>Error. Please reload</div>");
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
             'success': function (data) {
                 EDDData = $.extend(EDDData || {}, data);
+                colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
                 _this.progressiveFilteringWidget.prepareFilteringSection();
-                if (_.keys(EDDData.Assays).length === 0) {
-                    //stop spinner
-                    $('#loadingDiv').hide();
-                    $('.scroll').css('height', 100);
-                }
-                else {
-                    $('.scroll').css('height', 300);
-                    $('#chartType').show();
-                }
-                //show empty graph div if there are no
-                if (_.keys(EDDData.Lines).length === 0) {
-                }
-                else {
-                }
-                var spec;
-                _this.assaysDataGridSpecs = spec = new DataGridSpecAssays(EDDData.Assays);
-                spec.init();
-                _this.assaysDataGrids = new DataGridAssays(spec);
                 //pulling in protocol measurements AssayMeasurements
                 $.each(EDDData.Protocols, function (id, protocol) {
                     $.ajax({
@@ -1043,115 +1064,8 @@ var StudyD;
                 });
             }
         });
-        $('form.line-edit').on('change', '.line-meta > :input', function (ev) {
-            // watch for changes to metadata values, and serialize to the meta_store field
-            var form = $(ev.target).closest('form'), metaIn = form.find('[name=line-meta_store]'), meta = JSON.parse(metaIn.val() || '{}');
-            form.find('.line-meta > :input').each(function (i, input) {
-                var key = $(input).attr('id').match(/-(\d+)$/)[1];
-                meta[key] = $(input).val();
-            });
-            metaIn.val(JSON.stringify(meta));
-        }).on('click', '.line-meta-add', function (ev) {
-            // make metadata Add Value button work and not submit the form
-            var addrow = $(ev.target).closest('.line-edit-meta'), type, value;
-            type = addrow.find('.line-meta-type').val();
-            value = addrow.find('.line-meta-value').val();
-            // clear out inputs so another value can be entered
-            addrow.find(':input').not(':checkbox, :radio').val('');
-            addrow.find(':checkbox, :radio').prop('checked', false);
-            if (EDDData.MetaDataTypes[type]) {
-                insertLineMetadataRow(addrow, type, value).find(':input').trigger('change');
-            }
-            return false;
-        }).on('click', '.meta-remove', function (ev) {
-            // remove metadata row and insert null value for the metadata key
-            var form = $(ev.target).closest('form'), metaRow = $(ev.target).closest('.line-meta'), metaIn = form.find('[name=line-meta_store]'), meta = JSON.parse(metaIn.val() || '{}'), key = metaRow.attr('id').match(/-(\d+)$/)[1];
-            meta[key] = null;
-            metaIn.val(JSON.stringify(meta));
-            metaRow.remove();
-        });
-        // Prepare the main data overview graph at the top of the page
-        if (this.mainGraphObject === null && $('#maingraph').length === 1) {
-            this.mainGraphObject = Object.create(StudyDGraphing);
-            this.mainGraphObject.Setup('maingraph');
-            this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
-        }
-        $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
-            .on('keydown', filterTableKeyDown.bind(this));
     }
-    StudyD.prepareIt = prepareIt;
-    //click handler for add measurements to selected assays modal
-    function measurementToAssayModal() {
-        var dlg = $("#addMeasToAssay").dialog({
-            autoOpen: false
-        });
-        $("#measurementMain").click(function () {
-            $("#addMeasToAssay").dialog("open");
-            return false;
-        });
-        return false;
-    }
-    ;
-    //show hide for clicking graph tab under data
-    function showStudyGraph() {
-        $('#studyGraph').click(function (event) {
-            event.preventDefault();
-            $('#studyTable').removeClass('active');
-            $(this).addClass('active');
-            $('#overviewSection').css('display', 'block');
-            $('#assaysSection').css('display', 'none');
-            $("input[name*='assaysSearch']").parents('thead').hide();
-            return false;
-        });
-    }
-    //show hide for clicking table tab under data
-    function showStudyTable() {
-        $("#studyTable").one("click", function () {
-            //first build table
-            StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
-            //if any checkboxes have been check in filtering section, showHide rows
-            if ($(".filterTable input:checkbox:checked").length > 0) {
-                StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs);
-            }
-        });
-        $('#studyTable').click(function (event) {
-            event.preventDefault();
-            //on page load of table show assays search header
-            $("input[name*='assaysSearch']").parents('thead').show();
-            $('#showAll').show();
-            //remove sorter on measurement tab in table
-            $('#hAssaysMName').removeClass();
-            $('#studyGraph').removeClass('active');
-            $(this).addClass('active');
-            $('#assaysSection').css('display', 'block');
-            $('#overviewSection').css('display', 'none');
-            return false;
-        });
-    }
-    ;
-    //click handler for show assays with no measurements
-    function show_assay_measurements() {
-        $('#showNoMeasurements').click(function (event) {
-            event.preventDefault();
-            StudyD.showHideAssayRows(show_assay_no_measurements());
-            //remove checkboxes from filter section
-            $('#mainFilterSection').find('input[type=checkbox]:checked').prop('checked', false);
-            return false;
-        });
-    }
-    function show_assay_no_measurements() {
-        var assays = _.keys(EDDData.Assays);
-        var filteredIDs = [];
-        for (var r = 0; r < assays.length; r++) {
-            var id = assays[r];
-            // Here is the condition that determines whether the rows associated with this ID are
-            // shown or hidden.
-            if (EDDData.Assays[id].active) {
-                filteredIDs.push(parseInt(id));
-            }
-        }
-        return filteredIDs;
-    }
+    StudyDataPage.prepareIt = prepareIt;
     function filterTableKeyDown(e) {
         switch (e.keyCode) {
             case 38: // up
@@ -1164,7 +1078,7 @@ var StudyD;
                 if (e.keyCode > 8 && e.keyCode < 32) {
                     return;
                 }
-                this.queueMainGraphRemake(false);
+                this.queueRefreshDataDisplayIfStale(false);
         }
     }
     function requestAssayData(assay) {
@@ -1180,7 +1094,7 @@ var StudyD;
             success: processMeasurementData.bind(this, protocol)
         });
     }
-    StudyD.requestAssayData = requestAssayData;
+    StudyDataPage.requestAssayData = requestAssayData;
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
@@ -1230,18 +1144,23 @@ var StudyD;
         this.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
         if (count_rec < count_total) {
         }
-        this.queueMainGraphRemake(false);
+        console.log('processed ' + count_rec);
+        this.queueRefreshDataDisplayIfStale(false);
     }
-    function queueAssaysActionPanelShow() {
-        // Start a timer to wait before calling the routine that remakes the graph.
-        // This way we're not bothering the user with the long redraw process when
-        // they are making fast edits.
-        if (this.assaysActionPanelRefreshTimer) {
-            clearTimeout(this.assaysActionPanelRefreshTimer);
+    function queueRefreshDataDisplayIfStale() {
+        if (refresDataDisplayIfStaleTimer) {
+            clearTimeout(refresDataDisplayIfStaleTimer);
         }
-        this.assaysActionPanelRefreshTimer = setTimeout(assaysActionPanelShow.bind(this), 150);
+        refresDataDisplayIfStaleTimer = setTimeout(refreshDataDisplayIfStale.bind(this), 100);
     }
-    StudyD.queueAssaysActionPanelShow = queueAssaysActionPanelShow;
+    StudyDataPage.queueRefreshDataDisplayIfStale = queueRefreshDataDisplayIfStale;
+    function queueAssaysActionPanelShow() {
+        if (assaysActionPanelRefreshTimer) {
+            clearTimeout(assaysActionPanelRefreshTimer);
+        }
+        assaysActionPanelRefreshTimer = setTimeout(assaysActionPanelShow.bind(this), 150);
+    }
+    StudyDataPage.queueAssaysActionPanelShow = queueAssaysActionPanelShow;
     function assaysActionPanelShow() {
         var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
         panel = $('#assaysActionPanel');
@@ -1249,9 +1168,7 @@ var StudyD;
             return;
         }
         // Figure out how many assays/checkboxes are selected.
-        $.each(this.assaysDataGrids, function (pID, dataGrid) {
-            checkedBoxes = checkedBoxes.concat(dataGrid.getSelectedCheckboxElements());
-        });
+        checkedBoxes = StudyDataPage.assaysDataGrid.getSelectedCheckboxElements();
         checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
         checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
         panel.toggleClass('off', !checkedAssays && !checkedMeasure);
@@ -1267,16 +1184,6 @@ var StudyD;
             }
         }
     }
-    // Start a timer to wait before calling the routine that remakes a graph. This way we're not
-    // bothering the user with the long redraw process when they are making fast edits.
-    function queueMainGraphRemake(force) {
-        if (this.mainGraphRefreshTimerID) {
-            clearTimeout(this.mainGraphRefreshTimerID);
-        }
-        this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
-    }
-    StudyD.queueMainGraphRemake = queueMainGraphRemake;
-    var remakeMainGraphAreaCalls = 0;
     //this function shows and hides rows based on filtered data.
     function showHideAssayRows(progressiveFilteringMeasurements) {
         var assays = _.keys(EDDData.Assays);
@@ -1294,63 +1201,80 @@ var StudyD;
         _.each(showArray, function (assayId) {
             //if the row does not exist, reset table 
             if ($("input[value='" + assayId + "']").parents('tr').length === 0) {
-                StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+                StudyDataPage.assaysDataGrid.triggerAssayRecordsRefresh();
             }
             $("input[value='" + assayId + "']").parents('tr').show();
         });
     }
-    StudyD.showHideAssayRows = showHideAssayRows;
-    function showAssaysWithNoMeasurements(allAssays) {
-        var assays = _.keys(EDDData.Assays);
-        //show elements in progressive filtering measurements
-        _.each(assays, function (assayId) {
-            //if the row does not exist, reset table
-            if ($("input[value='" + assayId + "']").parents('tr').length === 0) {
-                StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
+    StudyDataPage.showHideAssayRows = showHideAssayRows;
+    function refreshDataDisplayIfStale(force) {
+        // If the filtering widget claims a change since the last inquiry,
+        // then all the viewing modes are stale, no matter what.
+        if (StudyDataPage.progressiveFilteringWidget.checkRedrawRequired(force)) {
+            viewingModeIsStale['linegraph'] = true;
+            viewingModeIsStale['bargraph-time'] = true;
+            viewingModeIsStale['bargraph-line'] = true;
+            viewingModeIsStale['bargraph-measurement'] = true;
+            viewingModeIsStale['table'] = true;
+            // Gives ids of lines to show.
+            postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
+            postFilteringAssays = [];
+            var seenAssays = {};
+            // Resolve measurement IDs into a list of assay IDs in the original order encountered, de-duping them.
+            postFilteringMeasurements.forEach(function (mId) {
+                var a = EDDData.AssayMeasurements[mId].assay;
+                if (!seenAssays[a]) {
+                    postFilteringAssays.push(a);
+                }
+                seenAssays[a] = true;
+            });
+        }
+        else if (viewingMode == 'bargraph') {
+            if (!viewingModeIsStale[viewingMode + '-' + barGraphMode]) {
+                return;
             }
-            $("input[value='" + assayId + "']").parents('tr').show();
-        });
-    }
-    StudyD.showAssaysWithNoMeasurements = showAssaysWithNoMeasurements;
-    //convert post filtered measuremnts to array of assay ids
-    function convertPostFilteringMeasurements(postFilteringMeasurements) {
-        //array of assays
-        var filteredAssayMeasurements = [];
-        _.each(postFilteringMeasurements, function (meas) {
-            filteredAssayMeasurements.push(EDDData.AssayMeasurements[meas].assay);
-        });
-        return filteredAssayMeasurements;
-    }
-    StudyD.convertPostFilteringMeasurements = convertPostFilteringMeasurements;
-    function remakeMainGraphArea(force) {
-        var _this = this;
-        var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
-        if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
+        }
+        else if (!viewingModeIsStale[viewingMode]) {
             return;
         }
-        // stop spinner
-        $('#loadingDiv').hide();
-        $('.blankSvg').hide();
-        // remove disabled from table because measurements are now there
-        $('#studyTable').removeClass('disabled');
-        // remove SVG.
-        this.mainGraphObject.clearAllSets();
-        this.graphHelper = Object.create(GraphHelperMethods);
-        colorObj = EDDData['color'];
-        // Gives ids of lines to show.
-        var dataSets = [], prev;
-        postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
-        // show message that there's no data to display
-        if (postFilteringMeasurements.length === 0) {
-            $('.lineNoData').show();
+        if (viewingMode == 'table') {
+            if (assaysDataGridSpec === null) {
+                assaysDataGridSpec = new DataGridSpecAssays(EDDData.Assays);
+                assaysDataGridSpec.init();
+                StudyDataPage.assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
+            }
+            // If any checkboxes have been checked in filtering section, assume we're hiding empty assays?
+            if ($(".filterTable input:checkbox:checked").length > 0) {
+                showHideAssayRows(postFilteringAssays);
+            }
+            viewingModeIsStale['table'] = false;
         }
         else {
-            $('.lineNoData').hide();
+            remakeMainGraphArea();
+            if (viewingMode == 'bargraph') {
+                viewingModeIsStale[viewingMode + '-' + barGraphMode] = false;
+            }
+            else {
+                viewingModeIsStale['linegraph'] = false;
+            }
         }
-        // store filtered data here.
-        StudyD.progressiveFilteringWidget.filteredAssayIDs = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
-        // show hide filtered data on assay table.
-        StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs);
+    }
+    function remakeMainGraphArea() {
+        var dataPointsDisplayed = 0, dataPointsTotal = 0, dataSets = [];
+        console.log("Remaking graph");
+        $('#graphLoading').hide(); // Remove load spinner if still present
+        $('#noData').hide();
+        $('#tooManyPoints').hide();
+        $('#lineGraph').addClass('off');
+        $('#barGraphByTime').addClass('off');
+        $('#barGraphByLine').addClass('off');
+        $('#barGraphByMeasurement').addClass('off');
+        // show message that there's no data to display
+        if (postFilteringMeasurements.length === 0) {
+            $('#noData').removeClass('off');
+            $('#noData').show();
+            return;
+        }
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
@@ -1365,31 +1289,31 @@ var StudyD;
             lineName = line.name;
             var label = $('#' + line['identifier']).next();
             if (_.keys(EDDData.Lines).length > 22) {
-                color = changeLineColor(line, colorObj, assay.lid, _this.graphHelper);
+                color = changeLineColor(line, assay.lid);
             }
             else {
                 color = colorObj[assay.lid];
             }
-            if (remakeMainGraphAreaCalls === 0) {
-                _this.graphHelper.labels.push(label);
+            if (remakeMainGraphAreaCalls < 1) {
+                EDDGraphingTools.labels.push(label);
                 color = colorObj[assay.lid];
-                //update label color to line color
+                // update label color to line color
                 $(label).css('color', color);
             }
-            else if (remakeMainGraphAreaCalls >= 1 && $('#' + line['identifier']).prop('checked')) {
-                //unchecked labels black
-                makeLabelsBlack(_this.graphHelper.labels);
-                //update label color to line color
+            else if ($('#' + line['identifier']).prop('checked')) {
+                // unchecked labels black
+                makeLabelsBlack(EDDGraphingTools.labels);
+                // update label color to line color
                 if (color === null || color === undefined) {
                     color = colorObj[assay.lid];
                 }
                 $(label).css('color', color);
             }
             else {
-                var count = noCheckedBoxes(_this.graphHelper.labels);
+                var count = noCheckedBoxes(EDDGraphingTools.labels);
                 if (count === 0) {
-                    _this.graphHelper.nextColor = null;
-                    addColor(_this.graphHelper.labels, colorObj, assay.lid);
+                    EDDGraphingTools.nextColor = null;
+                    addColor(EDDGraphingTools.labels, assay.lid);
                 }
                 else {
                     //update label color to black
@@ -1404,15 +1328,48 @@ var StudyD;
                 'data': EDDData,
                 'name': name,
                 'color': color,
-                'lineName': lineName,
+                'lineName': lineName
             };
-            singleAssayObj = _this.graphHelper.transformSingleLineItem(dataObj);
+            singleAssayObj = EDDGraphingTools.transformSingleLineItem(dataObj);
             dataSets.push(singleAssayObj);
-            prev = lineName;
         });
+        $('#noData').removeClass('off');
         remakeMainGraphAreaCalls++;
-        uncheckEventHandler(this.graphHelper.labels);
-        this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
+        uncheckEventHandler(EDDGraphingTools.labels);
+        var barAssayObj = EDDGraphingTools.concatAssays(dataSets);
+        //data for graphs
+        var graphSet = {
+            barAssayObj: EDDGraphingTools.concatAssays(dataSets),
+            create_x_axis: EDDGraphingTools.createXAxis,
+            create_right_y_axis: EDDGraphingTools.createRightYAxis,
+            create_y_axis: EDDGraphingTools.createLeftYAxis,
+            x_axis: EDDGraphingTools.make_x_axis,
+            y_axis: EDDGraphingTools.make_right_y_axis,
+            individualData: dataSets,
+            assayMeasurements: barAssayObj,
+            width: 750,
+            height: 220
+        };
+        if (viewingMode == 'linegraph') {
+            $('#lineGraph').empty().removeClass('off');
+            var s = EDDGraphingTools.createSvg($('#lineGraph').get(0));
+            EDDGraphingTools.createMultiLineGraph(graphSet, s);
+        }
+        else if (barGraphMode == 'time') {
+            $('#barGraphByTime').empty().removeClass('off');
+            var s = EDDGraphingTools.createSvg($('#barGraphByTime').get(0));
+            createGroupedBarGraph(graphSet, s);
+        }
+        else if (barGraphMode == 'line') {
+            $('#barGraphByLine').empty().removeClass('off');
+            var s = EDDGraphingTools.createSvg($('#barGraphByLine').get(0));
+            createGroupedBarGraph(graphSet, s);
+        }
+        else if (barGraphMode == 'measurement') {
+            $('#barGraphByMeasurement').removeClass('off');
+            var s = EDDGraphingTools.createSvg($('#barGraphByMeasurement').get(0));
+            createGroupedBarGraph(graphSet, s);
+        }
     }
     /**
      * this function makes unchecked labels black
@@ -1434,8 +1391,9 @@ var StudyD;
             var id = $(label).prev().attr('id');
             $('#' + id).change(function () {
                 var ischecked = $(this).is(':checked');
-                if (!ischecked)
+                if (!ischecked) {
                     $(label).css('color', 'black');
+                }
             });
         });
     }
@@ -1457,11 +1415,10 @@ var StudyD;
     /**
      * This function adds colors after user has clicked a line and then unclicked all the lines.
      * @param labels
-     * @param colorObj
      * @param assay
      * @returns labels
      */
-    function addColor(labels, colorObj, assay) {
+    function addColor(labels, assay) {
         _.each(labels, function (label) {
             var color = colorObj[assay];
             if (EDDData.Lines[assay].name === label.text()) {
@@ -1470,35 +1427,413 @@ var StudyD;
         });
         return labels;
     }
+    /** this function takes in element and returns an array of selectors
+     * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
+     * <div id=​"barAssay">​</div>​]
+     */
+    function getButtonElement(element) {
+        return $(element.siblings(':first')).find("label");
+    }
+    /**
+     * this function takes in the graphDiv element and returns an array of 4 buttons
+     */
+    function getSelectorElement(element) {
+        if ($(element).attr('id') != 'maingraph') {
+            var selector = element.siblings().eq(1);
+            return $(selector).children();
+        }
+        else {
+            return element.siblings().addBack();
+        }
+    }
+    /** this function takes in an element selector and an array of svg rects and returns
+     * returns message or nothing.
+     */
+    function svgWidth(selector, rectArray) {
+        $('.tooMuchData').hide();
+        $('.noData').hide();
+        var sum = 0;
+        _.each(rectArray, function (rectElem) {
+            if (rectElem.getAttribute("width") != 0) {
+                sum++;
+            }
+        });
+        if (sum === 0) {
+            $(selector).prepend("<p class=' tooMuchData'>Too many data points to display" +
+                "</p><p  class=' tooMuchData'>Recommend filtering by protocol</p>");
+        }
+    }
+    /** this function takes in the EDDData.MeasurementTypes object and returns the measurement type
+     *  that has the most data points - options are based on family p, m, -, etc.
+     */
+    function measurementType(types) {
+        var proteomics = {};
+        for (var type in types) {
+            if (proteomics.hasOwnProperty(types[type].family)) {
+                proteomics[types[type].family]++;
+            }
+            else {
+                proteomics[types[type].family] = 0;
+            }
+        }
+        for (var key in proteomics) {
+            var max = 0;
+            var maxType;
+            if (proteomics[key] > max) {
+                max = proteomics[key];
+                maxType = key;
+            }
+        }
+        return maxType;
+    }
+    /**
+     * this function takes in the selector object and selector type and displays or hides the graph
+     */
+    function displayGraph(selectors, selector) {
+        for (var key in selectors) {
+            if (key === selector) {
+                d3.select(selectors[key]).style('display', 'block');
+            }
+            else {
+                d3.select(selectors[key]).style('display', 'none');
+            }
+        }
+    }
+    /**
+     * this function takes in the event, selector type, rect obj, selector object and
+     * handles the button event.
+     */
+    function buttonEventHandler(newSet, event, rect, selector, selectors) {
+        event.preventDefault();
+        if (newSet.length === 0) {
+            $(selectors[selector]).prepend("<p class='noData'>No data selected - please " +
+                "filter</p>");
+            $('.tooMuchData').remove();
+        }
+        else {
+            $('.noData').remove();
+            svgWidth(selectors[selector], rect);
+        }
+        displayGraph(selectors, selector);
+        return false;
+    }
+    /**
+     * this function takes in input min y value, max y value, and the sorted json object.
+     *  outputs a grouped bar graph with values grouped by assay name
+     **/
+    function createGroupedBarGraph(graphSet, svg) {
+        var assayMeasurements = graphSet.assayMeasurements, typeClass = {
+            'measurement': ".barMeasurement",
+            'x': ".barTime",
+            'name': '.barAssay'
+        }, modeToField = {
+            'line': 'name',
+            'time': 'x',
+            'measurement': 'measurement'
+        }, numUnits = EDDGraphingTools.howManyUnits(assayMeasurements), yRange = [], unitMeasurementData = [], yMin = [], data, nested, typeNames, xValues, yvalueIds, x_name, xValueLabels, sortedXvalues, div, x_xValue, lineID, meas, y, wordLength;
+        var type = modeToField[barGraphMode];
+        if (type === 'x') {
+            var entries = d3.nest(type)
+                .key(function (d) {
+                return d[type];
+            })
+                .entries(assayMeasurements);
+            var timeMeasurements = _.clone(assayMeasurements);
+            var nestedByTime = EDDGraphingTools.findAllTime(entries);
+            var howManyToInsertObj = EDDGraphingTools.findMaxTimeDifference(nestedByTime);
+            var max = Math.max.apply(null, _.values(howManyToInsertObj));
+            if (max > 400) {
+                $(typeClass[type]).prepend("<p class='noData'>Too many missing data fields. Please filter</p>");
+                $('.tooMuchData').remove();
+            }
+            else {
+                $('.noData').remove();
+            }
+            EDDGraphingTools.insertFakeValues(entries, howManyToInsertObj, timeMeasurements);
+        }
+        //x axis scale for type
+        x_name = d3.scale.ordinal()
+            .rangeRoundBands([0, graphSet.width], 0.1);
+        //x axis scale for x values
+        x_xValue = d3.scale.ordinal();
+        //x axis scale for line id to differentiate multiple lines associated with the same name/type
+        lineID = d3.scale.ordinal();
+        // y axis range scale
+        y = d3.scale.linear()
+            .range([graphSet.height, 0]);
+        div = d3.select("body").append("div")
+            .attr("class", "tooltip2")
+            .style("opacity", 0);
+        var d3_entries = type === 'x' ? timeMeasurements : assayMeasurements;
+        meas = d3.nest()
+            .key(function (d) {
+            return d.y_unit;
+        })
+            .entries(d3_entries);
+        // if there is no data - show no data error message
+        if (assayMeasurements.length === 0) {
+            $(typeClass[type]).prepend("<p class='noData'>No data selected - please " +
+                "filter</p>");
+            $('.tooMuchData').remove();
+        }
+        else {
+            $('.noData').remove();
+        }
+        for (var i = 0; i < numUnits; i++) {
+            yRange.push(d3.scale.linear().rangeRound([graphSet.height, 0]));
+            unitMeasurementData.push(d3.nest()
+                .key(function (d) {
+                return d.y;
+            })
+                .entries(meas[i].values));
+            yMin.push(d3.min(unitMeasurementData[i], function (d) {
+                return d3.min(d.values, function (d) {
+                    return d.y;
+                });
+            }));
+        }
+        if (type === 'x') {
+            // nest data by type (ie measurement) and by x value
+            nested = d3.nest(type)
+                .key(function (d) {
+                return d[type];
+            })
+                .key(function (d) {
+                return parseFloat(d.x);
+            })
+                .entries(timeMeasurements);
+        }
+        else {
+            // nest data by type (ie measurement) and by x value
+            nested = d3.nest(type)
+                .key(function (d) {
+                return d[type];
+            })
+                .key(function (d) {
+                return parseFloat(d.x);
+            })
+                .entries(assayMeasurements);
+        }
+        //insert y value to distinguish between lines
+        data = EDDGraphingTools.getXYValues(nested);
+        if (data.length === 0) {
+            return svg;
+        }
+        //get type names for x labels
+        typeNames = data.map(function (d) {
+            return d.key;
+        });
+        //sort x values
+        typeNames.sort(function (a, b) {
+            return a - b;
+        });
+        xValues = data.map(function (d) {
+            return (d.values);
+        });
+        yvalueIds = data[0].values[0].values.map(function (d) {
+            return d.key;
+        });
+        // returns time values
+        xValueLabels = xValues[0].map(function (d) {
+            return (d.key);
+        });
+        //sort time values
+        sortedXvalues = xValueLabels.sort(function (a, b) { return parseFloat(a) - parseFloat(b); });
+        x_name.domain(typeNames);
+        x_xValue.domain(sortedXvalues).rangeRoundBands([0, x_name.rangeBand()]);
+        lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
+        //create x axis
+        graphSet.create_x_axis(graphSet, x_name, svg, type);
+        //loop through different units
+        for (var index = 0; index < numUnits; index++) {
+            if (yMin[index] > 0) {
+                yMin[index] = 0;
+            }
+            //y axis min and max domain 
+            y.domain([yMin[index], d3.max(unitMeasurementData[index], function (d) {
+                    return d3.max(d.values, function (d) {
+                        return d.y;
+                    });
+                })]);
+            //nest data associated with one unit by type and time value
+            data = d3.nest(type)
+                .key(function (d) {
+                return d[type];
+            })
+                .key(function (d) {
+                return parseFloat(d.x);
+            })
+                .entries(meas[index].values);
+            // //hide values if there are different time points
+            if (type != 'x') {
+                var nestedByTime = EDDGraphingTools.findAllTime(data);
+                var howManyToInsertObj = EDDGraphingTools.findMaxTimeDifference(nestedByTime);
+                var max = Math.max.apply(null, _.values(howManyToInsertObj));
+                var graphSvg = $(typeClass[type])[0];
+                if (max > 1) {
+                    $('.tooMuchData').remove();
+                    var arects = d3.selectAll(typeClass[type] + ' rect')[0];
+                    svgWidth(graphSvg, arects);
+                    //get word length
+                    wordLength = EDDGraphingTools.getSum(typeNames);
+                    d3.selectAll(typeClass[type] + ' .x.axis text').remove();
+                    return svg;
+                }
+                else {
+                    $('.noData').remove();
+                }
+            }
+            //right axis
+            if (index == 0) {
+                graphSet.create_y_axis(graphSet, meas[index].key, y, svg);
+            }
+            else {
+                var spacing = {
+                    1: graphSet.width,
+                    2: graphSet.width + 50,
+                    3: graphSet.width + 100,
+                    4: graphSet.width + 150
+                };
+                //create right axis
+                graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);
+            }
+            var names_g = svg.selectAll(".group" + index)
+                .data(data)
+                .enter().append("g")
+                .attr("transform", function (d) {
+                return "translate(" + x_name(d.key) + ",0)";
+            });
+            var categories_g = names_g.selectAll(".category" + index)
+                .data(function (d) {
+                return d.values;
+            })
+                .enter().append("g")
+                .attr("transform", function (d) {
+                return "translate(" + x_xValue(d.key) + ",0)";
+            });
+            var categories_labels = categories_g.selectAll('.category-label' + index)
+                .data(function (d) {
+                return [d.key];
+            })
+                .enter()
+                .append("text")
+                .attr("x", function () {
+                return x_xValue.rangeBand() / 2;
+            })
+                .attr('y', function () {
+                return graphSet.height + 27;
+            })
+                .attr('text-anchor', 'middle');
+            var values_g = categories_g.selectAll(".value" + index)
+                .data(function (d) {
+                return d.values;
+            })
+                .enter().append("g")
+                .attr("class", function (d) {
+                d.lineName = d.lineName.split(' ').join('');
+                return 'value value-' + d.lineName;
+            })
+                .attr("transform", function (d) {
+                return "translate(" + lineID(d.key) + ",0)";
+            })
+                .on('mouseover', function (d) {
+                d3.selectAll('.value').style('opacity', 0.3);
+                d3.selectAll('.value-' + d.lineName).style('opacity', 1);
+            })
+                .on('mouseout', function (d) {
+                d3.selectAll('.value').style('opacity', 1);
+            });
+            var rects = values_g.selectAll('.rect' + index)
+                .data(function (d) {
+                return [d];
+            })
+                .enter().append("rect")
+                .attr("class", "rect")
+                .attr("width", lineID.rangeBand())
+                .attr("y", function (d) {
+                return y(d.y);
+            })
+                .attr("height", function (d) {
+                return graphSet.height - y(d.y);
+            })
+                .style("fill", function (d) {
+                return d.color;
+            })
+                .style("opacity", 1);
+            categories_g.selectAll('.rect')
+                .data(function (d) {
+                return d.values;
+            })
+                .on("mouseover", function (d) {
+                div.transition()
+                    .style("opacity", 0.9);
+                div.html('<strong>' + d.name + '</strong>' + ": "
+                    + "</br>" + d.measurement + '</br>' + d.y + " " + d.y_unit + "</br>" + " @" +
+                    " " + d.x + " hours")
+                    .style("left", (d3.event.pageX) + "px")
+                    .style("top", (d3.event.pageY - 30) + "px");
+            })
+                .on("mouseout", function () {
+                div.transition()
+                    .style("opacity", 0);
+            });
+            //get word length
+            wordLength = EDDGraphingTools.getSum(typeNames);
+            if (wordLength > 90 && type != 'x') {
+                d3.selectAll(typeClass[type] + ' .x.axis text').remove();
+            }
+            if (wordLength > 150 && type === 'x') {
+                d3.selectAll(typeClass[type] + ' .x.axis text').remove();
+            }
+        }
+    }
+    StudyDataPage.createGroupedBarGraph = createGroupedBarGraph;
+    /**
+     * this function takes in the type of measurement, selectors obj, selector type and
+     * button obj and shows the measurement graph is the main type is proteomic
+     */
+    function showProteomicGraph(type, selectors, selector, buttons) {
+        if (type === 'p') {
+            d3.select(selectors['line']).style('display', 'none');
+            d3.select(selectors['bar-measurement']).style('display', 'block');
+            $('label.btn').removeClass('active');
+            var rects = d3.selectAll('.groupedMeasurement rect')[0];
+            svgWidth(selectors[selector], rects);
+            var button = $('.groupByMeasurementBar')[0];
+            $(buttons['bar-time']).removeClass('hidden');
+            $(buttons['bar-line']).removeClass('hidden');
+            $(buttons['bar-measurement']).removeClass('hidden');
+            $(button).addClass('active');
+            $(buttons['bar-empty']).addClass('active');
+        }
+    }
     /**
      * @param line
-     * @param colorObj
      * @param assay
-     * @param graphHelper
      * @returns color for line.
      * this function returns the color in the color queue for studies >22 lines. Instantiated
      * when user clicks on a line.
      */
-    function changeLineColor(line, colorObj, assay, graphHelper) {
+    function changeLineColor(line, assay) {
         var color;
         if ($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls === 1) {
             color = line['color'];
             line['doNotChange'] = true;
-            graphHelper.colorQueue(color);
+            EDDGraphingTools.colorQueue(color);
         }
         if ($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls >= 1) {
             if (line['doNotChange']) {
                 color = line['color'];
             }
             else {
-                color = graphHelper.nextColor;
+                color = EDDGraphingTools.nextColor;
                 line['doNotChange'] = true;
                 line['color'] = color;
                 //text label next to checkbox
                 var label = $('#' + line['identifier']).next();
                 //update label color to line color
                 $(label).css('color', color);
-                graphHelper.colorQueue(color);
+                EDDGraphingTools.colorQueue(color);
             }
         }
         else if ($('#' + line['identifier']).prop('checked') === false && remakeMainGraphAreaCalls > 1) {
@@ -1529,22 +1864,6 @@ var StudyD;
         form.find('[name=assay-experimenter_0]').val(user && user.uid ? user.uid : '--');
         form.find('[name=assay-experimenter_1]').val(record.experimenter);
     }
-    function insertLineMetadataRow(refRow, key, value) {
-        var row, type, label, input, id = 'line-meta-' + key;
-        row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
-        type = EDDData.MetaDataTypes[key];
-        label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
-        // bulk checkbox?
-        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
-        if (type.pre) {
-            $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
-        }
-        $('<span>').addClass('meta-remove').text('Remove').insertAfter(input);
-        if (type.postfix) {
-            $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
-        }
-        return row;
-    }
     function editAssay(index) {
         var record = EDDData.Assays[index], form;
         if (!record) {
@@ -1556,43 +1875,19 @@ var StudyD;
         fillAssayForm(form, record);
         form.removeClass('off').dialog("open");
     }
-    StudyD.editAssay = editAssay;
-})(StudyD || (StudyD = {}));
+    StudyDataPage.editAssay = editAssay;
+})(StudyDataPage || (StudyDataPage = {}));
 ;
 var DataGridAssays = (function (_super) {
     __extends(DataGridAssays, _super);
     function DataGridAssays(dataGridSpec) {
         _super.call(this, dataGridSpec);
         this.recordsCurrentlyInvalidated = [];
-        this.sectionCurrentlyDisclosed = false;
     }
     DataGridAssays.prototype.invalidateAssayRecords = function (records) {
         this.recordsCurrentlyInvalidated = this.recordsCurrentlyInvalidated.concat(records);
         if (!this.recordsCurrentlyInvalidated.length) {
             return;
-        }
-        if (this.sectionCurrentlyDisclosed) {
-            this.triggerAssayRecordsRefresh();
-        }
-    };
-    DataGridAssays.prototype.clickedDisclose = function (disclose) {
-        var _this = this;
-        var spec = this.getSpec();
-        var table = spec.getTableElement();
-        var div = spec.undisclosedSectionDiv;
-        if (!div || !table) {
-            return;
-        }
-        if (disclose) {
-            this.sectionCurrentlyDisclosed = true;
-            // Start a timer to wait before calling the routine that remakes a table. This breaks up
-            // table recreation into separate events, so the browser can update UI.
-            if (this.recordsCurrentlyInvalidated.length) {
-                setTimeout(function () { return _this.triggerAssayRecordsRefresh(); }, 10);
-            }
-        }
-        else {
-            this.sectionCurrentlyDisclosed = false;
         }
     };
     DataGridAssays.prototype.triggerAssayRecordsRefresh = function () {
@@ -2067,17 +2362,6 @@ var DataGridSpecAssays = (function (_super) {
     DataGridSpecAssays.prototype.defineColumnSpec = function () {
         var _this = this;
         var leftSide, metaDataCols, rightSide;
-        // add click handler for menu on assay name cells
-        $(this.tableElement).on('click', 'a.assay-edit-link', function (ev) {
-            StudyD.editAssay($(ev.target).closest('.popupcell').find('input').val());
-            return false;
-        }).on('click', 'a.assay-reload-link', function (ev) {
-            var id = $(ev.target).closest('.popupcell').find('input').val(), assay = EDDData.Assays[id];
-            if (assay) {
-                StudyD.requestAssayData(assay);
-            }
-            return false;
-        });
         leftSide = [
             new DataGridColumnSpec(1, this.generateAssayNameCells)
         ];
@@ -2144,18 +2428,25 @@ var DataGridSpecAssays = (function (_super) {
     };
     // This is called after everything is initialized, including the creation of the table content.
     DataGridSpecAssays.prototype.onInitialized = function (dataGrid) {
-        var _this = this;
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
-        $(table).on('change', ':checkbox', function () { return StudyD.queueAssaysActionPanelShow(); });
-        $(table).on('change', ':checkbox', function () { return _this.refreshIDList(); });
-        if (this.undisclosedSectionDiv) {
-            $(this.undisclosedSectionDiv).click(function () { return dataGrid.clickedDisclose(true); });
-        }
+        $(table).on('change', ':checkbox', function () { return StudyDataPage.queueAssaysActionPanelShow(); });
+        //$(table).on('change', ':checkbox', () => this.refreshIDList());
+        // add click handler for menu on assay name cells
+        $(table).on('click', 'a.assay-edit-link', function (ev) {
+            StudyDataPage.editAssay($(ev.target).closest('.popupcell').find('input').val());
+            return false;
+        }).on('click', 'a.assay-reload-link', function (ev) {
+            var id = $(ev.target).closest('.popupcell').find('input').val(), assay = EDDData.Assays[id];
+            if (assay) {
+                StudyDataPage.requestAssayData(assay);
+            }
+            return false;
+        });
         //on page load of data hide assays section
         $("input[name*='assaysSearch']").parents('thead').hide();
         // Run it once in case the page was generated with checked Assays
-        StudyD.queueAssaysActionPanelShow();
+        StudyDataPage.queueAssaysActionPanelShow();
     };
     return DataGridSpecAssays;
 }(DataGridSpecBase));
@@ -2182,15 +2473,13 @@ var DGDisabledAssaysWidget = (function (_super) {
         if (this.checkBoxElement.checked) {
             return rowIDs;
         }
-        else {
-            var filteredIDs = [];
-            for (var r = 0; r < rowIDs.length; r++) {
-                var id = rowIDs[r];
-                // Here is the condition that determines whether the rows associated with this ID are
-                // shown or hidden.
-                if (EDDData.Assays[id].active) {
-                    filteredIDs.push(id);
-                }
+        var filteredIDs = [];
+        for (var r = 0; r < rowIDs.length; r++) {
+            var id = rowIDs[r];
+            // Here is the condition that determines whether the rows associated with this ID are
+            // shown or hidden.
+            if (EDDData.Assays[id].active) {
+                filteredIDs.push(id);
             }
         }
         return filteredIDs;
@@ -2226,4 +2515,4 @@ var DGAssaysSearchWidget = (function (_super) {
     return DGAssaysSearchWidget;
 }(DGSearchWidget));
 // use JQuery ready event shortcut to call prepareIt when page is ready
-$(function () { return StudyD.prepareIt(); });
+$(function () { return StudyDataPage.prepareIt(); });
