@@ -19,7 +19,7 @@ namespace StudyDataPage {
     var postFilteringAssays:any[];
     var postFilteringMeasurements:any[];
 
-    var assaysActionPanelRefreshTimer:any;
+    var actionPanelRefreshTimer:any;
     var refresDataDisplayIfStaleTimer:any;
 
     var remakeMainGraphAreaCalls = 0;
@@ -1090,7 +1090,7 @@ namespace StudyDataPage {
         assaysDataGridSpec = null;
         assaysDataGrid = null;
 
-        assaysActionPanelRefreshTimer = null;
+        actionPanelRefreshTimer = null;
 
         // This only adds code that turns the other buttons off when a button is made active,
         // and does the same to elements named in the 'for' attributes of each button.
@@ -1287,36 +1287,44 @@ namespace StudyDataPage {
     }
 
 
-    export function queueAssaysActionPanelShow() {
-        if (assaysActionPanelRefreshTimer) {
-            clearTimeout(assaysActionPanelRefreshTimer);
+    export function queueActionPanelRefresh() {
+        if (actionPanelRefreshTimer) {
+            clearTimeout(actionPanelRefreshTimer);
         }
-        assaysActionPanelRefreshTimer = setTimeout(assaysActionPanelShow.bind(this), 150);
+        actionPanelRefreshTimer = setTimeout(actionPanelRefresh.bind(this), 150);
     }
 
 
-    function assaysActionPanelShow() {
-        var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
-        panel = $('#assaysActionPanel');
-        if (!panel.length) {
-            return;
-        }
+    function actionPanelRefresh() {
+        var checkedBoxes:HTMLInputElement[], checkedAssays, checkedMeasure, nothingSelected:boolean;
         // Figure out how many assays/checkboxes are selected.
-        checkedBoxes = assaysDataGrid.getSelectedCheckboxElements();
 
-        checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
-        checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
-        panel.toggleClass('off', !checkedAssays && !checkedMeasure);
-        if (checkedAssays || checkedMeasure) {
-            infobox = $('#assaysSelectedCell').empty();
-            if (checkedAssays) {
-                $("<p>").appendTo(infobox).text((checkedAssays > 1) ?
-                        (checkedAssays + " Assays selected") : "1 Assay selected");
+        // Don't show the selected item count if we're not looking at the table.
+        // (Only the visible item count makes sense in that case.)
+        if (viewingMode == 'table') {
+            $('#selectedDiv').toggleClass('off', nothingSelected);
+
+            checkedBoxes = assaysDataGrid.getSelectedCheckboxElements();
+
+            checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
+            checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
+
+            nothingSelected = !checkedAssays && !checkedMeasure;
+
+            $('#selectedDiv').toggleClass('off', nothingSelected);
+            var selectedStrs = [];
+            if (!nothingSelected) {
+                if (checkedAssays) {
+                    selectedStrs.push((checkedAssays > 1) ? (checkedAssays + " Assays") : "1 Assay");
+                }
+                if (checkedMeasure) {
+                    selectedStrs.push((checkedMeasure > 1) ? (checkedMeasure + " Measurements") : "1 Measurement");
+                }
+                var selectedStr = selectedStrs.join(', ');
+                $('#selectedDiv').text(selectedStr + ' selected');
             }
-            if (checkedMeasure) {
-                $("<p>").appendTo(infobox).text((checkedMeasure > 1) ?
-                        (checkedMeasure + " Measurements selected") : "1 Measurement selected");
-            }
+        } else {
+            $('#selectedDiv').addClass('off');
         }
     }
 
@@ -1348,6 +1356,10 @@ namespace StudyDataPage {
 
 
     function refreshDataDisplayIfStale(force?:boolean) {
+
+        // Any switch between viewing modes, or change in filtering, is cause to check the UI
+        // in the action panel and make sure it's current.
+        queueActionPanelRefresh();
 
         // If the filtering widget claims a change since the last inquiry,
         // then all the viewing modes are stale, no matter what.
@@ -1655,20 +1667,6 @@ namespace StudyDataPage {
 
 
     /**
-     * this function takes in the selector object and selector type and displays or hides the graph
-     */
-    function displayGraph(selectors, selector) {
-        for (var key in selectors) {
-            if (key === selector) {
-                d3.select(selectors[key]).style('display', 'block');
-            } else {
-                d3.select(selectors[key]).style('display', 'none');
-            }
-        }
-    }
-
-
-    /**
      * this function takes in the event, selector type, rect obj, selector object and
      * handles the button event.
      */
@@ -1678,12 +1676,10 @@ namespace StudyDataPage {
             $(selectors[selector]).prepend("<p class='noData'>No data selected - please " +
             "filter</p>")
             $('.tooMuchData').remove();
-        }
-        else {
+        } else {
             $('.noData').remove();
             svgWidth(selectors[selector], rect);
         }
-        displayGraph(selectors, selector);
         return false;
     }
 
@@ -2201,12 +2197,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table
     // content will be removed.
     getTableElement() {
-        var section = $('#assaysSection');
-        var table = $(document.createElement("table")).attr('id', 'assayTable');
-        $(section).append(table);
-        // Make sure the actions panel remains at the bottom.
-        $('#assaysActionPanel').appendTo(table);
-        return document.getElementById('assaysSection');
+        return document.getElementById('studyAssaysTable');
     }
 
     // Specification for the table as a whole
@@ -2751,7 +2742,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
-        $(table).on('change', ':checkbox', () => StudyDataPage.queueAssaysActionPanelShow());
+        $(table).on('change', ':checkbox', () => StudyDataPage.queueActionPanelRefresh());
         //$(table).on('change', ':checkbox', () => this.refreshIDList());
 
         // add click handler for menu on assay name cells
@@ -2767,10 +2758,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
             return false;
         });
 
-        //on page load of data hide assays section
-        $( "input[name*='assaysSearch']" ).parents('thead').hide();
+        // on page load of data hide assays section
+//        $( "input[name*='assaysSearch']" ).parents('thead').hide();
         // Run it once in case the page was generated with checked Assays
-        StudyDataPage.queueAssaysActionPanelShow();
+        StudyDataPage.queueActionPanelRefresh();
     }
 }
 

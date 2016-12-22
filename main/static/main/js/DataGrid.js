@@ -51,6 +51,11 @@ var DataGrid = (function () {
         this._section = $(tableBody).parent().parent();
         // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
         if (dataGridSpec.tableSpec.showHeader) {
+            // TODO: This does not handle size and column changes properly.
+            // A working solution would involve a resize timer, and some modifications to
+            // DataGrid to allow creating the table header cells in a second table (with 0 data rows)
+            // That is then placed immediately above an 'overflow-y:scroll' div containing the first table.
+            // Then we would need some event handlers to resize the second table based on changes in the first.
             tHeadRow.insertBefore(this._getDivForTableHeaders());
         }
         // Apply the default column visibility settings.
@@ -904,6 +909,7 @@ var DataGrid = (function () {
     };
     return DataGrid;
 }());
+// TODO: This should be moved to Study-Lines.
 var LineResults = (function (_super) {
     __extends(LineResults, _super);
     function LineResults(dataGridSpec) {
@@ -931,10 +937,12 @@ var LineResults = (function (_super) {
     };
     return LineResults;
 }(DataGrid));
+// TODO: All the functionality in this class should be folded into DataGridAssays in Study-Data.
 var AssayResults = (function (_super) {
     __extends(AssayResults, _super);
     function AssayResults(dataGridSpec) {
         _super.call(this, dataGridSpec);
+        // TODO: These calls do not seem to do anything
         this._getClasses();
         this._getDivForTableHeaders();
         this._getTableHeaderRow();
@@ -951,7 +959,7 @@ var AssayResults = (function (_super) {
         return document.createElement("th");
     };
     AssayResults.prototype._getDivForTableHeaders = function () {
-        return $('#assaysSection');
+        return this._getTableBody();
     };
     AssayResults.prototype._getClasses = function () {
         return 'dataTable sortable dragboxes hastablecontrols';

@@ -62,35 +62,41 @@ class DataGrid {
         this._classes = 'dataTable sortable dragboxes hastablecontrols table-bordered';
 
         var tableBody:JQuery = $(this._tableBody = document.createElement("tbody"));
-                 // First step: Blow away the old contents of the table
-                $(this._table).empty()
-                    .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-                    .addClass(this._getClasses())
-                    // TODO: Most of these classes are probably not needed now
-                    .append(tableBody);
-                this._tableBodyJquery = tableBody;
-                var tHeadRow = this._getTHeadRow();
-                var tableHeaderRow = this._getTableHeaderRow().appendTo(tHeadRow);
-                var tableHeaderCell = $(this._tableHeaderCell = this._getTableHeaderCell()).appendTo(tableHeaderRow);
-                var waitBadge = $(this._waitBadge = document.createElement("span"))
-                    .addClass('waitbadge wait').appendTo(tableHeaderCell);
-                if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-                     tableHeaderCell.attr('colspan', this._totalColumnCount);
-                }
-                this._section = $(tableBody).parent().parent();
-                // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-                if (dataGridSpec.tableSpec.showHeader) {
-                    tHeadRow.insertBefore(this._getDivForTableHeaders());
-                }
 
-            // Apply the default column visibility settings.
-            this.prepareColumnVisibility();
-            var tHead = $(document.createElement("thead"));
-            var headerRows = this._headerRows = this._buildTableHeaders();
-            tHead.append(headerRows);
-             $(tHead).insertBefore(this._tableBody);
+        // First step: Blow away the old contents of the table
+        $(this._table).empty()
+            .attr({ 'cellpadding': 0, 'cellspacing': 0 })
+            .addClass(this._getClasses())
+            // TODO: Most of these classes are probably not needed now
+            .append(tableBody);
+        this._tableBodyJquery = tableBody;
+        var tHeadRow = this._getTHeadRow();
+        var tableHeaderRow = this._getTableHeaderRow().appendTo(tHeadRow);
+        var tableHeaderCell = $(this._tableHeaderCell = this._getTableHeaderCell()).appendTo(tableHeaderRow);
+        var waitBadge = $(this._waitBadge = document.createElement("span"))
+            .addClass('waitbadge wait').appendTo(tableHeaderCell);
+        if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+             tableHeaderCell.attr('colspan', this._totalColumnCount);
+        }
+        this._section = $(tableBody).parent().parent();
+        // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
+        if (dataGridSpec.tableSpec.showHeader) {
+            // TODO: This does not handle size and column changes properly.
+            // A working solution would involve a resize timer, and some modifications to
+            // DataGrid to allow creating the table header cells in a second table (with 0 data rows)
+            // That is then placed immediately above an 'overflow-y:scroll' div containing the first table.
+            // Then we would need some event handlers to resize the second table based on changes in the first.
+            tHeadRow.insertBefore(this._getDivForTableHeaders());
+        }
 
-            setTimeout( () => this._initializeTableData(), 1 );
+        // Apply the default column visibility settings.
+        this.prepareColumnVisibility();
+        var tHead = $(document.createElement("thead"));
+        var headerRows = this._headerRows = this._buildTableHeaders();
+        tHead.append(headerRows);
+         $(tHead).insertBefore(this._tableBody);
+
+        setTimeout( () => this._initializeTableData(), 1 );
     }
 
     _getTableBody():JQuery {
@@ -1051,6 +1057,8 @@ class DataGrid {
 
 }
 
+
+// TODO: This should be moved to Study-Lines.
 class LineResults extends DataGrid {
 
     constructor(dataGridSpec:DataGridSpecBase) {
@@ -1083,10 +1091,13 @@ class LineResults extends DataGrid {
 
 }
 
+
+// TODO: All the functionality in this class should be folded into DataGridAssays in Study-Data.
 class AssayResults extends DataGrid {
 
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
+        // TODO: These calls do not seem to do anything
         this._getClasses();
         this._getDivForTableHeaders();
         this._getTableHeaderRow();
@@ -1106,7 +1117,7 @@ class AssayResults extends DataGrid {
     }
 
     _getDivForTableHeaders():any {
-        return $('#assaysSection');
+        return this._getTableBody();
     }
 
     _getClasses():string {

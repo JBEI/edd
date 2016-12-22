@@ -17,7 +17,7 @@ var StudyDataPage;
     var barGraphMode; // an enum: 'time', 'line', 'measurement'
     var postFilteringAssays;
     var postFilteringMeasurements;
-    var assaysActionPanelRefreshTimer;
+    var actionPanelRefreshTimer;
     var refresDataDisplayIfStaleTimer;
     var remakeMainGraphAreaCalls = 0;
     var colorObj;
@@ -991,7 +991,7 @@ var StudyDataPage;
         colorObj = null;
         assaysDataGridSpec = null;
         StudyDataPage.assaysDataGrid = null;
-        assaysActionPanelRefreshTimer = null;
+        actionPanelRefreshTimer = null;
         // This only adds code that turns the other buttons off when a button is made active,
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
@@ -1171,34 +1171,39 @@ var StudyDataPage;
         refresDataDisplayIfStaleTimer = setTimeout(refreshDataDisplayIfStale.bind(this), 100);
     }
     StudyDataPage.queueRefreshDataDisplayIfStale = queueRefreshDataDisplayIfStale;
-    function queueAssaysActionPanelShow() {
-        if (assaysActionPanelRefreshTimer) {
-            clearTimeout(assaysActionPanelRefreshTimer);
+    function queueActionPanelRefresh() {
+        if (actionPanelRefreshTimer) {
+            clearTimeout(actionPanelRefreshTimer);
         }
-        assaysActionPanelRefreshTimer = setTimeout(assaysActionPanelShow.bind(this), 150);
+        actionPanelRefreshTimer = setTimeout(actionPanelRefresh.bind(this), 150);
     }
-    StudyDataPage.queueAssaysActionPanelShow = queueAssaysActionPanelShow;
-    function assaysActionPanelShow() {
-        var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
-        panel = $('#assaysActionPanel');
-        if (!panel.length) {
-            return;
-        }
+    StudyDataPage.queueActionPanelRefresh = queueActionPanelRefresh;
+    function actionPanelRefresh() {
+        var checkedBoxes, checkedAssays, checkedMeasure, nothingSelected;
         // Figure out how many assays/checkboxes are selected.
-        checkedBoxes = StudyDataPage.assaysDataGrid.getSelectedCheckboxElements();
-        checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
-        checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
-        panel.toggleClass('off', !checkedAssays && !checkedMeasure);
-        if (checkedAssays || checkedMeasure) {
-            infobox = $('#assaysSelectedCell').empty();
-            if (checkedAssays) {
-                $("<p>").appendTo(infobox).text((checkedAssays > 1) ?
-                    (checkedAssays + " Assays selected") : "1 Assay selected");
+        // Don't show the selected item count if we're not looking at the table.
+        // (Only the visible item count makes sense in that case.)
+        if (viewingMode == 'table') {
+            $('#selectedDiv').toggleClass('off', nothingSelected);
+            checkedBoxes = StudyDataPage.assaysDataGrid.getSelectedCheckboxElements();
+            checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
+            checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
+            nothingSelected = !checkedAssays && !checkedMeasure;
+            $('#selectedDiv').toggleClass('off', nothingSelected);
+            var selectedStrs = [];
+            if (!nothingSelected) {
+                if (checkedAssays) {
+                    selectedStrs.push((checkedAssays > 1) ? (checkedAssays + " Assays") : "1 Assay");
+                }
+                if (checkedMeasure) {
+                    selectedStrs.push((checkedMeasure > 1) ? (checkedMeasure + " Measurements") : "1 Measurement");
+                }
+                var selectedStr = selectedStrs.join(', ');
+                $('#selectedDiv').text(selectedStr + ' selected');
             }
-            if (checkedMeasure) {
-                $("<p>").appendTo(infobox).text((checkedMeasure > 1) ?
-                    (checkedMeasure + " Measurements selected") : "1 Measurement selected");
-            }
+        }
+        else {
+            $('#selectedDiv').addClass('off');
         }
     }
     //this function shows and hides rows based on filtered data.
@@ -1225,6 +1230,9 @@ var StudyDataPage;
     }
     StudyDataPage.showHideAssayRows = showHideAssayRows;
     function refreshDataDisplayIfStale(force) {
+        // Any switch between viewing modes, or change in filtering, is cause to check the UI
+        // in the action panel and make sure it's current.
+        queueActionPanelRefresh();
         // If the filtering widget claims a change since the last inquiry,
         // then all the viewing modes are stale, no matter what.
         if (StudyDataPage.progressiveFilteringWidget.checkRedrawRequired(force)) {
@@ -1502,19 +1510,6 @@ var StudyDataPage;
         return maxType;
     }
     /**
-     * this function takes in the selector object and selector type and displays or hides the graph
-     */
-    function displayGraph(selectors, selector) {
-        for (var key in selectors) {
-            if (key === selector) {
-                d3.select(selectors[key]).style('display', 'block');
-            }
-            else {
-                d3.select(selectors[key]).style('display', 'none');
-            }
-        }
-    }
-    /**
      * this function takes in the event, selector type, rect obj, selector object and
      * handles the button event.
      */
@@ -1529,7 +1524,6 @@ var StudyDataPage;
             $('.noData').remove();
             svgWidth(selectors[selector], rect);
         }
-        displayGraph(selectors, selector);
         return false;
     }
     /**
@@ -1963,12 +1957,7 @@ var DataGridSpecAssays = (function (_super) {
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table
     // content will be removed.
     DataGridSpecAssays.prototype.getTableElement = function () {
-        var section = $('#assaysSection');
-        var table = $(document.createElement("table")).attr('id', 'assayTable');
-        $(section).append(table);
-        // Make sure the actions panel remains at the bottom.
-        $('#assaysActionPanel').appendTo(table);
-        return document.getElementById('assaysSection');
+        return document.getElementById('studyAssaysTable');
     };
     // Specification for the table as a whole
     DataGridSpecAssays.prototype.defineTableSpec = function () {
@@ -2445,7 +2434,7 @@ var DataGridSpecAssays = (function (_super) {
     DataGridSpecAssays.prototype.onInitialized = function (dataGrid) {
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
-        $(table).on('change', ':checkbox', function () { return StudyDataPage.queueAssaysActionPanelShow(); });
+        $(table).on('change', ':checkbox', function () { return StudyDataPage.queueActionPanelRefresh(); });
         //$(table).on('change', ':checkbox', () => this.refreshIDList());
         // add click handler for menu on assay name cells
         $(table).on('click', 'a.assay-edit-link', function (ev) {
@@ -2458,10 +2447,10 @@ var DataGridSpecAssays = (function (_super) {
             }
             return false;
         });
-        //on page load of data hide assays section
-        $("input[name*='assaysSearch']").parents('thead').hide();
+        // on page load of data hide assays section
+        //        $( "input[name*='assaysSearch']" ).parents('thead').hide();
         // Run it once in case the page was generated with checked Assays
-        StudyDataPage.queueAssaysActionPanelShow();
+        StudyDataPage.queueActionPanelRefresh();
     };
     return DataGridSpecAssays;
 }(DataGridSpecBase));
