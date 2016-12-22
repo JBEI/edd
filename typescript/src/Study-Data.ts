@@ -1108,12 +1108,27 @@ namespace StudyDataPage {
             viewingMode = 'linegraph';
             $("#tableActionButtons").addClass('off');
             $("#barGraphTypeButtons").addClass('off');
+            $('#lineGraph').removeClass('off');
+            $('#barGraphByTime').addClass('off');
+            $('#barGraphByLine').addClass('off');
+            $('#barGraphByMeasurement').addClass('off');
             queueRefreshDataDisplayIfStale();
         });
         $("#barGraphButton").click(function() {
             viewingMode = 'bargraph';
             $("#tableActionButtons").addClass('off');
             $("#barGraphTypeButtons").removeClass('off');
+            $('#lineGraph').addClass('off');
+            $('#barGraphByTime').addClass('off');
+            $('#barGraphByLine').addClass('off');
+            $('#barGraphByMeasurement').addClass('off');
+            if (barGraphMode == 'time') {
+                $('#barGraphByTime').removeClass('off');
+            } else if (barGraphMode == 'line') {
+                $('#barGraphByLine').removeClass('off');
+            } else {
+                $('#barGraphByMeasurement').removeClass('off');
+            }
             queueRefreshDataDisplayIfStale();
         });
         $("#timeBarGraphButton").click(function() {
@@ -1323,7 +1338,7 @@ namespace StudyDataPage {
         });
         //show elements in progressive filtering measurements
         _.each(showArray, function(assayId) {
-            //if the row does not exist, reset table
+            //if the row does not exist, reset table 
             if ($( "input[value='" + assayId + "']").parents('tr').length === 0) {
                 assaysDataGrid.triggerAssayRecordsRefresh();
             }
@@ -1391,10 +1406,6 @@ namespace StudyDataPage {
             dataPointsTotal = 0,
             dataSets = [];
 
-        console.log("Remaking graph");
-
-        $('#graphLoading').hide();    // Remove load spinner if still present
-        $('#noData').hide();
         $('#tooManyPoints').hide();
         $('#lineGraph').addClass('off');
         $('#barGraphByTime').addClass('off');
@@ -1403,8 +1414,8 @@ namespace StudyDataPage {
 
         // show message that there's no data to display
         if (postFilteringMeasurements.length === 0) {
+            $('#graphLoading').addClass('off');    // Remove load spinner if still present
             $('#noData').removeClass('off');
-            $('#noData').show();
             return;
         }
 
@@ -1472,7 +1483,7 @@ namespace StudyDataPage {
             dataSets.push(singleAssayObj);
         });
 
-        $('#noData').removeClass('off');
+        $('#noData').addClass('off');
 
         remakeMainGraphAreaCalls++;
         uncheckEventHandler(EDDGraphingTools.labels);
@@ -1493,6 +1504,7 @@ namespace StudyDataPage {
             height: 220
         };
 
+        $('#graphLoading').addClass('off');    // Remove load spinner if still present
         if (viewingMode == 'linegraph') {
             $('#lineGraph').empty().removeClass('off');
             var s = EDDGraphingTools.createSvg($('#lineGraph').get(0));
@@ -1831,7 +1843,7 @@ namespace StudyDataPage {
         x_xValue.domain(sortedXvalues).rangeRoundBands([0, x_name.rangeBand()]);
 
         lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
-
+        
         //create x axis
         graphSet.create_x_axis(graphSet, x_name, svg, type);
 
@@ -1841,7 +1853,7 @@ namespace StudyDataPage {
             if (yMin[index] > 0 ) {
                 yMin[index] = 0;
             }
-            //y axis min and max domain
+            //y axis min and max domain 
             y.domain([yMin[index], d3.max(unitMeasurementData[index], function (d:any) {
                 return d3.max(d.values, function (d:any) {
                     return d.y;
@@ -1979,7 +1991,7 @@ namespace StudyDataPage {
                     div.transition()
                         .style("opacity", 0);
                 });
-
+            
             //get word length
             wordLength = EDDGraphingTools.getSum(typeNames);
 

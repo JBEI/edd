@@ -124,6 +124,7 @@ a:hover {
 .wait-larger {
     background-repeat: no-repeat;
     background-position: center;
+    background-size: 60px 60px;
     background-image: url(images/spinner-big.gif);
 }
 .waitbadge {

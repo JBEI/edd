@@ -1007,12 +1007,29 @@ var StudyDataPage;
             viewingMode = 'linegraph';
             $("#tableActionButtons").addClass('off');
             $("#barGraphTypeButtons").addClass('off');
+            $('#lineGraph').removeClass('off');
+            $('#barGraphByTime').addClass('off');
+            $('#barGraphByLine').addClass('off');
+            $('#barGraphByMeasurement').addClass('off');
             queueRefreshDataDisplayIfStale();
         });
         $("#barGraphButton").click(function () {
             viewingMode = 'bargraph';
             $("#tableActionButtons").addClass('off');
             $("#barGraphTypeButtons").removeClass('off');
+            $('#lineGraph').addClass('off');
+            $('#barGraphByTime').addClass('off');
+            $('#barGraphByLine').addClass('off');
+            $('#barGraphByMeasurement').addClass('off');
+            if (barGraphMode == 'time') {
+                $('#barGraphByTime').removeClass('off');
+            }
+            else if (barGraphMode == 'line') {
+                $('#barGraphByLine').removeClass('off');
+            }
+            else {
+                $('#barGraphByMeasurement').removeClass('off');
+            }
             queueRefreshDataDisplayIfStale();
         });
         $("#timeBarGraphButton").click(function () {
@@ -1199,7 +1216,7 @@ var StudyDataPage;
         });
         //show elements in progressive filtering measurements
         _.each(showArray, function (assayId) {
-            //if the row does not exist, reset table
+            //if the row does not exist, reset table 
             if ($("input[value='" + assayId + "']").parents('tr').length === 0) {
                 StudyDataPage.assaysDataGrid.triggerAssayRecordsRefresh();
             }
@@ -1261,9 +1278,6 @@ var StudyDataPage;
     }
     function remakeMainGraphArea() {
         var dataPointsDisplayed = 0, dataPointsTotal = 0, dataSets = [];
-        console.log("Remaking graph");
-        $('#graphLoading').hide(); // Remove load spinner if still present
-        $('#noData').hide();
         $('#tooManyPoints').hide();
         $('#lineGraph').addClass('off');
         $('#barGraphByTime').addClass('off');
@@ -1271,8 +1285,8 @@ var StudyDataPage;
         $('#barGraphByMeasurement').addClass('off');
         // show message that there's no data to display
         if (postFilteringMeasurements.length === 0) {
+            $('#graphLoading').addClass('off'); // Remove load spinner if still present
             $('#noData').removeClass('off');
-            $('#noData').show();
             return;
         }
         $.each(postFilteringMeasurements, function (i, measurementId) {
@@ -1333,7 +1347,7 @@ var StudyDataPage;
             singleAssayObj = EDDGraphingTools.transformSingleLineItem(dataObj);
             dataSets.push(singleAssayObj);
         });
-        $('#noData').removeClass('off');
+        $('#noData').addClass('off');
         remakeMainGraphAreaCalls++;
         uncheckEventHandler(EDDGraphingTools.labels);
         var barAssayObj = EDDGraphingTools.concatAssays(dataSets);
@@ -1350,6 +1364,7 @@ var StudyDataPage;
             width: 750,
             height: 220
         };
+        $('#graphLoading').addClass('off'); // Remove load spinner if still present
         if (viewingMode == 'linegraph') {
             $('#lineGraph').empty().removeClass('off');
             var s = EDDGraphingTools.createSvg($('#lineGraph').get(0));
@@ -1649,7 +1664,7 @@ var StudyDataPage;
             if (yMin[index] > 0) {
                 yMin[index] = 0;
             }
-            //y axis min and max domain
+            //y axis min and max domain 
             y.domain([yMin[index], d3.max(unitMeasurementData[index], function (d) {
                     return d3.max(d.values, function (d) {
                         return d.y;
