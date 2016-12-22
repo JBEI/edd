@@ -1225,6 +1225,7 @@ module StudyD {
             $(this).addClass('active');
             $('#overviewSection').css('display', 'block');
             $('#assaysSection').css('display', 'none');
+            $( "input[name*='assaysSearch']" ).parents('thead').hide();
             return false
         });
     }
@@ -1237,16 +1238,14 @@ module StudyD {
             StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
             //if any checkboxes have been check in filtering section, showHide rows
             if ($(".filterTable input:checkbox:checked").length > 0) {
-                $('#showNoMeasurements').text("show all");
                 StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs)
-            } else {
-                $('#showNoMeasurements').text("show only with measurements");
             }
         });
         $('#studyTable').click(function (event) {
             event.preventDefault();
             //on page load of table show assays search header
             $( "input[name*='assaysSearch']" ).parents('thead').show();
+            $('#showAll').show();
             //remove sorter on measurement tab in table
             $('#hAssaysMName').removeClass();
             $('#studyGraph').removeClass('active');
@@ -1261,23 +1260,11 @@ module StudyD {
     function show_assay_measurements() {
         $('#showNoMeasurements').click(function(event) {
             event.preventDefault();
-            $(this).text() == "show only with measurements" ? show_hide() : show_int();
+            StudyD.showHideAssayRows(show_assay_no_measurements());
+            //remove checkboxes from filter section
+            $('#mainFilterSection').find('input[type=checkbox]:checked').prop('checked', false);
             return false
         })
-    }
-
-    function show_int() {
-        $('#showNoMeasurements').text("show only with measurements");
-        //function to show assays with no measurements
-        StudyD.showHideAssayRows(show_assay_no_measurements());
-    }
-
-
-    function show_hide() {
-        $('#showNoMeasurements').text("show all");
-        //function to show assays with measurements
-        StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs)
-
     }
 
     function show_assay_no_measurements() {

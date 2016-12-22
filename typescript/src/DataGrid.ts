@@ -150,6 +150,8 @@ class DataGrid {
             }
         });
 
+        $('#showAll').insertAfter(hCell);
+
         this._initializeSort().arrangeTableDataRows();
 
         // Now that we've constructed our elements, apply visibility styling to them.
