@@ -434,8 +434,8 @@ div.subSectionContent {
    with form elements representing actions you can take on content in above sections */
 div.sectionActions {
     /* border-top:1px solid rgba(164,164,164,0.7); */
-    margin: 0px;
-    padding:10px 0px 0px 0px;
+    margin: 10px 0px 10px 0px;
+    padding:0;
 }
 div.pageSection.discloseHide.minor {
     background: transparent;

@@ -7,7 +7,7 @@
 
 declare var EDDData:EDDData;
 
-module StudyLines {
+namespace StudyLines {
     'use strict';
 
     var linesActionPanelRefreshTimer:any;
@@ -29,8 +29,8 @@ module StudyLines {
     var mTypeEntries:any;
 
     // The table spec object and table object for the Lines table.
-    var linesDataGridSpec;
-    var linesDataGrid;
+    export var linesDataGridSpec;
+    export var linesDataGrid;
     // We use our own flag to ensure we don't get into an infinite event loop,
     // switching back and forth between positions that might trigger resize events.
     export var actionPanelIsInBottomBar;
@@ -39,27 +39,27 @@ module StudyLines {
     // Called when the page loads.
     export function prepareIt() {
 
-        this.carbonBalanceData = null;
-        this.carbonBalanceDisplayIsFresh = false;
+        carbonBalanceData = null;
+        carbonBalanceDisplayIsFresh = false;
 
-        this.attachmentIDs = null;
-        this.attachmentsByID = null;
-        this.prevDescriptionEditElement = null;
+        attachmentIDs = null;
+        attachmentsByID = null;
+        prevDescriptionEditElement = null;
 
-        this.metabolicMapID = -1;
-        this.metabolicMapName = null;
-        this.biomassCalculation = -1;
+        metabolicMapID = -1;
+        metabolicMapName = null;
+        biomassCalculation = -1;
 
-        this.cSourceEntries = [];
-        this.mTypeEntries = [];
+        cSourceEntries = [];
+        mTypeEntries = [];
 
-        this.linesDataGridSpec = null;
-        this.linesDataGrid = null;
+        linesDataGridSpec = null;
+        linesDataGrid = null;
 
-        this.actionPanelIsInBottomBar = false;
+        actionPanelIsInBottomBar = false;
 
-        this.linesActionPanelRefreshTimer = null;
-        this.positionActionsBarTimer = null;
+        linesActionPanelRefreshTimer = null;
+        positionActionsBarTimer = null;
 
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', (e) => {
@@ -67,7 +67,7 @@ module StudyLines {
             return false;
         });
 
-        $(window).on('resize', StudyLines.queuePositionActionsBar);
+        $(window).on('resize', queuePositionActionsBar);
 
         $('#worklistButton').attr('title', 'select line(s) first');
         $('#exportButton').attr('title', 'select line(s) first');
@@ -83,10 +83,10 @@ module StudyLines {
             'success': (data) => {
                 EDDData = $.extend(EDDData || {}, data);
                 // Instantiate a table specification for the Lines table
-                this.linesDataGridSpec = new DataGridSpecLines();
-                this.linesDataGridSpec.init();
+                StudyLines.linesDataGridSpec = new DataGridSpecLines();
+                StudyLines.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
-                this.linesDataGrid = new LineResults(this.linesDataGridSpec);
+                StudyLines.linesDataGrid = new LineResults(this.linesDataGridSpec);
 
                 // Show possible next steps div if needed
                 if (_.keys(EDDData.Lines).length === 0) {
@@ -206,6 +206,8 @@ module StudyLines {
             metaRow.remove();
         });
 
+        queuePositionActionsBar();
+
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
@@ -268,19 +270,19 @@ module StudyLines {
             }
         });
 
-
         if (count_rec < count_total) {
             // TODO not all measurements downloaded; display a message indicating this
             // explain downloading individual assay measurements too
         }
 
+        queuePositionActionsBar();
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
     }
 
 
     export function carbonBalanceColumnRevealedCallback(spec:DataGridSpecLines, dataGridObj:DataGrid) {
-        StudyLines.rebuildCarbonBalanceGraphs();
+        rebuildCarbonBalanceGraphs();
     }
 
 
@@ -325,7 +327,6 @@ module StudyLines {
                 $('#worklistButton').attr('title', 'select line(s) first');
                 $('#exportButton').attr('title', 'select line(s) first');
             }
-            StudyLines.queuePositionActionsBar();
         }
     }
 
@@ -333,10 +334,10 @@ module StudyLines {
     // Start a timer to wait before calling the routine that moves the actions bar.
     // Required so we don't crater the CPU with unserved resize events.
     export function queuePositionActionsBar() {
-        if (this.positionActionsBarTimer) {
-            clearTimeout (this.positionActionsBarTimer);
+        if (positionActionsBarTimer) {
+            clearTimeout (positionActionsBarTimer);
         }
-        this.positionActionsBarTimer = setTimeout(StudyLines.positionActionsBar.bind(this), 50);
+        positionActionsBarTimer = setTimeout(StudyLines.positionActionsBar.bind(this), 50);
     }
 
 
@@ -350,15 +351,15 @@ module StudyLines {
         var sh = 0;
         $('#content').children().get().forEach((e:HTMLElement):void => { sh += e.scrollHeight; });
 
-        if (StudyLines.actionPanelIsInBottomBar) {
+        if (actionPanelIsInBottomBar) {
             if (sh < h) {
                 $('#actionsBar').appendTo('#content');
-                StudyLines.actionPanelIsInBottomBar = false;
+                actionPanelIsInBottomBar = false;
             }
         } else {
             if (sh > h) {
                 $('#actionsBar').appendTo('#bottomBar');
-                StudyLines.actionPanelIsInBottomBar = true;
+                actionPanelIsInBottomBar = true;
             }
         }
     }

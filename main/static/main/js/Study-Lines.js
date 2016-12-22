@@ -21,33 +21,30 @@ var StudyLines;
     var carbonBalanceDisplayIsFresh;
     var cSourceEntries;
     var mTypeEntries;
-    // The table spec object and table object for the Lines table.
-    var linesDataGridSpec;
-    var linesDataGrid;
     // Called when the page loads.
     function prepareIt() {
         var _this = this;
-        this.carbonBalanceData = null;
-        this.carbonBalanceDisplayIsFresh = false;
-        this.attachmentIDs = null;
-        this.attachmentsByID = null;
-        this.prevDescriptionEditElement = null;
-        this.metabolicMapID = -1;
-        this.metabolicMapName = null;
-        this.biomassCalculation = -1;
-        this.cSourceEntries = [];
-        this.mTypeEntries = [];
-        this.linesDataGridSpec = null;
-        this.linesDataGrid = null;
-        this.actionPanelIsInBottomBar = false;
-        this.linesActionPanelRefreshTimer = null;
-        this.positionActionsBarTimer = null;
+        carbonBalanceData = null;
+        carbonBalanceDisplayIsFresh = false;
+        attachmentIDs = null;
+        attachmentsByID = null;
+        prevDescriptionEditElement = null;
+        StudyLines.metabolicMapID = -1;
+        StudyLines.metabolicMapName = null;
+        StudyLines.biomassCalculation = -1;
+        cSourceEntries = [];
+        mTypeEntries = [];
+        StudyLines.linesDataGridSpec = null;
+        StudyLines.linesDataGrid = null;
+        StudyLines.actionPanelIsInBottomBar = false;
+        linesActionPanelRefreshTimer = null;
+        positionActionsBarTimer = null;
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', function (e) {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
         });
-        $(window).on('resize', StudyLines.queuePositionActionsBar);
+        $(window).on('resize', queuePositionActionsBar);
         $('#worklistButton').attr('title', 'select line(s) first');
         $('#exportButton').attr('title', 'select line(s) first');
         $.ajax({
@@ -60,10 +57,10 @@ var StudyLines;
             'success': function (data) {
                 EDDData = $.extend(EDDData || {}, data);
                 // Instantiate a table specification for the Lines table
-                _this.linesDataGridSpec = new DataGridSpecLines();
-                _this.linesDataGridSpec.init();
+                StudyLines.linesDataGridSpec = new DataGridSpecLines();
+                StudyLines.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
-                _this.linesDataGrid = new LineResults(_this.linesDataGridSpec);
+                StudyLines.linesDataGrid = new LineResults(_this.linesDataGridSpec);
                 // Show possible next steps div if needed
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('.noLines').css('display', 'block');
@@ -164,6 +161,7 @@ var StudyLines;
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
+        queuePositionActionsBar();
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, function (id, protocol) {
             $.ajax({
@@ -227,11 +225,12 @@ var StudyLines;
         });
         if (count_rec < count_total) {
         }
+        queuePositionActionsBar();
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
     }
     function carbonBalanceColumnRevealedCallback(spec, dataGridObj) {
-        StudyLines.rebuildCarbonBalanceGraphs();
+        rebuildCarbonBalanceGraphs();
     }
     StudyLines.carbonBalanceColumnRevealedCallback = carbonBalanceColumnRevealedCallback;
     // Start a timer to wait before calling the routine that shows the actions panel.
@@ -276,16 +275,15 @@ var StudyLines;
                 $('#worklistButton').attr('title', 'select line(s) first');
                 $('#exportButton').attr('title', 'select line(s) first');
             }
-            StudyLines.queuePositionActionsBar();
         }
     }
     // Start a timer to wait before calling the routine that moves the actions bar.
     // Required so we don't crater the CPU with unserved resize events.
     function queuePositionActionsBar() {
-        if (this.positionActionsBarTimer) {
-            clearTimeout(this.positionActionsBarTimer);
+        if (positionActionsBarTimer) {
+            clearTimeout(positionActionsBarTimer);
         }
-        this.positionActionsBarTimer = setTimeout(StudyLines.positionActionsBar.bind(this), 50);
+        positionActionsBarTimer = setTimeout(StudyLines.positionActionsBar.bind(this), 50);
     }
     StudyLines.queuePositionActionsBar = queuePositionActionsBar;
     function positionActionsBar() {
