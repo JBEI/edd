@@ -28,11 +28,9 @@ services:
   solr:
     build: ./docker_services/solr/
     image: solr:5.5-edd
-    command: /code/docker_services/solr/init_solr.sh
     restart: always
     volumes:
       - solrdata:/opt/solr/server/solr
-      - "${EDD_HOST_DIR}.:/code/"
     expose:
       - '8983'
   rabbitmq:
@@ -72,8 +70,8 @@ services:
       - '25'
   edd:
     build: ./docker_services/edd/
-    image: edd
-    entrypoint: "true"
+    image: edd-core:1.6
+    command: [init-only]
     env_file: secrets.env
     environment:
       SEARCH_URL: "solr://solr:8983/solr/"
@@ -103,7 +101,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: [application]
+    command: [-A, application]
     depends_on:
       - postgres
       - rabbitmq

@@ -56,6 +56,8 @@ function print_help() {
     echo "        Start a Django webserver (manage.py runserver)."
     echo "    shell"
     echo "        Start a Django shell session (default)."
+    echo "    init-only"
+    echo "        Container will only perform selected init tasks, then exit."
 }
 
 short=adhimqsADIMS
@@ -154,6 +156,7 @@ if [ ! -x /code/manage.py ]; then
 else
     output "Running with mounted copy of code …"
 fi
+cd /code
 
 SEPARATOR='****************************************************************************************'
 REINDEX_EDD=false
@@ -297,5 +300,13 @@ case "$COMMAND" in
         output "Starting shell session"
         output "$SEPARATOR"
         exec python manage.py shell
+        ;;
+    init-only)
+        output "Init finished"
+        exit 0
+        ;;
+    *)
+        output "Unrecognized command: $COMMAND"
+        exit 1
         ;;
 esac

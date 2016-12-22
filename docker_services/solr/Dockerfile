@@ -4,6 +4,6 @@ MAINTAINER William Morrell "WCMorrell@lbl.gov"
 
 COPY entrypoint.sh /usr/local/bin
 
-COPY cores /tmp
+COPY cores /tmp/cores
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
