@@ -101,7 +101,9 @@ This section contains directions for setting up a production deployment for EDD 
     * There is a `docker.io` package too; this can work, but it will generally be outdated.
 * Create a user for running EDD; assuming user `jbeideploy` exists for further instructions.
 * As `jbeideploy`, check out code to `/usr/local/edd/` (this will be `$EDD_HOME` below)
+  
     git clone https://github.com/JBEI/edd.git
+	git checkout [release_branch]
 * Set up your local docker-machine to manage a remote EDD deployment
     * _If using Docker client on a different host, i.e. with `docker-machine`_
         * Ensure you have a public key in `jbeideploy`'s `~/.ssh/authorized_keys2` file
@@ -202,11 +204,12 @@ following steps in the EDD checkout directory to configure EDD and launch it for
    EDD requires ICE as a reference for strains used in EDD's experiments. You will not be able to
    create lines in your EDD studies until EDD can successfully communicate/authenticate with ICE.
     * Follow ICE's directions for installation/setup
-    * Create string to use as the HMAC key to sign communication from EDD to ICE. EDD's default configuration assumes a key ID of 'edd',
-      but you can change it by overriding the value of `ICE_KEY_ID` in your `local.py`. Note that this file will be stored in a Docker environment file, so avoid special characters that might impact the file's interpretation.
-        ssh-keygen -t rsa -b 2048
-		[input folder to store key in]
-		Copy the file content (minus header and footer)
+    * Create a base-64 encoded HMAC key to for signing communication from EDD to ICE. EDD's default configuration assumes a key ID of 'edd',
+      but you can change it by overriding the value of `ICE_KEY_ID` in your `local.py`. Note that this file will be stored in a Docker environment file, so 
+      consider impacts that format might have on how the value you enter gets interpreted.  For example:
+         * `ssh-keygen -t rsa -b 2048`
+         * input folder to store key in
+         * Copy the file content (minus header and footer)
     * Configure ICE with the HMAC key
 	  In the `rest-auth` folder of the linked ICE deployment, create a text file with the same name as the value of `ICE_KEY_ID` (e.g. 'edd' by default) 
       The contents of this file will be the secret key ICE uses to authenticate your requests
