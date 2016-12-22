@@ -323,7 +323,7 @@ div.mainFlex > div.bottomBar {
 div.mainFlex > div.footer {
 
 }
-div.mainFlex > div.footer > div.footer-text {
+div.footer-text {
     border-top: 1px solid #CCC;
     color: #CCC;
     font-size: 0.85em;
@@ -331,7 +331,7 @@ div.mainFlex > div.footer > div.footer-text {
     padding: 20px;
     text-align: center;
 }
-div.mainFlex > div.footer > div.footer-text > span {
+div.footer-text > span {
     margin: 0 2em;
 }
 

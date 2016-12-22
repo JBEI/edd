@@ -44,9 +44,7 @@
     <div class="pageSection">
         <table id="studiesTable"></table>
     </div>
-{% endblock content %}
 
-{% block footer %}
     <div class="footer-text">
         <span class="footer-text-app">JBEI Experiment Data Depot {{ request.edd_deployment }}</span>
         <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
@@ -60,4 +58,7 @@
         {% endblock top_help %}
         </span>
     </div>
+{% endblock content %}
+
+{% block footer %}
 {% endblock footer %}
