@@ -1000,6 +1000,7 @@ var StudyD;
         showStudyGraph();
         showStudyTable();
         show_assay_measurements();
+        show_disabled_assays();
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
@@ -1104,6 +1105,23 @@ var StudyD;
             return false;
         });
     }
+    function showDisabledAssays(progressiveFilteringMeasurements) {
+        var assays = _.keys(EDDData.Assays);
+        var hideArray = _.filter(assays, function (el) {
+            return !progressiveFilteringMeasurements.includes(el);
+        });
+        var showArray = _.filter(assays, function (el) {
+            return progressiveFilteringMeasurements.includes(el);
+        });
+        //hide elements not in progressive filtering measurements
+        _.each(hideArray, function (assayId) {
+            $("input[value='" + assayId + "']").parents('tr').hide();
+        });
+        //show elements in progressive filtering measurements
+        _.each(showArray, function (assayId) {
+            $("input[value='" + assayId + "']").parents('tr').show();
+        });
+    }
     //show hide for clicking table tab under data
     function showStudyTable() {
         $("#studyTable").one("click", function () {
@@ -1151,6 +1169,34 @@ var StudyD;
             }
         }
         return filteredIDs;
+    }
+    function showDisabled() {
+        var rowIDs = _.keys(EDDData.Assays);
+        // If the box is shows show disabled, return the set of IDs unfiltered
+        if ($('#disabledOptions').val() === "Show disabled") {
+            $('#disabledOptions').val("Hide disabled");
+            showDisabledAssays(rowIDs);
+        }
+        else {
+            $('#disabledOptions').val("Show disabled");
+            var filteredIDs = [];
+            for (var r = 0; r < rowIDs.length; r++) {
+                var id = rowIDs[r];
+                // Here is the condition that determines whether the rows associated with this ID are
+                // shown or hidden.
+                if (EDDData.Assays[id].active) {
+                    filteredIDs.push(id);
+                }
+            }
+            showDisabledAssays(filteredIDs);
+        }
+    }
+    function show_disabled_assays() {
+        $('#disabledOptions').click(function (event) {
+            event.preventDefault();
+            showDisabled();
+            return false;
+        });
     }
     function filterTableKeyDown(e) {
         switch (e.keyCode) {
@@ -1349,8 +1395,7 @@ var StudyD;
         }
         // store filtered data here.
         StudyD.progressiveFilteringWidget.filteredAssayIDs = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
-        // show hide filtered data on assay table.
-        StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs);
+        showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs);
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
@@ -2138,8 +2183,8 @@ var DataGridSpecAssays = (function (_super) {
     DataGridSpecAssays.prototype.createCustomOptionsWidgets = function (dataGrid) {
         var widgetSet = [];
         // Create a single widget for showing disabled Assays
-        var disabledAssaysWidget = new DGDisabledAssaysWidget(dataGrid, this);
-        widgetSet.push(disabledAssaysWidget);
+        //var disabledAssaysWidget = new DGDisabledAssaysWidget(dataGrid, this);
+        // widgetSet.push(disabledAssaysWidget);
         return widgetSet;
     };
     // This is called after everything is initialized, including the creation of the table content.
@@ -2159,49 +2204,6 @@ var DataGridSpecAssays = (function (_super) {
     };
     return DataGridSpecAssays;
 }(DataGridSpecBase));
-// When unchecked, this hides the set of Assays that are marked as disabled.
-var DGDisabledAssaysWidget = (function (_super) {
-    __extends(DGDisabledAssaysWidget, _super);
-    function DGDisabledAssaysWidget() {
-        _super.apply(this, arguments);
-    }
-    DGDisabledAssaysWidget.prototype.createElements = function (uniqueID) {
-        var _this = this;
-        var cbID = this.dataGridSpec.tableSpec.id + 'ShowDAssaysCB' + uniqueID;
-        var cb = this._createCheckbox(cbID, cbID, '1');
-        $(cb).click(function (e) { return _this.dataGridOwnerObject.clickedOptionWidget(e); });
-        if (this.isEnabledByDefault()) {
-            cb.setAttribute('checked', 'checked');
-        }
-        this.checkBoxElement = cb;
-        this.labelElement = this._createLabel('Show Disabled', cbID);
-        this._createdElements = true;
-    };
-    DGDisabledAssaysWidget.prototype.applyFilterToIDs = function (rowIDs) {
-        // If the box is checked, return the set of IDs unfiltered
-        if (this.checkBoxElement.checked) {
-            return rowIDs;
-        }
-        else {
-            var filteredIDs = [];
-            for (var r = 0; r < rowIDs.length; r++) {
-                var id = rowIDs[r];
-                // Here is the condition that determines whether the rows associated with this ID are
-                // shown or hidden.
-                if (EDDData.Assays[id].active) {
-                    filteredIDs.push(id);
-                }
-            }
-        }
-        return filteredIDs;
-    };
-    DGDisabledAssaysWidget.prototype.initialFormatRowElementsForID = function (dataRowObjects, rowID) {
-        if (!EDDData.Assays[rowID].active) {
-            $.each(dataRowObjects, function (x, row) { return $(row.getElement()).addClass('disabledRecord'); });
-        }
-    };
-    return DGDisabledAssaysWidget;
-}(DataGridOptionWidget));
 // This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
 // options for additional data types, querying the server for results.
 var DGAssaysSearchWidget = (function (_super) {

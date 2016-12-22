@@ -1550,6 +1550,14 @@ class DataGridWidget {
         return cb;
     }
 
+    _createButton(id:string, name:string):HTMLInputElement {
+        var cb:HTMLInputElement = document.createElement("input");
+        cb.setAttribute('id', id);
+        cb.setAttribute('name', name);
+        cb.setAttribute('type', 'button');
+        return cb;
+    }
+
 
     // This is called with an array of row elements, and the ID they represent, so the widget can
     //  apply any custom styling it needs. It is called one time for each ID and respective row
@@ -1582,6 +1590,7 @@ class DataGridOptionWidget extends DataGridWidget {
     // but other UI can be created and used instead.
     checkBoxElement:HTMLInputElement;
     labelElement:HTMLElement;
+    buttonElement:HTMLElement;
 
     constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecBase) {
         super(dataGridOwnerObject, dataGridSpec);

@@ -1289,6 +1289,13 @@ var DataGridWidget = (function () {
         cb.setAttribute('value', value);
         return cb;
     };
+    DataGridWidget.prototype._createButton = function (id, name) {
+        var cb = document.createElement("input");
+        cb.setAttribute('id', id);
+        cb.setAttribute('name', name);
+        cb.setAttribute('type', 'button');
+        return cb;
+    };
     // This is called with an array of row elements, and the ID they represent, so the widget can
     //  apply any custom styling it needs. It is called one time for each ID and respective row
     //  array, during the construction of the table rows.
