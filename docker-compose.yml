@@ -71,18 +71,16 @@ services:
   edd:
     build: ./docker_services/edd/
     image: edd
-    command: "true"
+    entrypoint: "true"
     env_file: secrets.env
     environment:
       SEARCH_URL: "solr://solr:8983/solr/"
       EDD_DEBUG: "false"
-    volumes:
-      - "${EDD_HOST_DIR}.:/code/"
   worker:
     extends:
       service: edd
     restart: always
-    command: /code/docker_services/edd/worker_entrypoint.sh
+    command: [-A, worker]
     depends_on:
       - postgres
       - rabbitmq
@@ -103,7 +101,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: /code/docker_services/edd/appserver_entrypoint.sh
+    command: [application]
     depends_on:
       - postgres
       - rabbitmq
