@@ -803,6 +803,7 @@ namespace EDDGraphingTools {
             }
           })
         }
+        $('#graphLoading').addClass('off');
     }
 
 

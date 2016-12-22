@@ -1013,6 +1013,18 @@ var StudyDataPage;
             $('#barGraphByMeasurement').addClass('off');
             queueRefreshDataDisplayIfStale();
         });
+        $('#barGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $('#timeBarGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $('#lineBarGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $('#measurementBarGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
         $("#barGraphButton").click(function () {
             viewingMode = 'bargraph';
             $("#tableActionButtons").addClass('off');
@@ -1035,6 +1047,7 @@ var StudyDataPage;
         $("#timeBarGraphButton").click(function () {
             barGraphMode = 'time';
             queueRefreshDataDisplayIfStale();
+            $('#graphLoading').addClass('off');
         });
         $("#lineBarGraphButton").click(function () {
             barGraphMode = 'line';
@@ -1801,6 +1814,7 @@ var StudyDataPage;
                 d3.selectAll(typeClass[type] + ' .x.axis text').remove();
             }
         }
+        $('#graphLoading').addClass('off');
     }
     StudyDataPage.createGroupedBarGraph = createGroupedBarGraph;
     /**

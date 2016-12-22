@@ -1114,6 +1114,18 @@ namespace StudyDataPage {
             $('#barGraphByMeasurement').addClass('off');
             queueRefreshDataDisplayIfStale();
         });
+        $('#barGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $('#timeBarGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $('#lineBarGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $('#measurementBarGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
         $("#barGraphButton").click(function() {
             viewingMode = 'bargraph';
             $("#tableActionButtons").addClass('off');
@@ -1131,9 +1143,12 @@ namespace StudyDataPage {
             }
             queueRefreshDataDisplayIfStale();
         });
+
+        //one time call for bar graphs to load spinner while data is loading
         $("#timeBarGraphButton").click(function() {
             barGraphMode = 'time';
             queueRefreshDataDisplayIfStale();
+            $('#graphLoading').addClass('off');
         });
         $("#lineBarGraphButton").click(function() {
             barGraphMode = 'line';
@@ -1280,6 +1295,7 @@ namespace StudyDataPage {
 
 
     export function queueRefreshDataDisplayIfStale() {
+
         if (refresDataDisplayIfStaleTimer) {
             clearTimeout(refresDataDisplayIfStaleTimer);
         }
@@ -1352,6 +1368,7 @@ namespace StudyDataPage {
         // If the filtering widget claims a change since the last inquiry,
         // then all the viewing modes are stale, no matter what.
         if (progressiveFilteringWidget.checkRedrawRequired(force)) {
+
             viewingModeIsStale['linegraph'] = true;
             viewingModeIsStale['bargraph-time'] = true;
             viewingModeIsStale['bargraph-line'] = true;
@@ -1991,7 +2008,6 @@ namespace StudyDataPage {
                     div.transition()
                         .style("opacity", 0);
                 });
-            
             //get word length
             wordLength = EDDGraphingTools.getSum(typeNames);
 
@@ -2002,6 +2018,7 @@ namespace StudyDataPage {
                d3.selectAll(typeClass[type] + ' .x.axis text').remove()
             }
         }
+        $('#graphLoading').addClass('off');
     }
 
 

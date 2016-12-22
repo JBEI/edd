@@ -741,6 +741,7 @@ var EDDGraphingTools;
                 }
             });
         }
+        $('#graphLoading').addClass('off');
     }
     EDDGraphingTools.createMultiLineGraph = createMultiLineGraph;
     /**
