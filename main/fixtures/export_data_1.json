@@ -15,7 +15,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": ""
+    "description": "",
+    "uuid": "1bd2a822-7f25-4451-af1c-f6a2d2775a2e"
   },
   "model": "main.eddobject",
   "pk": 1
@@ -28,7 +29,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": null
+    "description": null,
+    "uuid": "fd469632-9820-4f4f-a943-f79810132d59"
   },
   "model": "main.eddobject",
   "pk": 2
@@ -41,7 +43,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": ""
+    "description": "",
+    "uuid": "be8c8103-74df-4ae9-83e8-91dd29ead41a"
   },
   "model": "main.eddobject",
   "pk": 3
@@ -54,7 +57,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": ""
+    "description": "",
+    "uuid": "a2c921cc-794c-4bff-aa67-74d730df4d05"
   },
   "model": "main.eddobject",
   "pk": 4
@@ -67,7 +71,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": "JBEI strain 1"
+    "description": "JBEI strain 1",
+    "uuid": "67af3235-e5f7-41dc-840e-f55bed5038a7"
   },
   "model": "main.eddobject",
   "pk": 5
@@ -80,7 +85,8 @@
     "meta_store": {},
     "updates": [],
     "active": false,
-    "description": null
+    "description": null,
+    "uuid": "05b1d122-df03-44c2-99ec-454f30312420"
   },
   "model": "main.eddobject",
   "pk": 6
@@ -93,7 +99,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": null
+    "description": null,
+    "uuid": "4d8e75d8-56a0-407f-8cc3-6f72894b429f"
   },
   "model": "main.eddobject",
   "pk": 7
@@ -106,7 +113,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": null
+    "description": null,
+    "uuid": "29cb5ed2-2e17-4c9c-abe3-35c31a1f1dbb"
   },
   "model": "main.eddobject",
   "pk": 8
@@ -119,7 +127,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": null
+    "description": null,
+    "uuid": "d68c4a30-546f-4e36-a5b1-973738770241"
   },
   "model": "main.eddobject",
   "pk": 9
@@ -132,7 +141,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": null
+    "description": null,
+    "uuid": "e09c8423-e800-4065-99d0-86fa424a0ea3"
   },
   "model": "main.eddobject",
   "pk": 10
@@ -145,7 +155,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": null
+    "description": null,
+    "uuid": "540c17e1-0a49-406e-80ee-c42dee45955e"
   },
   "model": "main.eddobject",
   "pk": 11
@@ -158,7 +169,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": null
+    "description": null,
+    "uuid": "84472c43-d86b-4d84-aa4f-16813618984a"
   },
   "model": "main.eddobject",
   "pk": 12
@@ -171,7 +183,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": null
+    "description": null,
+    "uuid": "8cbb2ac5-211e-40b1-9c96-75c8ab699b6a"
   },
   "model": "main.eddobject",
   "pk": 13
@@ -184,7 +197,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": "GC-MS assay"
+    "description": "GC-MS assay",
+    "uuid": "1147fa39-feba-4bab-ba03-54d9a0233756"
   },
   "model": "main.eddobject",
   "pk": 14
@@ -197,7 +211,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": "GC-MS assay"
+    "description": "GC-MS assay",
+    "uuid": "a8c00010-7273-444b-89d2-dd5f8078bdb4"
   },
   "model": "main.eddobject",
   "pk": 15
@@ -210,7 +225,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": "OD measurement"
+    "description": "OD measurement",
+    "uuid": "52877bad-35c4-4f76-9273-7785b564f3ba"
   },
   "model": "main.eddobject",
   "pk": 16
@@ -223,7 +239,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": "HPLC measurement"
+    "description": "HPLC measurement",
+    "uuid": "5c99ad97-15b8-4e1b-b9fa-cc6e5b293d45"
   },
   "model": "main.eddobject",
   "pk": 17
@@ -236,7 +253,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": "O2/CO2 measurements"
+    "description": "O2/CO2 measurements",
+    "uuid": "5f727cf5-dc56-4994-a946-51c72031e119"
   },
   "model": "main.eddobject",
   "pk": 18
@@ -249,7 +267,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": "IC LC-MS measurements"
+    "description": "IC LC-MS measurements",
+    "uuid": "4ebd7cde-8712-49a8-8d0f-94947754f45c"
   },
   "model": "main.eddobject",
   "pk": 19
@@ -262,7 +281,8 @@
     "meta_store": {},
     "updates": [],
     "active": true,
-    "description": null
+    "description": null,
+    "uuid": "c8ebc038-e1db-45df-bfaa-db335bc68617"
   },
   "model": "main.eddobject",
   "pk": 20
@@ -298,7 +318,8 @@
   "fields": {
     "type_name": "Optical Density",
     "type_group": "_",
-    "short_name": "OD"
+    "short_name": "OD",
+    "uuid": "b82ab557-8429-42c2-a240-2e6d1ccb0a2f"
   },
   "model": "main.measurementtype",
   "pk": 3
@@ -307,7 +328,8 @@
   "fields": {
     "type_name": "CO2 production",
     "type_group": "_",
-    "short_name": "CO2p"
+    "short_name": "CO2p",
+    "uuid": "fbe5e6e5-ac4d-4b7c-8dc5-5e867c8fd8bd"
   },
   "model": "main.measurementtype",
   "pk": 4
@@ -316,70 +338,11 @@
   "fields": {
     "type_name": "O2 consumption",
     "type_group": "_",
-    "short_name": "O2c"
+    "short_name": "O2c",
+    "uuid": "08acd2c6-149f-4bd1-80bb-3064acf738d4"
   },
   "model": "main.measurementtype",
   "pk": 5
-},
-{
-  "fields": {
-    "unit_name": "hours",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 1
-},
-{
-  "fields": {
-    "unit_name": "mM",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 2
-},
-{
-  "fields": {
-    "unit_name": "n/a",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 3
-},
-{
-  "fields": {
-    "unit_name": "Cmol/L",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 4
-},
-{
-  "fields": {
-    "unit_name": "mol/L/hr",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 5
-},
-{
-  "fields": {
-    "unit_name": "counts",
-    "alternate_names": null,
-    "display": true,
-    "type_group": "_"
-  },
-  "model": "main.measurementunit",
-  "pk": 6
 },
 {
   "fields": {
