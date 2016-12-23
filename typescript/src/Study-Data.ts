@@ -1143,18 +1143,17 @@ namespace StudyDataPage {
             }
             queueRefreshDataDisplayIfStale();
         });
-
-        //one time call for bar graphs to load spinner while data is loading
         $("#timeBarGraphButton").click(function() {
             barGraphMode = 'time';
             queueRefreshDataDisplayIfStale();
-            $('#graphLoading').addClass('off');
+             $('#graphLoading').addClass('off');
         });
         $("#lineBarGraphButton").click(function() {
             barGraphMode = 'line';
             queueRefreshDataDisplayIfStale();
         });
         $("#measurementBarGraphButton").click(function() {
+            $('#graphLoading').removeClass('off');
             barGraphMode = 'measurement';
             queueRefreshDataDisplayIfStale();
         });
@@ -1295,7 +1294,6 @@ namespace StudyDataPage {
 
 
     export function queueRefreshDataDisplayIfStale() {
-
         if (refresDataDisplayIfStaleTimer) {
             clearTimeout(refresDataDisplayIfStaleTimer);
         }
@@ -1521,7 +1519,7 @@ namespace StudyDataPage {
             height: 220
         };
 
-        $('#graphLoading').addClass('off');    // Remove load spinner if still present
+        //$('#graphLoading').addClass('off');    // Remove load spinner if still present
         if (viewingMode == 'linegraph') {
             $('#lineGraph').empty().removeClass('off');
             var s = EDDGraphingTools.createSvg($('#lineGraph').get(0));
@@ -1535,7 +1533,7 @@ namespace StudyDataPage {
             var s = EDDGraphingTools.createSvg($('#barGraphByLine').get(0));
             createGroupedBarGraph(graphSet, s);
         } else if (barGraphMode == 'measurement') {
-            $('#barGraphByMeasurement').removeClass('off');
+            $('#barGraphByMeasurement').empty().removeClass('off');
             var s = EDDGraphingTools.createSvg($('#barGraphByMeasurement').get(0));
             createGroupedBarGraph(graphSet, s);
         }
@@ -1641,6 +1639,7 @@ namespace StudyDataPage {
             }
         });
         if (sum === 0) {
+             $('#graphLoading').addClass('off');
             $(selector).prepend("<p class=' tooMuchData'>Too many data points to display" +
                 "</p><p  class=' tooMuchData'>Recommend filtering by protocol</p>");
         }
@@ -1712,10 +1711,10 @@ namespace StudyDataPage {
     export function createGroupedBarGraph(graphSet, svg) {
 
         var assayMeasurements = graphSet.assayMeasurements,
-            typeClass = {
-                'measurement': ".barMeasurement",
-                'x': ".barTime",
-                'name': '.barAssay'
+            typeID = {
+                'measurement': "#barGraphByMeasurement",
+                'x': "#barGraphByTime",
+                'name': '#barGraphByLine'
             },
             modeToField = {
                 'line': 'name',
@@ -1743,7 +1742,7 @@ namespace StudyDataPage {
             var howManyToInsertObj = EDDGraphingTools.findMaxTimeDifference(nestedByTime);
             var max = Math.max.apply(null, _.values(howManyToInsertObj));
             if (max > 400) {
-                $(typeClass[type]).prepend("<p class='noData'>Too many missing data fields. Please filter</p>");
+                $(typeID[type]).prepend("<p class='noData'>Too many missing data fields. Please filter</p>");
                 $('.tooMuchData').remove();
             } else {
                 $('.noData').remove();
@@ -1777,7 +1776,7 @@ namespace StudyDataPage {
 
         // if there is no data - show no data error message
         if (assayMeasurements.length === 0) {
-            $(typeClass[type]).prepend("<p class='noData'>No data selected - please " +
+            $(typeID[type]).prepend("<p class='noData'>No data selected - please " +
             "filter</p>");
 
             $('.tooMuchData').remove();
@@ -1893,15 +1892,15 @@ namespace StudyDataPage {
                 var nestedByTime = EDDGraphingTools.findAllTime(data);
                 var howManyToInsertObj = EDDGraphingTools.findMaxTimeDifference(nestedByTime);
                 var max = Math.max.apply(null, _.values(howManyToInsertObj));
-                var graphSvg = $(typeClass[type])[0];
+                var graphSvg = $(typeID[type])[0];
 
                 if (max > 1) {
                     $('.tooMuchData').remove();
-                    var arects = d3.selectAll(typeClass[type] +  ' rect')[0];
+                    var arects = d3.selectAll(typeID[type] +  ' rect')[0];
                     svgWidth(graphSvg, arects);
                      //get word length
                     wordLength = EDDGraphingTools.getSum(typeNames);
-                    d3.selectAll(typeClass[type] + ' .x.axis text').remove();
+                    d3.selectAll(typeID[type] + ' .x.axis text').remove();
                     return svg;
                 } else {
                     $('.noData').remove();
@@ -2012,10 +2011,10 @@ namespace StudyDataPage {
             wordLength = EDDGraphingTools.getSum(typeNames);
 
             if (wordLength > 90 && type != 'x') {
-               d3.selectAll(typeClass[type] + ' .x.axis text').remove()
+               d3.selectAll(typeID[type] + ' .x.axis text').remove()
             }
             if (wordLength > 150 && type === 'x') {
-               d3.selectAll(typeClass[type] + ' .x.axis text').remove()
+               d3.selectAll(typeID[type] + ' .x.axis text').remove()
             }
         }
         $('#graphLoading').addClass('off');
