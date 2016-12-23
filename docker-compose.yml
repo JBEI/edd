@@ -83,7 +83,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: [-A, worker]
+    command: [-A, -w, edd, worker]
     depends_on:
       - postgres
       - rabbitmq
@@ -102,7 +102,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: [-A, application]
+    command: [-A, -w, edd, application]
     depends_on:
       - postgres
       - rabbitmq

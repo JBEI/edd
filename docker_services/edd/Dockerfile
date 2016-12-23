@@ -43,7 +43,7 @@ RUN pip install -r /tmp/requirements.txt
 COPY entrypoint.sh /usr/local/bin
 
 # Copy in EDD python code and put in default local settings
-RUN git clone --depth 1 -b feature/EDD-506-make-sure-edd-can-go-from-blank-database https://github.com/JBEI/edd.git /usr/local/edd \
+RUN git clone --depth 1 -b master https://github.com/JBEI/edd.git /usr/local/edd \
     && cp /usr/local/edd/edd/settings/local.py-example /usr/local/edd/edd/settings/local.py
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

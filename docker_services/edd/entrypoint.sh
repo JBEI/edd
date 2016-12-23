@@ -46,6 +46,17 @@ function print_help() {
     echo "        Re-index search prior to command. Only used to override -A."
     echo "    -I, --no-init-index"
     echo "        Skip search re-indexing."
+    echo "    --local file"
+    echo "        Copy the file specified to the local.py settings prior to launching the command."
+    echo "        This option will be ignored if code is mounted to the container at /code."
+    echo "    --force-index"
+    echo "        Force re-indexing; this option does not apply if -I is set."
+    echo "    -w host, --wait-host host"
+    echo "        Wait for a host to begin responding before running commands."
+    echo "        This option may be specified multiple times."
+    echo "    -p port, --wait-port port"
+    echo "        Only applies if -w is used. Specifies port to listen on. Defaults to 24051."
+    echo "        This option may be specified multiple times. The Nth port defined applies to the Nth host."
     echo
     echo "Commands:"
     echo "    worker"
@@ -56,22 +67,27 @@ function print_help() {
     echo "        Start a Django webserver (manage.py runserver)."
     echo "    shell"
     echo "        Start a Django shell session (default)."
-    echo "    init-only"
-    echo "        Container will only perform selected init tasks, then exit."
+    echo "    init-only [port]"
+    echo "        Container will only perform selected init tasks."
+    echo "        The service will begin listening on the specified port after init, default to 24051."
 }
 
-short=adhimqsADIMS
+short="adhimp:qsw:ADIMS"
 long="help,quiet,init,init-all,no-init,no-init-all"
 long="$long,init-static,no-init-static,init-database,no-init-database"
 long="$long,init-migration,no-init-migration,init-index,no-init-index"
+long="$long,local:,force-index,wait-host:,wait-port:"
 params=`getopt -o "$short" -l "$long" --name "$0" -- "$@"`
 eval set -- "$params"
 
+COMMAND=shell
 INIT_STATIC=1
 INIT_DB=1
 INIT_MIGRATE=1
 INIT_INDEX=1
-COMMAND=shell
+REINDEX_EDD=false
+WAIT_HOST=()
+WAIT_PORT=()
 
 while [ ! $# -eq 0 ]; do
     case "$1" in
@@ -129,11 +145,30 @@ while [ ! $# -eq 0 ]; do
             shift
             INIT_INDEX=0
             ;;
+        --local)
+            LOCAL_PY="$2"
+            shift 2
+            ;;
+        --force-index)
+            shift
+            REINDEX_EDD=true
+            ;;
+        --wait-host | -w)
+            WAIT_HOST+=("$2")
+            shift 2
+            ;;
+        --wait-port | -p)
+            WAIT_PORT+=("$2")
+            shift 2
+            ;;
         --)
             shift
             if [ ! $# -eq 0 ]; then
                 COMMAND="$1"
                 shift
+            else
+                echo "No command specified" >&2
+                exit 1
             fi
             break
             ;;
@@ -153,13 +188,15 @@ done
 if [ ! -x /code/manage.py ]; then
     output "Running with container copy of code …"
     ln -s /usr/local/edd /code
+    if [ ! -z "$LOCAL_PY" ]; then
+        cp "$LOCAL_PY" /code/edd/settings/local.py
+    fi
 else
     output "Running with mounted copy of code …"
 fi
 cd /code
 
 SEPARATOR='****************************************************************************************'
-REINDEX_EDD=false
 output "EDD_DEPLOYMENT_ENVIRONMENT: " \
     "${EDD_DEPLOYMENT_ENVIRONMENT:-'Not specified. Assuming PRODUCTION.'}"
 
@@ -269,13 +306,19 @@ if [ $INIT_INDEX -eq 1 ]; then
         python /code/manage.py edd_index
         output "End of Solr index rebuild"
     else
-        output "Skipping Solr index rebuild since there were " \
+        output "Skipping Solr index rebuild since there were" \
             "no applied database migrations or restores from dump"
     fi
 fi
 
 # Wait for rabbitmq to become available
 service_wait rabbitmq 5672
+
+# If specified, wait on other service(s)
+for ((i=0; i<${#WAIT_HOST[@]}; i++)); do
+    port=${WAIT_PORT[$i]:-24051}
+    service_wait "${WAIT_HOST[$i]}" $port
+done
 
 # Start up the command
 output
@@ -303,7 +346,9 @@ case "$COMMAND" in
         ;;
     init-only)
         output "Init finished"
-        exit 0
+        mkdir -p /tmp/edd-wait
+        cd /tmp/edd-wait
+        exec python -m SimpleHTTPServer ${1:-24051}
         ;;
     *)
         output "Unrecognized command: $COMMAND"
