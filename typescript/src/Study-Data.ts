@@ -1101,8 +1101,10 @@ namespace StudyDataPage {
             viewingMode = 'table';
             $("#tableActionButtons").removeClass('off');
             $("#barGraphTypeButtons").addClass('off');
+            $('#showAll').show();
             queueRefreshDataDisplayIfStale();
         });
+
         // This one is active by default
         $("#lineGraphButton").click(function() {
             viewingMode = 'linegraph';
@@ -1158,6 +1160,24 @@ namespace StudyDataPage {
             queueRefreshDataDisplayIfStale();
         });
 
+         //disable button on assay graph. shows disabled assays, unchecks filter section
+        $('#disabledOptions').click(function(event) {
+            event.preventDefault();
+            showDisabled();
+            $('#mainFilterSection').find('input[type=checkbox]:checked').prop('checked', false);
+            return false
+        });
+
+        //unchecks filter section shows all active assays
+        $('#showAllAssays').click(function(event) {
+            event.preventDefault();
+            showHideAssayRows(allActiveAssays());
+            //remove checkboxes from filter section
+            $('#mainFilterSection').find('input[type=checkbox]:checked').prop('checked', false);
+            return false
+        });
+
+
         // Set up the Add Measurement to Assay modal
         var dlg = $("#addMeasurement").dialog({
            autoOpen: false
@@ -1200,6 +1220,66 @@ namespace StudyDataPage {
                 });
             }
         });
+    }
+
+    function allActiveAssays() {
+        var assays = _.keys(EDDData.Assays);
+
+        var filteredIDs = [];
+        for (var r = 0; r < assays.length; r++) {
+            var id = assays[r];
+            // Here is the condition that determines whether the rows associated with this ID are
+            // shown or hidden.
+            if (EDDData.Assays[id].active) {
+                filteredIDs.push(parseInt(id));
+            }
+
+        }
+        return filteredIDs;
+    }
+
+    function showDisabledAssays(progressiveFilteringMeasurements):void {
+
+            var assays = _.keys(EDDData.Assays);
+
+            var hideArray = _.filter(assays, function( el ) {
+              return !progressiveFilteringMeasurements.includes(el);
+            });
+            var showArray =_.filter(assays, function( el ) {
+              return progressiveFilteringMeasurements.includes(el);
+            });
+            //hide elements not in progressive filtering measurements
+            _.each(hideArray, function(assayId) {
+                $( "input[value='" + assayId + "']").parents('tr').hide();
+            });
+            //show elements in progressive filtering measurements
+            _.each(showArray, function(assayId) {
+                $( "input[value='" + assayId + "']").parents('tr').show();
+            });
+        }
+
+    function showDisabled():void {
+        var rowIDs = _.keys(EDDData.Assays);
+        // If the box is shows show disabled, return the set of IDs unfiltered
+        if ($('#disabledOptions').val()=== "Show disabled") {
+            $('#disabledOptions').val("Hide disabled");
+            showDisabledAssays(rowIDs);
+        }
+         // If the box is unchecked, return the set filtered IDs
+        else {
+            $('#disabledOptions').val("Show disabled");
+            var filteredIDs = [];
+            for (var r = 0; r < rowIDs.length; r++) {
+                var id = rowIDs[r];
+                // Here is the condition that determines whether the rows associated with this ID are
+                // shown or hidden.
+                if (EDDData.Assays[id].active) {
+                    filteredIDs.push(id);
+                }
+
+            }
+            showDisabledAssays(filteredIDs);
+        }
     }
 
 
@@ -2126,6 +2206,7 @@ class DataGridAssays extends AssayResults {
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
         this.recordsCurrentlyInvalidated = [];
+        this._getTableHeaderCell();
     }
 
     invalidateAssayRecords(records:number[]):void {
@@ -2747,8 +2828,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
     createCustomOptionsWidgets(dataGrid:DataGrid):DataGridOptionWidget[] {
         var widgetSet:DataGridOptionWidget[] = [];
         // Create a single widget for showing disabled Assays
-        var disabledAssaysWidget = new DGDisabledAssaysWidget(dataGrid, this);
-        widgetSet.push(disabledAssaysWidget);
         return widgetSet;
     }
 
@@ -2774,58 +2853,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
             return false;
         });
 
-        // on page load of data hide assays section
-//        $( "input[name*='assaysSearch']" ).parents('thead').hide();
         // Run it once in case the page was generated with checked Assays
         StudyDataPage.queueActionPanelRefresh();
     }
 }
-
-
-
-// When unchecked, this hides the set of Assays that are marked as disabled.
-class DGDisabledAssaysWidget extends DataGridOptionWidget {
-
-    createElements(uniqueID:any):void {
-        var cbID:string = this.dataGridSpec.tableSpec.id+'ShowDAssaysCB'+uniqueID;
-        var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
-        $(cb).click( (e) => this.dataGridOwnerObject.clickedOptionWidget(e) );
-        if (this.isEnabledByDefault()) {
-            cb.setAttribute('checked', 'checked');
-        }
-        this.checkBoxElement = cb;
-        this.labelElement = this._createLabel('Show Disabled', cbID);
-        this._createdElements = true;
-    }
-
-    applyFilterToIDs(rowIDs:string[]):string[] {
-
-        // If the box is checked, return the set of IDs unfiltered
-        if (this.checkBoxElement.checked) {
-            return rowIDs;
-        }
-
-        var filteredIDs = [];
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
-            // Here is the condition that determines whether the rows associated with this ID are
-            // shown or hidden.
-            if (EDDData.Assays[id].active) {
-                filteredIDs.push(id);
-            }
-
-        }
-        return filteredIDs;
-    }
-
-    initialFormatRowElementsForID(dataRowObjects:any, rowID:any):any {
-        if (!EDDData.Assays[rowID].active) {
-            $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
-        }
-    }
-}
-
-
 
 // This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
 // options for additional data types, querying the server for results.

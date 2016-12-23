@@ -156,7 +156,9 @@ class DataGrid {
             }
         });
 
-        $('#showAll').insertAfter(hCell);
+        //TODO: move! 
+        var showAll = $('#showAll');
+        $(hCell).append(showAll);
 
         this._initializeSort().arrangeTableDataRows();
 

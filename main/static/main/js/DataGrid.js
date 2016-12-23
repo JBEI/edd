@@ -113,7 +113,9 @@ var DataGrid = (function () {
                 widget.appendElements(hCell, index.toString(10));
             }
         });
-        $('#showAll').insertAfter(hCell);
+        //TODO: move! 
+        var showAll = $('#showAll');
+        $(hCell).append(showAll);
         this._initializeSort().arrangeTableDataRows();
         // Now that we've constructed our elements, apply visibility styling to them.
         this._applyColumnVisibility();
