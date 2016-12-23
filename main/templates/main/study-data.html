@@ -57,7 +57,7 @@
     </div>
 
     {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-    <table id="studyLinesTable" class="off"></table>
+    <table id="studyAssaysTable" class="off"></table>
 
     <div id="assaysActionPanel" class="sectionActions" style="
         display:flex;
@@ -71,7 +71,7 @@
                 <img src="{% static 'main/images/study-data-icon-lines.png' %}" width="18" height="18" />
             </span><span id="barGraphButton" for="graphDisplayContainer">
                 <img src="{% static 'main/images/study-data-icon-bars.png' %}" width="18" height="18" />
-            </span><span id="dataTableButton" for="studyLinesTable">
+            </span><span id="dataTableButton" for="studyAssaysTable">
                 <img src="{% static 'main/images/study-data-icon-chart.png' %}" width="18" height="18" />
             </span>
         </div>
@@ -88,11 +88,18 @@
             margin:auto 10px auto 10px;">
             <label><input type="checkbox" value="" /> hide y-axis</label>
         </div>
-        <div style="flex-shrink:0;margin-left:auto;font-size:0.8em;" class="{% if not assays %}off{% endif %}">
-            <div id="displayedDiv" style="padding:3px;">0 displayed</div>
-            <div id="selectedDiv" style="padding:2px;">0 selected</div>
+        <div style="
+            flex-grow:0;
+            margin:0 15px 0 auto;
+            font-size:0.9em;
+            display:flex;
+            flex-direction: column;
+            justify-content: center;
+            " class="{% if not assays %}off{% endif %}">
+            <div id="displayedDiv" style="padding:1px;">0 displayed</div>
+            <div id="selectedDiv" style="padding:1px;">0 selected</div>
         </div>
-        <div id="tableActionButtons" class="off" style="flex-grow:1;">
+        <div id="tableActionButtons" class="off" style="margin:auto 0 auto 0;">
             <button id="editButton"
                     class="actionButton {% if not writable or not assays %}off{% endif %}"
                     disabled="true"
@@ -134,7 +141,7 @@
                 Re-Enable
             </button>
         </div>
-        <div style="margin-left:15px;" class="{% if not assays %}off{% endif %}">
+        <div style="margin:auto 0 auto 15px;" class="{% if not assays %}off{% endif %}">
             <button type="button" id="exportButton" class="actionButton primary">
                 Export Data
             </button>
