@@ -1177,6 +1177,19 @@ namespace StudyDataPage {
             return false
         });
 
+        //hides/shows filter section
+        $('#hideFilterSection').click(function(event) {
+            event.preventDefault();
+            if ($('#hideFilterSection').val() === "Hide Filter Section") {
+               $('#hideFilterSection').val("Show Filter Section");
+               $('#mainFilterSection').hide();
+            } else {
+               $('#hideFilterSection').val("Hide Filter Section")
+               $('#mainFilterSection').show();
+            }
+            return false;
+        });
+
 
         // Set up the Add Measurement to Assay modal
         var dlg = $("#addMeasurement").dialog({

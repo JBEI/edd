@@ -156,7 +156,7 @@ class DataGrid {
             }
         });
 
-        //TODO: move! 
+        //TODO: move!
         var showAll = $('#showAll');
         $(hCell).append(showAll);
 

@@ -113,7 +113,7 @@ var DataGrid = (function () {
                 widget.appendElements(hCell, index.toString(10));
             }
         });
-        //TODO: move! 
+        //TODO: move!
         var showAll = $('#showAll');
         $(hCell).append(showAll);
         this._initializeSort().arrangeTableDataRows();
