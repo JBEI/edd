@@ -31,12 +31,11 @@ register(
     content_encoding='UTF-8',
 )
 
-# set up a Celery "app" for use by EDD. A Celery "app" is just an unfortunately-named instance of
-# the Celery API,
-# This instance defines EDD's interface with Celery.
-task_exchange = Celery('edd', broker=settings.BROKER_URL)
-task_exchange.config_from_object(settings)
+# set up a Celery "app" for use by EDD. A Celery "app" is an instance of
+# the Celery API, this instance defines EDD's interface with Celery.
+app = Celery('edd', broker=settings.BROKER_URL)
+app.config_from_object(settings)
 
 
 if __name__ == '__main__':
-    task_exchange.start()
+    app.start()
