@@ -1,7 +1,5 @@
 version: '2'
 volumes:
-  # To use an alternate, existing volume, replace {} with a sub-item external, containing sub-item
-  #   name, with value of the volume name you wish to use.
   pgdata: {}
   solrdata: {}
   attachdata: {}

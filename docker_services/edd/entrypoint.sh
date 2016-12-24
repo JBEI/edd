@@ -194,6 +194,13 @@ if [ ! -x /code/manage.py ]; then
 else
     output "Running with mounted copy of code …"
 fi
+if [ ! -f /code/edd/settings/local.py ]; then
+    output "Creating local.py from example …"
+    cp /code/edd/settings/local.py-example /code/edd/settings/local.py
+    sed -i.bak -e "s/'Jay Bay'/'${EDD_USER}'/;s/'admin@example.org'/'${EDD_EMAIL}'/" \
+        /code/edd/settings/local.py
+    rm /code/edd/settings/local.py.bak
+fi
 cd /code
 
 SEPARATOR='****************************************************************************************'
