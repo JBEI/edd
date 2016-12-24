@@ -25,12 +25,10 @@ running in the development environment.
 
           pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
 
-    * Load the dump file
+    * Load the dump file by changing the `POSTGRES_DUMP_FILE` environment in your
+      `docker-compose.override.yml` and restarting your containers.
 
-          docker-compose down
-          POSTGRES_DUMP_FILE=edd-prod-dump.sql docker-compose up -d
-
-* __Rebuild Solr indexes:___ `docker-compose exec appserver manage.py edd_index`.
+* __Rebuild Solr indexes:___ `docker-compose exec edd manage.py edd_index`.
 
   This shouldn't normally be required, but can be helpful following unanticipated software errors.
 

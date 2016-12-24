@@ -78,6 +78,7 @@ This section contains directions for setting up a production deployment for EDD 
   
     git clone https://github.com/JBEI/edd.git
     git checkout [release_branch]
+
 * Set up your local docker-machine to manage a remote EDD deployment
     * _If using Docker client on a different host, i.e. with `docker-machine`_
         * Ensure you have a public key in `jbeideploy`'s `~/.ssh/authorized_keys2` file
@@ -90,10 +91,9 @@ This section contains directions for setting up a production deployment for EDD 
                   {NAME_OF_ENVIRONMENT}
 
         * Activate the machine with `eval $(docker-machine env {NAME_OF_ENVIRONMENT})`
-        * Set environment variable on Docker client host `EDD_HOST_DIR` to `$EDD_HOME`
-            * Prepend `EDD_HOST_DIR=/usr/local/edd/` to any `docker-compose` commands
-            * Alternatively, `export EDD_HOST_DIR=/usr/local/edd/` before running commands
-            * The trailing `/` is important!
+        * _NOTE_: Volume mounting directories will use the directories of the host running Docker
+          Engine. If you, e.g. try to mount a local.py file, that file _must_ exist at that path
+          on the remote host.
     * Test by running `docker-compose`
 * Complete "Common Setup Tasks" below now that Docker is in place
 

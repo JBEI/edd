@@ -16,15 +16,15 @@ If you're just starting out with EDD, follow directions here first.
 ## Getting Started <a name="#Getting_Started"/>
 
 With [Docker][2] and [Docker Compose][3] installed, launching the entire EDD software stack is as
-simple as cloning the git repository and running:
+simple as copying the `docker_services` directory of the code repository and running:
 
-    ./init-config.sh
+    ./init-config.sh "Your Name" "youremail@example.com"
     docker-compose up -d
 
 Without additional configuration, the launched copy of EDD will be using default options, so some
 functions (e.g. TLS support, external authentication, referencing an ICE deployment) won't work.
-See below for more detailed instructions for installing Docker and configuring EDD for your
-deployment environment.
+See (TODO: write a Deployment.md document) for more detailed instructions for installing Docker and
+configuring EDD for your deployment environment.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -64,8 +64,6 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
    * View logs: `docker-compose logs [service]`
    * Bringing down all services: `docker-compose down`
    * See more in the [Docker Compose documentation][3]
-   * Compose may complain about a missing variables. If this bothers you, run an export
-     command to assign an empty string to each: `export EDD_HOST_DIR=`
 
 * __Determining the local URL for EDD's web interfaces:__
 
