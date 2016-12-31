@@ -8,7 +8,6 @@ tfoot, tr, th, td {
     font-size: inherit;
     margin: 0;
     padding: 0;
-    vertical-align: middle;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -453,16 +452,6 @@ ul.studyTabs {
      border-bottom: 1px solid lightgray;
 }
 
-/* mimic the appearance of sectionHeader, independently of a pageSection */
-div.bare-header {
-    margin: 10px 8px 3px 8px;
-    padding: 4px 4px 4px 6px;
-    font-size:14px;
-    font-weight:bold;
-    float: right;
-    padding:4px 4px 4px 6px;
-}
-
 
 /* Data tables and controls */
 
@@ -471,6 +460,7 @@ table.dataTable {
     border:none;
 }
 table.dataTable tr.header > th {
+    border-style: none;
     text-align:left;
     color:rgb(12, 69, 137);
     font-size:14px;
@@ -588,7 +578,7 @@ tr.groupHeader > td:before {
 /* Data table controls for DataGrids.  These can fit inside "sectionHeads" or the "header" row of a "dataTable" */
 
 span.tableControl {
-    float:left;
+/*    float:left;   */
     font-weight:normal;
     margin:10px 5px 10px 0px;
     padding:0px;
@@ -615,12 +605,12 @@ span.tableControl > select {
 }
 
 span.tableHeader {
-    float: left;
+/*    float: left;  */
     margin-right: 10px;
 }
 
 input[type="button"].tableControl {
-    float:left;
+/*    float:left;   */
     margin:10px 5px 10px 0px;
     font-size:10px;
 }
@@ -637,44 +627,21 @@ input[type="text"].searchBox {
     background-position: right 5px top 1px;
 }
 input[type="text"].searchBox.tableControl {
-    float:left;
+/*    float:left;   */
 }
 
-div.searchStudies {
-    margin-left: 20px;
-}
-
-/* DataGrid header checkboxes.  To make a checkbox in a table header, do <label class="tableCheckbox"><input ... />LABEL</label> */
-
-.tableCheckbox {
-    display: block;
-    float: right;
-    padding-top: 1px;
-    padding-left: 15px;
-    padding-right: 10px;
-    text-indent: -15px;
-    font-weight:normal;
-    font-size:12px;
-}
-.tableCheckbox input {
-    margin:0;
-    vertical-align: bottom;
-    position: relative;
-    left: -5px;
-    top: -1px;
-}
 
 /* DataGrid header pulldown menus */
 
-span.pulldownMenu {
+div.pulldownMenu {
+    display:inline-block;
     margin:10px 5px 10px 0px;
     padding:0px;
     font-weight:normal;
     font-size:14px;
-    float:left;
 }
 div.pulldownMenuLabelOff {
-    display:block;
+    display:inline-block;
     cursor: pointer;
     font-size: 14px;
     margin:2px 5px 0px 0px;
@@ -687,7 +654,7 @@ div.pulldownMenuLabelOff:hover {
     text-decoration:underline;
 }
 div.pulldownMenuLabelOn {
-    display:block;
+    display:inline-block;
     position:relative;
     margin:0px;
     border-style:solid;
@@ -862,10 +829,6 @@ div.filterHeadSearch > input[type="text"] {
     border-radius: 7px;
     -webkit-border-radius: 7px;
     -moz-border-radius: 7px;
-}
-
-.lineButtons {
-    float:right;
 }
 
 
@@ -1137,16 +1100,6 @@ table.formTable tr > td p {
 table.formTable tr > td textarea {
     margin:0;
     padding:0;
-}
-
-#assaysMeasSelectedTD {
-    border-right: 1px solid rgba(164, 164, 164, 0.7);
-    float: left;
-    vertical-align: top;
-}
-#assaysMeasSelectedTD p {
-    margin: 0.25em;
-    padding: 0 8px;
 }
 
 #studiesTable td:nth-child(2) {
@@ -1841,6 +1794,11 @@ div.tooltip2 {
     border-color: #2e6da4;
 }
 
+.actionButton.larger {
+    font-size:17px;
+    padding:10px 14px 10px 14px;
+}
+
 .actionButton:disabled {
     background-color: #FFFFFF;
     color: #888888;
@@ -1850,19 +1808,6 @@ div.tooltip2 {
 
 .assayTable {
     padding-left: 100px;
-}
-
-.noLineSelected {
-    color: red;
-    float: right;
-}
-
-#linesActionPanel {
-    position: fixed;
-    width: 100%;
-    padding-bottom: 40px;
-    bottom: 0;
-    background-color: white;
 }
 
 #measurementMain {

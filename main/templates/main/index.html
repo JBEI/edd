@@ -28,7 +28,11 @@
 {% block content %}
     {% if can_create %}
         <div style="float: right">
-            <a href="{% url 'main:create_study' %}" class="btn btn-primary btn-lg">Add New<br />Study</a>
+            <button id="addNewStudyButton"
+                    class="actionButton primary larger"
+                    title="Add a new study">
+                Add New Study
+            </button>
         </div>
     {% endif %}
     <h2 {%  if latest_viewed_studies %} style="margin-bottom:12px;" {% else %} style="margin-bottom: 50px;" {% endif %}>
@@ -41,9 +45,7 @@
     </div>
 
     <h2>All Studies:</h2>
-    <div class="pageSection">
-        <table id="studiesTable"></table>
-    </div>
+    <table id="studiesTable"></table>
 
     <div class="footer-text">
         <span class="footer-text-app">JBEI Experiment Data Depot {{ request.edd_deployment }}</span>

@@ -1099,6 +1099,7 @@ namespace StudyDataPage {
 
         $("#dataTableButton").click(function() {
             viewingMode = 'table';
+            $("#tableControlsArea").removeClass('off');
             $("#tableActionButtons").removeClass('off');
             $("#barGraphTypeButtons").addClass('off');
             $('#showAll').show();
@@ -1108,6 +1109,7 @@ namespace StudyDataPage {
         // This one is active by default
         $("#lineGraphButton").click(function() {
             viewingMode = 'linegraph';
+            $("#tableControlsArea").addClass('off');
             $("#tableActionButtons").addClass('off');
             $("#barGraphTypeButtons").addClass('off');
             $('#lineGraph').removeClass('off');
@@ -1130,6 +1132,7 @@ namespace StudyDataPage {
         });
         $("#barGraphButton").click(function() {
             viewingMode = 'bargraph';
+            $("#tableControlsArea").addClass('off');
             $("#tableActionButtons").addClass('off');
             $("#barGraphTypeButtons").removeClass('off');
             $('#lineGraph').addClass('off');
@@ -2219,7 +2222,10 @@ class DataGridAssays extends AssayResults {
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
         this.recordsCurrentlyInvalidated = [];
-        this._getTableHeaderCell();
+    }
+
+    getCustomControlsArea():HTMLElement {
+        return $('#tableControlsArea').get(0)
     }
 
     invalidateAssayRecords(records:number[]):void {
@@ -2818,11 +2824,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
     createCustomHeaderWidgets(dataGrid:DataGrid):DataGridHeaderWidget[] {
         var widgetSet:DataGridHeaderWidget[] = [];
 
-        // Create a single widget for substring searching
-        var searchAssaysWidget = new DGAssaysSearchWidget(dataGrid, this, 'Search Assays', 30,
-                false);
-        widgetSet.push(searchAssaysWidget);
-
         var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
         deselectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(deselectAllWidget);
@@ -2868,34 +2869,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
         // Run it once in case the page was generated with checked Assays
         StudyDataPage.queueActionPanelRefresh();
-    }
-}
-
-// This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
-// options for additional data types, querying the server for results.
-class DGAssaysSearchWidget extends DGSearchWidget {
-
-    searchDisclosureElement:any;
-
-    constructor(dataGridOwnerObject:any, dataGridSpec:any, placeHolder:string, size:number,
-            getsFocus:boolean) {
-        super(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
-    }
-
-    // The uniqueID is provided to assist the widget in avoiding collisions when creating input
-    // element labels or other things requiring an ID.
-    createElements(uniqueID:any):void {
-        super.createElements(uniqueID);
-        this.createdElements(true);
-    }
-
-    // This is called to append the widget elements beneath the given element. If the elements have
-    // not been created yet, they are created, and the uniqueID is passed along.
-    appendElements(container:any, uniqueID:any):void {
-        if (!this.createdElements()) {
-            this.createElements(uniqueID);
-        }
-        container.appendChild(this.element);
     }
 }
 

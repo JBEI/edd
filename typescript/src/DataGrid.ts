@@ -15,10 +15,9 @@ class DataGrid {
     private _table:HTMLElement;
     private _tableBody:HTMLElement;
     private _tableBodyJquery: JQuery;
-    private _tableHeaderCell:HTMLElement;
+    private _tableControlsArea:HTMLElement;
     private _waitBadge:HTMLElement;
     private _classes:string;
-    private _section:JQuery;
 
     private _headerRows:HTMLElement[];
     private _totalColumnCount:number;
@@ -70,31 +69,34 @@ class DataGrid {
             // TODO: Most of these classes are probably not needed now
             .append(tableBody);
         this._tableBodyJquery = tableBody;
-        var tHeadRow = this._getTHeadRow();
-        var tableHeaderRow = this._getTableHeaderRow().appendTo(tHeadRow);
-        var tableHeaderCell = $(this._tableHeaderCell = this._getTableHeaderCell()).appendTo(tableHeaderRow);
-        var waitBadge = $(this._waitBadge = document.createElement("span"))
-            .addClass('waitbadge wait').appendTo(tableHeaderCell);
-        if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-             tableHeaderCell.attr('colspan', this._totalColumnCount);
-        }
-        this._section = $(tableBody).parent().parent();
-        // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-        if (dataGridSpec.tableSpec.showHeader) {
-            // TODO: This does not handle size and column changes properly.
-            // A working solution would involve a resize timer, and some modifications to
-            // DataGrid to allow creating the table header cells in a second table (with 0 data rows)
-            // That is then placed immediately above an 'overflow-y:scroll' div containing the first table.
-            // Then we would need some event handlers to resize the second table based on changes in the first.
-            tHeadRow.insertBefore(this._getDivForTableHeaders());
-        }
 
+        var tHead = $(document.createElement("thead"));
+        this._tableControlsArea = this.getCustomControlsArea();    // If there is no custom area, this returns null
+        if (!this._tableControlsArea) {
+            var tr = $(document.createElement("tr")).addClass('header').appendTo(tHead);
+            this._tableControlsArea = $(document.createElement("th")).appendTo(tr).get(0);
+            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                 $(this._tableControlsArea).attr('colspan', this._totalColumnCount);
+            }
+        }
+        this._waitBadge = document.createElement("span");
+        $(this._waitBadge).addClass('waitbadge wait').appendTo(this._tableControlsArea);
+        // If we're asked not to display a header, create it anyway to widgets can go somewhere, but hide it.
+        if (!dataGridSpec.tableSpec.showHeader) {
+            $(this._tableControlsArea).addClass('off');
+        }
         // Apply the default column visibility settings.
         this.prepareColumnVisibility();
-        var tHead = $(document.createElement("thead"));
+
+        // TODO: If we wish to move the column headers outside the table so the
+        // body rows can scroll independedntly, we need to create a second table.
+        // A working solution would involve a resize timer, and some modifications to
+        // DataGrid to allow creating the table header cells in a second table (with 0 data rows)
+        // That is then placed immediately above an 'overflow-y:scroll' div containing the first table.
+        // Then we would need some event handlers to resize the second table based on changes in the first.
         var headerRows = this._headerRows = this._buildTableHeaders();
         tHead.append(headerRows);
-         $(tHead).insertBefore(this._tableBody);
+        $(tHead).insertBefore(this._tableBody);
 
         setTimeout( () => this._initializeTableData(), 1 );
     }
@@ -103,20 +105,11 @@ class DataGrid {
         return this._tableBodyJquery;
     }
 
-    _getTableHeaderCell():HTMLElement {
-        return document.createElement("span")
-    }
-
-    _getTableHeaderRow():JQuery {
-        return $(document.createElement("span")).addClass('header');
-    }
-
-    _getTHeadRow():JQuery {
-        return $(document.createElement('div')).addClass('searchStudies');
-    }
-
-    _getDivForTableHeaders():any {
-        return this._section;
+    // By defaut the controls are placed at the top of the table,
+    // inside a single header cell spanning the entire table.
+    // But we can override this placement by returning a JQuery reference to an alternate location.
+    getCustomControlsArea():HTMLElement {
+        return null;
     }
 
     _getClasses():string {
@@ -130,7 +123,7 @@ class DataGrid {
     // in Firefox and Safari, according to load-time profiling ... and only when paired with some servers??)
     _initializeTableData():DataGrid {
 
-        var hCell = this._tableHeaderCell;
+        var cArea = this._tableControlsArea;
 
         Dragboxes.initTable(this._table);
         this._buildAllTableSorters()
@@ -144,21 +137,21 @@ class DataGrid {
         // (Since all widgets are styled to float right, they will appear from right to left.)
         this._headerWidgets.forEach((widget, index) => {
             if (!widget.displayBeforeViewMenu()) {
-                widget.appendElements(hCell, index.toString(10));
+                widget.appendElements(cArea, index.toString(10));
             }
         });
         // Now append the 'View' pulldown menu
-        hCell.appendChild(this._optionsMenuElement);
+        cArea.appendChild(this._optionsMenuElement);
         // Finally, append the header widgets that should appear "before".
         this._headerWidgets.forEach((widget, index) => {
             if (widget.displayBeforeViewMenu()) {
-                widget.appendElements(hCell, index.toString(10));
+                widget.appendElements(cArea, index.toString(10));
             }
         });
 
         //TODO: move!
         var showAll = $('#showAll');
-        $(hCell).append(showAll);
+        $(cArea).append(showAll);
 
         this._initializeSort().arrangeTableDataRows();
 
@@ -304,7 +297,7 @@ class DataGrid {
             });
         }
 
-        var mainSpan = $(this._optionsMenuElement = document.createElement("span"))
+        var mainSpan = $(this._optionsMenuElement = document.createElement("div"))
             .attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
 
         var menuLabel = $(this._optionsLabel = document.createElement("div"))
@@ -1066,25 +1059,6 @@ class LineResults extends DataGrid {
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
         this._getClasses();
-        this._getDivForTableHeaders();
-        this._getTableHeaderRow();
-        this._getTHeadRow();
-        this._getTableHeaderCell();
-    }
-    _getTHeadRow():JQuery {
-        return $(document.createElement('thead'));
-    }
-
-    _getTableHeaderRow():JQuery {
-        return $(document.createElement("tr")).addClass('header');
-    }
-
-    _getTableHeaderCell():HTMLElement {
-        return document.createElement("th");
-    }
-
-    _getDivForTableHeaders():any {
-        return this._getTableBody();
     }
 
     _getClasses():string {
@@ -1101,25 +1075,6 @@ class AssayResults extends DataGrid {
         super(dataGridSpec);
         // TODO: These calls do not seem to do anything
         this._getClasses();
-        this._getDivForTableHeaders();
-        this._getTableHeaderRow();
-        this._getTHeadRow();
-        this._getTableHeaderCell();
-    }
-    _getTHeadRow():JQuery {
-        return $(document.createElement('thead'));
-    }
-
-    _getTableHeaderRow():JQuery {
-        return $(document.createElement("tr")).addClass('header');
-    }
-
-    _getTableHeaderCell():HTMLElement {
-        return document.createElement("th");
-    }
-
-    _getDivForTableHeaders():any {
-        return this._getTableBody();
     }
 
     _getClasses():string {
@@ -2045,7 +2000,7 @@ class DGPagingWidget extends DataGridHeaderWidget {
     appendElements(container:HTMLElement, uniqueID:string):void {
         if (!this.createdElements()) {
             $(this.widgetElement = document.createElement('div'));
-            $('.searchStudies').append(this.widgetElement);
+            $(container).append(this.widgetElement);
             $(this.labelElement = document.createElement('span'))
                 .appendTo(this.widgetElement);
             $(this.prevElement = document.createElement('a'))

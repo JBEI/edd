@@ -40,27 +40,29 @@ var DataGrid = (function () {
             .addClass(this._getClasses())
             .append(tableBody);
         this._tableBodyJquery = tableBody;
-        var tHeadRow = this._getTHeadRow();
-        var tableHeaderRow = this._getTableHeaderRow().appendTo(tHeadRow);
-        var tableHeaderCell = $(this._tableHeaderCell = this._getTableHeaderCell()).appendTo(tableHeaderRow);
-        var waitBadge = $(this._waitBadge = document.createElement("span"))
-            .addClass('waitbadge wait').appendTo(tableHeaderCell);
-        if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-            tableHeaderCell.attr('colspan', this._totalColumnCount);
+        var tHead = $(document.createElement("thead"));
+        this._tableControlsArea = this.getCustomControlsArea(); // If there is no custom area, this returns null
+        if (!this._tableControlsArea) {
+            var tr = $(document.createElement("tr")).addClass('header').appendTo(tHead);
+            this._tableControlsArea = $(document.createElement("th")).appendTo(tr).get(0);
+            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                $(this._tableControlsArea).attr('colspan', this._totalColumnCount);
+            }
         }
-        this._section = $(tableBody).parent().parent();
-        // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-        if (dataGridSpec.tableSpec.showHeader) {
-            // TODO: This does not handle size and column changes properly.
-            // A working solution would involve a resize timer, and some modifications to
-            // DataGrid to allow creating the table header cells in a second table (with 0 data rows)
-            // That is then placed immediately above an 'overflow-y:scroll' div containing the first table.
-            // Then we would need some event handlers to resize the second table based on changes in the first.
-            tHeadRow.insertBefore(this._getDivForTableHeaders());
+        this._waitBadge = document.createElement("span");
+        $(this._waitBadge).addClass('waitbadge wait').appendTo(this._tableControlsArea);
+        // If we're asked not to display a header, create it anyway to widgets can go somewhere, but hide it.
+        if (!dataGridSpec.tableSpec.showHeader) {
+            $(this._tableControlsArea).addClass('off');
         }
         // Apply the default column visibility settings.
         this.prepareColumnVisibility();
-        var tHead = $(document.createElement("thead"));
+        // TODO: If we wish to move the column headers outside the table so the
+        // body rows can scroll independedntly, we need to create a second table.
+        // A working solution would involve a resize timer, and some modifications to
+        // DataGrid to allow creating the table header cells in a second table (with 0 data rows)
+        // That is then placed immediately above an 'overflow-y:scroll' div containing the first table.
+        // Then we would need some event handlers to resize the second table based on changes in the first.
         var headerRows = this._headerRows = this._buildTableHeaders();
         tHead.append(headerRows);
         $(tHead).insertBefore(this._tableBody);
@@ -69,17 +71,11 @@ var DataGrid = (function () {
     DataGrid.prototype._getTableBody = function () {
         return this._tableBodyJquery;
     };
-    DataGrid.prototype._getTableHeaderCell = function () {
-        return document.createElement("span");
-    };
-    DataGrid.prototype._getTableHeaderRow = function () {
-        return $(document.createElement("span")).addClass('header');
-    };
-    DataGrid.prototype._getTHeadRow = function () {
-        return $(document.createElement('div')).addClass('searchStudies');
-    };
-    DataGrid.prototype._getDivForTableHeaders = function () {
-        return this._section;
+    // By defaut the controls are placed at the top of the table,
+    // inside a single header cell spanning the entire table.
+    // But we can override this placement by returning a JQuery reference to an alternate location.
+    DataGrid.prototype.getCustomControlsArea = function () {
+        return null;
     };
     DataGrid.prototype._getClasses = function () {
         return this._classes;
@@ -90,7 +86,7 @@ var DataGrid = (function () {
     // (If the setup is NOT run in two stages, all the 'createElement' calls for the data cells take much longer,
     // in Firefox and Safari, according to load-time profiling ... and only when paired with some servers??)
     DataGrid.prototype._initializeTableData = function () {
-        var hCell = this._tableHeaderCell;
+        var cArea = this._tableControlsArea;
         Dragboxes.initTable(this._table);
         this._buildAllTableSorters()
             ._buildTableSortSequences()
@@ -102,20 +98,20 @@ var DataGrid = (function () {
         // (Since all widgets are styled to float right, they will appear from right to left.)
         this._headerWidgets.forEach(function (widget, index) {
             if (!widget.displayBeforeViewMenu()) {
-                widget.appendElements(hCell, index.toString(10));
+                widget.appendElements(cArea, index.toString(10));
             }
         });
         // Now append the 'View' pulldown menu
-        hCell.appendChild(this._optionsMenuElement);
+        cArea.appendChild(this._optionsMenuElement);
         // Finally, append the header widgets that should appear "before".
         this._headerWidgets.forEach(function (widget, index) {
             if (widget.displayBeforeViewMenu()) {
-                widget.appendElements(hCell, index.toString(10));
+                widget.appendElements(cArea, index.toString(10));
             }
         });
         //TODO: move!
         var showAll = $('#showAll');
-        $(hCell).append(showAll);
+        $(cArea).append(showAll);
         this._initializeSort().arrangeTableDataRows();
         // Now that we've constructed our elements, apply visibility styling to them.
         this._applyColumnVisibility();
@@ -235,7 +231,7 @@ var DataGrid = (function () {
                 });
             });
         }
-        var mainSpan = $(this._optionsMenuElement = document.createElement("span"))
+        var mainSpan = $(this._optionsMenuElement = document.createElement("div"))
             .attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
         var menuLabel = $(this._optionsLabel = document.createElement("div"))
             .addClass('pulldownMenuLabelOff')
@@ -917,23 +913,7 @@ var LineResults = (function (_super) {
     function LineResults(dataGridSpec) {
         _super.call(this, dataGridSpec);
         this._getClasses();
-        this._getDivForTableHeaders();
-        this._getTableHeaderRow();
-        this._getTHeadRow();
-        this._getTableHeaderCell();
     }
-    LineResults.prototype._getTHeadRow = function () {
-        return $(document.createElement('thead'));
-    };
-    LineResults.prototype._getTableHeaderRow = function () {
-        return $(document.createElement("tr")).addClass('header');
-    };
-    LineResults.prototype._getTableHeaderCell = function () {
-        return document.createElement("th");
-    };
-    LineResults.prototype._getDivForTableHeaders = function () {
-        return this._getTableBody();
-    };
     LineResults.prototype._getClasses = function () {
         return 'dataTable sortable dragboxes hastablecontrols';
     };
@@ -946,23 +926,7 @@ var AssayResults = (function (_super) {
         _super.call(this, dataGridSpec);
         // TODO: These calls do not seem to do anything
         this._getClasses();
-        this._getDivForTableHeaders();
-        this._getTableHeaderRow();
-        this._getTHeadRow();
-        this._getTableHeaderCell();
     }
-    AssayResults.prototype._getTHeadRow = function () {
-        return $(document.createElement('thead'));
-    };
-    AssayResults.prototype._getTableHeaderRow = function () {
-        return $(document.createElement("tr")).addClass('header');
-    };
-    AssayResults.prototype._getTableHeaderCell = function () {
-        return document.createElement("th");
-    };
-    AssayResults.prototype._getDivForTableHeaders = function () {
-        return this._getTableBody();
-    };
     AssayResults.prototype._getClasses = function () {
         return 'dataTable sortable dragboxes hastablecontrols';
     };
@@ -1668,7 +1632,7 @@ var DGPagingWidget = (function (_super) {
         var _this = this;
         if (!this.createdElements()) {
             $(this.widgetElement = document.createElement('div'));
-            $('.searchStudies').append(this.widgetElement);
+            $(container).append(this.widgetElement);
             $(this.labelElement = document.createElement('span'))
                 .appendTo(this.widgetElement);
             $(this.prevElement = document.createElement('a'))

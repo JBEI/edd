@@ -998,6 +998,7 @@ var StudyDataPage;
         Utl.ButtonBar.prepareButtonBars();
         $("#dataTableButton").click(function () {
             viewingMode = 'table';
+            $("#tableControlsArea").removeClass('off');
             $("#tableActionButtons").removeClass('off');
             $("#barGraphTypeButtons").addClass('off');
             $('#showAll').show();
@@ -1006,6 +1007,7 @@ var StudyDataPage;
         // This one is active by default
         $("#lineGraphButton").click(function () {
             viewingMode = 'linegraph';
+            $("#tableControlsArea").addClass('off');
             $("#tableActionButtons").addClass('off');
             $("#barGraphTypeButtons").addClass('off');
             $('#lineGraph').removeClass('off');
@@ -1028,6 +1030,7 @@ var StudyDataPage;
         });
         $("#barGraphButton").click(function () {
             viewingMode = 'bargraph';
+            $("#tableControlsArea").addClass('off');
             $("#tableActionButtons").addClass('off');
             $("#barGraphTypeButtons").removeClass('off');
             $('#lineGraph').addClass('off');
@@ -1988,8 +1991,10 @@ var DataGridAssays = (function (_super) {
     function DataGridAssays(dataGridSpec) {
         _super.call(this, dataGridSpec);
         this.recordsCurrentlyInvalidated = [];
-        this._getTableHeaderCell();
     }
+    DataGridAssays.prototype.getCustomControlsArea = function () {
+        return $('#tableControlsArea').get(0);
+    };
     DataGridAssays.prototype.invalidateAssayRecords = function (records) {
         this.recordsCurrentlyInvalidated = this.recordsCurrentlyInvalidated.concat(records);
         if (!this.recordsCurrentlyInvalidated.length) {
@@ -2505,9 +2510,6 @@ var DataGridSpecAssays = (function (_super) {
     // It's perfectly fine to return an empty array.
     DataGridSpecAssays.prototype.createCustomHeaderWidgets = function (dataGrid) {
         var widgetSet = [];
-        // Create a single widget for substring searching
-        var searchAssaysWidget = new DGAssaysSearchWidget(dataGrid, this, 'Search Assays', 30, false);
-        widgetSet.push(searchAssaysWidget);
         var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
         deselectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(deselectAllWidget);
@@ -2547,28 +2549,5 @@ var DataGridSpecAssays = (function (_super) {
     };
     return DataGridSpecAssays;
 }(DataGridSpecBase));
-// This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
-// options for additional data types, querying the server for results.
-var DGAssaysSearchWidget = (function (_super) {
-    __extends(DGAssaysSearchWidget, _super);
-    function DGAssaysSearchWidget(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus) {
-        _super.call(this, dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
-    }
-    // The uniqueID is provided to assist the widget in avoiding collisions when creating input
-    // element labels or other things requiring an ID.
-    DGAssaysSearchWidget.prototype.createElements = function (uniqueID) {
-        _super.prototype.createElements.call(this, uniqueID);
-        this.createdElements(true);
-    };
-    // This is called to append the widget elements beneath the given element. If the elements have
-    // not been created yet, they are created, and the uniqueID is passed along.
-    DGAssaysSearchWidget.prototype.appendElements = function (container, uniqueID) {
-        if (!this.createdElements()) {
-            this.createElements(uniqueID);
-        }
-        container.appendChild(this.element);
-    };
-    return DGAssaysSearchWidget;
-}(DGSearchWidget));
 // use JQuery ready event shortcut to call prepareIt when page is ready
 $(function () { return StudyDataPage.prepareIt(); });
