@@ -1163,7 +1163,7 @@ namespace StudyDataPage {
             queueRefreshDataDisplayIfStale();
         });
 
-         //disable button on assay graph. shows disabled assays, unchecks filter section
+        // disable button on assay graph. shows disabled assays, unchecks filter section
         $('#disabledOptions').click(function(event) {
             event.preventDefault();
             showDisabled();
@@ -1277,7 +1277,7 @@ namespace StudyDataPage {
     function showDisabled():void {
         var rowIDs = _.keys(EDDData.Assays);
         // If the box is shows show disabled, return the set of IDs unfiltered
-        if ($('#disabledOptions').val()=== "Show disabled") {
+        if ($('#disabledOptions').val() === "Show disabled") {
             $('#disabledOptions').val("Hide disabled");
             showDisabledAssays(rowIDs);
         }
@@ -1412,8 +1412,6 @@ namespace StudyDataPage {
         // Don't show the selected item count if we're not looking at the table.
         // (Only the visible item count makes sense in that case.)
         if (viewingMode == 'table') {
-            $('#selectedDiv').toggleClass('off', nothingSelected);
-
             checkedBoxes = assaysDataGrid.getSelectedCheckboxElements();
 
             checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
@@ -2824,11 +2822,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     createCustomHeaderWidgets(dataGrid:DataGrid):DataGridHeaderWidget[] {
         var widgetSet:DataGridHeaderWidget[] = [];
 
-        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
-        deselectAllWidget.displayBeforeViewMenu(true);
-        widgetSet.push(deselectAllWidget);
-
-        // A "select all" button
+        // A "select all / select none" button
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(selectAllWidget);
@@ -2842,6 +2836,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     createCustomOptionsWidgets(dataGrid:DataGrid):DataGridOptionWidget[] {
         var widgetSet:DataGridOptionWidget[] = [];
         // Create a single widget for showing disabled Assays
+        var disabledAssaysWidget = new DGDisabledAssaysWidget(dataGrid, this);
+        widgetSet.push(disabledAssaysWidget);
         return widgetSet;
     }
 
@@ -2869,6 +2865,56 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
         // Run it once in case the page was generated with checked Assays
         StudyDataPage.queueActionPanelRefresh();
+    }
+}
+
+
+// When unchecked, this hides the set of Lines that are marked as disabled.
+class DGDisabledAssaysWidget extends DataGridOptionWidget {
+
+    createElements(uniqueID:any):void {
+        var cbID:string = this.dataGridSpec.tableSpec.id+'ShowDAssaysCB'+uniqueID;
+        var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
+        $(cb).click( (e) => this.dataGridOwnerObject.clickedOptionWidget(e) );
+        if (this.isEnabledByDefault()) {
+            cb.setAttribute('checked', 'checked');
+        }
+        this.checkBoxElement = cb;
+        this.labelElement = this._createLabel('Show Disabled', cbID);
+        this._createdElements = true;
+    }
+
+    applyFilterToIDs(rowIDs:string[]):string[] {
+
+        var checked:boolean = false;
+        if (this.checkBoxElement.checked) {
+            checked = true;
+        }
+        // If the box is checked, return the set of IDs unfiltered
+        if (checked && rowIDs && EDDData.currentStudyWritable) {
+            $("#enableButton").removeClass('off');
+            return rowIDs;
+        } else {
+            $("#enableButton").addClass('off');
+        }
+
+        var filteredIDs = [];
+        for (var r = 0; r < rowIDs.length; r++) {
+            var id = rowIDs[r];
+            // Here is the condition that determines whether the rows associated with this ID are
+            // shown or hidden.
+            if (EDDData.Assays[id].active) {
+                filteredIDs.push(id);
+            }
+        }
+        return filteredIDs;
+    }
+
+    initialFormatRowElementsForID(dataRowObjects:any, rowID:string):any {
+        var assay = EDDData.Assays[rowID];
+        if (!assay.active) {
+            $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
+        }
     }
 }
 

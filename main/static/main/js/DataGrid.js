@@ -32,6 +32,8 @@ var DataGrid = (function () {
         this._spec = dataGridSpec;
         this._table = dataGridSpec.tableElement;
         this._timers = {};
+        this._widgetRefreshCooldownTimer = null;
+        this._widgetRefreshPending = false;
         this._classes = 'dataTable sortable dragboxes hastablecontrols table-bordered';
         var tableBody = $(this._tableBody = document.createElement("tbody"));
         // First step: Blow away the old contents of the table
@@ -66,6 +68,9 @@ var DataGrid = (function () {
         var headerRows = this._headerRows = this._buildTableHeaders();
         tHead.append(headerRows);
         $(tHead).insertBefore(this._tableBody);
+        // If any checkbox changes in the table body - indicating a potential change in the selection -
+        // refresh the header widgets, since their appearance may need to change.
+        tableBody.on('change', ':checkbox', this._refreshAllWidgetsWithThrottling.bind(this));
         setTimeout(function () { return _this._initializeTableData(); }, 1);
     }
     DataGrid.prototype._getTableBody = function () {
@@ -150,12 +155,7 @@ var DataGrid = (function () {
         });
         // And make sure only the currently visible things are ... visible
         this._applyColumnVisibility();
-        this._headerWidgets.forEach(function (widget, index) {
-            widget.refreshWidget();
-        });
-        this._optionsMenuWidgets.forEach(function (widget, index) {
-            widget.refreshWidget();
-        });
+        this._refreshAllWidgets();
         return this;
     };
     // Update only the table rows for the specified records.
@@ -170,12 +170,7 @@ var DataGrid = (function () {
         });
         if (reflow) {
             this._buildTableSortSequences().arrangeTableDataRows();
-            this._headerWidgets.forEach(function (widget, index) {
-                widget.refreshWidget();
-            });
-            this._optionsMenuWidgets.forEach(function (widget, index) {
-                widget.refreshWidget();
-            });
+            this._refreshAllWidgets();
         }
         return this;
     };
@@ -473,7 +468,7 @@ var DataGrid = (function () {
             });
             $(frag).insertBefore($(this._tableBody));
         }
-        //hacky way to show lines that were hidden from grouping replicates
+        // hacky way to show lines that were hidden from grouping replicates
         if ($('#linesGroupStudyReplicatesCB0').prop('checked') === false) {
             var lines = $(frag).children();
             _.each(lines, function (line) {
@@ -484,6 +479,34 @@ var DataGrid = (function () {
         // Remember that we last sorted by this column
         this._tableBody.appendChild(frag);
         return this;
+    };
+    // Call _refreshAllWidgets, unless a half-second cooldown timer is active from the last call,
+    // in which case set a flag to call _refreshAllWidgets when the timer expires.
+    DataGrid.prototype._refreshAllWidgetsWithThrottling = function () {
+        if (this._widgetRefreshCooldownTimer) {
+            this._widgetRefreshPending = true;
+            return;
+        }
+        this._refreshAllWidgets();
+        this._widgetRefreshCooldownTimer = setTimeout(this._refreshAllWidgetsClearTimer.bind(this), 500);
+    };
+    DataGrid.prototype._refreshAllWidgetsClearTimer = function () {
+        this._widgetRefreshCooldownTimer = null;
+        // If a request to refresh came in while the cooldown was in operation,
+        // clear the flag and call for another refresh.
+        // With the timer cleared, it will immediately refresh, without setting the pending request flag.
+        if (this._widgetRefreshPending) {
+            this._widgetRefreshPending = false;
+            this._refreshAllWidgetsWithThrottling();
+        }
+    };
+    DataGrid.prototype._refreshAllWidgets = function () {
+        this._headerWidgets.forEach(function (widget, index) {
+            widget.refreshWidget();
+        });
+        this._optionsMenuWidgets.forEach(function (widget, index) {
+            widget.refreshWidget();
+        });
     };
     // Given an array of record IDs, send the array through the filtering function for each of
     // the header widgets, and each of the options menu widgets, then return the filtered array.
@@ -891,6 +914,13 @@ var DataGrid = (function () {
             func.call({}, _this._recordElements[id].getDataGridDataRows(), id, _this._spec, _this);
         });
         return this;
+    };
+    // apply a function to each record ID in the sequence until the function returns false
+    DataGrid.prototype.testRecordSet = function (func, ids) {
+        var _this = this;
+        return ids.every(function (id) {
+            return func.call({}, _this._recordElements[id].getDataGridDataRows(), id, _this._spec, _this);
+        });
     };
     // retreive the current sequence of records in the DataGrid
     DataGrid.prototype.currentSequence = function () {
@@ -1433,57 +1463,63 @@ var DGSelectAllWidget = (function (_super) {
             .addClass('tableControl')
             .click(function () { return _this.clickHandler(); });
         this.element.setAttribute('type', 'button'); // JQuery attr cannot do this
+        this.anySelected = false;
+    };
+    DGSelectAllWidget.prototype.refreshWidget = function () {
+        this.testIfAnySelected();
+        this.updateButtonLabel();
+    };
+    DGSelectAllWidget.prototype.updateButtonLabel = function () {
+        if (this.anySelected) {
+            this.element.setAttribute('value', 'Select None');
+        }
+        else {
+            this.element.setAttribute('value', 'Select All');
+        }
     };
     DGSelectAllWidget.prototype.clickHandler = function () {
+        var _this = this;
         var sequence = this.dataGridOwnerObject.currentSequence();
         // Have DataGrid apply function to everything in current sequence
         this.dataGridOwnerObject.applyToRecordSet(function (rows) {
             // each row in sequence
             rows.forEach(function (row) {
-                // each cell in row
-                row.dataGridDataCells.forEach(function (cell) {
-                    // if the cell has a checkbox, check it
-                    $(cell.checkboxElement).prop('checked', true).trigger('change');
-                });
+                if (row.dataGridDataCells) {
+                    // each cell in row
+                    row.dataGridDataCells.forEach(function (cell) {
+                        var checkbox = cell.getCheckboxElement();
+                        if (checkbox) {
+                            $(cell.checkboxElement).prop('checked', !_this.anySelected);
+                        }
+                    });
+                }
             });
         }, sequence);
+        this.anySelected = !this.anySelected;
+        this.updateButtonLabel();
+    };
+    DGSelectAllWidget.prototype.testIfAnySelected = function () {
+        var sequence = this.dataGridOwnerObject.currentSequence();
+        // Cannot use applyToRecordSet here because we will very likely want to exit early
+        this.anySelected = !(this.dataGridOwnerObject.testRecordSet(function (rows) {
+            return rows.every(function (row) {
+                if (!row.dataGridDataCells) {
+                    return true;
+                }
+                // each cell in row
+                return row.dataGridDataCells.every(function (cell) {
+                    var checkbox = cell.getCheckboxElement();
+                    if (!checkbox) {
+                        return true;
+                    } // On to the next one
+                    // If it's checked, exit early, with our question answered.
+                    return !(checkbox.checked);
+                });
+            });
+        }, sequence));
+        return this.anySelected;
     };
     return DGSelectAllWidget;
-}(DataGridHeaderWidget));
-// A generic "Deselect All" header widget, appearing as a button.
-// When clicked, it walks through every row and cell looking for DataGrid-created checkboxes,
-// and checks every one it finds.
-var DGDeselectAllWidget = (function (_super) {
-    __extends(DGDeselectAllWidget, _super);
-    function DGDeselectAllWidget(dataGridOwnerObject, dataGridSpec) {
-        _super.call(this, dataGridOwnerObject, dataGridSpec);
-    }
-    // The uniqueID is provided to assist the widget in avoiding collisions
-    // when creating input element labels or other things requiring an ID.
-    DGDeselectAllWidget.prototype.createElements = function (uniqueID) {
-        var _this = this;
-        var buttonID = this.dataGridSpec.tableSpec.id + 'DelAll' + uniqueID;
-        var button = $(this.element = document.createElement("input"));
-        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Deselect All' })
-            .addClass('tableControl')
-            .click(function () { return _this.clickHandler(); });
-        this.element.setAttribute('type', 'button'); // JQuery attr cannot do this
-    };
-    DGDeselectAllWidget.prototype.clickHandler = function () {
-        var sequence = this.dataGridOwnerObject.currentSequence();
-        // Have DataGrid apply function to everything in current sequence
-        this.dataGridOwnerObject.applyToRecordSet(function (rows) {
-            // each row in sequence
-            rows.forEach(function (row) {
-                // each cell in row
-                row.dataGridDataCells.forEach(function (cell) {
-                    // if the cell has a checkbox, uncheck it
-                    $(cell.checkboxElement).prop('checked', false).trigger('change');
-                });
-            });
-        }, sequence);
-    };
-    return DGDeselectAllWidget;
 }(DataGridHeaderWidget));
 // Here's an example of a working DataGridHeaderWidget.
 // It's a search field that narrows the set of rows to ones that contain the given string.

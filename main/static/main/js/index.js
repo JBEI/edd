@@ -474,7 +474,6 @@ var DGStudiesSearchWidget = (function (_super) {
     };
     return DGStudiesSearchWidget;
 }(DGSearchWidget));
-// Here's an example of a working DataGridOptionWidget.
 // When checked, this hides all Studies that are not owned by the current user.
 var DGOnlyMyStudiesWidget = (function (_super) {
     __extends(DGOnlyMyStudiesWidget, _super);
@@ -506,7 +505,6 @@ var DGOnlyMyStudiesWidget = (function (_super) {
     };
     return DGOnlyMyStudiesWidget;
 }(DataGridOptionWidget));
-// Here's another example of a working DataGridOptionWidget.
 // When unchecked, this hides the set of Studies that are marked as disabled.
 var DGDisabledStudiesWidget = (function (_super) {
     __extends(DGDisabledStudiesWidget, _super);
@@ -541,7 +539,7 @@ var DGDisabledStudiesWidget = (function (_super) {
         if (data[rowID].dis) {
             for (var r = 0; r < dataRowObjects.length; r++) {
                 var rowElement = dataRowObjects[r].getElement();
-                rowElement.style.backgroundColor = "#FFC0C0";
+                $(rowElement).addClass('disabledRecord');
             }
         }
     };
