@@ -17,6 +17,12 @@
     {{ block.super }}
 {% endblock head_title %}
 
+{% block body_prefix %}
+    {{ block.super }}
+<form action="" class="noMargins" style="height:100%;" method="POST">
+    {% csrf_token %}
+{% endblock body_prefix %}
+
 {% block body_title %}
     {{ block.super }}
 {% endblock body_title %}
@@ -24,147 +30,155 @@
 {% block content %}
     {{ block.super }}
 
-<form action="" class="assay-action" method="POST">
-    {% csrf_token %}
-     <span id="showAll" style="display:none">
-        <input id="showAllAssays"type="button" value="Show all" class="tableControl">
-        <div style="float:none; margin: 10px 5px 10px 0px;"class="helpBadgeDiv">help
-            <div class="helpContent">
-                <p>Click show all to show lines and measurements that do not have measurements. NOTE: this will clear
-                    out the filtering section below. The filtering section only filters lines and assays with measurements.
-                </p>
+<div id="graphDisplayContainer">
+    <div id="noData" class="off" style="
+        height: 300px;
+        width: 100%;
+        padding:auto;
+        text-align: center;
+        vertical-align: middle;">
+        No data.
+    </div>
+    <div id="tooManyPoints" class="off" style="
+        height: 300px;
+        width: 100%;
+        padding:auto;
+        text-align: center;
+        vertical-align: middle;">
+        Too many points to display!  Please change your filter settings.
+    </div>
+    <div id="graphLoading" class="wait-larger" style="
+        opacity:0.7;
+        height: 300px;
+        width: 100%;
+        padding:auto;">
+    </div>
+    <div id="lineGraph" class="off"></div>
+    <div id="barGraphByTime" class="off"></div>
+    <div id="barGraphByLine" class="off"></div>
+    <div id="barGraphByMeasurement" class="off"></div>
+</div>
+
+{# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+<table id="studyAssaysTable" class="off"></table>
+
+<div id="assaysActionPanel" class="sectionActions" style="
+    display:flex;
+    flex-direction: row;
+    justify-content: flex-start; /* align items in Main Axis */
+    align-items: stretch; /* align items in Cross Axis */
+    align-content: stretch; /* Extra space in Cross Axis */
+    flex-wrap: nowrap;">
+    <div class="buttonBar" id="displayModeButtons">
+        <span class="active" id="lineGraphButton" for="graphDisplayContainer">
+            <img src="{% static 'main/images/study-data-icon-lines.png' %}" width="18" height="18" />
+        </span><span id="barGraphButton" for="graphDisplayContainer">
+            <img src="{% static 'main/images/study-data-icon-bars.png' %}" width="18" height="18" />
+        </span><span id="dataTableButton" for="studyAssaysTable">
+            <img src="{% static 'main/images/study-data-icon-chart.png' %}" width="18" height="18" />
+        </span>
+    </div>
+    <div id="filterControlsArea" style="margin:auto 0 auto 0;">
+        <div id="filterControlsMenu" class="pulldownMenu">
+            <div id="filterControlsMenuLabel" class="pulldownMenuLabelOff">View options ▾</div>
+            <div class="pulldownMenuMenuBlock off">
+                <ul>
+                    <li>
+                        <input id="filteringShowDisabledCheckbox" name="filteringShowDisabled" type="checkbox" value="1">
+                        <label for="filteringShowDisabledCheckbox" title="Show assays that have been disabled.">Show Disabled</label>
+                    </li>
+                    <li>
+                        <input id="filteringShowEmptyCheckbox" name="filteringShowEmpty" type="checkbox" value="1">
+                        <label for="filteringShowEmptyCheckbox" title="Show assays that don't have any measurements in them.">Show Empty</label>
+                    </li>
+                </ul>
             </div>
         </div>
-         <span>
-            <input id="disabledOptions" type="button" value="Show disabled" class="tableControl">
+    </div>
+    <div class="buttonBar off" id="barGraphTypeButtons">
+        <span id="timeBarGraphButton" class="active" for="barGraphByTime">
+            Time
+        </span><span id="lineBarGraphButton" for="barGraphByLine">
+            Line
+        </span><span id="measurementBarGraphButton" for="barGraphByMeasurement">
+            Measurement
         </span>
-    </span>
-    <div id="graphDisplayContainer">
-        <div id="noData" class="off" style="
-            height: 300px;
-            width: 100%;
-            padding:auto;
-            text-align: center;
-            vertical-align: middle;">
-            No data.
-        </div>
-        <div id="tooManyPoints" class="off" style="
-            height: 300px;
-            width: 100%;
-            padding:auto;
-            text-align: center;
-            vertical-align: middle;">
-            Too many points to display!  Please change your filter settings.
-        </div>
-        <div id="graphLoading" class="wait-larger" style="
-            opacity:0.7;
-            height: 300px;
-            width: 100%;
-            padding:auto;">
-        </div>
-        <div id="lineGraph" class="off"></div>
-        <div id="barGraphByTime" class="off"></div>
-        <div id="barGraphByLine" class="off"></div>
-        <div id="barGraphByMeasurement" class="off"></div>
     </div>
-
-    {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-    <table id="studyAssaysTable" class="off"></table>
-
-    <div id="assaysActionPanel" class="sectionActions" style="
+    <div id="tableControlsArea" class="off" style="margin:auto 0 auto 0;">
+        {# filled out client-side #}
+    </div>
+    <div style="
+        flex-grow:0;
+        margin:0 15px 0 auto;
+        font-size:0.9em;
         display:flex;
-        flex-direction: row;
-        justify-content: flex-start; /* align items in Main Axis */
-        align-items: stretch; /* align items in Cross Axis */
-        align-content: stretch; /* Extra space in Cross Axis */
-        flex-wrap: nowrap;">
-        <div class="buttonBar">
-            <span class="active" id="lineGraphButton" for="graphDisplayContainer">
-                <img src="{% static 'main/images/study-data-icon-lines.png' %}" width="18" height="18" />
-            </span><span id="barGraphButton" for="graphDisplayContainer">
-                <img src="{% static 'main/images/study-data-icon-bars.png' %}" width="18" height="18" />
-            </span><span id="dataTableButton" for="studyAssaysTable">
-                <img src="{% static 'main/images/study-data-icon-chart.png' %}" width="18" height="18" />
-            </span>
-        </div>
-        <div class="buttonBar off" id="barGraphTypeButtons">
-            <span id="timeBarGraphButton" class="active" for="barGraphByTime">
-                Time
-            </span><span id="lineBarGraphButton" for="barGraphByLine">
-                Line
-            </span><span id="measurementBarGraphButton" for="barGraphByMeasurement">
-                Measurement
-            </span>
-        </div>
-        <div id="tableControlsArea" class="off" style="margin:auto 0 auto 0;">
-        </div>
-        <div style="
-            flex-grow:0;
-            margin:0 15px 0 auto;
-            font-size:0.9em;
-            display:flex;
-            flex-direction: column;
-            justify-content: center;
-            " class="{% if not assays %}off{% endif %}">
-            <div id="displayedDiv" style="padding:1px;">0 displayed</div>
-            <div id="selectedDiv" style="padding:1px;">0 selected</div>
-        </div>
-        <div id="tableActionButtons" class="off" style="margin:auto 0 auto 0;">
-            <button id="editButton"
-                    class="actionButton {% if not writable or not assays %}off{% endif %}"
-                    disabled="true"
-                    title="Edit selected measurements">
-                Edit
-            </button>
-            <button id="addMeasurementButton"
-                    class="actionButton {% if not writable or not assays %}off{% endif %}"
-                    type="button"
-                    disabled="true"
-                    title="Add a measurement to selected assays">
-                Add Measurement
-            </button>
-            <button id="deleteButton"
-                    class="actionButton {% if not writable or not assays %}off{% endif %}"
-                    type="submit"
-                    name="action"
-                    value="delete"
-                    disabled="true"
-                    title="Delete selected assays and/or measurements">
-                Delete
-            </button>
-            <button id="disableButton"
-                    class="actionButton {% if not writable or not assays %}off{% endif %}"
-                    type="submit"
-                    name="action"
-                    value="disable"
-                    disabled="true"
-                    title="Disable selected assays and/or measurements">
-                Disable
-            </button>
-            <button id="enableButton"
-                    class="actionButton off"
-                    type="submit"
-                    name="action"
-                    value="enable"
-                    disabled="true"
-                    title="Re-enable selected assays and/or measurements">
-                Re-Enable
-            </button>
-        </div>
-        <div style="margin:auto 0 auto 15px;" class="{% if not assays %}off{% endif %}">
-            <button type="button" id="exportButton" class="actionButton primary">
-                Export Data
-            </button>
-        </div>
+        flex-direction: column;
+        justify-content: center;
+        " class="{% if not assays %}off{% endif %}">
+        <div id="displayedDiv" style="padding:1px;">0 displayed</div>
+        <div id="selectedDiv" style="padding:1px;">0 selected</div>
     </div>
-
-     <div>
-        <input id="hideFilterSection"type="button" value="Hide Filter Section">
+    <div id="tableActionButtons" class="off" style="margin:auto 0 auto 0;">
+        <button id="editButton"
+                class="actionButton {% if not writable or not assays %}off{% endif %}"
+                disabled="true"
+                title="Edit selected measurements">
+            Edit
+        </button>
+        <button id="addMeasurementButton"
+                class="actionButton {% if not writable or not assays %}off{% endif %}"
+                type="button"
+                disabled="true"
+                title="Add a measurement to selected assays">
+            Add Measurement
+        </button>
+        <button id="deleteButton"
+                class="actionButton {% if not writable or not assays %}off{% endif %}"
+                type="submit"
+                name="action"
+                value="delete"
+                disabled="true"
+                title="Delete selected assays and/or measurements">
+            Delete
+        </button>
+        <button id="disableButton"
+                class="actionButton {% if not writable or not assays %}off{% endif %}"
+                type="submit"
+                name="action"
+                value="disable"
+                disabled="true"
+                title="Disable selected assays and/or measurements">
+            Disable
+        </button>
+        <button id="enableButton"
+                class="actionButton off"
+                type="submit"
+                name="action"
+                value="enable"
+                disabled="true"
+                title="Re-enable selected assays and/or measurements">
+            Re-Enable
+        </button>
     </div>
-    <div id="mainFilterSection" class="filteringSection">
-    </div>  
+    <div style="margin:auto 0 auto 15px;" class="{% if not assays %}off{% endif %}">
+        <button type="button" id="exportButton" class="actionButton primary">
+            Export Data
+        </button>
+    </div>
+</div>
 
+<div>
+    <input id="hideFilterSection"type="button" value="Hide Filter Section">
+</div>
+<div id="mainFilterSection" class="filteringSection">
+</div>
+
+{% endblock content %}
+
+{% block body_postfix %}
 </form>
+
+{# FUN FACT: jQueryUI's "modal" widget actually rips the element you're turning into a modal right out of the DOM and appends it to the end, thus separating it from any form you've declared outside the modal contents.  So, we are forced to create four self-contained forms, even though the page could easily work as one. #}
 
 <div id="addMeasurement" class="off" title="Add Measurement">
     <form action="" method="POST">
@@ -182,4 +196,5 @@
     </form>
 </div>
 
-{% endblock content %}
+    {{ block.super }}
+{% endblock body_postfix %}

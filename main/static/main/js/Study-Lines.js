@@ -290,7 +290,6 @@ var StudyLines;
         var h = $('#content').height(); // Height of the viewing region
         // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
         // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
-        // Also note we cannot use jQuery's "each" because of its reliance on the 'this' keyword.
         var sh = 0;
         $('#content').children().get().forEach(function (e) { sh += e.scrollHeight; });
         if (StudyLines.actionPanelIsInBottomBar) {
@@ -904,7 +903,7 @@ var DGGroupStudyReplicatesWidget = (function (_super) {
     }
     DGGroupStudyReplicatesWidget.prototype.createElements = function (uniqueID) {
         var pThis = this;
-        var cbID = this.dataGridSpec.tableSpec.id + 'GroupStudyReplicatesCB' + uniqueID;
+        var cbID = 'GroupStudyReplicatesCB';
         var cb = this._createCheckbox(cbID, cbID, '1');
         $(cb).click(function (e) {
             if (pThis.checkBoxElement.checked) {

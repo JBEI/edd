@@ -41,8 +41,6 @@ H1, H2, H3, H4 {
 body {
     height: 100%;
     line-height: 1;
-    padding-left: 20px;
-    padding-right: 20px;
 }
 p {
     margin:0.4em;
@@ -96,6 +94,9 @@ a:hover {
 }
 .disabledRecord {
     background-color:#FFC0C0;
+}
+.emptyRecord {
+    color:#666666;
 }
 .link_indicator {
     background-image:url('images/link_go.png');
@@ -210,7 +211,6 @@ form.noMargins {
 /* Main flex layout */
 
 div.mainFlex {
-    width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -218,6 +218,8 @@ div.mainFlex {
     align-items: stretch; /* align items in Cross Axis */
     align-content: stretch; /* Extra space in Cross Axis */
     flex-wrap: nowrap;
+    padding:0;
+    margin:0;
 }
 
 
@@ -311,6 +313,8 @@ div.statusMessage > p.success, .success {
 div.mainFlex > div.content {
     flex: 1;
     overflow: auto;
+    padding-left: 15px;
+    padding-right: 15px;
 }
 
 div.mainFlex > div.bottomBar {
@@ -894,6 +898,10 @@ div.tabBar > span:not(.active) {
 /* Button bars (largely the same as tab bars) */
 
 div.buttonBar {
+    display:flex;
+    align-items:center;
+    flex-wrap: nowrap;
+    flex-direction: row;    
     padding:0px 10px 0px 10px;
     margin:5px 0px 5px 0px;
 }

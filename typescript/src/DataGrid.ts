@@ -158,10 +158,6 @@ class DataGrid {
             }
         });
 
-        //TODO: move!
-        var showAll = $('#showAll');
-        $(cArea).append(showAll);
-
         this._initializeSort().arrangeTableDataRows();
 
         // Now that we've constructed our elements, apply visibility styling to them.
@@ -319,7 +315,6 @@ class DataGrid {
                 this._hideOptMenu();
             }
         });
-
 
         if (hasCustomWidgets) {
             var menuCWList = $(document.createElement("ul")).appendTo(menuBlock);
@@ -484,17 +479,13 @@ class DataGrid {
     arrangeTableDataRows():DataGrid {
         var striping = 1;
 
+        $(this._tableBody).children().detach();
+
         // We create a document fragment - a kind of container for document-related objects that we don't
         // want in the page - and accumulate inside it all the rows we want to display, in sorted order.
         var frag = document.createDocumentFragment();
 
         this.applySortIndicators();
-
-        var sequence = this._getSequence(this._sort[0]);
-
-        // Verify that the row sets referred to by the IDs actually exist
-        var filteredSequence = sequence.filter((v) => { return !!this._recordElements[v]; });
-        var unfilteredSequence = filteredSequence.slice(0);
 
         // Remove all the grouping title rows from the table as well, if they were there
         var rowGroupSpec = this._spec.tableRowGroupSpec;
@@ -506,6 +497,12 @@ class DataGrid {
             // While we're here, reset the member record arrays.  We need to rebuild them post-filtering.
             rowGroup.memberRecords = [];
         });
+
+        var sequence = this._getSequence(this._sort[0]);
+
+        // Verify that the row sets referred to by the IDs actually exist
+        var filteredSequence = sequence.filter((v) => { return !!this._recordElements[v]; });
+        var unfilteredSequence = filteredSequence.slice(0);
 
         filteredSequence = this.applyAllWidgetFiltering(filteredSequence);
 
@@ -561,7 +558,7 @@ class DataGrid {
                     $(line).hide();
                 });
             });
-             rowGroupSpec.forEach((rowGroup) => {
+            rowGroupSpec.forEach((rowGroup) => {
                 striping = 1 - striping;
                 frag.appendChild(rowGroup.replicateGroupTable );
                 if (this._spec.tableSpec.applyStriping) {
@@ -569,11 +566,12 @@ class DataGrid {
                         .removeClass(stripeStylesJoin).addClass(stripeStyles[striping]).end();
                 }
             });
+            // TODO: This command doesn't make sense - the frag is not in the document yet
             $(frag).insertBefore($(this._tableBody));
-            }
+        }
 
-        // hacky way to show lines that were hidden from grouping replicates
-        if ($('#linesGroupStudyReplicatesCB0').prop('checked') === false) {
+        // TODO: This really needs to be moved
+        if ($('#GroupStudyReplicatesCB').prop('checked') === false) {
             var lines = $(frag).children();
             _.each(lines, function(line) {
                 $(line).removeClass('replicateLineShow');
@@ -1540,10 +1538,13 @@ class DataGridWidget {
 
 
     // Utility function to create a label element
-    _createLabel(text:string, id:string):HTMLElement {
+    _createLabel(text:string, id:string, tip?:string):HTMLElement {
         var label:HTMLElement = document.createElement("label");
         label.setAttribute('for', id);
         label.appendChild(document.createTextNode(text));
+        if (tip) {
+            label.setAttribute('title', tip);
+        }
         return label;
     }
 
@@ -1607,14 +1608,20 @@ class DataGridOptionWidget extends DataGridWidget {
 
 
     // Return a fragment to use in generating option widget IDs
-    getIDFragment():string {
-        return 'GenericOptionCB';
+    getIDFragment(uniqueID):string {
+        return this.dataGridSpec.tableSpec.id+'GenericOptionCB'+uniqueID
     }
 
 
     // Return text used to label the widget
     getLabelText():string {
         return 'Name Of Option';
+    }
+
+
+    // Mouseover text for the label (none by default)
+    getLabelTitle():string {
+        return null;
     }
 
 
@@ -1627,7 +1634,7 @@ class DataGridOptionWidget extends DataGridWidget {
     // The uniqueID is provided to assist the widget in avoiding collisions
     // when creating input element labels or other things requiring an ID.
     createElements(uniqueID:string):void {
-        var cbID:string = this.dataGridSpec.tableSpec.id+this.getIDFragment()+uniqueID;
+        var cbID:string = this.getIDFragment(uniqueID);
         var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
         // We need to make sure the checkbox has a callback to the DataGrid's handler function.
         // Among other things, the handler function will call the appropriate filtering functions for all the widgets in turn.
@@ -1636,7 +1643,7 @@ class DataGridOptionWidget extends DataGridWidget {
             cb.setAttribute('checked', 'checked');
         }
         this.checkBoxElement = cb;
-        this.labelElement = this._createLabel(this.getLabelText(), cbID);
+        this.labelElement = this._createLabel(this.getLabelText(), cbID, this.getLabelTitle());
         this._createdElements = true;
     }
 

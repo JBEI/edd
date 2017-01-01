@@ -114,9 +114,6 @@ var DataGrid = (function () {
                 widget.appendElements(cArea, index.toString(10));
             }
         });
-        //TODO: move!
-        var showAll = $('#showAll');
-        $(cArea).append(showAll);
         this._initializeSort().arrangeTableDataRows();
         // Now that we've constructed our elements, apply visibility styling to them.
         this._applyColumnVisibility();
@@ -393,14 +390,11 @@ var DataGrid = (function () {
     DataGrid.prototype.arrangeTableDataRows = function () {
         var _this = this;
         var striping = 1;
+        $(this._tableBody).children().detach();
         // We create a document fragment - a kind of container for document-related objects that we don't
         // want in the page - and accumulate inside it all the rows we want to display, in sorted order.
         var frag = document.createDocumentFragment();
         this.applySortIndicators();
-        var sequence = this._getSequence(this._sort[0]);
-        // Verify that the row sets referred to by the IDs actually exist
-        var filteredSequence = sequence.filter(function (v) { return !!_this._recordElements[v]; });
-        var unfilteredSequence = filteredSequence.slice(0);
         // Remove all the grouping title rows from the table as well, if they were there
         var rowGroupSpec = this._spec.tableRowGroupSpec;
         rowGroupSpec.forEach(function (rowGroup) {
@@ -411,6 +405,10 @@ var DataGrid = (function () {
             // While we're here, reset the member record arrays.  We need to rebuild them post-filtering.
             rowGroup.memberRecords = [];
         });
+        var sequence = this._getSequence(this._sort[0]);
+        // Verify that the row sets referred to by the IDs actually exist
+        var filteredSequence = sequence.filter(function (v) { return !!_this._recordElements[v]; });
+        var unfilteredSequence = filteredSequence.slice(0);
         filteredSequence = this.applyAllWidgetFiltering(filteredSequence);
         // Call to detach only the rows that didn't make it through the filter.
         // The others will be automatically detached by being moved to the document fragment.
@@ -466,10 +464,11 @@ var DataGrid = (function () {
                         .removeClass(stripeStylesJoin).addClass(stripeStyles[striping]).end();
                 }
             });
+            // TODO: This command doesn't make sense - the frag is not in the document yet
             $(frag).insertBefore($(this._tableBody));
         }
-        // hacky way to show lines that were hidden from grouping replicates
-        if ($('#linesGroupStudyReplicatesCB0').prop('checked') === false) {
+        // TODO: This really needs to be moved
+        if ($('#GroupStudyReplicatesCB').prop('checked') === false) {
             var lines = $(frag).children();
             _.each(lines, function (line) {
                 $(line).removeClass('replicateLineShow');
@@ -1278,10 +1277,13 @@ var DataGridWidget = (function () {
         this.dataGridSpec = dataGridSpec;
     }
     // Utility function to create a label element
-    DataGridWidget.prototype._createLabel = function (text, id) {
+    DataGridWidget.prototype._createLabel = function (text, id, tip) {
         var label = document.createElement("label");
         label.setAttribute('for', id);
         label.appendChild(document.createTextNode(text));
+        if (tip) {
+            label.setAttribute('title', tip);
+        }
         return label;
     };
     // Utility function to create a checkbox element
@@ -1327,12 +1329,16 @@ var DataGridOptionWidget = (function (_super) {
         this._createdElements = false;
     }
     // Return a fragment to use in generating option widget IDs
-    DataGridOptionWidget.prototype.getIDFragment = function () {
-        return 'GenericOptionCB';
+    DataGridOptionWidget.prototype.getIDFragment = function (uniqueID) {
+        return this.dataGridSpec.tableSpec.id + 'GenericOptionCB' + uniqueID;
     };
     // Return text used to label the widget
     DataGridOptionWidget.prototype.getLabelText = function () {
         return 'Name Of Option';
+    };
+    // Mouseover text for the label (none by default)
+    DataGridOptionWidget.prototype.getLabelTitle = function () {
+        return null;
     };
     // Handle activation of widget
     DataGridOptionWidget.prototype.onWidgetChange = function (e) {
@@ -1342,7 +1348,7 @@ var DataGridOptionWidget = (function (_super) {
     // when creating input element labels or other things requiring an ID.
     DataGridOptionWidget.prototype.createElements = function (uniqueID) {
         var _this = this;
-        var cbID = this.dataGridSpec.tableSpec.id + this.getIDFragment() + uniqueID;
+        var cbID = this.getIDFragment(uniqueID);
         var cb = this._createCheckbox(cbID, cbID, '1');
         // We need to make sure the checkbox has a callback to the DataGrid's handler function.
         // Among other things, the handler function will call the appropriate filtering functions for all the widgets in turn.
@@ -1351,7 +1357,7 @@ var DataGridOptionWidget = (function (_super) {
             cb.setAttribute('checked', 'checked');
         }
         this.checkBoxElement = cb;
-        this.labelElement = this._createLabel(this.getLabelText(), cbID);
+        this.labelElement = this._createLabel(this.getLabelText(), cbID, this.getLabelTitle());
         this._createdElements = true;
     };
     // This is called to append the widget elements beneath the given element.

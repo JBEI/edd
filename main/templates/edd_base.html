@@ -41,31 +41,31 @@
 {% block body_prefix %}
 {% endblock body_prefix %}
 <div class="mainFlex">
-    <div class="topBanner">
-        <div class="siteLogo">
-            <a href="{% url 'main:index' %}">
-                <img style="width:50px;" src="{% static 'main/images/edd_logo.png' %}" alt="EDD Logo - Home" />
-            </a>
-        </div>
-        <div class="pageName">
-            {% block body_title %}
-            Experiment Data Depot
-            {% endblock body_title %}
-        </div>
-        <div class="userMenu">
-            {% if user.is_authenticated %}
-                <div>
-                    <div class="user_welcome">{{ user.first_name }} {{ user.last_name }}</div>
-                    <a href="{% url 'account_logout' %}">Logout</a>
-                </div>
-            {% else %}
-                <div>
-                    <a href="{% url 'account_login' %}">Login</a>
-                </div>
-            {% endif %}
-        </div>
-    </div>
     <div id="content" class="content">
+        <div class="topBanner">
+            <div class="siteLogo">
+                <a href="{% url 'main:index' %}">
+                    <img style="width:50px;" src="{% static 'main/images/edd_logo.png' %}" alt="EDD Logo - Home" />
+                </a>
+            </div>
+            <div class="pageName">
+                {% block body_title %}
+                Experiment Data Depot
+                {% endblock body_title %}
+            </div>
+            <div class="userMenu">
+                {% if user.is_authenticated %}
+                    <div>
+                        <div class="user_welcome">{{ user.first_name }} {{ user.last_name }}</div>
+                        <a href="{% url 'account_logout' %}">Logout</a>
+                    </div>
+                {% else %}
+                    <div>
+                        <a href="{% url 'account_login' %}">Login</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
         <div class="statusMessage">
             {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %}
                 <span class="dev">{{ request.edd_deployment}}</span>

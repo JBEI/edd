@@ -347,7 +347,6 @@ namespace StudyLines {
 
         // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
         // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
-        // Also note we cannot use jQuery's "each" because of its reliance on the 'this' keyword.
         var sh = 0;
         $('#content').children().get().forEach((e:HTMLElement):void => { sh += e.scrollHeight; });
 
@@ -1025,7 +1024,7 @@ class DGGroupStudyReplicatesWidget extends DataGridOptionWidget {
 
     createElements(uniqueID:any):void {
         var pThis = this;
-        var cbID:string = this.dataGridSpec.tableSpec.id+'GroupStudyReplicatesCB'+uniqueID;
+        var cbID:string = 'GroupStudyReplicatesCB';
         var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
         $(cb).click(
             function(e) {

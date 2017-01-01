@@ -527,7 +527,7 @@ class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
         this._spec = spec;
     }
 
-    getIDFragment():string {
+    getIDFragment(uniqueID):string {
         return 'ShowMyStudiesCB';
     }
 
@@ -561,7 +561,7 @@ class DGDisabledStudiesWidget extends DataGridOptionWidget {
         this._spec = spec;
     }
 
-    getIDFragment():string {
+    getIDFragment(uniqueID):string {
         return 'ShowDStudiesCB';
     }
 

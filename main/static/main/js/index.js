@@ -481,7 +481,7 @@ var DGOnlyMyStudiesWidget = (function (_super) {
         _super.call(this, grid, spec);
         this._spec = spec;
     }
-    DGOnlyMyStudiesWidget.prototype.getIDFragment = function () {
+    DGOnlyMyStudiesWidget.prototype.getIDFragment = function (uniqueID) {
         return 'ShowMyStudiesCB';
     };
     DGOnlyMyStudiesWidget.prototype.getLabelText = function () {
@@ -512,7 +512,7 @@ var DGDisabledStudiesWidget = (function (_super) {
         _super.call(this, grid, spec);
         this._spec = spec;
     }
-    DGDisabledStudiesWidget.prototype.getIDFragment = function () {
+    DGDisabledStudiesWidget.prototype.getIDFragment = function (uniqueID) {
         return 'ShowDStudiesCB';
     };
     DGDisabledStudiesWidget.prototype.getLabelText = function () {
