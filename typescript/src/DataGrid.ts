@@ -1096,7 +1096,6 @@ class LineResults extends DataGrid {
 
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
-        this._getClasses();
     }
 
     _getClasses():string {
@@ -1106,20 +1105,6 @@ class LineResults extends DataGrid {
 }
 
 
-// TODO: All the functionality in this class should be folded into DataGridAssays in Study-Data.
-class AssayResults extends DataGrid {
-
-    constructor(dataGridSpec:DataGridSpecBase) {
-        super(dataGridSpec);
-        // TODO: These calls do not seem to do anything
-        this._getClasses();
-    }
-
-    _getClasses():string {
-        return 'dataTable sortable dragboxes hastablecontrols';
-    }
-
-}
 // Type definition for the records contained in a DataGrid
 class DataGridRecordSet {
     [index:string]:DataGridRecord;

@@ -49,11 +49,14 @@ namespace StudyDataPage {
     // Used to keep track of all the accumulated record IDs that can be used to
     // populate the filters.  We use this to repopulate filters when the mode has changed,
     // for example, to show criteria for disabled assays, or assays with no measurements.
+    // To speed things up we will accumulate arrays, ensuring that the IDs in each array
+    // are unique (to the given array) by tracking already-seen IDs with boolean flags.
     export interface AccumulatedRecordIDs {
-        metaboliteIDs: RecordIDToBoolean;
-        proteinIDs: RecordIDToBoolean;
-        geneIDs: RecordIDToBoolean;
-        measurementIDs: RecordIDToBoolean;
+        seenRecordFlags: RecordIDToBoolean;
+        metaboliteIDs: string[];
+        proteinIDs: string[];
+        geneIDs: string[];
+        measurementIDs: string[];
     }
 
 
@@ -74,7 +77,6 @@ namespace StudyDataPage {
         genericDataProcessed: boolean;
 
         filterTableJQ: JQuery;
-        filteredAssayIDs: any;
         accumulatedRecordIDs: AccumulatedRecordIDs;
         lastFilteringResults: any;
 
@@ -96,10 +98,11 @@ namespace StudyDataPage {
             this.genericDataProcessed = false;
             this.filterTableJQ = null;
             this.accumulatedRecordIDs = {
-                metaboliteIDs: {},
-                proteinIDs: {},
-                geneIDs: {},
-                measurementIDs: {}
+                seenRecordFlags: {},
+                metaboliteIDs: [],
+                proteinIDs: [],
+                geneIDs: [],
+                measurementIDs: []
             };
             this.lastFilteringResults = null;
             this.repopulateAllFiltersRefreshTimer = null;
@@ -194,19 +197,22 @@ namespace StudyDataPage {
             // loop over all downloaded measurements. measures corresponds to AssayMeasurements
             $.each(measures || {}, (index, measurement) => {
                 var assay = EDDData.Assays[measurement.assay], line, mtype;
-                if (!assay) return;
+                // If we've seen it already (rather unlikely), skip it.
+                if (this.accumulatedRecordIDs.seenRecordFlags[measurement.id]) { return; }
+                this.accumulatedRecordIDs.seenRecordFlags[measurement.id] = true;
+                if (!assay) { return };
                 line = EDDData.Lines[assay.lid];
-                if (!line || !line.active) return;
+                if (!line || !line.active) { return };
                 mtype = types[measurement.type] || {};
                 if (mtype.family === 'm') { // measurement is of metabolite
-                    this.accumulatedRecordIDs.metaboliteIDs[measurement.id] = true;
+                    this.accumulatedRecordIDs.metaboliteIDs.push(measurement.id);
                 } else if (mtype.family === 'p') { // measurement is of protein
-                    this.accumulatedRecordIDs.proteinIDs[measurement.id] = true;
+                    this.accumulatedRecordIDs.proteinIDs.push(measurement.id);
                 } else if (mtype.family === 'g') { // measurement is of gene / transcript
-                    this.accumulatedRecordIDs.geneIDs[measurement.id] = true;
+                    this.accumulatedRecordIDs.geneIDs.push(measurement.id);
                 } else {
                     // throw everything else in a general area
-                    this.accumulatedRecordIDs.measurementIDs[measurement.id] = true;
+                    this.accumulatedRecordIDs.measurementIDs.push(measurement.id);
                 }
             });
             this.repopulateAllFilters();    // Skip the queue - we need to repopulate immediately
@@ -241,10 +247,10 @@ namespace StudyDataPage {
             var filterDisabled: (id:string) => boolean;
             var process: (ids: string[], i: number, widget: GenericFilterSection) => void;
 
-            var m = Object.keys(this.accumulatedRecordIDs.metaboliteIDs);
-            var p = Object.keys(this.accumulatedRecordIDs.proteinIDs);
-            var g = Object.keys(this.accumulatedRecordIDs.geneIDs);
-            var gen = Object.keys(this.accumulatedRecordIDs.measurementIDs);
+            var m = this.accumulatedRecordIDs.metaboliteIDs;
+            var p = this.accumulatedRecordIDs.proteinIDs;
+            var g = this.accumulatedRecordIDs.geneIDs;
+            var gen = this.accumulatedRecordIDs.measurementIDs;
 
             var showingDisabled:boolean = !!($('#filteringShowDisabledCheckbox').prop('checked'));
 
@@ -1569,7 +1575,7 @@ namespace StudyDataPage {
 
         if (viewingMode == 'table') {
             if (assaysDataGridSpec === null) {
-                assaysDataGridSpec = new DataGridSpecAssays(EDDData.Assays);
+                assaysDataGridSpec = new DataGridSpecAssays();
                 assaysDataGridSpec.init();
                 assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
             }
@@ -1964,14 +1970,14 @@ namespace StudyDataPage {
                 .entries(timeMeasurements);
         } else {
             // nest data by type (ie measurement) and by x value
-        nested = (<any>d3).nest(type)
-                .key(function (d:any) {
-                    return d[type];
-                })
-                .key(function (d:any) {
-                    return parseFloat(d.x);
-                })
-                .entries(assayMeasurements);
+            nested = (<any>d3).nest(type)
+                    .key(function (d:any) {
+                        return d[type];
+                    })
+                    .key(function (d:any) {
+                        return parseFloat(d.x);
+                    })
+                    .entries(assayMeasurements);
         }
 
 
@@ -1985,12 +1991,12 @@ namespace StudyDataPage {
         //get type names for x labels
         typeNames = data.map(function (d:any) {
                 return d.key;
-            });
+        });
 
         //sort x values
         typeNames.sort(function (a, b) {
                 return a - b
-            });
+        });
 
         xValues = data.map(function (d:any) {
             return (d.values);
@@ -2014,10 +2020,10 @@ namespace StudyDataPage {
 
         lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
         
-        //create x axis
+        // create x axis
         graphSet.create_x_axis(graphSet, x_name, svg, type);
 
-        //loop through different units
+        // loop through different units
         for (var index = 0; index < numUnits; index++) {
 
             if (yMin[index] > 0 ) {
@@ -2275,35 +2281,18 @@ namespace StudyDataPage {
 
 
 
-class DataGridAssays extends AssayResults {
-
-    // Right now we're not actually using the contents of this array, just
-    // checking to see if it's non-empty.
-    recordsCurrentlyInvalidated:number[];
+class DataGridAssays extends DataGrid {
 
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
-        this.recordsCurrentlyInvalidated = [];
+    }
+
+    _getClasses():string {
+        return 'dataTable sortable dragboxes hastablecontrols';
     }
 
     getCustomControlsArea():HTMLElement {
-        return $('#tableControlsArea').get(0)
-    }
-
-    invalidateAssayRecords(records:number[]):void {
-        this.recordsCurrentlyInvalidated = this.recordsCurrentlyInvalidated.concat(records);
-        if (!this.recordsCurrentlyInvalidated.length) {
-            return;
-        }
-    }
-
-    triggerAssayRecordsRefresh():void {
-        try {
-            this.triggerDataReset();
-            this.recordsCurrentlyInvalidated = [];
-        } catch (e) {
-            console.log('Failed to execute records refresh: ' + e);
-        }
+        return $('#tableControlsArea').get(0);
     }
 }
 
@@ -2312,8 +2301,6 @@ class DataGridAssays extends AssayResults {
 // The spec object that will be passed to DataGrid to create the Assays table(s)
 class DataGridSpecAssays extends DataGridSpecBase {
 
-    assayID:any;
-    filteredIdsInTable:number[];
     metaDataIDsUsedInAssays:any;
     maximumXValueInData:number;
 
@@ -2322,9 +2309,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     graphObject:any;
 
-    constructor(assayID) {
+    constructor() {
         super();
-        this.assayID = assayID;
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
         this.graphAreaHeaderSpec = null;
@@ -2405,9 +2391,9 @@ class DataGridSpecAssays extends DataGridSpecBase {
     private loadAssayName(index:any):string {
         // In an old typical EDDData.Assays record this string is currently pre-assembled and stored
         // in 'fn'. But we're phasing that out.
-        var protocolNaming = EDDData.Protocols[this.assayID[index].pid].name;
-        var assay, line;
+        var assay, line, protocolNaming;
         if ((assay = EDDData.Assays[index])) {
+            protocolNaming = EDDData.Protocols[assay.pid].name;
             if ((line = EDDData.Lines[assay.lid])) {
                 return [line.n, protocolNaming, assay.name].join('-').toUpperCase();
             }

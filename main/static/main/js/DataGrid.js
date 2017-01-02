@@ -941,25 +941,11 @@ var LineResults = (function (_super) {
     __extends(LineResults, _super);
     function LineResults(dataGridSpec) {
         _super.call(this, dataGridSpec);
-        this._getClasses();
     }
     LineResults.prototype._getClasses = function () {
         return 'dataTable sortable dragboxes hastablecontrols';
     };
     return LineResults;
-}(DataGrid));
-// TODO: All the functionality in this class should be folded into DataGridAssays in Study-Data.
-var AssayResults = (function (_super) {
-    __extends(AssayResults, _super);
-    function AssayResults(dataGridSpec) {
-        _super.call(this, dataGridSpec);
-        // TODO: These calls do not seem to do anything
-        this._getClasses();
-    }
-    AssayResults.prototype._getClasses = function () {
-        return 'dataTable sortable dragboxes hastablecontrols';
-    };
-    return AssayResults;
 }(DataGrid));
 // Type definition for the records contained in a DataGrid
 var DataGridRecordSet = (function () {

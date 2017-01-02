@@ -41,10 +41,11 @@ var StudyDataPage;
             this.genericDataProcessed = false;
             this.filterTableJQ = null;
             this.accumulatedRecordIDs = {
-                metaboliteIDs: {},
-                proteinIDs: {},
-                geneIDs: {},
-                measurementIDs: {}
+                seenRecordFlags: {},
+                metaboliteIDs: [],
+                proteinIDs: [],
+                geneIDs: [],
+                measurementIDs: []
             };
             this.lastFilteringResults = null;
             this.repopulateAllFiltersRefreshTimer = null;
@@ -122,24 +123,33 @@ var StudyDataPage;
             // loop over all downloaded measurements. measures corresponds to AssayMeasurements
             $.each(measures || {}, function (index, measurement) {
                 var assay = EDDData.Assays[measurement.assay], line, mtype;
-                if (!assay)
+                // If we've seen it already (rather unlikely), skip it.
+                if (_this.accumulatedRecordIDs.seenRecordFlags[measurement.id]) {
                     return;
+                }
+                _this.accumulatedRecordIDs.seenRecordFlags[measurement.id] = true;
+                if (!assay) {
+                    return;
+                }
+                ;
                 line = EDDData.Lines[assay.lid];
-                if (!line || !line.active)
+                if (!line || !line.active) {
                     return;
+                }
+                ;
                 mtype = types[measurement.type] || {};
                 if (mtype.family === 'm') {
-                    _this.accumulatedRecordIDs.metaboliteIDs[measurement.id] = true;
+                    _this.accumulatedRecordIDs.metaboliteIDs.push(measurement.id);
                 }
                 else if (mtype.family === 'p') {
-                    _this.accumulatedRecordIDs.proteinIDs[measurement.id] = true;
+                    _this.accumulatedRecordIDs.proteinIDs.push(measurement.id);
                 }
                 else if (mtype.family === 'g') {
-                    _this.accumulatedRecordIDs.geneIDs[measurement.id] = true;
+                    _this.accumulatedRecordIDs.geneIDs.push(measurement.id);
                 }
                 else {
                     // throw everything else in a general area
-                    _this.accumulatedRecordIDs.measurementIDs[measurement.id] = true;
+                    _this.accumulatedRecordIDs.measurementIDs.push(measurement.id);
                 }
             });
             this.repopulateAllFilters(); // Skip the queue - we need to repopulate immediately
@@ -165,10 +175,10 @@ var StudyDataPage;
         ProgressiveFilteringWidget.prototype.repopulateMeasurementFilters = function () {
             var filterDisabled;
             var process;
-            var m = Object.keys(this.accumulatedRecordIDs.metaboliteIDs);
-            var p = Object.keys(this.accumulatedRecordIDs.proteinIDs);
-            var g = Object.keys(this.accumulatedRecordIDs.geneIDs);
-            var gen = Object.keys(this.accumulatedRecordIDs.measurementIDs);
+            var m = this.accumulatedRecordIDs.metaboliteIDs;
+            var p = this.accumulatedRecordIDs.proteinIDs;
+            var g = this.accumulatedRecordIDs.geneIDs;
+            var gen = this.accumulatedRecordIDs.measurementIDs;
             var showingDisabled = !!($('#filteringShowDisabledCheckbox').prop('checked'));
             filterDisabled = function (measureId) {
                 var measure = EDDData.AssayMeasurements[measureId];
@@ -1413,7 +1423,7 @@ var StudyDataPage;
         }
         if (viewingMode == 'table') {
             if (assaysDataGridSpec === null) {
-                assaysDataGridSpec = new DataGridSpecAssays(EDDData.Assays);
+                assaysDataGridSpec = new DataGridSpecAssays();
                 assaysDataGridSpec.init();
                 StudyDataPage.assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
             }
@@ -1797,9 +1807,9 @@ var StudyDataPage;
         x_name.domain(typeNames);
         x_xValue.domain(sortedXvalues).rangeRoundBands([0, x_name.rangeBand()]);
         lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
-        //create x axis
+        // create x axis
         graphSet.create_x_axis(graphSet, x_name, svg, type);
-        //loop through different units
+        // loop through different units
         for (var index = 0; index < numUnits; index++) {
             if (yMin[index] > 0) {
                 yMin[index] = 0;
@@ -2038,34 +2048,20 @@ var DataGridAssays = (function (_super) {
     __extends(DataGridAssays, _super);
     function DataGridAssays(dataGridSpec) {
         _super.call(this, dataGridSpec);
-        this.recordsCurrentlyInvalidated = [];
     }
+    DataGridAssays.prototype._getClasses = function () {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    };
     DataGridAssays.prototype.getCustomControlsArea = function () {
         return $('#tableControlsArea').get(0);
     };
-    DataGridAssays.prototype.invalidateAssayRecords = function (records) {
-        this.recordsCurrentlyInvalidated = this.recordsCurrentlyInvalidated.concat(records);
-        if (!this.recordsCurrentlyInvalidated.length) {
-            return;
-        }
-    };
-    DataGridAssays.prototype.triggerAssayRecordsRefresh = function () {
-        try {
-            this.triggerDataReset();
-            this.recordsCurrentlyInvalidated = [];
-        }
-        catch (e) {
-            console.log('Failed to execute records refresh: ' + e);
-        }
-    };
     return DataGridAssays;
-}(AssayResults));
+}(DataGrid));
 // The spec object that will be passed to DataGrid to create the Assays table(s)
 var DataGridSpecAssays = (function (_super) {
     __extends(DataGridSpecAssays, _super);
-    function DataGridSpecAssays(assayID) {
+    function DataGridSpecAssays() {
         _super.call(this);
-        this.assayID = assayID;
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
         this.graphAreaHeaderSpec = null;
@@ -2134,9 +2130,9 @@ var DataGridSpecAssays = (function (_super) {
     DataGridSpecAssays.prototype.loadAssayName = function (index) {
         // In an old typical EDDData.Assays record this string is currently pre-assembled and stored
         // in 'fn'. But we're phasing that out.
-        var protocolNaming = EDDData.Protocols[this.assayID[index].pid].name;
-        var assay, line;
+        var assay, line, protocolNaming;
         if ((assay = EDDData.Assays[index])) {
+            protocolNaming = EDDData.Protocols[assay.pid].name;
             if ((line = EDDData.Lines[assay.lid])) {
                 return [line.n, protocolNaming, assay.name].join('-').toUpperCase();
             }
