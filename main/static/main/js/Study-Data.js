@@ -1427,6 +1427,9 @@ var StudyDataPage;
                 assaysDataGridSpec.init();
                 StudyDataPage.assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
             }
+            else {
+                StudyDataPage.assaysDataGrid.triggerDataReset();
+            }
             viewingModeIsStale['table'] = false;
         }
         else {
@@ -2112,16 +2115,23 @@ var DataGridSpecAssays = (function (_super) {
         // reduce to find highest value across all records
         maxForAll = this.getRecordIDs().reduce(function (prev, assayId) {
             var assay = EDDData.Assays[assayId], measures, maxForRecord;
-            measures = assay.measures || [];
-            // reduce to find highest value across all measures
-            maxForRecord = measures.reduce(function (prev, measureId) {
-                var lookup = EDDData.AssayMeasurements || {}, measure = lookup[measureId] || {}, maxForMeasure;
-                // reduce to find highest value across all data in measurement
-                maxForMeasure = (measure.values || []).reduce(function (prev, point) {
-                    return Math.max(prev, point[0][0]);
+            // Some caching to speed subsequent runs way up...
+            if (assay.maxXValue !== undefined) {
+                maxForRecord = assay.maxXValue;
+            }
+            else {
+                measures = assay.measures || [];
+                // reduce to find highest value across all measures
+                maxForRecord = measures.reduce(function (prev, measureId) {
+                    var lookup = EDDData.AssayMeasurements || {}, measure = lookup[measureId] || {}, maxForMeasure;
+                    // reduce to find highest value across all data in measurement
+                    maxForMeasure = (measure.values || []).reduce(function (prev, point) {
+                        return Math.max(prev, point[0][0]);
+                    }, 0);
+                    return Math.max(prev, maxForMeasure);
                 }, 0);
-                return Math.max(prev, maxForMeasure);
-            }, 0);
+                assay.maxXValue = maxForRecord;
+            }
             return Math.max(prev, maxForRecord);
         }, 0);
         // Anything above 0 is acceptable, but 0 will default instead to 1.
@@ -2129,7 +2139,8 @@ var DataGridSpecAssays = (function (_super) {
     };
     DataGridSpecAssays.prototype.loadAssayName = function (index) {
         // In an old typical EDDData.Assays record this string is currently pre-assembled and stored
-        // in 'fn'. But we're phasing that out.
+        // in 'fn'. But we're phasing that out. Eventually the name will just be .name, without
+        // decoration.
         var assay, line, protocolNaming;
         if ((assay = EDDData.Assays[index])) {
             protocolNaming = EDDData.Protocols[assay.pid].name;

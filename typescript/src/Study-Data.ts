@@ -1578,6 +1578,8 @@ namespace StudyDataPage {
                 assaysDataGridSpec = new DataGridSpecAssays();
                 assaysDataGridSpec.init();
                 assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
+            } else {
+                assaysDataGrid.triggerDataReset();
             }
             viewingModeIsStale['table'] = false;
         } else {
@@ -2298,6 +2300,13 @@ class DataGridAssays extends DataGrid {
 
 
 
+// Extending the standard AssayRecord to hold some client-side calculations.
+// The idea is, these start out undefined, and are calculated on-demand.
+interface AssayRecordExended extends AssayRecord {
+    maxXValue:number;
+}
+
+
 // The spec object that will be passed to DataGrid to create the Assays table(s)
 class DataGridSpecAssays extends DataGridSpecBase {
 
@@ -2369,19 +2378,25 @@ class DataGridSpecAssays extends DataGridSpecBase {
         var maxForAll:number = 0;
         // reduce to find highest value across all records
         maxForAll = this.getRecordIDs().reduce((prev:number, assayId) => {
-            var assay = EDDData.Assays[assayId], measures, maxForRecord;
-            measures = assay.measures || [];
-            // reduce to find highest value across all measures
-            maxForRecord = measures.reduce((prev:number, measureId) => {
-                var lookup:any = EDDData.AssayMeasurements || {},
-                    measure:any = lookup[measureId] || {},
-                    maxForMeasure;
-                // reduce to find highest value across all data in measurement
-                maxForMeasure = (measure.values || []).reduce((prev:number, point) => {
-                    return Math.max(prev, point[0][0]);
+            var assay:AssayRecordExended = <AssayRecordExended>EDDData.Assays[assayId], measures, maxForRecord;
+            // Some caching to speed subsequent runs way up...
+            if (assay.maxXValue !== undefined) {
+                maxForRecord = assay.maxXValue;
+            } else {
+                measures = assay.measures || [];
+                // reduce to find highest value across all measures
+                maxForRecord = measures.reduce((prev:number, measureId) => {
+                    var lookup:any = EDDData.AssayMeasurements || {},
+                        measure:any = lookup[measureId] || {},
+                        maxForMeasure;
+                    // reduce to find highest value across all data in measurement
+                    maxForMeasure = (measure.values || []).reduce((prev:number, point) => {
+                        return Math.max(prev, point[0][0]);
+                    }, 0);
+                    return Math.max(prev, maxForMeasure);
                 }, 0);
-                return Math.max(prev, maxForMeasure);
-            }, 0);
+                assay.maxXValue = maxForRecord;
+            }
             return Math.max(prev, maxForRecord);
         }, 0);
         // Anything above 0 is acceptable, but 0 will default instead to 1.
@@ -2390,7 +2405,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     private loadAssayName(index:any):string {
         // In an old typical EDDData.Assays record this string is currently pre-assembled and stored
-        // in 'fn'. But we're phasing that out.
+        // in 'fn'. But we're phasing that out. Eventually the name will just be .name, without
+        // decoration.
         var assay, line, protocolNaming;
         if ((assay = EDDData.Assays[index])) {
             protocolNaming = EDDData.Protocols[assay.pid].name;
