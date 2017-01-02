@@ -130,10 +130,11 @@ class StudyCreateView(generic.edit.CreateView):
         return reverse('main:overview', kwargs={'slug': self.object.slug})
 
 
-class StudyIndexView(generic.list.ListView):
+class StudyIndexView(generic.edit.CreateView):
     """
     View for the the index page.
     """
+    form_class = CreateStudyForm
     model = Study
     template_name = 'main/index.html'
 
@@ -150,6 +151,22 @@ class StudyIndexView(generic.list.ListView):
         context['latest_viewed_studies'] = filter(bool, latest)
         context['can_create'] = Study.user_can_create(self.request.user)
         return context
+
+    def form_valid(self, form):
+        update = Update.load_request_update(self.request)
+        study = form.instance
+        study.active = True     # defaults to True, but being explicit
+        study.created = update
+        study.updated = update
+        return generic.edit.CreateView.form_valid(self, form)
+
+    def get_form_kwargs(self):
+        kwargs = super(StudyIndexView, self).get_form_kwargs()
+        kwargs.update(user=self.request.user)
+        return kwargs
+
+    def get_success_url(self):
+        return reverse('main:overview', kwargs={'slug': self.object.slug})
 
 
 class StudyDetailBaseView(generic.DetailView):

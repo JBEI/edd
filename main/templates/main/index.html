@@ -9,11 +9,11 @@
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
     <!-- -->
-    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/index.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/index.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -28,7 +28,7 @@
 {% block content %}
     {% if can_create %}
         <div style="float: right">
-            <button id="addNewStudyButton"
+            <button id="addStudyButton"
                     class="actionButton primary larger"
                     title="Add a new study">
                 Add New Study
@@ -62,5 +62,16 @@
     </div>
 {% endblock content %}
 
-{% block footer %}
-{% endblock footer %}
+{% block body_postfix %}
+
+<div id="addStudyModal" class="off"
+     title="Add New Study">
+    <form action="" class="edd-form" method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" name="action" value="assay">Add Study</button>
+    </form>
+</div>
+
+    {{ block.super }}
+{% endblock body_postfix %}
