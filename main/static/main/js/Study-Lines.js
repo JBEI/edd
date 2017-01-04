@@ -131,7 +131,7 @@ var StudyLines;
         });
         $('#worklistButton').click(function () {
             $('select[name="export"]').val('worklist');
-            var lineActionButton = $('button[value="line_action"]')[1];
+            var lineActionButton = $('button[value="line_action"]')[0];
             $(lineActionButton).click();
         });
         $('#editLineModal').on('change', '.line-meta > :input', function (ev) {

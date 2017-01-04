@@ -714,7 +714,7 @@ div.filteringSection {
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    margin:15px 2px 0px 2px;
+    margin:15px 2px 0px 20px;
     max-height: 289px;
 }
 div.filterTable {

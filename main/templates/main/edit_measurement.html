@@ -28,7 +28,7 @@
 
 
 {% block content %}
-    <form action="" method="POST">
+    <form action="" method="POST" style="margin-bottom:70px">
         {% csrf_token %}
         <input type="hidden" name="measureId" value="{{ measures }}"/>
         {% for l in lines.values %}

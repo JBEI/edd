@@ -1074,8 +1074,45 @@ var StudyDataPage;
             $("#tableControlsArea").removeClass('off');
             $("#filterControlsArea").addClass('off');
             $("#tableActionButtons").removeClass('off');
-            barGraphTypeButtonsJQ.detach();
+            barGraphTypeButtonsJQ.addClass('off');
             queueRefreshDataDisplayIfStale();
+        });
+        //click handler for edit assay measurements
+        $('#editMeasurementButton').click(function (ev) {
+            ev.preventDefault();
+            $('input[value="edit"]').prop('checked', true);
+            $('button[value="assay_action"]').click();
+            return false;
+        });
+        //click handler for delete assay measurements
+        $('#deleteButton').click(function (ev) {
+            ev.preventDefault();
+            $('input[value="delete"]').prop('checked', true);
+            $('button[value="assay_action"]').click();
+            return false;
+        });
+        //click handler for export assay measurements
+        $('#exportButton').click(function (ev) {
+            ev.preventDefault();
+            $('input[value="export"]').prop('checked', true);
+            $('button[value="assay_action"]').click();
+            return false;
+        });
+        //click handler for disable assay measurements
+        $('#disableButton').click(function (ev) {
+            ev.preventDefault();
+            $('input[value="mark"]').prop('checked', true);
+            $('select[name="disable"]').val('true');
+            $('button[value="assay_action"]').click();
+            return false;
+        });
+        //click handler for re-enable assay measurements
+        $('#enableButton').click(function (ev) {
+            ev.preventDefault();
+            $('input[value="mark"]').prop('checked', true);
+            $('select[name="disable"]').val('false');
+            $('button[value="assay_action"]').click();
+            return false;
         });
         // This one is active by default
         $("#lineGraphButton").click(function () {
@@ -1083,7 +1120,7 @@ var StudyDataPage;
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
             $("#tableActionButtons").addClass('off');
-            barGraphTypeButtonsJQ.detach();
+            barGraphTypeButtonsJQ.addClass('off');
             $('#lineGraph').removeClass('off');
             $('#barGraphByTime').addClass('off');
             $('#barGraphByLine').addClass('off');
@@ -1107,7 +1144,7 @@ var StudyDataPage;
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
             $("#tableActionButtons").addClass('off');
-            barGraphTypeButtonsJQ.insertAfter($('#filterControlsArea'));
+            barGraphTypeButtonsJQ.removeClass('off');
             $('#lineGraph').addClass('off');
             $('#barGraphByTime').addClass('off');
             $('#barGraphByLine').addClass('off');
@@ -1133,12 +1170,9 @@ var StudyDataPage;
             queueRefreshDataDisplayIfStale();
         });
         $("#measurementBarGraphButton").click(function () {
-            $('#graphLoading').removeClass('off');
             barGraphMode = 'measurement';
             queueRefreshDataDisplayIfStale();
         });
-        // uncheck all checkboxes in the filter section
-        // $('#mainFilterSection').find('input[type=checkbox]:checked').prop('checked', false);
         //hides/shows filter section
         $('#hideFilterSection').click(function (event) {
             event.preventDefault();
@@ -1177,12 +1211,14 @@ var StudyDataPage;
         });
         // Simply setting display:none doesn't work on flex items.
         // They still occupy space in the layout.
-        barGraphTypeButtonsJQ.detach();
-        barGraphTypeButtonsJQ.removeClass('off');
+        // barGraphTypeButtonsJQ.detach();
+        // barGraphTypeButtonsJQ.removeClass('off');
         // Set up the Add Measurement to Assay modal
         var dlg = $("#addMeasurement").dialog({
+            minWidth: 500,
             autoOpen: false
         });
+        dlg.removeClass('off');
         $("#addMeasurementButton").click(function () {
             $("#addMeasurement").dialog("open");
             return false;
@@ -1361,6 +1397,13 @@ var StudyDataPage;
             checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
             checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
             nothingSelected = !checkedAssays && !checkedMeasure;
+            //enable action buttons if something is selected
+            if (!nothingSelected) {
+                $('#editMeasurementButton, #addMeasurementButton, #deleteButton, #disableButton').prop('disabled', false);
+            }
+            else {
+                $('#editMeasurementButton, #addMeasurementButton, #deleteButton, #disableButton').prop('disabled', true);
+            }
             $('#selectedDiv').toggleClass('off', nothingSelected);
             var selectedStrs = [];
             if (!nothingSelected) {
@@ -1530,7 +1573,6 @@ var StudyDataPage;
             width: 750,
             height: 220
         };
-        //$('#graphLoading').addClass('off');    // Remove load spinner if still present
         if (viewingMode == 'linegraph') {
             $('#lineGraph').empty().removeClass('off');
             var s = EDDGraphingTools.createSvg($('#lineGraph').get(0));
@@ -2644,6 +2686,19 @@ var DGDisabledAssaysWidget = (function (_super) {
         }
         else {
             $("#enableButton").addClass('off');
+        }
+        var disabledRows = $('.disabledRecord');
+        var checkedDisabledRows = 0;
+        _.each(disabledRows, function (row) {
+            if ($(row).find('input').prop('checked')) {
+                checkedDisabledRows++;
+            }
+        });
+        if (checkedDisabledRows > 0) {
+            $('#enableButton').prop('disabled', false);
+        }
+        else {
+            $('#enableButton').prop('disabled', true);
         }
         // If the box is checked, return the set of IDs unfiltered
         if (checked) {

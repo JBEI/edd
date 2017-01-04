@@ -30,6 +30,30 @@
 {% block content %}
     {{ block.super }}
 
+<div class="buttonBar" id="displayModeButtons">
+    <span class="active" id="lineGraphButton" for="graphDisplayContainer">
+        <img src="{% static 'main/images/study-data-icon-lines.png' %}" style="vertical-align: bottom" width="18" height="18" />
+        Line Graph
+    </span><span id="barGraphButton" for="graphDisplayContainer">
+        <img src="{% static 'main/images/study-data-icon-bars.png' %}" style="vertical-align: bottom" width="18" height="18" />
+        Bar Graphs
+    </span><span id="dataTableButton" for="studyAssaysTable">
+        <img src="{% static 'main/images/study-data-icon-chart.png' %}" style="vertical-align: bottom" width="18" height="18" />
+        Table
+    </span>
+<div class="buttonBar off" id="barGraphTypeButtons">
+    <span id="timeBarGraphButton" class="active" for="barGraphByTime">
+        Time
+    </span><span id="lineBarGraphButton" for="barGraphByLine">
+        Line
+    </span><span id="measurementBarGraphButton" for="barGraphByMeasurement">
+        Measurement
+    </span>
+</div>
+</div>
+
+
+
 <div id="graphDisplayContainer">
     <div id="noData" class="off" style="
         height: 300px;
@@ -69,16 +93,7 @@
     align-items: stretch; /* align items in Cross Axis */
     align-content: stretch; /* Extra space in Cross Axis */
     flex-wrap: nowrap;">
-    <div class="buttonBar" id="displayModeButtons">
-        <span class="active" id="lineGraphButton" for="graphDisplayContainer">
-            <img src="{% static 'main/images/study-data-icon-lines.png' %}" width="18" height="18" />
-        </span><span id="barGraphButton" for="graphDisplayContainer">
-            <img src="{% static 'main/images/study-data-icon-bars.png' %}" width="18" height="18" />
-        </span><span id="dataTableButton" for="studyAssaysTable">
-            <img src="{% static 'main/images/study-data-icon-chart.png' %}" width="18" height="18" />
-        </span>
-    </div>
-    <div id="filterControlsArea" style="margin:auto 0 auto 0;">
+    <div id="filterControlsArea" style="margin:auto 0 auto 15px;">
         <div id="filterControlsMenu" class="pulldownMenu">
             <div id="filterControlsMenuLabel" class="pulldownMenuLabelOff">View options ▾</div>
             <div class="pulldownMenuMenuBlock off">
@@ -95,15 +110,7 @@
             </div>
         </div>
     </div>
-    <div class="buttonBar off" id="barGraphTypeButtons">
-        <span id="timeBarGraphButton" class="active" for="barGraphByTime">
-            Time
-        </span><span id="lineBarGraphButton" for="barGraphByLine">
-            Line
-        </span><span id="measurementBarGraphButton" for="barGraphByMeasurement">
-            Measurement
-        </span>
-    </div>
+
     <div id="tableControlsArea" class="off" style="margin:auto 0 auto 0;">
         {# filled out client-side #}
     </div>
@@ -118,12 +125,30 @@
         <div id="displayedDiv" style="padding:1px;">0 displayed</div>
         <div id="selectedDiv" style="padding:1px;">0 selected</div>
     </div>
+<div class="off">
+    <input id="assay_action_mark" type="radio" name="assay_action" value="mark"/>
+    <label for="assay_action_mark">
+                    <span>Mark as</span>
+                    <select name="disable">
+                        <option value="true">Disabled</option>
+                        <option value="false">Enabled</option>
+                    </select>
+    </label>
+    <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
+    <label for="assay_action_delete">Delete Measurements</label>
+    <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
+    <label for="assay_action_edit">Edit Measurements</label>
+    <input id="assay_action_export" type="radio" name="assay_action" value="export" />
+    <label for="assay_action_export">Export Data</label>
+    <button name="action" type="submit" value="assay_action">Take Action</button>
+    <div class="clear"></div>
+</div>
     <div id="tableActionButtons" class="off" style="margin:auto 0 auto 0;">
-        <button id="editButton"
+        <button id="editMeasurementButton"
                 class="actionButton {% if not writable or not assays %}off{% endif %}"
                 disabled="true"
                 title="Edit selected measurements">
-            Edit
+            Edit Measurements
         </button>
         <button id="addMeasurementButton"
                 class="actionButton {% if not writable or not assays %}off{% endif %}"
@@ -136,7 +161,6 @@
                 class="actionButton {% if not writable or not assays %}off{% endif %}"
                 type="submit"
                 name="action"
-                value="delete"
                 disabled="true"
                 title="Delete selected assays and/or measurements">
             Delete
@@ -160,16 +184,16 @@
             Re-Enable
         </button>
     </div>
-    <div style="margin:auto 0 auto 15px;" class="{% if not assays %}off{% endif %}">
+
+
+    <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
         <button type="button" id="exportButton" class="actionButton primary">
             Export Data
         </button>
     </div>
 </div>
 
-<div>
-    <input id="hideFilterSection"type="button" value="Hide Filter Section">
-</div>
+
 <div id="mainFilterSection" class="filteringSection">
 </div>
 
@@ -180,7 +204,7 @@
 
 {# FUN FACT: jQueryUI's "modal" widget actually rips the element you're turning into a modal right out of the DOM and appends it to the end, thus separating it from any form you've declared outside the modal contents.  So, we are forced to create four self-contained forms, even though the page could easily work as one. #}
 
-<div id="addMeasurement" class="off" title="Add Measurement">
+<div id="addMeasurement" class="off" title="Add Measurements To Selected Assays">
     <form action="" method="POST">
         {% csrf_token %}
         {{ new_measurement.as_p }}
@@ -192,7 +216,7 @@
     <form action="" method="POST">
         {% csrf_token %}
         {{ new_assay.as_p }}
-        <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
+        <button type="submit" name="action" value="measurement">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
     </form>
 </div>
 
