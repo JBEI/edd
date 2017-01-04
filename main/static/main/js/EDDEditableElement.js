@@ -104,13 +104,17 @@ var EDDEditable;
         EditableElement.prototype.blankLabel = function () {
             return '(click to set)';
         };
-        EditableElement.prototype.makeFormData = function (value) {
-            var formData = new FormData();
+        EditableElement.prototype.fillFormData = function (formData) {
+            var form = $(this.inputElement).closest('form');
+            var token = form.length ? form.find('[name=csrfmiddlewaretoken]').val() : '';
+            var value = this.getEditedValue();
+            formData.append('csrfmiddlewaretoken', token);
             formData.append('value', value);
             return formData;
         };
         EditableElement.prototype.getFormURL = function () {
-            return '';
+            var form = $(this.inputElement).closest('form');
+            return form.length ? form.attr('action') : '';
         };
         EditableElement.prototype.showValue = function () {
             var e = this.element;
@@ -331,11 +335,12 @@ var EDDEditable;
             var debug = false;
             var value = this.getEditedValue();
             var pThis = this;
+            var formData = new FormData();
             $.ajax({
                 'url': this.getFormURL(),
                 'type': 'POST',
                 'cache': false,
-                'data': this.makeFormData(value),
+                'data': this.fillFormData(formData),
                 'success': function (response) {
                     if (response.type == "Success") {
                         pThis.setValue(value);
