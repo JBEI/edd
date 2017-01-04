@@ -149,15 +149,19 @@ module EDDEditable {
 		}
 
 
-		makeFormData(value):any {
-	        var formData = new FormData();
+		fillFormData(formData):any {
+            var form = $(this.inputElement).closest('form');
+            var token = form.length ? form.find('[name=csrfmiddlewaretoken]').val() : '';
+			var value = this.getEditedValue();
+            formData.append('csrfmiddlewaretoken', token);
 	        formData.append('value', value);
 	        return formData;
 		}
 
 
 		getFormURL(): string {
-			return '';
+            var form = $(this.inputElement).closest('form');
+            return form.length ? form.attr('action') : '';
 		}
 
 
@@ -419,12 +423,13 @@ module EDDEditable {
 			var debug = false;
 			var value = this.getEditedValue();
 			var pThis = this;
+	        var formData = new FormData();
 
             $.ajax({
                 'url': this.getFormURL(),
                 'type': 'POST',
 				'cache': false,
-                'data': this.makeFormData(value),
+                'data': this.fillFormData(formData),
 				'success': function(response) {
 					if (response.type == "Success") {
 						pThis.setValue(value);
