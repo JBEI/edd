@@ -293,12 +293,8 @@ if [ $INIT_MIGRATE -eq 1 ]; then
     # Run migrations; if any detected, flag for re-indexing
     if [ ! -z "$MIGRATIONS" ]; then
         output "Detected pending migrations …"
-        if [ ! -z $SKIP_AUTO_MIGRATION ]; then
-            output "Skipped pending migrations due to the SKIP_AUTO_MIGRATION variable"
-        else
-            python /code/manage.py migrate
-            REINDEX_EDD=true
-        fi
+        python /code/manage.py migrate
+        REINDEX_EDD=true
     fi
 fi
 
