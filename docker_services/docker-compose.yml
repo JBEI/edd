@@ -24,7 +24,7 @@ services:
       - '6379'
     command: redis-server --appendonly yes
   solr:
-    build: ./docker_services/solr/
+    build: ./solr/
     image: solr:5.5-edd
     restart: always
     volumes:
@@ -45,7 +45,7 @@ services:
       - '5672'
       - '15672'
   flower:
-    build: ./docker_services/flower/
+    build: ./flower/
     image: flower:0.9-edd
     restart: always
     env_file: secrets.env
@@ -67,7 +67,7 @@ services:
     expose:
       - '25'
   edd:
-    build: ./docker_services/edd/
+    build: ./edd/
     image: edd-core:1.6
     command: [init-only]
     env_file: secrets.env
@@ -116,7 +116,7 @@ services:
     expose:
       - '8000'
   nginx:
-    build: ./docker_services/nginx/
+    build: ./nginx/
     image: nginx:1.11-edd
     restart: always
     depends_on:
