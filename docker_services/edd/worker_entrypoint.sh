@@ -27,4 +27,4 @@ until nc -z rabbitmq 5672; do
 done
 
 # Start the worker
-celery -A edd worker -l info
+exec celery -A edd worker -l info

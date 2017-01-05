@@ -1,12 +1,10 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
-import json
 import re
 
 from builtins import str
 from collections import defaultdict, Iterable
-from decimal import Decimal
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.sites.models import Site
@@ -14,8 +12,8 @@ from django.db.models import Aggregate
 from django.db.models.aggregates import Aggregate as SQLAggregate
 from six import string_types
 from threadlocals.threadlocals import get_current_request
-from uuid import UUID
 
+from edd.utilities import JSONEncoder
 from . import models
 from .models import (
     CarbonSource, GeneIdentifier, MeasurementUnit, Metabolite, MetadataType, ProteinIdentifier,
@@ -23,13 +21,8 @@ from .models import (
 )
 
 
-class JSONDecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, Decimal):
-            return float(o)
-        elif isinstance(o, UUID):
-            return str(o)
-        return super(JSONDecimalEncoder, self).default(o)
+class JSONDecimalEncoder(JSONEncoder):
+    pass
 
 
 class SQLArrayAgg(SQLAggregate):

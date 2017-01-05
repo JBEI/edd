@@ -7,7 +7,6 @@ For Celery configuration reference, see http://docs.celeryproject.org/en/latest/
 """
 
 from datetime import timedelta
-from edd_utils.parsers.json_encoders import EXTENDED_JSON_CONTENT_TYPE
 
 from .base import env
 
@@ -47,8 +46,9 @@ CELERY_SEND_TASK_ERROR_EMAILS = True
 # Broker Settings
 BROKER_URL = env('BROKER_URL')
 
-CELERY_TASK_SERIALIZER = EXTENDED_JSON_CONTENT_TYPE
-CELERY_RESULT_SERIALIZER = EXTENDED_JSON_CONTENT_TYPE
+EDD_SERIALIZE_NAME = 'edd-json'
+CELERY_TASK_SERIALIZER = EDD_SERIALIZE_NAME
+CELERY_RESULT_SERIALIZER = EDD_SERIALIZE_NAME
 
 # CELERY_TIMEZONE='America/Los_Angeles' # Use UTC time to work around a Celery 3.1.18 bug
 # that causes flower charts to always be blank -- see https://github.com/celery/celery/issues/2482
@@ -56,7 +56,7 @@ CELERY_RESULT_SERIALIZER = EXTENDED_JSON_CONTENT_TYPE
 # Remove pickle from the transport list for forward-compatibility with Celery 3.2 (upcoming). Also
 # avoids an error message in 3.1 mentioning this issue.
 # Pickle transport is known to be insecure.
-CELERY_ACCEPT_CONTENT = [EXTENDED_JSON_CONTENT_TYPE, 'json', 'msgpack', 'yaml']
+CELERY_ACCEPT_CONTENT = [EDD_SERIALIZE_NAME, 'json', 'msgpack', 'yaml']
 
 
 ###################################################################################################
