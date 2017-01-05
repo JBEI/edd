@@ -1243,8 +1243,8 @@ def study_import_table(request, pk=None, slug=None):
             # show the first error message to the user. continuing the import attempt to collect
             # more potentially-useful errors makes the code too complex / hard to maintain.
             messages.error(request, e)
-        # uncomment below once you can import data to test if this works
-        # return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
+            # redirect to study page
+        return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
     return render(
         request,
         "main/import.html",
