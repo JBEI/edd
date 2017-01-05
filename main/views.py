@@ -7,6 +7,7 @@ import json
 import logging
 import re
 
+from builtins import str
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -24,19 +25,17 @@ from django.utils.translation import ugettext as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
-
-from main.importer.experiment_desc.importer import define_study, _build_errors_dict
-from . import autocomplete, redis
 from rest_framework.exceptions import MethodNotAllowed
 
-from . import autocomplete
+from . import autocomplete, redis
 from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
+from .importer.experiment_desc import define_study, _build_errors_dict
 from .importer.parser import find_parser
 from .importer.table import import_task
-from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
+from .export.forms import ExportOptionForm, ExportSelectionForm,  WorklistForm
 from .export.sbml import SbmlExport
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
@@ -45,12 +44,14 @@ from .forms import (
 )
 from .models import (
     Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue, Metabolite,
-    MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study, StudyPermission, Update)
+    MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study, StudyPermission, Update,
+)
 from .signals import study_modified
 from .solr import StudySearch
 from .utilities import (
     JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement,
-    get_edddata_misc, get_edddata_strains, get_edddata_study, get_edddata_users)
+    get_edddata_misc, get_edddata_strains, get_edddata_study, get_edddata_users,
+)
 
 
 logger = logging.getLogger(__name__)
