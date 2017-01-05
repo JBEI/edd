@@ -128,9 +128,9 @@ echo "$SEPARATOR"
 if [[ $EDD_DEPLOYMENT_ENVIRONMENT =~ DEVELOPMENT.* ]]; then
     echo "Starting development apppserver"
     echo "$SEPARATOR"
-    python manage.py runserver 0.0.0.0:8000
+    exec python manage.py runserver 0.0.0.0:8000
 else
     echo "Starting production appserver"
     echo "$SEPARATOR"
-    gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
+    exec gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
 fi

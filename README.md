@@ -101,6 +101,9 @@ This section contains directions for setting up a production deployment for EDD 
     * There is a `docker.io` package too; this can work, but it will generally be outdated.
 * Create a user for running EDD; assuming user `jbeideploy` exists for further instructions.
 * As `jbeideploy`, check out code to `/usr/local/edd/` (this will be `$EDD_HOME` below)
+  
+    git clone https://github.com/JBEI/edd.git
+    git checkout [release_branch]
 * Set up your local docker-machine to manage a remote EDD deployment
     * _If using Docker client on a different host, i.e. with `docker-machine`_
         * Ensure you have a public key in `jbeideploy`'s `~/.ssh/authorized_keys2` file
@@ -180,33 +183,25 @@ following steps in the EDD checkout directory to configure EDD and launch it for
           `docker-compose exec appserver python manage.py createsuperuser`
         2. Configure EDD using the web interface
 
-           Log into EDD's web interface using an administrator account. Go to "Administration"
-           at top left, then use the interface to create a minimal set of Users, Units,
-           Measurement Types, Metadata, etc. that allow users to import their data.
+           If you need to add any custom metadata types, units, etc. not provided by the default installation, use the "Administration" link at top right
+           to add to or remove EDD's defaults.  It's recommended that you leave defaults in place for consistency with collaborators' EDD deployments.
+      * Manually set the hostname in EDD's database.
 
-           TODO: We plan to add more to this section of the documentation over time to describe
-           how these entries are used and when / how to edit them.
-	* Manually set the hostname in EDD's database.
-	
-      EDD needs the hostname users will use to access it, which may the one available to EDD via the host operating system.  
-      This value will be used most often to create experiment links in ICE, so an incorrect value will cause users to see bad experiment links to EDD. 
-      Here's a set of sample commands for setting the hostname:
-	  
-	      docker-compose exec appserver python manage.py shell
-		  from django.contrib.sites.models import Site
-		  site = Site.objects.get_current()  # test whether there's an existing value
-		  Site.objects.create(name='Experiment Data Depot', domain='edd.jbei.org')
-
-	  
-	  
+      EDD needs the hostname users will use to access it, which may not be the same as the one available to EDD via the host operating system.  
+      This value will be used most often to create experiment links in ICE, so an incorrect value will cause users to see bad experiment links to EDD when viewing ICE parts.
+	  Use the "Administration" link at top right, then scroll down to the "Sites" heading and click the "sites" link under it.  Set the value, for example, to edd.jbei.org.
 
  * __Install and configure a supporting [ICE][10] deployment__
 
    EDD requires ICE as a reference for strains used in EDD's experiments. You will not be able to
    create lines in your EDD studies until EDD can successfully communicate/authenticate with ICE.
     * Follow ICE's directions for installation/setup
-    * Create string to use as the HMAC key to sign communication from EDD to ICE. EDD's default configuration assumes a key ID of 'edd',
-      but you can change it by overriding the value of `ICE_KEY_ID` in your `local.py`. Note that this file will be stored in a Docker environment file, so avoid special characters that might impact the file's interpretation.
+    * Create a base-64 encoded HMAC key to for signing communication from EDD to ICE. EDD's default configuration assumes a key ID of 'edd',
+      but you can change it by overriding the value of `ICE_KEY_ID` in your `local.py`. Note that this file will be stored in a Docker environment file, so 
+      consider impacts that format might have on how the value you enter gets interpreted.  For example:
+         * `ssh-keygen -t rsa -b 2048`
+         * input folder to store key in
+         * Copy the file content (minus header and footer)
     * Configure ICE with the HMAC key
 	  In the `rest-auth` folder of the linked ICE deployment, create a text file with the same name as the value of `ICE_KEY_ID` (e.g. 'edd' by default) 
       The contents of this file will be the secret key ICE uses to authenticate your requests
