@@ -354,7 +354,6 @@ var StudyLines;
         type = EDDData.MetaDataTypes[key];
         label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
         // bulk checkbox?
-        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
         if (type.pre) {
             $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
         }
@@ -362,6 +361,7 @@ var StudyLines;
         if (type.postfix) {
             $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
         }
+        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
         return row;
     }
     function editLines(ids) {

@@ -1002,10 +1002,9 @@ def study_measurements(request, pk=None, slug=None, protocol=None):
         assay__line__study=obj,
         assay__protocol_id=protocol,
         active=True,
-        assay__active=True,
         assay__line__active=True,
     )
-    # Limit the measurements returned to keep browser performant
+    # Limit the measurements returned to keep browser performance
     measurements = qmeasurements.order_by('id')[:5000]
     total_measures = qmeasurements.values('assay_id').annotate(count=Count('assay_id'))
     measure_list = list(measurements)
@@ -1015,7 +1014,6 @@ def study_measurements(request, pk=None, slug=None, protocol=None):
             measurement__assay__line__study=obj,
             measurement__assay__protocol_id=protocol,
             measurement__active=True,
-            measurement__assay__active=True,
             measurement__assay__line__active=True,
             measurement__pk__range=(measure_list[0].id, measure_list[-1].id),
         )
