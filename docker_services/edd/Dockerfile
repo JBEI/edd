@@ -6,9 +6,8 @@ ENV PYTHONUNBUFFERED 1
 ENV LANG C.UTF-8
 
 # include Debian packages required to build pip packages
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y --fix-missing \
+RUN apt-get clean && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
         build-essential \
         g++ \
         gfortran \

@@ -132,6 +132,10 @@ following steps in the EDD checkout directory to configure EDD and launch it for
     * Run `docker-compose build` to build the Docker containers for EDD. This will take a while. In
       the future, we may publish pre-built Docker images that will prevent you from having to take
       this step.
+        * If you run into issues with an image failing to build, with errors looking like
+          `E: Failed to fetch $foo  Error reading from server. Remote end closed connection`
+          try running `docker-compose build --pull SERVICE_NAME` to always pull latest base images.
+          Because the base image updates frequently, sometimes dependencies get mismatched.
     * You can actually skip this step and just run the command to start EDD, but it's included here
       to familiarize developers / maintainers with the Docker build process in case they have to
       run it later.
