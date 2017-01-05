@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
-
 import collections
 import json
 import logging
@@ -83,31 +82,24 @@ def formula(molecular_formula):
         )
 
 
-def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW, user=None):
-    """ Loads a study as a request user; throws a 404 if the study does not exist OR if no valid
-        permissions are set for the user on the study.
-        :param study_id: a unique identifier for the study -- either the locally-unique integer
-        primary key, or the study's UUID
+def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW):
     """
-    user = request.user if request else user
+    Loads a study as a request user; throws a 404 if the study does not exist OR if no valid
+    permissions are set for the user on the study.
 
-    # define kwargs that allow us to query the study either by UUID or integer primary key
-    unique_id_kwargs = {}
-    if pk:
-        try:
-            float(pk)
-            unique_id_kwargs['pk'] = pk
-        except ValueError:
-            unique_id_kwargs['uuid'] = pk
-    else:
-        unique_id_kwargs['slug'] = slug
-
-    if user.is_superuser:
-        return get_object_or_404(Study, **unique_id_kwargs)
-    return get_object_or_404(
-        Study.objects.distinct(),
-        Study.user_permission_q(user, permission_type), **unique_id_kwargs
-    )
+    :param request: the request loading the study
+    :param pk: study's primary key; at least one of pk and slug must be provided
+    :param slug: study's slug ID; at least one of pk and slug must be provided
+    :param permission_type: required permission for the study access
+    """
+    permission = Q()
+    if not request.user.is_superuser:
+        permission = Study.user_permission_q(request.user, permission_type)
+    if pk is not None:
+        return get_object_or_404(Study.objects.distinct(), permission, Q(pk=pk))
+    elif slug is not None:
+        return get_object_or_404(Study.objects.distinct(), permission, Q(slug=slug))
+    raise Http404()
 
 
 class StudyCreateView(generic.edit.CreateView):
