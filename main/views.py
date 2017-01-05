@@ -19,6 +19,7 @@ from django.http import (
 )
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect
+from django.template import RequestContext
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
@@ -82,7 +83,7 @@ def formula(molecular_formula):
         )
 
 
-def load_study(request, pk=None, slug=None, permission_type=['R', 'W',], user=None):
+def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW, user=None):
     """ Loads a study as a request user; throws a 404 if the study does not exist OR if no valid
         permissions are set for the user on the study.
         :param study_id: a unique identifier for the study -- either the locally-unique integer
@@ -194,6 +195,7 @@ class StudyDetailBaseView(generic.DetailView):
         if self.request.user.is_superuser:
             return qs
         return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
+
     def handle_unknown(self, request, context, *args, **kwargs):
         messages.error(
             request, 'Unknown action, or you do not have permission to modify this study.'
@@ -202,12 +204,13 @@ class StudyDetailBaseView(generic.DetailView):
 
 
 class StudyOverviewView(StudyDetailBaseView):
-    """ Study overview page, displays study name, description, comments, attachments, permissions. """
+    """
+    Study overview page, displays study name, description, comments, attachments, permissions.
+    """
     template_name = 'main/study-overview.html'
 
     def get_context_data(self, **kwargs):
         context = super(StudyOverviewView, self).get_context_data(**kwargs)
-        instance = self.get_object()
         context['showingoverview'] = True
         context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
         context['new_attach'] = CreateAttachmentForm()
@@ -283,7 +286,6 @@ class StudyLinesView(StudyDetailBaseView):
 
     def get_context_data(self, **kwargs):
         context = super(StudyLinesView, self).get_context_data(**kwargs)
-        instance = self.get_object()
         context['showinglines'] = True
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_line'] = LineForm(prefix='line')
@@ -532,7 +534,6 @@ class StudyDetailView(StudyDetailBaseView):
 
     def get_context_data(self, **kwargs):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
-        instance = self.get_object()
         context['showingdata'] = True
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_measurement'] = MeasurementForm(prefix='measurement')
@@ -710,7 +711,9 @@ class StudyDetailView(StudyDetailBaseView):
         self.object = self.get_object()
         # redirect to overview page if there are no lines or assays
         if self.object.line_set.count() == 0:
-            return HttpResponseRedirect(reverse('main:overview', kwargs={'slug': self.object.slug}))
+            return HttpResponseRedirect(
+                reverse('main:overview', kwargs={'slug': self.object.slug})
+            )
         # redirect to lines page if there are no assays
         if Assay.objects.filter(line__study=self.object).count() == 0:
             return HttpResponseRedirect(reverse('main:lines', kwargs={'slug': self.object.slug}))
@@ -1175,9 +1178,9 @@ def study_import_table(request, pk=None, slug=None):
         },
     )
 
-# /study/<study_id>/define
-# FIXME should have trailing slash?
-#@ensure_csrf_cookie # TODO: uncomment following testing
+
+# /study/<study_id>/define/
+@ensure_csrf_cookie
 def study_define(request, pk=None, slug=None):
     """
     View for defining a study's lines / assays from a template file.
@@ -1227,7 +1230,7 @@ def study_define(request, pk=None, slug=None):
     return JsonResponse(json_response_dict, status=status)
 
 
-# /utilities/parsefile
+# /utilities/parsefile/
 # To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
 def utilities_parse_import_file(request):
     """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
@@ -1269,8 +1272,7 @@ def utilities_parse_import_file(request):
     )
 
 
-# /study/<study_id>/import/rnaseq
-# FIXME should have trailing slash?
+# /study/<study_id>/import/rnaseq/
 @ensure_csrf_cookie
 def study_import_rnaseq(request, pk=None, slug=None):
     """ View for importing multiple sets of RNA-seq measurements in various simple tabular formats
@@ -1296,8 +1298,7 @@ def study_import_rnaseq(request, pk=None, slug=None):
     )
 
 
-# /study/<study_id>/import/rnaseq/edgepro
-# FIXME should have trailing slash?
+# /study/<study_id>/import/rnaseq/edgepro/
 @ensure_csrf_cookie
 def study_import_rnaseq_edgepro(request, pk=None, slug=None):
     """ View for importing a single set of RNA-seq measurements from the EDGE-pro pipeline,
@@ -1345,8 +1346,7 @@ def study_import_rnaseq_edgepro(request, pk=None, slug=None):
     )
 
 
-# /study/<study_id>/import/rnaseq/parse
-# FIXME should have trailing slash?
+# /study/<study_id>/import/rnaseq/parse/
 def study_import_rnaseq_parse(request, pk=None, slug=None):
     """ Parse raw data from an uploaded text file, and return JSON object of processed result.
         Result is identical to study_import_rnaseq_process, but this method is invoked by
@@ -1369,8 +1369,7 @@ def study_import_rnaseq_parse(request, pk=None, slug=None):
         return JsonResponse(result)
 
 
-# /study/<study_id>/import/rnaseq/process
-# FIXME should have trailing slash?
+# /study/<study_id>/import/rnaseq/process/
 def study_import_rnaseq_process(request, pk=None, slug=None):
     """ Process form submission containing either a file or text field, and return JSON object of
         processed result. """
@@ -1401,17 +1400,17 @@ def study_import_rnaseq_process(request, pk=None, slug=None):
         return JsonResponse(result)
 
 
-# /data/users
+# /data/users/
 def data_users(request):
     return JsonResponse({"EDDData": get_edddata_users()}, encoder=JSONDecimalEncoder)
 
 
-# /data/misc
+# /data/misc/
 def data_misc(request):
     return JsonResponse({"EDDData": get_edddata_misc()}, encoder=JSONDecimalEncoder)
 
 
-# /data/measurements
+# /data/measurements/
 def data_measurements(request):
     data_meas = get_edddata_measurement()
     data_misc = get_edddata_misc()
@@ -1541,12 +1540,12 @@ def data_sbml_compute(request, sbml_id, rxn_id):
     raise Http404("Could not find reaction")
 
 
-# /data/strains
+# /data/strains/
 def data_strains(request):
     return JsonResponse({"EDDData": get_edddata_strains()}, encoder=JSONDecimalEncoder)
 
 
-# /data/metadata
+# /data/metadata/
 def data_metadata(request):
     return JsonResponse(
         {
@@ -1558,12 +1557,12 @@ def data_metadata(request):
         encoder=JSONDecimalEncoder)
 
 
-# /data/carbonsources
+# /data/carbonsources/
 def data_carbonsources(request):
     return JsonResponse({"EDDData": get_edddata_carbon_sources()}, encoder=JSONDecimalEncoder)
 
 
-# /download/<file_id>
+# /download/<file_id>/
 def download(request, file_id):
     model = Attachment.objects.get(pk=file_id)
     if not model.user_can_read(request.user):
