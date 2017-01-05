@@ -1194,6 +1194,7 @@ namespace StudyDataPage {
 
         $("#dataTableButton").click(function() {
             viewingMode = 'table';
+             makeLabelsBlack(EDDGraphingTools.labels);
             $("#tableControlsArea").removeClass('off');
             $("#filterControlsArea").addClass('off');
             $("#tableActionButtons").removeClass('off');
@@ -1533,6 +1534,7 @@ namespace StudyDataPage {
         // Don't show the selected item count if we're not looking at the table.
         // (Only the visible item count makes sense in that case.)
         if (viewingMode == 'table') {
+             makeLabelsBlack(EDDGraphingTools.labels);
 
             $('#displayedDiv').addClass('off');
 
