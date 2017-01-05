@@ -825,6 +825,12 @@ class EDDObject(EDDMetadata, EDDSerialize):
             'created': self.created.to_json(depth) if self.created else None,
         }
 
+    # Used in overview.html.  Serializing directly in the template creates strings like u'description' that
+    # Javascript can't parse.
+    def to_json_str(self, depth=0):
+        json_dict = self.to_json(depth)
+        return json.dumps(json_dict, ensure_ascii=False).encode("utf8")
+
     def user_can_read(self, user):
         return True
 
