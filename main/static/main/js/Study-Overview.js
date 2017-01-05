@@ -23,8 +23,7 @@ var StudyOverview;
         this.metabolicMapID = -1;
         this.metabolicMapName = null;
         this.biomassCalculation = -1;
-        new EditableStudyName($('#editable-study-name').get()[0]);
-        new EDDEditable.EditableAutocomplete($('#editable-study-contact').get()[0]);
+        new EditableStudyContact($('#editable-study-contact').get()[0]);
         new EditableStudyDescription($('#editable-study-description').get()[0]);
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', function (e) {
@@ -196,37 +195,15 @@ var StudyOverview;
         ui = new StudyMetabolicMapChooser(false, callback);
     }
     StudyOverview.onClickedMetabolicMapName = onClickedMetabolicMapName;
-    // Base class for the non-autocomplete inline editing fields for the Study
-    var EditableStudyElment = (function (_super) {
-        __extends(EditableStudyElment, _super);
-        function EditableStudyElment() {
-            _super.apply(this, arguments);
-        }
-        EditableStudyElment.prototype.editAllowed = function () { return EDDData.currentStudyWritable; };
-        EditableStudyElment.prototype.canCommit = function (value) { return EDDData.currentStudyWritable; };
-        return EditableStudyElment;
-    }(EDDEditable.EditableElement));
-    StudyOverview.EditableStudyElment = EditableStudyElment;
-    var EditableStudyName = (function (_super) {
-        __extends(EditableStudyName, _super);
-        function EditableStudyName() {
-            _super.apply(this, arguments);
-        }
-        EditableStudyName.prototype.getValue = function () {
-            return EDDData.Studies[EDDData.currentStudyID].name;
-        };
-        EditableStudyName.prototype.setValue = function (value) {
-            EDDData.Studies[EDDData.currentStudyID].name = value;
-        };
-        return EditableStudyName;
-    }(EditableStudyElment));
-    StudyOverview.EditableStudyName = EditableStudyName;
     var EditableStudyDescription = (function (_super) {
         __extends(EditableStudyDescription, _super);
         function EditableStudyDescription(inputElement) {
             _super.call(this, inputElement);
             this.minimumRows = 4;
         }
+        EditableStudyDescription.prototype.getFormURL = function () {
+            return '/study/' + EDDData.currentStudyID + '/setdescription/';
+        };
         EditableStudyDescription.prototype.getValue = function () {
             return EDDData.Studies[EDDData.currentStudyID].description;
         };
@@ -237,7 +214,7 @@ var StudyOverview;
             return '(click to add description)';
         };
         return EditableStudyDescription;
-    }(EditableStudyElment));
+    }(StudyBase.EditableStudyElment));
     StudyOverview.EditableStudyDescription = EditableStudyDescription;
     var EditableStudyContact = (function (_super) {
         __extends(EditableStudyContact, _super);
@@ -247,6 +224,9 @@ var StudyOverview;
         // Have to reproduce these here rather than using EditableStudyElment because the inheritance is different
         EditableStudyContact.prototype.editAllowed = function () { return EDDData.currentStudyWritable; };
         EditableStudyContact.prototype.canCommit = function (value) { return EDDData.currentStudyWritable; };
+        EditableStudyContact.prototype.getFormURL = function () {
+            return '/study/' + EDDData.currentStudyID + '/setcontact/';
+        };
         EditableStudyContact.prototype.getValue = function () {
             return EDDData.Studies[EDDData.currentStudyID].contact;
         };

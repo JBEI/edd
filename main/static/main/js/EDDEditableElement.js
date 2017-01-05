@@ -104,14 +104,15 @@ var EDDEditable;
         EditableElement.prototype.blankLabel = function () {
             return '(click to set)';
         };
-        EditableElement.prototype.fillFormData = function (formData) {
+        EditableElement.prototype.fillFormData = function (fd) {
             var form = $(this.inputElement).closest('form');
             var token = form.length ? form.find('[name=csrfmiddlewaretoken]').val() : '';
             var value = this.getEditedValue();
-            formData.append('csrfmiddlewaretoken', token);
-            formData.append('value', value);
-            return formData;
+            fd.append('csrfmiddlewaretoken', token);
+            fd.append('value', value);
+            return fd;
         };
+        // Default behavior is to submit to the same place that the enclosing form does.
         EditableElement.prototype.getFormURL = function () {
             var form = $(this.inputElement).closest('form');
             return form.length ? form.attr('action') : '';
@@ -335,12 +336,13 @@ var EDDEditable;
             var debug = false;
             var value = this.getEditedValue();
             var pThis = this;
-            var formData = new FormData();
-            $.ajax({
+            var formData = this.fillFormData(new FormData());
+            Utl.EDD.callAjax({
                 'url': this.getFormURL(),
                 'type': 'POST',
                 'cache': false,
-                'data': this.fillFormData(formData),
+                'debug': debug,
+                'data': formData,
                 'success': function (response) {
                     if (response.type == "Success") {
                         pThis.setValue(value);

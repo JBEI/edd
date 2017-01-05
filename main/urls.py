@@ -38,16 +38,14 @@ study_url_patterns = [
         ])
     ),
     url(r'^lines/$', login_required(autocomplete.search_study_lines)),
+    url(r'^rename/$', login_required(views.study_rename)),
+    url(r'^setdescription/$', login_required(views.study_set_description)),
+    url(r'^setcontact/$', login_required(views.study_set_contact)),
 ]
 
 urlpatterns = [
     # "homepage" URLs
     url(r'^$', login_required(views.StudyIndexView.as_view()), name='index'),
-    url(
-        r'^study/$',
-        login_required(views.StudyCreateView.as_view()),
-        name='create_study'
-    ),
     url(r'^study/search/$', login_required(views.study_search)),
 
     # Individual study-specific pages loaded by primary key

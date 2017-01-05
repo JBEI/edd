@@ -35,10 +35,8 @@ module StudyOverview {
         this.metabolicMapName = null;
         this.biomassCalculation = -1;
 
-        new EditableStudyName($('#editable-study-name').get()[0]);
-        new EDDEditable.EditableAutocomplete($('#editable-study-contact').get()[0]);
+        new EditableStudyContact($('#editable-study-contact').get()[0]);
         new EditableStudyDescription($('#editable-study-description').get()[0]);
-
 
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', (e) => {
@@ -224,30 +222,15 @@ module StudyOverview {
     }
 
 
-    // Base class for the non-autocomplete inline editing fields for the Study
-    export class EditableStudyElment extends EDDEditable.EditableElement {
-
-        editAllowed(): boolean { return EDDData.currentStudyWritable; }
-        canCommit(value): boolean { return EDDData.currentStudyWritable; }
-    }
-
-
-    export class EditableStudyName extends EditableStudyElment {
-        getValue():string {
-            return EDDData.Studies[EDDData.currentStudyID].name;
-        }
-
-        setValue(value) {
-            EDDData.Studies[EDDData.currentStudyID].name = value;
-        }
-    }
-
-
-    export class EditableStudyDescription extends EditableStudyElment {
+    export class EditableStudyDescription extends StudyBase.EditableStudyElment {
 
         constructor(inputElement: HTMLElement) {        
             super(inputElement);
             this.minimumRows = 4;
+        }
+
+        getFormURL(): string {
+            return '/study/' + EDDData.currentStudyID + '/setdescription/';
         }
 
         getValue():string {
@@ -269,6 +252,10 @@ module StudyOverview {
         // Have to reproduce these here rather than using EditableStudyElment because the inheritance is different
         editAllowed(): boolean { return EDDData.currentStudyWritable; }
         canCommit(value): boolean { return EDDData.currentStudyWritable; }
+
+        getFormURL(): string {
+            return '/study/' + EDDData.currentStudyID + '/setcontact/';
+        }
 
         getValue():string {
             return EDDData.Studies[EDDData.currentStudyID].contact;

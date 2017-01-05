@@ -100,34 +100,36 @@ def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW):
     raise Http404()
 
 
-class StudyCreateView(generic.edit.CreateView):
-    """
-    View for request to create a Study.
-    """
-    form_class = CreateStudyForm
-    model = Study
-    template_name = 'main/create_study.html'
 
-    def form_valid(self, form):
-        update = Update.load_request_update(self.request)
-        study = form.instance
-        study.active = True     # defaults to True, but being explicit
-        study.created = update
-        study.updated = update
-        return generic.edit.CreateView.form_valid(self, form)
-
-    def get_context_data(self, **kwargs):
-        context = super(StudyCreateView, self).get_context_data(**kwargs)
-        context['can_create'] = Study.user_can_create(self.request.user)
-        return context
-
-    def get_form_kwargs(self):
-        kwargs = super(StudyCreateView, self).get_form_kwargs()
-        kwargs.update(user=self.request.user)
-        return kwargs
-
-    def get_success_url(self):
-        return reverse('main:overview', kwargs={'slug': self.object.slug})
+# /study/<study_id>/rename
+@ensure_csrf_cookie
+def study_rename(request, study_id):
+    obj = load_study(request, study_id) # Throws 404 is user cannot read or Study doesn't exist
+    if not obj.user_can_write(request.user):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "You do not have permission to rename this study.",
+        })
+    if not (request.method == "POST"):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Request method must be POST for this operation.",
+        })
+    # A fair amount of validation has happened for these on the front end.
+    # I'm going to assume Django's internals are insulated against inane things like injection attacks
+    # and will fail verbosely given unacceptable data...
+    full_name = request.POST.get('value', '').strip()
+    if full_name == "":
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Map short name must not be blank.",
+        })
+    obj.name = full_name
+    obj.save()
+    return JsonResponse({
+        "type": "Success",
+        "message": "Study renamed.",
+    })
 
 
 class StudyIndexView(generic.edit.CreateView):
@@ -167,6 +169,78 @@ class StudyIndexView(generic.edit.CreateView):
 
     def get_success_url(self):
         return reverse('main:overview', kwargs={'slug': self.object.slug})
+
+
+# /study/<study_id>/rename/
+@ensure_csrf_cookie
+def study_rename(request, pk=None, slug=None):
+    obj = load_study(request, pk=pk, slug=slug) # Throws 404 if user cannot read or Study doesn't exist
+    if not obj.user_can_write(request.user):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "You do not have permission to rename this study.",
+        })
+    if not (request.method == "POST"):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Request method must be POST for this operation.",
+        })
+    full_name = request.POST.get('value', '').strip()
+    if full_name == "":
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Study name must not be blank.",
+        })
+    obj.name = full_name
+    obj.save()
+    return JsonResponse({
+        "type": "Success",
+        "message": "Study renamed.",
+    }, encoder=JSONDecimalEncoder)
+
+
+# /study/<study_id>/setdescription/
+@ensure_csrf_cookie
+def study_set_description(request, pk=None, slug=None):
+    obj = load_study(request, pk=pk, slug=slug) # Throws 404 if user cannot read or Study doesn't exist
+    if not obj.user_can_write(request.user):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "You do not have permission to edit this study.",
+        })
+    if not (request.method == "POST"):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Request method must be POST for this operation.",
+        })
+    obj.description = request.POST.get('value', '').strip()
+    obj.save()
+    return JsonResponse({
+        "type": "Success",
+        "message": "Study description changed.",
+    }, encoder=JSONDecimalEncoder)
+
+
+# /study/<study_id>/setcontact/
+@ensure_csrf_cookie
+def study_set_contact(request, pk=None, slug=None):
+    obj = load_study(request, pk=pk, slug=slug) # Throws 404 if user cannot read or Study doesn't exist
+    if not obj.user_can_write(request.user):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "You do not have permission to edit this study.",
+        })
+    if not (request.method == "POST"):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Request method must be POST for this operation.",
+        })
+    obj.contact_id = int(request.POST.get('value', 0)) or None
+    obj.save()
+    return JsonResponse({
+        "type": "Success",
+        "message": "Study contact changed.",
+    }, encoder=JSONDecimalEncoder)
 
 
 class StudyDetailBaseView(generic.DetailView):
