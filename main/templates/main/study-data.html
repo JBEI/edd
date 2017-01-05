@@ -50,7 +50,28 @@
         Measurement
     </span>
 </div>
+        <div id="filterControlsArea" style="margin:auto 0 auto 15px;">
+        <div id="filterControlsMenu" class="pulldownMenu">
+            <div id="filterControlsMenuLabel" class="pulldownMenuLabelOff">View options ▾</div>
+            <div class="pulldownMenuMenuBlock off">
+                <ul>
+                    <li>
+                        <input id="filteringShowDisabledCheckbox" name="filteringShowDisabled" type="checkbox" value="1">
+                        <label for="filteringShowDisabledCheckbox" title="Show assays that have been disabled.">Show Disabled</label>
+                    </li>
+                    <li>
+                        <input id="filteringShowEmptyCheckbox" name="filteringShowEmpty" type="checkbox" value="1">
+                        <label for="filteringShowEmptyCheckbox" title="Show assays that don't have any measurements in them.">Show Empty</label>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div id="tableControlsArea" class="off" style="margin:auto 0 auto 0;">
+            {# filled out client-side #}
+    </div>
 </div>
+
 
 
 
@@ -93,27 +114,7 @@
     align-items: stretch; /* align items in Cross Axis */
     align-content: stretch; /* Extra space in Cross Axis */
     flex-wrap: nowrap;">
-    <div id="filterControlsArea" style="margin:auto 0 auto 15px;">
-        <div id="filterControlsMenu" class="pulldownMenu">
-            <div id="filterControlsMenuLabel" class="pulldownMenuLabelOff">View options ▾</div>
-            <div class="pulldownMenuMenuBlock off">
-                <ul>
-                    <li>
-                        <input id="filteringShowDisabledCheckbox" name="filteringShowDisabled" type="checkbox" value="1">
-                        <label for="filteringShowDisabledCheckbox" title="Show assays that have been disabled.">Show Disabled</label>
-                    </li>
-                    <li>
-                        <input id="filteringShowEmptyCheckbox" name="filteringShowEmpty" type="checkbox" value="1">
-                        <label for="filteringShowEmptyCheckbox" title="Show assays that don't have any measurements in them.">Show Empty</label>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
 
-    <div id="tableControlsArea" class="off" style="margin:auto 0 auto 0;">
-        {# filled out client-side #}
-    </div>
     <div style="
         flex-grow:0;
         margin:0 15px 0 auto;
@@ -187,12 +188,15 @@
 
 
     <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
-        <button type="button" id="exportButton" class="actionButton primary">
+        <button type="button" id="exportButton" class="actionButton primary off">
             Export Data
         </button>
     </div>
 </div>
 
+<div>
+    <input id="hideFilterSection"type="button" style="margin: 14px 0px 0px 15px;" value="Hide Filter Section">
+</div>
 
 <div id="mainFilterSection" class="filteringSection">
 </div>

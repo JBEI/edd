@@ -120,7 +120,7 @@ var DataGrid = (function () {
         // Prepare the table for sorting
         this._prepareSortable();
         this._spec.onInitialized(this);
-        $(this._waitBadge).addClass('off');
+        $(this._waitBadge).remove();
         return this;
     };
     DataGrid.prototype._initializeSort = function () {

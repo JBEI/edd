@@ -560,7 +560,10 @@ table.dataTable tr > td span {
     margin:0px;
     padding:3px 3px 0px 0px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
 table.dataTable tr > td p {
     margin:3px 3px 0px 0px;
     padding:0px;
@@ -748,7 +751,7 @@ div.filterTable > div.filterColumn {
 }
 
 div.filterTable > div.filterColumn div.filterCriteriaScrollZone {
-    max-height: 264px;
+    max-height: 161px;
     overflow-x: visible;
     overflow-y: auto;
     padding:0px 20px 0px 0px;
@@ -1118,12 +1121,22 @@ table.formTable tr > td textarea {
     max-width: 200px;
 }
 
+#studiesTable td:nth-child(2):hover {
+    background: white;
+    overflow: visible;
+}
+
 #studiesTable td:first-child {
     white-space: nowrap;
     text-overflow: ellipsis;
     width: 40%;
     overflow: hidden;
     max-width: 200px;
+}
+
+#studiesTable td:first-child:hover {
+    overflow: visible;
+    background: white;
 }
 
 tr.multientrybuttonrow:hover div.multientrybutton {

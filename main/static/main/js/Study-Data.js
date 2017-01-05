@@ -478,7 +478,7 @@ var StudyDataPage;
             // Only use the scrolling container div if the size of the list warrants it, because
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
-            if (this.uniqueValuesOrder.length > 15) {
+            if (this.uniqueValuesOrder.length > 10) {
                 fCol.append(this.searchBoxTitleDiv).append(this.scrollZoneDiv);
                 // Change the reference so we're affecting the innerHTML of the correct div later on
                 fCol = $(this.scrollZoneDiv);
@@ -1069,6 +1069,10 @@ var StudyDataPage;
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
         Utl.ButtonBar.prepareButtonBars();
+        // Prepend show/hide filter button for better alignment
+        // Note: this will be removed when we implement left side filtering
+        var showHideFilterButton = $('#hideFilterSection');
+        $('#assaysActionPanel').prepend(showHideFilterButton);
         $("#dataTableButton").click(function () {
             viewingMode = 'table';
             $("#tableControlsArea").removeClass('off');
@@ -1076,6 +1080,8 @@ var StudyDataPage;
             $("#tableActionButtons").removeClass('off');
             barGraphTypeButtonsJQ.addClass('off');
             queueRefreshDataDisplayIfStale();
+            //TODO: enable users to export filtered data from graph
+            $('#exportButton').removeClass('off');
         });
         //click handler for edit assay measurements
         $('#editMeasurementButton').click(function (ev) {
@@ -1116,6 +1122,7 @@ var StudyDataPage;
         });
         // This one is active by default
         $("#lineGraphButton").click(function () {
+            $('#exportButton').addClass('off');
             viewingMode = 'linegraph';
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
@@ -1127,6 +1134,7 @@ var StudyDataPage;
             $('#barGraphByMeasurement').addClass('off');
             queueRefreshDataDisplayIfStale();
         });
+        //one time click event handler for loading spinner
         $('#barGraphButton').one("click", function () {
             $('#graphLoading').removeClass('off');
         });
@@ -1141,6 +1149,7 @@ var StudyDataPage;
         });
         $("#barGraphButton").click(function () {
             viewingMode = 'bargraph';
+            $('#exportButton').addClass('off');
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
             $("#tableActionButtons").addClass('off');
@@ -1173,7 +1182,7 @@ var StudyDataPage;
             barGraphMode = 'measurement';
             queueRefreshDataDisplayIfStale();
         });
-        //hides/shows filter section
+        //hides/shows filter section.
         $('#hideFilterSection').click(function (event) {
             event.preventDefault();
             if ($('#hideFilterSection').val() === "Hide Filter Section") {
@@ -1224,7 +1233,7 @@ var StudyDataPage;
             return false;
         });
         // Callbacks to respond to the filtering section
-        $('#mainFilterSection').on('mouseover mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
+        $('#mainFilterSection').on('mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
             .on('keydown', filterTableKeyDown.bind(this));
         $.ajax({
             'url': 'edddata/',
@@ -1351,7 +1360,6 @@ var StudyDataPage;
         StudyDataPage.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
         if (count_rec < count_total) {
         }
-        console.log('processed ' + count_rec);
         queueRefreshDataDisplayIfStale();
     }
     function queueRefreshDataDisplayIfStale() {
@@ -1374,6 +1382,7 @@ var StudyDataPage;
         // Don't show the selected item count if we're not looking at the table.
         // (Only the visible item count makes sense in that case.)
         if (viewingMode == 'table') {
+            $('#displayedDiv').addClass('off');
             var h = $('#content').height(); // Height of the viewing region
             // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
             // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
@@ -1422,6 +1431,7 @@ var StudyDataPage;
             $('#assaysActionPanel').appendTo('#content');
             $('#mainFilterSection').appendTo('#content');
             $('#selectedDiv').addClass('off');
+            $('#displayedDiv').removeClass('off');
         }
     }
     function refreshDataDisplayIfStale(force) {
@@ -1556,6 +1566,7 @@ var StudyDataPage;
             singleAssayObj = EDDGraphingTools.transformSingleLineItem(dataObj);
             dataSets.push(singleAssayObj);
         });
+        $('#displayedDiv').text(dataPointsDisplayed + " measurements displayed");
         $('#noData').addClass('off');
         remakeMainGraphAreaCalls++;
         uncheckEventHandler(EDDGraphingTools.labels);
@@ -1941,6 +1952,7 @@ var StudyDataPage;
                 .enter().append("g")
                 .attr("class", function (d) {
                 d.lineName = d.lineName.split(' ').join('');
+                d.lineName = d.lineName.split('/').join('');
                 return 'value value-' + d.lineName;
             })
                 .attr("transform", function (d) {
