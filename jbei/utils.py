@@ -1,12 +1,14 @@
 """
 A catch-all module for general utility code that doesn't clearly belong elsewhere.
 """
-from sys import stdout
-import re
-
 import arrow
 import getpass
 import logging
+import re
+
+from six.moves import input as raw_input
+from sys import stdout
+
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ ALPHANUM_REGEX = '[0-9a-fA-F]'
 
 DOCKER_HOST_ENV_VARIABLE = 'DOCKER_HOST'
 
-# WARNING: for best UUID results, prefer using UUID(string) initializer in a try/catch when possible
+# WARNING: for best UUID results, prefer using UUID(string) in a try/catch over regex.
 TYPICAL_UUID_REGEX = (
     r'%(alphanum)s8}\-%(alphanum)s{4}\-%(alphanum)s{4}\-%(alphanum)s{4}\-%(alphanum)s{12}' % {
         'alphanum': ALPHANUM_REGEX})
@@ -33,7 +35,10 @@ PK_OR_TYPICAL_UUID_PATTERN = re.compile(PK_OR_TYPICAL_UUID_REGEX, re.UNICODE)
 # format of user input (e.g. in URLs). This pattern was exhaustively
 # tested against existing ICE entries in JBEI's private ICE instance on 3/31/16.
 TYPICAL_JBEI_ICE_PART_NUMBER_REGEX = r'\s*([A-Z]+_[A-Z]?\d{4,6}[A-Z]?)\s*'
-TYPICAL_JBEI_ICE_PART_NUMBER_PATTERN = re.compile(TYPICAL_JBEI_ICE_PART_NUMBER_REGEX, re.IGNORECASE)
+TYPICAL_JBEI_ICE_PART_NUMBER_PATTERN = re.compile(
+    TYPICAL_JBEI_ICE_PART_NUMBER_REGEX, re.IGNORECASE
+)
+
 
 # colors to help user prompts stand out in the mess of (helpful, but overwhelming) output from this
 # script. See http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
@@ -58,9 +63,10 @@ class UserInputTimer(object):
     """
     def __init__(self, default_format=None):
         """
-        Creates a new UserInputTimer with the time spent waiting for user input initialized to zero.
+        Creates a new UserInputTimer with the time spent waiting for user input initialized to
+        zero.
         :param default_format: the default format for printing prompts to the terminal (see
-        TerminalFormats)
+            TerminalFormats)
         """
         now = arrow.utcnow()
         self._waiting_on_user_delta = now - now
@@ -93,8 +99,8 @@ _SECONDS_PER_HOUR = 3600
 _HOURS_PER_DAY = 24
 _SECONDS_PER_MINUTE = 60
 _SECONDS_PER_MONTH = _SECONDS_PER_HOUR * _HOURS_PER_DAY * 30
-_SECONDS_PER_YEAR = _SECONDS_PER_MONTH * 12   # NOTE: this causes years to have 360 days, but it's
-                                              # consistent / good enough
+# NOTE: this causes years to have 360 days, but it's consistent / good enough
+_SECONDS_PER_YEAR = _SECONDS_PER_MONTH * 12
 _SECONDS_PER_DAY = _SECONDS_PER_HOUR * _HOURS_PER_DAY
 
 
@@ -109,10 +115,10 @@ def to_human_relevant_delta(seconds):
 
     Daylight savings time, leap years, etc are not
     taken into account, months are assumed to have 30 days, and years have 12 months (=360 days).
-    The minimum time increment displayed for any value is milliseconds. The output of this method is
-    intended exclusively for human use, e.g. for displaying task execution time in the GUI and/or
-    logs. If you care about precise formatting of the output, this probably isn't the method for
-    you.
+    The minimum time increment displayed for any value is milliseconds. The output of this method
+    is intended exclusively for human use, e.g. for displaying task execution time in the GUI
+    and/or logs. If you care about precise formatting of the output, this probably isn't the method
+    for you.
 
     Note that the result is designed to be most useful at lower time increments, and probably needs
     additional formatting (e.g. more liberal and/or configurable use of abbreviations and max.
@@ -219,8 +225,8 @@ def session_login(session_auth_class, base_url, application_name, username_arg=N
                   password_arg=None, user_input=None, print_result=True, timeout=None,
                   verify_ssl_cert=True):
     """
-    A helper method to simplify work in gathering user access credentials and attempting to log into
-    a remote service from a terminal-based application. If user credentials are provided,
+    A helper method to simplify work in gathering user access credentials and attempting to log
+    into a remote service from a terminal-based application. If user credentials are provided,
     they're used to attempt to log into the service. If not, or if the login attempt fails, the
     user will be prompted to re-enter credentials on the assumption that they weren't entered
     correctly the first time.
