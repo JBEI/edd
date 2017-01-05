@@ -436,7 +436,7 @@ namespace StudyLines {
         // Update the disclose title
         var text = 'Add New Line';
         if (ids.length > 0) {
-            var text = 'Edit Line' + (ids.length > 1 ? 's' : '');
+            text = 'Edit Line' + (ids.length > 1 ? 's' : '');
         }
 
         form.prop('title', text);

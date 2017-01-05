@@ -136,8 +136,6 @@
 {% block body_postfix %}
 </form>
 
-{# FUN FACT: jQueryUI's "modal" widget actually rips the element you're turning into a modal right out of the DOM and appends it to the end, thus separating it from any form you've declared outside the modal contents.  So, we are forced to create four self-contained forms, even though the page could easily work as one. #}
-
 <div id="editLineModal" class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
     <form action="" method="POST">
         {% csrf_token %}

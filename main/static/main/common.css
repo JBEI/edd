@@ -782,9 +782,7 @@ table.filterCriteriaTable input[type="checkbox"] {
     margin-right: 4px;
     vertical-align: middle;
 }
-div.lastViewed {
-    margin-left: 20px;
-}
+
 div.lastViewed span {
     display: inline-block;
     background-color: white;

@@ -1464,9 +1464,12 @@ var DGSelectAllWidget = (function (_super) {
     DGSelectAllWidget.prototype.updateButtonLabel = function () {
         if (this.anySelected) {
             this.element.setAttribute('value', 'Select None');
+            //disable action buttons
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', false);
         }
         else {
             this.element.setAttribute('value', 'Select All');
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', true);
         }
     };
     DGSelectAllWidget.prototype.clickHandler = function () {
