@@ -32,7 +32,7 @@ from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
-from .importer.experiment_desc import CombinatorialCreationImporter, _build_errors_dict
+from .importer.experiment_desc import CombinatorialCreationImporter
 from .importer.parser import find_parser
 from .importer.table import import_task
 from .export.forms import ExportOptionForm, ExportSelectionForm,  WorklistForm
