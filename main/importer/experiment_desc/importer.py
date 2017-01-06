@@ -1,27 +1,21 @@
 from __future__ import unicode_literals
 
-import json
 import logging
-from collections import OrderedDict
-from collections import defaultdict
 
+from collections import defaultdict, OrderedDict
 from django.conf import settings
 from django.db import transaction
 from io import BytesIO
+from openpyxl import load_workbook
 
-from requests import HTTPError
-
+from .parsers import ExperimentDefFileParser, JsonInputParser
+from .utilities import CombinatorialCreationPerformance, find_existing_strains
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients import IceApi
 from jbei.rest.clients.ice.api import Strain as IceStrain
 from jbei.rest.clients.ice.utils import make_entry_url
-from main.importer.experiment_desc.utilities import find_existing_strains, \
-    CombinatorialCreationPerformance
-from .parsers import JsonInputParser
-from openpyxl import load_workbook
-
-from main.importer.experiment_desc.parsers import ExperimentDefFileParser
 from main.models import Protocol, MetadataType, Strain, Assay, Line
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +27,11 @@ ICE_COMMUNICATION_ERROR = 'ice_communication_error'
 _ALLOW_DUPLICATE_NAMES_DEFAULT = False
 _DRY_RUN_DEFAULT = False
 
-# for safety / for now get repeatable reads within this method, even though writes start much later.
+
+# for safety / for now get repeatable reads within this method, even though writes start much later
 # possibility of long-running transactions as a result, but should be infrequent
 @transaction.atomic(savepoint=False)
-def define_study(input, user, study, is_json, errors, warnings,
+def define_study(stream, user, study, is_json,
                  allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT, dry_run=_DRY_RUN_DEFAULT):
     # TODO: relocate to a Celery task and add related user notifications/context-appropriate
     # error handling following initial testing/deployment.
@@ -60,8 +55,8 @@ def define_study(input, user, study, is_json, errors, warnings,
     :return: A JSON summary string if lines/assays were created successfully,
     raises an Exception otherwise
     """
-    importer = CombinatorialCreationImporter(study, user, errors, warnings)
-    return importer.do_import(input, is_json, allow_duplicate_names, dry_run)
+    importer = CombinatorialCreationImporter(study, user)
+    return importer.do_import(stream, is_json, allow_duplicate_names, dry_run)
 
 
 def _build_errors_dict(errors, warnings, val=None):
@@ -77,15 +72,15 @@ def _build_errors_dict(errors, warnings, val=None):
 class CombinatorialCreationImporter(object):
     REQUIRE_STRAINS = True
 
-    def __init__(self, study, user, errors, warnings):
+    def __init__(self, study, user):
 
         self.performance = CombinatorialCreationPerformance()
-        self.errors = errors
-        self.warnings = warnings
+        self.errors = defaultdict(list)
+        self.warnings = defaultdict(list)
 
-        ############################################################################################
+        ###########################################################################################
         # Gather context from EDD's database
-        ############################################################################################
+        ###########################################################################################
 
         # TODO: these should be queried separately when this code gets relocated to a Celery task
         self.user = user
@@ -95,27 +90,36 @@ class CombinatorialCreationImporter(object):
         protocols_qs = Protocol.objects.all()
         self.protocols_by_pk = {protocol.pk: protocol for protocol in protocols_qs}
 
-        # build up dictionaries of Line and Assay metadata types with unique names (guaranteed by DB
-        # constraints)
-        line_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.LINE)  # TODO: I18N
-        self.line_metadata_types_by_pk = {meta_type.pk: meta_type for meta_type in line_metadata_qs}
-        assay_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.ASSAY)  # TODO: I18N
+        # build up dictionaries of Line and Assay metadata types with unique names (guaranteed by
+        # DB constraints)
+        # TODO: I18N
+        line_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.LINE)
+        self.line_metadata_types_by_pk = {
+            meta_type.pk: meta_type
+            for meta_type in line_metadata_qs
+        }
+        # TODO: I18N
+        assay_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.ASSAY)
 
-        self.assay_metadata_types_by_pk = {meta_type.pk: meta_type for meta_type in
-                                           assay_metadata_qs}
+        self.assay_metadata_types_by_pk = {
+            meta_type.pk: meta_type
+            for meta_type in assay_metadata_qs
+        }
         self.performance.end_context_queries()
 
     def do_import(self, input_data, is_json, allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
                   dry_run=_DRY_RUN_DEFAULT):
         """
-        Performs the import, or raises an Exception if an unrecoverable error occurred
+        Performs the import, or raises an Exception if an unrecoverable error occurred.
+
         :return: a json dict with a summary of import results (on success only)
         """
-        ############################################################################################
+
+        ###########################################################################################
         # Parse / validate the input against metadata defined in the database
-        ############################################################################################
-        # Note: it would be more memory efficient to perform creation after reading each line of the
-        # file, but that's not likely to be a problem. Can do that optimization later after
+        ###########################################################################################
+        # Note: it would be more memory efficient to perform creation after reading each line of
+        # the file, but that's not likely to be a problem. Can do that optimization later after
         # enforcing a good separation of concerns with this general layout.
         protocols_by_pk = self.protocols_by_pk
         line_metadata_types_by_pk = self.line_metadata_types_by_pk
@@ -143,8 +147,8 @@ class CombinatorialCreationImporter(object):
             self.errors['no_inputs'] = 'No line description inputs were read'
 
         # if there were any file parse errors, return helpful output before attempting any
-        # database insertions. Note: returning normally causes the transaction to commit, but that's
-        # ok here since
+        # database insertions. Note: returning normally causes the transaction to commit, but that
+        # is ok here since
         if errors:
             return _build_errors_dict(self.errors, self.warnings)
 
@@ -152,14 +156,15 @@ class CombinatorialCreationImporter(object):
             return self._define_study(combinatorial_inputs=line_def_inputs,
                                       allow_duplicate_names=allow_duplicate_names, dry_run=dry_run)
 
-    def _define_study(self, combinatorial_inputs, allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
+    def _define_study(self, combinatorial_inputs,
+                      allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
                       dry_run=_DRY_RUN_DEFAULT):
         """
-        Queries EDD and ICE to verify that the required ICE strains have an entry in EDD's database.
-        If not, creates them.  Once strains are created, combinatorially creates lines and assays
-        within the study as specified by combinatorial_inputs.
+        Queries EDD and ICE to verify that the required ICE strains have an entry in EDD's
+        database. If not, creates them.  Once strains are created, combinatorially creates lines
+        and assays within the study as specified by combinatorial_inputs.
         :return: A JSON summary string that summarizes results of the attempted line/assay/strain
-        creation
+            creation
         :raise Exception: if an unexpected error occurs.
         """
 
@@ -172,13 +177,13 @@ class CombinatorialCreationImporter(object):
         user = self.user
         study = self.study
 
-        # TODO: to support JSON with possible mixed known/unknown strains for the combinatorial GUI,
-        # test whether input resulted from JSON, then skip initial part number lookup for anything
-        # that's an integer. Maybe there's a better solution?
+        # TODO: to support JSON with possible mixed known/unknown strains for the combinatorial
+        # GUI, test whether input resulted from JSON, then skip initial part number lookup for
+        # anything that is an integer. Maybe there's a better solution?
 
-        ############################################################################################
+        ###########################################################################################
         # Search ICE for entries corresponding to the part numbers in the file
-        ############################################################################################
+        ###########################################################################################
         # get an ICE connection to look up strain UUID's from part number user input
         ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user.email),
                      verify_ssl_cert=settings.VERIFY_ICE_CERT)
@@ -200,9 +205,9 @@ class CombinatorialCreationImporter(object):
         self.get_ice_entries(ice, ice_entries_dict)
         performance.end_ice_search(unique_part_number_count)
 
-        ############################################################################################
+        ###########################################################################################
         # Search EDD for existing strains using UUID's queried from ICE
-        ############################################################################################
+        ###########################################################################################
         # keep parts in same order as input to allow resume following an unanticipated error
         existing_edd_strains = OrderedDict()
         non_existent_edd_strains = []
@@ -214,28 +219,28 @@ class CombinatorialCreationImporter(object):
                               strains_by_part_number, non_existent_edd_strains, errors)
         performance.end_edd_strain_search(strain_search_count)
 
-        ############################################################################################
-        # Create any missing strains in EDD's database, but go ahead with caching strain data in EDD
-        # since it's likely to be used below or referenced again (even if this is a dry run)
-        ############################################################################################
+        ###########################################################################################
+        # Create any missing strains in EDD's database, but go ahead with caching strain data in
+        # EDD since it's likely to be used below or referenced again (even if this is a dry run)
+        ###########################################################################################
         self.create_missing_strains(non_existent_edd_strains, strains_by_part_number)
         strains_by_pk = {strain.pk: strain for strain in strains_by_part_number.values()}
         performance.end_edd_strain_creation(len(non_existent_edd_strains))
 
-        ############################################################################################
-        # Replace part-number-based strain references in the input with local primary keys usable to
-        # create Line entries in EDD's database
-        ############################################################################################
+        ###########################################################################################
+        # Replace part-number-based strain references in the input with local primary keys usable
+        # to create Line entries in EDD's database
+        ###########################################################################################
         for input_set in combinatorial_inputs:
             input_set.replace_strain_part_numbers_with_pks(strains_by_part_number, errors)
             print('###### Strain IDs: #######')
 
-        ############################################################################################
+        ###########################################################################################
         # Compute line/assay names if needed as output for a dry run, or if needed to proactively
         # check for duplicates
-        ############################################################################################
-        # For maintenance: Note that line names may contain strain information that has to be looked
-        # up above before the name can be determined
+        ###########################################################################################
+        # For maintenance: Note that line names may contain strain information that has to be
+        # looked up above before the name can be determined
         planned_names = []
         if dry_run or (not allow_duplicate_names):
             planned_names = self._compute_and_check_names(combinatorial_inputs, strains_by_pk,
@@ -254,9 +259,9 @@ class CombinatorialCreationImporter(object):
         if errors:
             return _build_errors_dict(errors, warnings)
 
-        ############################################################################################
+        ###########################################################################################
         # Create requested lines and assays in the study
-        ############################################################################################
+        ###########################################################################################
         created_lines_list = []
         total_assay_count = 0
         for input_set in combinatorial_inputs:
@@ -271,9 +276,9 @@ class CombinatorialCreationImporter(object):
                 for protocol, assays_list in protocol_to_assays_list.items():
                     total_assay_count += len(assays_list)
 
-        ############################################################################################
+        ###########################################################################################
         # Package up and return results
-        ############################################################################################
+        ###########################################################################################
         total_line_count = len(created_lines_list)
         performance.overall_end()
 
@@ -309,8 +314,8 @@ class CombinatorialCreationImporter(object):
         assay_metadata_types = self.assay_metadata_types_by_pk
         study = self.study
 
-        # Check for uniqueness of planned names so that overlaps can be flagged as an error (e.g. as
-        # possible in the combinatorial GUI mockup attached to EDD-257)
+        # Check for uniqueness of planned names so that overlaps can be flagged as an error (e.g.
+        # as possible in the combinatorial GUI mockup attached to EDD-257)
         unique_input_line_names = set()
         protocol_to_unique_input_assay_names = defaultdict(dict)
         duplicated_new_line_names = set()
@@ -357,9 +362,6 @@ class CombinatorialCreationImporter(object):
                         else:
                             unique_assay_names[assay_name] = True
 
-        print('All planned line names: %s' % json.dumps(all_planned_names))  # TODO: remove debug
-        print('Duplicate line names: %s' % str(duplicated_new_line_names))
-
         # if we're allowing duplicate names, skip further checking / DB queries for duplicates
         errors = self.errors
         if allow_duplicate_names:
@@ -376,8 +378,8 @@ class CombinatorialCreationImporter(object):
         if duplicated_new_line_names or protocol_to_duplicate_new_assay_names:
             return all_planned_names
 
-        # query the database in bulk for any existing lines in the study whose names are the same as
-        # lines in the input
+        # query the database in bulk for any existing lines in the study whose names are the same
+        # as lines in the input
         unique_line_names_list = list(unique_input_line_names)
         existing_lines = Line.objects.filter(study__pk=study.pk, name__in=unique_line_names_list)
 
@@ -412,8 +414,8 @@ class CombinatorialCreationImporter(object):
         # just do it in a loop. EDD's Strain uses multi-table inheritance, which prevents bulk
         # creation
         for ice_entry in non_existent_edd_strains:
-            # for now, only allow strain creation in EDD -- non-strains are not currently supported.
-            # see EDD-239.
+            # for now, only allow strain creation in EDD -- non-strains are not currently
+            # supported. see EDD-239.
             if not isinstance(ice_entry, IceStrain):
 
                 non_strains = errors.get(NON_STRAIN_ICE_ENTRY, [])
@@ -432,13 +434,13 @@ class CombinatorialCreationImporter(object):
     def get_ice_entries(self, ice, part_number_to_part_dict):
         """
         Queries ICE for parts with the provided (locally-unique) numbers, logging errors for any
-        parts that weren't found into the errors parameter. Note that we're purposefully trading off
-        readability for a guarantee of
-        multi-deployment uniqueness, though as in use at JBEI the odds are still pretty good that a part
-        number is sufficient to uniquely identify an ICE entry.
-        :param part_number_to_part_dict: a dictionary whose keys are part numbers to be queried from
-        ICE. Existing entries will be replaced with the Entries read from ICE, or keys will be removed
-        for those that aren't found in ICE.
+        parts that weren't found into the errors parameter. Note that we're purposefully trading
+        off readability for a guarantee of multi-deployment uniqueness, though as in use at JBEI
+        the odds are still pretty good that a part number is sufficient to uniquely identify an ICE
+        entry.
+        :param part_number_to_part_dict: a dictionary whose keys are part numbers to be queried
+            from ICE. Existing entries will be replaced with the Entries read from ICE, or keys
+            will be removed for those that aren't found in ICE.
         """
         errors = self.errors
 
@@ -454,14 +456,15 @@ class CombinatorialCreationImporter(object):
                 # had "JBX_*" part numbers that matched their numeric ID, but this isn't always the
                 # case!
                 if found_entry.part_id != local_ice_part_number:
-                    logger.error("Couldn't locate ICE entry \"%(csv_part_number)s\" "
-                                 "(#%(list_position)d in the file) by part number. An ICE entry was "
-                                 "found with numeric ID %(numeric_id)s, but its part number "
-                                 "(%(part_number)s) didn't match the search part number" % {
-                                       'csv_part_number': local_ice_part_number,
-                                       'list_position': list_position, 'numeric_id': found_entry.id,
-                                       'part_number': found_entry.part_id
-                                   })
+                    logger.error(
+                        "Couldn't locate ICE entry \"%(csv_part_number)s\" "
+                        "(#%(list_position)d in the file) by part number. An ICE entry was "
+                        "found with numeric ID %(numeric_id)s, but its part number "
+                        "(%(part_number)s) didn't match the search part number" % {
+                            'csv_part_number': local_ice_part_number,
+                            'list_position': list_position, 'numeric_id': found_entry.id,
+                            'part_number': found_entry.part_id
+                        })
                     FOUND_PART_NUMBER_DOESNT_MATCH_QUERY = 'found_part_number_mismatch'
                     mismatch_part_numbers = errors[FOUND_PART_NUMBER_DOESNT_MATCH_QUERY]
                     if not mismatch_part_numbers:

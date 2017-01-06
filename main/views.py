@@ -32,7 +32,7 @@ from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
-from .importer.experiment_desc import define_study, _build_errors_dict
+from .importer.experiment_desc import CombinatorialCreationImporter, _build_errors_dict
 from .importer.parser import find_parser
 from .importer.table import import_task
 from .export.forms import ExportOptionForm, ExportSelectionForm,  WorklistForm
@@ -1175,12 +1175,12 @@ def study_import_table(request, pk=None, slug=None):
 @ensure_csrf_cookie
 def study_define(request, pk=None, slug=None):
     """
-    View for defining a study's lines / assays from a template file.
-    On success, renders the study page, with a summary of the created lines/assays. On failure,
-    returns a JSON string with a description of the error message.
+    View for defining a study's lines / assays from a template file. On success, renders the study
+    page, with a summary of the created lines/assays. On failure, returns a JSON string with a
+    description of the error message.
     """
 
-    study = load_study(request, pk=pk, slug=slug, permission_type=[StudyPermission.WRITE, ])
+    study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
 
     if request.method != "POST":
         raise MethodNotAllowed(request.method)
@@ -1196,30 +1196,23 @@ def study_define(request, pk=None, slug=None):
     else:
         logger.info('Parsing request body as JSON input')
 
-    # collect predictable sources of error so we can still return useful feedback to the client
-    # even if an exception caused the transaction to abort
-    errors = {}
-    warnings = {}
-    json_response_dict = None
-
+    importer = CombinatorialCreationImporter(study, user)
     try:
-        json_response_dict = define_study(request, user, study, not is_excel_file, errors,
-                                          warnings, allow_duplicate_names, dry_run)
-
-        success = dry_run or 'errors' not in json_response_dict.keys()
-        status = 200 if success else 400
-
-    except RuntimeError as rte:
-        logger.exception('Exception creating study lines/assays')
-        key = 'exceptions'
-        exceptions = errors.get(key, [])
-        if not exceptions:
-            errors[key] = exceptions
-        exceptions.append(str(rte))
-        json_response_dict = _build_errors_dict(errors, warnings)
-        status = 500
-
-    return JsonResponse(json_response_dict, status=status)
+        with transaction.atomic(savepoint=False):
+            result = importer.do_import(request, not is_excel_file, allow_duplicate_names, dry_run)
+        if not dry_run or 'errors' in result.keys():
+            return JsonResponse(result, status=400)
+        return JsonResponse(result)
+    except RuntimeError as e:
+        logger.exception('Failed to import study definition')
+        importer.errors['exceptions'].append(e)
+        return JsonResponse(
+            {
+                'errors': importer.errors,
+                'warnings': importer.warnings,
+            },
+            status=500
+        )
 
 
 # /utilities/parsefile/
