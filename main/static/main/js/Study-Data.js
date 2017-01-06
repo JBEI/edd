@@ -353,10 +353,10 @@ var StudyDataPage;
             // Walk down the filter widget list.  If we encounter one whose collective checkbox
             // state has changed since we last made this walk, then a redraw is required. Note that
             // we should not skip this loop, even if we already know a redraw is required, since the
-            // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
+            // call to anyFilterSettingsChangedSinceLastInquiry sets internal state in the filter
             // widgets that we will use next time around.
             $.each(this.allFilters, function (i, filter) {
-                if (filter.anyCheckboxesChangedSinceLastInquiry()) {
+                if (filter.anyFilterSettingsChangedSinceLastInquiry()) {
                     redraw = true;
                 }
             });
@@ -420,7 +420,7 @@ var StudyDataPage;
             });
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
             this.searchBox = sBox;
-            // We need two clear iccons for the two versions of the header
+            // We need two clear icons for the two versions of the header (with search and without)
             var searchClearIcon = $("<span>").addClass('filterClearIcon');
             this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(searchClearIcon).append(sBox)[0];
             this.clearIcons = clearIcon.add(searchClearIcon); // Consolidate the two JQuery elements into one
@@ -437,6 +437,12 @@ var StudyDataPage;
                 .attr({ 'cellpadding': 0, 'cellspacing': 0 })
                 .append(this.tableBodyElement = $("<tbody>")[0]);
         };
+        // By calling updateUniqueIndexesHash, we go through the records and find all the unique
+        // values in them (for the criteria this particular filter is based on.)
+        // Next we create an inverted version of that data structure, so that the unique identifiers
+        // we've created map to the values they represent, as well as an array
+        // of the unique identifiers sorted by the values.  These are what we'll use to construct
+        // the rows of criteria visible in the filter's UI.
         GenericFilterSection.prototype.populateFilterFromRecordIDs = function (ids) {
             var crSet, cHash;
             this.updateUniqueIndexesHash(ids);
@@ -456,17 +462,19 @@ var StudyDataPage;
             this.uniqueValues = cHash;
             this.uniqueValuesOrder = crSet;
         };
-        // In this function are running through the given list of measurement IDs and examining
-        // their records and related records, locating the particular field we are interested in,
-        // and creating a list of all the unique values for that field.  As we go, we mark each
-        // unique value with an integer UID, and construct a hash resolving each record to one (or
-        // possibly more) of those integer UIDs.  This prepares us for quick filtering later on.
-        // (This generic filter does nothing, so we leave these structures blank.)
+        // In this function (or at least the subclassed versions of it) are running through the given
+        // list of measurement (or assay) IDs and examining their records and related records,
+        // locating the particular field we are interested in, and creating a list of all the
+        // unique values for that field.  As we go, we mark each unique value with an integer UID,
+        // and construct a hash resolving each record to one (or possibly more) of those integer UIDs.
+        // This prepares us for quick filtering later on.
+        // (This generic filter does nothing, leaving these structures blank.)
         GenericFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             this.filterHash = this.filterHash || {};
             this.uniqueIndexes = this.uniqueIndexes || {};
         };
-        // If we didn't come up with 2 or more criteria, there is no point in displaying the filter.
+        // If we didn't come up with 2 or more criteria, there is no point in displaying the filter,
+        // since it doesn't represent a meaningful choice.
         GenericFilterSection.prototype.isFilterUseful = function () {
             if (this.uniqueValuesOrder.length < 2) {
                 return false;
@@ -479,6 +487,7 @@ var StudyDataPage;
         GenericFilterSection.prototype.detach = function () {
             $(this.filterColumnDiv).detach();
         };
+        // Used to apply mild alternate striping to the filters so they stand out a bit from each other
         GenericFilterSection.prototype.applyBackgroundStyle = function (darker) {
             $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
             $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
@@ -486,6 +495,9 @@ var StudyDataPage;
         // Runs through the values in uniqueValuesOrder, adding a checkbox and label for each
         // filtering value represented.  If there are more than 15 values, the filter gets
         // a search box and scrollbar.
+        // The checkbox, and the table row that encloses the checkbox and label, are saved in
+        // a dictionary mapped by the unique value they represent, so they can be re-used if the
+        // filter is rebuilt (i.e. if populateTable is called again.) 
         GenericFilterSection.prototype.populateTable = function () {
             var _this = this;
             var fCol = $(this.filterColumnDiv);
@@ -542,9 +554,18 @@ var StudyDataPage;
             // even if the user isn't hitting the label or the checkbox itself.
             Dragboxes.initTable(this.filteringTable);
         };
-        // Returns true if any of the checkboxes show a different state than when this function was
-        // last called
-        GenericFilterSection.prototype.anyCheckboxesChangedSinceLastInquiry = function () {
+        // Returns true if any of the UI (checkboxes, search field) shows a different state than
+        // when this function was last called.
+        // This is accomplished by keeping a dictionary - previousCheckboxState - that is organized by
+        // the same unique criteria values as the checkboxes.
+        // We build a relpacement for this dictionary, and compare its contents with the old one.
+        // Each checkbox can have one of three prior states, each represented in the dictionary by a letter:
+        // "C" - checked, "U" - unchecked, "N" - doesn't exist (in the currently visible set.)
+        // We also compare the current content of the search box with the old content.
+        // Note: Regardless of where or whether we find a difference, it is important that we finish
+        // building the replacement version of previousCheckboxState.
+        // So though it's tempting to exit early from these loops, it would make a mess.
+        GenericFilterSection.prototype.anyFilterSettingsChangedSinceLastInquiry = function () {
             var _this = this;
             var changed = false, currentCheckboxState = {}, v = $(this.searchBox).val();
             this.anyCheckboxesChecked = false;
@@ -586,9 +607,9 @@ var StudyDataPage;
         };
         // Takes a set of record IDs, and if any checkboxes in the filter's UI are checked,
         // the ID set is narrowed down to only those records that contain the checked values.
-        // Checkboxes whose values are not represented anywhere in the given IDs are temporarily disabled
-        // and sorted to the bottom of the list, visually indicating to a user that those values are not
-        // available for further filtering.
+        // In addition, checkboxes whose values are not represented anywhere in the incoming IDs
+        // are temporarily disabled and sorted to the bottom of the list, visually indicating
+        // to a user that those values are not available for further filtering.
         // The narrowed set of IDs is then returned, for use by the next filter.
         GenericFilterSection.prototype.applyProgressiveFiltering = function (ids) {
             var _this = this;
@@ -613,30 +634,32 @@ var StudyDataPage;
                 }
             }
             var valuesVisiblePreFiltering = {};
-            var indexIsVisible = function (index) {
-                var match = true, text;
-                if (useSearchBox) {
-                    text = _this.uniqueValues[index].toLowerCase();
-                    match = queryStrs.some(function (v) {
-                        return text.length >= v.length && text.indexOf(v) >= 0;
-                    });
-                }
-                if (match) {
-                    valuesVisiblePreFiltering[index] = 1;
-                    if ((_this.previousCheckboxState[_this.uniqueValues[index]] === 'C') || !_this.anyCheckboxesChecked) {
-                        return true;
-                    }
-                }
-                return false;
-            };
             idsPostFiltering = ids.filter(function (id) {
+                var pass = false;
                 // If we have filtering data for this id, use it.
                 // If we don't, the id probably belongs to some other measurement category,
                 // so we ignore it.
                 if (_this.filterHash[id]) {
-                    return _this.filterHash[id].some(indexIsVisible);
+                    // If any of this ID's criteria are checked, this ID passes the filter.
+                    // Note that we cannot optimize to use '.some' here becuase we need to
+                    // loop through all the criteria to set valuesVisiblePreFiltering.
+                    _this.filterHash[id].forEach(function (index) {
+                        var match = true, text;
+                        if (useSearchBox) {
+                            text = _this.uniqueValues[index].toLowerCase();
+                            match = queryStrs.some(function (v) {
+                                return text.length >= v.length && text.indexOf(v) >= 0;
+                            });
+                        }
+                        if (match) {
+                            valuesVisiblePreFiltering[index] = 1;
+                            if ((_this.previousCheckboxState[_this.uniqueValues[index]] === 'C') || !_this.anyCheckboxesChecked) {
+                                pass = true;
+                            }
+                        }
+                    });
                 }
-                return false;
+                return pass;
             });
             var rowsToAppend = [];
             this.uniqueValuesOrder.forEach(function (crID) {
