@@ -90,7 +90,7 @@ var StudyDataPage;
             this.geneFilters = [];
             this.geneFilters.push(new GeneFilterSection());
             this.measurementFilters = [];
-            this.measurementFilters.push(new MeasurementFilterSection());
+            this.measurementFilters.push(new GeneralMeasurementFilterSection());
             // All filter sections are constructed; now need to call configure() on all
             this.allFilters = [].concat(assayFilters, this.metaboliteFilters, this.proteinFilters, this.geneFilters, this.measurementFilters);
             this.allFilters.forEach(function (section) { return section.configure(); });
@@ -462,7 +462,7 @@ var StudyDataPage;
             this.uniqueValues = cHash;
             this.uniqueValuesOrder = crSet;
         };
-        // In this function (or at least the subclassed versions of it) are running through the given
+        // In this function (or at least the subclassed versions of it) we are running through the given
         // list of measurement (or assay) IDs and examining their records and related records,
         // locating the particular field we are interested in, and creating a list of all the
         // unique values for that field.  As we go, we mark each unique value with an integer UID,
@@ -525,11 +525,16 @@ var StudyDataPage;
                     colors[EDDData.Lines[key].name] = colorObj[key];
                 }
             }
+            // For each value, if a table row isn't already defined, build one.
+            // There's extra code in here to assign colors to rows in the Lines filter
+            // which should probably be isolated in a subclass.
             this.uniqueValuesOrder.forEach(function (uniqueId) {
                 var cboxName, cell, p, q, r;
                 cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
                 var row = _this.tableRows[_this.uniqueValues[uniqueId]];
                 if (!row) {
+                    // No need to append a new row in a separate call:
+                    // insertRow() creates, and appends, and returns one.
                     _this.tableRows[_this.uniqueValues[uniqueId]] = _this.tableBodyElement.insertRow();
                     cell = _this.tableRows[_this.uniqueValues[uniqueId]].insertCell();
                     _this.checkboxes[_this.uniqueValues[uniqueId]] = $("<input type='checkbox'>")
@@ -552,10 +557,12 @@ var StudyDataPage;
             });
             // TODO: Drag select is twitchy - clicking a table cell background should check the box,
             // even if the user isn't hitting the label or the checkbox itself.
+            // Fixing this may mean adding additional code to the mousedown/mouseover handler for the
+            // whole table (currently in StudyDataPage.prepareIt()).
             Dragboxes.initTable(this.filteringTable);
         };
-        // Returns true if any of the UI (checkboxes, search field) shows a different state than
-        // when this function was last called.
+        // Returns true if any of this filter's UI (checkboxes, search field)
+        // shows a different state than when this function was last called.
         // This is accomplished by keeping a dictionary - previousCheckboxState - that is organized by
         // the same unique criteria values as the checkboxes.
         // We build a relpacement for this dictionary, and compare its contents with the old one.
@@ -661,6 +668,7 @@ var StudyDataPage;
                 }
                 return pass;
             });
+            // Apply enabled/disabled status and ordering:
             var rowsToAppend = [];
             this.uniqueValuesOrder.forEach(function (crID) {
                 var checkbox = _this.checkboxes[_this.uniqueValues[crID]], row = _this.tableRows[_this.uniqueValues[crID]], show = !!valuesVisiblePreFiltering[crID];
@@ -673,10 +681,12 @@ var StudyDataPage;
                     rowsToAppend.push(row);
                 }
             });
-            // Now, append all the rows we disabled, so they go to the bottom of the table
+            // Append all the rows we disabled, as a last step,
+            // so they go to the bottom of the table.
             rowsToAppend.forEach(function (row) { return _this.tableBodyElement.appendChild(row); });
             return idsPostFiltering;
         };
+        // A few utility functions:
         GenericFilterSection.prototype._assayIdToAssay = function (assayId) {
             return EDDData.Assays[assayId];
         };
@@ -692,12 +702,12 @@ var StudyDataPage;
                 return EDDData.Protocols[assay.pid];
             return undefined;
         };
-        GenericFilterSection.prototype.getIdMapToValues = function () {
-            return function () { return []; };
-        };
         return GenericFilterSection;
     }());
     StudyDataPage.GenericFilterSection = GenericFilterSection;
+    // One of the highest-level filters: Strain.
+    // Note that an Assay's Line can have more than one Strain assigned to it,
+    // which is an example of why 'this.filterHash' is built with arrays.
     var StrainFilterSection = (function (_super) {
         __extends(StrainFilterSection, _super);
         function StrainFilterSection() {
@@ -726,6 +736,8 @@ var StudyDataPage;
         return StrainFilterSection;
     }(GenericFilterSection));
     StudyDataPage.StrainFilterSection = StrainFilterSection;
+    // Just as with the Strain filter, an Assay's Line can have more than one
+    // Carbon Source assigned to it.
     var CarbonSourceFilterSection = (function (_super) {
         __extends(CarbonSourceFilterSection, _super);
         function CarbonSourceFilterSection() {
@@ -754,6 +766,7 @@ var StudyDataPage;
         return CarbonSourceFilterSection;
     }(GenericFilterSection));
     StudyDataPage.CarbonSourceFilterSection = CarbonSourceFilterSection;
+    // A filter for the 'Carbon Source Labeling' field for each Assay's Line
     var CarbonLabelingFilterSection = (function (_super) {
         __extends(CarbonLabelingFilterSection, _super);
         function CarbonLabelingFilterSection() {
@@ -782,6 +795,7 @@ var StudyDataPage;
         return CarbonLabelingFilterSection;
     }(GenericFilterSection));
     StudyDataPage.CarbonLabelingFilterSection = CarbonLabelingFilterSection;
+    // A filter for the name of each Assay's Line
     var LineNameFilterSection = (function (_super) {
         __extends(LineNameFilterSection, _super);
         function LineNameFilterSection() {
@@ -806,6 +820,7 @@ var StudyDataPage;
         return LineNameFilterSection;
     }(GenericFilterSection));
     StudyDataPage.LineNameFilterSection = LineNameFilterSection;
+    // A filter for the Protocol of each Assay
     var ProtocolFilterSection = (function (_super) {
         __extends(ProtocolFilterSection, _super);
         function ProtocolFilterSection() {
@@ -830,6 +845,7 @@ var StudyDataPage;
         return ProtocolFilterSection;
     }(GenericFilterSection));
     StudyDataPage.ProtocolFilterSection = ProtocolFilterSection;
+    // A filter for the name of each Assay
     var AssayFilterSection = (function (_super) {
         __extends(AssayFilterSection, _super);
         function AssayFilterSection() {
@@ -854,6 +870,10 @@ var StudyDataPage;
         return AssayFilterSection;
     }(GenericFilterSection));
     StudyDataPage.AssayFilterSection = AssayFilterSection;
+    // A class defining some additional logic for metadata-type filters,
+    // meant to be subclassed.  Note how we pass in the particular metadata we
+    // are constructing this filter for, in the constructor.
+    // Unlike the other filters, we will be instantiating more than one of these.
     var MetaDataFilterSection = (function (_super) {
         __extends(MetaDataFilterSection, _super);
         function MetaDataFilterSection(metaDataID) {
@@ -913,6 +933,8 @@ var StudyDataPage;
         return AssayMetaDataFilterSection;
     }(MetaDataFilterSection));
     StudyDataPage.AssayMetaDataFilterSection = AssayMetaDataFilterSection;
+    // These remaining filters work on Measurement IDs rather than Assay IDs.
+    // A filter for the compartment of each Metabolite.
     var MetaboliteCompartmentFilterSection = (function (_super) {
         __extends(MetaboliteCompartmentFilterSection, _super);
         function MetaboliteCompartmentFilterSection() {
@@ -939,19 +961,44 @@ var StudyDataPage;
         return MetaboliteCompartmentFilterSection;
     }(GenericFilterSection));
     StudyDataPage.MetaboliteCompartmentFilterSection = MetaboliteCompartmentFilterSection;
+    // A generic filter for Measurements, meant to be subclassed.
+    // It introduces a 'loadPending' attribute, which is used to make the filter
+    // appear in the UI even if it has no data, because we anticipate data to eventually
+    // appear in it.
+    //      The idea is, we know whether to instantiate a given subclass of this filter by
+    // looking at the measurement count for each Assay, which is given to us in the first
+    // chunk of data from the server.  So, we instantiate it, then it appears in a
+    // 'load pending' state until actual measurement values are received from the server.
     var MeasurementFilterSection = (function (_super) {
         __extends(MeasurementFilterSection, _super);
         function MeasurementFilterSection() {
             _super.apply(this, arguments);
         }
-        MeasurementFilterSection.prototype.configure = function () {
+        MeasurementFilterSection.prototype.configure = function (title, shortLabel) {
             this.loadPending = true;
-            _super.prototype.configure.call(this, 'Measurement', 'mm');
+            _super.prototype.configure.call(this, title, shortLabel);
         };
+        // Overriding to make use of loadPending.
         MeasurementFilterSection.prototype.isFilterUseful = function () {
             return this.loadPending || this.uniqueValuesOrder.length > 0;
         };
-        MeasurementFilterSection.prototype.updateUniqueIndexesHash = function (mIds) {
+        return MeasurementFilterSection;
+    }(GenericFilterSection));
+    StudyDataPage.MeasurementFilterSection = MeasurementFilterSection;
+    // A filter for the names of General Measurements.
+    var GeneralMeasurementFilterSection = (function (_super) {
+        __extends(GeneralMeasurementFilterSection, _super);
+        function GeneralMeasurementFilterSection() {
+            _super.apply(this, arguments);
+        }
+        GeneralMeasurementFilterSection.prototype.configure = function () {
+            this.loadPending = true;
+            _super.prototype.configure.call(this, 'Measurement', 'mm');
+        };
+        GeneralMeasurementFilterSection.prototype.isFilterUseful = function () {
+            return this.loadPending || this.uniqueValuesOrder.length > 0;
+        };
+        GeneralMeasurementFilterSection.prototype.updateUniqueIndexesHash = function (mIds) {
             var _this = this;
             this.uniqueIndexes = {};
             this.filterHash = {};
@@ -969,21 +1016,17 @@ var StudyDataPage;
             });
             this.loadPending = false;
         };
-        return MeasurementFilterSection;
-    }(GenericFilterSection));
-    StudyDataPage.MeasurementFilterSection = MeasurementFilterSection;
+        return GeneralMeasurementFilterSection;
+    }(MeasurementFilterSection));
+    StudyDataPage.GeneralMeasurementFilterSection = GeneralMeasurementFilterSection;
+    // A filter for the names of Metabolite Measurements.
     var MetaboliteFilterSection = (function (_super) {
         __extends(MetaboliteFilterSection, _super);
         function MetaboliteFilterSection() {
             _super.apply(this, arguments);
         }
         MetaboliteFilterSection.prototype.configure = function () {
-            this.loadPending = true;
             _super.prototype.configure.call(this, 'Metabolite', 'me');
-        };
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        MetaboliteFilterSection.prototype.isFilterUseful = function () {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
         };
         MetaboliteFilterSection.prototype.updateUniqueIndexesHash = function (amIDs) {
             var _this = this;
@@ -1004,20 +1047,16 @@ var StudyDataPage;
             this.loadPending = false;
         };
         return MetaboliteFilterSection;
-    }(GenericFilterSection));
+    }(MeasurementFilterSection));
     StudyDataPage.MetaboliteFilterSection = MetaboliteFilterSection;
+    // A filter for the names of Protein Measurements.
     var ProteinFilterSection = (function (_super) {
         __extends(ProteinFilterSection, _super);
         function ProteinFilterSection() {
             _super.apply(this, arguments);
         }
         ProteinFilterSection.prototype.configure = function () {
-            this.loadPending = true;
             _super.prototype.configure.call(this, 'Protein', 'pr');
-        };
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        ProteinFilterSection.prototype.isFilterUseful = function () {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
         };
         ProteinFilterSection.prototype.updateUniqueIndexesHash = function (amIDs) {
             var _this = this;
@@ -1038,20 +1077,16 @@ var StudyDataPage;
             this.loadPending = false;
         };
         return ProteinFilterSection;
-    }(GenericFilterSection));
+    }(MeasurementFilterSection));
     StudyDataPage.ProteinFilterSection = ProteinFilterSection;
+    // A filter for the names of Gene Measurements.
     var GeneFilterSection = (function (_super) {
         __extends(GeneFilterSection, _super);
         function GeneFilterSection() {
             _super.apply(this, arguments);
         }
         GeneFilterSection.prototype.configure = function () {
-            this.loadPending = true;
             _super.prototype.configure.call(this, 'Gene', 'gn');
-        };
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        GeneFilterSection.prototype.isFilterUseful = function () {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
         };
         GeneFilterSection.prototype.updateUniqueIndexesHash = function (amIDs) {
             var _this = this;
@@ -1072,7 +1107,7 @@ var StudyDataPage;
             this.loadPending = false;
         };
         return GeneFilterSection;
-    }(GenericFilterSection));
+    }(MeasurementFilterSection));
     StudyDataPage.GeneFilterSection = GeneFilterSection;
     // Called when the page loads.
     function prepareIt() {

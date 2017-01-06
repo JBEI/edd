@@ -164,7 +164,7 @@ namespace StudyDataPage {
             this.geneFilters.push(new GeneFilterSection());
 
             this.measurementFilters = [];
-            this.measurementFilters.push(new MeasurementFilterSection());
+            this.measurementFilters.push(new GeneralMeasurementFilterSection());
 
             // All filter sections are constructed; now need to call configure() on all
             this.allFilters = [].concat(
@@ -602,7 +602,7 @@ namespace StudyDataPage {
             this.uniqueValuesOrder = crSet;
         }
 
-        // In this function (or at least the subclassed versions of it) are running through the given
+        // In this function (or at least the subclassed versions of it) we are running through the given
         // list of measurement (or assay) IDs and examining their records and related records,
         // locating the particular field we are interested in, and creating a list of all the
         // unique values for that field.  As we go, we mark each unique value with an integer UID,
@@ -673,12 +673,17 @@ namespace StudyDataPage {
                 }
             }
 
+            // For each value, if a table row isn't already defined, build one.
+            // There's extra code in here to assign colors to rows in the Lines filter
+            // which should probably be isolated in a subclass.
             this.uniqueValuesOrder.forEach((uniqueId: number): void => {
 
                 var cboxName, cell, p, q, r;
                 cboxName = ['filter', this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
                 var row = this.tableRows[this.uniqueValues[uniqueId]];
                 if (!row) {
+                    // No need to append a new row in a separate call:
+                    // insertRow() creates, and appends, and returns one.
                     this.tableRows[this.uniqueValues[uniqueId]] = <HTMLTableRowElement>this.tableBodyElement.insertRow();
                     cell = this.tableRows[this.uniqueValues[uniqueId]].insertCell();
                     this.checkboxes[this.uniqueValues[uniqueId]] = $("<input type='checkbox'>")
@@ -703,11 +708,13 @@ namespace StudyDataPage {
             });
             // TODO: Drag select is twitchy - clicking a table cell background should check the box,
             // even if the user isn't hitting the label or the checkbox itself.
+            // Fixing this may mean adding additional code to the mousedown/mouseover handler for the
+            // whole table (currently in StudyDataPage.prepareIt()).
             Dragboxes.initTable(this.filteringTable);
         }
 
-        // Returns true if any of the UI (checkboxes, search field) shows a different state than
-        // when this function was last called.
+        // Returns true if any of this filter's UI (checkboxes, search field)
+        // shows a different state than when this function was last called.
         // This is accomplished by keeping a dictionary - previousCheckboxState - that is organized by
         // the same unique criteria values as the checkboxes.
         // We build a relpacement for this dictionary, and compare its contents with the old one.
@@ -822,6 +829,7 @@ namespace StudyDataPage {
                 return pass;
             });
 
+            // Apply enabled/disabled status and ordering:
             var rowsToAppend = [];
             this.uniqueValuesOrder.forEach((crID) => {
                 var checkbox: JQuery = this.checkboxes[this.uniqueValues[crID]],
@@ -835,12 +843,14 @@ namespace StudyDataPage {
                     rowsToAppend.push(row);
                 }
             });
-            // Now, append all the rows we disabled, so they go to the bottom of the table
+            // Append all the rows we disabled, as a last step,
+            // so they go to the bottom of the table.
             rowsToAppend.forEach((row) => this.tableBodyElement.appendChild(row));
 
             return idsPostFiltering;
         }
 
+        // A few utility functions:
         _assayIdToAssay(assayId:string) {
             return EDDData.Assays[assayId];
         }
@@ -854,12 +864,11 @@ namespace StudyDataPage {
             if (assay) return EDDData.Protocols[assay.pid];
             return undefined;
         }
-
-        getIdMapToValues():(id:string) => any[] {
-            return () => [];
-        }
     }
 
+    // One of the highest-level filters: Strain.
+    // Note that an Assay's Line can have more than one Strain assigned to it,
+    // which is an example of why 'this.filterHash' is built with arrays.
     export class StrainFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Strain', 'st');
@@ -883,6 +892,8 @@ namespace StudyDataPage {
         }
     }
 
+    // Just as with the Strain filter, an Assay's Line can have more than one
+    // Carbon Source assigned to it.
     export class CarbonSourceFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Carbon Source', 'cs');
@@ -906,6 +917,7 @@ namespace StudyDataPage {
         }
     }
 
+    // A filter for the 'Carbon Source Labeling' field for each Assay's Line
     export class CarbonLabelingFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Labeling', 'l');
@@ -929,6 +941,7 @@ namespace StudyDataPage {
         }
     }
 
+    // A filter for the name of each Assay's Line
     export class LineNameFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Line', 'ln');
@@ -948,6 +961,7 @@ namespace StudyDataPage {
         }
     }
 
+    // A filter for the Protocol of each Assay
     export class ProtocolFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Protocol', 'p');
@@ -967,6 +981,7 @@ namespace StudyDataPage {
         }
     }
 
+    // A filter for the name of each Assay
     export class AssayFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Assay', 'a');
@@ -986,6 +1001,10 @@ namespace StudyDataPage {
         }
     }
 
+    // A class defining some additional logic for metadata-type filters,
+    // meant to be subclassed.  Note how we pass in the particular metadata we
+    // are constructing this filter for, in the constructor.
+    // Unlike the other filters, we will be instantiating more than one of these.
     export class MetaDataFilterSection extends GenericFilterSection {
 
         metaDataID:string;
@@ -1039,6 +1058,9 @@ namespace StudyDataPage {
         }
     }
 
+    // These remaining filters work on Measurement IDs rather than Assay IDs.
+
+    // A filter for the compartment of each Metabolite.
     export class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         configure():void {
@@ -1060,8 +1082,32 @@ namespace StudyDataPage {
         }
     }
 
+    // A generic filter for Measurements, meant to be subclassed.
+    // It introduces a 'loadPending' attribute, which is used to make the filter
+    // appear in the UI even if it has no data, because we anticipate data to eventually
+    // appear in it.
+    //      The idea is, we know whether to instantiate a given subclass of this filter by
+    // looking at the measurement count for each Assay, which is given to us in the first
+    // chunk of data from the server.  So, we instantiate it, then it appears in a
+    // 'load pending' state until actual measurement values are received from the server.
     export class MeasurementFilterSection extends GenericFilterSection {
-        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
+        // Whenever this filter is instantiated, we 
+        loadPending: boolean;
+
+        configure(title:string, shortLabel:string): void {
+            this.loadPending = true;
+            super.configure(title, shortLabel);
+        }
+
+        // Overriding to make use of loadPending.
+        isFilterUseful(): boolean {
+            return this.loadPending || this.uniqueValuesOrder.length > 0;
+        }
+    }
+
+    // A filter for the names of General Measurements.
+    export class GeneralMeasurementFilterSection extends MeasurementFilterSection {
+        // Whenever this filter is instantiated, we 
         loadPending: boolean;
 
         configure(): void {
@@ -1092,18 +1138,11 @@ namespace StudyDataPage {
         }
     }
 
-    export class MetaboliteFilterSection extends GenericFilterSection {
-        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
-        loadPending:boolean;
+    // A filter for the names of Metabolite Measurements.
+    export class MetaboliteFilterSection extends MeasurementFilterSection {
 
         configure():void {
-            this.loadPending = true;
             super.configure('Metabolite', 'me');
-        }
-
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        isFilterUseful(): boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
 
         updateUniqueIndexesHash(amIDs: string[]): void {
@@ -1125,18 +1164,11 @@ namespace StudyDataPage {
         }
     }
 
-    export class ProteinFilterSection extends GenericFilterSection {
-        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
-        loadPending:boolean;
+    // A filter for the names of Protein Measurements.
+    export class ProteinFilterSection extends MeasurementFilterSection {
 
         configure():void {
-            this.loadPending = true;
             super.configure('Protein', 'pr');
-        }
-
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        isFilterUseful():boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
 
         updateUniqueIndexesHash(amIDs: string[]): void {
@@ -1158,18 +1190,11 @@ namespace StudyDataPage {
         }
     }
 
-    export class GeneFilterSection extends GenericFilterSection {
-        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
-        loadPending:boolean;
+    // A filter for the names of Gene Measurements.
+    export class GeneFilterSection extends MeasurementFilterSection {
 
         configure():void {
-            this.loadPending = true;
             super.configure('Gene', 'gn');
-        }
-
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        isFilterUseful():boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
 
         updateUniqueIndexesHash(amIDs: string[]): void {
