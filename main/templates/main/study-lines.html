@@ -126,7 +126,7 @@
         <button style="margin-right:30px" type="button" id="worklistButton" class="actionButton primary">
             Generate Worklist
         </button>
-        <button type="button" id="exportButton" class="actionButton primary">
+        <button type="button" id="exportLineButton" class="actionButton primary">
             Export Data
         </button>
     </div>
@@ -162,7 +162,7 @@
 </div>
 
 <div id="exportModal" class="off" title="Export as">
-    <form action="" method="POST">
+    <form action="" method="POST" id="exportForm">
         {% csrf_token %}
         <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
         <label for="line_action_export">

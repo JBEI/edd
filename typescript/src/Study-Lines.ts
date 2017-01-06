@@ -70,7 +70,7 @@ namespace StudyLines {
         $(window).on('resize', queuePositionActionsBar);
 
         $('#worklistButton').attr('title', 'select line(s) first');
-        $('#exportButton').attr('title', 'select line(s) first');
+        $('#exportLineButton').attr('title', 'select line(s) first');
 
 
         $.ajax({
@@ -161,8 +161,12 @@ namespace StudyLines {
             return false;
         });
 
-        $("#exportButton").click(function() {
+        $("#exportLineButton").click(function() {
             $("#exportModal").removeClass('off').dialog( "open" );
+            //add table to form as hidden field.
+            var table = $('#studyLinesTable').clone();
+            $('#exportForm').append(table);
+            table.hide();
             return false;
         });
 
@@ -303,7 +307,7 @@ namespace StudyLines {
         }
         if (_.keys(EDDData.Lines).length === 0) {
             $('.lineExplanation').css('display', 'block');
-            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton, #worklistButton, #exportButton").addClass('off');
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton, #worklistButton, #exportLineButton").addClass('off');
         } else {
             checkedLen = checkedBoxes.length;
             $('#linesSelectedCell').empty().text(checkedLen + ' selected');
@@ -312,12 +316,12 @@ namespace StudyLines {
                 'count': checkedLen,
                 'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
             });
-            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportButton").removeClass('off');
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportLineButton").removeClass('off');
             if (checkedLen) {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',false);
                 $('#addNewLineButton').prop('disabled', true);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
-                $('#exportButton').attr('title', 'Export your lines in a file type of your choosing');
+                $('#exportLineButton').attr('title', 'Export your lines in a file type of your choosing');
                 if (checkedLen < 2) {
                     $('#groupButton').prop('disabled', true);
                 }
@@ -325,7 +329,7 @@ namespace StudyLines {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',true);
                 $('#addNewLineButton').prop('disabled', false);
                 $('#worklistButton').attr('title', 'select line(s) first');
-                $('#exportButton').attr('title', 'select line(s) first');
+                $('#exportLineButton').attr('title', 'select line(s) first');
             }
         }
     }

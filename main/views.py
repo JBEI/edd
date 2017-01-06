@@ -100,6 +100,34 @@ def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW):
     raise Http404()
 
 
+class StudyCreateView(generic.edit.CreateView):
+    """
+    View for request to create a Study.
+    """
+    form_class = CreateStudyForm
+    model = Study
+    template_name = 'main/create_study.html'
+
+    def form_valid(self, form):
+        update = Update.load_request_update(self.request)
+        study = form.instance
+        study.active = True     # defaults to True, but being explicit
+        study.created = update
+        study.updated = update
+        return generic.edit.CreateView.form_valid(self, form)
+
+    def get_context_data(self, **kwargs):
+        context = super(StudyCreateView, self).get_context_data(**kwargs)
+        context['can_create'] = Study.user_can_create(self.request.user)
+        return context
+
+    def get_form_kwargs(self):
+        kwargs = super(StudyCreateView, self).get_form_kwargs()
+        kwargs.update(user=self.request.user)
+        return kwargs
+
+    def get_success_url(self):
+        return reverse('main:overview', kwargs={'slug': self.object.slug})
 
 # /study/<study_id>/rename
 @ensure_csrf_cookie
