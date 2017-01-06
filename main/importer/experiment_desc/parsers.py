@@ -61,7 +61,7 @@ class _AssayMetadataValueParser(object):
         :return the parsed value to store, or None if no value should be stored
         :raise ValueError if the value couldn't be parsed
         """
-        pass
+        raise ValueError("Choose one of the specific sub-classes to parse value")
 
 
 class _RawStringValueParser(_AssayMetadataValueParser):
@@ -87,7 +87,8 @@ class _DecimalTimeParser(_AssayMetadataValueParser):
             print('time value "%s" has %d fractional digits' % (str_value, fractional_digits))
             return number_value, fractional_digits
         raise ValueError(
-            """Value "%s" did not match the expected time pattern (e.g. "4.0h")""" % raw_value_str)
+            'Value "%s" did not match the expected time pattern (e.g. "4.0h")' % raw_value_str
+        )
 
 # stateless value parsing strategies for metadata input (time is treated specially by the file
 # format)
@@ -422,14 +423,20 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 upper_content = cell_content.upper()
 
                 # test whether this column is protocol-prefixed assay metadata
-                assay_meta_type = self._parse_assay_metadata_header(layout, upper_content,
-                                                                    col_index)
+                assay_meta_type = self._parse_assay_metadata_header(
+                    layout,
+                    upper_content,
+                    col_index
+                )
                 # if we found the type of this column, proceed to the next
                 if assay_meta_type:
                     continue
                 # if this column isn't protocol-prefixed, test whether it's for line metadata
-                line_metadata_type = self._parse_line_metadata_header(layout, upper_content,
-                                                                      col_index,)
+                line_metadata_type = self._parse_line_metadata_header(
+                    layout,
+                    upper_content,
+                    col_index
+                )
 
                 # if we didn't process this column, track a warning that describes
                 # dropped columns (can be displayed later in the UI)
@@ -477,17 +484,21 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 # loop over assay metadata types, testing for an assay metadata suffix in the
                 # column header
                 ################################################################################
-                for assay_metadata_type in self.assay_metadata_types_by_name.values():
+                for assay_metadata_type in self.assay_metadata_types_by_name.itervalues():
 
                     # look for an exact match
-                    suffix_meta_type = self.assay_metadata_types_by_name .get(assay_meta_suffix,
-                                                                              None)
+                    suffix_meta_type = self.assay_metadata_types_by_name.get(assay_meta_suffix,
+                                                                             None)
 
                     if suffix_meta_type is not None:
                         layout = self.column_layout
-                        layout.register_assay_meta_column(col_index, upper_protocol_name,
-                                                          protocol, suffix_meta_type,
-                                                          is_combinatorial)
+                        layout.register_assay_meta_column(
+                            col_index,
+                            upper_protocol_name,
+                            protocol,
+                            suffix_meta_type,
+                            is_combinatorial
+                        )
                         break
 
                     # if no exact match is found look for a pluralized version of the metadata
@@ -579,8 +590,11 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         ###################################################
         # Line name
         ###################################################
-        cell_content = self._get_string_cell_content(cols_list, row_num, layout.line_name_col,
-                                                     errors)
+        cell_content = self._get_string_cell_content(
+            cols_list,
+            row_num,
+            layout.line_name_col
+        )
 
         if cell_content:
             row_inputs.base_line_name = cell_content
@@ -588,18 +602,24 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         # otherwise, track error state, but keep going so we can try to detect all the
         # errors with a single pass
         else:
-            logger.debug('Parse error: Cell in row %(row_num)d, column %(col)d was empty, '
-                         'but was expected  to contain a name for the EDD line.' % {
-                               'row_num': row_num, 'col': layout.line_name_col + 1,
-                           })
+            logger.debug(
+                'Parse error: Cell in row %(row_num)d, column %(col)d was empty, but was expected '
+                'to contain a name for the EDD line.' % {
+                    'row_num': row_num,
+                    'col': layout.line_name_col + 1,
+                }
+            )
             self._append_to_errors_list(MISSING_LINE_NAME_ROWS_KEY, row_num)
 
         ###################################################
         # Line description
         ###################################################
         if layout.line_description_col is not None:
-            cell_content = self._get_string_cell_content(cols_list, row_num,
-                                                         layout.line_description_col, errors)
+            cell_content = self._get_string_cell_content(
+                cols_list,
+                row_num,
+                layout.line_description_col
+            )
             if cell_content:
                 row_inputs.description = cell_content
 
@@ -611,8 +631,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
             cell_content = self._get_string_cell_content(
                 cols_list,
                 row_num,
-                layout.line_control_col,
-                errors
+                layout.line_control_col
             )
 
             if cell_content:
@@ -692,14 +711,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                         part_number_match = TYPICAL_ICE_PART_NUMBER_PATTERN.match(token)
 
                         if not part_number_match:
-                            warnings = self.warnings
-                            unmatched_part_nums = warnings.get(
-                                PART_NUMBER_PATTERN_UNMATCHED_WARNING, []
-                            )
-                            if not unmatched_part_nums:
-                                warnings[PART_NUMBER_PATTERN_UNMATCHED_WARNING] = unmatched_part_nums
-
-                            unmatched_part_nums.append(token)
+                            self.warnings[PART_NUMBER_PATTERN_UNMATCHED_WARNING].append(token)
                             logger.warning(
                                 'Expected ICE part number(s) in template file row %(row_num)d, '
                                 'but "%(token)s" did not match the expected pattern. This is '
@@ -731,12 +743,21 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         ###################################################
         if layout.col_index_to_line_meta_pk:
             for col_index, line_metadata_pk in layout.col_index_to_line_meta_pk.items():
-                cell_content = self._get_string_cell_content(cols_list, row_num, col_index, errors)
+                cell_content = self._get_string_cell_content(
+                    cols_list,
+                    row_num,
+                    col_index
+                )
 
                 if col_index in layout.combinatorial_col_indices:
-                    self._parse_combinatorial_input(row_inputs, cell_content, row_num,
-                                                    col_index, line_metadata_pk,
-                                                    'incorrect_format')
+                    self._parse_combinatorial_input(
+                        row_inputs,
+                        cell_content,
+                        row_num,
+                        col_index,
+                        line_metadata_pk,
+                        'incorrect_format'
+                    )
                 else:
                     row_inputs.add_common_line_metadata(line_metadata_pk, cell_content)
 
@@ -749,7 +770,11 @@ class ExperimentDefFileParser(CombinatorialInputParser):
             for col_index, (protocol, assay_metadata_type) in \
                     layout.col_index_to_assay_data.items():
 
-                cell_content = self._get_string_cell_content(cols_list, row_num, col_index, errors)
+                cell_content = self._get_string_cell_content(
+                    cols_list,
+                    row_num,
+                    col_index
+                )
 
                 # skip blank cells
                 if not cell_content:
@@ -763,26 +788,37 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                                  'combinatorial_parse_error')
                     parser = TIME_PARSER if is_time else RAW_STRING_PARSER
 
-                    self._parse_combinatorial_input(row_inputs, cell_content, row_num, col_index,
-                                                    assay_metadata_type.pk, error_key,
-                                                    protocol, parser)
+                    self._parse_combinatorial_input(
+                        row_inputs,
+                        cell_content,
+                        row_num,
+                        col_index,
+                        assay_metadata_type.pk,
+                        error_key,
+                        protocol,
+                        parser
+                    )
 
                 else:
                     if row_inputs.has_assay_metadata_type(protocol.pk, assay_metadata_type.pk):
                         # TODO could improve this error content with a more complex data structure
-                        self._append_to_nested_errors_list(
-                            errors,
+                        self._append_to_errors_list(
                             'duplicate_assay_matadata_columns',
-                            protocol.pk,
-                            assay_metadata_type.pk,
-                            col_index
+                            {
+                                'protocol_id': protocol.pk,
+                                'metadata_id': assay_metadata_type.pk,
+                                'column_index': col_index,
+                            }
                         )
-                    row_inputs.add_common_assay_metadata(protocol.pk, assay_metadata_type.pk,
-                                                         cell_content)
+                    row_inputs.add_common_assay_metadata(
+                        protocol.pk,
+                        assay_metadata_type.pk,
+                        cell_content
+                    )
 
         return row_inputs
 
-    def _get_string_cell_content(self, row, row_num, col_index, errors):
+    def _get_string_cell_content(self, row, row_num, col_index):
         cell_content = row[col_index].value
 
         if cell_content is None:
@@ -794,11 +830,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         else:
             logger.warning('Invalid cell format for cell %s' % str(cell_content.__type__))
             key = 'invalid_cell_format'
-            invalid_cells = errors.get(key, [])
-            if not invalid_cells:
-                errors[key] = invalid_cells
-            invalid_cells.append((row_num, col_index+1))
-
+            self.errors[key].append((row_num, col_index + 1))
             return None
 
     def _parse_combinatorial_input(self, row_inputs, cell_content, row_num, col_index,
@@ -836,42 +868,27 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                     row_inputs.add_combinatorial_line_metadata(metadata_type_pk,
                                                                parsed_value)
             except ValueError:
-                logger.warning('ValueError parsing token "%(token)s" from cell content "%(cell)s" '
-                               'in row_num=%(row)d col_num='
-                               '%(col)d' % {
-                                    'token': token,
-                                    'cell': cell_content,
-                                    'row': row_num,
-                                    'col': col_index+1, })
+                logger.warning(
+                    'ValueError parsing token "%(token)s" from cell content "%(cell)s" in '
+                    'row_num=%(row)d col_num=%(col)d' % {
+                        'token': token,
+                        'cell': cell_content,
+                        'row': row_num,
+                        'col': col_index+1,
+                    }
+                )
                 self._append_to_errors_list(error_key, (row_num, col_index+1,))
                 break
 
     def _append_to_errors_list(self, key, append_value):
-        err_list = self.errors.get(key, [])
-        if not err_list:
-            self.errors[key] = err_list
-            err_list.append(append_value)
-
-    def _append_to_nested_errors_list(self, key1, key2, key3, append_value):
-        dict = self.errors.get(key1, {})
-        if not dict:
-            self.errors[key1] = dict
-
-        nested_dict = dict.get(key2, {})
-        if not nested_dict:
-            dict[key2] = nested_dict
-
-        inner_list = nested_dict.get(key3, [])
-        if not inner_list:
-            nested_dict[key3] = inner_list
-        inner_list.append(append_value)
+        self.errors[key].append(append_value)
 
 
 class JsonInputParser(CombinatorialInputParser):
     """
     Parses / verifies JSON input for combinatorial line creation. Note that instances of this
-    class maintain a cache of protocols and metadata types defined in the database, so the lifecycle
-    of each instance should be short.
+    class maintain a cache of protocols and metadata types defined in the database, so the
+    lifecycle of each instance should be short.
     """
     def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk,
                  require_strains=False):
@@ -886,13 +903,12 @@ class JsonInputParser(CombinatorialInputParser):
     def parse(self, source, importer):
 
         combinatorial_inputs = []
-        errors = importer.errors
-        warnings = importer.warnings
+        self.errors = importer.errors
 
         if importer.errors:
             return None
 
-        ############################################################################################
+        ###########################################################################################
         # Once validated, parse the JSON string into a Python dict or list
         # if validation succeeded, extract the naming strategy from the JSON, then pass the rest
         # as parameters to CombinatorialDescriptionInput
@@ -923,15 +939,17 @@ class JsonInputParser(CombinatorialInputParser):
             naming_strategy = None
             naming_elements = value.pop('name_elements', None)
             if naming_elements:
-                naming_strategy = AutomatedNamingStrategy(self.line_metadata_types_by_pk,
-                                                          self.assay_metadata_types_by_pk,
-                                                          self.assay_time_metadata_type_pk)
+                naming_strategy = AutomatedNamingStrategy(
+                    self.line_metadata_types_by_pk,
+                    self.assay_metadata_types_by_pk,
+                    self.assay_time_metadata_type_pk
+                )
                 elements = _copy_to_numeric_elts(naming_elements['elements'])
                 abbreviations = _copy_to_numeric_keys(naming_elements['abbreviations'])
 
                 naming_strategy.elements = elements
                 naming_strategy.abbreviations = abbreviations
-                naming_strategy.verify_naming_elts(errors)
+                naming_strategy.verify_naming_elts(self.errors)
             else:
                 base_name = value.pop('base_name')
                 naming_strategy = _ExperimentDescNamingStrategy(self.assay_time_metadata_type_pk)
@@ -962,7 +980,7 @@ class JsonInputParser(CombinatorialInputParser):
                 naming_strategy.combinatorial_input = combo_input
                 combinatorial_inputs.append(combo_input)
             except RuntimeError as rte:
-                self.add_parse_error(errors, str(rte))
+                self.add_parse_error(str(rte))
 
         # verify primary key inputs from the JSON are for the expected MetaDataType context,
         # and that they exist, since there's no runtime checking for this at database item
@@ -972,9 +990,16 @@ class JsonInputParser(CombinatorialInputParser):
         # unlikely to be stale.
 
         for combo_input in combinatorial_inputs:
-            combo_input.verify_pks(self.line_metadata_types_by_pk, self.assay_metadata_types_by_pk,
-                                   self.protocols_by_pk, errors, INVALID_PROTOCOL_META_PK,
-                                   INVALID_LINE_META_PK, INVALID_ASSAY_META_PK, PARSE_ERROR)
+            combo_input.verify_pks(
+                self.line_metadata_types_by_pk,
+                self.assay_metadata_types_by_pk,
+                self.protocols_by_pk,
+                self.errors,
+                INVALID_PROTOCOL_META_PK,
+                INVALID_LINE_META_PK,
+                INVALID_ASSAY_META_PK,
+                PARSE_ERROR
+            )
 
         # TODO: verify ICE strains are provided for every input if required
         # if self.require_strains:
@@ -992,11 +1017,8 @@ class JsonInputParser(CombinatorialInputParser):
 
         return combinatorial_inputs
 
-    def add_parse_error(self, errors, msg):
-        errs = errors.get(PARSE_ERROR, [])
-        if not errs:
-            errors[PARSE_ERROR] = errs
-        errs.append(msg)
+    def add_parse_error(self, msg):
+        self.errors[PARSE_ERROR].append(msg)
 
 
 def _copy_to_numeric_elts(input_list):
@@ -1013,7 +1035,7 @@ def _copy_to_numeric_elts(input_list):
 
 def _copy_to_numeric_keys(input_dict):
     converted_dict = {}
-    for key, value in input_dict.items():
+    for key, value in input_dict.iteritems():
 
         # if value is a nested dict, do the same work on it
         if isinstance(value, dict):
