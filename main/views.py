@@ -127,7 +127,7 @@ class StudyCreateView(generic.edit.CreateView):
         return kwargs
 
     def get_success_url(self):
-        return reverse('main:overview', kwargs={'slug': self.object.slug})
+        return reverse('main:create_study', kwargs={'slug': self.object.slug})
 
 # /study/<study_id>/rename
 @ensure_csrf_cookie
