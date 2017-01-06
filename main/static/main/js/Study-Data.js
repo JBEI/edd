@@ -474,6 +474,18 @@ var StudyDataPage;
         GenericFilterSection.prototype.populateTable = function () {
             var _this = this;
             var fCol = $(this.filterColumnDiv);
+            //find out which checkboxes are checked and store in array
+            if ($(this.filterColumnDiv).find('input').prop('checked')) {
+                var checked = [];
+                var checkboxes = $(this.filterColumnDiv).find('input');
+                $(checkboxes).each(function () {
+                    if ($(this).prop('checked')) {
+                        var label = $(this).next()[0];
+                        checked.push($(label).text());
+                    }
+                    ;
+                });
+            }
             fCol.children().detach();
             // Only use the scrolling container div if the size of the list warrants it, because
             // the scrolling container div declares a large padding margin for the scroll bar,
@@ -523,7 +535,7 @@ var StudyDataPage;
                     _this.tableRows[uniqueId] = _this.tableBodyElement.insertRow();
                     cell = _this.tableRows[uniqueId].insertCell();
                     _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
-                        .attr({ 'name': cboxName, 'id': cboxName })
+                        .attr({ 'name': cboxName, 'id': cboxName }) //also set checked based if it was checked before.
                         .appendTo(cell);
                     $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
                         .appendTo(cell);
@@ -532,6 +544,11 @@ var StudyDataPage;
             // TODO: Drag select is twitchy - clicking a table cell background should check the box,
             // even if the user isn't hitting the label or the checkbox itself.
             Dragboxes.initTable(this.filteringTable);
+            //re-check checkboxes that were checked
+            _.each(checked, function (name) {
+                var section = $("#mainFilterSection label:contains('" + name + "') ");
+                section.prev().prop('checked', true);
+            });
         };
         // Returns true if any of the checkboxes show a different state than when this function was
         // last called
