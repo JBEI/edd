@@ -29,16 +29,18 @@ var StudyDataPage;
     var ProgressiveFilteringWidget = (function () {
         // MeasurementGroupCode: Need to initialize each filter list.
         function ProgressiveFilteringWidget() {
+            this.showingDisabled = false;
+            this.showingEmpty = false;
             this.allFilters = [];
             this.assayFilters = [];
             this.metaboliteFilters = [];
             this.proteinFilters = [];
             this.geneFilters = [];
             this.measurementFilters = [];
-            this.metaboliteDataProcessed = false;
-            this.proteinDataProcessed = false;
-            this.geneDataProcessed = false;
-            this.genericDataProcessed = false;
+            this.metaboliteDataPresent = false;
+            this.proteinDataPresent = false;
+            this.geneDataPresent = false;
+            this.genericDataPresent = false;
             this.filterTableJQ = null;
             this.accumulatedRecordIDs = {
                 seenRecordFlags: {},
@@ -48,7 +50,6 @@ var StudyDataPage;
                 measurementIDs: []
             };
             this.lastFilteringResults = null;
-            this.repopulateAllFiltersRefreshTimer = null;
         }
         // Read through the Lines, Assays, and AssayMeasurements structures to learn what types are present,
         // then instantiate the relevant subclasses of GenericFilterSection, to create a series of
@@ -89,18 +90,18 @@ var StudyDataPage;
             this.geneFilters = [];
             this.geneFilters.push(new GeneFilterSection());
             this.measurementFilters = [];
-            this.measurementFilters.push(new MeasurementFilterSection());
+            this.measurementFilters.push(new GeneralMeasurementFilterSection());
             // All filter sections are constructed; now need to call configure() on all
             this.allFilters = [].concat(assayFilters, this.metaboliteFilters, this.proteinFilters, this.geneFilters, this.measurementFilters);
             this.allFilters.forEach(function (section) { return section.configure(); });
             // We can initialize all the Assay- and Line-level filters immediately
             this.assayFilters = assayFilters;
             this.repopulateLineFilters();
-            this.repopulateFilteringSection();
+            this.repopulateColumns();
         };
         // Clear out any old filters in the filtering section, and add in the ones that
         // claim to be "useful".
-        ProgressiveFilteringWidget.prototype.repopulateFilteringSection = function () {
+        ProgressiveFilteringWidget.prototype.repopulateColumns = function () {
             var _this = this;
             var dark = false;
             $.each(this.allFilters, function (i, widget) {
@@ -154,16 +155,10 @@ var StudyDataPage;
             });
             this.repopulateAllFilters(); // Skip the queue - we need to repopulate immediately
         };
-        ProgressiveFilteringWidget.prototype.queueRepopulateAllFilters = function () {
-            if (this.repopulateAllFiltersRefreshTimer) {
-                clearTimeout(this.repopulateAllFiltersRefreshTimer);
-            }
-            this.repopulateAllFiltersRefreshTimer = setTimeout(this.repopulateAllFilters.bind(this), 200);
-        };
         ProgressiveFilteringWidget.prototype.repopulateAllFilters = function () {
             this.repopulateLineFilters();
             this.repopulateMeasurementFilters();
-            this.repopulateFilteringSection();
+            this.repopulateColumns();
         };
         ProgressiveFilteringWidget.prototype.repopulateLineFilters = function () {
             var filteredAssayIds = this.buildAssayIDSet();
@@ -179,72 +174,79 @@ var StudyDataPage;
             var p = this.accumulatedRecordIDs.proteinIDs;
             var g = this.accumulatedRecordIDs.geneIDs;
             var gen = this.accumulatedRecordIDs.measurementIDs;
-            var showingDisabled = !!($('#filteringShowDisabledCheckbox').prop('checked'));
-            filterDisabled = function (measureId) {
-                var measure = EDDData.AssayMeasurements[measureId];
-                if (!measure) {
-                    return false;
-                }
-                var assay = EDDData.Assays[measure.assay];
-                if (!assay) {
-                    return false;
-                }
-                if (assay.active) {
-                    return true;
-                }
-                return false;
-            };
-            if (!showingDisabled) {
+            if (!this.showingDisabled) {
+                filterDisabled = function (measureId) {
+                    var measure = EDDData.AssayMeasurements[measureId];
+                    if (!measure) {
+                        return false;
+                    }
+                    var assay = EDDData.Assays[measure.assay];
+                    if (!assay) {
+                        return false;
+                    }
+                    return !!assay.active;
+                };
                 m = m.filter(filterDisabled);
                 p = p.filter(filterDisabled);
                 g = g.filter(filterDisabled);
                 gen = gen.filter(filterDisabled);
             }
+            this.metaboliteDataPresent = false;
+            this.proteinDataPresent = false;
+            this.geneDataPresent = false;
+            this.genericDataPresent = false;
             process = function (ids, i, widget) {
                 widget.populateFilterFromRecordIDs(ids);
                 widget.populateTable();
             };
             if (m.length) {
                 $.each(this.metaboliteFilters, process.bind({}, m));
-                this.metaboliteDataProcessed = true;
+                this.metaboliteDataPresent = true;
             }
             if (p.length) {
                 $.each(this.proteinFilters, process.bind({}, p));
-                this.proteinDataProcessed = true;
+                this.proteinDataPresent = true;
             }
             if (g.length) {
                 $.each(this.geneFilters, process.bind({}, g));
-                this.geneDataProcessed = true;
+                this.geneDataPresent = true;
             }
             if (gen.length) {
                 $.each(this.measurementFilters, process.bind({}, gen));
-                this.genericDataProcessed = true;
+                this.genericDataPresent = true;
             }
         };
         // Build a list of all the Assay IDs in the Study.
         ProgressiveFilteringWidget.prototype.buildAssayIDSet = function () {
+            var _this = this;
             var assayIds = [];
-            var showingDisabled = !!($('#filteringShowDisabledCheckbox').prop('checked'));
-            var showingEmpty = !!($('#filteringShowEmptyCheckbox').prop('checked'));
             $.each(EDDData.Assays, function (assayId, assay) {
                 var line = EDDData.Lines[assay.lid];
                 if (!line || !line.active)
                     return;
-                if (!assay.active && !showingDisabled)
+                if (!assay.active && !_this.showingDisabled)
                     return;
-                if (!assay.count && !showingEmpty)
+                if (!assay.count && !_this.showingEmpty)
                     return;
                 assayIds.push(assayId);
             });
             return assayIds;
         };
-        // Starting with a list of all the Assay IDs in the Study, we loop it through the
+        // Check if the global settings for the filtering section are different, and rebuild the
+        // sections if so.  Then, starting with a list of all the Assay IDs in the Study, we loop it through the
         // Line and Assay-level filters, causing the filters to refresh their UI, narrowing the set down.
         // We resolve the resulting set of Assay IDs into measurement IDs, then pass them on to the
         // measurement-level filters.  In the end we return a set of measurement IDs representing the
         // end result of all the filters, suitable for passing to the graphing functions.
         // MeasurementGroupCode: Need to process each group separately here.
         ProgressiveFilteringWidget.prototype.buildFilteredMeasurements = function () {
+            var showingDisabledCB = !!($('#filteringShowDisabledCheckbox').prop('checked'));
+            var showingEmptyCB = !!($('#filteringShowEmptyCheckbox').prop('checked'));
+            if ((this.showingDisabled != showingDisabledCB) || (this.showingEmpty != showingEmptyCB)) {
+                this.showingDisabled = showingDisabledCB;
+                this.showingEmpty = showingEmptyCB;
+                this.repopulateAllFilters();
+            }
             var filteredAssayIds = this.buildAssayIDSet();
             var filteringResults = {};
             filteringResults['allAssays'] = filteredAssayIds;
@@ -267,25 +269,25 @@ var StudyDataPage;
             var geneMeasurements = measurementIds;
             var genericMeasurements = measurementIds;
             // Note that we only try to filter if we got measurements that apply to the widget types
-            if (this.metaboliteDataProcessed) {
+            if (this.metaboliteDataPresent) {
                 $.each(this.metaboliteFilters, function (i, filter) {
                     metaboliteMeasurements = filter.applyProgressiveFiltering(metaboliteMeasurements);
                     filteringResults[filter.sectionShortLabel] = metaboliteMeasurements;
                 });
             }
-            if (this.proteinDataProcessed) {
+            if (this.proteinDataPresent) {
                 $.each(this.proteinFilters, function (i, filter) {
                     proteinMeasurements = filter.applyProgressiveFiltering(proteinMeasurements);
                     filteringResults[filter.sectionShortLabel] = proteinMeasurements;
                 });
             }
-            if (this.geneDataProcessed) {
+            if (this.geneDataPresent) {
                 $.each(this.geneFilters, function (i, filter) {
                     geneMeasurements = filter.applyProgressiveFiltering(geneMeasurements);
                     filteringResults[filter.sectionShortLabel] = geneMeasurements;
                 });
             }
-            if (this.genericDataProcessed) {
+            if (this.genericDataPresent) {
                 $.each(this.measurementFilters, function (i, filter) {
                     genericMeasurements = filter.applyProgressiveFiltering(genericMeasurements);
                     filteringResults[filter.sectionShortLabel] = genericMeasurements;
@@ -334,16 +336,27 @@ var StudyDataPage;
             this.lastFilteringResults = filteringResults;
             return filteringResults;
         };
-        // redraw graph with new measurement types.
+        // If any of the global filter settings or any of the settings in the individual filters
+        // have changed, return true, indicating that the filter will generate different results if
+        // queried.
         ProgressiveFilteringWidget.prototype.checkRedrawRequired = function (force) {
             var redraw = !!force;
+            var showingDisabledCB = !!($('#filteringShowDisabledCheckbox').prop('checked'));
+            var showingEmptyCB = !!($('#filteringShowEmptyCheckbox').prop('checked'));
+            // We know the internal state differs, but we're not here to update it...
+            if (this.showingDisabled != showingDisabledCB) {
+                redraw = true;
+            }
+            if (this.showingEmpty != showingEmptyCB) {
+                redraw = true;
+            }
             // Walk down the filter widget list.  If we encounter one whose collective checkbox
             // state has changed since we last made this walk, then a redraw is required. Note that
             // we should not skip this loop, even if we already know a redraw is required, since the
-            // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
+            // call to anyFilterSettingsChangedSinceLastInquiry sets internal state in the filter
             // widgets that we will use next time around.
             $.each(this.allFilters, function (i, filter) {
-                if (filter.anyCheckboxesChangedSinceLastInquiry()) {
+                if (filter.anyFilterSettingsChangedSinceLastInquiry()) {
                     redraw = true;
                 }
             });
@@ -374,6 +387,8 @@ var StudyDataPage;
             this.uniqueValuesOrder = [];
             this.filterHash = {};
             this.previousCheckboxState = {};
+            this.tableRows = {};
+            this.checkboxes = {};
             this.typingTimeout = null;
             this.typingDelay = 330; // TODO: Not implemented
             this.currentSearchSelection = '';
@@ -405,7 +420,7 @@ var StudyDataPage;
             });
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
             this.searchBox = sBox;
-            // We need two clear iccons for the two versions of the header
+            // We need two clear icons for the two versions of the header (with search and without)
             var searchClearIcon = $("<span>").addClass('filterClearIcon');
             this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(searchClearIcon).append(sBox)[0];
             this.clearIcons = clearIcon.add(searchClearIcon); // Consolidate the two JQuery elements into one
@@ -422,6 +437,12 @@ var StudyDataPage;
                 .attr({ 'cellpadding': 0, 'cellspacing': 0 })
                 .append(this.tableBodyElement = $("<tbody>")[0]);
         };
+        // By calling updateUniqueIndexesHash, we go through the records and find all the unique
+        // values in them (for the criteria this particular filter is based on.)
+        // Next we create an inverted version of that data structure, so that the unique identifiers
+        // we've created map to the values they represent, as well as an array
+        // of the unique identifiers sorted by the values.  These are what we'll use to construct
+        // the rows of criteria visible in the filter's UI.
         GenericFilterSection.prototype.populateFilterFromRecordIDs = function (ids) {
             var crSet, cHash;
             this.updateUniqueIndexesHash(ids);
@@ -441,17 +462,19 @@ var StudyDataPage;
             this.uniqueValues = cHash;
             this.uniqueValuesOrder = crSet;
         };
-        // In this function are running through the given list of measurement IDs and examining
-        // their records and related records, locating the particular field we are interested in,
-        // and creating a list of all the unique values for that field.  As we go, we mark each
-        // unique value with an integer UID, and construct a hash resolving each record to one (or
-        // possibly more) of those integer UIDs.  This prepares us for quick filtering later on.
-        // (This generic filter does nothing, so we leave these structures blank.)
+        // In this function (or at least the subclassed versions of it) we are running through the given
+        // list of measurement (or assay) IDs and examining their records and related records,
+        // locating the particular field we are interested in, and creating a list of all the
+        // unique values for that field.  As we go, we mark each unique value with an integer UID,
+        // and construct a hash resolving each record to one (or possibly more) of those integer UIDs.
+        // This prepares us for quick filtering later on.
+        // (This generic filter does nothing, leaving these structures blank.)
         GenericFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             this.filterHash = this.filterHash || {};
             this.uniqueIndexes = this.uniqueIndexes || {};
         };
-        // If we didn't come up with 2 or more criteria, there is no point in displaying the filter.
+        // If we didn't come up with 2 or more criteria, there is no point in displaying the filter,
+        // since it doesn't represent a meaningful choice.
         GenericFilterSection.prototype.isFilterUseful = function () {
             if (this.uniqueValuesOrder.length < 2) {
                 return false;
@@ -464,6 +487,7 @@ var StudyDataPage;
         GenericFilterSection.prototype.detach = function () {
             $(this.filterColumnDiv).detach();
         };
+        // Used to apply mild alternate striping to the filters so they stand out a bit from each other
         GenericFilterSection.prototype.applyBackgroundStyle = function (darker) {
             $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
             $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
@@ -471,21 +495,12 @@ var StudyDataPage;
         // Runs through the values in uniqueValuesOrder, adding a checkbox and label for each
         // filtering value represented.  If there are more than 15 values, the filter gets
         // a search box and scrollbar.
+        // The checkbox, and the table row that encloses the checkbox and label, are saved in
+        // a dictionary mapped by the unique value they represent, so they can be re-used if the
+        // filter is rebuilt (i.e. if populateTable is called again.) 
         GenericFilterSection.prototype.populateTable = function () {
             var _this = this;
             var fCol = $(this.filterColumnDiv);
-            //find out which checkboxes are checked and store in array
-            if ($(this.filterColumnDiv).find('input').prop('checked')) {
-                var checked = [];
-                var checkboxes = $(this.filterColumnDiv).find('input');
-                $(checkboxes).each(function () {
-                    if ($(this).prop('checked')) {
-                        var label = $(this).next()[0];
-                        checked.push($(label).text());
-                    }
-                    ;
-                });
-            }
             fCol.children().detach();
             // Only use the scrolling container div if the size of the list warrants it, because
             // the scrolling container div declares a large padding margin for the scroll bar,
@@ -502,8 +517,6 @@ var StudyDataPage;
             var tBody = this.tableBodyElement;
             // Clear out any old table contents
             $(this.tableBodyElement).empty();
-            this.tableRows = {};
-            this.checkboxes = {};
             // line label color based on graph color of line
             if (this.sectionTitle === "Line") {
                 var colors = {};
@@ -511,61 +524,69 @@ var StudyDataPage;
                 for (var key in EDDData.Lines) {
                     colors[EDDData.Lines[key].name] = colorObj[key];
                 }
-                this.uniqueValuesOrder.forEach(function (uniqueId) {
-                    var cboxName, cell, p, q, r;
-                    cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
-                    _this.tableRows[uniqueId] = _this.tableBodyElement.insertRow();
-                    cell = _this.tableRows[uniqueId].insertCell();
-                    _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
+            }
+            // For each value, if a table row isn't already defined, build one.
+            // There's extra code in here to assign colors to rows in the Lines filter
+            // which should probably be isolated in a subclass.
+            this.uniqueValuesOrder.forEach(function (uniqueId) {
+                var cboxName, cell, p, q, r;
+                cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
+                var row = _this.tableRows[_this.uniqueValues[uniqueId]];
+                if (!row) {
+                    // No need to append a new row in a separate call:
+                    // insertRow() creates, and appends, and returns one.
+                    _this.tableRows[_this.uniqueValues[uniqueId]] = _this.tableBodyElement.insertRow();
+                    cell = _this.tableRows[_this.uniqueValues[uniqueId]].insertCell();
+                    _this.checkboxes[_this.uniqueValues[uniqueId]] = $("<input type='checkbox'>")
                         .attr({ 'name': cboxName, 'id': cboxName })
                         .appendTo(cell);
-                    for (var key in EDDData.Lines) {
-                        if (EDDData.Lines[key].name == _this.uniqueValues[uniqueId]) {
-                            (EDDData.Lines[key]['identifier'] = cboxName);
+                    var label = $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
+                        .appendTo(cell);
+                    if (_this.sectionTitle === "Line") {
+                        label.css('font-weight', 'Bold');
+                        for (var key in EDDData.Lines) {
+                            if (EDDData.Lines[key].name == _this.uniqueValues[uniqueId]) {
+                                (EDDData.Lines[key]['identifier'] = cboxName);
+                            }
                         }
                     }
-                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
-                        .css('font-weight', 'Bold').appendTo(cell);
-                });
-            }
-            else {
-                this.uniqueValuesOrder.forEach(function (uniqueId) {
-                    var cboxName, cell, p, q, r;
-                    cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
-                    _this.tableRows[uniqueId] = _this.tableBodyElement.insertRow();
-                    cell = _this.tableRows[uniqueId].insertCell();
-                    _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
-                        .attr({ 'name': cboxName, 'id': cboxName }) //also set checked based if it was checked before.
-                        .appendTo(cell);
-                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
-                        .appendTo(cell);
-                });
-            }
+                }
+                else {
+                    $(row).appendTo(_this.tableBodyElement);
+                }
+            });
             // TODO: Drag select is twitchy - clicking a table cell background should check the box,
             // even if the user isn't hitting the label or the checkbox itself.
+            // Fixing this may mean adding additional code to the mousedown/mouseover handler for the
+            // whole table (currently in StudyDataPage.prepareIt()).
             Dragboxes.initTable(this.filteringTable);
-            //re-check checkboxes that were checked
-            _.each(checked, function (name) {
-                var section = $("#mainFilterSection label:contains('" + name + "') ");
-                section.prev().prop('checked', true);
-            });
         };
-        // Returns true if any of the checkboxes show a different state than when this function was
-        // last called
-        GenericFilterSection.prototype.anyCheckboxesChangedSinceLastInquiry = function () {
+        // Returns true if any of this filter's UI (checkboxes, search field)
+        // shows a different state than when this function was last called.
+        // This is accomplished by keeping a dictionary - previousCheckboxState - that is organized by
+        // the same unique criteria values as the checkboxes.
+        // We build a relpacement for this dictionary, and compare its contents with the old one.
+        // Each checkbox can have one of three prior states, each represented in the dictionary by a letter:
+        // "C" - checked, "U" - unchecked, "N" - doesn't exist (in the currently visible set.)
+        // We also compare the current content of the search box with the old content.
+        // Note: Regardless of where or whether we find a difference, it is important that we finish
+        // building the replacement version of previousCheckboxState.
+        // So though it's tempting to exit early from these loops, it would make a mess.
+        GenericFilterSection.prototype.anyFilterSettingsChangedSinceLastInquiry = function () {
             var _this = this;
             var changed = false, currentCheckboxState = {}, v = $(this.searchBox).val();
             this.anyCheckboxesChecked = false;
-            $.each(this.checkboxes || {}, function (uniqueId, checkbox) {
+            this.uniqueValuesOrder.forEach(function (uniqueId) {
+                var checkbox = _this.checkboxes[_this.uniqueValues[uniqueId]];
                 var current, previous;
                 // "C" - checked, "U" - unchecked, "N" - doesn't exist
                 current = (checkbox.prop('checked') && !checkbox.prop('disabled')) ? 'C' : 'U';
-                previous = _this.previousCheckboxState[uniqueId] || 'N';
+                previous = _this.previousCheckboxState[_this.uniqueValues[uniqueId]] || 'N';
                 if (current !== previous)
                     changed = true;
                 if (current === 'C')
                     _this.anyCheckboxesChecked = true;
-                currentCheckboxState[uniqueId] = current;
+                currentCheckboxState[_this.uniqueValues[uniqueId]] = current;
             });
             this.clearIcons.toggleClass('enabled', this.anyCheckboxesChecked);
             v = v.trim(); // Remove leading and trailing whitespace
@@ -579,10 +600,12 @@ var StudyDataPage;
             if (!changed) {
                 // If we haven't detected any change so far, there is one more angle to cover:
                 // Checkboxes that used to exist, but have since been removed from the set.
-                $.each(this.previousCheckboxState, function (rowId) {
-                    if (currentCheckboxState[rowId] === undefined) {
+                $.each(this.previousCheckboxState, function (uniqueValue) {
+                    if (currentCheckboxState[uniqueValue] === undefined) {
                         changed = true;
-                        return false;
+                        // If it was taken out of the set, clear it so it will be
+                        // blank when re-added later.
+                        _this.checkboxes[uniqueValue].prop('checked', false);
                     }
                 });
             }
@@ -591,9 +614,9 @@ var StudyDataPage;
         };
         // Takes a set of record IDs, and if any checkboxes in the filter's UI are checked,
         // the ID set is narrowed down to only those records that contain the checked values.
-        // Checkboxes whose values are not represented anywhere in the given IDs are temporarily disabled
-        // and sorted to the bottom of the list, visually indicating to a user that those values are not
-        // available for further filtering.
+        // In addition, checkboxes whose values are not represented anywhere in the incoming IDs
+        // are temporarily disabled and sorted to the bottom of the list, visually indicating
+        // to a user that those values are not available for further filtering.
         // The narrowed set of IDs is then returned, for use by the next filter.
         GenericFilterSection.prototype.applyProgressiveFiltering = function (ids) {
             var _this = this;
@@ -618,51 +641,52 @@ var StudyDataPage;
                 }
             }
             var valuesVisiblePreFiltering = {};
-            var indexIsVisible = function (index) {
-                var match = true, text;
-                if (useSearchBox) {
-                    text = _this.uniqueValues[index].toLowerCase();
-                    match = queryStrs.some(function (v) {
-                        return text.length >= v.length && text.indexOf(v) >= 0;
-                    });
-                }
-                if (match) {
-                    valuesVisiblePreFiltering[index] = 1;
-                    if ((_this.previousCheckboxState[index] === 'C') || !_this.anyCheckboxesChecked) {
-                        return true;
-                    }
-                }
-                return false;
-            };
             idsPostFiltering = ids.filter(function (id) {
+                var pass = false;
                 // If we have filtering data for this id, use it.
                 // If we don't, the id probably belongs to some other measurement category,
                 // so we ignore it.
                 if (_this.filterHash[id]) {
-                    return _this.filterHash[id].some(indexIsVisible);
+                    // If any of this ID's criteria are checked, this ID passes the filter.
+                    // Note that we cannot optimize to use '.some' here becuase we need to
+                    // loop through all the criteria to set valuesVisiblePreFiltering.
+                    _this.filterHash[id].forEach(function (index) {
+                        var match = true, text;
+                        if (useSearchBox) {
+                            text = _this.uniqueValues[index].toLowerCase();
+                            match = queryStrs.some(function (v) {
+                                return text.length >= v.length && text.indexOf(v) >= 0;
+                            });
+                        }
+                        if (match) {
+                            valuesVisiblePreFiltering[index] = 1;
+                            if ((_this.previousCheckboxState[_this.uniqueValues[index]] === 'C') || !_this.anyCheckboxesChecked) {
+                                pass = true;
+                            }
+                        }
+                    });
                 }
-                return false;
+                return pass;
             });
-            // Create a document fragment, and accumulate inside it all the rows we want to display, in sorted order.
-            var frag = document.createDocumentFragment();
+            // Apply enabled/disabled status and ordering:
             var rowsToAppend = [];
             this.uniqueValuesOrder.forEach(function (crID) {
-                var checkbox = _this.checkboxes[crID], row = _this.tableRows[crID], show = !!valuesVisiblePreFiltering[crID];
+                var checkbox = _this.checkboxes[_this.uniqueValues[crID]], row = _this.tableRows[_this.uniqueValues[crID]], show = !!valuesVisiblePreFiltering[crID];
                 checkbox.prop('disabled', !show);
                 $(row).toggleClass('nodata', !show);
                 if (show) {
-                    frag.appendChild(row);
+                    _this.tableBodyElement.appendChild(row);
                 }
                 else {
                     rowsToAppend.push(row);
                 }
             });
-            // Now, append all the rows we disabled, so they go to the bottom of the table
-            rowsToAppend.forEach(function (row) { return frag.appendChild(row); });
-            // Remember that we last sorted by this column
-            this.tableBodyElement.appendChild(frag);
+            // Append all the rows we disabled, as a last step,
+            // so they go to the bottom of the table.
+            rowsToAppend.forEach(function (row) { return _this.tableBodyElement.appendChild(row); });
             return idsPostFiltering;
         };
+        // A few utility functions:
         GenericFilterSection.prototype._assayIdToAssay = function (assayId) {
             return EDDData.Assays[assayId];
         };
@@ -678,12 +702,12 @@ var StudyDataPage;
                 return EDDData.Protocols[assay.pid];
             return undefined;
         };
-        GenericFilterSection.prototype.getIdMapToValues = function () {
-            return function () { return []; };
-        };
         return GenericFilterSection;
     }());
     StudyDataPage.GenericFilterSection = GenericFilterSection;
+    // One of the highest-level filters: Strain.
+    // Note that an Assay's Line can have more than one Strain assigned to it,
+    // which is an example of why 'this.filterHash' is built with arrays.
     var StrainFilterSection = (function (_super) {
         __extends(StrainFilterSection, _super);
         function StrainFilterSection() {
@@ -712,6 +736,8 @@ var StudyDataPage;
         return StrainFilterSection;
     }(GenericFilterSection));
     StudyDataPage.StrainFilterSection = StrainFilterSection;
+    // Just as with the Strain filter, an Assay's Line can have more than one
+    // Carbon Source assigned to it.
     var CarbonSourceFilterSection = (function (_super) {
         __extends(CarbonSourceFilterSection, _super);
         function CarbonSourceFilterSection() {
@@ -740,6 +766,7 @@ var StudyDataPage;
         return CarbonSourceFilterSection;
     }(GenericFilterSection));
     StudyDataPage.CarbonSourceFilterSection = CarbonSourceFilterSection;
+    // A filter for the 'Carbon Source Labeling' field for each Assay's Line
     var CarbonLabelingFilterSection = (function (_super) {
         __extends(CarbonLabelingFilterSection, _super);
         function CarbonLabelingFilterSection() {
@@ -768,6 +795,7 @@ var StudyDataPage;
         return CarbonLabelingFilterSection;
     }(GenericFilterSection));
     StudyDataPage.CarbonLabelingFilterSection = CarbonLabelingFilterSection;
+    // A filter for the name of each Assay's Line
     var LineNameFilterSection = (function (_super) {
         __extends(LineNameFilterSection, _super);
         function LineNameFilterSection() {
@@ -792,6 +820,7 @@ var StudyDataPage;
         return LineNameFilterSection;
     }(GenericFilterSection));
     StudyDataPage.LineNameFilterSection = LineNameFilterSection;
+    // A filter for the Protocol of each Assay
     var ProtocolFilterSection = (function (_super) {
         __extends(ProtocolFilterSection, _super);
         function ProtocolFilterSection() {
@@ -816,6 +845,7 @@ var StudyDataPage;
         return ProtocolFilterSection;
     }(GenericFilterSection));
     StudyDataPage.ProtocolFilterSection = ProtocolFilterSection;
+    // A filter for the name of each Assay
     var AssayFilterSection = (function (_super) {
         __extends(AssayFilterSection, _super);
         function AssayFilterSection() {
@@ -840,6 +870,10 @@ var StudyDataPage;
         return AssayFilterSection;
     }(GenericFilterSection));
     StudyDataPage.AssayFilterSection = AssayFilterSection;
+    // A class defining some additional logic for metadata-type filters,
+    // meant to be subclassed.  Note how we pass in the particular metadata we
+    // are constructing this filter for, in the constructor.
+    // Unlike the other filters, we will be instantiating more than one of these.
     var MetaDataFilterSection = (function (_super) {
         __extends(MetaDataFilterSection, _super);
         function MetaDataFilterSection(metaDataID) {
@@ -899,6 +933,8 @@ var StudyDataPage;
         return AssayMetaDataFilterSection;
     }(MetaDataFilterSection));
     StudyDataPage.AssayMetaDataFilterSection = AssayMetaDataFilterSection;
+    // These remaining filters work on Measurement IDs rather than Assay IDs.
+    // A filter for the compartment of each Metabolite.
     var MetaboliteCompartmentFilterSection = (function (_super) {
         __extends(MetaboliteCompartmentFilterSection, _super);
         function MetaboliteCompartmentFilterSection() {
@@ -925,19 +961,44 @@ var StudyDataPage;
         return MetaboliteCompartmentFilterSection;
     }(GenericFilterSection));
     StudyDataPage.MetaboliteCompartmentFilterSection = MetaboliteCompartmentFilterSection;
+    // A generic filter for Measurements, meant to be subclassed.
+    // It introduces a 'loadPending' attribute, which is used to make the filter
+    // appear in the UI even if it has no data, because we anticipate data to eventually
+    // appear in it.
+    //      The idea is, we know whether to instantiate a given subclass of this filter by
+    // looking at the measurement count for each Assay, which is given to us in the first
+    // chunk of data from the server.  So, we instantiate it, then it appears in a
+    // 'load pending' state until actual measurement values are received from the server.
     var MeasurementFilterSection = (function (_super) {
         __extends(MeasurementFilterSection, _super);
         function MeasurementFilterSection() {
             _super.apply(this, arguments);
         }
-        MeasurementFilterSection.prototype.configure = function () {
+        MeasurementFilterSection.prototype.configure = function (title, shortLabel) {
             this.loadPending = true;
-            _super.prototype.configure.call(this, 'Measurement', 'mm');
+            _super.prototype.configure.call(this, title, shortLabel);
         };
+        // Overriding to make use of loadPending.
         MeasurementFilterSection.prototype.isFilterUseful = function () {
             return this.loadPending || this.uniqueValuesOrder.length > 0;
         };
-        MeasurementFilterSection.prototype.updateUniqueIndexesHash = function (mIds) {
+        return MeasurementFilterSection;
+    }(GenericFilterSection));
+    StudyDataPage.MeasurementFilterSection = MeasurementFilterSection;
+    // A filter for the names of General Measurements.
+    var GeneralMeasurementFilterSection = (function (_super) {
+        __extends(GeneralMeasurementFilterSection, _super);
+        function GeneralMeasurementFilterSection() {
+            _super.apply(this, arguments);
+        }
+        GeneralMeasurementFilterSection.prototype.configure = function () {
+            this.loadPending = true;
+            _super.prototype.configure.call(this, 'Measurement', 'mm');
+        };
+        GeneralMeasurementFilterSection.prototype.isFilterUseful = function () {
+            return this.loadPending || this.uniqueValuesOrder.length > 0;
+        };
+        GeneralMeasurementFilterSection.prototype.updateUniqueIndexesHash = function (mIds) {
             var _this = this;
             this.uniqueIndexes = {};
             this.filterHash = {};
@@ -955,21 +1016,17 @@ var StudyDataPage;
             });
             this.loadPending = false;
         };
-        return MeasurementFilterSection;
-    }(GenericFilterSection));
-    StudyDataPage.MeasurementFilterSection = MeasurementFilterSection;
+        return GeneralMeasurementFilterSection;
+    }(MeasurementFilterSection));
+    StudyDataPage.GeneralMeasurementFilterSection = GeneralMeasurementFilterSection;
+    // A filter for the names of Metabolite Measurements.
     var MetaboliteFilterSection = (function (_super) {
         __extends(MetaboliteFilterSection, _super);
         function MetaboliteFilterSection() {
             _super.apply(this, arguments);
         }
         MetaboliteFilterSection.prototype.configure = function () {
-            this.loadPending = true;
             _super.prototype.configure.call(this, 'Metabolite', 'me');
-        };
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        MetaboliteFilterSection.prototype.isFilterUseful = function () {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
         };
         MetaboliteFilterSection.prototype.updateUniqueIndexesHash = function (amIDs) {
             var _this = this;
@@ -990,20 +1047,16 @@ var StudyDataPage;
             this.loadPending = false;
         };
         return MetaboliteFilterSection;
-    }(GenericFilterSection));
+    }(MeasurementFilterSection));
     StudyDataPage.MetaboliteFilterSection = MetaboliteFilterSection;
+    // A filter for the names of Protein Measurements.
     var ProteinFilterSection = (function (_super) {
         __extends(ProteinFilterSection, _super);
         function ProteinFilterSection() {
             _super.apply(this, arguments);
         }
         ProteinFilterSection.prototype.configure = function () {
-            this.loadPending = true;
             _super.prototype.configure.call(this, 'Protein', 'pr');
-        };
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        ProteinFilterSection.prototype.isFilterUseful = function () {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
         };
         ProteinFilterSection.prototype.updateUniqueIndexesHash = function (amIDs) {
             var _this = this;
@@ -1024,20 +1077,16 @@ var StudyDataPage;
             this.loadPending = false;
         };
         return ProteinFilterSection;
-    }(GenericFilterSection));
+    }(MeasurementFilterSection));
     StudyDataPage.ProteinFilterSection = ProteinFilterSection;
+    // A filter for the names of Gene Measurements.
     var GeneFilterSection = (function (_super) {
         __extends(GeneFilterSection, _super);
         function GeneFilterSection() {
             _super.apply(this, arguments);
         }
         GeneFilterSection.prototype.configure = function () {
-            this.loadPending = true;
             _super.prototype.configure.call(this, 'Gene', 'gn');
-        };
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        GeneFilterSection.prototype.isFilterUseful = function () {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
         };
         GeneFilterSection.prototype.updateUniqueIndexesHash = function (amIDs) {
             var _this = this;
@@ -1058,7 +1107,7 @@ var StudyDataPage;
             this.loadPending = false;
         };
         return GeneFilterSection;
-    }(GenericFilterSection));
+    }(MeasurementFilterSection));
     StudyDataPage.GeneFilterSection = GeneFilterSection;
     // Called when the page loads.
     function prepareIt() {
@@ -1251,7 +1300,7 @@ var StudyDataPage;
             return false;
         });
         // Callbacks to respond to the filtering section
-        $('#mainFilterSection').on('mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
+        $('#mainFilterSection').on('mouseover mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
             .on('keydown', filterTableKeyDown.bind(this));
         $.ajax({
             'url': 'edddata/',
@@ -1265,7 +1314,6 @@ var StudyDataPage;
                 colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
                 StudyDataPage.progressiveFilteringWidget.prepareFilteringSection();
                 $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(function () {
-                    StudyDataPage.progressiveFilteringWidget.queueRepopulateAllFilters();
                     queueRefreshDataDisplayIfStale();
                 });
                 //pulling in protocol measurements AssayMeasurements
@@ -1394,14 +1442,47 @@ var StudyDataPage;
         actionPanelRefreshTimer = setTimeout(actionPanelRefresh.bind(this), 150);
     }
     StudyDataPage.queueActionPanelRefresh = queueActionPanelRefresh;
-    function actionPanelRefresh() {
-        var checkedBoxes, checkedAssays, checkedMeasure, nothingSelected;
-        // Figure out how many assays/checkboxes are selected.
-        // Don't show the selected item count if we're not looking at the table.
-        // (Only the visible item count makes sense in that case.)
+    // This function determines if the filtering sections (or settings related to them) have changed
+    // since the last time we were in the current display mode (e.g. line graph, table, bar graph
+    // in various modes, etc) and updates the display only if a change is detected.
+    function refreshDataDisplayIfStale(force) {
+        // Any switch between viewing modes, or change in filtering, is also cause to check the UI
+        // in the action panel and make sure it's current.
+        queueActionPanelRefresh();
+        // If the filtering widget claims a change since the last inquiry,
+        // then all the viewing modes are stale, no matter what.
+        // So we mark them all.
+        if (StudyDataPage.progressiveFilteringWidget.checkRedrawRequired(force)) {
+            viewingModeIsStale['linegraph'] = true;
+            viewingModeIsStale['bargraph-time'] = true;
+            viewingModeIsStale['bargraph-line'] = true;
+            viewingModeIsStale['bargraph-measurement'] = true;
+            viewingModeIsStale['table'] = true;
+            // Pull out a fresh set of filtered measurements and assays
+            var filterResults = StudyDataPage.progressiveFilteringWidget.buildFilteredMeasurements();
+            postFilteringMeasurements = filterResults['filteredMeasurements'];
+            postFilteringAssays = filterResults['filteredAssays'];
+        }
+        else if (viewingMode == 'bargraph') {
+            // Special case to handle the extra sub-modes of the bar graph
+            if (!viewingModeIsStale[viewingMode + '-' + barGraphMode]) {
+                return;
+            }
+        }
+        else if (!viewingModeIsStale[viewingMode]) {
+            return;
+        }
         if (viewingMode == 'table') {
+            if (assaysDataGridSpec === null) {
+                assaysDataGridSpec = new DataGridSpecAssays();
+                assaysDataGridSpec.init();
+                StudyDataPage.assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
+            }
+            else {
+                StudyDataPage.assaysDataGrid.triggerDataReset();
+            }
+            viewingModeIsStale['table'] = false;
             makeLabelsBlack(EDDGraphingTools.labels);
-            $('#displayedDiv').addClass('off');
             var h = $('#content').height(); // Height of the viewing region
             // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
             // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
@@ -1421,6 +1502,29 @@ var StudyDataPage;
                     actionPanelIsInBottomBar = true;
                 }
             }
+        }
+        else {
+            remakeMainGraphArea();
+            if (viewingMode == 'bargraph') {
+                viewingModeIsStale[viewingMode + '-' + barGraphMode] = false;
+            }
+            else {
+                viewingModeIsStale['linegraph'] = false;
+            }
+            if (actionPanelIsInBottomBar) {
+                actionPanelIsInBottomBar = false;
+                $('#assaysActionPanel').appendTo('#content');
+                $('#mainFilterSection').appendTo('#content');
+            }
+        }
+    }
+    function actionPanelRefresh() {
+        var checkedBoxes, checkedAssays, checkedMeasure, nothingSelected;
+        // Figure out how many assays/checkboxes are selected.
+        // Don't show the selected item count if we're not looking at the table.
+        // (Only the visible item count makes sense in that case.)
+        if (viewingMode == 'table') {
+            $('#displayedDiv').addClass('off');
             checkedBoxes = StudyDataPage.assaysDataGrid.getSelectedCheckboxElements();
             checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
             checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
@@ -1446,72 +1550,8 @@ var StudyDataPage;
             }
         }
         else {
-            actionPanelIsInBottomBar = false;
-            $('#assaysActionPanel').appendTo('#content');
-            $('#mainFilterSection').appendTo('#content');
             $('#selectedDiv').addClass('off');
             $('#displayedDiv').removeClass('off');
-        }
-    }
-    function refreshDataDisplayIfStale(force) {
-        // Any switch between viewing modes, or change in filtering, is cause to check the UI
-        // in the action panel and make sure it's current.
-        queueActionPanelRefresh();
-        // If the filtering widget claims a change since the last inquiry,
-        // then all the viewing modes are stale, no matter what.
-        if (StudyDataPage.progressiveFilteringWidget.checkRedrawRequired(force)) {
-            viewingModeIsStale['linegraph'] = true;
-            viewingModeIsStale['bargraph-time'] = true;
-            viewingModeIsStale['bargraph-line'] = true;
-            viewingModeIsStale['bargraph-measurement'] = true;
-            viewingModeIsStale['table'] = true;
-            // Gives ids of lines to show.
-            var filterResults = StudyDataPage.progressiveFilteringWidget.buildFilteredMeasurements();
-            postFilteringMeasurements = filterResults['filteredMeasurements'];
-            var showingEmpty = !!($('#filteringShowEmptyCheckbox').prop('checked'));
-            if (showingEmpty) {
-                postFilteringAssays = filterResults['filteredAssays'];
-            }
-            else {
-                postFilteringAssays = [];
-                var seenAssays = {};
-                // Resolve measurement IDs into a list of assay IDs in the original order encountered, de-duping them.
-                postFilteringMeasurements.forEach(function (mId) {
-                    var a = EDDData.AssayMeasurements[mId].assay;
-                    if (!seenAssays[a]) {
-                        postFilteringAssays.push(a);
-                    }
-                    seenAssays[a] = true;
-                });
-            }
-        }
-        else if (viewingMode == 'bargraph') {
-            if (!viewingModeIsStale[viewingMode + '-' + barGraphMode]) {
-                return;
-            }
-        }
-        else if (!viewingModeIsStale[viewingMode]) {
-            return;
-        }
-        if (viewingMode == 'table') {
-            if (assaysDataGridSpec === null) {
-                assaysDataGridSpec = new DataGridSpecAssays();
-                assaysDataGridSpec.init();
-                StudyDataPage.assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
-            }
-            else {
-                StudyDataPage.assaysDataGrid.triggerDataReset();
-            }
-            viewingModeIsStale['table'] = false;
-        }
-        else {
-            remakeMainGraphArea();
-            if (viewingMode == 'bargraph') {
-                viewingModeIsStale[viewingMode + '-' + barGraphMode] = false;
-            }
-            else {
-                viewingModeIsStale['linegraph'] = false;
-            }
         }
     }
     function remakeMainGraphArea() {
@@ -2703,11 +2743,12 @@ var DGDisabledAssaysWidget = (function (_super) {
         var isOtherChecked = $('#filteringShowDisabledCheckbox').prop('checked');
         $('#filteringShowDisabledCheckbox').prop('checked', amIChecked);
         if (amIChecked != isOtherChecked) {
-            // Can't queue this event because arrangeTableDataRows
-            // (called next in onWidgetChange) relies on its data.
-            StudyDataPage.progressiveFilteringWidget.repopulateAllFilters();
-            _super.prototype.onWidgetChange.call(this, e);
+            StudyDataPage.queueRefreshDataDisplayIfStale();
         }
+        // We don't call the superclass version of this function because we don't
+        // want to trigger a call to arrangeTableDataRows just yet.
+        // The queueRefreshDataDisplayIfStale function will do it for us, after
+        // rebuilding the filtering section.
     };
     DGDisabledAssaysWidget.prototype.applyFilterToIDs = function (rowIDs) {
         var checked = !!(this.checkBoxElement.checked);
@@ -2771,14 +2812,15 @@ var DGEmptyAssaysWidget = (function (_super) {
     // Handle activation of widget
     DGEmptyAssaysWidget.prototype.onWidgetChange = function (e) {
         var amIChecked = !!(this.checkBoxElement.checked);
-        var isOtherChecked = $('#filteringShowEmptyCheckbox').prop('checked');
+        var isOtherChecked = !!($('#filteringShowEmptyCheckbox').prop('checked'));
         $('#filteringShowEmptyCheckbox').prop('checked', amIChecked);
         if (amIChecked != isOtherChecked) {
-            // Can't queue this event because arrangeTableDataRows
-            // (called next in onWidgetChange) relies on its data.
-            StudyDataPage.progressiveFilteringWidget.repopulateAllFilters();
-            _super.prototype.onWidgetChange.call(this, e);
+            StudyDataPage.queueRefreshDataDisplayIfStale();
         }
+        // We don't call the superclass version of this function because we don't
+        // want to trigger a call to arrangeTableDataRows just yet.
+        // The queueRefreshDataDisplayIfStale function will do it for us, after
+        // rebuilding the filtering section.
     };
     DGEmptyAssaysWidget.prototype.applyFilterToIDs = function (rowIDs) {
         var checked = !!(this.checkBoxElement.checked);
