@@ -407,6 +407,7 @@ class CreateStudyForm(forms.ModelForm):
             line.pk = line.id = None
             line.study = study
             line.study_id = study.id
+            line.uuid = None
             to_add.append(line)
         # https://docs.djangoproject.com/en/1.9/ref/models/relations/#django.db.models.fields.related.RelatedManager.add
         study.line_set.add(*to_add, bulk=False)
