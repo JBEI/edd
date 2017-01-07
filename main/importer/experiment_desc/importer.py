@@ -1,3 +1,4 @@
+# coding: utf-8
 from __future__ import unicode_literals
 
 import logging
@@ -140,7 +141,7 @@ class CombinatorialCreationImporter(object):
                                              assay_metadata_types_by_pk,
                                              require_strains=self.REQUIRE_STRAINS)
 
-        line_def_inputs = parser.parse(input_data, self.errors, self.warnings)
+        line_def_inputs = parser.parse(input_data, self)
         self.performance.end_input_parse()
 
         if not line_def_inputs:
@@ -153,8 +154,11 @@ class CombinatorialCreationImporter(object):
             return _build_errors_dict(self.errors, self.warnings)
 
         with transaction.atomic(savepoint=False):
-            return self._define_study(combinatorial_inputs=line_def_inputs,
-                                      allow_duplicate_names=allow_duplicate_names, dry_run=dry_run)
+            return self._define_study(
+                combinatorial_inputs=line_def_inputs,
+                allow_duplicate_names=allow_duplicate_names,
+                dry_run=dry_run
+            )
 
     def _define_study(self, combinatorial_inputs,
                       allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
@@ -201,8 +205,14 @@ class CombinatorialCreationImporter(object):
         unique_part_number_count = len(unique_part_numbers_dict)
         ice_entries_dict = unique_part_numbers_dict
 
-        # query ICE for UUID's part numbers found in the input fil
-        self.get_ice_entries(ice, ice_entries_dict)
+        # query ICE for UUID's part numbers found in the input file
+        # NOTE: to work around issues with ICE, putting this in try-catch and ignoring
+        #    communication errors; strains will not be added but everything else will continue
+        #    to work.
+        try:
+            self.get_ice_entries(ice, ice_entries_dict)
+        except:
+            pass
         performance.end_ice_search(unique_part_number_count)
 
         ###########################################################################################

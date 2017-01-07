@@ -1,9 +1,11 @@
+# coding: utf-8
 from __future__ import unicode_literals
 
 import json
 import logging
 import re
 
+from builtins import str
 from collections import Sequence
 from django.conf import settings
 from six import string_types
@@ -224,8 +226,7 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
             return '%0.' + ('%d' % self.fractional_time_digits + 'f')
         return '%d'
 
-    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types,
-                       combinatorial_metadata_types):
+    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types):
         try:
             time_hours = assay_metadata.get(self.assay_time_metadata_type_pk)
             time_str = self._get_time_format_string() % time_hours
@@ -382,7 +383,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         :return: the column layout if required columns were found, or None otherwise
         """
         logger.debug('in read_column_layout()')  # TODO: remove
-        layout = ColumnLayout(self.errors, self.warnings)
+        layout = ColumnLayout(self)
         # TODO: add support for control column
 
         ###########################################################################################
@@ -949,7 +950,7 @@ class JsonInputParser(CombinatorialInputParser):
 
                 naming_strategy.elements = elements
                 naming_strategy.abbreviations = abbreviations
-                naming_strategy.verify_naming_elts(self.errors)
+                naming_strategy.verify_naming_elts(importer)
             else:
                 base_name = value.pop('base_name')
                 naming_strategy = _ExperimentDescNamingStrategy(self.assay_time_metadata_type_pk)
@@ -995,10 +996,6 @@ class JsonInputParser(CombinatorialInputParser):
                 self.assay_metadata_types_by_pk,
                 self.protocols_by_pk,
                 self.errors,
-                INVALID_PROTOCOL_META_PK,
-                INVALID_LINE_META_PK,
-                INVALID_ASSAY_META_PK,
-                PARSE_ERROR
             )
 
         # TODO: verify ICE strains are provided for every input if required
