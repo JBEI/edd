@@ -12,12 +12,15 @@ from six import string_types
 
 from .constants import (
     DUPLICATE_ASSAY_METADATA,
+    INVALID_CELL_FORMAT,
+    INVALID_REPLICATE_COUNT,
     MISSING_LINE_NAME_ROWS_KEY,
     MISSING_STRAINS_KEY,
     PARSE_ERROR,
     PART_NUMBER_PATTERN_UNMATCHED_WARNING,
     ROWS_MISSING_REPLICATE_COUNT,
     SKIPPED_KEY,
+    UNMATCHED_HEADERS_KEY,
 )
 from .utilities import AutomatedNamingStrategy, CombinatorialDescriptionInput, NamingStrategy
 
@@ -109,8 +112,7 @@ class ColumnLayout:
         self.col_index_to_assay_data = {}  # maps col index -> (Protocol, MetadataType)
         self.combinatorial_col_indices = []  # indices of all metadata columns for combinatorial
         self.unique_assay_protocols = {}
-        self.errors = importer.errors
-        self.warnings = importer.warnings
+        self.importer = importer
 
     def register_protocol(self, protocol):
         self.unique_assay_protocols[protocol.pk] = True
@@ -138,8 +140,7 @@ class ColumnLayout:
         # if we see it, log an error -- no clear/automated way for us to resolve which column
         #  has the correct values!
         if self.has_assay_metadata(upper_protocol_name, assay_meta_type.pk):
-            dupes = self.errors[DUPLICATE_ASSAY_METADATA]
-            dupes.append(assay_meta_type.pk)
+            self.importer.add_error(DUPLICATE_ASSAY_METADATA, assay_meta_type.pk)
 
         self.register_protocol(protocol)
 
@@ -337,8 +338,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
 
         # Clear out state from any previous use of this parser instance
         self.column_layout = None
-        self.errors = importer.errors
-        self.warnings = importer.warnings
+        self.importer = importer
 
         # loop over rows
         parsed_row_inputs = []
@@ -437,13 +437,14 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 # if we didn't process this column, track a warning that describes
                 # dropped columns (can be displayed later in the UI)
                 if line_metadata_type is None:
-                    result_dest = self.errors if self.REQUIRE_COL_HEADER_MATCH else self.warnings
-                    skipped_cols = result_dest.get(SKIPPED_KEY, [])
-                    if not skipped_cols:
-                        result_dest[SKIPPED_KEY] = skipped_cols
-                    skipped_cols.append({
-                        'col_index': col_index, 'title:': cell_content,
-                    })
+                    skipped = {
+                        'col_index': col_index,
+                        'title:': cell_content,
+                    }
+                    if self.REQUIRE_COL_HEADER_MATCH:
+                        self.importer.add_error(SKIPPED_KEY, skipped)
+                    else:
+                        self.importer.add_warning(SKIPPED_KEY, skipped)
 
         # test whether we've located all the required columns
         found_col_labels = ((layout.line_name_col is not None) and
@@ -532,12 +533,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 # assumed by the file format.
                 else:
                     logger.debug('Column header "%s" didnt match known metadata types')
-                    UNMATCHED_HEADERS_KEY = 'unmatched_column_header_indexes'
-                    errors = self.errors
-                    unmatched_cols = errors.get(UNMATCHED_HEADERS_KEY, [])
-                    if not unmatched_cols:
-                        errors[UNMATCHED_HEADERS_KEY] = unmatched_cols
-                    unmatched_cols.append(col_index)
+                    self.importer.add_error(UNMATCHED_HEADERS_KEY, col_index)
                     return True
 
     def _parse_line_metadata_header(self, column_layout, upper_content, col_index):
@@ -578,9 +574,6 @@ class ExperimentDefFileParser(CombinatorialInputParser):
             in (arbitrary column order is supported).
         """
         row_inputs = _InputFileRow(self.assay_time_metadata_type_pk)
-
-        errors = self.errors
-        warnings = self.warnings
         layout = self.column_layout
 
         ###################################################
@@ -605,7 +598,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                     'col': layout.line_name_col + 1,
                 }
             )
-            self._append_to_errors_list(MISSING_LINE_NAME_ROWS_KEY, row_num)
+            self.importer.add_error(MISSING_LINE_NAME_ROWS_KEY, row_num)
 
         ###################################################
         # Line description
@@ -651,17 +644,10 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 try:
                     row_inputs.replicate_count = int(cell_content)
                 except ValueError:
-                    invalid_count = 'invalid_replicate_count'
-                    missing = errors.get(invalid_count, [])
-                    if not missing:
-                        errors[invalid_count] = missing
-                    missing.append(cell_content)
+                    self.importer.add_error(INVALID_REPLICATE_COUNT, cell_content)
             else:
                 row_inputs.replicate_count = 1
-                missing_replicate_count = warnings.get(ROWS_MISSING_REPLICATE_COUNT, [])
-                if not missing_replicate_count:
-                    warnings[ROWS_MISSING_REPLICATE_COUNT] = missing_replicate_count
-                missing_replicate_count.append(row_num)
+                self.importer.add_warning(ROWS_MISSING_REPLICATE_COUNT, row_num)
 
         ###################################################
         # Strain part id(s)
@@ -707,7 +693,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                         part_number_match = TYPICAL_ICE_PART_NUMBER_PATTERN.match(token)
 
                         if not part_number_match:
-                            self.warnings[PART_NUMBER_PATTERN_UNMATCHED_WARNING].append(token)
+                            self.importer.add_warning(PART_NUMBER_PATTERN_UNMATCHED_WARNING, token)
                             logger.warning(
                                 'Expected ICE part number(s) in template file row %(row_num)d, '
                                 'but "%(token)s" did not match the expected pattern. This is '
@@ -731,8 +717,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                         row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
 
             if self.require_strains and not individual_strain_ids:
-                missing = errors[MISSING_STRAINS_KEY]
-                missing.append(row_num)
+                self.importer.add_error(MISSING_STRAINS_KEY, row_num)
 
         ###################################################
         # line metadata
@@ -798,7 +783,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 else:
                     if row_inputs.has_assay_metadata_type(protocol.pk, assay_metadata_type.pk):
                         # TODO could improve this error content with a more complex data structure
-                        self._append_to_errors_list(
+                        self.importer.add_error(
                             'duplicate_assay_matadata_columns',
                             {
                                 'protocol_id': protocol.pk,
@@ -825,8 +810,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
 
         else:
             logger.warning('Invalid cell format for cell %s' % str(cell_content.__type__))
-            key = 'invalid_cell_format'
-            self.errors[key].append((row_num, col_index + 1))
+            self.importer.add_error(INVALID_CELL_FORMAT, (row_num, col_index + 1))
             return None
 
     def _parse_combinatorial_input(self, row_inputs, cell_content, row_num, col_index,
@@ -873,11 +857,8 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                         'col': col_index+1,
                     }
                 )
-                self._append_to_errors_list(error_key, (row_num, col_index+1,))
+                self.importer.add_error(error_key, (row_num, col_index+1,))
                 break
-
-    def _append_to_errors_list(self, key, append_value):
-        self.errors[key].append(append_value)
 
 
 class JsonInputParser(CombinatorialInputParser):
@@ -899,7 +880,7 @@ class JsonInputParser(CombinatorialInputParser):
     def parse(self, source, importer):
 
         combinatorial_inputs = []
-        self.errors = importer.errors
+        self.importer = importer
 
         if importer.errors:
             return None
@@ -990,7 +971,7 @@ class JsonInputParser(CombinatorialInputParser):
                 self.line_metadata_types_by_pk,
                 self.assay_metadata_types_by_pk,
                 self.protocols_by_pk,
-                self.errors,
+                self.importer,
             )
 
         # TODO: verify ICE strains are provided for every input if required
@@ -1010,7 +991,7 @@ class JsonInputParser(CombinatorialInputParser):
         return combinatorial_inputs
 
     def add_parse_error(self, msg):
-        self.errors[PARSE_ERROR].append(msg)
+        self.importer.add_error(PARSE_ERROR, msg)
 
 
 def _copy_to_numeric_elts(input_list):

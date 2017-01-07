@@ -14,7 +14,9 @@ from .constants import (
     INVALID_ASSAY_META_PK,
     INVALID_LINE_META_PK,
     INVALID_PROTOCOL_META_PK,
+    NON_UNIQUE_STRAIN_UUIDS,
     PARSE_ERROR,
+    SUSPECTED_MATCH_STRAINS,
 )
 from main.models import Strain, MetadataType, Line, Assay
 
@@ -597,7 +599,7 @@ class CombinatorialDescriptionInput(object):
                           strains_by_pk)
         return visitor
 
-    def populate_study(self, study, errors, warnings, protocols=None, line_metadata_types=None,
+    def populate_study(self, study, protocols=None, line_metadata_types=None,
                        assay_metadata_types=None, strains_by_pk=None):
         """
         Creates objects in the database, or raises an Exception if an unexpected error occurs.
@@ -850,7 +852,7 @@ class CombinatorialCreationPerformance(object):
 
 
 def find_existing_strains(ice_parts, existing_edd_strains, strains_by_part_number,
-                          non_existent_edd_strains, errors):
+                          non_existent_edd_strains, importer):
     """
     Directly queries EDD's database for existing Strains that match the UUID in each ICE entry.
     To help with database curation, for unmatched strains, the database is also searched for
@@ -888,61 +890,57 @@ def find_existing_strains(ice_parts, existing_edd_strains, strains_by_part_numbe
                     existing_edd_strains[ice_entry.part_id] = existing_strain
                     strains_by_part_number[ice_entry.part_id] = existing_strain
                 else:
-                    NON_UNIQUE_STRAIN_UUIDS = 'non_unique_strain_uuids'
-                    non_unique = errors.get(NON_UNIQUE_STRAIN_UUIDS, None)
-                    if not non_unique:
-                        non_unique = []
-                        errors[NON_UNIQUE_STRAIN_UUIDS] = non_unique
-                    non_unique.append(ice_entry.uuid)
+                    importer.add_error(NON_UNIQUE_STRAIN_UUIDS, ice_entry.uuid)
 
             # if no EDD strains were found with this UUID, look for candidate strains by URL.
             # Code from here forward is attempted workarounds for EDD-158
             else:
-
-                logger.debug("ICE entry %(part_id)s (pk=%(pk)d) couldn't be located in EDD's "
-                             "database by UUID. "
-                             "Searching by name and URL to help avoid strain curation problems."
-                             % {'part_id': ice_entry.part_id, 'pk': ice_entry.id})
-
+                logger.debug(
+                    "ICE entry %(part_id)s (pk=%(pk)d) couldn't be located in EDD's database by "
+                    "UUID. Searching by name and URL to help avoid strain curation problems." % {
+                        'part_id': ice_entry.part_id,
+                        'pk': ice_entry.id
+                    }
+                )
                 non_existent_edd_strains.append(ice_entry)
-
                 url_regex = r'.*/parts/%(id)s(?:/?)'
 
                 # look for candidate strains by pk-based URL (if present: more static / reliable
                 # than name)
-                found_strains_qs = Strain.objects.filter(registry_url__iregex=url_regex % {
-                                                         'id': str(ice_entry.id)})
-
+                found_strains_qs = Strain.objects.filter(
+                    registry_url__iregex=url_regex % {'id': str(ice_entry.id)},
+                )
                 if found_strains_qs:
-                    found_suspected_match_strain(ice_entry, 'local_pk_url_match',
-                                                 found_strains_qs, errors)
+                    importer.add_error(SUSPECTED_MATCH_STRAINS, {
+                        'ice_entry': ice_entry,
+                        'suspected_matches': list(found_strains_qs),
+                    })
                     continue
 
                 # look for candidate strains by UUID-based URL
                 found_strains_qs = Strain.objects.filter(
-                        registry_url__iregex=(url_regex % {'id': str(ice_entry.uuid)}))
+                    registry_url__iregex=(url_regex % {'id': str(ice_entry.uuid)})
+                )
                 if found_strains_qs:
-                    found_suspected_match_strain(ice_entry, 'uuid_url_match', found_strains_qs,
-                                                 errors)
+                    importer.add_error(SUSPECTED_MATCH_STRAINS, {
+                        'ice_entry': ice_entry,
+                        'suspected_matches': list(found_strains_qs),
+                    })
                     continue
 
                 # if no strains were found by URL, search by name
                 empty_or_whitespace_regex = r'$\s*^'
-                no_registry_id = (Q(registry_id__isnull=True) |
-                                  Q(registry_id__regex=empty_or_whitespace_regex))
-
-                found_strains_qs = Strain.objects.filter(no_registry_id,
-                                                         name__icontains=ice_entry.name)
-
+                no_registry_id = (
+                    Q(registry_id__isnull=True) |
+                    Q(registry_id__regex=empty_or_whitespace_regex)
+                )
+                found_strains_qs = Strain.objects.filter(
+                    no_registry_id,
+                    name__icontains=ice_entry.name,
+                )
                 if found_strains_qs:
-                    found_suspected_match_strain(ice_entry, 'containing_name_exists',
-                                                 found_strains_qs, errors)
+                    importer.add_error(SUSPECTED_MATCH_STRAINS, {
+                        'ice_entry': ice_entry,
+                        'suspected_matches': list(found_strains_qs),
+                    })
                     continue
-
-
-def found_suspected_match_strain(ice_part, search_description, found_strains, errors):
-    SUSPECTED_MATCH_STRAINS = 'suspected_match_strains'
-    suspected_match_strains = errors[SUSPECTED_MATCH_STRAINS]
-    if not suspected_match_strains:
-        suspected_match_strains = []
-        errors[SUSPECTED_MATCH_STRAINS] = suspected_match_strains
