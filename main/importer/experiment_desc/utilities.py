@@ -10,7 +10,7 @@ from collections import defaultdict, Sequence
 from django.db.models import Q
 from six import string_types
 
-from .parsers import (
+from .constants import (
     INVALID_ASSAY_META_PK,
     INVALID_LINE_META_PK,
     INVALID_PROTOCOL_META_PK,
