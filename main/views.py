@@ -1200,7 +1200,7 @@ def study_define(request, pk=None, slug=None):
     try:
         with transaction.atomic(savepoint=False):
             result = importer.do_import(request, not is_excel_file, allow_duplicate_names, dry_run)
-        if not dry_run or 'errors' in result.keys():
+        if not dry_run and 'errors' in result:
             return JsonResponse(result, status=400)
         return JsonResponse(result)
     except RuntimeError as e:

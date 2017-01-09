@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 import logging
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from django.conf import settings
 from django.db import transaction
 from io import BytesIO
@@ -143,7 +143,7 @@ class CombinatorialCreationImporter(object):
         else:
             input_data = load_workbook(BytesIO(input_data.read()), read_only=True, data_only=True)
             if len(input_data.worksheets) == 0:
-                self.errors['no_input'] = 'no worksheets in file'
+                self.add_error('no_input', 'no worksheets in file')
 
             parser = ExperimentDefFileParser(protocols_by_pk, line_metadata_types_by_pk,
                                              assay_metadata_types_by_pk,
@@ -201,22 +201,21 @@ class CombinatorialCreationImporter(object):
         # build a list of unique part numbers found in the input file. we'll query ICE to get
         # references to them. Note: ideally we'd do this externally to the @atomic block, but other
         # EDD queries have to precede this one
-        unique_part_numbers_dict = OrderedDict()
+        unique_part_numbers = set()
+        part_lookup = {}
 
         for combo in combinatorial_inputs:
-            for part_number in combo.get_unique_strain_ids(unique_part_numbers_dict):
-                unique_part_numbers_dict[part_number] = True
+            unique_part_numbers = combo.get_unique_strain_ids(unique_part_numbers)
 
         # maps part id -> Entry for those found in ICE
-        unique_part_number_count = len(unique_part_numbers_dict)
-        ice_entries_dict = unique_part_numbers_dict
+        unique_part_number_count = len(unique_part_numbers)
 
         # query ICE for UUID's part numbers found in the input file
         # NOTE: to work around issues with ICE, putting this in try-catch and ignoring
         #    communication errors; strains will not be added but everything else will continue
         #    to work.
         try:
-            self.get_ice_entries(ice, ice_entries_dict)
+            part_lookup = self.get_ice_entries(ice, unique_part_numbers)
         except:
             pass
         performance.end_ice_search(unique_part_number_count)
@@ -224,20 +223,10 @@ class CombinatorialCreationImporter(object):
         ###########################################################################################
         # Search EDD for existing strains using UUID's queried from ICE
         ###########################################################################################
-        # keep parts in same order as input to allow resume following an unanticipated error
-        existing_edd_strains = OrderedDict()
-        non_existent_edd_strains = []
-        strains_by_part_number = OrderedDict()  # maps ICE part # -> EDD Strain
 
         # query EDD for Strains by UUID's found in ICE
-        strain_search_count = len(unique_part_numbers_dict)  # may be different from above
-        find_existing_strains(
-            unique_part_numbers_dict,
-            existing_edd_strains,
-            strains_by_part_number,
-            non_existent_edd_strains,
-            self
-        )
+        strain_search_count = len(part_lookup)
+        strains_by_part_number, non_existent_edd_strains = find_existing_strains(part_lookup, self)
         performance.end_edd_strain_search(strain_search_count)
 
         ###########################################################################################
@@ -245,7 +234,7 @@ class CombinatorialCreationImporter(object):
         # EDD since it's likely to be used below or referenced again (even if this is a dry run)
         ###########################################################################################
         self.create_missing_strains(non_existent_edd_strains, strains_by_part_number)
-        strains_by_pk = {strain.pk: strain for strain in strains_by_part_number.values()}
+        strains_by_pk = {strain.pk: strain for strain in strains_by_part_number.itervalues()}
         performance.end_edd_strain_creation(len(non_existent_edd_strains))
 
         ###########################################################################################
@@ -254,7 +243,6 @@ class CombinatorialCreationImporter(object):
         ###########################################################################################
         for input_set in combinatorial_inputs:
             input_set.replace_strain_part_numbers_with_pks(strains_by_part_number, self)
-            print('###### Strain IDs: #######')
 
         ###########################################################################################
         # Compute line/assay names if needed as output for a dry run, or if needed to proactively
@@ -332,7 +320,6 @@ class CombinatorialCreationImporter(object):
         logger.info('in determine_names()')
 
         # get convenient references to unclutter syntax below
-        protocols = self.protocols_by_pk
         line_metadata_types = self.line_metadata_types_by_pk
         assay_metadata_types = self.assay_metadata_types_by_pk
         study = self.study
@@ -358,7 +345,7 @@ class CombinatorialCreationImporter(object):
         # CombinatorialInputDescriptions for a single protocol.  All_planned_names is the union of
         # all the planned names for each CombinatorialDescriptionInput (regardless of uniqueness).
         for input_set in combinatorial_inputs:
-            names = input_set.compute_line_and_assay_names(study, protocols, line_metadata_types,
+            names = input_set.compute_line_and_assay_names(study, line_metadata_types,
                                                            assay_metadata_types, strains_by_pk)
             for line_name in names.line_names:
                 protocol_to_assay_names = names.line_to_protocols_to_assays_list.get(line_name)
@@ -443,7 +430,7 @@ class CombinatorialCreationImporter(object):
             )
             strains_by_part_number[ice_entry.part_id] = strain
 
-    def get_ice_entries(self, ice, part_number_to_part_dict):
+    def get_ice_entries(self, ice, part_numbers):
         """
         Queries ICE for parts with the provided (locally-unique) numbers, logging errors for any
         parts that weren't found into the errors parameter. Note that we're purposefully trading
@@ -451,18 +438,16 @@ class CombinatorialCreationImporter(object):
         the odds are still pretty good that a part number is sufficient to uniquely identify an ICE
         entry.
 
-        :param part_number_to_part_dict: a dictionary whose keys are part numbers to be queried
+        :param part_numbers: a dictionary whose keys are part numbers to be queried
             from ICE. Existing entries will be replaced with the Entries read from ICE, or keys
             will be removed for those that aren't found in ICE.
         """
         list_position = 0
-        for local_ice_part_number in part_number_to_part_dict.keys():
-
+        results = {}
+        for local_ice_part_number in part_numbers:
             found_entry = ice.get_entry(local_ice_part_number)
-
             if found_entry:
-                part_number_to_part_dict[local_ice_part_number] = found_entry
-
+                results[local_ice_part_number] = found_entry
                 # double-check for a coding error that occurred during testing. initial test parts
                 # had "JBX_*" part numbers that matched their numeric ID, but this isn't always the
                 # case!
@@ -478,8 +463,6 @@ class CombinatorialCreationImporter(object):
                         })
                     self.add_error(FOUND_PART_NUMBER_DOESNT_MATCH_QUERY, found_entry.part_id)
             else:
-                del part_number_to_part_dict[local_ice_part_number]
                 # make a note that this part number is missing
                 self.add_error(PART_NUMBER_MISSING, local_ice_part_number)
-
-        return part_number_to_part_dict
+        return results

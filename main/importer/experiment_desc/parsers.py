@@ -84,7 +84,6 @@ class _DecimalTimeParser(_AssayMetadataValueParser):
             fractional_digits = 0
             if sep_index >= 0:
                 fractional_digits = (len(stripped) - sep_index) - 1  # TODO: commas!
-            print('time value "%s" has %d fractional digits' % (str_value, fractional_digits))
             return number_value, fractional_digits
         raise ValueError(
             'Value "%s" did not match the expected time pattern (e.g. "4.0h")' % raw_value_str
@@ -387,8 +386,6 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         ###########################################################################################
         found_col_labels = False
         for col_index in range(len(row)):
-            print('Column index=%d' % col_index)
-
             cell_content = row[col_index].value
 
             # ignore non-string cells since they can't be the column headers we're looking for
