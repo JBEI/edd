@@ -1119,7 +1119,7 @@ var StudyDataPage;
         viewingMode = 'linegraph';
         barGraphMode = 'time';
         barGraphTypeButtonsJQ = $('#barGraphTypeButtons');
-        actionPanelIsInBottomBar = false;
+        actionPanelIsInBottomBar = true;
         // Start out with every display mode needing a refresh
         viewingModeIsStale = {
             'linegraph': true,
@@ -1141,6 +1141,8 @@ var StudyDataPage;
         $('#assaysActionPanel').prepend(showHideFilterButton);
         $("#dataTableButton").click(function () {
             viewingMode = 'table';
+            $('#assaysActionPanel').appendTo('#bottomBar');
+            $('#mainFilterSection').appendTo('#bottomBar');
             makeLabelsBlack(EDDGraphingTools.labels);
             $("#tableControlsArea").removeClass('off');
             $("#filterControlsArea").addClass('off');

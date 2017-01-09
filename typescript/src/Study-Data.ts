@@ -1228,7 +1228,7 @@ namespace StudyDataPage {
         viewingMode = 'linegraph';
         barGraphMode = 'time';
         barGraphTypeButtonsJQ = $('#barGraphTypeButtons');
-        actionPanelIsInBottomBar = false;
+        actionPanelIsInBottomBar = true;
         // Start out with every display mode needing a refresh
         viewingModeIsStale = {
             'linegraph': true,
@@ -1248,7 +1248,6 @@ namespace StudyDataPage {
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
         Utl.ButtonBar.prepareButtonBars();
-
         // Prepend show/hide filter button for better alignment
         // Note: this will be removed when we implement left side filtering
         var showHideFilterButton = $('#hideFilterSection');
@@ -1256,6 +1255,8 @@ namespace StudyDataPage {
 
         $("#dataTableButton").click(function() {
             viewingMode = 'table';
+            $('#assaysActionPanel').appendTo('#bottomBar');
+            $('#mainFilterSection').appendTo('#bottomBar');
              makeLabelsBlack(EDDGraphingTools.labels);
             $("#tableControlsArea").removeClass('off');
             $("#filterControlsArea").addClass('off');
@@ -1898,28 +1899,6 @@ namespace StudyDataPage {
             }
         });
         return labels;
-    }
-
-
-    /** this function takes in element and returns an array of selectors
-     * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
-     * <div id=​"barAssay">​</div>​]
-     */
-    function getButtonElement(element) {
-        return $(element.siblings(':first')).find("label")
-    }
-
-
-    /**
-     * this function takes in the graphDiv element and returns an array of 4 buttons
-     */
-    function getSelectorElement(element) {
-        if ($(element).attr('id') != 'maingraph') {
-            var selector = element.siblings().eq(1);
-            return $(selector).children();
-        } else {
-          return element.siblings().addBack()
-        }
     }
 
 
