@@ -1,16 +1,16 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>;
+var EDDGraphingTools:any;
 
+EDDGraphingTools = {
 
-namespace EDDGraphingTools {
+    nextColor: null,
 
-    export var nextColor = null;
+    labels: [],
 
-    export var labels = [];
+    remakeGraphCalls: 0,
 
-    export var remakeGraphCalls = 0;
-
-    export var colors = {
+    colors: {
             0: '#0E6FA4',   //dark teal
             1: '#51BFD8',   //teal
             2: '#2a2056',   //navy
@@ -34,45 +34,45 @@ namespace EDDGraphingTools {
             20: '#0715CD',  //royal blue
             21: '#e8c2f3',  //light lavender
             22: '#7a5230'   //brown
-    };
+    },
 
 
     /**
      *  This function takes an array of arrays of arrays and flattens it into one array of arrays. 
     **/
-    export function concatAssays(assays) {
+    concatAssays: function (assays) {
         return [].concat.apply([], assays);
-    }
+    },
 
 
     /**
      *  This function takes a unit id and unit type json and returns the unit name
     **/
-    export function unitName(unitId, unitTypes) {
+    unitName: function(unitId, unitTypes) {
         return unitTypes[unitId].name;
-    }
+    },
 
 
     /**
      *  This function takes a measurement id and measurement type json and returns the
      *  measurement name
     **/
-    export function measurementName(measurementId, measurementTypes) {
+    measurementName: function(measurementId, measurementTypes) {
       return measurementTypes[measurementId].name;
-    }
+    },
 
 
     /**
      *  This function takes a selector element and returns an svg element 
     **/
-    export function createSvg(selector) {
+    createSvg: function(selector) {
       var svg = d3.select(selector).append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-55 -30 960 300")
         .classed("svg-content", true);
       
       return svg; 
-    }
+    },
 
 
     /**
@@ -85,7 +85,7 @@ namespace EDDGraphingTools {
      *    ...
      *    ]
     **/
-    export function transformSingleLineItem(dataObj) {
+    transformSingleLineItem: function (dataObj) {
         // unit types
         var unitTypes = dataObj['data'].UnitTypes;
         // measurement types
@@ -106,13 +106,13 @@ namespace EDDGraphingTools {
             dataset['label'] = 'dt' + dataObj['measure'].assay;
             dataset['x'] = parseFloat(dataValue[0].join());
             dataset['y'] = parseFloat(dataValue[1].join());
-            dataset['x_unit'] = unitName(dataObj['measure'].x_units, unitTypes);
-            dataset['y_unit'] = unitName(dataObj['measure'].y_units, unitTypes);
+            dataset['x_unit'] = EDDGraphingTools.unitName(dataObj['measure'].x_units, unitTypes);
+            dataset['y_unit'] = EDDGraphingTools.unitName(dataObj['measure'].y_units, unitTypes);
             dataset['name'] = dataObj['name'];
             dataset['color'] = dataObj['color'];
             dataset['nameid'] = dataObj['names'] + index;
             dataset['lineName'] = dataObj['lineName'];
-            dataset['measurement'] = measurementName(dataObj['measure'].type, measurementTypes);
+            dataset['measurement'] = EDDGraphingTools.measurementName(dataObj['measure'].type, measurementTypes);
             dataset['fullName'] = dataObj['lineName'] + ' ' + dataset['measurement'];
             
             xAndYValues.push(dataset);
@@ -121,15 +121,15 @@ namespace EDDGraphingTools {
               return a.x - b.x;
             });
         return xAndYValues;
-    }
+    },
 
 
     /**
      * this function is the same as above but more simple as it is for the import section.
      **/
-    export function transformNewLineItem(data, singleData) {
+    transformNewLineItem: function (data, singleData) {
 
-        // array of x and y values for sortin
+        // array of x and y values for sorting
         var xAndYValues = [];
         //data for one line entry
         var singleDataValues = singleData.data;
@@ -154,7 +154,7 @@ namespace EDDGraphingTools {
               return a.x - b.x;
             });
         return xAndYValues;
-    }
+    },
 
 
     /**
@@ -163,7 +163,7 @@ namespace EDDGraphingTools {
      * loosely based on d3 category20 in following link:
      * http://bl.ocks.org/aaizemberg/78bd3dade9593896a59d
     **/
-    export function renderColor(lines) {
+    renderColor: function (lines) {
 
         //new color object with assay ids and color hex
         var lineColors = {};
@@ -174,7 +174,7 @@ namespace EDDGraphingTools {
         //new object with numbers for ids
         var indexLines:any = {};
         // color obj values
-        var colorKeys = _.values(colors);
+        var colorKeys = _.values(EDDGraphingTools.colors);
         //create index obj with numbers for ids and assay ids as values
         for (var i = 0; i < lineCount.length; i++ ) {
             indexLines[i] = lineValues[i].id;
@@ -182,35 +182,35 @@ namespace EDDGraphingTools {
         //if there are more than 22 lines, create a bigger color obj
         if (lineValues.length > colorKeys.length) {
             var multiplier = Math.ceil(lineValues.length/ colorKeys.length) * 22;
-            colorMaker(colors, colorKeys, multiplier)
+            EDDGraphingTools.colorMaker(EDDGraphingTools.colors, colorKeys, multiplier)
         }
         //combine assay ids as keys with hex colors as values
         _.each(indexLines, function(value, key) {
-            lineColors[indexLines[key]] = colors[key];
+            lineColors[indexLines[key]] = EDDGraphingTools.colors[key];
         });
         for (var key in lines) { lines[key]['color'] = lineColors[key]}
         return lineColors
-    }
+    },
 
 
     /**
      * this function takes in the selected color and returns the color that comes after. 
     **/
-    export function colorQueue(selectedColor) {
-        var reverseColors = reverseMap(colors);
+    colorQueue: function (selectedColor) {
+        var reverseColors = EDDGraphingTools.reverseMap(EDDGraphingTools.colors);
         var selectedKey = reverseColors[selectedColor];
         if (parseInt(selectedKey) === 21) {
              selectedKey = -1;
          }
-        nextColor = colors[parseInt(selectedKey) + 1];
-    }
+        EDDGraphingTools.nextColor = EDDGraphingTools.colors[parseInt(selectedKey) + 1];
+    },
 
 
     /**
      * this function takes in an object and value and returns a new object with keys as values
      * and values as keys. 
     **/
-    export function reverseMap(obj) {
+    reverseMap: function (obj) {
         var reverseMap = {};
         for (var key in obj) {
             if (obj.hasOwnProperty(key)) {
@@ -218,14 +218,14 @@ namespace EDDGraphingTools {
             }
         }
         return reverseMap;
-    }
+    },
 
 
     /**
      * this function takes in the color object, colorKeys array, and multiplier to determine how
      * many new colors we need and return and bigger Color object
     **/
-    export function colorMaker(colors, colorKeys, multiplier) {
+    colorMaker: function (colors, colorKeys, multiplier) {
         var i = 23;
         var j = 0;
         while (i < multiplier) {
@@ -237,26 +237,26 @@ namespace EDDGraphingTools {
             i++;
         }
         return colors
-    };
+    },
 
 
     /**
      * This function returns object size
     **/
-    export function objectSize(object) {
+    objectSize: function (object) {
         var size = 0, key;
         for (key in object) {
             if (object.hasOwnProperty(key)) size++;
         }
         return size;
-    };
+    },
 
 
     /**
      *  This function takes in the unit type for each array and returns the text to display on
      *  the axis
     **/
-    export function createXAxis(graphSet, x, svg, type) {
+    createXAxis: function (graphSet, x, svg, type) {
 
         if (type === 'x') {
             type = "Time"
@@ -291,13 +291,13 @@ namespace EDDGraphingTools {
             .call(xAxis
                 .tickSize(-graphSet.height, 0)
                 .tickFormat(""));
-    }
+    },
 
 
     /**
      *  This function creates the left y axis svg object
     **/
-    export function createLeftYAxis(graphSet, label, y, svg) {
+    createLeftYAxis: function(graphSet, label, y, svg) {
 
         var yAxis = d3.svg.axis().scale(y)
                 .orient("left").ticks(5).tickFormat(d3.format(".2s"));
@@ -325,13 +325,13 @@ namespace EDDGraphingTools {
             .call(yAxis
                 .tickSize(-graphSet.width, 0)
                 .tickFormat(""))
-    }
+    },
 
 
     /**
      *  This function creates the right y axis svg object
     **/
-    export function createRightYAxis(label, y, svg, spacing) {
+    createRightYAxis: function(label, y, svg, spacing) {
         
             var yAxis = d3.svg.axis().scale(y)
                 .orient("right").ticks(5).tickFormat(d3.format(".2s"));
@@ -351,35 +351,34 @@ namespace EDDGraphingTools {
                 .attr('y', 43)
                 .style('text-anchor', 'middle')
                 .text(label)
-    }
+    },
 
 
     /**
      *  This function creates the y axis tick marks for grid
     **/
-    export function make_right_y_axis(y) {
+    make_right_y_axis: function (y) {
         return d3.svg.axis()
             .scale(y)
-            .orient("left")
-        //add ticks here!
-    }
+            .orient("left");
+    },
 
 
     /**
      *  This function creates the x axis tick marks for grid
     **/
-    export function make_x_axis(x) {
+    make_x_axis: function (x) {
         return d3.svg.axis()
             .scale(x)
             .orient("bottom")
-    }
+    },
 
 
 
     /**
      *  function takes in nested data by unit type and returns how many units are in data
      */
-    export function howManyUnits(data) {
+    howManyUnits: function (data) {
         if (data === {}) {
             return 1
         }
@@ -389,13 +388,13 @@ namespace EDDGraphingTools {
             })
             .entries(data);
         return y_units.length;
-    }
+    },
 
 
     /**
      *  function takes in rect attributes and creates rect hover svg object
      */
-    export function rectHover(x,y,rect, color, div) {
+    rectHover: function(x,y,rect, color, div) {
 
         var squareSize = 5;
 
@@ -412,18 +411,18 @@ namespace EDDGraphingTools {
             .attr('height', squareSize)
             .style("fill", color)
             .on("mouseover", function (d) {
-                lineOnHover(div, this, d)
+                EDDGraphingTools.lineOnHover(div, this, d)
             })
             .on("mouseout", function () {
-                lineOnMouseOut(div)
+                EDDGraphingTools.lineOnMouseOut(div)
             });
-    }
+    },
 
 
     /**
      *  function takes in circle attributes and creates circle hover svg object
      */
-    export function circleHover(x, y, circles, color, div) {
+    circleHover: function (x, y, circles, color, div) {
         circles
             .enter()
             .append('svg:circle')
@@ -440,18 +439,18 @@ namespace EDDGraphingTools {
             })
             .style("fill", color)
             .on("mouseover", function (d) {
-                lineOnHover(div, this, d)
+                EDDGraphingTools.lineOnHover(div, this, d)
             })
             .on("mouseout", function () {
-                lineOnMouseOut(div)
+                EDDGraphingTools.lineOnMouseOut(div)
             });
-    }   
+    },
 
 
     /**
      *  function takes in square attributes and creates a plus hover svg object
      */
-    export function plusHover(x, y, plus, color, div) {
+    plusHover: function(x, y, plus, color, div) {
         var squareSize = 5;
         plus
             .enter()
@@ -479,18 +478,18 @@ namespace EDDGraphingTools {
             .attr('height', squareSize + 3)
             .style("fill", color)
             .on("mouseover", function (d) {
-                lineOnHover(div, this, d)
+                EDDGraphingTools.lineOnHover(div, this, d)
             })
             .on("mouseout", function () {
-                lineOnMouseOut(div)
+                EDDGraphingTools.lineOnMouseOut(div)
             });
-    }
+    },
 
 
     /**
      *  function takes in triangle attributes and creates a triangle hover svg object
      */
-    export function triangleHover(x, y, triangle, color, div) {
+    triangleHover: function (x, y, triangle, color, div) {
         triangle
             .enter()
             .append('svg:polygon')
@@ -499,18 +498,18 @@ namespace EDDGraphingTools {
             })
             .style("fill", color)
             .on("mouseover", function (d) {
-                lineOnHover(div, this, d)
+                EDDGraphingTools.lineOnHover(div, this, d)
             })
             .on("mouseout", function () {
-                lineOnMouseOut(div)
+                EDDGraphingTools.lineOnMouseOut(div)
             });
-    }
+    },
 
 
     /**
      *  function takes in path attributes and creates an svg path
      */
-    export function createLine(svg, data, line, color) {
+    createLine: function(svg, data, line, color) {
         return svg.append('path')
                     .attr('d', line(data))
                     .attr('stroke', color)
@@ -537,14 +536,14 @@ namespace EDDGraphingTools {
                 d3.selectAll('rect').style('opacity', 1);
                 d3.selectAll('polygon').style('opacity', 1)
             })
-    }
+    },
 
 
     /**
      *  function takes in the svg shape type, div and returns the tooltip and hover elements for each
      *  shape
      */
-    function lineOnHover(div, hoverSvg, d) {
+    lineOnHover: function(div, hoverSvg, d) {
         div.transition()
             .duration(200)
             .style("opacity", 0.9);
@@ -576,13 +575,13 @@ namespace EDDGraphingTools {
                 .style("left", ((<any>d3.event).pageX) + "px")
                 .style("top", ((<any>d3.event).pageY - 30) + "px");
         }
-    }
+    },
 
 
     /**
      *  function returns the mouseout tooltip options
      */
-    function lineOnMouseOut(div) {
+    lineOnMouseOut: function(div) {
         div.transition()
             .duration(300)
             .style("opacity", 0);
@@ -590,15 +589,15 @@ namespace EDDGraphingTools {
         d3.selectAll('circle').style('opacity', 1);
         d3.selectAll('rect').style('opacity', 1);
         d3.selectAll('polygon').style('opacity', 1)
-    }
+    },
 
     /**
     * this function creates the line graph
     **/
-    export function createMultiLineGraph(graphSet, svg) {
+    createMultiLineGraph: function (graphSet, svg) {
 
         var assayMeasurements = graphSet.assayMeasurements,
-            numUnits = howManyUnits(assayMeasurements),
+            numUnits = EDDGraphingTools.howManyUnits(assayMeasurements),
             yRange = [],
             unitMeasurementData = [],
             yMin = [];
@@ -757,40 +756,40 @@ namespace EDDGraphingTools {
                 }
 
                 if (index === 0) {
-                    createLine(svg, unitData.values[j].values, lineGen, color);
+                    EDDGraphingTools.createLine(svg, unitData.values[j].values, lineGen, color);
                     //svg object for data points
                     var dataCirclesGroup = svg.append('svg:g');
                     // data point circles
                     var circles = dataCirclesGroup.selectAll('.data-point' + index)
                         .data(unitData.values[j].values);
                     //circle hover svg
-                    circleHover(x, y, circles, color, div)
+                    EDDGraphingTools.circleHover(x, y, circles, color, div)
                 } else if (index === 1) {
-                    createLine(svg, unitData.values[j].values, lineGen, color);
+                    EDDGraphingTools.createLine(svg, unitData.values[j].values, lineGen, color);
                     //svg object for data points
                     var dataRectGroup = svg.append('svg:g');
                     // data point circles
                     var triangle = dataRectGroup.selectAll('.data-point' + index)
                         .data(unitData.values[j].values);
-                    triangleHover(x, y, triangle, color, div);
+                    EDDGraphingTools.triangleHover(x, y, triangle, color, div);
                 }  else if (index === 2) {
-                   createLine(svg, unitData.values[j].values, lineGen, color);
+                   EDDGraphingTools.createLine(svg, unitData.values[j].values, lineGen, color);
                     //svg object for data points
                     var dataRectGroup = svg.append('svg:g');
                     // data point circles
                     var rect = dataRectGroup.selectAll('.data-point' + index)
                         .data(unitData.values[j].values);
-                    rectHover(x, y, rect, color, div);
+                    EDDGraphingTools.rectHover(x, y, rect, color, div);
                 } else if (index === 3) {
-                   createLine(svg, unitData.values[j].values, lineGen, color);
+                   EDDGraphingTools.createLine(svg, unitData.values[j].values, lineGen, color);
                     //svg object for data points
                     var dataRectGroup = svg.append('svg:g');
                     // data point circles
                     var plus = dataRectGroup.selectAll('.data-point' + index)
                         .data(unitData.values[j].values);
-                    plusHover(x, y, plus, color, div);
+                    EDDGraphingTools.plusHover(x, y, plus, color, div);
                 } else {
-                    createLine(svg, unitData.key.split(' ').join('_'), (<any>d3.svg).line(unitData.values[j].values),
+                    EDDGraphingTools.createLine(svg, unitData.key.split(' ').join('_'), (<any>d3.svg).line(unitData.values[j].values),
                                color);
                     //svg object for data points
                     var dataCirclesGroup = svg.append('svg:g');
@@ -798,50 +797,50 @@ namespace EDDGraphingTools {
                     var circles = dataCirclesGroup.selectAll('.data-point' + index)
                         .data(unitData.values[j].values);
                     //circle hover svg
-                    circleHover(x, y, circles, color, div)
+                    EDDGraphingTools.circleHover(x, y, circles, color, div)
                 }
             }
           })
         }
         $('#graphLoading').addClass('off');
-    }
+    },
 
 
     /**
      * this function takes in input a protein's line values and inserts a y id key for
      * each x, y object.
      **/
-    export function addYIdentifier(data3) {
-        return _.each(data3, function (d:any, i) {
+     addYIdentifier: function(data) {
+        return _.each(data, function (d:any, i) {
             d.key = 'y' + i;
         });
-    }
+    },
 
 
     /**
      *  function takes in nested assayMeasurements and inserts a y id key for each value object
      *  returns data
      */
-    export function getXYValues(nested) {
+    getXYValues: function(nested) {
         return _.each(nested, function (nameValues:any) {
             return _.each(nameValues.values, function (xValue:any) {
-                addYIdentifier(xValue.values);
+                EDDGraphingTools.addYIdentifier(xValue.values);
             });
         });
-    }
+    },
 
 
     /**
      *  function takes in nested keys and returns total length of keys
      */
-    export function getSum(labels) {
+    getSum: function (labels) {
         var totalLength = 0;
 
        _.each(labels, function(label:any) {
             totalLength += label.length
         });
         return totalLength;
-    }
+    },
 
 
     /**
@@ -850,13 +849,13 @@ namespace EDDGraphingTools {
      * @param values
      * @returns ie {6: 6, 7: 6, 8: 6}
      */
-    export function findAllTime(values) {
+    findAllTime: function(values) {
         var times = {};
         _.each(values, function(value:any) {
             times[value.key] = value.values.length;
         });
         return times;
-    }
+    },
 
 
     /**
@@ -865,14 +864,14 @@ namespace EDDGraphingTools {
      * @param obj
      * @returns {*}
      */
-    export function findMaxTimeDifference(obj) {
+    findMaxTimeDifference: function(obj) {
         var values = _.values(obj);
         var max = Math.max.apply(null, values);
         $.each(obj, function(key, value) {
             obj[key] = max - value;
         });
         return obj;
-    }
+    },
 
 
     /**
@@ -884,19 +883,19 @@ namespace EDDGraphingTools {
      * @param assayMeasurements
      * @param type
      */
-    export function insertFakeValues(obj, differenceObj, assayMeasurements) {
+    insertFakeValues: function (obj, differenceObj, assayMeasurements) {
         var count = 0;
          _.each(obj, function(d:any) {
             var howMany = differenceObj[d.key];
             while (count < howMany) {
-                insertFakeTime(assayMeasurements, d.key, d.values[0].y_unit);
+                EDDGraphingTools.insertFakeTime(assayMeasurements, d.key, d.values[0].y_unit);
                 count++;
             }
         });
-    }
+    },
 
 
-    export function insertFakeTime(array, key, y_unit) {
+    insertFakeTime: function(array, key, y_unit) {
         key = parseFloat(key);
         array.push({
               'color': 'white',
@@ -906,7 +905,7 @@ namespace EDDGraphingTools {
               'name': '',
               'lineName': 'n/a'
             });
-    }
+    },
 
 
     /**
@@ -915,7 +914,7 @@ namespace EDDGraphingTools {
      * @param nestedByName
      * @returns {{}}
      */
-    export function findTimeValuesForName(nestedByName) {
+    findTimeValuesForName: function (nestedByName) {
         var times = {};
         nestedByName.forEach(function(value) {
             var arr = {};
@@ -925,10 +924,10 @@ namespace EDDGraphingTools {
             times[value.key] = arr;
         });
         return times;
-    }
+    },
 
 
-    export function getMaxValue(time) {
+    getMaxValue: function (time) {
         var max = 0;
         $.each(time, function(key, value) {
             $.each(value, function(key, value) {
@@ -938,10 +937,10 @@ namespace EDDGraphingTools {
             })
         });
         return max;
-    }
+    },
 
 
-    export function filterTimePoints(data, timePoint) {
+    filterTimePoints: function (data, timePoint) {
         var newData = [];
         _.each(data, function(dataPoint:any) {
             if (dataPoint.x === timePoint) {

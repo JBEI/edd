@@ -2,15 +2,15 @@
  * Created by tlopez on 9/20/16.
  */
 /**
- * unit tests for barGraphHelperMethods.js
+ * unit tests for EDDGraphingTools.js
  */
 
 describe('Test barGraphHelperMethods', function() {
 
-    describe('method: getSum', function() {
+    describe('method: EDDGraphingTools.getSum', function() {
         it('should return length of keys', function() {
             var labels = ['test1', 'test2', 'test3'];
-           expect(getSum(labels)).toEqual(15)
+           expect(EDDGraphingTools.getSum(labels)).toEqual(15)
         });
     });
 
@@ -25,7 +25,7 @@ describe('Test barGraphHelperMethods', function() {
                 {key: 'y0'},
                 {key: 'y1'}
             ];
-           expect(addYIdentifier(data)).toEqual(identifiedData)
+           expect(EDDGraphingTools.addYIdentifier(data)).toEqual(identifiedData)
         });
     });
 });
