@@ -35,10 +35,8 @@ module StudyOverview {
         this.metabolicMapName = null;
         this.biomassCalculation = -1;
 
-        new EditableStudyName($('#editable-study-name').get()[0]);
-        new EDDEditable.EditableAutocomplete($('#editable-study-contact').get()[0]);
+        new EditableStudyContact($('#editable-study-contact').get()[0]);
         new EditableStudyDescription($('#editable-study-description').get()[0]);
-
 
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', (e) => {
@@ -67,25 +65,21 @@ module StudyOverview {
     // fileRead(), is passed a processed result from the server as a second argument,
     // rather than the raw contents of the file.
     export function fileReturnedFromServer(fileContainer, result): void {
-        // Whether we clear the file info area entirely, or just update its status,
-        // we know we no longer need the 'sending' status.
+        //is this needed?
         $('#fileDropInfoSending').addClass('off');
 
         if (fileContainer.fileType == "xlsx") {
             this.clearDropZone();
-            // TODO: More front-end processing:
-            //var ws = result.file_data["worksheets"][0];
-            //var table = ws[0];
-            //var csv = [];
-            //if (table.headers) {
-            //    csv.push(table.headers.join());
-            //}
-            //csv = csv.concat(table.values.map((row: string[]) => row.join()));
-            //this.separatorType('csv');
-            //this.rawText(csv.join('\n'));
-            //this.reprocessRawData();
-            //return;
         }
+        var currentPath = window.location.pathname;
+        var linesPathName = currentPath.slice(0, -8) + 'lines';
+        //display success message
+        $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Successfully added ' + result['lines_created'] + ' lines! ' +
+            'Redirecting you to <a style="vertical-align:top" href="/study/{{ study.slug }}/lines">Lines page</a></div>');
+        //redirect to lines page
+        setTimeout(function () {
+            window.location.pathname = linesPathName;
+        }, 3000);
     }
 
 
@@ -228,30 +222,15 @@ module StudyOverview {
     }
 
 
-    // Base class for the non-autocomplete inline editing fields for the Study
-    export class EditableStudyElment extends EDDEditable.EditableElement {
-
-        editAllowed(): boolean { return EDDData.currentStudyWritable; }
-        canCommit(value): boolean { return EDDData.currentStudyWritable; }
-    }
-
-
-    export class EditableStudyName extends EditableStudyElment {
-        getValue():string {
-            return EDDData.Studies[EDDData.currentStudyID].name;
-        }
-
-        setValue(value) {
-            EDDData.Studies[EDDData.currentStudyID].name = value;
-        }
-    }
-
-
-    export class EditableStudyDescription extends EditableStudyElment {
+    export class EditableStudyDescription extends StudyBase.EditableStudyElment {
 
         constructor(inputElement: HTMLElement) {        
             super(inputElement);
             this.minimumRows = 4;
+        }
+
+        getFormURL(): string {
+            return '/study/' + EDDData.currentStudyID + '/setdescription/';
         }
 
         getValue():string {
@@ -273,6 +252,10 @@ module StudyOverview {
         // Have to reproduce these here rather than using EditableStudyElment because the inheritance is different
         editAllowed(): boolean { return EDDData.currentStudyWritable; }
         canCommit(value): boolean { return EDDData.currentStudyWritable; }
+
+        getFormURL(): string {
+            return '/study/' + EDDData.currentStudyID + '/setcontact/';
+        }
 
         getValue():string {
             return EDDData.Studies[EDDData.currentStudyID].contact;

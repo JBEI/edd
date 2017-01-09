@@ -8,7 +8,6 @@ tfoot, tr, th, td {
     font-size: inherit;
     margin: 0;
     padding: 0;
-    vertical-align: middle;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -42,8 +41,6 @@ H1, H2, H3, H4 {
 body {
     height: 100%;
     line-height: 1;
-    padding-left: 20px;
-    padding-right: 20px;
 }
 p {
     margin:0.4em;
@@ -98,8 +95,11 @@ a:hover {
 .disabledRecord {
     background-color:#FFC0C0;
 }
+.emptyRecord {
+    color:#666666;
+}
 .link_indicator {
-    background-image:url('./images/link_go.png');
+    background-image:url('images/link_go.png');
     background-position:right;
     background-repeat:no-repeat;
 }
@@ -120,6 +120,12 @@ a:hover {
     background-repeat: no-repeat;
     background-position: center;
     background-image: url(data:image/gif;base64,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);
+}
+.wait-larger {
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 60px 60px;
+    background-image: url(images/spinner-big.gif);
 }
 .waitbadge {
     margin:0px 2px 0px 2px;
@@ -205,7 +211,6 @@ form.noMargins {
 /* Main flex layout */
 
 div.mainFlex {
-    width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -213,6 +218,8 @@ div.mainFlex {
     align-items: stretch; /* align items in Cross Axis */
     align-content: stretch; /* Extra space in Cross Axis */
     flex-wrap: nowrap;
+    padding:0;
+    margin:0;
 }
 
 
@@ -306,6 +313,8 @@ div.statusMessage > p.success, .success {
 div.mainFlex > div.content {
     flex: 1;
     overflow: auto;
+    padding-left: 15px;
+    padding-right: 15px;
 }
 
 div.mainFlex > div.bottomBar {
@@ -315,17 +324,17 @@ div.mainFlex > div.bottomBar {
 /* Footer area */
 
 div.mainFlex > div.footer {
+
+}
+div.footer-text {
     border-top: 1px solid #CCC;
     color: #CCC;
     font-size: 0.85em;
     margin: 20px 15px 0px 15px;
     padding: 20px;
-}
-div.mainFlex > div.footer > div.footer-text {
-    margin: 0px auto;
     text-align: center;
 }
-div.mainFlex > div.footer > div.footer-text > span {
+div.footer-text > span {
     margin: 0 2em;
 }
 
@@ -428,8 +437,8 @@ div.subSectionContent {
    with form elements representing actions you can take on content in above sections */
 div.sectionActions {
     /* border-top:1px solid rgba(164,164,164,0.7); */
-    margin: 0px;
-    padding:10px 0px 0px 0px;
+    margin: 10px 0px 10px 0px;
+    padding:0;
 }
 div.pageSection.discloseHide.minor {
     background: transparent;
@@ -447,16 +456,6 @@ ul.studyTabs {
      border-bottom: 1px solid lightgray;
 }
 
-/* mimic the appearance of sectionHeader, independently of a pageSection */
-div.bare-header {
-    margin: 10px 8px 3px 8px;
-    padding: 4px 4px 4px 6px;
-    font-size:14px;
-    font-weight:bold;
-    float: right;
-    padding:4px 4px 4px 6px;
-}
-
 
 /* Data tables and controls */
 
@@ -465,6 +464,7 @@ table.dataTable {
     border:none;
 }
 table.dataTable tr.header > th {
+    border-style: none;
     text-align:left;
     color:rgb(12, 69, 137);
     font-size:14px;
@@ -560,7 +560,10 @@ table.dataTable tr > td span {
     margin:0px;
     padding:3px 3px 0px 0px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
 table.dataTable tr > td p {
     margin:3px 3px 0px 0px;
     padding:0px;
@@ -582,7 +585,7 @@ tr.groupHeader > td:before {
 /* Data table controls for DataGrids.  These can fit inside "sectionHeads" or the "header" row of a "dataTable" */
 
 span.tableControl {
-    float:left;
+/*    float:left;   */
     font-weight:normal;
     margin:10px 5px 10px 0px;
     padding:0px;
@@ -609,12 +612,12 @@ span.tableControl > select {
 }
 
 span.tableHeader {
-    float: left;
+/*    float: left;  */
     margin-right: 10px;
 }
 
 input[type="button"].tableControl {
-    float:left;
+/*    float:left;   */
     margin:10px 5px 10px 0px;
     font-size:10px;
 }
@@ -631,44 +634,21 @@ input[type="text"].searchBox {
     background-position: right 5px top 1px;
 }
 input[type="text"].searchBox.tableControl {
-    float:left;
+/*    float:left;   */
 }
 
-div.searchStudies {
-    margin-left: 20px;
-}
-
-/* DataGrid header checkboxes.  To make a checkbox in a table header, do <label class="tableCheckbox"><input ... />LABEL</label> */
-
-.tableCheckbox {
-    display: block;
-    float: right;
-    padding-top: 1px;
-    padding-left: 15px;
-    padding-right: 10px;
-    text-indent: -15px;
-    font-weight:normal;
-    font-size:12px;
-}
-.tableCheckbox input {
-    margin:0;
-    vertical-align: bottom;
-    position: relative;
-    left: -5px;
-    top: -1px;
-}
 
 /* DataGrid header pulldown menus */
 
-span.pulldownMenu {
+div.pulldownMenu {
+    display:inline-block;
     margin:10px 5px 10px 0px;
     padding:0px;
     font-weight:normal;
     font-size:14px;
-    float:left;
 }
 div.pulldownMenuLabelOff {
-    display:block;
+    display:inline-block;
     cursor: pointer;
     font-size: 14px;
     margin:2px 5px 0px 0px;
@@ -681,7 +661,7 @@ div.pulldownMenuLabelOff:hover {
     text-decoration:underline;
 }
 div.pulldownMenuLabelOn {
-    display:block;
+    display:inline-block;
     position:relative;
     margin:0px;
     border-style:solid;
@@ -737,7 +717,7 @@ div.filteringSection {
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    margin:20px 2px 0px 2px;
+    margin:15px 2px 0px 20px;
     max-height: 289px;
 }
 div.filterTable {
@@ -771,7 +751,7 @@ div.filterTable > div.filterColumn {
 }
 
 div.filterTable > div.filterColumn div.filterCriteriaScrollZone {
-    max-height: 264px;
+    max-height: 161px;
     overflow-x: visible;
     overflow-y: auto;
     padding:0px 20px 0px 0px;
@@ -802,9 +782,7 @@ table.filterCriteriaTable input[type="checkbox"] {
     margin-right: 4px;
     vertical-align: middle;
 }
-div.lastViewed {
-    margin-left: 20px;
-}
+
 div.lastViewed span {
     display: inline-block;
     background-color: white;
@@ -858,10 +836,6 @@ div.filterHeadSearch > input[type="text"] {
     -moz-border-radius: 7px;
 }
 
-.lineButtons {
-    float:right;
-}
-
 
 /* Tab sets for page sections */
 
@@ -874,7 +848,7 @@ ul.studyTabs {
 }
 
 div.tabBar {
-    padding:0px 20px 0px 20px;
+    padding:0px 10px 0px 10px;
     background-repeat: repeat-x;
     background-size: 416px 26px;
     background-position: bottom;
@@ -925,8 +899,12 @@ div.tabBar > span:not(.active) {
 /* Button bars (largely the same as tab bars) */
 
 div.buttonBar {
-    padding:0px 20px 0px 20px;
-    margin:20px 0px 20px 0px;
+    display:flex;
+    align-items:center;
+    flex-wrap: nowrap;
+    flex-direction: row;    
+    padding:0px 10px 0px 10px;
+    margin:5px 0px 5px 0px;
 }
 div.buttonBar > span {
     display: inline-block;
@@ -1131,20 +1109,6 @@ table.formTable tr > td p {
 table.formTable tr > td textarea {
     margin:0;
     padding:0;
-}
-
-#assaysMeasSelectedTD {
-    border-right: 1px solid rgba(164, 164, 164, 0.7);
-    float: left;
-    vertical-align: top;
-}
-#assaysMeasSelectedTD p {
-    margin: 0.25em;
-    padding: 0 8px;
-}
-
-.assay-action {
-    margin-left: 38px;
 }
 
 #studiesTable td:nth-child(2) {
@@ -1454,11 +1418,17 @@ div.errorMessage {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
+
+a.close {
+    cursor: pointer;
+}
+
 div.errorMessage > a.close {
     cursor: pointer;
     float: right;
     margin: 0 5px;
 }
+
 .errorlist {
     background-color: #FFF0F0;
     border:  2px solid red !important;
@@ -1532,7 +1502,7 @@ ol.comment-list > li {
 
 .meta-remove {
     background-color: transparent;
-    background-image: url("./images/edit-cancel.png");
+    background-image: url("images/edit-cancel.png");
     background-position: 0 50%;
     background-repeat: no-repeat;
     cursor: pointer;
@@ -1564,21 +1534,6 @@ form.comments textarea {
 
 .hot-div {
     padding: 1em 0;
-}
-
-div.footer {
-    border-top: 1px solid #CCC;
-    color: #CCC;
-    font-size: 0.85em;
-    margin: 20px 34px 0px 34px;
-    padding: 20px;
-}
-div.footer > div.footer-text {
-    margin: 0px auto;
-    text-align: center;
-}
-div.footer > div.footer-text > span {
-    margin: 0 2em;
 }
 
 .groupReplicateRow {
@@ -1848,27 +1803,20 @@ div.tooltip2 {
     border-color: #2e6da4;
 }
 
+.actionButton.larger {
+    font-size:17px;
+    padding:10px 14px 10px 14px;
+}
+
 .actionButton:disabled {
     background-color: #FFFFFF;
     color: #888888;
     border-color: #888888;
+    cursor: not-allowed;
 }
 
 .assayTable {
     padding-left: 100px;
-}
-
-.noLineSelected {
-    color: red;
-    float: right;
-}
-
-#linesActionPanel {
-    position: fixed;
-    width: 100%;
-    padding-bottom: 40px;
-    bottom: 0;
-    background-color: white;
 }
 
 #measurementMain {
@@ -1880,17 +1828,6 @@ div.tooltip2 {
     color: grey;
     margin-top: 5px;
 }
-
-#graphFilter {
-    margin-top: 20px;
-    border-top: 2px solid lightgrey;
-}
-
-.scroll {
-    display: block;
-    overflow-y: scroll;
-}
-
 
 .navbar .navbar-collapse {
   text-align: center;
@@ -1928,12 +1865,20 @@ div.tooltip2 {
 .studyNav .navbar .nav > .active > a {
     background:none;
 }
+
 .studyNav .nav>li>a:hover, .nav>li>a:focus {
     text-decoration: none;
     background-color: transparent;
     border-bottom: 2px solid grey;
     border-radius: 0px;
     color: black;
+}
+
+#studyTable .nav>li>a:hover, .nav>li>a:focus {
+    text-decoration: none;
+    background-color: transparent;
+    border-radius: 0px;
+    border-bottom: none;
 }
 
 .studyNav .nav-pills {

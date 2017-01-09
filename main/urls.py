@@ -39,6 +39,9 @@ study_url_patterns = [
         ])
     ),
     url(r'^lines/$', login_required(autocomplete.search_study_lines)),
+    url(r'^rename/$', login_required(views.study_rename)),
+    url(r'^setdescription/$', login_required(views.study_set_description)),
+    url(r'^setcontact/$', login_required(views.study_set_contact)),
 ]
 
 urlpatterns = [

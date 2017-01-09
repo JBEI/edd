@@ -12,6 +12,14 @@ module IndexPage {
 	// Called when the page loads.
 	export function prepareIt() {
         $('.disclose').find('.discloseLink').on('click', disclose);
+
+        $("#addStudyModal").dialog({ minWidth: 675, autoOpen: false });
+
+        $("#addStudyButton").click(function() {
+            $("#addStudyModal").removeClass('off').dialog( "open" );
+            return false;
+        });
+
         IndexPage.prepareTable();
 	}
 
@@ -98,7 +106,8 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
                 'hoverEffect': true,
                 'nowrap': true,
                 'sideMenuItems': sideMenuItems,
-                'contentString': [ '<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>' ].join('')
+                'contentString': [ '<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>' ].join(''),
+                'title': studyDoc.n
             })
         ];
     }
@@ -108,7 +117,8 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             new DataGridDataCell(gridSpec, index, {
                 'maxWidth': '400',
                 'customID': (id) => { return 'editableDescriptionField' + id; },
-                'contentString': gridSpec.dataObj[index].des || ''
+                'contentString': gridSpec.dataObj[index].des || '',
+                'title': gridSpec.dataObj[index].des || '',
             })
         ];
     }
@@ -517,7 +527,6 @@ class DGStudiesSearchWidget extends DGSearchWidget {
     }
 }
 
-// Here's an example of a working DataGridOptionWidget.
 // When checked, this hides all Studies that are not owned by the current user.
 class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
 
@@ -528,7 +537,7 @@ class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
         this._spec = spec;
     }
 
-    getIDFragment():string {
+    getIDFragment(uniqueID):string {
         return 'ShowMyStudiesCB';
     }
 
@@ -552,7 +561,6 @@ class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
     }
 }
 
-// Here's another example of a working DataGridOptionWidget.
 // When unchecked, this hides the set of Studies that are marked as disabled.
 class DGDisabledStudiesWidget extends DataGridOptionWidget {
 
@@ -563,7 +571,7 @@ class DGDisabledStudiesWidget extends DataGridOptionWidget {
         this._spec = spec;
     }
 
-    getIDFragment():string {
+    getIDFragment(uniqueID):string {
         return 'ShowDStudiesCB';
     }
 
@@ -591,7 +599,7 @@ class DGDisabledStudiesWidget extends DataGridOptionWidget {
 		if (data[rowID].dis) {
 			for (var r = 0; r < dataRowObjects.length; r++) {
 				var rowElement = dataRowObjects[r].getElement();
-				rowElement.style.backgroundColor = "#FFC0C0";
+				$(rowElement).addClass('disabledRecord');
 			}
 		}
 	}

@@ -2,37 +2,42 @@
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
 /// <reference path="DataGrid.ts" />
-/// <reference path="StudyGraphing.ts" />
-/// <reference path="GraphHelperMethods.ts" />
+/// <reference path="EDDGraphingTools.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>
+
 
 declare var EDDData:EDDData;
 
-module StudyD {
+namespace StudyDataPage {
     'use strict';
 
-    var mainGraphObject:any;
+    var viewingMode;    // An enum: 'linegraph', 'bargraph', or 'table'
+    var viewingModeIsStale:{[id:string]: boolean};
+    var barGraphMode;    // an enum: 'time', 'line', 'measurement'
+    var barGraphTypeButtonsJQ:JQuery;
 
     export var progressiveFilteringWidget: ProgressiveFilteringWidget;
+    var postFilteringAssays:any[];
+    var postFilteringMeasurements:any[];
 
-    var mainGraphRefreshTimerID:any;
-    var linesActionPanelRefreshTimer:any;
-    var assaysActionPanelRefreshTimer:any;
-    var prevDescriptionEditElement:any;
+    var actionPanelRefreshTimer:any;
+    var actionPanelIsInBottomBar:boolean;
+    var refresDataDisplayIfStaleTimer:any;
 
-    // We can have a valid metabolic map but no valid biomass calculation.
-    // If they try to show carbon balance in that case, we'll bring up the UI to
-    // calculate biomass for the specified metabolic map.
-    export var metabolicMapID:any;
-    export var metabolicMapName:any;
+    var remakeMainGraphAreaCalls = 0;
+
+    var colorObj:any;
 
     // Table spec and table objects, one each per Protocol, for Assays.
-    var assaysDataGridSpecs;
-    export var assaysDataGrids;
+    var assaysDataGridSpec;
+    export var assaysDataGrid;
 
     // Utility interface used by GenericFilterSection#updateUniqueIndexesHash
     export interface ValueToUniqueID {
         [index: string]: number;
+    }
+    export interface ValueToString {
+        [index: string]: string;
     }
     export interface ValueToUniqueList {
         [index: string]: number[];
@@ -44,9 +49,27 @@ module StudyD {
     export interface RecordIDToBoolean {
         [index: string]: boolean;
     }
+    // Used to keep track of all the accumulated record IDs that can be used to
+    // populate the filters.  We use this to repopulate filters when the mode has changed,
+    // for example, to show criteria for disabled assays, or assays with no measurements.
+    // To speed things up we will accumulate arrays, ensuring that the IDs in each array
+    // are unique (to the given array) by tracking already-seen IDs with boolean flags.
+    export interface AccumulatedRecordIDs {
+        seenRecordFlags: RecordIDToBoolean;
+        metaboliteIDs: string[];
+        proteinIDs: string[];
+        geneIDs: string[];
+        measurementIDs: string[];
+    }
+
 
     // For the filtering section on the main graph
     export class ProgressiveFilteringWidget {
+
+        // These are the internal settings for the widget.
+        // They may differ from the UI, if we haven't refreshed the filtering section.
+        showingDisabled:boolean;
+        showingEmpty:boolean;
 
         allFilters: GenericFilterSection[];
         assayFilters: GenericFilterSection[];
@@ -55,30 +78,42 @@ module StudyD {
         proteinFilters: GenericFilterSection[];
         geneFilters: GenericFilterSection[];
         measurementFilters: GenericFilterSection[];
-        metaboliteDataProcessed: boolean;
-        proteinDataProcessed: boolean;
-        geneDataProcessed: boolean;
-        genericDataProcessed: boolean;
+
+        metaboliteDataPresent: boolean;
+        proteinDataPresent: boolean;
+        geneDataPresent: boolean;
+        genericDataPresent: boolean;
+
         filterTableJQ: JQuery;
-        studyDObject: any;
-        mainGraphObject: any;
-        filteredAssayIDs: any;
+        accumulatedRecordIDs: AccumulatedRecordIDs;
+        lastFilteringResults: any;
+
 
         // MeasurementGroupCode: Need to initialize each filter list.
-        constructor(studyDObject: any) {
+        constructor() {
 
-            this.studyDObject = studyDObject;
+            this.showingDisabled = false;
+            this.showingEmpty = false;
+
             this.allFilters = [];
             this.assayFilters = [];
             this.metaboliteFilters = [];
             this.proteinFilters = [];
             this.geneFilters = [];
             this.measurementFilters = [];
-            this.metaboliteDataProcessed = false;
-            this.proteinDataProcessed = false;
-            this.geneDataProcessed = false;
-            this.genericDataProcessed = false;
+            this.metaboliteDataPresent = false;
+            this.proteinDataPresent = false;
+            this.geneDataPresent = false;
+            this.genericDataPresent = false;
             this.filterTableJQ = null;
+            this.accumulatedRecordIDs = {
+                seenRecordFlags: {},
+                metaboliteIDs: [],
+                proteinIDs: [],
+                geneIDs: [],
+                measurementIDs: []
+            };
+            this.lastFilteringResults = null;
         }
 
         // Read through the Lines, Assays, and AssayMeasurements structures to learn what types are present,
@@ -91,7 +126,6 @@ module StudyD {
 
             var seenInLinesHash: RecordIDToBoolean = {};
             var seenInAssaysHash: RecordIDToBoolean = {};
-            var aIDsToUse: string[] = [];
 
             this.filterTableJQ = $('<div>').addClass('filterTable');
             $('#mainFilterSection').append(this.filterTableJQ);
@@ -99,10 +133,9 @@ module StudyD {
             // First do some basic sanity filtering on the list
             $.each(EDDData.Assays, (assayId: string, assay: any): void => {
                 var line = EDDData.Lines[assay.lid];
-                if (!assay.active || !line || !line.active) return;
+                if (!line || !line.active) return;
                 $.each(assay.meta || [], (metadataId) => { seenInAssaysHash[metadataId] = true; });
                 $.each(line.meta || [], (metadataId) => { seenInLinesHash[metadataId] = true; });
-                aIDsToUse.push(assayId);
             });
 
             // Create filters on assay tables
@@ -113,7 +146,7 @@ module StudyD {
             assayFilters.push(new LineNameFilterSection()); // LINE
             assayFilters.push(new CarbonSourceFilterSection());
             assayFilters.push(new CarbonLabelingFilterSection());
-            assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
+            assayFilters.push(new AssayFilterSection()); // Assay
             // convert seen metadata IDs to FilterSection objects, and push to end of assayFilters
             assayFilters.push.apply(assayFilters,
                 $.map(seenInAssaysHash, (_, id: string) => new AssayMetaDataFilterSection(id)));
@@ -131,7 +164,7 @@ module StudyD {
             this.geneFilters.push(new GeneFilterSection());
 
             this.measurementFilters = [];
-            this.measurementFilters.push(new MeasurementFilterSection());
+            this.measurementFilters.push(new GeneralMeasurementFilterSection());
 
             // All filter sections are constructed; now need to call configure() on all
             this.allFilters = [].concat(
@@ -144,16 +177,13 @@ module StudyD {
 
             // We can initialize all the Assay- and Line-level filters immediately
             this.assayFilters = assayFilters;
-            assayFilters.forEach((filter) => {
-                filter.populateFilterFromRecordIDs(aIDsToUse);
-                filter.populateTable();
-            });
-            this.repopulateFilteringSection();
+            this.repopulateLineFilters();
+            this.repopulateColumns();
         }
 
         // Clear out any old filters in the filtering section, and add in the ones that
         // claim to be "useful".
-        repopulateFilteringSection(): void {
+        repopulateColumns(): void {
             var dark:boolean = false;
             $.each(this.allFilters, (i, widget) => {
                 if (widget.isFilterUseful()) {
@@ -168,86 +198,155 @@ module StudyD {
 
         // Given a set of measurement records and a dictionary of corresponding types
         // (passed down from the server as a result of a data request), sort them into
-        // their various categories, then pass each category to their relevant filter objects
-        // (possibly adding to the values in the filter) and refresh the UI for each filter.
-        // MeasurementGroupCode: Need to process each group separately here.
+        // their various categories, and flag them as available for popualting the
+        // filtering section.  Then call to repopulate the filtering based on the expanded sets.
         processIncomingMeasurementRecords(measures, types): void {
 
-            var process: (ids: string[], i: number, widget: GenericFilterSection) => void;
-
-            var filterIds = { 'm': [], 'p': [], 'g': [], '_': [] };
             // loop over all downloaded measurements. measures corresponds to AssayMeasurements
             $.each(measures || {}, (index, measurement) => {
                 var assay = EDDData.Assays[measurement.assay], line, mtype;
-                if (!assay || !assay.active) return;
+                // If we've seen it already (rather unlikely), skip it.
+                if (this.accumulatedRecordIDs.seenRecordFlags[measurement.id]) { return; }
+                this.accumulatedRecordIDs.seenRecordFlags[measurement.id] = true;
+                if (!assay) { return };
                 line = EDDData.Lines[assay.lid];
-                if (!line || !line.active) return;
+                if (!line || !line.active) { return };
                 mtype = types[measurement.type] || {};
                 if (mtype.family === 'm') { // measurement is of metabolite
-                    filterIds.m.push(measurement.id);
+                    this.accumulatedRecordIDs.metaboliteIDs.push(measurement.id);
                 } else if (mtype.family === 'p') { // measurement is of protein
-                    filterIds.p.push(measurement.id);
+                    this.accumulatedRecordIDs.proteinIDs.push(measurement.id);
                 } else if (mtype.family === 'g') { // measurement is of gene / transcript
-                    filterIds.g.push(measurement.id);
+                    this.accumulatedRecordIDs.geneIDs.push(measurement.id);
                 } else {
                     // throw everything else in a general area
-                    filterIds._.push(measurement.id);
+                    this.accumulatedRecordIDs.measurementIDs.push(measurement.id);
                 }
             });
+            this.repopulateAllFilters();    // Skip the queue - we need to repopulate immediately
+        }
+
+
+        repopulateAllFilters(): void {
+            this.repopulateLineFilters();
+            this.repopulateMeasurementFilters();
+            this.repopulateColumns();
+        }
+
+
+        repopulateLineFilters(): void {
+            var filteredAssayIds = this.buildAssayIDSet();
+            this.assayFilters.forEach((filter) => {
+                filter.populateFilterFromRecordIDs(filteredAssayIds);
+                filter.populateTable();
+            });
+        }
+
+        repopulateMeasurementFilters(): void {
+
+            var filterDisabled: (id:string) => boolean;
+            var process: (ids: string[], i: number, widget: GenericFilterSection) => void;
+
+            var m = this.accumulatedRecordIDs.metaboliteIDs;
+            var p = this.accumulatedRecordIDs.proteinIDs;
+            var g = this.accumulatedRecordIDs.geneIDs;
+            var gen = this.accumulatedRecordIDs.measurementIDs;
+
+            if (!this.showingDisabled) {
+
+                filterDisabled = (measureId:string): boolean => {
+                    var measure: any = EDDData.AssayMeasurements[measureId];
+                    if (!measure) { return false; }
+                    var assay = EDDData.Assays[measure.assay];
+                    if (!assay) { return false; }
+                    return !!assay.active;
+                };
+
+                m = m.filter(filterDisabled);
+                p = p.filter(filterDisabled);
+                g = g.filter(filterDisabled);
+                gen = gen.filter(filterDisabled);
+            }
+
+            this.metaboliteDataPresent = false;
+            this.proteinDataPresent = false;
+            this.geneDataPresent = false;
+            this.genericDataPresent = false;
 
             process = (ids: string[], i: number, widget: GenericFilterSection): void => {
                 widget.populateFilterFromRecordIDs(ids);
                 widget.populateTable();
             };
-            if (filterIds.m.length) {
-                $.each(this.metaboliteFilters, process.bind({}, filterIds.m));
-                this.metaboliteDataProcessed = true;
+
+            if (m.length) {
+                $.each(this.metaboliteFilters, process.bind({}, m));
+                this.metaboliteDataPresent = true;
             }
-            if (filterIds.p.length) {
-                $.each(this.proteinFilters, process.bind({}, filterIds.p));
-                this.proteinDataProcessed = true;
+            if (p.length) {
+                $.each(this.proteinFilters, process.bind({}, p));
+                this.proteinDataPresent = true;
             }
-            if (filterIds.g.length) {
-                $.each(this.geneFilters, process.bind({}, filterIds.g));
-                this.geneDataProcessed = true;
+            if (g.length) {
+                $.each(this.geneFilters, process.bind({}, g));
+                this.geneDataPresent = true;
             }
-            if (filterIds._.length) {
-                $.each(this.measurementFilters, process.bind({}, filterIds._));
-                this.genericDataProcessed = true;
+            if (gen.length) {
+                $.each(this.measurementFilters, process.bind({}, gen));
+                this.genericDataPresent = true;
             }
-            this.repopulateFilteringSection();
         }
 
-        // Build a list of all the non-disabled Assay IDs in the Study.
+        // Build a list of all the Assay IDs in the Study.
         buildAssayIDSet(): any[] {
             var assayIds: any[] = [];
             $.each(EDDData.Assays, (assayId, assay) => {
                 var line = EDDData.Lines[assay.lid];
-                if (!assay.active || !line || !line.active) return;
+                if (!line || !line.active) return;
+                if (!assay.active && !this.showingDisabled) return;
+                if (!assay.count && !this.showingEmpty) return;
                 assayIds.push(assayId);
-
             });
             return assayIds;
         }
 
-        // Starting with a list of all the non-disabled Assay IDs in the Study, we loop it through the
+        // Check if the global settings for the filtering section are different, and rebuild the
+        // sections if so.  Then, starting with a list of all the Assay IDs in the Study, we loop it through the
         // Line and Assay-level filters, causing the filters to refresh their UI, narrowing the set down.
         // We resolve the resulting set of Assay IDs into measurement IDs, then pass them on to the
         // measurement-level filters.  In the end we return a set of measurement IDs representing the
         // end result of all the filters, suitable for passing to the graphing functions.
         // MeasurementGroupCode: Need to process each group separately here.
-        buildFilteredMeasurements(): any[] {
+        buildFilteredMeasurements(): ValueToUniqueList {
+
+            var showingDisabledCB:boolean = !!($('#filteringShowDisabledCheckbox').prop('checked'));
+            var showingEmptyCB:boolean = !!($('#filteringShowEmptyCheckbox').prop('checked'));
+
+            if ((this.showingDisabled != showingDisabledCB) || (this.showingEmpty != showingEmptyCB)) {
+                this.showingDisabled = showingDisabledCB;
+                this.showingEmpty = showingEmptyCB;
+
+                this.repopulateAllFilters();
+            }
+
             var filteredAssayIds = this.buildAssayIDSet();
+
+            var filteringResults:ValueToUniqueList = {};
+            filteringResults['allAssays'] = filteredAssayIds;
 
             $.each(this.assayFilters, (i, filter) => {
                 filteredAssayIds = filter.applyProgressiveFiltering(filteredAssayIds);
+                filteringResults[filter.sectionShortLabel] = filteredAssayIds;
             });
+
+            filteringResults['filteredAssays'] = filteredAssayIds;
 
             var measurementIds: any[] = [];
             $.each(filteredAssayIds, (i, assayId) => {
                 var assay = EDDData.Assays[assayId];
                 $.merge(measurementIds, assay.measures || []);
             });
+
+            filteringResults['allMeasurements'] = measurementIds;
 
             // We start out with four references to the array of available measurement IDs, one for each major category.
             // Each of these will become its own array in turn as we narrow it down.
@@ -260,24 +359,28 @@ module StudyD {
 
             // Note that we only try to filter if we got measurements that apply to the widget types
 
-            if (this.metaboliteDataProcessed) {
+            if (this.metaboliteDataPresent) {
                 $.each(this.metaboliteFilters, (i, filter) => {
                     metaboliteMeasurements = filter.applyProgressiveFiltering(metaboliteMeasurements);
+                    filteringResults[filter.sectionShortLabel] = metaboliteMeasurements;
                 });
             }
-            if (this.proteinDataProcessed) {
+            if (this.proteinDataPresent) {
                 $.each(this.proteinFilters, (i, filter) => {
                     proteinMeasurements = filter.applyProgressiveFiltering(proteinMeasurements);
+                    filteringResults[filter.sectionShortLabel] = proteinMeasurements;
                 });
             }
-            if (this.geneDataProcessed) {
+            if (this.geneDataPresent) {
                 $.each(this.geneFilters, (i, filter) => {
                     geneMeasurements = filter.applyProgressiveFiltering(geneMeasurements);
+                    filteringResults[filter.sectionShortLabel] = geneMeasurements;
                 });
             }
-            if (this.genericDataProcessed) {
+            if (this.genericDataPresent) {
                 $.each(this.measurementFilters, (i, filter) => {
                     genericMeasurements = filter.applyProgressiveFiltering(genericMeasurements);
+                    filteringResults[filter.sectionShortLabel] = genericMeasurements;
                 });
             }
 
@@ -315,28 +418,34 @@ module StudyD {
             if (       this.geneFilters.some(anyChecked)) { dSM = dSM.concat(geneMeasurements); }
             if (this.measurementFilters.some(anyChecked)) { dSM = dSM.concat(genericMeasurements); }
             if (dSM.length) {
-                return dSM;
+                filteringResults['filteredMeasurements'] = dSM;
+            } else {
+                filteringResults['filteredMeasurements'] = measurementIds;
             }
-            return measurementIds;
+            this.lastFilteringResults = filteringResults;
+            return filteringResults;
         }
 
-        // redraw graph with new measurement types.
+        // If any of the global filter settings or any of the settings in the individual filters
+        // have changed, return true, indicating that the filter will generate different results if
+        // queried.
         checkRedrawRequired(force?: boolean): boolean {
-            var redraw: boolean = false;
-            // do not redraw if graph is not initialized yet
-            if (this.mainGraphObject) {
-                redraw = !!force;
-                // Walk down the filter widget list.  If we encounter one whose collective checkbox
-                // state has changed since we last made this walk, then a redraw is required. Note that
-                // we should not skip this loop, even if we already know a redraw is required, since the
-                // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
-                // widgets that we will use next time around.
-                $.each(this.allFilters, (i, filter) => {
-                    if (filter.anyCheckboxesChangedSinceLastInquiry()) {
-                        redraw = true;
-                    }
-                });
-            }
+            var redraw:boolean = !!force;
+            var showingDisabledCB:boolean = !!($('#filteringShowDisabledCheckbox').prop('checked'));
+            var showingEmptyCB:boolean = !!($('#filteringShowEmptyCheckbox').prop('checked'));
+
+            // We know the internal state differs, but we're not here to update it...
+            if (this.showingDisabled != showingDisabledCB) { redraw = true; }
+            if (this.showingEmpty != showingEmptyCB) { redraw = true; }
+
+            // Walk down the filter widget list.  If we encounter one whose collective checkbox
+            // state has changed since we last made this walk, then a redraw is required. Note that
+            // we should not skip this loop, even if we already know a redraw is required, since the
+            // call to anyFilterSettingsChangedSinceLastInquiry sets internal state in the filter
+            // widgets that we will use next time around.
+            $.each(this.allFilters, (i, filter) => {
+                if (filter.anyFilterSettingsChangedSinceLastInquiry()) { redraw = true; }
+            });
             return redraw;
         }
     }
@@ -369,15 +478,15 @@ module StudyD {
         // (It's rare, but there can actually be more than one criteria that matches a given ID,
         //  for example a Line with two feeds assigned to it.)
         filterHash: ValueToUniqueList;
-        // Dictionary resolving the filter value integer identifiers to HTML Input checkboxes.
-        checkboxes: {[index: number]: JQuery};
+        // Dictionary resolving the filter values to HTML Input checkboxes.
+        checkboxes: {[index: string]: JQuery};
         // Dictionary used to compare checkboxes with a previous state to determine whether an
         // update is required. Values are 'C' for checked, 'U' for unchecked, and 'N' for not
         // existing at the time. ('N' can be useful when checkboxes are removed from a filter due to
         // the back-end data changing.)
-        previousCheckboxState: UniqueIDToValue;
-        // Dictionary resolving the filter value integer identifiers to HTML table row elements.
-        tableRows: {[index: number]: HTMLTableRowElement};
+        previousCheckboxState: ValueToString;
+        // Dictionary resolving the filter values to HTML table row elements.
+        tableRows: {[index: string]: HTMLTableRowElement};
 
         // References to HTML elements created by the filter
         filterColumnDiv: HTMLElement;
@@ -412,6 +521,9 @@ module StudyD {
             this.filterHash = {};
             this.previousCheckboxState = {};
 
+            this.tableRows = {};
+            this.checkboxes = {};
+
             this.typingTimeout = null;
             this.typingDelay = 330;    // TODO: Not implemented
             this.currentSearchSelection = '';
@@ -444,7 +556,7 @@ module StudyD {
                 });
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
             this.searchBox = sBox;
-            // We need two clear iccons for the two versions of the header
+            // We need two clear icons for the two versions of the header (with search and without)
             var searchClearIcon = $("<span>").addClass('filterClearIcon');
             this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(searchClearIcon).append(sBox)[0];
 
@@ -464,46 +576,46 @@ module StudyD {
                 .append(this.tableBodyElement = <HTMLTableElement>$("<tbody>")[0]);
         }
 
+        // By calling updateUniqueIndexesHash, we go through the records and find all the unique
+        // values in them (for the criteria this particular filter is based on.)
+        // Next we create an inverted version of that data structure, so that the unique identifiers
+        // we've created map to the values they represent, as well as an array
+        // of the unique identifiers sorted by the values.  These are what we'll use to construct
+        // the rows of criteria visible in the filter's UI.
         populateFilterFromRecordIDs(ids: string[]): void {
-            var usedValues: ValueToUniqueID, crSet: number[], cHash: UniqueIDToValue,
-                previousIds: string[];
-            // can get IDs from multiple assays, first merge with this.filterHash
-            previousIds = $.map(this.filterHash || {}, (_, previousId: string) => previousId);
-            ids.forEach((addedId: string): void => { this.filterHash[addedId] = []; });
-            ids = $.map(this.filterHash || {}, (_, previousId: string) => previousId);
-            // skip over building unique values and sorting when no new IDs added
-            if (ids.length > previousIds.length) {
-                this.updateUniqueIndexesHash(ids);
-                crSet = [];
-                cHash = {};
-                // Create a reversed hash so keys map values and values map keys
-                $.each(this.uniqueIndexes, (value: string, uniqueID: number): void => {
-                    cHash[uniqueID] = value;
-                    crSet.push(uniqueID);
-                });
-                // Alphabetically sort an array of the keys according to values
-                crSet.sort((a: number, b: number): number => {
-                    var _a:string = cHash[a].toLowerCase();
-                    var _b:string = cHash[b].toLowerCase();
-                    return _a < _b ? -1 : _a > _b ? 1 : 0;
-                });
-                this.uniqueValues = cHash;
-                this.uniqueValuesOrder = crSet;
-            }
+            var crSet: number[], cHash: UniqueIDToValue;
+            this.updateUniqueIndexesHash(ids);
+            crSet = [];
+            cHash = {};
+            // Create a reversed hash so keys map values and values map keys
+            $.each(this.uniqueIndexes, (value: string, uniqueID: number): void => {
+                cHash[uniqueID] = value;
+                crSet.push(uniqueID);
+            });
+            // Alphabetically sort an array of the keys according to values
+            crSet.sort((a: number, b: number): number => {
+                var _a:string = cHash[a].toLowerCase();
+                var _b:string = cHash[b].toLowerCase();
+                return _a < _b ? -1 : _a > _b ? 1 : 0;
+            });
+            this.uniqueValues = cHash;
+            this.uniqueValuesOrder = crSet;
         }
 
-        // In this function are running through the given list of measurement IDs and examining
-        // their records and related records, locating the particular field we are interested in,
-        // and creating a list of all the unique values for that field.  As we go, we mark each
-        // unique value with an integer UID, and construct a hash resolving each record to one (or
-        // possibly more) of those integer UIDs.  This prepares us for quick filtering later on.
-        // (This generic filter does nothing, so we leave these structures blank.)
+        // In this function (or at least the subclassed versions of it) we are running through the given
+        // list of measurement (or assay) IDs and examining their records and related records,
+        // locating the particular field we are interested in, and creating a list of all the
+        // unique values for that field.  As we go, we mark each unique value with an integer UID,
+        // and construct a hash resolving each record to one (or possibly more) of those integer UIDs.
+        // This prepares us for quick filtering later on.
+        // (This generic filter does nothing, leaving these structures blank.)
         updateUniqueIndexesHash(ids: string[]): void {
             this.filterHash = this.filterHash || {};
             this.uniqueIndexes = this.uniqueIndexes || {};
         }
 
-        // If we didn't come up with 2 or more criteria, there is no point in displaying the filter.
+        // If we didn't come up with 2 or more criteria, there is no point in displaying the filter,
+        // since it doesn't represent a meaningful choice.
         isFilterUseful():boolean {
             if (this.uniqueValuesOrder.length < 2) {
                 return false;
@@ -519,6 +631,7 @@ module StudyD {
             $(this.filterColumnDiv).detach();
         }
 
+        // Used to apply mild alternate striping to the filters so they stand out a bit from each other
         applyBackgroundStyle(darker:boolean):void {
             $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
             $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
@@ -527,13 +640,17 @@ module StudyD {
         // Runs through the values in uniqueValuesOrder, adding a checkbox and label for each
         // filtering value represented.  If there are more than 15 values, the filter gets
         // a search box and scrollbar.
+        // The checkbox, and the table row that encloses the checkbox and label, are saved in
+        // a dictionary mapped by the unique value they represent, so they can be re-used if the
+        // filter is rebuilt (i.e. if populateTable is called again.) 
         populateTable():void {
             var fCol = $(this.filterColumnDiv);
+
             fCol.children().detach();
             // Only use the scrolling container div if the size of the list warrants it, because
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
-            if (this.uniqueValuesOrder.length > 15) {
+            if (this.uniqueValuesOrder.length > 10) {
                 fCol.append(this.searchBoxTitleDiv).append(this.scrollZoneDiv);
                 // Change the reference so we're affecting the innerHTML of the correct div later on
                 fCol = $(this.scrollZoneDiv);
@@ -546,78 +663,84 @@ module StudyD {
             // Clear out any old table contents
             $(this.tableBodyElement).empty();
 
-            this.tableRows = {};
-            this.checkboxes = {};
-
-            var graphHelper = Object.create(GraphHelperMethods);
-            var colorObj = graphHelper.renderColor(EDDData.Lines);
-
-            //add color obj to EDDData
-            EDDData['color'] = colorObj;
-
             // line label color based on graph color of line
             if (this.sectionTitle === "Line") {    // TODO: Find a better way to identify this section
                 var colors:any = {};
 
                 //create new colors object with line names a keys and color hex as values
                 for (var key in EDDData.Lines) {
-                    colors[EDDData.Lines[key].name] = colorObj[key]
+                    colors[EDDData.Lines[key].name] = colorObj[key];
                 }
+            }
 
-                this.uniqueValuesOrder.forEach((uniqueId: number): void => {
+            // For each value, if a table row isn't already defined, build one.
+            // There's extra code in here to assign colors to rows in the Lines filter
+            // which should probably be isolated in a subclass.
+            this.uniqueValuesOrder.forEach((uniqueId: number): void => {
+
                 var cboxName, cell, p, q, r;
                 cboxName = ['filter', this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
-                this.tableRows[uniqueId] = <HTMLTableRowElement>this.tableBodyElement.insertRow();
-                cell = this.tableRows[uniqueId].insertCell();
-                this.checkboxes[uniqueId] = $("<input type='checkbox'>")
-                    .attr({ 'name': cboxName, 'id': cboxName })
-                    .appendTo(cell);
-
-                for (var key in EDDData.Lines) {
-                    if (EDDData.Lines[key].name == this.uniqueValues[uniqueId]) {
-                       (EDDData.Lines[key]['identifier'] = cboxName)
-                    }
-                }
-
-                $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId])
-                    .css('font-weight', 'Bold').appendTo(cell);
-                });
-
-            } else {
-                this.uniqueValuesOrder.forEach((uniqueId: number): void => {
-                    var cboxName, cell, p, q, r;
-                    cboxName = ['filter', this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
-                    this.tableRows[uniqueId] = <HTMLTableRowElement>this.tableBodyElement.insertRow();
-                    cell = this.tableRows[uniqueId].insertCell();
-                    this.checkboxes[uniqueId] = $("<input type='checkbox'>")
+                var row = this.tableRows[this.uniqueValues[uniqueId]];
+                if (!row) {
+                    // No need to append a new row in a separate call:
+                    // insertRow() creates, and appends, and returns one.
+                    this.tableRows[this.uniqueValues[uniqueId]] = <HTMLTableRowElement>this.tableBodyElement.insertRow();
+                    cell = this.tableRows[this.uniqueValues[uniqueId]].insertCell();
+                    this.checkboxes[this.uniqueValues[uniqueId]] = $("<input type='checkbox'>")
                         .attr({ 'name': cboxName, 'id': cboxName })
                         .appendTo(cell);
 
-                    $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId])
+                    var label = $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId])
                         .appendTo(cell);
-                });
-            }
+
+                    if (this.sectionTitle === "Line") {    // TODO: Find a better way to identify this section
+                        label.css('font-weight', 'Bold');
+
+                        for (var key in EDDData.Lines) {    // TODO: Make this assignment without using a loop
+                            if (EDDData.Lines[key].name == this.uniqueValues[uniqueId]) {
+                               (EDDData.Lines[key]['identifier'] = cboxName)
+                            }
+                        }
+                    }
+                } else {
+                    $(row).appendTo(this.tableBodyElement);
+                }
+            });
             // TODO: Drag select is twitchy - clicking a table cell background should check the box,
             // even if the user isn't hitting the label or the checkbox itself.
+            // Fixing this may mean adding additional code to the mousedown/mouseover handler for the
+            // whole table (currently in StudyDataPage.prepareIt()).
             Dragboxes.initTable(this.filteringTable);
         }
 
-        // Returns true if any of the checkboxes show a different state than when this function was
-        // last called
-        anyCheckboxesChangedSinceLastInquiry():boolean {
+        // Returns true if any of this filter's UI (checkboxes, search field)
+        // shows a different state than when this function was last called.
+        // This is accomplished by keeping a dictionary - previousCheckboxState - that is organized by
+        // the same unique criteria values as the checkboxes.
+        // We build a relpacement for this dictionary, and compare its contents with the old one.
+        // Each checkbox can have one of three prior states, each represented in the dictionary by a letter:
+        // "C" - checked, "U" - unchecked, "N" - doesn't exist (in the currently visible set.)
+        // We also compare the current content of the search box with the old content.
+        // Note: Regardless of where or whether we find a difference, it is important that we finish
+        // building the replacement version of previousCheckboxState.
+        // So though it's tempting to exit early from these loops, it would make a mess.
+        anyFilterSettingsChangedSinceLastInquiry():boolean {
             var changed:boolean = false,
-                currentCheckboxState: UniqueIDToValue = {},
+                currentCheckboxState: ValueToString = {},
                 v: string = $(this.searchBox).val();
             this.anyCheckboxesChecked = false;
-            $.each(this.checkboxes || {}, (uniqueId: number, checkbox: JQuery) => {
+
+            this.uniqueValuesOrder.forEach((uniqueId: number): void => {
+                var checkbox: JQuery = this.checkboxes[this.uniqueValues[uniqueId]];
                 var current, previous;
                 // "C" - checked, "U" - unchecked, "N" - doesn't exist
                 current = (checkbox.prop('checked') && !checkbox.prop('disabled')) ? 'C' : 'U';
-                previous = this.previousCheckboxState[uniqueId] || 'N';
+                previous = this.previousCheckboxState[this.uniqueValues[uniqueId]] || 'N';
                 if (current !== previous) changed = true;
                 if (current === 'C') this.anyCheckboxesChecked = true;
-                currentCheckboxState[uniqueId] = current;
+                currentCheckboxState[this.uniqueValues[uniqueId]] = current;
             });
+
             this.clearIcons.toggleClass('enabled', this.anyCheckboxesChecked);
 
             v = v.trim();                // Remove leading and trailing whitespace
@@ -632,10 +755,12 @@ module StudyD {
             if (!changed) {
                 // If we haven't detected any change so far, there is one more angle to cover:
                 // Checkboxes that used to exist, but have since been removed from the set.
-                $.each(this.previousCheckboxState, (rowId) => {
-                    if (currentCheckboxState[rowId] === undefined) {
+                $.each(this.previousCheckboxState, (uniqueValue) => {
+                    if (currentCheckboxState[uniqueValue] === undefined) {
                         changed = true;
-                        return false;
+                        // If it was taken out of the set, clear it so it will be
+                        // blank when re-added later.
+                        this.checkboxes[uniqueValue].prop('checked', false);
                     }
                 });
             }
@@ -645,12 +770,11 @@ module StudyD {
 
         // Takes a set of record IDs, and if any checkboxes in the filter's UI are checked,
         // the ID set is narrowed down to only those records that contain the checked values.
-        // Checkboxes whose values are not represented anywhere in the given IDs are temporarily disabled
-        // and sorted to the bottom of the list, visually indicating to a user that those values are not
-        // available for further filtering.
+        // In addition, checkboxes whose values are not represented anywhere in the incoming IDs
+        // are temporarily disabled and sorted to the bottom of the list, visually indicating
+        // to a user that those values are not available for further filtering.
         // The narrowed set of IDs is then returned, for use by the next filter.
         applyProgressiveFiltering(ids:any[]):any {
-
             // If the filter only contains one item, it's pointless to apply it.
             if (!this.isFilterUseful()) {
                 return ids;
@@ -677,58 +801,56 @@ module StudyD {
 
             var valuesVisiblePreFiltering = {};
 
-            var indexIsVisible = (index):boolean => {
-                var match:boolean = true, text:string;
-                if (useSearchBox) {
-                    text = this.uniqueValues[index].toLowerCase();
-                    match = queryStrs.some((v) => {
-                        return text.length >= v.length && text.indexOf(v) >= 0;
-                    });
-                }
-                if (match) {
-                    valuesVisiblePreFiltering[index] = 1;
-                    if ((this.previousCheckboxState[index] === 'C') || !this.anyCheckboxesChecked) {
-                        return true;
-                    }
-                }
-                return false;
-            };
-
             idsPostFiltering = ids.filter((id) => {
+                var pass: boolean = false;
                 // If we have filtering data for this id, use it.
                 // If we don't, the id probably belongs to some other measurement category,
                 // so we ignore it.
                 if (this.filterHash[id]) {
-                    return this.filterHash[id].some(indexIsVisible);
+                    // If any of this ID's criteria are checked, this ID passes the filter.
+                    // Note that we cannot optimize to use '.some' here becuase we need to
+                    // loop through all the criteria to set valuesVisiblePreFiltering.
+                    this.filterHash[id].forEach((index) => {
+                        var match:boolean = true, text:string;
+                        if (useSearchBox) {
+                            text = this.uniqueValues[index].toLowerCase();
+                            match = queryStrs.some((v) => {
+                                return text.length >= v.length && text.indexOf(v) >= 0;
+                            });
+                        }
+                        if (match) {
+                            valuesVisiblePreFiltering[index] = 1;
+                            if ((this.previousCheckboxState[this.uniqueValues[index]] === 'C') || !this.anyCheckboxesChecked) {
+                                pass = true;
+                            }
+                        }
+                    });
                 }
-                return false;
+                return pass;
             });
 
-            // Create a document fragment, and accumulate inside it all the rows we want to display, in sorted order.
-            var frag = document.createDocumentFragment();
-
+            // Apply enabled/disabled status and ordering:
             var rowsToAppend = [];
             this.uniqueValuesOrder.forEach((crID) => {
-                var checkbox: JQuery = this.checkboxes[crID],
-                    row: HTMLTableRowElement = this.tableRows[crID],
+                var checkbox: JQuery = this.checkboxes[this.uniqueValues[crID]],
+                    row: HTMLTableRowElement = this.tableRows[this.uniqueValues[crID]],
                     show: boolean = !!valuesVisiblePreFiltering[crID];
                 checkbox.prop('disabled', !show)
                 $(row).toggleClass('nodata', !show);
                 if (show) {
-                    frag.appendChild(row);
+                    this.tableBodyElement.appendChild(row);
                 } else {
                     rowsToAppend.push(row);
                 }
             });
-            // Now, append all the rows we disabled, so they go to the bottom of the table
-            rowsToAppend.forEach((row) => frag.appendChild(row));
-
-            // Remember that we last sorted by this column
-            this.tableBodyElement.appendChild(frag);
+            // Append all the rows we disabled, as a last step,
+            // so they go to the bottom of the table.
+            rowsToAppend.forEach((row) => this.tableBodyElement.appendChild(row));
 
             return idsPostFiltering;
         }
 
+        // A few utility functions:
         _assayIdToAssay(assayId:string) {
             return EDDData.Assays[assayId];
         }
@@ -742,20 +864,19 @@ module StudyD {
             if (assay) return EDDData.Protocols[assay.pid];
             return undefined;
         }
-
-        getIdMapToValues():(id:string) => any[] {
-            return () => [];
-        }
     }
 
+    // One of the highest-level filters: Strain.
+    // Note that an Assay's Line can have more than one Strain assigned to it,
+    // which is an example of why 'this.filterHash' is built with arrays.
     export class StrainFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Strain', 'st');
         }
 
         updateUniqueIndexesHash(ids: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             ids.forEach((assayId: string) => {
                 var line:any = this._assayIdToLine(assayId) || {};
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
@@ -771,14 +892,16 @@ module StudyD {
         }
     }
 
+    // Just as with the Strain filter, an Assay's Line can have more than one
+    // Carbon Source assigned to it.
     export class CarbonSourceFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Carbon Source', 'cs');
         }
 
         updateUniqueIndexesHash(ids: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             ids.forEach((assayId:string) => {
                 var line:any = this._assayIdToLine(assayId) || {};
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
@@ -794,14 +917,15 @@ module StudyD {
         }
     }
 
+    // A filter for the 'Carbon Source Labeling' field for each Assay's Line
     export class CarbonLabelingFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Labeling', 'l');
         }
 
         updateUniqueIndexesHash(ids: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             ids.forEach((assayId:string) => {
                 var line:any = this._assayIdToLine(assayId) || {};
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
@@ -817,14 +941,15 @@ module StudyD {
         }
     }
 
+    // A filter for the name of each Assay's Line
     export class LineNameFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Line', 'ln');
         }
 
         updateUniqueIndexesHash(ids: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             ids.forEach((assayId:string) => {
                 var line:any = this._assayIdToLine(assayId) || {};
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
@@ -836,14 +961,15 @@ module StudyD {
         }
     }
 
+    // A filter for the Protocol of each Assay
     export class ProtocolFilterSection extends GenericFilterSection {
         configure():void {
             super.configure('Protocol', 'p');
         }
 
         updateUniqueIndexesHash(ids: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             ids.forEach((assayId:string) => {
                 var protocol: ProtocolRecord = this._assayIdToProtocol(assayId);
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
@@ -855,14 +981,15 @@ module StudyD {
         }
     }
 
-    export class AssaySuffixFilterSection extends GenericFilterSection {
+    // A filter for the name of each Assay
+    export class AssayFilterSection extends GenericFilterSection {
         configure():void {
-            super.configure('Assay Suffix', 'a');
+            super.configure('Assay', 'a');
         }
 
         updateUniqueIndexesHash(ids: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             ids.forEach((assayId:string) => {
                 var assay = this._assayIdToAssay(assayId) || {};
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
@@ -874,6 +1001,10 @@ module StudyD {
         }
     }
 
+    // A class defining some additional logic for metadata-type filters,
+    // meant to be subclassed.  Note how we pass in the particular metadata we
+    // are constructing this filter for, in the constructor.
+    // Unlike the other filters, we will be instantiating more than one of these.
     export class MetaDataFilterSection extends GenericFilterSection {
 
         metaDataID:string;
@@ -896,8 +1027,8 @@ module StudyD {
     export class LineMetaDataFilterSection extends MetaDataFilterSection {
 
         updateUniqueIndexesHash(ids: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             ids.forEach((assayId:string) => {
                 var line: any = this._assayIdToLine(assayId) || {}, value = '(Empty)';
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
@@ -913,8 +1044,8 @@ module StudyD {
     export class AssayMetaDataFilterSection extends MetaDataFilterSection {
 
         updateUniqueIndexesHash(ids: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             ids.forEach((assayId:string) => {
                 var assay: any = this._assayIdToAssay(assayId) || {}, value = '(Empty)';
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
@@ -927,6 +1058,9 @@ module StudyD {
         }
     }
 
+    // These remaining filters work on Measurement IDs rather than Assay IDs.
+
+    // A filter for the compartment of each Metabolite.
     export class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         configure():void {
@@ -934,8 +1068,8 @@ module StudyD {
         }
 
         updateUniqueIndexesHash(amIDs: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             amIDs.forEach((measureId:string) => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {}, value: any;
                 this.filterHash[measureId] = this.filterHash[measureId] || [];
@@ -948,8 +1082,32 @@ module StudyD {
         }
     }
 
+    // A generic filter for Measurements, meant to be subclassed.
+    // It introduces a 'loadPending' attribute, which is used to make the filter
+    // appear in the UI even if it has no data, because we anticipate data to eventually
+    // appear in it.
+    //      The idea is, we know whether to instantiate a given subclass of this filter by
+    // looking at the measurement count for each Assay, which is given to us in the first
+    // chunk of data from the server.  So, we instantiate it, then it appears in a
+    // 'load pending' state until actual measurement values are received from the server.
     export class MeasurementFilterSection extends GenericFilterSection {
-        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
+        // Whenever this filter is instantiated, we 
+        loadPending: boolean;
+
+        configure(title:string, shortLabel:string): void {
+            this.loadPending = true;
+            super.configure(title, shortLabel);
+        }
+
+        // Overriding to make use of loadPending.
+        isFilterUseful(): boolean {
+            return this.loadPending || this.uniqueValuesOrder.length > 0;
+        }
+    }
+
+    // A filter for the names of General Measurements.
+    export class GeneralMeasurementFilterSection extends MeasurementFilterSection {
+        // Whenever this filter is instantiated, we 
         loadPending: boolean;
 
         configure(): void {
@@ -962,8 +1120,8 @@ module StudyD {
         }
 
         updateUniqueIndexesHash(mIds: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             mIds.forEach((measureId: string): void => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {};
                 var mType: any;
@@ -980,23 +1138,16 @@ module StudyD {
         }
     }
 
-    export class MetaboliteFilterSection extends GenericFilterSection {
-        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
-        loadPending:boolean;
+    // A filter for the names of Metabolite Measurements.
+    export class MetaboliteFilterSection extends MeasurementFilterSection {
 
         configure():void {
-            this.loadPending = true;
             super.configure('Metabolite', 'me');
         }
 
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        isFilterUseful(): boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
-        }
-
         updateUniqueIndexesHash(amIDs: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             amIDs.forEach((measureId:string) => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {}, metabolite: any;
                 this.filterHash[measureId] = this.filterHash[measureId] || [];
@@ -1013,23 +1164,16 @@ module StudyD {
         }
     }
 
-    export class ProteinFilterSection extends GenericFilterSection {
-        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
-        loadPending:boolean;
+    // A filter for the names of Protein Measurements.
+    export class ProteinFilterSection extends MeasurementFilterSection {
 
         configure():void {
-            this.loadPending = true;
             super.configure('Protein', 'pr');
         }
 
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        isFilterUseful():boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
-        }
-
         updateUniqueIndexesHash(amIDs: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             amIDs.forEach((measureId:string) => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {}, protein: any;
                 this.filterHash[measureId] = this.filterHash[measureId] || [];
@@ -1046,23 +1190,16 @@ module StudyD {
         }
     }
 
-    export class GeneFilterSection extends GenericFilterSection {
-        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
-        loadPending:boolean;
+    // A filter for the names of Gene Measurements.
+    export class GeneFilterSection extends MeasurementFilterSection {
 
         configure():void {
-            this.loadPending = true;
             super.configure('Gene', 'gn');
         }
 
-        // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        isFilterUseful():boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 0;
-        }
-
         updateUniqueIndexesHash(amIDs: string[]): void {
-            this.uniqueIndexes = this.uniqueIndexes || {};
-            this.filterHash = this.filterHash || {};
+            this.uniqueIndexes = {};
+            this.filterHash = {};
             amIDs.forEach((measureId:string) => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {}, gene: any;
                 this.filterHash[measureId] = this.filterHash[measureId] || [];
@@ -1079,72 +1216,236 @@ module StudyD {
         }
     }
 
+
     // Called when the page loads.
     export function prepareIt() {
 
-        this.mainGraphObject = null;
+        progressiveFilteringWidget = new ProgressiveFilteringWidget();
+        postFilteringAssays = [];
+        postFilteringMeasurements = [];
 
-        this.progressiveFilteringWidget = new ProgressiveFilteringWidget(this);
+        // By default, we always show the graph
+        viewingMode = 'linegraph';
+        barGraphMode = 'time';
+        barGraphTypeButtonsJQ = $('#barGraphTypeButtons');
+        actionPanelIsInBottomBar = false;
+        // Start out with every display mode needing a refresh
+        viewingModeIsStale = {
+            'linegraph': true,
+            'bargraph': true,
+            'table': true
+        };
+        refresDataDisplayIfStaleTimer = null;
 
-        this.mainGraphRefreshTimerID = null;
+        colorObj = null;
 
-        this.prevDescriptionEditElement = null;
+        assaysDataGridSpec = null;
+        assaysDataGrid = null;
 
-        this.metabolicMapID = -1;
-        this.metabolicMapName = null;
+        actionPanelRefreshTimer = null;
 
-        this.linesActionPanelRefreshTimer = null;
-        this.assaysActionPanelRefreshTimer = null;
+        // This only adds code that turns the other buttons off when a button is made active,
+        // and does the same to elements named in the 'for' attributes of each button.
+        // We still need to add our own responders to actually do stuff.
+        Utl.ButtonBar.prepareButtonBars();
 
-        this.assaysDataGridSpecs = {};
-        this.assaysDataGrids = {};
+        // Prepend show/hide filter button for better alignment
+        // Note: this will be removed when we implement left side filtering
+        var showHideFilterButton = $('#hideFilterSection');
+        $('#assaysActionPanel').prepend(showHideFilterButton);
 
-        // put the click handler at the document level, then filter to any link inside a .disclose
-        $(document).on('click', '.disclose .discloseLink', (e) => {
-            $(e.target).closest('.disclose').toggleClass('discloseHide');
+        $("#dataTableButton").click(function() {
+            viewingMode = 'table';
+             makeLabelsBlack(EDDGraphingTools.labels);
+            $("#tableControlsArea").removeClass('off');
+            $("#filterControlsArea").addClass('off');
+            $("#tableActionButtons").removeClass('off');
+            barGraphTypeButtonsJQ.addClass('off');
+            queueRefreshDataDisplayIfStale();
+            //TODO: enable users to export filtered data from graph
+            $('#exportButton').removeClass('off');
+        });
+
+        //click handler for edit assay measurements
+        $('#editMeasurementButton').click(function(ev) {
+            ev.preventDefault();
+            $('input[value="edit"]').prop('checked', true);
+            $('button[value="assay_action"]').click();
             return false;
         });
 
-        measurementToAssayModal();
-        showStudyGraph();
-        showStudyTable();
+        //click handler for delete assay measurements
+        $('#deleteButton').click(function(ev) {
+            ev.preventDefault();
+            $('input[value="delete"]').prop('checked', true);
+            $('button[value="assay_action"]').click();
+            return false;
+        });
+
+        //click handler for export assay measurements
+        $('#exportButton').click(function(ev) {
+            ev.preventDefault();
+            $('input[value="export"]').prop('checked', true);
+            $('button[value="assay_action"]').click();
+            return false;
+        });
+
+        //click handler for disable assay measurements
+        $('#disableButton').click(function(ev) {
+            ev.preventDefault();
+            $('input[value="mark"]').prop('checked', true);
+            $('select[name="disable"]').val('true');
+            $('button[value="assay_action"]').click();
+            return false;
+        });
+
+        //click handler for re-enable assay measurements
+        $('#enableButton').click(function(ev) {
+            ev.preventDefault();
+            $('input[value="mark"]').prop('checked', true);
+            $('select[name="disable"]').val('false');
+            $('button[value="assay_action"]').click();
+            return false;
+        });
+
+        // This one is active by default
+        $("#lineGraphButton").click(function() {
+            $('#exportButton').addClass('off');
+            viewingMode = 'linegraph';
+            $("#tableControlsArea").addClass('off');
+            $("#filterControlsArea").removeClass('off');
+            $("#tableActionButtons").addClass('off');
+            barGraphTypeButtonsJQ.addClass('off');
+            $('#lineGraph').removeClass('off');
+            $('#barGraphByTime').addClass('off');
+            $('#barGraphByLine').addClass('off');
+            $('#barGraphByMeasurement').addClass('off');
+            queueRefreshDataDisplayIfStale();
+        });
+
+        //one time click event handler for loading spinner
+        $('#barGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $('#timeBarGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $('#lineBarGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $('#measurementBarGraphButton').one("click", function () {
+            $('#graphLoading').removeClass('off');
+        });
+        $("#barGraphButton").click(function() {
+            viewingMode = 'bargraph';
+            $('#exportButton').addClass('off');
+            $("#tableControlsArea").addClass('off');
+            $("#filterControlsArea").removeClass('off');
+            $("#tableActionButtons").addClass('off');
+            barGraphTypeButtonsJQ.removeClass('off');
+            $('#lineGraph').addClass('off');
+            $('#barGraphByTime').addClass('off');
+            $('#barGraphByLine').addClass('off');
+            $('#barGraphByMeasurement').addClass('off');
+            if (barGraphMode == 'time') {
+                $('#barGraphByTime').removeClass('off');
+            } else if (barGraphMode == 'line') {
+                $('#barGraphByLine').removeClass('off');
+            } else {
+                $('#barGraphByMeasurement').removeClass('off');
+            }
+            queueRefreshDataDisplayIfStale();
+        });
+        $("#timeBarGraphButton").click(function() {
+            barGraphMode = 'time';
+            queueRefreshDataDisplayIfStale();
+             $('#graphLoading').addClass('off');
+        });
+        $("#lineBarGraphButton").click(function() {
+            barGraphMode = 'line';
+            queueRefreshDataDisplayIfStale();
+        });
+        $("#measurementBarGraphButton").click(function() {
+            barGraphMode = 'measurement';
+            queueRefreshDataDisplayIfStale();
+        });
+
+        //hides/shows filter section.
+        $('#hideFilterSection').click(function(event) {
+            event.preventDefault();
+            if ($('#hideFilterSection').val() === "Hide Filter Section") {
+               $('#hideFilterSection').val("Show Filter Section");
+               $('#mainFilterSection').hide();
+            } else {
+               $('#hideFilterSection').val("Hide Filter Section");
+               $('#mainFilterSection').show();
+            }
+            return false;
+        });
+
+        // The next few lines wire up event handlers for a pulldownMenu that we use to contain a
+        // couple of controls related to the filtering section.  This menu is styled to look
+        // exactly like the typical 'view options' menu generated by DataGrid.
+
+        var menuLabel = $('#filterControlsMenuLabel');
+        menuLabel.click(() => {
+            if (menuLabel.hasClass('pulldownMenuLabelOff')) {
+                menuLabel.removeClass('pulldownMenuLabelOff').addClass('pulldownMenuLabelOn');
+                $('#filterControlsMenu > div.pulldownMenuMenuBlock').removeClass('off');
+            }
+        });
+
+        // event handlers to hide menu if clicking outside menu block or pressing ESC
+        $(document).click((ev) => {
+            var t = $(ev.target);
+            if (t.closest($('#filterControlsMenu').get(0)).length === 0) {
+                menuLabel.removeClass('pulldownMenuLabelOn').addClass('pulldownMenuLabelOff');
+                $('#filterControlsMenu > div.pulldownMenuMenuBlock').addClass('off');
+            }
+        }).keydown((ev) => {
+            if (ev.keyCode === 27) {
+                menuLabel.removeClass('pulldownMenuLabelOn').addClass('pulldownMenuLabelOff');
+                $('#filterControlsMenu > div.pulldownMenuMenuBlock').addClass('off');
+            }
+        });
+
+        // Simply setting display:none doesn't work on flex items.
+        // They still occupy space in the layout.
+        // barGraphTypeButtonsJQ.detach();
+        // barGraphTypeButtonsJQ.removeClass('off');
+
+        // Set up the Add Measurement to Assay modal
+        var dlg = $("#addMeasurement").dialog({
+            minWidth: 500,
+            autoOpen: false
+        });
+        dlg.removeClass('off');
+        $("#addMeasurementButton").click(function() {
+           $("#addMeasurement").dialog( "open" );
+            return false;
+        });
+
+        // Callbacks to respond to the filtering section
+        $('#mainFilterSection').on('mouseover mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
+            .on('keydown', filterTableKeyDown.bind(this));
 
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
             'error': (xhr, status, e) => {
-                $('#overviewSection').prepend("<div class='noData'>Error. Please reload</div>");
+                $('#content').prepend("<div class='noData'>Error. Please reload</div>");
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
             'success': (data) => {
                 EDDData = $.extend(EDDData || {}, data);
-                this.progressiveFilteringWidget.prepareFilteringSection();
-                // Find out which protocols have assays with measurements - disabled or no
-                var protocolsWithMeasurements:any = {};
-                $.each(EDDData.Assays, (assayId, assay) => {
-                    var line = EDDData.Lines[assay.lid];
-                    if (!line || !line.active) return;
-                    protocolsWithMeasurements[assay.pid] = true;
+
+                colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
+
+                progressiveFilteringWidget.prepareFilteringSection();
+
+                $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(() => {
+                    queueRefreshDataDisplayIfStale();
                 });
-
-                if (_.keys(EDDData.Assays).length === 0) {
-                    //stop spinner
-                    $('#loadingDiv').hide();
-                } else {
-                    $('#chartType').show();
-                }
-
-                //show possible next steps div and hide assay graphs and table if there are no Assays
-                if (_.keys(EDDData.Lines).length === 0) {
-                    $('.scroll').css('height', 100)
-                } else {
-                    $('.scroll').css('height', 300)
-                }
-
-                var spec;
-                this.assaysDataGridSpecs = spec = new DataGridSpecAssays(EDDData.Assays);
-                spec.init();
-                this.assaysDataGrids = new DataGridAssays(spec);
 
                 //pulling in protocol measurements AssayMeasurements
                 $.each(EDDData.Protocols, (id, protocol) => {
@@ -1161,113 +1462,22 @@ module StudyD {
                 });
             }
         });
+    }
 
-        $('form.line-edit').on('change', '.line-meta > :input', (ev) => {
-            // watch for changes to metadata values, and serialize to the meta_store field
-            var form = $(ev.target).closest('form'),
-                metaIn = form.find('[name=line-meta_store]'),
-                meta = JSON.parse(metaIn.val() || '{}');
-            form.find('.line-meta > :input').each((i, input) => {
-                var key = $(input).attr('id').match(/-(\d+)$/)[1];
-                meta[key] = $(input).val();
-            });
-            metaIn.val(JSON.stringify(meta));
-        }).on('click', '.line-meta-add', (ev:JQueryMouseEventObject) => {
-            // make metadata Add Value button work and not submit the form
-            var addrow = $(ev.target).closest('.line-edit-meta'), type, value;
-            type = addrow.find('.line-meta-type').val();
-            value = addrow.find('.line-meta-value').val();
-            // clear out inputs so another value can be entered
-            addrow.find(':input').not(':checkbox, :radio').val('');
-            addrow.find(':checkbox, :radio').prop('checked', false);
-            if (EDDData.MetaDataTypes[type]) {
-                insertLineMetadataRow(addrow, type, value).find(':input').trigger('change');
+    function allActiveAssays() {
+        var assays = _.keys(EDDData.Assays);
+
+        var filteredIDs = [];
+        for (var r = 0; r < assays.length; r++) {
+            var id = assays[r];
+            // Here is the condition that determines whether the rows associated with this ID are
+            // shown or hidden.
+            if (EDDData.Assays[id].active) {
+                filteredIDs.push(parseInt(id));
             }
-            return false;
-        }).on('click', '.meta-remove', (ev:JQueryMouseEventObject) => {
-            // remove metadata row and insert null value for the metadata key
-            var form = $(ev.target).closest('form'),
-                metaRow = $(ev.target).closest('.line-meta'),
-                metaIn = form.find('[name=line-meta_store]'),
-                meta = JSON.parse(metaIn.val() || '{}'),
-                key = metaRow.attr('id').match(/-(\d+)$/)[1];
-            meta[key] = null;
-            metaIn.val(JSON.stringify(meta));
-            metaRow.remove();
-        });
 
-        // Prepare the main data overview graph at the top of the page
-        if (this.mainGraphObject === null && $('#maingraph').length === 1) {
-            this.mainGraphObject = Object.create(StudyDGraphing);
-            this.mainGraphObject.Setup('maingraph');
-            this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
-
-        $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
-                .on('keydown', filterTableKeyDown.bind(this));
-    }
-
-
-    //click handler for add measurements to selected assays modal
-    function measurementToAssayModal() {
-       var dlg = $("#addMeasToAssay").dialog({
-           autoOpen: false
-        });
-        $("#measurementMain").click(function() {
-           $("#addMeasToAssay").dialog( "open" );
-            return false;
-        });
-        return false;
-    };
-
-
-    //show hide for clicking graph tab under data
-    function showStudyGraph() {
-        $('#studyGraph').click(function (event) {
-            event.preventDefault();
-            $('#studyTable').removeClass('active');
-            $(this).addClass('active');
-            $('#overviewSection').css('display', 'block');
-            $('#assaysSection').css('display', 'none');
-            return false
-        });
-    }
-
-
-    //show hide for clicking table tab under data
-    function showStudyTable() {
-        $( "#studyTable" ).one( "click", function() {
-            //first build table
-            StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
-            //if any checkboxes have been check in filtering section, showHide rows
-            if ($(".filterTable input:checkbox:checked").length > 0) {
-                StudyD.showHideAssayRows(StudyD.progressiveFilteringWidget.filteredAssayIDs)
-            }
-        });
-        $('#studyTable').click(function (event) {
-            event.preventDefault();
-            //on page load of table show assays search header
-            $( "input[name*='assaysSearch']" ).parents('thead').show();
-            //remove sorter on measurement tab in table
-            $('#hAssaysMName').removeClass();
-            $('#studyGraph').removeClass('active');
-            $(this).addClass('active');
-            $('#assaysSection').css('display', 'block');
-            $('#overviewSection').css('display', 'none');
-            return false
-         });
-    };
-
-
-    function show_int() {
-        $('#show').val("hide");
-        $('#lineDescription').css('display', 'block');
-    }
-
-
-    function show_hide() {
-        $('#show').val("show");
-        $('#lineDescription').css('display', 'none');
+        return filteredIDs;
     }
 
 
@@ -1283,7 +1493,7 @@ module StudyD {
                 if (e.keyCode > 8 && e.keyCode < 32) {
                     return;
                 }
-                this.queueMainGraphRemake(false);
+                queueRefreshDataDisplayIfStale();
         }
     }
 
@@ -1315,6 +1525,8 @@ module StudyD {
         $.each(data.total_measures, (assayId:string, count:number):void => {
             var assay = EDDData.Assays[assayId];
             if (assay) {
+                // TODO: If we ever fetch by something other than protocol,
+                // Isn't there a chance this is cumulative, and we should += ?
                 assay.count = count;
                 count_total += count;
             }
@@ -1323,7 +1535,7 @@ module StudyD {
         $.each(data.measures || {}, (index, measurement) => {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
             ++count_rec;
-            if (!assay || !assay.active || assay.count === undefined) return;
+            if (!assay || assay.count === undefined) return;
             line = EDDData.Lines[assay.lid];
             if (!line || !line.active) return;
             // attach values
@@ -1349,135 +1561,175 @@ module StudyD {
             }
         });
 
-        this.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
+        progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
 
         if (count_rec < count_total) {
             // TODO not all measurements downloaded; display a message indicating this
             // explain downloading individual assay measurements too
         }
-
-        this.queueMainGraphRemake(false);
+        queueRefreshDataDisplayIfStale();
     }
 
 
-    export function queueAssaysActionPanelShow() {
-        // Start a timer to wait before calling the routine that remakes the graph.
-        // This way we're not bothering the user with the long redraw process when
-        // they are making fast edits.
-        if (this.assaysActionPanelRefreshTimer) {
-            clearTimeout(this.assaysActionPanelRefreshTimer);
+    export function queueRefreshDataDisplayIfStale() {
+        if (refresDataDisplayIfStaleTimer) {
+            clearTimeout(refresDataDisplayIfStaleTimer);
         }
-        this.assaysActionPanelRefreshTimer = setTimeout(assaysActionPanelShow.bind(this), 150);
+        refresDataDisplayIfStaleTimer = setTimeout(refreshDataDisplayIfStale.bind(this), 100);
     }
 
-    function assaysActionPanelShow() {
-        var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
-        panel = $('#assaysActionPanel');
-        if (!panel.length) {
+
+    export function queueActionPanelRefresh() {
+        if (actionPanelRefreshTimer) {
+            clearTimeout(actionPanelRefreshTimer);
+        }
+        actionPanelRefreshTimer = setTimeout(actionPanelRefresh.bind(this), 150);
+    }
+
+
+    // This function determines if the filtering sections (or settings related to them) have changed
+    // since the last time we were in the current display mode (e.g. line graph, table, bar graph
+    // in various modes, etc) and updates the display only if a change is detected.
+    function refreshDataDisplayIfStale(force?:boolean) {
+
+        // Any switch between viewing modes, or change in filtering, is also cause to check the UI
+        // in the action panel and make sure it's current.
+        queueActionPanelRefresh();
+
+        // If the filtering widget claims a change since the last inquiry,
+        // then all the viewing modes are stale, no matter what.
+        // So we mark them all.
+        if (progressiveFilteringWidget.checkRedrawRequired(force)) {
+
+            viewingModeIsStale['linegraph'] = true;
+            viewingModeIsStale['bargraph-time'] = true;
+            viewingModeIsStale['bargraph-line'] = true;
+            viewingModeIsStale['bargraph-measurement'] = true;
+            viewingModeIsStale['table'] = true;
+            // Pull out a fresh set of filtered measurements and assays
+            var filterResults = progressiveFilteringWidget.buildFilteredMeasurements();
+            postFilteringMeasurements = filterResults['filteredMeasurements'];
+            postFilteringAssays = filterResults['filteredAssays'];
+
+        // If the filtering widget hasn't changed and the current mode doesn't claim to be stale, we're done.
+        } else if (viewingMode == 'bargraph') {
+            // Special case to handle the extra sub-modes of the bar graph
+            if (!viewingModeIsStale[viewingMode+'-'+barGraphMode]) {
+                return;
+            }
+        } else if (!viewingModeIsStale[viewingMode]) {
             return;
         }
+
+        if (viewingMode == 'table') {
+            if (assaysDataGridSpec === null) {
+                assaysDataGridSpec = new DataGridSpecAssays();
+                assaysDataGridSpec.init();
+                assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
+            } else {
+                assaysDataGrid.triggerDataReset();
+            }
+            viewingModeIsStale['table'] = false;
+            makeLabelsBlack(EDDGraphingTools.labels);
+
+            var h = $('#content').height();            // Height of the viewing region
+
+            // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
+            // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
+            var sh = 0;
+            $('#content').children().get().forEach((e:HTMLElement):void => { sh += e.scrollHeight; });
+
+            if (actionPanelIsInBottomBar) {
+                if (sh < h) {
+                    $('#assaysActionPanel').appendTo('#content');
+                    $('#mainFilterSection').appendTo('#content');
+                    actionPanelIsInBottomBar = false;
+                }
+            } else {
+                if (sh > h) {
+                    $('#assaysActionPanel').appendTo('#bottomBar');
+                    $('#mainFilterSection').appendTo('#bottomBar');
+                    actionPanelIsInBottomBar = true;
+                }
+            }
+        } else {
+            remakeMainGraphArea();
+            if (viewingMode == 'bargraph') {
+                viewingModeIsStale[viewingMode+'-'+barGraphMode] = false;
+            } else {
+                viewingModeIsStale['linegraph'] = false;
+            }
+            if (actionPanelIsInBottomBar) {
+                actionPanelIsInBottomBar = false;
+                $('#assaysActionPanel').appendTo('#content');
+                $('#mainFilterSection').appendTo('#content');
+            }
+        }
+    }
+
+
+    function actionPanelRefresh() {
+        var checkedBoxes:HTMLInputElement[], checkedAssays, checkedMeasure, nothingSelected:boolean;
         // Figure out how many assays/checkboxes are selected.
-        $.each(this.assaysDataGrids, (pID, dataGrid) => {
-            checkedBoxes = checkedBoxes.concat(dataGrid.getSelectedCheckboxElements());
-        });
-        checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
-        checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
-        panel.toggleClass('off', !checkedAssays && !checkedMeasure);
-        if (checkedAssays || checkedMeasure) {
-            infobox = $('#assaysSelectedCell').empty();
-            if (checkedAssays) {
-                $("<p>").appendTo(infobox).text((checkedAssays > 1) ?
-                        (checkedAssays + " Assays selected") : "1 Assay selected");
+
+        // Don't show the selected item count if we're not looking at the table.
+        // (Only the visible item count makes sense in that case.)
+        if (viewingMode == 'table') {
+
+            $('#displayedDiv').addClass('off');
+
+            checkedBoxes = assaysDataGrid.getSelectedCheckboxElements();
+
+            checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
+            checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
+
+            nothingSelected = !checkedAssays && !checkedMeasure;
+
+            //enable action buttons if something is selected
+            if (!nothingSelected) {
+                $('#editMeasurementButton, #addMeasurementButton, #deleteButton, #disableButton').prop('disabled', false);
+            } else {
+                $('#editMeasurementButton, #addMeasurementButton, #deleteButton, #disableButton').prop('disabled', true);
             }
-            if (checkedMeasure) {
-                $("<p>").appendTo(infobox).text((checkedMeasure > 1) ?
-                        (checkedMeasure + " Measurements selected") : "1 Measurement selected");
+
+            $('#selectedDiv').toggleClass('off', nothingSelected);
+            var selectedStrs = [];
+            if (!nothingSelected) {
+                if (checkedAssays) {
+                    selectedStrs.push((checkedAssays > 1) ? (checkedAssays + " Assays") : "1 Assay");
+                }
+                if (checkedMeasure) {
+                    selectedStrs.push((checkedMeasure > 1) ? (checkedMeasure + " Measurements") : "1 Measurement");
+                }
+                var selectedStr = selectedStrs.join(', ');
+                $('#selectedDiv').text(selectedStr + ' selected');
             }
+        } else {
+            $('#selectedDiv').addClass('off');
+            $('#displayedDiv').removeClass('off');
         }
     }
 
-    // Start a timer to wait before calling the routine that remakes a graph. This way we're not
-    // bothering the user with the long redraw process when they are making fast edits.
-    export function queueMainGraphRemake(force?:boolean) {
-        if (this.mainGraphRefreshTimerID) {
-            clearTimeout(this.mainGraphRefreshTimerID);
-        }
-        this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
-    }
 
-    var remakeMainGraphAreaCalls = 0;
+    function remakeMainGraphArea() {
 
-     //this function shows and hides rows based on filtered data.
-    export function showHideAssayRows(progressiveFilteringMeasurements):void {
-
-        var assays = _.keys(EDDData.Assays);
-
-        var hideArray = _.filter(assays, function( el ) {
-          return !progressiveFilteringMeasurements.includes( parseInt(el) );
-        });
-        var showArray =_.filter(assays, function( el ) {
-          return progressiveFilteringMeasurements.includes( parseInt(el) );
-        });
-        //hide elements not in progressive filtering measurements
-        _.each(hideArray, function(assayId) {
-            $( "input[value='" + assayId + "']").parents('tr').hide();
-        });
-        //show elements in progressive filtering measurements
-        _.each(showArray, function(assayId) {
-            //if the row does not exist, reset table 
-            if ($( "input[value='" + assayId + "']").parents('tr').length ===0) {
-                StudyD.assaysDataGrids.triggerAssayRecordsRefresh();
-            }
-            $( "input[value='" + assayId + "']").parents('tr').show();
-        });
-    }
-
-
-    //convert post filtered measuremnts to array of assay ids
-    export function convertPostFilteringMeasurements(postFilteringMeasurements) {
-        //array of assays
-        var filteredAssayMeasurements:any[] = [];
-
-        _.each(postFilteringMeasurements, function(meas:any) {
-            filteredAssayMeasurements.push(EDDData.AssayMeasurements[meas].assay)
-        });
-        return filteredAssayMeasurements;
-    }
-
-
-    function remakeMainGraphArea(force?:boolean) {
-
-        var postFilteringMeasurements:any[],
-            dataPointsDisplayed = 0,
+        var dataPointsDisplayed = 0,
             dataPointsTotal = 0,
-            colorObj;
+            dataSets = [];
 
-        if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
-            return;
-        }
+        $('#tooManyPoints').hide();
+        $('#lineGraph').addClass('off');
+        $('#barGraphByTime').addClass('off');
+        $('#barGraphByLine').addClass('off');
+        $('#barGraphByMeasurement').addClass('off');
 
-        // stop spinner
-        $('#loadingDiv').hide();
-        $('.blankSvg').hide();
-        // remove disabled from table because measurements are now there
-        $('#studyTable').removeClass('disabled');
-        // remove SVG.
-        this.mainGraphObject.clearAllSets();
-        this.graphHelper = Object.create(GraphHelperMethods);
-        colorObj = EDDData['color'];
-        // Gives ids of lines to show.
-        var dataSets = [], prev;
-        postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         // show message that there's no data to display
         if (postFilteringMeasurements.length === 0) {
-            $('.lineNoData').show();
-        } else {
-            $('.lineNoData').hide();
+            $('#graphLoading').addClass('off');    // Remove load spinner if still present
+            $('#noData').removeClass('off');
+            return;
         }
-        // store filtered data here.
-        StudyD.progressiveFilteringWidget.filteredAssayIDs = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
-        // show hide filtered data on assay table.
-        StudyD.showHideAssayRows( StudyD.progressiveFilteringWidget.filteredAssayIDs );
+
         $.each(postFilteringMeasurements, (i, measurementId) => {
 
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -1499,29 +1751,29 @@ module StudyD {
             var label = $('#' + line['identifier']).next();
 
             if (_.keys(EDDData.Lines).length > 22) {
-                color = changeLineColor(line, colorObj, assay.lid, this.graphHelper)
+                color = changeLineColor(line, assay.lid)
             } else {
-              color = colorObj[assay.lid];
+                color = colorObj[assay.lid];
             }
 
-            if (remakeMainGraphAreaCalls === 0 ) {
-                this.graphHelper.labels.push(label);
+            if (remakeMainGraphAreaCalls < 1) {
+                EDDGraphingTools.labels.push(label);
                 color = colorObj[assay.lid];
-                //update label color to line color
+                // update label color to line color
                 $(label).css('color', color);
-            } else if (remakeMainGraphAreaCalls >= 1 && $('#' + line['identifier']).prop('checked')) {
-                //unchecked labels black
-                makeLabelsBlack(this.graphHelper.labels);
-                 //update label color to line color
+            } else if ($('#' + line['identifier']).prop('checked')) {
+                // unchecked labels black
+                makeLabelsBlack(EDDGraphingTools.labels);
+                // update label color to line color
                 if (color === null || color === undefined) {
-                color = colorObj[assay.lid]
+                    color = colorObj[assay.lid]
                 }
                 $(label).css('color', color);
             } else {
-                var count = noCheckedBoxes(this.graphHelper.labels);
+                var count = noCheckedBoxes(EDDGraphingTools.labels);
                 if (count === 0) {
-                    this.graphHelper.nextColor = null;
-                    addColor(this.graphHelper.labels, colorObj, assay.lid)
+                    EDDGraphingTools.nextColor = null;
+                    addColor(EDDGraphingTools.labels, assay.lid)
                 } else {
                     //update label color to black
                     $(label).css('color', 'black');
@@ -1536,16 +1788,54 @@ module StudyD {
                 'data': EDDData,
                 'name': name,
                 'color': color,
-                'lineName': lineName,
+                'lineName': lineName
             };
-            singleAssayObj = this.graphHelper.transformSingleLineItem(dataObj);
+            singleAssayObj = EDDGraphingTools.transformSingleLineItem(dataObj);
             dataSets.push(singleAssayObj);
-            prev = lineName;
         });
+
+        $('#displayedDiv').text(dataPointsDisplayed + " measurements displayed");
+
+        $('#noData').addClass('off');
+
         remakeMainGraphAreaCalls++;
-        uncheckEventHandler(this.graphHelper.labels);
-        this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
+        uncheckEventHandler(EDDGraphingTools.labels);
+
+        var barAssayObj  = EDDGraphingTools.concatAssays(dataSets);
+
+        //data for graphs
+        var graphSet = {
+            barAssayObj: EDDGraphingTools.concatAssays(dataSets),
+            create_x_axis: EDDGraphingTools.createXAxis,
+            create_right_y_axis: EDDGraphingTools.createRightYAxis,
+            create_y_axis: EDDGraphingTools.createLeftYAxis,
+            x_axis: EDDGraphingTools.make_x_axis,
+            y_axis: EDDGraphingTools.make_right_y_axis,
+            individualData: dataSets,
+            assayMeasurements: barAssayObj,
+            width: 750,
+            height: 220
+        };
+
+        if (viewingMode == 'linegraph') {
+            $('#lineGraph').empty().removeClass('off');
+            var s = EDDGraphingTools.createSvg($('#lineGraph').get(0));
+            EDDGraphingTools.createMultiLineGraph(graphSet, s);
+        } else if (barGraphMode == 'time') {
+            $('#barGraphByTime').empty().removeClass('off');
+            var s = EDDGraphingTools.createSvg($('#barGraphByTime').get(0));
+            createGroupedBarGraph(graphSet, s);
+        } else if (barGraphMode == 'line') {
+            $('#barGraphByLine').empty().removeClass('off');
+            var s = EDDGraphingTools.createSvg($('#barGraphByLine').get(0));
+            createGroupedBarGraph(graphSet, s);
+        } else if (barGraphMode == 'measurement') {
+            $('#barGraphByMeasurement').empty().removeClass('off');
+            var s = EDDGraphingTools.createSvg($('#barGraphByMeasurement').get(0));
+            createGroupedBarGraph(graphSet, s);
+        }
     }
+
 
     /**
      * this function makes unchecked labels black
@@ -1559,6 +1849,7 @@ module StudyD {
         })
     }
 
+
     /**
      * this function creates an event handler for unchecking a checked checkbox
      * @param labels
@@ -1567,12 +1858,14 @@ module StudyD {
         _.each(labels, function(label){
             var id = $(label).prev().attr('id');
             $('#' + id).change(function() {
-                    var ischecked= $(this).is(':checked');
-                    if(!ischecked)
-                      $(label).css('color', 'black');
-                });
-        })
+                var ischecked= $(this).is(':checked');
+                if (!ischecked) {
+                    $(label).css('color', 'black');
+                }
+            });
+        });
     }
+
 
     /**
      * this function returns how many checkboxes are checked.
@@ -1590,15 +1883,14 @@ module StudyD {
         return count;
     }
 
+
     /**
      * This function adds colors after user has clicked a line and then unclicked all the lines.
      * @param labels
-     * @param colorObj
      * @param assay
      * @returns labels
      */
-
-    function addColor(labels:JQuery[], colorObj, assay) {
+    function addColor(labels:JQuery[], assay) {
         _.each(labels, function(label:JQuery) {
             var color = colorObj[assay];
             if (EDDData.Lines[assay].name === label.text()) {
@@ -1608,52 +1900,475 @@ module StudyD {
         return labels;
     }
 
+
+    /** this function takes in element and returns an array of selectors
+     * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
+     * <div id=​"barAssay">​</div>​]
+     */
+    function getButtonElement(element) {
+        return $(element.siblings(':first')).find("label")
+    }
+
+
+    /**
+     * this function takes in the graphDiv element and returns an array of 4 buttons
+     */
+    function getSelectorElement(element) {
+        if ($(element).attr('id') != 'maingraph') {
+            var selector = element.siblings().eq(1);
+            return $(selector).children();
+        } else {
+          return element.siblings().addBack()
+        }
+    }
+
+
+    /** this function takes in an element selector and an array of svg rects and returns
+     * returns message or nothing.
+     */
+    function svgWidth(selector, rectArray) {
+        $('.tooMuchData').hide();
+        $('.noData').hide();
+        var sum = 0;
+        _.each(rectArray, function(rectElem:any) {
+            if (rectElem.getAttribute("width") != 0) {
+                sum++
+            }
+        });
+        if (sum === 0) {
+             $('#graphLoading').addClass('off');
+            $(selector).prepend("<p class=' tooMuchData'>Too many data points to display" +
+                "</p><p  class=' tooMuchData'>Recommend filtering by protocol</p>");
+        }
+    }
+
+
+    /** this function takes in the EDDData.MeasurementTypes object and returns the measurement type
+     *  that has the most data points - options are based on family p, m, -, etc.
+     */
+    function measurementType(types) {    // TODO: RENAME
+        var proteomics = {};
+        for (var type in types) {
+            if (proteomics.hasOwnProperty(types[type].family)) {
+                proteomics[types[type].family]++;
+            } else {
+                proteomics[types[type].family] = 0
+            }
+        }
+        for (var key in proteomics) {
+            var max:any = 0;
+            var maxType:any;
+            if (proteomics[key] > max) {
+                max = proteomics[key];
+                maxType = key;
+            }
+        }
+        return maxType;
+    }
+
+
+    /**
+     * this function takes in the event, selector type, rect obj, selector object and
+     * handles the button event.
+     */
+    function buttonEventHandler(newSet, event, rect, selector, selectors) {
+        event.preventDefault();
+        if (newSet.length === 0) {
+            $(selectors[selector]).prepend("<p class='noData'>No data selected - please " +
+            "filter</p>")
+            $('.tooMuchData').remove();
+        } else {
+            $('.noData').remove();
+            svgWidth(selectors[selector], rect);
+        }
+        return false;
+    }
+
+
+    /**
+     * this function takes in input min y value, max y value, and the sorted json object.
+     *  outputs a grouped bar graph with values grouped by assay name
+     **/
+    export function createGroupedBarGraph(graphSet, svg) {
+
+        var assayMeasurements = graphSet.assayMeasurements,
+            typeID = {
+                'measurement': "#barGraphByMeasurement",
+                'x': "#barGraphByTime",
+                'name': '#barGraphByLine'
+            },
+            modeToField = {
+                'line': 'name',
+                'time': 'x',
+                'measurement': 'measurement'
+            },
+            numUnits = EDDGraphingTools.howManyUnits(assayMeasurements),
+            yRange = [],
+            unitMeasurementData = [],
+            yMin = [],
+            data, nested, typeNames, xValues, yvalueIds, x_name, xValueLabels,
+            sortedXvalues, div, x_xValue, lineID, meas, y, wordLength;
+
+        var type = modeToField[barGraphMode];
+
+        if (type === 'x') {
+             var entries = (<any>d3).nest(type)
+                .key(function (d:any) {
+                    return d[type];
+                })
+                .entries(assayMeasurements);
+
+            var timeMeasurements = _.clone(assayMeasurements);
+            var nestedByTime = EDDGraphingTools.findAllTime(entries);
+            var howManyToInsertObj = EDDGraphingTools.findMaxTimeDifference(nestedByTime);
+            var max = Math.max.apply(null, _.values(howManyToInsertObj));
+            if (max > 400) {
+                $(typeID[type]).prepend("<p class='noData'>Too many missing data fields. Please filter</p>");
+                $('.tooMuchData').remove();
+            } else {
+                $('.noData').remove();
+            }
+            EDDGraphingTools.insertFakeValues(entries, howManyToInsertObj, timeMeasurements);
+        }
+        //x axis scale for type
+        x_name = d3.scale.ordinal()
+            .rangeRoundBands([0, graphSet.width], 0.1);
+
+        //x axis scale for x values
+        x_xValue = d3.scale.ordinal();
+
+        //x axis scale for line id to differentiate multiple lines associated with the same name/type
+        lineID = d3.scale.ordinal();
+
+        // y axis range scale
+        y = d3.scale.linear()
+            .range([graphSet.height, 0]);
+
+        div = d3.select("body").append("div")
+            .attr("class", "tooltip2")
+            .style("opacity", 0);
+
+        var d3_entries = type === 'x' ? timeMeasurements : assayMeasurements;
+            meas = d3.nest()
+            .key(function (d:any) {
+                return d.y_unit;
+            })
+            .entries(d3_entries);
+
+        // if there is no data - show no data error message
+        if (assayMeasurements.length === 0) {
+            $(typeID[type]).prepend("<p class='noData'>No data selected - please " +
+            "filter</p>");
+
+            $('.tooMuchData').remove();
+        } else {
+            $('.noData').remove();
+        }
+
+        for (var i = 0; i < numUnits; i++) {
+            yRange.push(d3.scale.linear().rangeRound([graphSet.height, 0]));
+            unitMeasurementData.push(d3.nest()
+                .key(function (d:any) {
+                    return d.y;
+                })
+                .entries(meas[i].values));
+            yMin.push(d3.min(unitMeasurementData[i], function (d:any) {
+                return d3.min(d.values, function (d:any) {
+                    return d.y;
+                });
+            }))
+        }
+
+        if (type === 'x') {
+            // nest data by type (ie measurement) and by x value
+            nested = (<any>d3).nest(type)
+                .key(function (d:any) {
+                    return d[type];
+                })
+                .key(function (d:any) {
+                    return parseFloat(d.x);
+                })
+                .entries(timeMeasurements);
+        } else {
+            // nest data by type (ie measurement) and by x value
+            nested = (<any>d3).nest(type)
+                    .key(function (d:any) {
+                        return d[type];
+                    })
+                    .key(function (d:any) {
+                        return parseFloat(d.x);
+                    })
+                    .entries(assayMeasurements);
+        }
+
+
+        //insert y value to distinguish between lines
+        data = EDDGraphingTools.getXYValues(nested);
+
+        if (data.length === 0) {
+            return svg
+        }
+
+        //get type names for x labels
+        typeNames = data.map(function (d:any) {
+                return d.key;
+        });
+
+        //sort x values
+        typeNames.sort(function (a, b) {
+                return a - b
+        });
+
+        xValues = data.map(function (d:any) {
+            return (d.values);
+        });
+
+        yvalueIds = data[0].values[0].values.map(function (d:any) {
+            return d.key;
+        });
+
+        // returns time values
+        xValueLabels = xValues[0].map(function (d:any) {
+            return (d.key);
+        });
+
+        //sort time values
+        sortedXvalues = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
+
+        x_name.domain(typeNames);
+
+        x_xValue.domain(sortedXvalues).rangeRoundBands([0, x_name.rangeBand()]);
+
+        lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
+        
+        // create x axis
+        graphSet.create_x_axis(graphSet, x_name, svg, type);
+
+        // loop through different units
+        for (var index = 0; index < numUnits; index++) {
+
+            if (yMin[index] > 0 ) {
+                yMin[index] = 0;
+            }
+            //y axis min and max domain 
+            y.domain([yMin[index], d3.max(unitMeasurementData[index], function (d:any) {
+                return d3.max(d.values, function (d:any) {
+                    return d.y;
+                });
+            })]);
+
+            //nest data associated with one unit by type and time value
+            data = (<any>d3).nest(type)
+                .key(function (d:any) {
+                    return d[type];
+                })
+                .key(function (d:any) {
+                    return parseFloat(d.x);
+                })
+                .entries(meas[index].values);
+
+
+            // //hide values if there are different time points
+            if (type != 'x') {
+                var nestedByTime = EDDGraphingTools.findAllTime(data);
+                var howManyToInsertObj = EDDGraphingTools.findMaxTimeDifference(nestedByTime);
+                var max = Math.max.apply(null, _.values(howManyToInsertObj));
+                var graphSvg = $(typeID[type])[0];
+
+                if (max > 1) {
+                    $('.tooMuchData').remove();
+                    var arects = d3.selectAll(typeID[type] +  ' rect')[0];
+                    svgWidth(graphSvg, arects);
+                     //get word length
+                    wordLength = EDDGraphingTools.getSum(typeNames);
+                    d3.selectAll(typeID[type] + ' .x.axis text').remove();
+                    return svg;
+                } else {
+                    $('.noData').remove();
+                }
+            }
+
+            //right axis
+            if (index == 0) {
+                graphSet.create_y_axis(graphSet, meas[index].key, y, svg);
+            } else {
+                var spacing = {
+                    1: graphSet.width,
+                    2: graphSet.width + 50,
+                    3: graphSet.width + 100,
+                    4: graphSet.width + 150
+                };
+                //create right axis
+                graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
+            }
+
+            var names_g = svg.selectAll(".group" + index)
+                .data(data)
+                .enter().append("g")
+                .attr("transform", function (d:any) {
+                    return "translate(" + x_name(d.key) + ",0)";
+                });
+
+            var categories_g = names_g.selectAll(".category" + index)
+                .data(function (d:any) {
+                    return d.values;
+                })
+                .enter().append("g")
+                .attr("transform", function (d:any) {
+                    return "translate(" + x_xValue(d.key) + ",0)";
+                });
+
+            var categories_labels = categories_g.selectAll('.category-label' + index)
+                .data(function (d:any) {
+                    return [d.key];
+                })
+                .enter()
+                .append("text")
+                .attr("x", function () {
+                    return x_xValue.rangeBand() / 2;
+                })
+                .attr('y', function () {
+                    return graphSet.height + 27;
+                })
+                .attr('text-anchor', 'middle');
+
+             var values_g = categories_g.selectAll(".value" + index)
+                .data(function (d:any) {
+                    return d.values;
+                })
+                .enter().append("g")
+                .attr("class", function (d:any) {
+                    d.lineName = d.lineName.split(' ').join('');
+                    d.lineName = d.lineName.split('/').join('');
+                    return 'value value-' + d.lineName;
+                 })
+                .attr("transform", function (d:any) {
+                    return "translate(" + lineID(d.key) + ",0)";
+                })
+                .on('mouseover', function(d) {
+                    d3.selectAll('.value').style('opacity', 0.3);
+                    d3.selectAll('.value-' + d.lineName).style('opacity', 1)
+                })
+                .on('mouseout', function(d) {
+                    d3.selectAll('.value').style('opacity', 1);
+                });
+
+            var rects = values_g.selectAll('.rect' + index)
+                .data(function (d:any) {
+                    return [d];
+                })
+                .enter().append("rect")
+                .attr("class", "rect")
+                .attr("width", lineID.rangeBand())
+                .attr("y", function (d:any) {
+                    return y(d.y);
+                })
+                .attr("height", function (d:any) {
+                    return graphSet.height - y(d.y);
+                })
+                .style("fill", function (d:any) {
+                    return d.color
+                })
+                .style("opacity", 1);
+
+            categories_g.selectAll('.rect')
+                .data(function (d:any) {
+                    return d.values;
+                })
+                .on("mouseover", function (d:any) {
+                    div.transition()
+                        .style("opacity", 0.9);
+
+                    div.html('<strong>' + d.name + '</strong>' + ": "
+                            + "</br>" + d.measurement + '</br>' + d.y + " " + d.y_unit + "</br>" + " @" +
+                        " " + d.x + " hours")
+                        .style("left", ((<any>d3.event).pageX) + "px")
+                        .style("top", ((<any>d3.event).pageY - 30) + "px");
+                })
+                .on("mouseout", function () {
+                    div.transition()
+                        .style("opacity", 0);
+                });
+            //get word length
+            wordLength = EDDGraphingTools.getSum(typeNames);
+
+            if (wordLength > 90 && type != 'x') {
+               d3.selectAll(typeID[type] + ' .x.axis text').remove()
+            }
+            if (wordLength > 150 && type === 'x') {
+               d3.selectAll(typeID[type] + ' .x.axis text').remove()
+            }
+        }
+        $('#graphLoading').addClass('off');
+    }
+
+
+    /**
+     * this function takes in the type of measurement, selectors obj, selector type and
+     * button obj and shows the measurement graph is the main type is proteomic
+     */
+    function showProteomicGraph(type, selectors, selector, buttons) {
+        if (type ==='p') {
+            d3.select(selectors['line']).style('display', 'none');
+            d3.select(selectors['bar-measurement']).style('display', 'block');
+            $('label.btn').removeClass('active');
+            var rects = d3.selectAll('.groupedMeasurement rect')[0];
+            svgWidth(selectors[selector], rects);
+            var button =  $('.groupByMeasurementBar')[0];
+            $(buttons['bar-time']).removeClass('hidden');
+            $(buttons['bar-line']).removeClass('hidden');
+            $(buttons['bar-measurement']).removeClass('hidden');
+            $(button).addClass('active');
+            $(buttons['bar-empty']).addClass('active');
+        }
+    }
+
+
     /**
      * @param line
-     * @param colorObj
      * @param assay
-     * @param graphHelper
      * @returns color for line.
      * this function returns the color in the color queue for studies >22 lines. Instantiated
      * when user clicks on a line.
      */
-    function changeLineColor(line, colorObj, assay, graphHelper) {
+    function changeLineColor(line, assay) {
 
         var color;
 
         if($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls === 1) {
-                color = line['color'];
+            color = line['color'];
+            line['doNotChange'] = true;
+            EDDGraphingTools.colorQueue(color);
+        }
+        if ($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls >= 1) {
+            if (line['doNotChange']) {
+               color = line['color'];
+            } else {
+                color = EDDGraphingTools.nextColor;
                 line['doNotChange'] = true;
-                graphHelper.colorQueue(color);
-            }
-            if ($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls >= 1) {
-                if (line['doNotChange']) {
-                   color = line['color'];
-                } else {
-                    color = graphHelper.nextColor;
-                    line['doNotChange'] = true;
-                    line['color'] = color;
-                    //text label next to checkbox
-                    var label = $('#' + line['identifier']).next();
-                    //update label color to line color
-                    $(label).css('color', color);
-                    graphHelper.colorQueue(color);
-                }
-            } else if ($('#' + line['identifier']).prop('checked') === false && remakeMainGraphAreaCalls >1 ){
-                color = colorObj[assay];
-                 var label = $('#' + line['identifier']).next();
-                    //update label color to line color
+                line['color'] = color;
+                //text label next to checkbox
+                var label = $('#' + line['identifier']).next();
+                //update label color to line color
                 $(label).css('color', color);
+                EDDGraphingTools.colorQueue(color);
             }
+        } else if ($('#' + line['identifier']).prop('checked') === false && remakeMainGraphAreaCalls > 1 ){
+            color = colorObj[assay];
+             var label = $('#' + line['identifier']).next();
+                //update label color to line color
+            $(label).css('color', color);
+        }
 
-            if (remakeMainGraphAreaCalls == 0) {
-                color = colorObj[assay];
-            }
+        if (remakeMainGraphAreaCalls == 0) {
+            color = colorObj[assay];
+        }
         return color;
     }
 
+
     function clearAssayForm():JQuery {
-        var form:JQuery = $('#id_assay-assay_id').closest('.disclose');
+        var form:JQuery = $('#assayMain');
         form.find('[name^=assay-]').not(':checkbox, :radio').val('');
         form.find('[name^=assay-]').filter(':checkbox, :radio').prop('selected', false);
         form.find('.cancel-link').remove();
@@ -1673,162 +2388,76 @@ module StudyD {
     }
 
 
-    function scrollToForm(form) {
-        // make sure form is disclosed
-        var top = form.toggleClass('discloseHide', false).offset().top;
-        $('html, body').animate({ 'scrollTop': top }, 'slow');
-    }
-
-    function updateUIAssayForm(form) {
-        var title, button;
-        // Update the disclose title to read Edit
-        title = form.find('.discloseLink > a').text('Edit Assay');
-        // Update the button to read Edit
-        button = form.find('[name=action][value=assay]').text('Edit Assay');
-        // Add link to revert back to 'Add Line' form
-        $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', (ev) => {
-            clearAssayForm();
-            title.text('Add Assays To Selected Lines');
-            button.text('Add Assay');
-            return false;
-        }).insertAfter(button);
-    }
-
-
-    function insertLineMetadataRow(refRow, key, value) {
-        var row, type, label, input, id = 'line-meta-' + key;
-        row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
-        type = EDDData.MetaDataTypes[key];
-        label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
-        // bulk checkbox?
-        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
-        if (type.pre) {
-            $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
-        }
-        $('<span>').addClass('meta-remove').text('Remove').insertAfter(input);
-        if (type.postfix) {
-            $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
-        }
-        return row;
-    }
-
     export function editAssay(index:number):void {
         var record = EDDData.Assays[index], form;
         if (!record) {
             console.log('Invalid Assay record for editing: ' + index);
             return;
         }
-        form = clearAssayForm(); // "form" is actually the disclose block
+        form = $('#assayMain');
+        clearAssayForm();
         fillAssayForm(form, record);
-        updateUIAssayForm(form);
-        scrollToForm(form);
+        form.removeClass('off').dialog( "open" );
     }
 };
 
 
 
-class DataGridAssays extends AssayResults {
-
-    sectionCurrentlyDisclosed:boolean;
-    graphRefreshTimerID:any;
-    // Right now we're not actually using the contents of this array, just
-    // checking to see if it's non-empty.
-    recordsCurrentlyInvalidated:number[];
+class DataGridAssays extends DataGrid {
 
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
-        this.recordsCurrentlyInvalidated = [];
-        this.sectionCurrentlyDisclosed = false;
     }
 
-    invalidateAssayRecords(records:number[]):void {
-        this.recordsCurrentlyInvalidated = this.recordsCurrentlyInvalidated.concat(records);
-        if (!this.recordsCurrentlyInvalidated.length) {
-            return;
-        }
-        if (this.sectionCurrentlyDisclosed) {
-            this.triggerAssayRecordsRefresh();
-        }
+    _getClasses():string {
+        return 'dataTable sortable dragboxes hastablecontrols';
     }
 
-    clickedDisclose(disclose:boolean):void {
-        var spec:DataGridSpecAssays = this.getSpec();
-        var table = spec.getTableElement();
-        var div = spec.undisclosedSectionDiv;
-        if (!div || !table) { return; }
-        if (disclose) {
-            this.sectionCurrentlyDisclosed = true;
-            // Start a timer to wait before calling the routine that remakes a table. This breaks up
-            // table recreation into separate events, so the browser can update UI.
-            if (this.recordsCurrentlyInvalidated.length) {
-                setTimeout(() => this.triggerAssayRecordsRefresh(), 10);
-            }
-        } else {
-            this.sectionCurrentlyDisclosed = false;
-        }
-    }
-
-    triggerAssayRecordsRefresh():void {
-        try {
-            this.triggerDataReset();
-            this.recordsCurrentlyInvalidated = [];
-        } catch (e) {
-            console.log('Failed to execute records refresh: ' + e);
-        }
+    getCustomControlsArea():HTMLElement {
+        return $('#tableControlsArea').get(0);
     }
 }
+
+
+
+// Extending the standard AssayRecord to hold some client-side calculations.
+// The idea is, these start out undefined, and are calculated on-demand.
+interface AssayRecordExended extends AssayRecord {
+    maxXValue:number;
+}
+
 
 // The spec object that will be passed to DataGrid to create the Assays table(s)
 class DataGridSpecAssays extends DataGridSpecBase {
 
-    assayID:any;
-    filteredIdsInTable:number[];
     metaDataIDsUsedInAssays:any;
     maximumXValueInData:number;
-    undisclosedSectionDiv:any;
 
     measuringTimesHeaderSpec:DataGridHeaderSpec;
     graphAreaHeaderSpec:DataGridHeaderSpec;
 
     graphObject:any;
 
-    constructor(assayID) {
+    constructor() {
         super();
-        this.assayID = assayID;
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
         this.graphAreaHeaderSpec = null;
     }
 
     init() {
-        this.refreshIDList();
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
         super.init();
     }
 
-    //pass in filtered ids. this.assayIDsInProtocol change to this.filteredIDsInTable
-    refreshIDList():void {
-        // Find out which protocols have assays with measurements - disabled or no
-        this.filteredIdsInTable = [];
-        this.filterIdsInTable(this.filteredIdsInTable, EDDData.Assays)
-
-    }
-
-    filterIdsInTable(filteredTables, assays):void {
-        $.each(assays, (assayId:string, assay:AssayRecord):void => {
-            var line:LineRecord;
-            line = EDDData.Lines[assay.lid];
-             // skip assays without a valid line or with a disabled line
-            if (line && line.active) {
-                filteredTables.push(assay.id);
-            }
-        });
-    }
-
     // An array of unique identifiers, used to identify the records in the data set being displayed
     getRecordIDs():any[] {
-        return this.filteredIdsInTable;
+        var lr = StudyDataPage.progressiveFilteringWidget.lastFilteringResults;
+        if (lr) {
+            return lr['filteredAssays'];
+        }
+        return [];
     }
 
     // This is an override.  Called when a data reset is triggered, but before the table rows are
@@ -1845,12 +2474,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table
     // content will be removed.
     getTableElement() {
-        var section = $('#assaysSection');
-        var table = $(document.createElement("table")).attr('id', 'assayTable');
-        $(section).append(table);
-        // Make sure the actions panel remains at the bottom.
-        $('#assaysActionPanel').appendTo(table);
-        return document.getElementById('assaysSection');
+        return document.getElementById('studyAssaysTable');
     }
 
     // Specification for the table as a whole
@@ -1874,19 +2498,25 @@ class DataGridSpecAssays extends DataGridSpecBase {
         var maxForAll:number = 0;
         // reduce to find highest value across all records
         maxForAll = this.getRecordIDs().reduce((prev:number, assayId) => {
-            var assay = EDDData.Assays[assayId], measures, maxForRecord;
-            measures = assay.measures || [];
-            // reduce to find highest value across all measures
-            maxForRecord = measures.reduce((prev:number, measureId) => {
-                var lookup:any = EDDData.AssayMeasurements || {},
-                    measure:any = lookup[measureId] || {},
-                    maxForMeasure;
-                // reduce to find highest value across all data in measurement
-                maxForMeasure = (measure.values || []).reduce((prev:number, point) => {
-                    return Math.max(prev, point[0][0]);
+            var assay:AssayRecordExended = <AssayRecordExended>EDDData.Assays[assayId], measures, maxForRecord;
+            // Some caching to speed subsequent runs way up...
+            if (assay.maxXValue !== undefined) {
+                maxForRecord = assay.maxXValue;
+            } else {
+                measures = assay.measures || [];
+                // reduce to find highest value across all measures
+                maxForRecord = measures.reduce((prev:number, measureId) => {
+                    var lookup:any = EDDData.AssayMeasurements || {},
+                        measure:any = lookup[measureId] || {},
+                        maxForMeasure;
+                    // reduce to find highest value across all data in measurement
+                    maxForMeasure = (measure.values || []).reduce((prev:number, point) => {
+                        return Math.max(prev, point[0][0]);
+                    }, 0);
+                    return Math.max(prev, maxForMeasure);
                 }, 0);
-                return Math.max(prev, maxForMeasure);
-            }, 0);
+                assay.maxXValue = maxForRecord;
+            }
             return Math.max(prev, maxForRecord);
         }, 0);
         // Anything above 0 is acceptable, but 0 will default instead to 1.
@@ -1895,10 +2525,11 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     private loadAssayName(index:any):string {
         // In an old typical EDDData.Assays record this string is currently pre-assembled and stored
-        // in 'fn'. But we're phasing that out.
-        var protocolNaming = EDDData.Protocols[this.assayID[index].pid].name;
-        var assay, line;
+        // in 'fn'. But we're phasing that out. Eventually the name will just be .name, without
+        // decoration.
+        var assay, line, protocolNaming;
         if ((assay = EDDData.Assays[index])) {
+            protocolNaming = EDDData.Protocols[assay.pid].name;
             if ((line = EDDData.Lines[assay.lid])) {
                 return [line.n, protocolNaming, assay.name].join('-').toUpperCase();
             }
@@ -2010,6 +2641,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
             '<a class="assay-reload-link">Reload Data</a>',
             '<a href="/export?assayId=' + index + '">Export Data as CSV/etc</a>'
         ];
+
+        // Set up jQuery modals
+        $("#assayMain").dialog({ autoOpen: false });
+
         // TODO we probably don't want to special-case like this by name
         if (EDDData.Protocols[record.pid].name == "Transcriptomics") {
             sideMenuItems.push('<a href="import/rnaseq/edgepro?assay='+index+'">Import RNA-seq data from EDGE-pro</a>');
@@ -2305,18 +2940,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         var leftSide:DataGridColumnSpec[],
             metaDataCols:DataGridColumnSpec[],
             rightSide:DataGridColumnSpec[];
-        // add click handler for menu on assay name cells
-        $(this.tableElement).on('click', 'a.assay-edit-link', (ev) => {
-            StudyD.editAssay($(ev.target).closest('.popupcell').find('input').val());
-            return false;
-        }).on('click', 'a.assay-reload-link', (ev:JQueryMouseEventObject):boolean => {
-            var id = $(ev.target).closest('.popupcell').find('input').val(),
-                assay:AssayRecord = EDDData.Assays[id];
-            if (assay) {
-                StudyD.requestAssayData(assay);
-            }
-            return false;
-        });
+
         leftSide = [
             new DataGridColumnSpec(1, this.generateAssayNameCells)
            ];
@@ -2368,17 +2992,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     createCustomHeaderWidgets(dataGrid:DataGrid):DataGridHeaderWidget[] {
         var widgetSet:DataGridHeaderWidget[] = [];
 
-        // Create a single widget for substring searching
-        var searchAssaysWidget = new DGAssaysSearchWidget(dataGrid, this, 'Search Assays', 30,
-                false);
-        widgetSet.push(searchAssaysWidget);
-
-        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
-        deselectAllWidget.displayBeforeViewMenu(true);
-        widgetSet.push(deselectAllWidget);
-
-        // A "select all" button
-        var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
+        // A "select all / select none" button
+        var selectAllWidget = new DGSelectAllAssaysMeasurementsWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(selectAllWidget);
 
@@ -2390,106 +3005,182 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // It's perfectly fine to return an empty array.
     createCustomOptionsWidgets(dataGrid:DataGrid):DataGridOptionWidget[] {
         var widgetSet:DataGridOptionWidget[] = [];
-        // Create a single widget for showing disabled Assays
         var disabledAssaysWidget = new DGDisabledAssaysWidget(dataGrid, this);
+        var emptyAssaysWidget = new DGEmptyAssaysWidget(dataGrid, this);
         widgetSet.push(disabledAssaysWidget);
+        widgetSet.push(emptyAssaysWidget);
         return widgetSet;
     }
+
 
     // This is called after everything is initialized, including the creation of the table content.
     onInitialized(dataGrid:DataGridAssays):void {
 
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
-        $(table).on('change', ':checkbox', () => StudyD.queueAssaysActionPanelShow());
-        $(table).on('change', ':checkbox', () => this.refreshIDList());
+        $(table).on('change', ':checkbox', () => StudyDataPage.queueActionPanelRefresh());
 
-        if (this.undisclosedSectionDiv) {
-            $(this.undisclosedSectionDiv).click(() => dataGrid.clickedDisclose(true));
-        }
+        // add click handler for menu on assay name cells
+        $(table).on('click', 'a.assay-edit-link', (ev) => {
+            StudyDataPage.editAssay($(ev.target).closest('.popupcell').find('input').val());
+            return false;
+        }).on('click', 'a.assay-reload-link', (ev:JQueryMouseEventObject):boolean => {
+            var id = $(ev.target).closest('.popupcell').find('input').val(),
+                assay:AssayRecord = EDDData.Assays[id];
+            if (assay) {
+                StudyDataPage.requestAssayData(assay);
+            }
+            return false;
+        });
 
-        //on page load of data hide assays section
-        $( "input[name*='assaysSearch']" ).parents('thead').hide();
         // Run it once in case the page was generated with checked Assays
-        StudyD.queueAssaysActionPanelShow();
+        StudyDataPage.queueActionPanelRefresh();
     }
+}
+
+
+// A slightly modified "Select All" header widget
+// that triggers a refresh of the actions panel when it changes the checkbox state.
+class DGSelectAllAssaysMeasurementsWidget extends DGSelectAllWidget {
+
+    clickHandler():void {
+        super.clickHandler();
+        StudyDataPage.queueActionPanelRefresh();
+     }
 }
 
 
 // When unchecked, this hides the set of Assays that are marked as disabled.
 class DGDisabledAssaysWidget extends DataGridOptionWidget {
 
-    createElements(uniqueID:any):void {
-        var cbID:string = this.dataGridSpec.tableSpec.id+'ShowDAssaysCB'+uniqueID;
-        var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
-        $(cb).click( (e) => this.dataGridOwnerObject.clickedOptionWidget(e) );
-        if (this.isEnabledByDefault()) {
-            cb.setAttribute('checked', 'checked');
+    // Return a fragment to use in generating option widget IDs
+    getIDFragment(uniqueID):string {
+        return 'TableShowDAssaysCB';
+    }
+
+    // Return text used to label the widget
+    getLabelText():string {
+        return 'Show Disabled';
+    }
+
+    getLabelTitle():string {
+        return "Show assays that have been disabled.";
+    }
+
+    // Returns true if the control should be enabled by default
+    isEnabledByDefault():boolean {
+        return !!($('#filteringShowDisabledCheckbox').prop('checked'));
+    }
+
+    // Handle activation of widget
+    onWidgetChange(e):void {
+        var amIChecked:boolean = !!(this.checkBoxElement.checked);
+        var isOtherChecked:boolean = $('#filteringShowDisabledCheckbox').prop('checked');
+        $('#filteringShowDisabledCheckbox').prop('checked', amIChecked);
+        if (amIChecked != isOtherChecked) {
+            StudyDataPage.queueRefreshDataDisplayIfStale();
         }
-        this.checkBoxElement = cb;
-        this.labelElement = this._createLabel('Show Disabled', cbID);
-        this._createdElements = true;
+        // We don't call the superclass version of this function because we don't
+        // want to trigger a call to arrangeTableDataRows just yet.
+        // The queueRefreshDataDisplayIfStale function will do it for us, after
+        // rebuilding the filtering section.
     }
 
     applyFilterToIDs(rowIDs:string[]):string[] {
 
+        var checked:boolean = !!(this.checkBoxElement.checked);
         // If the box is checked, return the set of IDs unfiltered
-        if (this.checkBoxElement.checked) {
-            return rowIDs;
+        if (checked && rowIDs && EDDData.currentStudyWritable) {
+            $("#enableButton").removeClass('off');
+        } else {
+            $("#enableButton").addClass('off');
         }
-//         // If the box is unchecked, return the set filtered IDs
-//         else {
-//             var postFilteringMeasurements = StudyD.progressiveFilteringWidget.buildFilteredMeasurements();
-//             var filteredMeasurements = StudyD.convertPostFilteringMeasurements(postFilteringMeasurements);
+        var disabledRows = $('.disabledRecord');
 
-
-        var filteredIDs = [];
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
-            // Here is the condition that determines whether the rows associated with this ID are
-            // shown or hidden.
-            if (EDDData.Assays[id].active) {
-                filteredIDs.push(id);
+        var checkedDisabledRows = 0;
+        _.each(disabledRows, function(row) {
+            if ($(row).find('input').prop('checked')) {
+                checkedDisabledRows++;
             }
+        });
 
+        if (checkedDisabledRows > 0) {
+            $('#enableButton').prop('disabled', false);
+        } else {
+            $('#enableButton').prop('disabled', true);
         }
-        return filteredIDs;
+
+
+        // If the box is checked, return the set of IDs unfiltered
+        if (checked) { return rowIDs; }
+        return rowIDs.filter((id:string): boolean => {
+            return !!(EDDData.Assays[id].active);
+        });
     }
 
-    initialFormatRowElementsForID(dataRowObjects:any, rowID:any):any {
-        if (!EDDData.Assays[rowID].active) {
+    initialFormatRowElementsForID(dataRowObjects:any, rowID:string):any {
+        var assay = EDDData.Assays[rowID];
+        if (!assay.active) {
             $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
         }
     }
 }
 
-// This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
-// options for additional data types, querying the server for results.
-class DGAssaysSearchWidget extends DGSearchWidget {
 
-    searchDisclosureElement:any;
+// When unchecked, this hides the set of Assays that have no measurement data.
+class DGEmptyAssaysWidget extends DataGridOptionWidget {
 
-    constructor(dataGridOwnerObject:any, dataGridSpec:any, placeHolder:string, size:number,
-            getsFocus:boolean) {
-        super(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
+    // Return a fragment to use in generating option widget IDs
+    getIDFragment(uniqueID):string {
+        return 'TableShowEAssaysCB';
     }
 
-    // The uniqueID is provided to assist the widget in avoiding collisions when creating input
-    // element labels or other things requiring an ID.
-    createElements(uniqueID:any):void {
-        super.createElements(uniqueID);
-        this.createdElements(true);
+    // Return text used to label the widget
+    getLabelText():string {
+        return 'Show Empty';
     }
 
-    // This is called to append the widget elements beneath the given element. If the elements have
-    // not been created yet, they are created, and the uniqueID is passed along.
-    appendElements(container:any, uniqueID:any):void {
-        if (!this.createdElements()) {
-            this.createElements(uniqueID);
+    getLabelTitle():string {
+        return "Show assays that don't have any measurements in them.";
+    }
+
+    // Returns true if the control should be enabled by default
+    isEnabledByDefault():boolean {
+        return !!($('#filteringShowEmptyCheckbox').prop('checked'));
+    }
+
+    // Handle activation of widget
+    onWidgetChange(e):void {
+        var amIChecked:boolean = !!(this.checkBoxElement.checked);
+        var isOtherChecked:boolean = !!($('#filteringShowEmptyCheckbox').prop('checked'));
+        $('#filteringShowEmptyCheckbox').prop('checked', amIChecked);
+        if (amIChecked != isOtherChecked) {
+            StudyDataPage.queueRefreshDataDisplayIfStale();
         }
-        container.appendChild(this.element);
+        // We don't call the superclass version of this function because we don't
+        // want to trigger a call to arrangeTableDataRows just yet.
+        // The queueRefreshDataDisplayIfStale function will do it for us, after
+        // rebuilding the filtering section.
+    }
+
+    applyFilterToIDs(rowIDs:string[]):string[] {
+
+        var checked:boolean = !!(this.checkBoxElement.checked);
+        // If the box is checked, return the set of IDs unfiltered
+        if (checked) { return rowIDs; }
+        return rowIDs.filter((id:string): boolean => {
+            return !!(EDDData.Assays[id].count);
+        });
+    }
+
+    initialFormatRowElementsForID(dataRowObjects:any, rowID:string):any {
+        var assay = EDDData.Assays[rowID];
+        if (!assay.count) {
+            $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('emptyRecord'));
+        }
     }
 }
 
+
 // use JQuery ready event shortcut to call prepareIt when page is ready
-$(() => StudyD.prepareIt());
+$(() => StudyDataPage.prepareIt());

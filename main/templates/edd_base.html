@@ -32,41 +32,40 @@
     {% endif %}
 {% endblock js_css%}
 </head>
-{#uncomment out to see color for development#}
-<body>
-{#                {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %} #f4fef4#}
-{#                {% elif request.edd_deployment|slice:":4" == "TEST" %} #fff0f2#}
-{#                {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %} #fff6e5#}
-{#                {% endif %}">#}
+<body style="background-color:
+                {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %} #f4fef4
+                {% elif request.edd_deployment|slice:":4" == "TEST" %} #fff0f2
+                {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %} #fff6e5
+                {% endif %}">
 
 {% block body_prefix %}
 {% endblock body_prefix %}
 <div class="mainFlex">
-    <div class="topBanner">
-        <div class="siteLogo">
-            <a href="{% url 'main:index' %}">
-                <img style="width:50px;" src="{% static 'main/images/edd_logo.png' %}" alt="EDD Logo - Home" />
-            </a>
-        </div>
-        <div class="pageName">
-            {% block body_title %}
-            Experiment Data Depot
-            {% endblock body_title %}
-        </div>
-        <div class="userMenu">
-            {% if user.is_authenticated %}
-                <div>
-                    <div class="user_welcome">{{ user.first_name }} {{ user.last_name }}</div>
-                    <a href="{% url 'account_logout' %}">Logout</a>
-                </div>
-            {% else %}
-                <div>
-                    <a href="{% url 'account_login' %}">Login</a>
-                </div>
-            {% endif %}
-        </div>
-    </div>
     <div id="content" class="content">
+        <div class="topBanner">
+            <div class="siteLogo">
+                <a href="{% url 'main:index' %}">
+                    <img style="width:50px;" src="{% static 'main/images/edd_logo.png' %}" alt="EDD Logo - Home" />
+                </a>
+            </div>
+            <div class="pageName">
+                {% block body_title %}
+                Experiment Data Depot
+                {% endblock body_title %}
+            </div>
+            <div class="userMenu">
+                {% if user.is_authenticated %}
+                    <div>
+                        <div class="user_welcome">{{ user.first_name }} {{ user.last_name }}</div>
+                        <a href="{% url 'account_logout' %}">Logout</a>
+                    </div>
+                {% else %}
+                    <div>
+                        <a href="{% url 'account_login' %}">Login</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
         <div class="statusMessage">
             {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %}
                 <span class="dev">{{ request.edd_deployment}}</span>
@@ -100,22 +99,20 @@
         {% block bottom_bar %}
         {% endblock bottom_bar %}
     </div>
-    <div class="footer">
-        <div class="footer-text">
-            <span class="footer-text-app">JBEI Experiment Data Depot {{ request.edd_deployment }}</span>
-            <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
-            {% if user.is_staff %}
-                    <span><a href="{% url 'admin:index' %}">Administration</a></span>
-                {% endif %}
-         <span><a href="{% url 'edd_utils:index' %}">Utilities</a></span>
-            <span>
-            {% block top_help %}
-            <a href="{% static 'main/help/index.html' %}">Help</a>
-            {% endblock top_help %}
-            </span>
-        </div>
-    </div>
 </div>
+    <div class="footer-text">
+        <span class="footer-text-app">JBEI Experiment Data Depot {{ request.edd_deployment }}</span>
+        <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
+        {% if user.is_staff %}
+                <span><a href="{% url 'admin:index' %}">Administration</a></span>
+            {% endif %}
+     <span><a href="{% url 'edd_utils:index' %}">Utilities</a></span>
+        <span>
+        {% block top_help %}
+        <a href="{% static 'main/help/index.html' %}">Help</a>
+        {% endblock top_help %}
+        </span>
+    </div>
 {% block body_postfix %}
 {% endblock body_postfix %}
 </body>

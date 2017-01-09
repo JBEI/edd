@@ -63,6 +63,7 @@
     display:flex;
     flex-wrap: nowrap;
     flex-direction: row;
+    margin: 10px 29px 32px 10px;
     justify-content: space-between;">
     <div id="disabledButtons" class="flex-grow:1;">
         <button id="addNewLineButton"
@@ -125,7 +126,7 @@
         <button style="margin-right:30px" type="button" id="worklistButton" class="actionButton primary">
             Generate Worklist
         </button>
-        <button type="button" id="exportButton" class="actionButton primary">
+        <button type="button" id="exportLineButton" class="actionButton primary">
             Export Data
         </button>
     </div>
@@ -134,8 +135,6 @@
 
 {% block body_postfix %}
 </form>
-
-{# FUN FACT: jQueryUI's "modal" widget actually rips the element you're turning into a modal right out of the DOM and appends it to the end, thus separating it from any form you've declared outside the modal contents.  So, we are forced to create four self-contained forms, even though the page could easily work as one. #}
 
 <div id="editLineModal" class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
     <form action="" method="POST">
@@ -157,18 +156,13 @@
      title="{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}">
     <form action="" method="POST">
         {% csrf_token %}
-        <div class="sectionHead">
-            <span class="discloseLink"><a href="#"></a></span>
-        </div>
-        <div class="sectionContent discloseBody assay-edit edd-form">
-            {{ new_assay.as_p }}
-            <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
-        </div>
+        {{ new_assay.as_p }}
+        <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
     </form>
 </div>
 
 <div id="exportModal" class="off" title="Export as">
-    <form action="" method="POST">
+    <form action="" method="POST" id="exportForm">
         {% csrf_token %}
         <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
         <label for="line_action_export">
@@ -177,7 +171,8 @@
                 <option value="csv">as CSV/etc</option>
                 <option value="sbml">as SBML</option>
                 <option value="worklist">as Worklist</option>
-                <option value="study">to New Study</option>
+                {# removing this for now until fixed #}
+                {# <option value="study">to New Study</option>#}
             </select>
         </label>
         <button type="submit" name="action" value="line_action">Take Action</button>

@@ -131,11 +131,42 @@ class StudyCreateView(generic.edit.CreateView):
     def get_success_url(self):
         return reverse('main:overview', kwargs={'slug': self.object.slug})
 
+# /study/<study_id>/rename
+@ensure_csrf_cookie
+def study_rename(request, study_id):
+    obj = load_study(request, study_id) # Throws 404 is user cannot read or Study doesn't exist
+    if not obj.user_can_write(request.user):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "You do not have permission to rename this study.",
+        })
+    if not (request.method == "POST"):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Request method must be POST for this operation.",
+        })
+    # A fair amount of validation has happened for these on the front end.
+    # I'm going to assume Django's internals are insulated against inane things like injection attacks
+    # and will fail verbosely given unacceptable data...
+    full_name = request.POST.get('value', '').strip()
+    if full_name == "":
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Map short name must not be blank.",
+        })
+    obj.name = full_name
+    obj.save()
+    return JsonResponse({
+        "type": "Success",
+        "message": "Study renamed.",
+    })
 
-class StudyIndexView(generic.list.ListView):
+
+class StudyIndexView(generic.edit.CreateView):
     """
     View for the the index page.
     """
+    form_class = CreateStudyForm
     model = Study
     template_name = 'main/index.html'
 
@@ -152,6 +183,94 @@ class StudyIndexView(generic.list.ListView):
         context['latest_viewed_studies'] = filter(bool, latest)
         context['can_create'] = Study.user_can_create(self.request.user)
         return context
+
+    def form_valid(self, form):
+        update = Update.load_request_update(self.request)
+        study = form.instance
+        study.active = True     # defaults to True, but being explicit
+        study.created = update
+        study.updated = update
+        return generic.edit.CreateView.form_valid(self, form)
+
+    def get_form_kwargs(self):
+        kwargs = super(StudyIndexView, self).get_form_kwargs()
+        kwargs.update(user=self.request.user)
+        return kwargs
+
+    def get_success_url(self):
+        return reverse('main:overview', kwargs={'slug': self.object.slug})
+
+
+# /study/<study_id>/rename/
+@ensure_csrf_cookie
+def study_rename(request, pk=None, slug=None):
+    obj = load_study(request, pk=pk, slug=slug) # Throws 404 if user cannot read or Study doesn't exist
+    if not obj.user_can_write(request.user):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "You do not have permission to rename this study.",
+        })
+    if not (request.method == "POST"):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Request method must be POST for this operation.",
+        })
+    full_name = request.POST.get('value', '').strip()
+    if full_name == "":
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Study name must not be blank.",
+        })
+    obj.name = full_name
+    obj.save()
+    return JsonResponse({
+        "type": "Success",
+        "message": "Study renamed.",
+    }, encoder=JSONDecimalEncoder)
+
+
+# /study/<study_id>/setdescription/
+@ensure_csrf_cookie
+def study_set_description(request, pk=None, slug=None):
+    obj = load_study(request, pk=pk, slug=slug) # Throws 404 if user cannot read or Study doesn't exist
+    if not obj.user_can_write(request.user):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "You do not have permission to edit this study.",
+        })
+    if not (request.method == "POST"):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Request method must be POST for this operation.",
+        })
+    obj.description = request.POST.get('value', '').strip()
+    obj.save()
+    return JsonResponse({
+        "type": "Success",
+        "message": "Study description changed.",
+    }, encoder=JSONDecimalEncoder)
+
+
+# /study/<study_id>/setcontact/
+@ensure_csrf_cookie
+def study_set_contact(request, pk=None, slug=None):
+    obj = load_study(request, pk=pk, slug=slug) # Throws 404 if user cannot read or Study doesn't exist
+    if not obj.user_can_write(request.user):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "You do not have permission to edit this study.",
+        })
+    if not (request.method == "POST"):
+        return JsonResponse({
+            "type": "Failure",
+            "message": "Request method must be POST for this operation.",
+        })
+    obj.contact_id = int(request.POST.get('value', 0)) or None
+    obj.save()
+    return JsonResponse({
+        "type": "Success",
+        "message": "Study contact changed.",
+    }, encoder=JSONDecimalEncoder)
 
 
 class StudyDetailBaseView(generic.DetailView):
@@ -181,6 +300,27 @@ class StudyDetailBaseView(generic.DetailView):
         if queryset is None:
             self._detail_object = obj
         return obj
+
+    def handle_clone(self, request, context, *args, **kwargs):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        cloned = 0
+        for line_id in ids:
+            line = self._get_line(line_id)
+            if line:
+                # easy way to clone is just pretend to fill out add line form
+                initial = LineForm.initial_from_model(line)
+                # update name to indicate which is the clone
+                initial['name'] = initial['name'] + ' clone'
+                clone = LineForm(initial, study=study)
+                if clone.is_valid():
+                    clone.save()
+                    cloned += 1
+        messages.success(request, 'Cloned %(cloned)s of %(total)s Lines' % {
+            'cloned': cloned,
+            'total': len(ids),
+            })
+        return True
 
     def get_queryset(self):
         qs = super(StudyDetailBaseView, self).get_queryset()
@@ -342,27 +482,6 @@ class StudyLinesView(StudyDetailBaseView):
             form.save()
             return True
         return False
-
-    def handle_clone(self, request, context, *args, **kwargs):
-        ids = request.POST.getlist('lineId', [])
-        study = self.get_object()
-        cloned = 0
-        for line_id in ids:
-            line = self._get_line(line_id)
-            if line:
-                # easy way to clone is just pretend to fill out add line form
-                initial = LineForm.initial_from_model(line)
-                # update name to indicate which is the clone
-                initial['name'] = initial['name'] + ' clone'
-                clone = LineForm(initial, study=study)
-                if clone.is_valid():
-                    clone.save()
-                    cloned += 1
-        messages.success(request, 'Cloned %(cloned)s of %(total)s Lines' % {
-            'cloned': cloned,
-            'total': len(ids),
-            })
-        return True
 
     def handle_enable(self, request, context, *args, **kwargs):
         return self.handle_enable_disable(request, 'enable')
@@ -915,10 +1034,9 @@ def study_measurements(request, pk=None, slug=None, protocol=None):
         assay__line__study=obj,
         assay__protocol_id=protocol,
         active=True,
-        assay__active=True,
         assay__line__active=True,
     )
-    # Limit the measurements returned to keep browser performant
+    # Limit the measurements returned to keep browser performance
     measurements = qmeasurements.order_by('id')[:5000]
     total_measures = qmeasurements.values('assay_id').annotate(count=Count('assay_id'))
     measure_list = list(measurements)
@@ -928,7 +1046,6 @@ def study_measurements(request, pk=None, slug=None, protocol=None):
             measurement__assay__line__study=obj,
             measurement__assay__protocol_id=protocol,
             measurement__active=True,
-            measurement__assay__active=True,
             measurement__assay__line__active=True,
             measurement__pk__range=(measure_list[0].id, measure_list[-1].id),
         )
@@ -1156,8 +1273,8 @@ def study_import_table(request, pk=None, slug=None):
             # show the first error message to the user. continuing the import attempt to collect
             # more potentially-useful errors makes the code too complex / hard to maintain.
             messages.error(request, e)
-        # uncomment below once you can import data to test if this works
-        # return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
+            # redirect to study page
+        return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
     return render(
         request,
         "main/import.html",

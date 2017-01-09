@@ -149,15 +149,20 @@ module EDDEditable {
 		}
 
 
-		makeFormData(value):any {
-	        var formData = new FormData();
-	        formData.append('value', value);
-	        return formData;
+		fillFormData(fd):any {
+            var form = $(this.inputElement).closest('form');
+            var token = form.length ? form.find('[name=csrfmiddlewaretoken]').val() : '';
+			var value = this.getEditedValue();
+            fd.append('csrfmiddlewaretoken', token);
+	        fd.append('value', value);
+	        return fd;
 		}
 
 
+		// Default behavior is to submit to the same place that the enclosing form does.
 		getFormURL(): string {
-			return '';
+            var form = $(this.inputElement).closest('form');
+            return form.length ? form.attr('action') : '';
 		}
 
 
@@ -419,12 +424,14 @@ module EDDEditable {
 			var debug = false;
 			var value = this.getEditedValue();
 			var pThis = this;
+	        var formData = this.fillFormData(new FormData());
 
-            $.ajax({
+	        Utl.EDD.callAjax({
                 'url': this.getFormURL(),
                 'type': 'POST',
 				'cache': false,
-                'data': this.makeFormData(value),
+				'debug': debug,
+                'data': formData,
 				'success': function(response) {
 					if (response.type == "Success") {
 						pThis.setValue(value);

@@ -15,10 +15,9 @@ class DataGrid {
     private _table:HTMLElement;
     private _tableBody:HTMLElement;
     private _tableBodyJquery: JQuery;
-    private _tableHeaderCell:HTMLElement;
+    private _tableControlsArea:HTMLElement;
     private _waitBadge:HTMLElement;
     private _classes:string;
-    private _section:JQuery;
 
     private _headerRows:HTMLElement[];
     private _totalColumnCount:number;
@@ -27,6 +26,9 @@ class DataGrid {
     private _headerWidgets:DataGridHeaderWidget[];
     private _optionsMenuWidgets:DataGridOptionWidget[];
     private _optionsMenuElement:HTMLElement;
+
+    private _widgetRefreshCooldownTimer:any;
+    private _widgetRefreshPending:boolean;
 
     private _optionsMenuBlockElement:HTMLElement;
     private _optionsLabel:HTMLElement;
@@ -59,58 +61,64 @@ class DataGrid {
         this._spec = dataGridSpec;
         this._table = dataGridSpec.tableElement;
         this._timers = {};
+        this._widgetRefreshCooldownTimer = null;
+        this._widgetRefreshPending = false;
         this._classes = 'dataTable sortable dragboxes hastablecontrols table-bordered';
 
         var tableBody:JQuery = $(this._tableBody = document.createElement("tbody"));
-                 // First step: Blow away the old contents of the table
-                $(this._table).empty()
-                    .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-                    .addClass(this._getClasses())
-                    // TODO: Most of these classes are probably not needed now
-                    .append(tableBody);
-                this._tableBodyJquery = tableBody;
-                var tHeadRow = this._getTHeadRow();
-                var tableHeaderRow = this._getTableHeaderRow().appendTo(tHeadRow);
-                var tableHeaderCell = $(this._tableHeaderCell = this._getTableHeaderCell()).appendTo(tableHeaderRow);
-                var waitBadge = $(this._waitBadge = document.createElement("span"))
-                    .addClass('waitbadge wait').appendTo(tableHeaderCell);
-                if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-                     tableHeaderCell.attr('colspan', this._totalColumnCount);
-                }
-                this._section = $(tableBody).parent().parent();
-                // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-                if (dataGridSpec.tableSpec.showHeader) {
-                    tHeadRow.insertBefore(this._getDivForTableHeaders());
-                }
 
-            // Apply the default column visibility settings.
-            this.prepareColumnVisibility();
-            var tHead = $(document.createElement("thead"));
-            var headerRows = this._headerRows = this._buildTableHeaders();
-            tHead.append(headerRows);
-             $(tHead).insertBefore(this._tableBody);
+        // First step: Blow away the old contents of the table
+        $(this._table).empty()
+            .attr({ 'cellpadding': 0, 'cellspacing': 0 })
+            .addClass(this._getClasses())
+            // TODO: Most of these classes are probably not needed now
+            .append(tableBody);
+        this._tableBodyJquery = tableBody;
 
-            setTimeout( () => this._initializeTableData(), 1 );
+        var tHead = $(document.createElement("thead"));
+        this._tableControlsArea = this.getCustomControlsArea();    // If there is no custom area, this returns null
+        if (!this._tableControlsArea) {
+            var tr = $(document.createElement("tr")).addClass('header').appendTo(tHead);
+            this._tableControlsArea = $(document.createElement("th")).appendTo(tr).get(0);
+            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                 $(this._tableControlsArea).attr('colspan', this._totalColumnCount);
+            }
+        }
+        this._waitBadge = document.createElement("span");
+        $(this._waitBadge).addClass('waitbadge wait').appendTo(this._tableControlsArea);
+        // If we're asked not to display a header, create it anyway to widgets can go somewhere, but hide it.
+        if (!dataGridSpec.tableSpec.showHeader) {
+            $(this._tableControlsArea).addClass('off');
+        }
+        // Apply the default column visibility settings.
+        this.prepareColumnVisibility();
+
+        // TODO: If we wish to move the column headers outside the table so the
+        // body rows can scroll independedntly, we need to create a second table.
+        // A working solution would involve a resize timer, and some modifications to
+        // DataGrid to allow creating the table header cells in a second table (with 0 data rows)
+        // That is then placed immediately above an 'overflow-y:scroll' div containing the first table.
+        // Then we would need some event handlers to resize the second table based on changes in the first.
+        var headerRows = this._headerRows = this._buildTableHeaders();
+        tHead.append(headerRows);
+        $(tHead).insertBefore(this._tableBody);
+
+        // If any checkbox changes in the table body - indicating a potential change in the selection -
+        // refresh the header widgets, since their appearance may need to change.
+        tableBody.on('change', ':checkbox', this._refreshAllWidgetsWithThrottling.bind(this));
+
+        setTimeout( () => this._initializeTableData(), 1 );
     }
 
     _getTableBody():JQuery {
         return this._tableBodyJquery;
     }
 
-    _getTableHeaderCell():HTMLElement {
-        return document.createElement("span")
-    }
-
-    _getTableHeaderRow():JQuery {
-        return $(document.createElement("span")).addClass('header');
-    }
-
-    _getTHeadRow():JQuery {
-        return $(document.createElement('div')).addClass('searchStudies');
-    }
-
-    _getDivForTableHeaders():any {
-        return this._section;
+    // By defaut the controls are placed at the top of the table,
+    // inside a single header cell spanning the entire table.
+    // But we can override this placement by returning a JQuery reference to an alternate location.
+    getCustomControlsArea():HTMLElement {
+        return null;
     }
 
     _getClasses():string {
@@ -124,7 +132,7 @@ class DataGrid {
     // in Firefox and Safari, according to load-time profiling ... and only when paired with some servers??)
     _initializeTableData():DataGrid {
 
-        var hCell = this._tableHeaderCell;
+        var cArea = this._tableControlsArea;
 
         Dragboxes.initTable(this._table);
         this._buildAllTableSorters()
@@ -138,15 +146,15 @@ class DataGrid {
         // (Since all widgets are styled to float right, they will appear from right to left.)
         this._headerWidgets.forEach((widget, index) => {
             if (!widget.displayBeforeViewMenu()) {
-                widget.appendElements(hCell, index.toString(10));
+                widget.appendElements(cArea, index.toString(10));
             }
         });
         // Now append the 'View' pulldown menu
-        hCell.appendChild(this._optionsMenuElement);
+        cArea.appendChild(this._optionsMenuElement);
         // Finally, append the header widgets that should appear "before".
         this._headerWidgets.forEach((widget, index) => {
             if (widget.displayBeforeViewMenu()) {
-                widget.appendElements(hCell, index.toString(10));
+                widget.appendElements(cArea, index.toString(10));
             }
         });
 
@@ -159,7 +167,7 @@ class DataGrid {
         this._prepareSortable();
 
         this._spec.onInitialized(this);
-        $(this._waitBadge).addClass('off');
+        $(this._waitBadge).remove();
 
         return this;
     }
@@ -199,12 +207,7 @@ class DataGrid {
 
         // And make sure only the currently visible things are ... visible
         this._applyColumnVisibility();
-        this._headerWidgets.forEach((widget, index) => {
-            widget.refreshWidget();
-        });
-        this._optionsMenuWidgets.forEach((widget, index) => {
-            widget.refreshWidget();
-        });
+        this._refreshAllWidgets();
         return this;
     }
 
@@ -221,13 +224,7 @@ class DataGrid {
 
         if (reflow) {
             this._buildTableSortSequences().arrangeTableDataRows();
-
-            this._headerWidgets.forEach((widget, index) => {
-                widget.refreshWidget();
-            });
-            this._optionsMenuWidgets.forEach((widget, index) => {
-                widget.refreshWidget();
-            });
+            this._refreshAllWidgets();
         }
         return this;
     }
@@ -293,17 +290,8 @@ class DataGrid {
                 });
             });
         }
-    //     <div class="helpBadgeDiv">line help
-    // <div class="helpContent">
-    //             <p>A line describes the experimental details of your study by defining the
-    //                 experimental conditions and associated meta data for i.e. a single flask.  Some examples
-    //                 that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
-    //                 speed.  Users can manually add lines, or download the study template for bulk uploads.
-    //             </p>
-    //   </div>
-    // </div>
 
-        var mainSpan = $(this._optionsMenuElement = document.createElement("span"))
+        var mainSpan = $(this._optionsMenuElement = document.createElement("div"))
             .attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
 
         var menuLabel = $(this._optionsLabel = document.createElement("div"))
@@ -327,7 +315,6 @@ class DataGrid {
                 this._hideOptMenu();
             }
         });
-
 
         if (hasCustomWidgets) {
             var menuCWList = $(document.createElement("ul")).appendTo(menuBlock);
@@ -492,17 +479,13 @@ class DataGrid {
     arrangeTableDataRows():DataGrid {
         var striping = 1;
 
+        $(this._tableBody).children().detach();
+
         // We create a document fragment - a kind of container for document-related objects that we don't
         // want in the page - and accumulate inside it all the rows we want to display, in sorted order.
         var frag = document.createDocumentFragment();
 
         this.applySortIndicators();
-
-        var sequence = this._getSequence(this._sort[0]);
-
-        // Verify that the row sets referred to by the IDs actually exist
-        var filteredSequence = sequence.filter((v) => { return !!this._recordElements[v]; });
-        var unfilteredSequence = filteredSequence.slice(0);
 
         // Remove all the grouping title rows from the table as well, if they were there
         var rowGroupSpec = this._spec.tableRowGroupSpec;
@@ -514,6 +497,12 @@ class DataGrid {
             // While we're here, reset the member record arrays.  We need to rebuild them post-filtering.
             rowGroup.memberRecords = [];
         });
+
+        var sequence = this._getSequence(this._sort[0]);
+
+        // Verify that the row sets referred to by the IDs actually exist
+        var filteredSequence = sequence.filter((v) => { return !!this._recordElements[v]; });
+        var unfilteredSequence = filteredSequence.slice(0);
 
         filteredSequence = this.applyAllWidgetFiltering(filteredSequence);
 
@@ -569,7 +558,7 @@ class DataGrid {
                     $(line).hide();
                 });
             });
-             rowGroupSpec.forEach((rowGroup) => {
+            rowGroupSpec.forEach((rowGroup) => {
                 striping = 1 - striping;
                 frag.appendChild(rowGroup.replicateGroupTable );
                 if (this._spec.tableSpec.applyStriping) {
@@ -577,11 +566,12 @@ class DataGrid {
                         .removeClass(stripeStylesJoin).addClass(stripeStyles[striping]).end();
                 }
             });
+            // TODO: This command doesn't make sense - the frag is not in the document yet
             $(frag).insertBefore($(this._tableBody));
-            }
+        }
 
-        //hacky way to show lines that were hidden from grouping replicates
-        if ($('#linesGroupStudyReplicatesCB0').prop('checked') === false) {
+        // TODO: This really needs to be moved
+        if ($('#GroupStudyReplicatesCB').prop('checked') === false) {
             var lines = $(frag).children();
             _.each(lines, function(line) {
                 $(line).removeClass('replicateLineShow');
@@ -592,6 +582,40 @@ class DataGrid {
         this._tableBody.appendChild(frag);
 
         return this;
+    }
+
+
+    // Call _refreshAllWidgets, unless a half-second cooldown timer is active from the last call,
+    // in which case set a flag to call _refreshAllWidgets when the timer expires.
+    _refreshAllWidgetsWithThrottling() {
+        if (this._widgetRefreshCooldownTimer) {
+            this._widgetRefreshPending = true;
+            return;
+        }
+        this._refreshAllWidgets();
+        this._widgetRefreshCooldownTimer = setTimeout(this._refreshAllWidgetsClearTimer.bind(this), 500);
+    }
+
+
+    _refreshAllWidgetsClearTimer() {
+        this._widgetRefreshCooldownTimer = null;
+        // If a request to refresh came in while the cooldown was in operation,
+        // clear the flag and call for another refresh.
+        // With the timer cleared, it will immediately refresh, without setting the pending request flag.
+        if (this._widgetRefreshPending) {
+            this._widgetRefreshPending = false;
+            this._refreshAllWidgetsWithThrottling();
+        }
+    }
+
+
+    _refreshAllWidgets() {
+        this._headerWidgets.forEach((widget, index) => {
+            widget.refreshWidget();
+        });
+        this._optionsMenuWidgets.forEach((widget, index) => {
+            widget.refreshWidget();
+        });
     }
 
 
@@ -1040,6 +1064,14 @@ class DataGrid {
     }
 
 
+    // apply a function to each record ID in the sequence until the function returns false
+    testRecordSet(func:(rows:DataGridDataRow[], id:string, spec:DataGridSpecBase, grid:DataGrid)=>void, ids:string[]):boolean {
+        return ids.every((id) => {
+            return func.call({}, this._recordElements[id].getDataGridDataRows(), id, this._spec, this);
+        });
+    }
+
+
     // retreive the current sequence of records in the DataGrid
     currentSequence():string[] {
         return this._getSequence(this._sort[0]);
@@ -1058,30 +1090,12 @@ class DataGrid {
 
 }
 
+
+// TODO: This should be moved to Study-Lines.
 class LineResults extends DataGrid {
 
     constructor(dataGridSpec:DataGridSpecBase) {
         super(dataGridSpec);
-        this._getClasses();
-        this._getDivForTableHeaders();
-        this._getTableHeaderRow();
-        this._getTHeadRow();
-        this._getTableHeaderCell();
-    }
-    _getTHeadRow():JQuery {
-        return $(document.createElement('thead'));
-    }
-
-    _getTableHeaderRow():JQuery {
-        return $(document.createElement("tr")).addClass('header');
-    }
-
-    _getTableHeaderCell():HTMLElement {
-        return document.createElement("th");
-    }
-
-    _getDivForTableHeaders():any {
-        return this._getTableBody();
     }
 
     _getClasses():string {
@@ -1090,37 +1104,7 @@ class LineResults extends DataGrid {
 
 }
 
-class AssayResults extends DataGrid {
 
-    constructor(dataGridSpec:DataGridSpecBase) {
-        super(dataGridSpec);
-        this._getClasses();
-        this._getDivForTableHeaders();
-        this._getTableHeaderRow();
-        this._getTHeadRow();
-        this._getTableHeaderCell();
-    }
-    _getTHeadRow():JQuery {
-        return $(document.createElement('thead'));
-    }
-
-    _getTableHeaderRow():JQuery {
-        return $(document.createElement("tr")).addClass('header');
-    }
-
-    _getTableHeaderCell():HTMLElement {
-        return document.createElement("th");
-    }
-
-    _getDivForTableHeaders():any {
-        return $('#assaysSection');
-    }
-
-    _getClasses():string {
-        return 'dataTable sortable dragboxes hastablecontrols';
-    }
-
-}
 // Type definition for the records contained in a DataGrid
 class DataGridRecordSet {
     [index:string]:DataGridRecord;
@@ -1377,6 +1361,7 @@ class DataGridDataCell {
     maxWidth:string;
     minWidth:string;
     nowrap:boolean;
+    title:string;
     hoverEffect:boolean;
     contentFunction:(e:HTMLElement, index:number)=>void;
     contentString:string;
@@ -1433,6 +1418,10 @@ class DataGridDataCell {
             this.sideMenuItems.forEach((item) => {
                 $('<li>').html(item).appendTo(menu);
             });
+        }
+
+        if (this.title) {
+            c.setAttribute('title', this.title);
         }
 
         var cellClasses = [];
@@ -1539,10 +1528,13 @@ class DataGridWidget {
 
 
     // Utility function to create a label element
-    _createLabel(text:string, id:string):HTMLElement {
+    _createLabel(text:string, id:string, tip?:string):HTMLElement {
         var label:HTMLElement = document.createElement("label");
         label.setAttribute('for', id);
         label.appendChild(document.createTextNode(text));
+        if (tip) {
+            label.setAttribute('title', tip);
+        }
         return label;
     }
 
@@ -1554,6 +1546,14 @@ class DataGridWidget {
         cb.setAttribute('name', name);
         cb.setAttribute('type', 'checkbox');
         cb.setAttribute('value', value);
+        return cb;
+    }
+
+    _createButton(id:string, name:string):HTMLInputElement {
+        var cb:HTMLInputElement = document.createElement("input");
+        cb.setAttribute('id', id);
+        cb.setAttribute('name', name);
+        cb.setAttribute('type', 'button');
         return cb;
     }
 
@@ -1589,6 +1589,7 @@ class DataGridOptionWidget extends DataGridWidget {
     // but other UI can be created and used instead.
     checkBoxElement:HTMLInputElement;
     labelElement:HTMLElement;
+    buttonElement:HTMLElement;
 
     constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecBase) {
         super(dataGridOwnerObject, dataGridSpec);
@@ -1597,14 +1598,20 @@ class DataGridOptionWidget extends DataGridWidget {
 
 
     // Return a fragment to use in generating option widget IDs
-    getIDFragment():string {
-        return 'GenericOptionCB';
+    getIDFragment(uniqueID):string {
+        return this.dataGridSpec.tableSpec.id+'GenericOptionCB'+uniqueID
     }
 
 
     // Return text used to label the widget
     getLabelText():string {
         return 'Name Of Option';
+    }
+
+
+    // Mouseover text for the label (none by default)
+    getLabelTitle():string {
+        return null;
     }
 
 
@@ -1617,7 +1624,7 @@ class DataGridOptionWidget extends DataGridWidget {
     // The uniqueID is provided to assist the widget in avoiding collisions
     // when creating input element labels or other things requiring an ID.
     createElements(uniqueID:string):void {
-        var cbID:string = this.dataGridSpec.tableSpec.id+this.getIDFragment()+uniqueID;
+        var cbID:string = this.getIDFragment(uniqueID);
         var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
         // We need to make sure the checkbox has a callback to the DataGrid's handler function.
         // Among other things, the handler function will call the appropriate filtering functions for all the widgets in turn.
@@ -1626,7 +1633,7 @@ class DataGridOptionWidget extends DataGridWidget {
             cb.setAttribute('checked', 'checked');
         }
         this.checkBoxElement = cb;
-        this.labelElement = this._createLabel(this.getLabelText(), cbID);
+        this.labelElement = this._createLabel(this.getLabelText(), cbID, this.getLabelTitle());
         this._createdElements = true;
     }
 
@@ -1760,6 +1767,8 @@ class DataGridHeaderWidget extends DataGridWidget {
 // and checks every one it finds.
 class DGSelectAllWidget extends DataGridHeaderWidget {
 
+    private anySelected:boolean;
+
     constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecBase) {
         super(dataGridOwnerObject, dataGridSpec);
     }
@@ -1774,6 +1783,25 @@ class DGSelectAllWidget extends DataGridHeaderWidget {
             .addClass('tableControl')
             .click(() => this.clickHandler());
         this.element.setAttribute('type', 'button'); // JQuery attr cannot do this
+        this.anySelected = false;
+    }
+
+
+    refreshWidget():void {
+        this.testIfAnySelected();
+        this.updateButtonLabel();
+    }
+
+
+    updateButtonLabel():void {
+        if (this.anySelected) {
+            this.element.setAttribute('value', 'Select None');
+            //disable action buttons
+             $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',false);
+        } else {
+            this.element.setAttribute('value', 'Select All');
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',true);
+        }
     }
 
 
@@ -1783,53 +1811,41 @@ class DGSelectAllWidget extends DataGridHeaderWidget {
         this.dataGridOwnerObject.applyToRecordSet((rows) => {
             // each row in sequence
             rows.forEach((row) => {
-                // each cell in row
-                row.dataGridDataCells.forEach((cell) => {
-                    // if the cell has a checkbox, check it
-                     $(cell.checkboxElement).prop('checked', true).trigger('change');
-                });
+                if (row.dataGridDataCells) {
+                    // each cell in row
+                    row.dataGridDataCells.forEach((cell) => {
+                        var checkbox = cell.getCheckboxElement();
+                        if (checkbox) {
+                            $(cell.checkboxElement).prop('checked', !this.anySelected);
+                        }
+                    });
+                }
             });
         }, sequence);
-    }
-}
-
-// A generic "Deselect All" header widget, appearing as a button.
-// When clicked, it walks through every row and cell looking for DataGrid-created checkboxes,
-// and checks every one it finds.
-class DGDeselectAllWidget extends DataGridHeaderWidget {
-
-    constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecBase) {
-        super(dataGridOwnerObject, dataGridSpec);
+        this.anySelected = !this.anySelected;
+        this.updateButtonLabel();
     }
 
 
-    // The uniqueID is provided to assist the widget in avoiding collisions
-    // when creating input element labels or other things requiring an ID.
-    createElements(uniqueID:string):void {
-        var buttonID:string = this.dataGridSpec.tableSpec.id + 'DelAll' + uniqueID;
-        var button = $(this.element = document.createElement("input"));
-        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Deselect All' })
-            .addClass('tableControl')
-            .click(() => this.clickHandler());
-        this.element.setAttribute('type', 'button'); // JQuery attr cannot do this
-    }
-
-
-    clickHandler():void {
+    testIfAnySelected():boolean {
         var sequence = this.dataGridOwnerObject.currentSequence();
-        // Have DataGrid apply function to everything in current sequence
-        this.dataGridOwnerObject.applyToRecordSet((rows) => {
-            // each row in sequence
-            rows.forEach((row) => {
+        // Cannot use applyToRecordSet here because we will very likely want to exit early
+        this.anySelected = !(this.dataGridOwnerObject.testRecordSet((rows) => {
+            return rows.every((row) => {
+                if (!row.dataGridDataCells) { return true; }
                 // each cell in row
-                row.dataGridDataCells.forEach((cell) => {
-                    // if the cell has a checkbox, uncheck it
-                    $(cell.checkboxElement).prop('checked', false).trigger('change');
+                return row.dataGridDataCells.every((cell) => {
+                    var checkbox = cell.getCheckboxElement();
+                    if (!checkbox) { return true; }    // On to the next one
+                    // If it's checked, exit early, with our question answered.
+                    return !(checkbox.checked);
                 });
             });
-        }, sequence);
+        }, sequence));
+        return this.anySelected;
     }
 }
+
 
 
 // Here's an example of a working DataGridHeaderWidget.
@@ -2030,7 +2046,7 @@ class DGPagingWidget extends DataGridHeaderWidget {
     appendElements(container:HTMLElement, uniqueID:string):void {
         if (!this.createdElements()) {
             $(this.widgetElement = document.createElement('div'));
-            $('.searchStudies').append(this.widgetElement);
+            $(container).append(this.widgetElement);
             $(this.labelElement = document.createElement('span'))
                 .appendTo(this.widgetElement);
             $(this.prevElement = document.createElement('a'))

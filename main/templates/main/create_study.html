@@ -21,23 +21,10 @@
 
 {% block content %}
 
-<form action="{% url 'main:create_study' %}" class="edd-form" method="POST" style="clear:both;" id="general">
-    {% csrf_token %}
-
-    {{ form.non_field_errors }}
-    <table class="formTable" style="width:90%;">
-        <tr>
-            <td class="form-label">
-                <label for="{{ edit_study.name.id_for_label }}">Name for new Study:</label>
-            </td>
-            <td>
-                {{ form.name.errors }}
-                <div class="editable-field active" id="editable-study-name">
-                    {{ form.name }}
-                </div>
-            </td>
-        </tr>
-    </table>
-</form>
+<form action="{% url 'main:create_study' %}"  class="edd-form" method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" name="action" value="assay">Add Study</button>
+    </form>
 
 {% endblock content %}

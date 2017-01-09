@@ -4,9 +4,6 @@
 /// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
-/// <reference path="StudyGraphing.ts" />
-/// <reference path="GraphHelperMethods.ts" />
-/// <reference path="../typings/d3/d3.d.ts"/>
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -24,40 +21,32 @@ var StudyLines;
     var carbonBalanceDisplayIsFresh;
     var cSourceEntries;
     var mTypeEntries;
-    // The table spec object and table object for the Lines table.
-    var linesDataGridSpec;
-    var linesDataGrid;
     // Called when the page loads.
     function prepareIt() {
         var _this = this;
-        this.carbonBalanceData = null;
-        this.carbonBalanceDisplayIsFresh = false;
-        this.attachmentIDs = null;
-        this.attachmentsByID = null;
-        this.prevDescriptionEditElement = null;
-        this.metabolicMapID = -1;
-        this.metabolicMapName = null;
-        this.biomassCalculation = -1;
-        this.cSourceEntries = [];
-        this.mTypeEntries = [];
-        this.linesDataGridSpec = null;
-        this.linesDataGrid = null;
-        this.actionPanelIsInBottomBar = false;
-        this.linesActionPanelRefreshTimer = null;
-        this.positionActionsBarTimer = null;
+        carbonBalanceData = null;
+        carbonBalanceDisplayIsFresh = false;
+        attachmentIDs = null;
+        attachmentsByID = null;
+        prevDescriptionEditElement = null;
+        StudyLines.metabolicMapID = -1;
+        StudyLines.metabolicMapName = null;
+        StudyLines.biomassCalculation = -1;
+        cSourceEntries = [];
+        mTypeEntries = [];
+        StudyLines.linesDataGridSpec = null;
+        StudyLines.linesDataGrid = null;
+        StudyLines.actionPanelIsInBottomBar = false;
+        linesActionPanelRefreshTimer = null;
+        positionActionsBarTimer = null;
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', function (e) {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
         });
-        $(window).on('resize', StudyLines.queuePositionActionsBar);
+        $(window).on('resize', queuePositionActionsBar);
         $('#worklistButton').attr('title', 'select line(s) first');
-        $('#exportButton').attr('title', 'select line(s) first');
-        $('#show').click(function (event) {
-            event.preventDefault();
-            $(this).val() == "show" ? show_int() : show_hide();
-            return false;
-        });
+        $('#exportLineButton').attr('title', 'select line(s) first');
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
@@ -68,12 +57,10 @@ var StudyLines;
             'success': function (data) {
                 EDDData = $.extend(EDDData || {}, data);
                 // Instantiate a table specification for the Lines table
-                _this.linesDataGridSpec = new DataGridSpecLines();
-                _this.linesDataGridSpec.init();
+                StudyLines.linesDataGridSpec = new DataGridSpecLines();
+                StudyLines.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
-                _this.linesDataGrid = new LineResults(_this.linesDataGridSpec);
-                //stop spinner
-                // $('#loadingDiv').hide();
+                StudyLines.linesDataGrid = new LineResults(_this.linesDataGridSpec);
                 // Show possible next steps div if needed
                 if (_.keys(EDDData.Lines).length === 0) {
                     $('.noLines').css('display', 'block');
@@ -138,14 +125,21 @@ var StudyLines;
             $("#addAssayModal").removeClass('off').dialog("open");
             return false;
         });
-        $("#exportButton").click(function () {
+        $("#exportLineButton").click(function () {
             $("#exportModal").removeClass('off').dialog("open");
+            //add table to form as hidden field.
+            var table = $('#studyLinesTable').clone();
+            $('#exportForm').append(table);
+            table.hide();
             return false;
         });
         $('#worklistButton').click(function () {
+            var table = $('#studyLinesTable').clone();
+            $('#exportForm').append(table);
+            table.hide();
             $('select[name="export"]').val('worklist');
-            var test = $('button[value="line_action"]')[1];
-            $(test).click();
+            var lineActionButton = $('button[value="line_action"]')[0];
+            $(lineActionButton).click();
         });
         $('#editLineModal').on('change', '.line-meta > :input', function (ev) {
             // watch for changes to metadata values, and serialize to the meta_store field
@@ -174,6 +168,7 @@ var StudyLines;
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
+        queuePositionActionsBar();
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, function (id, protocol) {
             $.ajax({
@@ -237,11 +232,12 @@ var StudyLines;
         });
         if (count_rec < count_total) {
         }
+        queuePositionActionsBar();
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
     }
     function carbonBalanceColumnRevealedCallback(spec, dataGridObj) {
-        StudyLines.rebuildCarbonBalanceGraphs();
+        rebuildCarbonBalanceGraphs();
     }
     StudyLines.carbonBalanceColumnRevealedCallback = carbonBalanceColumnRevealedCallback;
     // Start a timer to wait before calling the routine that shows the actions panel.
@@ -260,7 +256,7 @@ var StudyLines;
         }
         if (_.keys(EDDData.Lines).length === 0) {
             $('.lineExplanation').css('display', 'block');
-            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton, #worklistButton, #exportButton").addClass('off');
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton, #worklistButton, #exportLineButton").addClass('off');
         }
         else {
             checkedLen = checkedBoxes.length;
@@ -270,12 +266,12 @@ var StudyLines;
                 'count': checkedLen,
                 'ids': checkedBoxes.map(function (box) { return box.value; })
             });
-            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportButton").removeClass('off');
+            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportLineButton").removeClass('off');
             if (checkedLen) {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', false);
                 $('#addNewLineButton').prop('disabled', true);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
-                $('#exportButton').attr('title', 'Export your lines in a file type of your choosing');
+                $('#exportLineButton').attr('title', 'Export your lines in a file type of your choosing');
                 if (checkedLen < 2) {
                     $('#groupButton').prop('disabled', true);
                 }
@@ -284,25 +280,23 @@ var StudyLines;
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', true);
                 $('#addNewLineButton').prop('disabled', false);
                 $('#worklistButton').attr('title', 'select line(s) first');
-                $('#exportButton').attr('title', 'select line(s) first');
+                $('#exportLineButton').attr('title', 'select line(s) first');
             }
-            StudyLines.queuePositionActionsBar();
         }
     }
     // Start a timer to wait before calling the routine that moves the actions bar.
     // Required so we don't crater the CPU with unserved resize events.
     function queuePositionActionsBar() {
-        if (this.positionActionsBarTimer) {
-            clearTimeout(this.positionActionsBarTimer);
+        if (positionActionsBarTimer) {
+            clearTimeout(positionActionsBarTimer);
         }
-        this.positionActionsBarTimer = setTimeout(StudyLines.positionActionsBar.bind(this), 50);
+        positionActionsBarTimer = setTimeout(StudyLines.positionActionsBar.bind(this), 50);
     }
     StudyLines.queuePositionActionsBar = queuePositionActionsBar;
     function positionActionsBar() {
         var h = $('#content').height(); // Height of the viewing region
         // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
         // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
-        // Also note we cannot use jQuery's "each" because of its reliance on the 'this' keyword.
         var sh = 0;
         $('#content').children().get().forEach(function (e) { sh += e.scrollHeight; });
         if (StudyLines.actionPanelIsInBottomBar) {
@@ -319,14 +313,6 @@ var StudyLines;
         }
     }
     StudyLines.positionActionsBar = positionActionsBar;
-    function clearAssayForm() {
-        var form = $('#id_assay-assay_id').closest('.disclose');
-        form.find('[name^=assay-]').not(':checkbox, :radio').val('');
-        form.find('[name^=assay-]').filter(':checkbox, :radio').prop('selected', false);
-        form.find('.cancel-link').remove();
-        form.find('.errorlist').remove();
-        return form;
-    }
     function clearLineForm() {
         var form = $('#editLineModal');
         form.find('.line-meta').remove();
@@ -337,15 +323,6 @@ var StudyLines;
         form.find('.bulk').addClass('off');
         form.off('change.bulk');
         return form;
-    }
-    function fillAssayForm(form, record) {
-        var user = EDDData.Users[record.experimenter];
-        form.find('[name=assay-assay_id]').val(record.id);
-        form.find('[name=assay-name]').val(record.name);
-        form.find('[name=assay-description]').val(record.description);
-        form.find('[name=assay-protocol]').val(record.pid);
-        form.find('[name=assay-experimenter_0]').val(user && user.uid ? user.uid : '--');
-        form.find('[name=assay-experimenter_1]').val(record.experimenter);
     }
     function fillLineForm(record) {
         var metaRow, experimenter, contact;
@@ -378,25 +355,6 @@ var StudyLines;
         form.find('[name=line-meta_store]').val(JSON.stringify(record.meta));
         form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
     }
-    function scrollToForm(form) {
-        // make sure form is disclosed
-        var top = form.toggleClass('discloseHide', false).offset().top;
-        $('html, body').animate({ 'scrollTop': top }, 'slow');
-    }
-    function updateUIAssayForm(form) {
-        var title, button;
-        // Update the disclose title to read Edit
-        title = form.find('.discloseLink > a').text('Edit Assay');
-        // Update the button to read Edit
-        button = form.find('[name=action][value=assay]').text('Edit Assay');
-        // Add link to revert back to 'Add Line' form
-        $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', function (ev) {
-            clearAssayForm();
-            title.text('Add Assays To Selected Lines');
-            button.text('Add Assay');
-            return false;
-        }).insertAfter(button);
-    }
     function insertLineMetadataRow(refRow, key, value) {
         var row, type, label, input, id = 'line-meta-' + key;
         row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
@@ -419,7 +377,7 @@ var StudyLines;
         // Update the disclose title
         var text = 'Add New Line';
         if (ids.length > 0) {
-            var text = 'Edit Line' + (ids.length > 1 ? 's' : '');
+            text = 'Edit Line' + (ids.length > 1 ? 's' : '');
         }
         form.prop('title', text);
         if (ids.length > 1) {
@@ -442,7 +400,6 @@ var StudyLines;
         }
         form.find('[name=line-ids]').val(ids.join(','));
         form.removeClass('off').dialog("open");
-        scrollToForm(form);
     }
     StudyLines.editLines = editLines;
     function onChangedMetabolicMap() {
@@ -861,11 +818,7 @@ var DataGridSpecLines = (function (_super) {
         showCarbonBalanceWidget.displayBeforeViewMenu(true);
         widgetSet.push(showCarbonBalanceWidget);
         this.carbonBalanceWidget = showCarbonBalanceWidget;
-        // A "deselect all" button
-        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
-        deselectAllWidget.displayBeforeViewMenu(true);
-        widgetSet.push(deselectAllWidget);
-        // A "select all" button
+        // A "select all / select none" button
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(selectAllWidget);
@@ -957,7 +910,7 @@ var DGGroupStudyReplicatesWidget = (function (_super) {
     }
     DGGroupStudyReplicatesWidget.prototype.createElements = function (uniqueID) {
         var pThis = this;
-        var cbID = this.dataGridSpec.tableSpec.id + 'GroupStudyReplicatesCB' + uniqueID;
+        var cbID = 'GroupStudyReplicatesCB';
         var cb = this._createCheckbox(cbID, cbID, '1');
         $(cb).click(function (e) {
             if (pThis.checkBoxElement.checked) {
