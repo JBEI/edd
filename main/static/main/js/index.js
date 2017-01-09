@@ -102,7 +102,8 @@ var DataGridSpecStudies = (function (_super) {
                 'hoverEffect': true,
                 'nowrap': true,
                 'sideMenuItems': sideMenuItems,
-                'contentString': ['<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>'].join('')
+                'contentString': ['<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>'].join(''),
+                'title': studyDoc.n
             })
         ];
     };
@@ -111,7 +112,8 @@ var DataGridSpecStudies = (function (_super) {
             new DataGridDataCell(gridSpec, index, {
                 'maxWidth': '400',
                 'customID': function (id) { return 'editableDescriptionField' + id; },
-                'contentString': gridSpec.dataObj[index].des || ''
+                'contentString': gridSpec.dataObj[index].des || '',
+                'title': gridSpec.dataObj[index].des || '',
             })
         ];
     };

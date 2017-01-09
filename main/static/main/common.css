@@ -1119,22 +1119,12 @@ table.formTable tr > td textarea {
     max-width: 200px;
 }
 
-#studiesTable td:nth-child(2):hover {
-    background: white;
-    overflow: visible;
-}
-
 #studiesTable td:first-child {
     white-space: nowrap;
     text-overflow: ellipsis;
     width: 40%;
     overflow: hidden;
     max-width: 200px;
-}
-
-#studiesTable td:first-child:hover {
-    overflow: visible;
-    background: white;
 }
 
 tr.multientrybuttonrow:hover div.multientrybutton {

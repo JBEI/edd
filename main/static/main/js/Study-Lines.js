@@ -134,6 +134,9 @@ var StudyLines;
             return false;
         });
         $('#worklistButton').click(function () {
+            var table = $('#studyLinesTable').clone();
+            $('#exportForm').append(table);
+            table.hide();
             $('select[name="export"]').val('worklist');
             var lineActionButton = $('button[value="line_action"]')[0];
             $(lineActionButton).click();

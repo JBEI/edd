@@ -1361,6 +1361,7 @@ class DataGridDataCell {
     maxWidth:string;
     minWidth:string;
     nowrap:boolean;
+    title:string;
     hoverEffect:boolean;
     contentFunction:(e:HTMLElement, index:number)=>void;
     contentString:string;
@@ -1417,6 +1418,10 @@ class DataGridDataCell {
             this.sideMenuItems.forEach((item) => {
                 $('<li>').html(item).appendTo(menu);
             });
+        }
+
+        if (this.title) {
+            c.setAttribute('title', this.title);
         }
 
         var cellClasses = [];

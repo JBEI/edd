@@ -106,7 +106,8 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
                 'hoverEffect': true,
                 'nowrap': true,
                 'sideMenuItems': sideMenuItems,
-                'contentString': [ '<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>' ].join('')
+                'contentString': [ '<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>' ].join(''),
+                'title': studyDoc.n
             })
         ];
     }
@@ -116,7 +117,8 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             new DataGridDataCell(gridSpec, index, {
                 'maxWidth': '400',
                 'customID': (id) => { return 'editableDescriptionField' + id; },
-                'contentString': gridSpec.dataObj[index].des || ''
+                'contentString': gridSpec.dataObj[index].des || '',
+                'title': gridSpec.dataObj[index].des || '',
             })
         ];
     }

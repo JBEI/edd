@@ -1180,6 +1180,9 @@ var DataGridDataCell = (function () {
                 $('<li>').html(item).appendTo(menu);
             });
         }
+        if (this.title) {
+            c.setAttribute('title', this.title);
+        }
         var cellClasses = [];
         if (this.colspan > 1) {
             c.setAttribute('colspan', this.colspan.toString(10));
