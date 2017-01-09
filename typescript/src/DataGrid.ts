@@ -14,9 +14,11 @@ class DataGrid {
 
     private _table:HTMLElement;
     private _tableBody:HTMLElement;
+    private _tableBodyJquery: JQuery;
     private _tableHeaderCell:HTMLElement;
     private _waitBadge:HTMLElement;
-    private tableTitleSpan:HTMLElement;
+    private _classes:string;
+    private _section:JQuery;
 
     private _headerRows:HTMLElement[];
     private _totalColumnCount:number;
@@ -57,43 +59,63 @@ class DataGrid {
         this._spec = dataGridSpec;
         this._table = dataGridSpec.tableElement;
         this._timers = {};
+        this._classes = 'dataTable sortable dragboxes hastablecontrols table-bordered';
 
         var tableBody:JQuery = $(this._tableBody = document.createElement("tbody"));
+                 // First step: Blow away the old contents of the table
+                $(this._table).empty()
+                    .attr({ 'cellpadding': 0, 'cellspacing': 0 })
+                    .addClass(this._getClasses())
+                    // TODO: Most of these classes are probably not needed now
+                    .append(tableBody);
+                this._tableBodyJquery = tableBody;
+                var tHeadRow = this._getTHeadRow();
+                var tableHeaderRow = this._getTableHeaderRow().appendTo(tHeadRow);
+                var tableHeaderCell = $(this._tableHeaderCell = this._getTableHeaderCell()).appendTo(tableHeaderRow);
+                var waitBadge = $(this._waitBadge = document.createElement("span"))
+                    .addClass('waitbadge wait').appendTo(tableHeaderCell);
+                if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+                     tableHeaderCell.attr('colspan', this._totalColumnCount);
+                }
+                this._section = $(tableBody).parent().parent();
+                // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
+                if (dataGridSpec.tableSpec.showHeader) {
+                    tHeadRow.insertBefore(this._getDivForTableHeaders());
+                }
 
-        // First step: Blow away the old contents of the table
-        $(this._table).empty()
-            .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-            // TODO: Most of these classes are probably not needed now
-            .addClass('dataTable sortable dragboxes hastablecontrols')
-            .append(tableBody);
+            // Apply the default column visibility settings.
+            this.prepareColumnVisibility();
+            var tHead = $(document.createElement("thead"));
+            var headerRows = this._headerRows = this._buildTableHeaders();
+            tHead.append(headerRows);
+             $(tHead).insertBefore(this._tableBody);
 
-        var tHeadRow = $(document.createElement('thead'));
-        var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
-        var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
-            .appendTo(tableHeaderRow);
-        if (dataGridSpec.tableSpec.name) {
-            $(this.tableTitleSpan = document.createElement("span")).text(dataGridSpec.tableSpec.name).appendTo(tableHeaderCell);
-        }
-        var waitBadge = $(this._waitBadge = document.createElement("span"))
-            .addClass('waitbadge wait').appendTo(tableHeaderCell);
-        if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
-            tableHeaderCell.attr('colspan', this._totalColumnCount);
-        }
-
-        // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
-        if (dataGridSpec.tableSpec.showHeader) {
-            tHeadRow.insertBefore(tableBody);
-        }
-
-        // Apply the default column visibility settings.
-        this.prepareColumnVisibility();
-
-        var headerRows = this._headerRows = this._buildTableHeaders();
-        this._headerRows.forEach((v) => tHeadRow.append(v));
-
-        setTimeout( () => this._initializeTableData(), 1 );
+            setTimeout( () => this._initializeTableData(), 1 );
     }
 
+    _getTableBody():JQuery {
+        return this._tableBodyJquery;
+    }
+
+    _getTableHeaderCell():HTMLElement {
+        return document.createElement("span")
+    }
+
+    _getTableHeaderRow():JQuery {
+        return $(document.createElement("span")).addClass('header');
+    }
+
+    _getTHeadRow():JQuery {
+        return $(document.createElement('div')).addClass('searchStudies');
+    }
+
+    _getDivForTableHeaders():any {
+        return this._section;
+    }
+
+    _getClasses():string {
+        return this._classes;
+    }
 
     // Breaking up the initial table creation into two stages allows the browser to render a preliminary
     // version of the table with a header but no data rows, then continue loading other assets in parallel.
@@ -134,7 +156,7 @@ class DataGrid {
         this._applyColumnVisibility();
 
         // Prepare the table for sorting
-           this._prepareSortable();
+        this._prepareSortable();
 
         this._spec.onInitialized(this);
         $(this._waitBadge).addClass('off');
@@ -271,13 +293,22 @@ class DataGrid {
                 });
             });
         }
+    //     <div class="helpBadgeDiv">line help
+    // <div class="helpContent">
+    //             <p>A line describes the experimental details of your study by defining the
+    //                 experimental conditions and associated meta data for i.e. a single flask.  Some examples
+    //                 that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
+    //                 speed.  Users can manually add lines, or download the study template for bulk uploads.
+    //             </p>
+    //   </div>
+    // </div>
 
         var mainSpan = $(this._optionsMenuElement = document.createElement("span"))
             .attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
 
         var menuLabel = $(this._optionsLabel = document.createElement("div"))
             .addClass('pulldownMenuLabelOff')
-            .text('View\u25BE')
+            .text('View options \u25BE')
             .click(() => { if (menuLabel.hasClass('pulldownMenuLabelOff')) this._showOptMenu(); })
             .appendTo(mainSpan);
 
@@ -547,7 +578,6 @@ class DataGrid {
                 }
             });
             $(frag).insertBefore($(this._tableBody));
-
             }
 
         //hacky way to show lines that were hidden from grouping replicates
@@ -1028,8 +1058,69 @@ class DataGrid {
 
 }
 
+class LineResults extends DataGrid {
 
+    constructor(dataGridSpec:DataGridSpecBase) {
+        super(dataGridSpec);
+        this._getClasses();
+        this._getDivForTableHeaders();
+        this._getTableHeaderRow();
+        this._getTHeadRow();
+        this._getTableHeaderCell();
+    }
+    _getTHeadRow():JQuery {
+        return $(document.createElement('thead'));
+    }
 
+    _getTableHeaderRow():JQuery {
+        return $(document.createElement("tr")).addClass('header');
+    }
+
+    _getTableHeaderCell():HTMLElement {
+        return document.createElement("th");
+    }
+
+    _getDivForTableHeaders():any {
+        return this._getTableBody();
+    }
+
+    _getClasses():string {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    }
+
+}
+
+class AssayResults extends DataGrid {
+
+    constructor(dataGridSpec:DataGridSpecBase) {
+        super(dataGridSpec);
+        this._getClasses();
+        this._getDivForTableHeaders();
+        this._getTableHeaderRow();
+        this._getTHeadRow();
+        this._getTableHeaderCell();
+    }
+    _getTHeadRow():JQuery {
+        return $(document.createElement('thead'));
+    }
+
+    _getTableHeaderRow():JQuery {
+        return $(document.createElement("tr")).addClass('header');
+    }
+
+    _getTableHeaderCell():HTMLElement {
+        return document.createElement("th");
+    }
+
+    _getDivForTableHeaders():any {
+        return $('#assaysSection');
+    }
+
+    _getClasses():string {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    }
+
+}
 // Type definition for the records contained in a DataGrid
 class DataGridRecordSet {
     [index:string]:DataGridRecord;
@@ -1359,9 +1450,9 @@ class DataGridDataCell {
         if (this.hoverEffect) {
             cellClasses.push('popupcell');
         }
-        if (this.nowrap) {
-            cellClasses.push('nowrap');
-        }
+
+        cellClasses.push('nowrap');
+
         if (this.minWidth) {
             c.style.minWidth = this.minWidth + 'px';
         }
@@ -1938,13 +2029,13 @@ class DGPagingWidget extends DataGridHeaderWidget {
     // If the elements have not been created yet, they are created, and the uniqueID is passed along.
     appendElements(container:HTMLElement, uniqueID:string):void {
         if (!this.createdElements()) {
-            $(this.widgetElement = document.createElement('div'))
-                .appendTo(container);
+            $(this.widgetElement = document.createElement('div'));
+            $('.searchStudies').append(this.widgetElement);
             $(this.labelElement = document.createElement('span'))
                 .appendTo(this.widgetElement);
             $(this.prevElement = document.createElement('a'))
                 .attr('href', '#').css('margin', '0 5px')
-                .text('< Previous').prop('disabled', true)
+                .text('< Previous').addClass('disableLink')
                 .appendTo(this.widgetElement)
                 .click(() => {
                     this.source.pageDelta(-1).requestPageOfData(this.requestDone);
@@ -1959,6 +2050,7 @@ class DGPagingWidget extends DataGridHeaderWidget {
                     return false;
                 });
             this.createdElements(true);
+            $(this.widgetElement).addClass('studyPrevNext')
         }
         this.refreshWidget();
     }
@@ -1974,8 +2066,17 @@ class DGPagingWidget extends DataGridHeaderWidget {
             labelText = 'No results found!';
         }
         $(this.labelElement).text(labelText);
-        $(this.prevElement).prop('disabled', !start);
-        $(this.nextElement).prop('disabled', start + viewSize >= totalSize);
+        if (!start) {
+           $(this.prevElement).addClass('disableLink');
+        } else {
+            $(this.prevElement).removeClass('disableLink');
+        }
+        if (start + viewSize >= totalSize) {
+            $(this.nextElement).addClass('disableLink');
+        } else {
+            $(this.nextElement).removeClass('disableLink');
+        }
+
     }
 }
 
@@ -2077,12 +2178,6 @@ class DataGridColumnSpec {
         this.createdDataCellObjects[index] = c.slice(0);
           return c;
     }
-
-
-    // clearEntireIndex(index:number):void {
-    //     this.createdDataCellObjects = {};
-    // }
-
 
     clearIndexAtID(index:string):void {
         delete this.createdDataCellObjects[index];
@@ -2216,11 +2311,11 @@ class DataGridSpecBase {
         return [
             new DataGridColumnSpec(1, (gridSpec:DataGridSpecBase, index:string):DataGridDataCell[] => {
                    // Create cell(s) for a given record ID, for column 1
-                return [new DataGridDataCell(gridSpec, index)]; 
+                return [new DataGridDataCell(gridSpec, index)];
                }),
             new DataGridColumnSpec(2, (gridSpec:DataGridSpecBase, index:string):DataGridDataCell[] => {
                    // Create cell(s) for a given record ID, for column 2
-                return [new DataGridDataCell(gridSpec, index)]; 
+                return [new DataGridDataCell(gridSpec, index)];
                }),
         ];
     }
@@ -2344,5 +2439,4 @@ class DataGridSpecBase {
     }
 
 }
-
 

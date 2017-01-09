@@ -303,6 +303,8 @@ var DataGridSpecStudies = (function (_super) {
     // The order of the array will be the order they are added to the header bar.
     // It's perfectly fine to return an empty array.
     DataGridSpecStudies.prototype.createCustomHeaderWidgets = function (dataGrid) {
+        // override bootsrap
+        $('#hStudyMod').css('border-right', '1px solid lightgrey');
         // Create a single widget for showing disabled Studies
         var array = [
             new DGStudiesSearchWidget(dataGrid, this, 'Search Studies', 40, true),
@@ -455,17 +457,6 @@ var DGStudiesSearchWidget = (function (_super) {
         };
         this._spec = spec;
     }
-    // This is called to append the widget elements beneath the given element.
-    // If the elements have not been created yet, they are created, and the uniqueID is passed along.
-    DGStudiesSearchWidget.prototype.appendElements = function (container, uniqueID) {
-        _super.prototype.appendElements.call(this, container, uniqueID);
-        var span = document.createElement("span");
-        var spanID = this.dataGridSpec.tableSpec.id + 'SearchDisc' + uniqueID;
-        span.setAttribute('id', spanID);
-        span.className = 'searchDisclosure';
-        this.searchDisclosureElement = span;
-        container.appendChild(this.searchDisclosureElement);
-    };
     // OVERRIDE
     // HEY GUYS WE DON'T NEED TO FILTER HERE ANYMORE
     DGStudiesSearchWidget.prototype.applyFilterToIDs = function (rowIDs) {

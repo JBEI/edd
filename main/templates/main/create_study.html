@@ -3,27 +3,41 @@
 
 {% block js_css %}
     {{ block.super }}
-    <!-- jQuery-UI needed for autocomplete2 -->
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}"/>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/EDDEditableElement.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Study-Create.js' %}"></script>
 {% endblock js_css %}
-
 
 {% block head_title %}
     {{ block.super }} &mdash; Create Study
 {% endblock head_title %}
 
-
 {% block body_title %}
     {{ block.super }} &mdash; Create Study
 {% endblock body_title %}
 
-
 {% block content %}
-    <form action="{% url 'main:create_study' %}" class="edd-form" method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Add Study</button>
-    </form>
+
+<form action="{% url 'main:create_study' %}" class="edd-form" method="POST" style="clear:both;" id="general">
+    {% csrf_token %}
+
+    {{ form.non_field_errors }}
+    <table class="formTable" style="width:90%;">
+        <tr>
+            <td class="form-label">
+                <label for="{{ edit_study.name.id_for_label }}">Name for new Study:</label>
+            </td>
+            <td>
+                {{ form.name.errors }}
+                <div class="editable-field active" id="editable-study-name">
+                    {{ form.name }}
+                </div>
+            </td>
+        </tr>
+    </table>
+</form>
+
 {% endblock content %}

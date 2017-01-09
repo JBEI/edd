@@ -1,43 +1,24 @@
-{% extends "edd_base.html" %}
+{% extends "main/study.html" %}
 {% load staticfiles %}
 
 {% block js_css %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
-  <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/GraphHelperMethods.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/StudyGraphing.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-  <script type="text/javascript"
-      src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-  <link rel="stylesheet" type="text/css"
-      href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
   <script type="text/javascript"
       src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
-  <script type="text/javascript"
-      src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
   <script type="text/javascript"
       src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
-  <link rel="stylesheet" type="text/css"
-      href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
-
-  <!-- some page-specific code -->
   <script type="text/javascript">
 
-  var ATData = {}; // this needs to be declared before loading AssayTableData.js!
-  var EDDData = {};
-
-  EDDData.currentUserID = {{ user.pk }};
-  EDDData.currentStudyID = {{ study.id }};
+    var ATData = {}; // this needs to be declared before loading AssayTableData.js!
 
   </script>
-  <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
-  <link rel="stylesheet" type="text/css" href="{% static 'main/style.css' %}">
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/createMultiAxisLine.js' %}"></script>
@@ -47,21 +28,21 @@
 
 
 {% block head_title %}
-    {{ study.name }} - Experiment Data Depot
+    {{ block.super }}
 {% endblock head_title %}
 
-
 {% block body_title %}
-    <h1>Data import for <a href="/study/{{ study.id }}/">{{ study.name }}</a></h1>
+    {{ block.super }}
 {% endblock body_title %}
 
 
 {% block content %}
+    {{ block.super }}
 <form method="post" id="assayTableForm" action="/study/{{ study.id }}/import/">
 {% csrf_token %}
 
 <!-- Step 1 -->
-<div class="pageSection" id="selectMajorKindStep">
+<div class="pageSection stepBorder" id="selectMajorKindStep">
   <div class="sectionHead">
     <span>Step 1 : Specify the type/format of data to import.</span>
     <div class="helpBadgeDiv">Help
@@ -223,7 +204,7 @@
     </ul>
   </div>
 
-  <div class="sectionContent" style="border-top:1px solid #6CA5E9;padding:0em 1em 3px 3em;">
+  <div class="sectionContent stepSeparator">
     <table class="formTable" style="margin-left:1em;">
       <tr>
         <td rowspan="2" style="vertical-align:middle;">
@@ -276,7 +257,7 @@
 
 
 <!-- Step 2 -->
-<div class="pageSection" id="rawInputStep">
+<div class="pageSection stepBorder" id="rawInputStep">
   <div class="sectionHead" style="padding-right:7px;">
     <span>Step 2 : Drag a file, or type in your raw data.</span>
 
@@ -293,7 +274,7 @@
       </div>
     </div>
 
-    <div class="resetButtonDiv" id="resetstep2" style="float:right;">Reset</div>
+    <div class="resetButtonDiv" id="resetstep2">Reset</div>
 
     <span class="tableControl" style="padding-top:1px;">
       <input type="checkbox" name="ignoreGaps" id="ignoreGaps" value="1" />
@@ -331,7 +312,7 @@
 </div>
 
 <!-- Step 3 -->
-<div class="pageSection" id="identifyStructuresStep">
+<div class="pageSection stepBorder " id="identifyStructuresStep">
   <div class="sectionHead">
     <span>Step 3 : Verify the data has been interpreted correctly, and disable any values you do
       not want.</span>
@@ -382,7 +363,7 @@
 </div>
 
 <!-- Step 4 -->
-<div class="pageSection" id="typeDisambiguationStep">
+<div class="pageSection stepBorder " id="typeDisambiguationStep">
   <div class="sectionHead">
     <span>Step 4 : Help to disambiguate some of the detected values.</span>
 
@@ -498,14 +479,17 @@
           <tr>
             <td>
               <input class="autocomp" type="text" size="20" name="masterMComp" id="masterMComp"
+                  eddautocompletetype="MeasurementCompartment"
                   value="" style="margin-right: 2px;">
               <input type="hidden" id="masterMCompValue" name="masterMCompValue">
             </td><td>
               <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
+                  eddautocompletetype="GenericOrMetabolite"
                   value="" style="margin-right: 2px;">
               <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
             </td><td>
               <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
+                  eddautocompletetype="MeasurementUnit"
                   value="">
               <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
             </td>
@@ -521,7 +505,9 @@
         <tr>
           <td>
             <label for="masterUnits">
-              <input type="text" size="15" name="masterUnits" id="masterUnits" value="" />
+              <input type="text" size="15" name="masterUnits" id="masterUnits"
+                  eddautocompletetype="MeasurementUnit"
+                  value="" />
               <input type="hidden" name="masterUnitsValue" />
             </label>
           </td>
@@ -567,7 +553,7 @@
 </div>
 
 <!-- Step 5 -->
-<div class="pageSection" id="reviewImportStep">
+<div class="pageSection stepBorder " id="reviewImportStep">
   <div class="sectionHead">
     <span>Step 5 : Review your changes and submit.</span>
     <div class="helpBadgeDiv">Help

@@ -323,7 +323,9 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 	// The order of the array will be the order they are added to the header bar.
 	// It's perfectly fine to return an empty array.
 	createCustomHeaderWidgets(dataGrid:DataGrid):DataGridHeaderWidget[] {
-		// Create a single widget for showing disabled Studies
+        // override bootsrap
+        $('#hStudyMod').css('border-right', '1px solid lightgrey')
+        // Create a single widget for showing disabled Studies
         var array:DataGridHeaderWidget[] = [
             new DGStudiesSearchWidget(dataGrid, this, 'Search Studies', 40, true),
             new DGPagingWidget(dataGrid, this, this)
@@ -474,18 +476,6 @@ class DGStudiesSearchWidget extends DGSearchWidget {
 	constructor(grid:DataGrid, spec:DataGridSpecStudies, placeHolder:string, size:number, getsFocus:boolean) {
 		super(grid, spec, placeHolder, size, getsFocus);
         this._spec = spec;
-	}
-
-	// This is called to append the widget elements beneath the given element.
-	// If the elements have not been created yet, they are created, and the uniqueID is passed along.
-	appendElements(container:HTMLElement, uniqueID:string):void {
-		super.appendElements(container, uniqueID);
-        var span:HTMLSpanElement = document.createElement("span");
-        var spanID:string = this.dataGridSpec.tableSpec.id+'SearchDisc'+uniqueID;
-        span.setAttribute('id', spanID);
-        span.className = 'searchDisclosure';
-        this.searchDisclosureElement = span;
-		container.appendChild(this.searchDisclosureElement);
 	}
 
     // OVERRIDE

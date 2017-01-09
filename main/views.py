@@ -25,15 +25,17 @@ from django.utils.translation import ugettext as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
+from rest_framework.exceptions import MethodNotAllowed
 
 from . import autocomplete, redis
 from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
+from .importer.experiment_desc import CombinatorialCreationImporter
 from .importer.parser import find_parser
 from .importer.table import import_task
-from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
+from .export.forms import ExportOptionForm, ExportSelectionForm,  WorklistForm
 from .export.sbml import SbmlExport
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
@@ -55,6 +57,7 @@ from .utilities import (
 logger = logging.getLogger(__name__)
 CAN_VIEW = [StudyPermission.READ, StudyPermission.WRITE]
 CAN_EDIT = [StudyPermission.WRITE]
+FILE_TYPE_HEADER = 'HTTP_X_EDD_FILE_TYPE'
 
 
 @register.filter(name='lookup')
@@ -81,14 +84,13 @@ def formula(molecular_formula):
 
 def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW):
     """
-    Function used with the main.urls.study_url_patterns view functions to load a study either from
-    a numeric primary key or a slug.
-    :param request: the request from the view function
-    :param pk: any matched value from the url pattern for the primary key
-    :param slug: any matched value from the url pattern for the slug
-    :param permission_type: iterable of permissions to pass to main.models.Study.user_permission_q
-    :return: the Study object matching the URL, or a django.http.Http404 if the study does not
-        exist OR if no valid permissions are set for the requesting user
+    Loads a study as a request user; throws a 404 if the study does not exist OR if no valid
+    permissions are set for the user on the study.
+
+    :param request: the request loading the study
+    :param pk: study's primary key; at least one of pk and slug must be provided
+    :param slug: study's slug ID; at least one of pk and slug must be provided
+    :param permission_type: required permission for the study access
     """
     permission = Q()
     if not request.user.is_superuser:
@@ -102,7 +104,7 @@ def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW):
 
 class StudyCreateView(generic.edit.CreateView):
     """
-    View for request to create a study, and the index page.
+    View for request to create a Study.
     """
     form_class = CreateStudyForm
     model = Study
@@ -127,10 +129,14 @@ class StudyCreateView(generic.edit.CreateView):
         return kwargs
 
     def get_success_url(self):
-        return reverse('main:detail', kwargs={'slug': self.object.slug})
+        return reverse('main:overview', kwargs={'slug': self.object.slug})
 
 
-class StudyIndexView(StudyCreateView):
+class StudyIndexView(generic.list.ListView):
+    """
+    View for the the index page.
+    """
+    model = Study
     template_name = 'main/index.html'
 
     def get_context_data(self, **kwargs):
@@ -144,26 +150,24 @@ class StudyIndexView(StudyCreateView):
         latest = map(lambda pk: latest_by_pk.get(pk, None), lvs)
         # filter out the Nones
         context['latest_viewed_studies'] = filter(bool, latest)
+        context['can_create'] = Study.user_can_create(self.request.user)
         return context
 
 
-class StudyDetailView(generic.DetailView):
+class StudyDetailBaseView(generic.DetailView):
     """ Study details page, displays line/assay data. """
     model = Study
-    template_name = 'main/detail.html'
+    template_name = 'main/study-overview.html'
 
     def get_context_data(self, **kwargs):
-        context = super(StudyDetailView, self).get_context_data(**kwargs)
+        context = super(StudyDetailBaseView, self).get_context_data(**kwargs)
         instance = self.get_object()
         lvs = redis.LatestViewedStudies(self.request.user)
         lvs.viewed_study(instance)
-        context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
-        context['new_assay'] = AssayForm(prefix='assay')
-        context['new_attach'] = CreateAttachmentForm()
-        context['new_comment'] = CreateCommentForm()
-        context['new_line'] = LineForm(prefix='line')
-        context['new_measurement'] = MeasurementForm(prefix='measurement')
+        # TODO: Replace 'self.get_object()' with 'instance'?
         context['writable'] = self.get_object().user_can_write(self.request.user)
+        context['lines'] = self.get_object().line_set.count() > 0
+        context['assays'] = Assay.objects.filter(line__study=self.get_object()).count() > 0
         return context
 
     def get_object(self, queryset=None):
@@ -172,17 +176,360 @@ class StudyDetailView(generic.DetailView):
         if hasattr(self, '_detail_object') and queryset is None:
             return self._detail_object
         # call parents
-        obj = super(StudyDetailView, self).get_object(queryset)
+        obj = super(StudyDetailBaseView, self).get_object(queryset)
         # save parents result if no filtering queryset
         if queryset is None:
             self._detail_object = obj
         return obj
 
     def get_queryset(self):
-        qs = super(StudyDetailView, self).get_queryset()
+        qs = super(StudyDetailBaseView, self).get_queryset()
         if self.request.user.is_superuser:
             return qs
         return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
+
+    def handle_unknown(self, request, context, *args, **kwargs):
+        messages.error(
+            request, 'Unknown action, or you do not have permission to modify this study.'
+        )
+        return False
+
+
+class StudyOverviewView(StudyDetailBaseView):
+    """
+    Study overview page, displays study name, description, comments, attachments, permissions.
+    """
+    template_name = 'main/study-overview.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(StudyOverviewView, self).get_context_data(**kwargs)
+        context['showingoverview'] = True
+        context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
+        context['new_attach'] = CreateAttachmentForm()
+        context['new_comment'] = CreateCommentForm()
+        return context
+
+    def handle_attach(self, request, context, *args, **kwargs):
+        form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
+        if form.is_valid():
+            form.save()
+            return True
+        else:
+            context['new_attach'] = form
+        return False
+
+    def handle_comment(self, request, context, *args, **kwargs):
+        form = CreateCommentForm(request.POST, edd_object=self.get_object())
+        if form.is_valid():
+            form.save()
+            return True
+        else:
+            context['new_comment'] = form
+        return False
+
+    def handle_update(self, request, context, *args, **kwargs):
+        study = self.get_object()
+        form = CreateStudyForm(request.POST or None, instance=study, prefix='study')
+        if form.is_valid():
+            self.object = form.save()  # make sure we're updating the view object
+            return True
+        return False
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        action = request.POST.get('action', None)
+        context = self.get_context_data(object=self.object, action=action, request=request)
+        can_write = self.object.user_can_write(request.user)
+        # actions that may not require write permissions
+        action_lookup = {
+            'comment': self.handle_comment,
+        }
+        # actions that require write permissions
+        writable_lookup = {
+            'attach': self.handle_attach,
+            'update': self.handle_update,
+        }
+        if can_write:
+            action_lookup.update(writable_lookup)
+        # find appropriate handler function for the submitted action
+        view_or_valid = action_lookup.get(action, self.handle_unknown)(
+            request, context, *args, **kwargs
+        )
+        if type(view_or_valid) == bool:
+            # boolean means a response to same page, with flag noting whether form was valid
+            return self.post_response(request, context, view_or_valid)
+        elif isinstance(view_or_valid, HttpResponse):
+            # got a response, directly return
+            return view_or_valid
+        else:
+            # otherwise got a view function, call it
+            return view_or_valid(request, *args, **kwargs)
+
+    def post_response(self, request, context, form_valid):
+        if form_valid:
+            study_modified.send(sender=self.__class__, study=self.object)
+            return HttpResponseRedirect(reverse('main:overview', kwargs={'pk': self.object.pk}))
+        return self.render_to_response(context)
+
+
+class StudyLinesView(StudyDetailBaseView):
+    """ Study details displays line data. """
+    template_name = 'main/study-lines.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(StudyLinesView, self).get_context_data(**kwargs)
+        context['showinglines'] = True
+        context['new_assay'] = AssayForm(prefix='assay')
+        context['new_line'] = LineForm(prefix='line')
+        context['new_measurement'] = MeasurementForm(prefix='measurement')
+        return context
+
+    def handle_assay(self, request, context, *args, **kwargs):
+        assay_id = request.POST.get('assay-assay_id', None)
+        assay = self._get_assay(assay_id) if assay_id else None
+        if assay:
+            form = AssayForm(request.POST, instance=assay, lines=[assay.line_id], prefix='assay')
+        else:
+            ids = request.POST.getlist('lineId', [])
+            form = AssayForm(request.POST, lines=ids, prefix='assay')
+            if len(ids) == 0:
+                form.add_error(None, ValidationError(
+                    _('Must select at least one line to add Assay'),
+                    code='no-lines-selected'
+                    ))
+        context['new_assay'] = form
+        if form.is_valid():
+            form.save()
+            return True
+        return False
+
+    def handle_assay_action(self, request, context, *args, **kwargs):
+        assay_action = request.POST.get('assay_action', None)
+        can_write = self.object.user_can_write(request.user)
+        form_valid = False
+        # allow any who can view to export
+        if assay_action == 'export':
+            export_type = request.POST.get('export', 'csv')
+            if export_type == 'sbml':
+                return SbmlView.as_view()
+            else:
+                return ExportView.as_view()
+        # but not edit
+        elif not can_write:
+            messages.error(request, 'You do not have permission to modify this study.')
+        elif assay_action == 'mark':
+            form_valid = self.handle_assay_mark(request)
+        elif assay_action == 'delete':
+            form_valid = self.handle_measurement_delete(request)
+        elif assay_action == 'edit':
+            return self.handle_measurement_edit(request)
+        elif assay_action == 'update':
+            return self.handle_measurement_update(request, context)
+        else:
+            messages.error(request, 'Unknown assay action %s' % (assay_action))
+        return form_valid
+
+    def handle_measurement(self, request, context, *args, **kwargs):
+        ids = request.POST.getlist('assayId', [])
+        form = MeasurementForm(request.POST, assays=ids, prefix='measurement')
+        if len(ids) == 0:
+            form.add_error(None, ValidationError(
+                _('Must select at least one assay to add Measurement'),
+                code='no-assays-selected'
+                ))
+        context['new_measurement'] = form
+        if form.is_valid():
+            form.save()
+            return True
+        return False
+
+    def handle_clone(self, request, context, *args, **kwargs):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        cloned = 0
+        for line_id in ids:
+            line = self._get_line(line_id)
+            if line:
+                # easy way to clone is just pretend to fill out add line form
+                initial = LineForm.initial_from_model(line)
+                # update name to indicate which is the clone
+                initial['name'] = initial['name'] + ' clone'
+                clone = LineForm(initial, study=study)
+                if clone.is_valid():
+                    clone.save()
+                    cloned += 1
+        messages.success(request, 'Cloned %(cloned)s of %(total)s Lines' % {
+            'cloned': cloned,
+            'total': len(ids),
+            })
+        return True
+
+    def handle_enable(self, request, context, *args, **kwargs):
+        return self.handle_enable_disable(request, 'enable')
+
+    def handle_disable(self, request, context, *args, **kwargs):
+        return self.handle_enable_disable(request, 'disable')
+
+    def handle_enable_disable(self, request, line_action):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        active = line_action == 'enable'
+        count = Line.objects.filter(study=study, id__in=ids).update(active=active)
+        messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
+        return True
+
+    def handle_group(self, request, context, *args, **kwargs):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        if len(ids) > 1:
+            first = ids[0]
+            count = Line.objects.filter(study=study, pk__in=ids).update(replicate_id=first)
+            messages.success(request, 'Grouped %s Lines' % count)
+            return True
+        messages.error(request, 'Must select more than one Line to group.')
+        return False
+
+    def handle_line(self, request, context, *args, **kwargs):
+        ids = [v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '']
+        if len(ids) == 0:
+            return self.handle_line_new(request, context)
+        elif len(ids) == 1:
+            return self.handle_line_edit(request, context, ids[0])
+        else:
+            return self.handle_line_bulk(request, ids)
+        return False
+
+    def handle_line_action(self, request, context, *args, **kwargs):
+        can_write = self.object.user_can_write(request.user)
+        line_action = request.POST.get('line_action', None)
+        form_valid = False
+        # allow any who can view to export
+        if line_action == 'export':
+            export_type = request.POST.get('export', 'csv')
+            return self._get_export_types().get(export_type, ExportView.as_view())
+        # but not edit
+        elif not can_write:
+            messages.error(request, 'You do not have permission to modify this study.')
+        else:
+            messages.error(request, 'Unknown line action %s' % (line_action))
+        return form_valid
+
+    def handle_line_bulk(self, request, ids):
+        study = self.get_object()
+        total = len(ids)
+        saved = 0
+        for value in ids:
+            logger.info('\tprocessing line bulk edit for %s', value)
+            line = self._get_line(value)
+            if line:
+                form = LineForm(request.POST, instance=line, prefix='line', study=study)
+                form.check_bulk_edit()  # removes fields having disabled bulk edit checkbox
+                if form.is_valid():
+                    form.save()
+                    saved += 1
+                else:
+                    for error in form.errors.values():
+                        messages.warning(request, error)
+                    logger.info('Errors: %s', form.errors)
+        messages.success(request, 'Saved %(saved)s of %(total)s Lines' % {
+            'saved': saved,
+            'total': total,
+            })
+        return True
+
+    def handle_line_edit(self, request, context, pk):
+        study = self.get_object()
+        line = self._get_line(pk)
+        if line:
+            form = LineForm(request.POST, instance=line, prefix='line', study=study)
+            context['new_line'] = form
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Saved Line '%(name)s'" % {'name': form['name'].value()})
+                return True
+        else:
+            messages.error(request, 'Failed to load line for editing.')
+        return False
+
+    def handle_line_new(self, request, context):
+        form = LineForm(request.POST, prefix='line', study=self.get_object())
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Added Line '%(name)s'" % {'name': form['name'].value()})
+            return True
+        else:
+            context['new_line'] = form
+        return False
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        action = request.POST.get('action', None)
+        context = self.get_context_data(object=self.object, action=action, request=request)
+        can_write = self.object.user_can_write(request.user)
+        # actions that may not require write permissions
+        action_lookup = {
+            'assay_action': self.handle_assay_action,
+            'line_action': self.handle_line_action,
+        }
+        # actions that require write permissions
+        writable_lookup = {
+            'assay': self.handle_assay,
+            'clone': self.handle_clone,
+            'enable': self.handle_enable,
+            'disable': self.handle_disable,
+            'group': self.handle_group,
+            'line': self.handle_line,
+            'measurement': self.handle_measurement,
+        }
+        if can_write:
+            action_lookup.update(writable_lookup)
+        # find appropriate handler function for the submitted action
+        view_or_valid = action_lookup.get(action, self.handle_unknown)(
+            request, context, *args, **kwargs
+        )
+        if type(view_or_valid) == bool:
+            # boolean means a response to same page, with flag noting whether form was valid
+            return self.post_response(request, context, view_or_valid)
+        elif isinstance(view_or_valid, HttpResponse):
+            # got a response, directly return
+            return view_or_valid
+        else:
+            # otherwise got a view function, call it
+            return view_or_valid(request, *args, **kwargs)
+
+    def post_response(self, request, context, form_valid):
+        if form_valid:
+            study_modified.send(sender=self.__class__, study=self.object)
+            return HttpResponseRedirect(reverse('main:lines', kwargs={'slug': self.object.slug}))
+        return self.render_to_response(context)
+
+    def _get_export_types(self):
+        return {
+            'csv': ExportView.as_view(),
+            'sbml': SbmlView.as_view(),
+            'study': StudyCreateView.as_view(),
+            'worklist': WorklistView.as_view(),
+        }
+
+    def _get_line(self, line_id):
+        study = self.get_object()
+        try:
+            return Line.objects.get(pk=line_id, study=study)
+        except Line.DoesNotExist:
+            logger.warning('Failed to load (line, study) combo (%s,%s)' % (line_id, study.pk))
+        return None
+
+
+class StudyDetailView(StudyDetailBaseView):
+    """ Study details page, displays graph/assay data. """
+    template_name = 'main/study-data.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(StudyDetailView, self).get_context_data(**kwargs)
+        context['showingdata'] = True
+        context['new_assay'] = AssayForm(prefix='assay')
+        context['new_measurement'] = MeasurementForm(prefix='measurement')
+        return context
 
     def handle_assay(self, request, context, *args, **kwargs):
         assay_id = request.POST.get('assay-assay_id', None)
@@ -245,139 +592,6 @@ class StudyDetailView(generic.DetailView):
             'count': count,
             })
         return True
-
-    def handle_attach(self, request, context, *args, **kwargs):
-        form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
-        if form.is_valid():
-            form.save()
-            return True
-        else:
-            context['new_attach'] = form
-        return False
-
-    def handle_clone(self, request, context, *args, **kwargs):
-        ids = request.POST.getlist('lineId', [])
-        study = self.get_object()
-        cloned = 0
-        for line_id in ids:
-            line = self._get_line(line_id)
-            if line:
-                # easy way to clone is just pretend to fill out add line form
-                initial = LineForm.initial_from_model(line)
-                # update name to indicate which is the clone
-                initial['name'] = initial['name'] + ' clone'
-                clone = LineForm(initial, study=study)
-                if clone.is_valid():
-                    clone.save()
-                    cloned += 1
-        messages.success(request, 'Cloned %(cloned)s of %(total)s Lines' % {
-            'cloned': cloned,
-            'total': len(ids),
-            })
-        return True
-
-    def handle_comment(self, request, context, *args, **kwargs):
-        form = CreateCommentForm(request.POST, edd_object=self.get_object())
-        if form.is_valid():
-            form.save()
-            return True
-        else:
-            context['new_comment'] = form
-        return False
-
-    def handle_disable(self, request):
-        ids = request.POST.getlist('lineId', [])
-        study = self.get_object()
-        disable = request.POST.get('disable', 'true')
-        active = disable == 'false'
-        count = Line.objects.filter(study=study, id__in=ids).update(active=active)
-        messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
-        return True
-
-    def handle_group(self, request, context, *args, **kwargs):
-        ids = request.POST.getlist('lineId', [])
-        study = self.get_object()
-        if len(ids) > 1:
-            first = ids[0]
-            count = Line.objects.filter(study=study, pk__in=ids).update(replicate_id=first)
-            messages.success(request, 'Grouped %s Lines' % count)
-            return True
-        messages.error(request, 'Must select more than one Line to group.')
-        return False
-
-    def handle_line(self, request, context, *args, **kwargs):
-        ids = [v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '']
-        if len(ids) == 0:
-            return self.handle_line_new(request, context)
-        elif len(ids) == 1:
-            return self.handle_line_edit(request, context, ids[0])
-        else:
-            return self.handle_line_bulk(request, ids)
-        return False
-
-    def handle_line_action(self, request, context, *args, **kwargs):
-        can_write = self.object.user_can_write(request.user)
-        line_action = request.POST.get('line_action', None)
-        form_valid = False
-        # allow any who can view to export
-        if line_action == 'export':
-            export_type = request.POST.get('export', 'csv')
-            return self._get_export_types().get(export_type, ExportView.as_view())
-        # but not edit
-        elif not can_write:
-            messages.error(request, 'You do not have permission to modify this study.')
-        elif line_action == 'edit':
-            form_valid = self.handle_disable(request)
-        else:
-            messages.error(request, 'Unknown line action %s' % (line_action))
-        return form_valid
-
-    def handle_line_bulk(self, request, ids):
-        study = self.get_object()
-        total = len(ids)
-        saved = 0
-        for value in ids:
-            logger.info('\tprocessing line bulk edit for %s', value)
-            line = self._get_line(value)
-            if line:
-                form = LineForm(request.POST, instance=line, prefix='line', study=study)
-                form.check_bulk_edit()  # removes fields having disabled bulk edit checkbox
-                if form.is_valid():
-                    form.save()
-                    saved += 1
-                else:
-                    for error in form.errors.values():
-                        messages.warning(request, error)
-                    logger.info('Errors: %s', form.errors)
-        messages.success(request, 'Saved %(saved)s of %(total)s Lines' % {
-            'saved': saved,
-            'total': total,
-            })
-        return True
-
-    def handle_line_edit(self, request, context, pk):
-        study = self.get_object()
-        line = self._get_line(pk)
-        if line:
-            form = LineForm(request.POST, instance=line, prefix='line', study=study)
-            context['new_line'] = form
-            if form.is_valid():
-                form.save()
-                messages.success(request, "Saved Line '%(name)s'" % {'name': form['name'].value()})
-                return True
-        else:
-            messages.error(request, 'Failed to load line for editing.')
-        return False
-
-    def handle_line_new(self, request, context):
-        form = LineForm(request.POST, prefix='line', study=self.get_object())
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Added Line '%(name)s'" % {'name': form['name'].value()})
-            return True
-        else:
-            context['new_line'] = form
-        return False
 
     def handle_measurement(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('assayId', [])
@@ -485,21 +699,20 @@ class StudyDetailView(generic.DetailView):
             return self.handle_measurement_edit_response(request, lines, measures)
         return self.post_response(request, context, True)
 
-    def handle_unknown(self, request, context, *args, **kwargs):
-        messages.error(
-            request, 'Unknown action, or you do not have permission to modify this study.'
-        )
-        return False
-
-    def handle_update(self, request, context, *args, **kwargs):
-        study = self.get_object()
-        form = CreateStudyForm(request.POST or None, instance=study, prefix='study')
-        if form.is_valid():
-            self.object = form.save()  # make sure we're updating the view object
-            return True
-        return False
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        # redirect to overview page if there are no lines or assays
+        if self.object.line_set.count() == 0:
+            return HttpResponseRedirect(
+                reverse('main:overview', kwargs={'slug': self.object.slug})
+            )
+        # redirect to lines page if there are no assays
+        if Assay.objects.filter(line__study=self.object).count() == 0:
+            return HttpResponseRedirect(reverse('main:lines', kwargs={'slug': self.object.slug}))
+        return super(StudyDetailView, self).get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+
         self.object = self.get_object()
         action = request.POST.get('action', None)
         context = self.get_context_data(object=self.object, action=action, request=request)
@@ -507,18 +720,12 @@ class StudyDetailView(generic.DetailView):
         # actions that may not require write permissions
         action_lookup = {
             'assay_action': self.handle_assay_action,
-            'comment': self.handle_comment,
-            'line_action': self.handle_line_action,
         }
         # actions that require write permissions
         writable_lookup = {
             'assay': self.handle_assay,
-            'attach': self.handle_attach,
             'clone': self.handle_clone,
-            'group': self.handle_group,
-            'line': self.handle_line,
             'measurement': self.handle_measurement,
-            'update': self.handle_update,
         }
         if can_write:
             action_lookup.update(writable_lookup)
@@ -548,22 +755,6 @@ class StudyDetailView(generic.DetailView):
             return Assay.objects.get(pk=assay_id, line__study=study)
         except Assay.DoesNotExist:
             logger.warning('Failed to load assay,study combo %s,%s' % (assay_id, study.pk))
-        return None
-
-    def _get_export_types(self):
-        return {
-            'csv': ExportView.as_view(),
-            'sbml': SbmlView.as_view(),
-            'study': StudyCreateView.as_view(),
-            'worklist': WorklistView.as_view(),
-        }
-
-    def _get_line(self, line_id):
-        study = self.get_object()
-        try:
-            return Line.objects.get(pk=line_id, study=study)
-        except Line.DoesNotExist:
-            logger.warning('Failed to load (line, study) combo (%s,%s)' % (line_id, study.pk))
         return None
 
 
@@ -937,8 +1128,12 @@ def study_import_table(request, pk=None, slug=None):
     :raises: Exception if an error occurrs during the import attempt
     """
     study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+    lines = study.line_set.all()
+    assays = study.line_set.count()
+
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
+
     if request.method == "POST":
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug('\n'.join([
@@ -961,17 +1156,66 @@ def study_import_table(request, pk=None, slug=None):
             # show the first error message to the user. continuing the import attempt to collect
             # more potentially-useful errors makes the code too complex / hard to maintain.
             messages.error(request, e)
+        # uncomment below once you can import data to test if this works
+        # return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
     return render(
         request,
         "main/import.html",
         context={
             "study": study,
             "protocols": protocols,
+            "showingimport": True,
+            "lines": lines,
+            "assays": assays,
         },
     )
 
 
-# /utilities/parsefile
+# /study/<study_id>/define/
+@ensure_csrf_cookie
+def study_define(request, pk=None, slug=None):
+    """
+    View for defining a study's lines / assays from a template file. On success, renders the study
+    page, with a summary of the created lines/assays. On failure, returns a JSON string with a
+    description of the error message.
+    """
+
+    study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+
+    if request.method != "POST":
+        raise MethodNotAllowed(request.method)
+
+    user = request.user
+    dry_run = 'dryRun' in request.META.keys()
+    allow_duplicate_names = 'allowDuplicateNames' in request.META.keys()
+
+    is_excel_file = request.META[FILE_TYPE_HEADER] == 'xlsx'
+    if is_excel_file:
+        file_name = request.META['HTTP_X_FILE_NAME']
+        logger.info('Parsing template file "%s"' % file_name)
+    else:
+        logger.info('Parsing request body as JSON input')
+
+    importer = CombinatorialCreationImporter(study, user)
+    try:
+        with transaction.atomic(savepoint=False):
+            result = importer.do_import(request, not is_excel_file, allow_duplicate_names, dry_run)
+        if not dry_run and 'errors' in result:
+            return JsonResponse(result, status=400)
+        return JsonResponse(result)
+    except RuntimeError as e:
+        logger.exception('Failed to import study definition')
+        importer.errors['exceptions'].append(e)
+        return JsonResponse(
+            {
+                'errors': importer.errors,
+                'warnings': importer.warnings,
+            },
+            status=500
+        )
+
+
+# /utilities/parsefile/
 # To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
 def utilities_parse_import_file(request):
     """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
@@ -989,7 +1233,7 @@ def utilities_parse_import_file(request):
 
     # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and
     # that guess is sent along in a custom header:
-    edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
+    edd_file_type = request.META.get(FILE_TYPE_HEADER)
     edd_import_mode = request.META.get('HTTP_X_EDD_IMPORT_MODE')
 
     parse_fn = find_parser(edd_import_mode, edd_file_type)
@@ -1013,8 +1257,7 @@ def utilities_parse_import_file(request):
     )
 
 
-# /study/<study_id>/import/rnaseq
-# FIXME should have trailing slash?
+# /study/<study_id>/import/rnaseq/
 @ensure_csrf_cookie
 def study_import_rnaseq(request, pk=None, slug=None):
     """ View for importing multiple sets of RNA-seq measurements in various simple tabular formats
@@ -1040,8 +1283,7 @@ def study_import_rnaseq(request, pk=None, slug=None):
     )
 
 
-# /study/<study_id>/import/rnaseq/edgepro
-# FIXME should have trailing slash?
+# /study/<study_id>/import/rnaseq/edgepro/
 @ensure_csrf_cookie
 def study_import_rnaseq_edgepro(request, pk=None, slug=None):
     """ View for importing a single set of RNA-seq measurements from the EDGE-pro pipeline,
@@ -1089,8 +1331,7 @@ def study_import_rnaseq_edgepro(request, pk=None, slug=None):
     )
 
 
-# /study/<study_id>/import/rnaseq/parse
-# FIXME should have trailing slash?
+# /study/<study_id>/import/rnaseq/parse/
 def study_import_rnaseq_parse(request, pk=None, slug=None):
     """ Parse raw data from an uploaded text file, and return JSON object of processed result.
         Result is identical to study_import_rnaseq_process, but this method is invoked by
@@ -1113,8 +1354,7 @@ def study_import_rnaseq_parse(request, pk=None, slug=None):
         return JsonResponse(result)
 
 
-# /study/<study_id>/import/rnaseq/process
-# FIXME should have trailing slash?
+# /study/<study_id>/import/rnaseq/process/
 def study_import_rnaseq_process(request, pk=None, slug=None):
     """ Process form submission containing either a file or text field, and return JSON object of
         processed result. """
@@ -1145,17 +1385,17 @@ def study_import_rnaseq_process(request, pk=None, slug=None):
         return JsonResponse(result)
 
 
-# /data/users
+# /data/users/
 def data_users(request):
     return JsonResponse({"EDDData": get_edddata_users()}, encoder=JSONDecimalEncoder)
 
 
-# /data/misc
+# /data/misc/
 def data_misc(request):
     return JsonResponse({"EDDData": get_edddata_misc()}, encoder=JSONDecimalEncoder)
 
 
-# /data/measurements
+# /data/measurements/
 def data_measurements(request):
     data_meas = get_edddata_measurement()
     data_misc = get_edddata_misc()
@@ -1285,12 +1525,12 @@ def data_sbml_compute(request, sbml_id, rxn_id):
     raise Http404("Could not find reaction")
 
 
-# /data/strains
+# /data/strains/
 def data_strains(request):
     return JsonResponse({"EDDData": get_edddata_strains()}, encoder=JSONDecimalEncoder)
 
 
-# /data/metadata
+# /data/metadata/
 def data_metadata(request):
     return JsonResponse(
         {
@@ -1302,12 +1542,12 @@ def data_metadata(request):
         encoder=JSONDecimalEncoder)
 
 
-# /data/carbonsources
+# /data/carbonsources/
 def data_carbonsources(request):
     return JsonResponse({"EDDData": get_edddata_carbon_sources()}, encoder=JSONDecimalEncoder)
 
 
-# /download/<file_id>
+# /download/<file_id>/
 def download(request, file_id):
     model = Attachment.objects.get(pk=file_id)
     if not model.user_can_read(request.user):
@@ -1336,7 +1576,7 @@ meta_pattern = re.compile(r'(\w*)MetadataType$')
 # /search
 def search(request):
     """ Naive implementation of model-independent server-side autocomplete backend,
-        paired with autocomplete2.js on the client side. Call out to Solr or ICE where
+        paired with EDDAutocomplete.js on the client side. Call out to Solr or ICE where
         needed. """
     return model_search(request, request.GET["model"])
 
@@ -1348,8 +1588,8 @@ AUTOCOMPLETE_VIEW_LOOKUP = {
     'MetaboliteExchange': autocomplete.search_sbml_exchange,
     'MetaboliteSpecies': autocomplete.search_sbml_species,
     'Strain': autocomplete.search_strain,
-    'StudyWrite': autocomplete.search_study_writable,
-    'StudyLines': autocomplete.search_study_lines,
+    'StudyWritable': autocomplete.search_study_writable,
+    'StudyLine': autocomplete.search_study_lines,
     'User': autocomplete.search_user,
 }
 

@@ -11,7 +11,7 @@ StudyDGraphing = {
 
 	Setup:function(graphdiv) {
 
-		if (graphdiv) {
+        if (graphdiv) {
 			this.graphDiv = $("#" + graphdiv);
 		} else {
 			this.graphDiv = $("#graphDiv");

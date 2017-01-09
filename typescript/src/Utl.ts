@@ -53,6 +53,38 @@ module Utl {
 	}
 
 
+
+	export class Tabs {
+	    // Set up click-to-browse tabs
+	    static prepareTabs() {
+	        // declare the click handler at the document level, then filter to any link inside a .tab
+	        $(document).on('click', '.tabBar span:not(.active)', (e) => {
+	            var targetTab = $(e.target).closest('span');
+	            var activeTabs = targetTab.closest('div.tabBar').children('span.active');
+
+	            activeTabs.removeClass('active');
+	            targetTab.addClass('active');
+
+	            var targetTabContentID = targetTab.attr('for');
+	            var activeTabEls = activeTabs.get();
+
+	            if (targetTabContentID) {
+		            // Hide the content section for whatever tabs were active, then show the one selected
+		            for ( var i = 0; i < activeTabEls.length; i++ ) {
+		                var a = activeTabEls[i];
+		                var tabContentID = $(a).attr('for');
+		                if (tabContentID) {
+			                $('#'+tabContentID).addClass('off');
+			        	}
+		            }
+		            $('#'+targetTabContentID).removeClass('off');
+		    	}
+	        });
+	    }
+	}
+
+
+
 	export class QtipHelper {
 		public create(linkElement, contentFunction, params:any):void {
 

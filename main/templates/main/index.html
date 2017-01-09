@@ -6,6 +6,8 @@
     <!-- jQuery-UI needed for autocomplete2 -->
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}"/>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
     <!-- -->
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
@@ -25,24 +27,19 @@
 
 {% block content %}
     {% if can_create %}
-    <div class="pageSection disclose discloseHide" id="addNewStudyMain">
-        <div class="sectionHead">
-            <span class="discloseLink"><a href="#">Add A New Study</a></span>
+        <div style="float: right">
+            <a href="{% url 'main:create_study' %}" class="btn btn-primary btn-lg">Add New<br />Study</a>
         </div>
-        <div class="sectionContent discloseBody">
-            <form action="{% url 'main:create_study' %}" class="edd-form" method="POST">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <button type="submit">Add Study</button>
-            </form>
-        </div>
-    </div>
     {% endif %}
-    <p>Last viewed:
-    {% for study in latest_viewed_studies %}
-        <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
-    {% endfor %}
-    </p>
+    <h2>Recently viewed Studies:</h2>
+    <div class="lastViewed">
+        {% for study in latest_viewed_studies %}
+            <span><a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a></span>
+            {% if not forloop.last %}{% endif %}
+        {% endfor %}
+    </div>
+
+    <h2>All Studies:</h2>
     <div class="pageSection">
         <table id="studiesTable"></table>
     </div>

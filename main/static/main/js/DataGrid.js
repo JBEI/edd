@@ -32,34 +32,53 @@ var DataGrid = (function () {
         this._spec = dataGridSpec;
         this._table = dataGridSpec.tableElement;
         this._timers = {};
+        this._classes = 'dataTable sortable dragboxes hastablecontrols table-bordered';
         var tableBody = $(this._tableBody = document.createElement("tbody"));
         // First step: Blow away the old contents of the table
         $(this._table).empty()
             .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-            .addClass('dataTable sortable dragboxes hastablecontrols')
+            .addClass(this._getClasses())
             .append(tableBody);
-        var tHeadRow = $(document.createElement('thead'));
-        var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
-        var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
-            .appendTo(tableHeaderRow);
-        if (dataGridSpec.tableSpec.name) {
-            $(this.tableTitleSpan = document.createElement("span")).text(dataGridSpec.tableSpec.name).appendTo(tableHeaderCell);
-        }
+        this._tableBodyJquery = tableBody;
+        var tHeadRow = this._getTHeadRow();
+        var tableHeaderRow = this._getTableHeaderRow().appendTo(tHeadRow);
+        var tableHeaderCell = $(this._tableHeaderCell = this._getTableHeaderCell()).appendTo(tableHeaderRow);
         var waitBadge = $(this._waitBadge = document.createElement("span"))
             .addClass('waitbadge wait').appendTo(tableHeaderCell);
         if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
             tableHeaderCell.attr('colspan', this._totalColumnCount);
         }
+        this._section = $(tableBody).parent().parent();
         // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
         if (dataGridSpec.tableSpec.showHeader) {
-            tHeadRow.insertBefore(tableBody);
+            tHeadRow.insertBefore(this._getDivForTableHeaders());
         }
         // Apply the default column visibility settings.
         this.prepareColumnVisibility();
+        var tHead = $(document.createElement("thead"));
         var headerRows = this._headerRows = this._buildTableHeaders();
-        this._headerRows.forEach(function (v) { return tHeadRow.append(v); });
+        tHead.append(headerRows);
+        $(tHead).insertBefore(this._tableBody);
         setTimeout(function () { return _this._initializeTableData(); }, 1);
     }
+    DataGrid.prototype._getTableBody = function () {
+        return this._tableBodyJquery;
+    };
+    DataGrid.prototype._getTableHeaderCell = function () {
+        return document.createElement("span");
+    };
+    DataGrid.prototype._getTableHeaderRow = function () {
+        return $(document.createElement("span")).addClass('header');
+    };
+    DataGrid.prototype._getTHeadRow = function () {
+        return $(document.createElement('div')).addClass('searchStudies');
+    };
+    DataGrid.prototype._getDivForTableHeaders = function () {
+        return this._section;
+    };
+    DataGrid.prototype._getClasses = function () {
+        return this._classes;
+    };
     // Breaking up the initial table creation into two stages allows the browser to render a preliminary
     // version of the table with a header but no data rows, then continue loading other assets in parallel.
     // It actually speeds up the entire table creation as well, for reasons that are not very clear.
@@ -208,11 +227,20 @@ var DataGrid = (function () {
                 });
             });
         }
+        //     <div class="helpBadgeDiv">line help
+        // <div class="helpContent">
+        //             <p>A line describes the experimental details of your study by defining the
+        //                 experimental conditions and associated meta data for i.e. a single flask.  Some examples
+        //                 that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
+        //                 speed.  Users can manually add lines, or download the study template for bulk uploads.
+        //             </p>
+        //   </div>
+        // </div>
         var mainSpan = $(this._optionsMenuElement = document.createElement("span"))
             .attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
         var menuLabel = $(this._optionsLabel = document.createElement("div"))
             .addClass('pulldownMenuLabelOff')
-            .text('View\u25BE')
+            .text('View options \u25BE')
             .click(function () { if (menuLabel.hasClass('pulldownMenuLabelOff'))
             _this._showOptMenu(); })
             .appendTo(mainSpan);
@@ -884,6 +912,60 @@ var DataGrid = (function () {
     };
     return DataGrid;
 }());
+var LineResults = (function (_super) {
+    __extends(LineResults, _super);
+    function LineResults(dataGridSpec) {
+        _super.call(this, dataGridSpec);
+        this._getClasses();
+        this._getDivForTableHeaders();
+        this._getTableHeaderRow();
+        this._getTHeadRow();
+        this._getTableHeaderCell();
+    }
+    LineResults.prototype._getTHeadRow = function () {
+        return $(document.createElement('thead'));
+    };
+    LineResults.prototype._getTableHeaderRow = function () {
+        return $(document.createElement("tr")).addClass('header');
+    };
+    LineResults.prototype._getTableHeaderCell = function () {
+        return document.createElement("th");
+    };
+    LineResults.prototype._getDivForTableHeaders = function () {
+        return this._getTableBody();
+    };
+    LineResults.prototype._getClasses = function () {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    };
+    return LineResults;
+}(DataGrid));
+var AssayResults = (function (_super) {
+    __extends(AssayResults, _super);
+    function AssayResults(dataGridSpec) {
+        _super.call(this, dataGridSpec);
+        this._getClasses();
+        this._getDivForTableHeaders();
+        this._getTableHeaderRow();
+        this._getTHeadRow();
+        this._getTableHeaderCell();
+    }
+    AssayResults.prototype._getTHeadRow = function () {
+        return $(document.createElement('thead'));
+    };
+    AssayResults.prototype._getTableHeaderRow = function () {
+        return $(document.createElement("tr")).addClass('header');
+    };
+    AssayResults.prototype._getTableHeaderCell = function () {
+        return document.createElement("th");
+    };
+    AssayResults.prototype._getDivForTableHeaders = function () {
+        return $('#assaysSection');
+    };
+    AssayResults.prototype._getClasses = function () {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    };
+    return AssayResults;
+}(DataGrid));
 // Type definition for the records contained in a DataGrid
 var DataGridRecordSet = (function () {
     function DataGridRecordSet() {
@@ -1130,9 +1212,7 @@ var DataGridDataCell = (function () {
         if (this.hoverEffect) {
             cellClasses.push('popupcell');
         }
-        if (this.nowrap) {
-            cellClasses.push('nowrap');
-        }
+        cellClasses.push('nowrap');
         if (this.minWidth) {
             c.style.minWidth = this.minWidth + 'px';
         }
@@ -1578,13 +1658,13 @@ var DGPagingWidget = (function (_super) {
     DGPagingWidget.prototype.appendElements = function (container, uniqueID) {
         var _this = this;
         if (!this.createdElements()) {
-            $(this.widgetElement = document.createElement('div'))
-                .appendTo(container);
+            $(this.widgetElement = document.createElement('div'));
+            $('.searchStudies').append(this.widgetElement);
             $(this.labelElement = document.createElement('span'))
                 .appendTo(this.widgetElement);
             $(this.prevElement = document.createElement('a'))
                 .attr('href', '#').css('margin', '0 5px')
-                .text('< Previous').prop('disabled', true)
+                .text('< Previous').addClass('disableLink')
                 .appendTo(this.widgetElement)
                 .click(function () {
                 _this.source.pageDelta(-1).requestPageOfData(_this.requestDone);
@@ -1599,6 +1679,7 @@ var DGPagingWidget = (function (_super) {
                 return false;
             });
             this.createdElements(true);
+            $(this.widgetElement).addClass('studyPrevNext');
         }
         this.refreshWidget();
     };
@@ -1614,8 +1695,18 @@ var DGPagingWidget = (function (_super) {
             labelText = 'No results found!';
         }
         $(this.labelElement).text(labelText);
-        $(this.prevElement).prop('disabled', !start);
-        $(this.nextElement).prop('disabled', start + viewSize >= totalSize);
+        if (!start) {
+            $(this.prevElement).addClass('disableLink');
+        }
+        else {
+            $(this.prevElement).removeClass('disableLink');
+        }
+        if (start + viewSize >= totalSize) {
+            $(this.nextElement).addClass('disableLink');
+        }
+        else {
+            $(this.nextElement).removeClass('disableLink');
+        }
     };
     return DGPagingWidget;
 }(DataGridHeaderWidget));
@@ -1665,9 +1756,6 @@ var DataGridColumnSpec = (function () {
         this.createdDataCellObjects[index] = c.slice(0);
         return c;
     };
-    // clearEntireIndex(index:number):void {
-    //     this.createdDataCellObjects = {};
-    // }
     DataGridColumnSpec.prototype.clearIndexAtID = function (index) {
         delete this.createdDataCellObjects[index];
     };

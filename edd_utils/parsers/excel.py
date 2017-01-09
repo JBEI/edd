@@ -39,7 +39,7 @@ def import_xlsx_tables (file,
     worksheet_name=None,
     followed_by_blank_row=False,
     enforce_non_blank_cells=False,
-    expect_numeric_data=False) :
+    expect_numeric_data=False):
   """
   Process an excel file and extract the coherent table(s).  This will attempt
   to use several heuristics to identify what parts of the worksheet(s) contain
