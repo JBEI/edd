@@ -1945,25 +1945,6 @@ namespace StudyDataPage {
         return maxType;
     }
 
-
-    /**
-     * this function takes in the event, selector type, rect obj, selector object and
-     * handles the button event.
-     */
-    function buttonEventHandler(newSet, event, rect, selector, selectors) {
-        event.preventDefault();
-        if (newSet.length === 0) {
-            $(selectors[selector]).prepend("<p class='noData'>No data selected - please " +
-            "filter</p>")
-            $('.tooMuchData').remove();
-        } else {
-            $('.noData').remove();
-            svgWidth(selectors[selector], rect);
-        }
-        return false;
-    }
-
-
     /**
      * this function takes in input min y value, max y value, and the sorted json object.
      *  outputs a grouped bar graph with values grouped by assay name

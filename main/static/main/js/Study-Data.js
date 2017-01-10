@@ -1722,25 +1722,6 @@ var StudyDataPage;
         });
         return labels;
     }
-    /** this function takes in element and returns an array of selectors
-     * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
-     * <div id=​"barAssay">​</div>​]
-     */
-    function getButtonElement(element) {
-        return $(element.siblings(':first')).find("label");
-    }
-    /**
-     * this function takes in the graphDiv element and returns an array of 4 buttons
-     */
-    function getSelectorElement(element) {
-        if ($(element).attr('id') != 'maingraph') {
-            var selector = element.siblings().eq(1);
-            return $(selector).children();
-        }
-        else {
-            return element.siblings().addBack();
-        }
-    }
     /** this function takes in an element selector and an array of svg rects and returns
      * returns message or nothing.
      */
@@ -1781,23 +1762,6 @@ var StudyDataPage;
             }
         }
         return maxType;
-    }
-    /**
-     * this function takes in the event, selector type, rect obj, selector object and
-     * handles the button event.
-     */
-    function buttonEventHandler(newSet, event, rect, selector, selectors) {
-        event.preventDefault();
-        if (newSet.length === 0) {
-            $(selectors[selector]).prepend("<p class='noData'>No data selected - please " +
-                "filter</p>");
-            $('.tooMuchData').remove();
-        }
-        else {
-            $('.noData').remove();
-            svgWidth(selectors[selector], rect);
-        }
-        return false;
     }
     /**
      * this function takes in input min y value, max y value, and the sorted json object.
