@@ -41,9 +41,8 @@ RUN pip install -r /tmp/requirements.txt
 # Copy in entrypoint shell scripts
 COPY entrypoint.sh /usr/local/bin
 
-# Copy in EDD python code and put in default local settings
-RUN git clone --depth 1 -b master https://github.com/JBEI/edd.git /usr/local/edd \
-    && cp /usr/local/edd/edd/settings/local.py-example /usr/local/edd/edd/settings/local.py
+# Copy in EDD python code
+RUN git clone --depth 1 -b master https://github.com/JBEI/edd.git /usr/local/edd
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["--help"]
