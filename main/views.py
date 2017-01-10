@@ -408,7 +408,7 @@ class StudyOverviewView(StudyDetailBaseView):
     def post_response(self, request, context, form_valid):
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(reverse('main:overview', kwargs={'pk': self.object.pk}))
+            return HttpResponseRedirect(reverse('main:overview', kwargs={'slug': self.object.slug}))
         return self.render_to_response(context)
 
 

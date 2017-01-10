@@ -49,9 +49,6 @@ var StudyOverview;
     function fileReturnedFromServer(fileContainer, result) {
         //is this needed?
         $('#fileDropInfoSending').addClass('off');
-        // if (fileContainer.fileType == "xlsx") {
-        //     this.clearDropZone();
-        // }
         var currentPath = window.location.pathname;
         var linesPathName = currentPath.slice(0, -8) + 'lines';
         //display success message
