@@ -126,7 +126,7 @@ module EDDTableImport {
     export function onWindowLoad(): void {
         var atdata_url:string;
 
-        atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
+        atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata/";
 
         $('.disclose').find('a.discloseLink').on('click', EDDTableImport.disclose);
         // Populate ATData and EDDData objects via AJAX calls
@@ -626,7 +626,7 @@ module EDDTableImport {
                 elementId: "step2textarea",
                 fileInitFn: this.fileDropped.bind(this),
                 processRawFn: this.fileRead.bind(this),
-                url: "/utilities/parsefile",
+                url: "/utilities/parsefile/",
                 processResponseFn: this.fileReturnedFromServer.bind(this),
                 progressBar: this.fileUploadProgressBar
             });

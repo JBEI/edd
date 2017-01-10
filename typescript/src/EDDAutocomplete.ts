@@ -164,7 +164,7 @@ module EDDAuto {
 
             this.display_key = 'name';
             this.value_key = 'id';
-            this.search_uri = this.opt.search_uri || "/search";
+            this.search_uri = this.opt.search_uri || "/search/";
 
             // Static specification of column layout for each model in EDD that we want to
             // make searchable.  (This might be better done as a static JSON file
