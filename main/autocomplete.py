@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import operator
 import re
 
+from builtins import str
 from django.conf import settings
 from django.db.models import Q
 from django.http import JsonResponse
@@ -25,7 +26,7 @@ def search_compartment(request):
     # this list is short, always just return the entire thing instead of searching
     return JsonResponse({
         'rows': [
-            {'id': c[0], 'name': c[1]}
+            {'id': c[0], 'name': str(c[1])}
             for c in edd_models.Measurement.Compartment.CHOICE
         ],
     })
