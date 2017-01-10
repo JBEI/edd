@@ -36,12 +36,15 @@ def search_generic(request, model_name, module=edd_models):
     """ A generic model search function; runs a regex search on all text-like fields on a model,
         limited to 20 items. Defaults to loading model from the EDD model module, pass in a
         module kwarg to specify a different module. """
-    Model = getattr(module, model_name)
-    ifields = [
-        f.get_attname()
-        for f in Model._meta.get_fields()
-        if hasattr(f, 'get_attname') and f.get_internal_type() in ['TextField', 'CharField']
-    ]
+    try:
+        Model = getattr(module, model_name)
+        ifields = [
+            f.get_attname()
+            for f in Model._meta.get_fields()
+            if hasattr(f, 'get_attname') and f.get_internal_type() in ['TextField', 'CharField']
+        ]
+    except AttributeError as e:
+        return JsonResponse({'error': 'Unknown search model %s' % model_name}, status=400)
     term = request.GET.get('term', '')
     re_term = re.escape(term)
     term_filters = [Q(**{'%s__iregex' % f: re_term}) for f in ifields]
@@ -82,7 +85,8 @@ AUTOCOMPLETE_METADATA_LOOKUP = {
 
 def search_metadata(request, context):
     """ Autocomplete search on metadata in a context; supported contexts are: 'Assay', 'AssayLine',
-        'Line', and 'Study'. """
+        'Line', and 'Study'. If none of these contexts are provided, then all metadata types
+        are searched. """
     term = request.GET.get('term', '')
     re_term = re.escape(term)
     term_filters = [
