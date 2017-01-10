@@ -23,8 +23,8 @@ simple as copying the `docker_services` directory of the code repository and run
 
 Without additional configuration, the launched copy of EDD will be using default options, so some
 functions (e.g. TLS support, external authentication, referencing an ICE deployment) won't work.
-See (TODO: write a Deployment.md document) for more detailed instructions for installing Docker and
-configuring EDD for your deployment environment.
+See [Deployment][5] for more detailed instructions for installing Docker and configuring EDD for
+your deployment environment.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -118,3 +118,4 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
 [2]:    https://docker.io
 [3]:    https://docs.docker.com/compose/overview/
 [4]:    docs/Configuration.md
+[5]:    docs/Deployment.md
