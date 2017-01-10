@@ -131,36 +131,6 @@ class StudyCreateView(generic.edit.CreateView):
     def get_success_url(self):
         return reverse('main:overview', kwargs={'slug': self.object.slug})
 
-# /study/<study_id>/rename
-@ensure_csrf_cookie
-def study_rename(request, study_id):
-    obj = load_study(request, study_id) # Throws 404 is user cannot read or Study doesn't exist
-    if not obj.user_can_write(request.user):
-        return JsonResponse({
-            "type": "Failure",
-            "message": "You do not have permission to rename this study.",
-        })
-    if not (request.method == "POST"):
-        return JsonResponse({
-            "type": "Failure",
-            "message": "Request method must be POST for this operation.",
-        })
-    # A fair amount of validation has happened for these on the front end.
-    # I'm going to assume Django's internals are insulated against inane things like injection attacks
-    # and will fail verbosely given unacceptable data...
-    full_name = request.POST.get('value', '').strip()
-    if full_name == "":
-        return JsonResponse({
-            "type": "Failure",
-            "message": "Map short name must not be blank.",
-        })
-    obj.name = full_name
-    obj.save()
-    return JsonResponse({
-        "type": "Success",
-        "message": "Study renamed.",
-    })
-
 
 class StudyIndexView(generic.edit.CreateView):
     """
@@ -204,7 +174,8 @@ class StudyIndexView(generic.edit.CreateView):
 # /study/<study_id>/rename/
 @ensure_csrf_cookie
 def study_rename(request, pk=None, slug=None):
-    obj = load_study(request, pk=pk, slug=slug) # Throws 404 if user cannot read or Study doesn't exist
+    # Throws 404 if user cannot read or Study doesn't exist
+    obj = load_study(request, pk=pk, slug=slug)
     if not obj.user_can_write(request.user):
         return JsonResponse({
             "type": "Failure",
@@ -232,7 +203,8 @@ def study_rename(request, pk=None, slug=None):
 # /study/<study_id>/setdescription/
 @ensure_csrf_cookie
 def study_set_description(request, pk=None, slug=None):
-    obj = load_study(request, pk=pk, slug=slug) # Throws 404 if user cannot read or Study doesn't exist
+    # Throws 404 if user cannot read or Study doesn't exist
+    obj = load_study(request, pk=pk, slug=slug)
     if not obj.user_can_write(request.user):
         return JsonResponse({
             "type": "Failure",
@@ -254,7 +226,8 @@ def study_set_description(request, pk=None, slug=None):
 # /study/<study_id>/setcontact/
 @ensure_csrf_cookie
 def study_set_contact(request, pk=None, slug=None):
-    obj = load_study(request, pk=pk, slug=slug) # Throws 404 if user cannot read or Study doesn't exist
+    # Throws 404 if user cannot read or Study doesn't exist
+    obj = load_study(request, pk=pk, slug=slug)
     if not obj.user_can_write(request.user):
         return JsonResponse({
             "type": "Failure",
@@ -408,7 +381,9 @@ class StudyOverviewView(StudyDetailBaseView):
     def post_response(self, request, context, form_valid):
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(reverse('main:overview', kwargs={'slug': self.object.slug}))
+            return HttpResponseRedirect(
+                reverse('main:overview', kwargs={'slug': self.object.slug})
+            )
         return self.render_to_response(context)
 
 
