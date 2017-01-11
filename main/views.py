@@ -13,7 +13,6 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
-from django.forms import models as model_forms
 from django.http import (
     Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse,
 )
@@ -28,7 +27,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
 from rest_framework.exceptions import MethodNotAllowed
 
-from . import autocomplete, forms as edd_forms, redis
+from . import autocomplete, redis
 from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
