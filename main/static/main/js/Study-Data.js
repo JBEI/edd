@@ -1292,13 +1292,12 @@ var StudyDataPage;
         // barGraphTypeButtonsJQ.detach();
         // barGraphTypeButtonsJQ.removeClass('off');
         // Set up the Add Measurement to Assay modal
-        var dlg = $("#addMeasurement").dialog({
+        $("#addMeasurement").dialog({
             minWidth: 500,
             autoOpen: false
         });
-        dlg.removeClass('off');
         $("#addMeasurementButton").click(function () {
-            $("#addMeasurement").dialog("open");
+            $("#addMeasurement").removeClass('off').dialog("open");
             return false;
         });
         // Callbacks to respond to the filtering section
@@ -2310,7 +2309,7 @@ var DataGridSpecAssays = (function (_super) {
         var record = EDDData.Assays[index], line = EDDData.Lines[record.lid], sideMenuItems = [
             '<a class="assay-edit-link">Edit Assay</a>',
             '<a class="assay-reload-link">Reload Data</a>',
-            '<a href="/export?assayId=' + index + '">Export Data as CSV/etc</a>'
+            '<a href="/export?assayId=' + index + '">Export Data as CSV</a>'
         ];
         // Set up jQuery modals
         $("#assayMain").dialog({ autoOpen: false });

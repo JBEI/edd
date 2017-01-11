@@ -1175,6 +1175,8 @@ ul.ui-autocomplete {
     list-style: none;
 }
 
+.ui-dialog { z-index: 100 !important ;}
+
 .ice_strain {
     font-size: 11px;
 }

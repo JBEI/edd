@@ -12,6 +12,7 @@
     $(e.target).closest('.disclose').toggleClass('discloseHide');
     return false;
   });
+
   $(function () {
     var dataArea, tables, sep, rsplit, ctrl;
     dataArea = $('#textData').hide();
@@ -83,7 +84,7 @@
         </div>
       </div>
       {% endif %}
-      <button type="submit" name="action" value="apply">Apply</button>
+      <button type="submit" name="action" value="apply" id="apply">Apply</button>
       <button type="submit" name="action" value="download">Download</button>
     </div>
   </div>
