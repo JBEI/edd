@@ -131,19 +131,19 @@
             <div class="sectionActions">
                 <form method="POST" enctype="multipart/form-data" class="edd-form off" id="permissions" action="">
                     {% csrf_token %}
-                    <div id="permission_user_box">
+                    <div class="permission" id="permission_user_box">
                     <label for="permission_user">
                         <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
                         <span>User</span>
                     </label>
                     </div>
-                    <div id="permission_group_box">
+                    <div  class="permission"  id="permission_group_box">
                     <label for="permission_group">
                         <input type="radio" id="permission_group" name="class" value="Group"/>
                         <span>Group</span>
                     </label>
                     </div>
-                    <div id="permission_public_box">
+                    <div  class="permission" id="permission_public_box">
                     <label for="permission_public">
                         <input type="radio" id="permission_public" name="class" value="Public"/>
                         <span>Everyone</span>
