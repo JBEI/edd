@@ -445,4 +445,3 @@ var EditableElements;
     }
     EditableElements.initializeElements = initializeElements;
 })(EditableElements || (EditableElements = {}));
-//# sourceMappingURL=EditableElement.js.map
