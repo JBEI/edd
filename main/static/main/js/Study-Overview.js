@@ -141,7 +141,7 @@ var StudyOverview;
             auto = $('form#permissions').find('[name=class]:checked');
             klass = auto.val();
             perm.type = $('form#permissions').find('[name=type]').val();
-            perm[klass.toLowerCase()] = { 'id': auto.closest('span').find('input:hidden').val() };
+            perm[klass.toLowerCase()] = { 'id': $("label[for='permission_user']").next().next().val() };
             $.ajax({
                 'url': '/study/' + EDDData.currentStudyID + '/permissions/',
                 'type': 'POST',
