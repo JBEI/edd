@@ -367,6 +367,7 @@ class StudyLinesView(StudyDetailBaseView):
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_line'] = LineForm(prefix='line')
         context['new_measurement'] = MeasurementForm(prefix='measurement')
+        context['writable'] = self.get_object().user_can_write(self.request.user)
         return context
 
     def handle_assay(self, request, context, *args, **kwargs):
@@ -593,6 +594,7 @@ class StudyDetailView(StudyDetailBaseView):
         context['showingdata'] = True
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_measurement'] = MeasurementForm(prefix='measurement')
+        context['writable'] = self.get_object().user_can_write(self.request.user)
         return context
 
     def handle_assay(self, request, context, *args, **kwargs):
