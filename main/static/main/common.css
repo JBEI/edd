@@ -1292,9 +1292,7 @@ div.editable-field.active {
     padding-top: 0px;
     box-shadow: 0 0 0 1px rgba(108,164,233,0.6);
 }
-div.editable-field.active.horizontalButtons {
-    padding-right: 49px;
-}
+
 div.editable-field.active.verticalButtons {
     padding-right: 27px;
 }
