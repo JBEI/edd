@@ -13,9 +13,7 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
-from django.http import (
-    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse,
-)
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect
 from django.template import RequestContext
@@ -27,7 +25,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
 from rest_framework.exceptions import MethodNotAllowed
 
-from . import autocomplete, redis
+from . import autocomplete, models as edd_models, redis
 from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
@@ -132,6 +130,29 @@ class StudyCreateView(generic.edit.CreateView):
         return reverse('main:overview', kwargs={'slug': self.object.slug})
 
 
+class StudyObjectMixin(generic.detail.SingleObjectMixin):
+    """ Mixin class to add to Study views """
+    model = edd_models.Study
+
+    def get_object(self, queryset=None):
+        """ Overrides the base method to curry if there is no filtering queryset. """
+        # already looked up object and no filter needed, return previous object
+        if hasattr(self, '_detail_object') and queryset is None:
+            return self._detail_object
+        # call parents
+        obj = super(StudyObjectMixin, self).get_object(queryset)
+        # save parents result if no filtering queryset
+        if queryset is None:
+            self._detail_object = obj
+        return obj
+
+    def get_queryset(self):
+        qs = super(StudyObjectMixin, self).get_queryset()
+        if self.request.user.is_superuser:
+            return qs
+        return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
+
+
 class StudyIndexView(generic.edit.CreateView):
     """
     View for the the index page.
@@ -171,9 +192,8 @@ class StudyIndexView(generic.edit.CreateView):
         return reverse('main:overview', kwargs={'slug': self.object.slug})
 
 
-class StudyDetailBaseView(generic.DetailView):
+class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
     """ Study details page, displays line/assay data. """
-    model = Study
     template_name = 'main/study-overview.html'
 
     def get_context_data(self, **kwargs):
@@ -186,18 +206,6 @@ class StudyDetailBaseView(generic.DetailView):
         context['lines'] = self.get_object().line_set.count() > 0
         context['assays'] = Assay.objects.filter(line__study=self.get_object()).count() > 0
         return context
-
-    def get_object(self, queryset=None):
-        """ Overrides the base method to curry if there is no filtering queryset. """
-        # already looked up object and no filter needed, return previous object
-        if hasattr(self, '_detail_object') and queryset is None:
-            return self._detail_object
-        # call parents
-        obj = super(StudyDetailBaseView, self).get_object(queryset)
-        # save parents result if no filtering queryset
-        if queryset is None:
-            self._detail_object = obj
-        return obj
 
     def handle_clone(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('lineId', [])
@@ -219,12 +227,6 @@ class StudyDetailBaseView(generic.DetailView):
             'total': len(ids),
             })
         return True
-
-    def get_queryset(self):
-        qs = super(StudyDetailBaseView, self).get_queryset()
-        if self.request.user.is_superuser:
-            return qs
-        return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
 
     def handle_unknown(self, request, context, *args, **kwargs):
         messages.error(
@@ -1120,66 +1122,71 @@ def study_map(request, pk=None, slug=None):
         raise e
 
 
-def permissions(request, pk=None, slug=None):
-    """
-    Implements the REST-style view for /study/<study>/permissions/
-    :param request: the HttpRequest
-    :param study: the study primary key
-    :return: the response
-    """
-    logger.info('Start of main.views.permissions(request, study)')
-    study = load_study(request, pk=pk, slug=slug)
-    if request.method == 'HEAD':
+class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
+    """ Implements a REST-style view for /study/<id-or-slug>/permissions/ """
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        return JsonResponse([
+            permission.to_json()
+            for permission in self.object.get_combined_permission()
+        ])
+
+    def head(self, request, *args, **kwargs):
+        self.object = self.get_object()
         return HttpResponse(status=200)
-    elif request.method == 'GET':
-        return JsonResponse([p.to_json() for p in study.get_combined_permission()])
-    elif request.method == 'PUT' or request.method == 'POST':
-        if not study.user_can_write(request.user):
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if not self.object.user_can_write(request.user):
             return HttpResponseForbidden("You do not have permission to modify this study.")
         try:
-            perms = json.loads(request.POST['data'])
-            with transaction.atomic():  # make requested changes as a group, or not at all
+            perms = json.loads(request.POST.get('data', '[]'))
+            # make requested changes as a group, or not at all
+            with transaction.atomic():
                 for perm in perms:
-                    user = perm.get('user', None)
-                    group = perm.get('group', None)
-                    everyone = perm.get('public', None)
-                    ptype = perm.get('type', StudyPermission.NONE)
-                    manager = None
-                    lookup = {}
-                    if group is not None:
-                        lookup = {'group_id': group.get('id', 0), 'study_id': study.pk}
-                        manager = study.grouppermission_set.filter(**lookup)
-                    elif user is not None:
-                        lookup = {'user_id': user.get('id', 0), 'study_id': study.pk}
-                        manager = study.userpermission_set.filter(**lookup)
-                    elif everyone is not None:
-                        lookup = {'study_id': study.pk}
-                        manager = study.everyonepermission_set.filter(**lookup)
-                    if manager is None:
+                    manager = self._get_permission_manager(perm)
+                    ptype = perm.get('type', None)
+                    if manager is None or ptype is None:
                         logger.warning('Invalid permission type for add')
                     elif ptype == StudyPermission.NONE:
                         manager.delete()
                     else:
-                        lookup['permission_type'] = ptype
-                        manager.update_or_create(**lookup)
+                        manager.update_or_create(permission_type=ptype)
         except Exception as e:
-            logger.exception('Error modifying study (%s) permissions: %s', study, e)
+            logger.exception('Error modifying study (%s) permissions: %s', self.object, e)
             return HttpResponse(status=500)
         return HttpResponse(status=204)
-    elif request.method == 'DELETE':
-        if not study.user_can_write(request.user):
+
+    # Treat PUT requests the same as POST
+    put = post
+
+    def delete(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if not self.object.user_can_write(request.user):
             return HttpResponseForbidden("You do not have permission to modify this study.")
         try:
+            # make requested changes as a group, or not at all
             with transaction.atomic():
-                study.everyonepermission_set.all().delete()
-                study.grouppermission_set.all().delete()
-                study.userpermission_set.all().delete()
+                self.object.everyonepermission_set.all().delete()
+                self.object.grouppermission_set.all().delete()
+                self.object.userpermission_set.all().delete()
         except Exception as e:
-            logger.exception('Error deleting study (%s) permissions: %s', study, e)
+            logger.exception('Error deleting study (%s) permissions: %s', self.object, e)
             return HttpResponse(status=500)
         return HttpResponse(status=204)
-    else:
-        return HttpResponseNotAllowed(['HEAD', 'GET', 'PUT', 'POST', 'DELETE', ])
+
+    def _get_permission_manager(self, permission_def):
+        study_id = self.object.pk
+        if 'group' in permission_def:
+            group_id = permission_def['group'].get('id', 0)
+            return self.object.grouppermission_set.filter(group_id=group_id, study_id=study_id)
+        elif 'user' in permission_def:
+            user_id = permission_def['user'].get('id', 0)
+            return self.object.userpermission_set.filter(user_id=user_id, study_id=study_id)
+        elif 'public' in permission_def:
+            return self.object.everyonepermission_set.filter(study_id=study_id)
+        return None
 
 
 # /study/<study_id>/import
