@@ -13,6 +13,7 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
+from django.forms import models as model_forms
 from django.http import (
     Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse,
 )
@@ -27,7 +28,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
 from rest_framework.exceptions import MethodNotAllowed
 
-from . import autocomplete, redis
+from . import autocomplete, forms as edd_forms, redis
 from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
@@ -171,81 +172,6 @@ class StudyIndexView(generic.edit.CreateView):
         return reverse('main:overview', kwargs={'slug': self.object.slug})
 
 
-# /study/<study_id>/rename/
-@ensure_csrf_cookie
-def study_rename(request, pk=None, slug=None):
-    # Throws 404 if user cannot read or Study doesn't exist
-    obj = load_study(request, pk=pk, slug=slug)
-    if not obj.user_can_write(request.user):
-        return JsonResponse({
-            "type": "Failure",
-            "message": "You do not have permission to rename this study.",
-        })
-    if not (request.method == "POST"):
-        return JsonResponse({
-            "type": "Failure",
-            "message": "Request method must be POST for this operation.",
-        })
-    full_name = request.POST.get('value', '').strip()
-    if full_name == "":
-        return JsonResponse({
-            "type": "Failure",
-            "message": "Study name must not be blank.",
-        })
-    obj.name = full_name
-    obj.save()
-    return JsonResponse({
-        "type": "Success",
-        "message": "Study renamed.",
-    }, encoder=JSONDecimalEncoder)
-
-
-# /study/<study_id>/setdescription/
-@ensure_csrf_cookie
-def study_set_description(request, pk=None, slug=None):
-    # Throws 404 if user cannot read or Study doesn't exist
-    obj = load_study(request, pk=pk, slug=slug)
-    if not obj.user_can_write(request.user):
-        return JsonResponse({
-            "type": "Failure",
-            "message": "You do not have permission to edit this study.",
-        })
-    if not (request.method == "POST"):
-        return JsonResponse({
-            "type": "Failure",
-            "message": "Request method must be POST for this operation.",
-        })
-    obj.description = request.POST.get('value', '').strip()
-    obj.save()
-    return JsonResponse({
-        "type": "Success",
-        "message": "Study description changed.",
-    }, encoder=JSONDecimalEncoder)
-
-
-# /study/<study_id>/setcontact/
-@ensure_csrf_cookie
-def study_set_contact(request, pk=None, slug=None):
-    # Throws 404 if user cannot read or Study doesn't exist
-    obj = load_study(request, pk=pk, slug=slug)
-    if not obj.user_can_write(request.user):
-        return JsonResponse({
-            "type": "Failure",
-            "message": "You do not have permission to edit this study.",
-        })
-    if not (request.method == "POST"):
-        return JsonResponse({
-            "type": "Failure",
-            "message": "Request method must be POST for this operation.",
-        })
-    obj.contact_id = int(request.POST.get('value', 0)) or None
-    obj.save()
-    return JsonResponse({
-        "type": "Success",
-        "message": "Study contact changed.",
-    }, encoder=JSONDecimalEncoder)
-
-
 class StudyDetailBaseView(generic.DetailView):
     """ Study details page, displays line/assay data. """
     model = Study
@@ -306,6 +232,51 @@ class StudyDetailBaseView(generic.DetailView):
             request, 'Unknown action, or you do not have permission to modify this study.'
         )
         return False
+
+
+class StudyUpdateView(generic.edit.BaseUpdateView, StudyDetailBaseView):
+    """ View used to handle POST to update single Study fields. """
+    update_action = None
+
+    def __init__(self, update_action=None, *args, **kwargs):
+        super(StudyUpdateView, self).__init__(*args, **kwargs)
+        self.update_action = update_action
+        self.fields = self._get_fields(update_action)
+
+    def _get_fields(self, update_action):
+        # select the field to update based on the update_action
+        return [{
+            'rename': 'name',
+            'setdescription': 'description',
+            'setcontact': 'contact',
+        }.get(update_action, 'name')]
+
+    def get_form_kwargs(self):
+        kwargs = super(StudyUpdateView, self).get_form_kwargs()
+        # updated value comes in as 'value'; copy it to field the form expects
+        if 'data' in kwargs and 'value' in kwargs['data']:
+            kwargs['data'].update({self.fields[0]: kwargs['data']['value']})
+        return kwargs
+
+    def form_valid(self, form):
+        self.object = form.save()
+        return JsonResponse(
+            {
+                "type": "Success",
+                "message": "Study %s updated." % self.fields,
+            },
+            encoder=JSONDecimalEncoder,
+        )
+
+    def form_invalid(self, form):
+        return JsonResponse(
+            {
+                "type": "Failure",
+                "message": "Validation failed",
+            },
+            encoder=JSONDecimalEncoder,
+            status=400,
+        )
 
 
 class StudyOverviewView(StudyDetailBaseView):
