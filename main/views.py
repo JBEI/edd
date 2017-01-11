@@ -1370,7 +1370,7 @@ def utilities_parse_import_file(request):
                             "spreadsheet or an XML file.  Please check that the contents are "
                             "formatted correctly. (Word documents are not allowed!)"
         },
-        code=500
+        status=500
     )
 
 
@@ -1704,6 +1704,7 @@ AUTOCOMPLETE_VIEW_LOOKUP = {
     'MeasurementCompartment': autocomplete.search_compartment,
     'MetaboliteExchange': autocomplete.search_sbml_exchange,
     'MetaboliteSpecies': autocomplete.search_sbml_species,
+    'Registry': autocomplete.search_strain,
     'Strain': autocomplete.search_strain,
     'StudyWritable': autocomplete.search_study_writable,
     'StudyLine': autocomplete.search_study_lines,

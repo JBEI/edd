@@ -8,6 +8,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
+/// <reference path="typescript-declarations.d.ts" />
 var EDDAuto;
 (function (EDDAuto) {
     var AutoColumn = (function () {
@@ -53,7 +54,7 @@ var EDDAuto;
             this.prependResults = this.opt.prependResults || [];
             this.display_key = 'name';
             this.value_key = 'id';
-            this.search_uri = this.opt.search_uri || "/search";
+            this.search_uri = this.opt.search_uri || "/search/";
             // Static specification of column layout for each model in EDD that we want to
             // make searchable.  (This might be better done as a static JSON file
             // somewhere.)
@@ -633,17 +634,16 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
         hiddenInput = $('<input type="hidden"/>').appendTo(container);
         return visibleInput;
     };
-    EDD_auto.initial_search = function initial_search(selector, term) {
-        var autoInput = $(selector);
-        var autoObj = autoInput.data('edd').autocompleteobj;
-        var oldResponse;
+    EDD_auto.initial_search = function initial_search(auto, term) {
+        var autoInput, oldResponse;
+        autoInput = auto.visibleInput;
         oldResponse = autoInput.mcautocomplete('option', 'response');
         autoInput.mcautocomplete('option', 'response', function (ev, ui) {
             var highest = 0, best, termLower = term.toLowerCase();
             autoInput.mcautocomplete('option', 'response', oldResponse);
             oldResponse.call({}, ev, ui);
             ui.content.every(function (item) {
-                var val = item[autoObj.display_key], valLower = val.toLowerCase();
+                var val = item[auto.display_key], valLower = val.toLowerCase();
                 if (val === term) {
                     best = item;
                     return false; // do not need to continue
