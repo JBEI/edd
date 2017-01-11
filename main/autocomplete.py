@@ -25,7 +25,7 @@ def search_compartment(request):
     # this list is short, always just return the entire thing instead of searching
     return JsonResponse({
         'rows': [
-            {'id': c[0], 'name': c[1]}
+            {'id': c[0], 'name': str(c[1])}
             for c in edd_models.Measurement.Compartment.CHOICE
         ],
     })

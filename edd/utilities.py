@@ -49,7 +49,7 @@ class JSONDecoder(json.JSONDecoder):
     """
 
     def __init__(self, *args, **kwargs):
-        super(JSONDecoder, self).__init__(self, object_hook=self.object_hook, *args, **kwargs)
+        super(JSONDecoder, self).__init__(object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, o):
         if TYPE not in o:
