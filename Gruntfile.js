@@ -180,7 +180,8 @@ module.exports = function(grunt) {
         },
         exec: {
             collect: {
-                command: 'docker-compose exec appserver python manage.py collectstatic --noinput',
+                command: 'docker-compose exec edd /code/manage.py collectstatic --noinput',
+                cwd: 'docker_services/',
                 stdout: true
             }
         },
