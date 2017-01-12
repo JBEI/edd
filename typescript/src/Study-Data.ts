@@ -1311,7 +1311,10 @@ namespace StudyDataPage {
 
         // This one is active by default
         $("#lineGraphButton").click(function() {
+            //TODO: clean up
             $('#exportButton').addClass('off');
+            $('#assaysActionPanel').appendTo('#content');
+            $('#mainFilterSection').appendTo('#content');
             viewingMode = 'linegraph';
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
@@ -1338,7 +1341,10 @@ namespace StudyDataPage {
             $('#graphLoading').removeClass('off');
         });
         $("#barGraphButton").click(function() {
+            //TODO: clean up
             viewingMode = 'bargraph';
+            $('#assaysActionPanel').appendTo('#content');
+            $('#mainFilterSection').appendTo('#content');
             $('#exportButton').addClass('off');
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
