@@ -3,10 +3,18 @@
 set -o pipefail -e
 
 QUIET=0
+SEPARATOR='************************************************************************'
 function output() {
     if [ ! $QUIET -eq 1 ]; then
         echo "$@"
     fi
+}
+
+function banner() {
+    output
+    output "$SEPARATOR"
+    output "$1"
+    output "$SEPARATOR"
 }
 
 function service_wait() {
@@ -59,17 +67,17 @@ function print_help() {
     echo "        This option may be specified multiple times. The Nth port defined applies to the Nth host."
     echo
     echo "Commands:"
-    echo "    worker"
-    echo "        Start a Celery worker node."
     echo "    application"
     echo "        Start a Django webserver (gunicorn)."
     echo "    devmode"
     echo "        Start a Django webserver (manage.py runserver)."
-    echo "    shell"
-    echo "        Start a Django shell session (default)."
     echo "    init-only [port]"
     echo "        Container will only perform selected init tasks."
     echo "        The service will begin listening on the specified port after init, default to 24051."
+    echo "    test"
+    echo "        Execute the EDD unit tests."
+    echo "    worker"
+    echo "        Start a Celery worker node."
 }
 
 short="adhimp:qsw:ADIMS"
@@ -184,6 +192,8 @@ while [ ! $# -eq 0 ]; do
     esac
 done
 
+output "EDD_DEPLOYMENT_ENVIRONMENT:" \
+    "${EDD_DEPLOYMENT_ENVIRONMENT:-'Not specified. Assuming PRODUCTION.'}"
 # Look for code mounted at /code and symlink to /usr/local/edd if none found
 if [ ! -x /code/manage.py ]; then
     output "Running with container copy of code …"
@@ -203,18 +213,17 @@ if [ ! -f /code/edd/settings/local.py ]; then
 fi
 cd /code
 
-SEPARATOR='****************************************************************************************'
-output "EDD_DEPLOYMENT_ENVIRONMENT: " \
-    "${EDD_DEPLOYMENT_ENVIRONMENT:-'Not specified. Assuming PRODUCTION.'}"
+# If specified, wait on other service(s)
+for ((i=0; i<${#WAIT_HOST[@]}; i++)); do
+    port=${WAIT_PORT[$i]:-24051}
+    service_wait "${WAIT_HOST[$i]}" $port
+done
 
 # Wait for redis to become available
 service_wait redis 6379
 
 if [ $INIT_STATIC -eq 1 ]; then
-    output
-    output "$SEPARATOR"
-    output "Collecting static resources …"
-    output "$SEPARATOR"
+    banner "Collecting static resources …"
     # Collect static first, worker will complain if favicons are missing
     python /code/manage.py collectstatic --noinput
 fi
@@ -223,10 +232,7 @@ fi
 service_wait postgres 5432
 
 if [ $INIT_DB -eq 1 ]; then
-    output
-    output "$SEPARATOR"
-    output "Configuring database initial state …"
-    output "$SEPARATOR"
+    banner "Configuring database initial state …"
 
     export PGPASSWORD=$POSTGRES_PASSWORD
     # Test if our database exists; run init script if missing
@@ -261,10 +267,6 @@ if [ $INIT_DB -eq 1 ]; then
     else
         output "Skipping database restore. No dump source specified."
     fi
-
-    # Ensure the uuid-ossp extension is enabled on existing EDD databases
-    echo 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";' | \
-        psql -h postgres -U postgres edd
 fi
 
 unset PGPASSWORD
@@ -275,10 +277,7 @@ unset POSTGRES_DUMP_URL
 service_wait solr 8983
 
 if [ $INIT_MIGRATE -eq 1 ]; then
-    output
-    output "$SEPARATOR"
-    output "Managing database migrations …"
-    output "$SEPARATOR"
+    banner "Managing database migrations …"
 
     # Temporarily turn off strict error checking, as the migration check will sometimes
     # have a non-zero exit
@@ -299,10 +298,7 @@ if [ $INIT_MIGRATE -eq 1 ]; then
 fi
 
 if [ $INIT_INDEX -eq 1 ]; then
-    output
-    output "$SEPARATOR"
-    output "Re-building Solr indexes …"
-    output "$SEPARATOR"
+    banner "Re-building Solr indexes …"
 
     if [ "$REINDEX_EDD" = "true" ]; then
         output
@@ -317,41 +313,29 @@ fi
 # Wait for rabbitmq to become available
 service_wait rabbitmq 5672
 
-# If specified, wait on other service(s)
-for ((i=0; i<${#WAIT_HOST[@]}; i++)); do
-    port=${WAIT_PORT[$i]:-24051}
-    service_wait "${WAIT_HOST[$i]}" $port
-done
-
 # Start up the command
-output
-output "$SEPARATOR"
 case "$COMMAND" in
-    worker)
-        output "Starting Celery worker"
-        output "$SEPARATOR"
-        exec celery -A edd worker -l info
-        ;;
-    devmode)
-        output "Starting development apppserver"
-        output "$SEPARATOR"
-        exec python manage.py runserver 0.0.0.0:8000
-        ;;
     application)
-        output "Starting production apppserver"
-        output "$SEPARATOR"
+        banner "Starting production apppserver"
         exec gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
         ;;
-    shell)
-        output "Starting shell session"
-        output "$SEPARATOR"
-        exec python manage.py shell
+    devmode)
+        banner "Starting development apppserver"
+        exec python manage.py runserver 0.0.0.0:8000
         ;;
     init-only)
         output "Init finished"
         mkdir -p /tmp/edd-wait
         cd /tmp/edd-wait
         exec python -m SimpleHTTPServer ${1:-24051}
+        ;;
+    test)
+        banner "Running tests"
+        exec python manage.py test
+        ;;
+    worker)
+        banner "Starting Celery worker"
+        exec celery -A edd worker -l info
         ;;
     *)
         output "Unrecognized command: $COMMAND"
