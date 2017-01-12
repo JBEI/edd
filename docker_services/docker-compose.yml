@@ -62,7 +62,8 @@ services:
     expose:
       - '5555'
   smtp:
-    image: namshi/smtp
+    build: ./smtp/
+    image: exim4:1.0-edd
     restart: always
     expose:
       - '25'
