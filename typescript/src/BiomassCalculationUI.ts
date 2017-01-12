@@ -316,18 +316,20 @@ class BiomassCalculationUI {
         this._requestSpeciesListFromBiomassReaction(metabolicMapID, reaction.reactionID,
                 (speciesList:ServerBiomassSpeciesEntry[]):void => {
             var table:Utl.Table = new Utl.Table('biomassReactionChooser'),
-                inputs:any[] = [];
+                inputs:EDDAuto.Metabolite[] = [];
             table.table.setAttribute('cellspacing', '0');
             $(table.table).css('border-collapse', 'collapse');
 
             speciesList.forEach((species:ServerBiomassSpeciesEntry, i:number):void => {
-                var speciesColumn:HTMLElement, metaboliteColumn:HTMLElement, autoComp:JQuery;
+                var speciesColumn:HTMLElement, metaboliteColumn:HTMLElement, autoComp:EDDAuto.Metabolite;
                 table.addRow();
                 speciesColumn = table.addColumn();
                 speciesColumn.innerHTML = species.sbmlSpeciesName;
                 metaboliteColumn = table.addColumn();
-                autoComp = EDD_auto.create_autocomplete(metaboliteColumn);
-                autoComp.addClass('autocomp_metabol');
+                autoComp = new EDDAuto.Metabolite({
+                    container: $(metaboliteColumn),
+                });
+                autoComp.visibleInput.addClass('autocomp_metabol');
                 inputs.push(autoComp);
             });
 
@@ -347,10 +349,6 @@ class BiomassCalculationUI {
             $(okButton).click( ():void => this._onFinishedBiomassSpeciesEntry(speciesList, inputs,
                 errorStringElement, metabolicMapID, reaction, callback));
             this._dialogBox.addElement(okButton);
-
-            inputs.forEach((input) => {
-                EDD_auto.setup_field_autocomplete(input, 'Metabolite', EDDData.MetaboliteTypes || {});
-            });
         }, (error:string):void => {
             this._dialogBox.showMessage(error, ():void => callback.call({}, error));
         });
@@ -359,12 +357,12 @@ class BiomassCalculationUI {
 
 
     // Called when they click the OK button on the biomass species list.
-    private _onFinishedBiomassSpeciesEntry(speciesList:ServerBiomassSpeciesEntry[], inputs:any[],
+    private _onFinishedBiomassSpeciesEntry(speciesList:ServerBiomassSpeciesEntry[], inputs:EDDAuto.Metabolite[],
         errorStringElement:HTMLElement, metabolicMapID:number, reaction:ServerBiomassReaction,
         callback:BiomassResultsCallback):void {
 
         // Are the inputs all filled in?
-        var numEmpty:number = inputs.filter((input:JQuery):boolean => input.val() === '').length;
+        var numEmpty:number = inputs.filter((input:EDDAuto.Metabolite):boolean => input.visibleInput.val() === '').length;
 
         if ($(errorStringElement).css('visibility') === 'hidden') {
             // Show them an error message, but next time they click OK, just do the biomass
@@ -382,9 +380,9 @@ class BiomassCalculationUI {
         this._dialogBox.showWaitSpinner('Calculating final biomass factor...');
 
         var matches:any = {};
-        inputs.forEach((input:JQuery, i:number):void => {
+        inputs.forEach((input:EDDAuto.Metabolite, i:number):void => {
             var spName:string = speciesList[i].sbmlSpeciesName, id:string, met:any;
-            id = input.next('input[type=hidden]').val();
+            id = input.val();
             met = EDDData.MetaboliteTypes[id] || {};
             matches[spName] = met.name || '';
         });

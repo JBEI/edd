@@ -1,6 +1,6 @@
 /* CSS reset */
 
-html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, em, img, strike, strong, sup, b,
+html, body, div, span, p, a, em, img, strike, strong, sup, b,
 u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, tbody, thead,
 tfoot, tr, th, td {
     border: 0;
@@ -8,11 +8,14 @@ tfoot, tr, th, td {
     font-size: inherit;
     margin: 0;
     padding: 0;
-    vertical-align: baseline;
-}   
-body {
-    line-height: 1;
 }
+
+h1, h2, h3, h4, h5, h6 {
+    color: inherit;
+    margin: 0;
+    padding: 0;
+}
+
 table {
     border-collapse: collapse;
     border-spacing: 0;
@@ -29,9 +32,15 @@ HTML {
     color: #000000;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     font-size: 14px;
+    height: 100%;
 }
 H1, H2, H3, H4 {
     margin:3px;
+
+}
+body {
+    height: 100%;
+    line-height: 1;
 }
 p {
     margin:0.4em;
@@ -45,6 +54,7 @@ a {
     color:#4C81C0;
     text-decoration:none;
 }
+
 a.darker {
     color:#000000;
 }
@@ -85,8 +95,11 @@ a:hover {
 .disabledRecord {
     background-color:#FFC0C0;
 }
+.emptyRecord {
+    color:#666666;
+}
 .link_indicator {
-    background-image:url('./images/link_go.png');
+    background-image:url('images/link_go.png');
     background-position:right;
     background-repeat:no-repeat;
 }
@@ -107,6 +120,12 @@ a:hover {
     background-repeat: no-repeat;
     background-position: center;
     background-image: url(data:image/gif;base64,R0lGODlhEAAQAMQAAP///+7u7t3d3bu7u6qqqpmZmYiIiHd3d2ZmZlVVVURERDMzMyIiIhEREQARAAAAAP///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQFBwAQACwAAAAAEAAQAAAFdyAkQgGJJOWoQgIjBM8jkKsoPEzgyMGsCjPDw7ADpkQBxRDmSCRetpRA6Rj4kFBkgLC4IlUGhbNQIwXOYYWCXDufzYPDMaoKGBoKb886OjAKdgZAAgQkfCwzAgsDBAUCgl8jAQkHEAVkAoA1AgczlyIDczUDA2UhACH5BAUHABAALAAAAAAPABAAAAVjICSO0IGIATkqIiMKDaGKC8Q49jPMYsE0hQdrlABCGgvT45FKiRKQhWA0mPKGPAgBcTjsspBCAoH4gl+FmXNEUEBVAYHToJAVZK/XWoQQDAgBZioHaX8igigFKYYQVlkCjiMhACH5BAUHABAALAAAAAAQAA8AAAVgICSOUGGQqIiIChMESyo6CdQGdRqUENESI8FAdFgAFwqDISYwPB4CVSMnEhSej+FogNhtHyfRQFmIol5owmEta/fcKITB6y4choMBmk7yGgSAEAJ8JAVDgQFmKUCCZnwhACH5BAUHABAALAAAAAAQABAAAAViICSOYkGe4hFAiSImAwotB+si6Co2QxvjAYHIgBAqDoWCK2Bq6A40iA4yYMggNZKwGFgVCAQZotFwwJIF4QnxaC9IsZNgLtAJDKbraJCGzPVSIgEDXVNXA0JdgH6ChoCKKCEAIfkEBQcAEAAsAAAAABAADgAABUkgJI7QcZComIjPw6bs2kINLB5uW9Bo0gyQx8LkKgVHiccKVdyRlqjFSAApOKOtR810StVeU9RAmLqOxi0qRG3LptikAVQEh4UAACH5BAUHABAALAAAAAAQABAAAAVxICSO0DCQKBQQonGIh5AGB2sYkMHIqYAIN0EDRxoQZIaC6bAoMRSiwMAwCIwCggRkwRMJWKSAomBVCc5lUiGRUBjO6FSBwWggwijBooDCdiFfIlBRAlYBZQ0PWRANaSkED1oQYHgjDA8nM3kPfCmejiEAIfkEBQcAEAAsAAAAABAAEAAABWAgJI6QIJCoOIhFwabsSbiFAotGMEMKgZoB3cBUQIgURpFgmEI0EqjACYXwiYJBGAGBgGIDWsVicbiNEgSsGbKCIMCwA4IBCRgXt8bDACkvYQF6U1OADg8mDlaACQtwJCEAIfkEBQcAEAAsAAABABAADwAABV4gJEKCOAwiMa4Q2qIDwq4wiriBmItCCREHUsIwCgh2q8MiyEKODK7ZbHCoqqSjWGKI1d2kRp+RAWGyHg+DQUEmKliGx4HBKECIMwG61AgssAQPKA19EAxRKz4QCVIhACH5BAUHABAALAAAAAAQABAAAAVjICSOUBCQqHhCgiAOKyqcLVvEZOC2geGiK5NpQBAZCilgAYFMogo/J0lgqEpHgoO2+GIMUL6p4vFojhQNg8rxWLgYBQJCASkwEKLC17hYFJtRIwwBfRAJDk4ObwsidEkrWkkhACH5BAUHABAALAAAAQAQAA8AAAVcICSOUGAGAqmKpjis6vmuqSrUxQyPhDEEtpUOgmgYETCCcrB4OBWwQsGHEhQatVFhB/mNAojFVsQgBhgKpSHRTRxEhGwhoRg0CCXYAkKHHPZCZRAKUERZMAYGMCEAIfkEBQcAEAAsAAABABAADwAABV0gJI4kFJToGAilwKLCST6PUcrB8A70844CXenwILRkIoYyBRk4BQlHo3FIOQmvAEGBMpYSop/IgPBCFpCqIuEsIESHgkgoJxwQAjSzwb1DClwwgQhgAVVMIgVyKCEAIfkECQcAEAAsAAAAABAAEAAABWQgJI5kSQ6NYK7Dw6xr8hCw+ELC85hCIAq3Am0U6JUKjkHJNzIsFAqDqShQHRhY6bKqgvgGCZOSFDhAUiWCYQwJSxGHKqGAE/5EqIHBjOgyRQELCBB7EAQHfySDhGYQdDWGQyUhADs=);
+}
+.wait-larger {
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 60px 60px;
+    background-image: url(images/spinner-big.gif);
 }
 .waitbadge {
     margin:0px 2px 0px 2px;
@@ -131,6 +150,11 @@ a:hover {
     margin: 30px;
 }
 
+.disableLink {
+    pointer-events: none;
+    cursor: default;
+    color: grey;
+}
 .test {
     color: mediumvioletred;
     font-size: 12px;
@@ -178,6 +202,26 @@ a:hover {
 :disabled {
     background-color: #eeeeee;
 }
+form.noMargins {
+    margin:0;
+    padding:0;
+}
+
+
+/* Main flex layout */
+
+div.mainFlex {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* align items in Main Axis */
+    align-items: stretch; /* align items in Cross Axis */
+    align-content: stretch; /* Extra space in Cross Axis */
+    flex-wrap: nowrap;
+    padding:0;
+    margin:0;
+}
+
 
 /* Top banner styling */
 
@@ -185,23 +229,27 @@ div.topBanner {
     display: flex;
     flex-wrap: nowrap;
     flex-direction: row;
-    align-items: top;
     justify-content: space-between;
+    padding-bottom: 10px;
 }
 div.topBanner > div.siteLogo {
     flex-shrink: 0;
+    padding: 10px 0 0 5px;
 }
 div.topBanner > div.pageName {
     color: #6c6c6c;
-    font-size: 20pt;
-    margin-top: auto;
-    margin-bottom: auto;
-    margin-right: auto;
-    margin-left: 20px;
+    font-size: 27px;
+    line-height: 1.1;   /* Multiple of font size */
+    margin: auto 20px auto 20px;
+    flex-grow:1;
+    border: 0;
+    padding: 5px 0 0 0;
+    text-align: center;
 }
 div.topBanner > div.userMenu {
     flex-shrink: 0;
     padding: 10px;
+    margin-right: 30px;
     white-space: nowrap;
 }
 div.topBanner > div.userMenu > div {
@@ -210,6 +258,7 @@ div.topBanner > div.userMenu > div {
 
 
 /* A section near the top of the page for reporting the result of attempted operations */
+
 div.statusMessage {
     clear: both;
     font-size:14px;
@@ -260,14 +309,41 @@ div.statusMessage > p.success, .success {
 
 
 /* Main content section */
-div.content {
-    clear: both;
+
+div.mainFlex > div.content {
+    flex: 1;
+    overflow: auto;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+div.mainFlex > div.bottomBar {
+
+}
+
+/* Footer area */
+
+div.mainFlex > div.footer {
+
+}
+div.footer-text {
+    border-top: 1px solid #CCC;
+    color: #CCC;
+    font-size: 0.85em;
+    margin: 20px 15px 0px 15px;
+    padding: 20px;
+    text-align: center;
+}
+div.footer-text > span {
+    margin: 0 2em;
 }
 
 
 /* Mouseover help boxes for the various steps */
+
 div.helpBadgeDiv {
     float:left;
+    cursor: pointer;
     display:inline-block;
     padding:1px 5px;
     margin:0px 10px 0px 6px;
@@ -279,6 +355,7 @@ div.helpBadgeDiv {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
+
 div.helpBadgeDiv:hover {
     background-color:#CECEFF;
 }
@@ -311,39 +388,27 @@ div.helpBadgeDiv:hover div.helpContent {
 
 /* Page sections */
 div.pageSection {
-    background: #fcfcfc;
-    margin:10px 8px 3px 8px;
-    border-width:1px;
-    border-style:solid;
-    border-color:#a0a0a0;/*#6CA5E9;*/
-/*  border-radius: 6px;
-    -webkit-border-radius: 6px;
-    -moz-border-radius: 6px;*/
+    margin:10px 40px 3px 20px;
+}
+
+div.newPageSection {
+    margin:10px 40px 3px 20px;
 }
 div.pageSection div.sectionHead {
-    color:#606060;/*#0C4589;*/
-    font-size:16px;
-    font-weight:bold;
-    padding:4px 4px 4px 6px;
+    color: #606060;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 4px 4px 4px 6px;
     background: linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
     background: -o-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
     background: -moz-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
     background: -webkit-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    background: -ms-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    /*border-radius: 6px 6px 0px 0px;
-    -webkit-border-radius: 6px 6px 0px 0px;
-    -moz-border-radius: 6px 6px 0px 0px;*/
+
 }
 div.pageSection div.sectionChapter {
-    color:#a0a0a0;/*#1C5294;*/
-    font-size:16px;
+    color:#a0a0a0;
     margin:0px;
     padding:3px;
-    background: linear-gradient(top, rgba(180,180,180,0.2) 0%, rgba(200,200,200,0.3) 50%, rgba(220,220,220,0.1) 100%);
-    background: -o-linear-gradient(top, rgba(220,220,220,0.2) 0%, rgba(220,220,220,0.3) 50%, rgba(220,220,220,0.1) 100%);
-    background: -moz-linear-gradient(top, rgba(220,220,220,0.2) 0%, rgba(220,220,220,0.3) 50%, rgba(220,220,220,0.1) 100%);
-    background: -webkit-linear-gradient(top, rgba(220,220,220,0.2) 0%, rgba(220,220,220,0.3) 50%, rgba(220,220,220,0.1) 100%);
-    background: -ms-linear-gradient(top, rgba(220,220,220,0.2) 0%, rgba(220,220,220,0.3) 50%, rgba(220,220,220,0.1) 100%);
     border-style:solid;
     border-width:1px 0px 0px 0px;
     border-color:rgba(255,255,255,0.9);
@@ -356,7 +421,6 @@ div.pageSection div.sectionContent.sectionRight {
     text-align: right;
 }
 div.pageSection div.sectionContent div.subSectionChapter {
-    font-size:14px;
     margin:2px 0px 0px 4px;
     padding:0px 1px 0px 1px;
     border-style:solid;
@@ -371,11 +435,10 @@ div.subSectionContent {
 }
 /* A section meant for the bottom of page sections,
    with form elements representing actions you can take on content in above sections */
-div.pageSection div.sectionActions {
-    border-top:1px solid rgba(164,164,164,0.7);
-    margin:0px;
-    padding:0px;
-    background-color:rgba(233,233,233,0.18);
+div.sectionActions {
+    /* border-top:1px solid rgba(164,164,164,0.7); */
+    margin: 10px 0px 10px 0px;
+    padding:0;
 }
 div.pageSection.discloseHide.minor {
     background: transparent;
@@ -388,51 +451,34 @@ div.pageSection.minor div.sectionHead {
     background: transparent;
 }
 
-/* mimic the appearance of sectionHeader, independently of a pageSection */
-div.bare-header {
-    margin: 10px 8px 3px 8px;
-    padding: 4px 4px 4px 6px;
-    font-size:16px;
-    font-weight:bold;
-    padding:4px 4px 4px 6px;
+ul.studyTabs {
+    margin: 15px 0px 10px 0px;
+     border-bottom: 1px solid lightgray;
 }
 
+
 /* Data tables and controls */
+
 table.dataTable {
     width:100%;
     border:none;
 }
 table.dataTable tr.header > th {
+    border-style: none;
     text-align:left;
     color:rgb(12, 69, 137);
     font-size:14px;
     height:19px;
     font-weight:bold;
-    padding:1px 2px 1px 6px;
-    background: linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    background: -o-linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    background: -moz-linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    background: -webkit-linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    background: -ms-linear-gradient(top, rgba(233,233,233,0.5) 0%, rgba(233,233,233,0.2) 100%);
-    /*border-radius: 6px 6px 0px 0px;
-    -webkit-border-radius: 6px 6px 0px 0px;
-    -moz-border-radius: 6px 6px 0px 0px;*/
+    padding:4px 4px 1px 6px;
 }
-table.dataTable tr.columnLabels > th {
-    /*padding:2px 4px 2px 4px;*/
-    padding: 4px;
+tr.columnLabels > th {
+    padding: 10px;
     vertical-align:top;
-    font-size:12px;
+    font-size:14px;
     color:rgb(12,69,137);
     font-weight:normal;
-    border-style:solid;
-    border-width:0px 1px 0px 0px;
-    border-color:rgba(164,164,164,0.3);
-    background: linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
-    background: -o-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
-    background: -moz-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
-    background: -webkit-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
-    background: -ms-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
+    border: 1px solid lightgray;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -440,48 +486,49 @@ table.dataTable tr.columnLabels > th {
     -ms-user-select: none;
     user-select: none;
 }
-table.dataTable tr.columnLabels > th:last-child {
-    border-right-width: 0;
-}
+
 /* Table sorting components */
-table.dataTable tr.columnLabels > th.sortheader {
+
+tr.columnLabels > th.sortheader {
     cursor: pointer;
     text-align: left;
     text-decoration:none;
 }
-table.dataTable tr.columnLabels > th.sortheader.right {
+tr.columnLabels > th.sortheader.right {
     text-align: right;
 }
-table.dataTable tr.columnLabels > th.sortheader.center {
+tr.columnLabels > th.sortheader.center {
     text-align: center;
 }
-table.dataTable tr.columnLabels > th.smaller {
-    font-size:11px;
+tr.columnLabels > th.smaller {
+    font-size:14px;
 }
 table.dataTable tr.columnLabels > th.sortheader:hover {
     text-decoration:underline;
     background-color:#CCF;
 }
-table.dataTable tr.columnLabels > th.sortedup > div {
+tr.columnLabels > th.sortedup > div {
     background-image: url(images/sortup-dark.png);
     background-repeat: no-repeat;
     background-position: center right;
 }
-table.dataTable tr.columnLabels > th.sorteddown > div {
+tr.columnLabels > th.sorteddown > div {
     background-image: url(images/sortdown-dark.png);
     background-repeat: no-repeat;
     background-position: center right;
 }
-table.dataTable tr.columnLabels > th.sortwait > div {
-    background-image: url(images/wait.png);    
+tr.columnLabels > th.sortwait > div {
+    background-image: url(images/wait.png);
     background-repeat: no-repeat;
     background-position: center right;
 }
-table.dataTable tr.columnLabels > th.sortwait > div:hover {
+tr.columnLabels > th.sortwait > div:hover {
     text-decoration:underline;
     background-color:rgba(108,164,233,0.6);
 }
+
 /* Data table regular cells */
+
 table.dataTable tr > td {
     padding:4px 4px 4px 8px;
     margin:0px;
@@ -512,29 +559,23 @@ table.dataTable tr > td ul > li:first-child {
 table.dataTable tr > td span {
     margin:0px;
     padding:3px 3px 0px 0px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
 table.dataTable tr > td p {
     margin:3px 3px 0px 0px;
     padding:0px;
 }
-table.dataTable tr.groupHeader.replicate > td:before {
+tr.groupHeader.replicate > td:before {
     padding:0;
     content: '▼';
 }
 
-table.dataTable tr.groupHeader > td:before {
+tr.groupHeader > td:before {
     padding: 0;
     content: '►';
-}
-table.dataTable tr.groupHeader > td > div {
-    font-weight:bold;
-    padding:3px 6px;
-    cursor: pointer;
-    background: linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
-    background: -o-linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
-    background: -moz-linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
-    background: -webkit-linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
-    background: -ms-linear-gradient(top, rgba(244,244,244,0.5) 0%, rgba(244,244,244,0.3) 10%, rgba(255,255,255,0) 50%, rgba(255,255,255,1) 100%);
 }
 
 .replicateLineShow {
@@ -542,18 +583,20 @@ table.dataTable tr.groupHeader > td > div {
 }
 
 /* Data table controls for DataGrids.  These can fit inside "sectionHeads" or the "header" row of a "dataTable" */
+
 span.tableControl {
-    float:right;
+/*    float:left;   */
     font-weight:normal;
-    margin:0px 1px 0px 16px;
+    margin:10px 5px 10px 0px;
     padding:0px;
     height:15px;
     color:#444444;
     font-size:12px;
     vertical-align:bottom;
+    display: none;
 }
 span.tableControl > input[type="checkbox"] {
-    margin:0px 4px 0px 0px;
+    margin:10px 5px 10px 0px;
     padding:0px;
     font-size:11px;
 }
@@ -567,71 +610,48 @@ span.tableControl > select {
     padding:0px;
     font-size:10px;
 }
+
+span.tableHeader {
+/*    float: left;  */
+    margin-right: 10px;
+}
+
 input[type="button"].tableControl {
-    float:right;
-    margin:1px 1px 0px 16px;
+/*    float:left;   */
+    margin:10px 5px 10px 0px;
     font-size:10px;
 }
 input[type="text"].searchBox {
-    margin:0px 1px 0px 0px;
+    margin:10px 5px 10px 0px;
     padding:0px 4px 0px 4px;
-    font-size:11px;
+    font-size:14px;
     border-radius: 7px;
     -webkit-border-radius: 7px;
     -moz-border-radius: 7px;
+    background-image: url("images/magnifying_glass.png");
+    background-repeat: no-repeat;
+    background-size: 15px 15px;
+    background-position: right 5px top 1px;
 }
 input[type="text"].searchBox.tableControl {
-    float:right;
-}
-input[type="text"].searchBox.wait {
-    background-repeat: no-repeat;
-    background-position: center right;
-}
-span.searchDisclosure {
-    float:right;
-    margin:0px 1px 0px 16px;
-    padding:3px 1px 0px 1px;
-    display:inline-block;
-    width:18px;
-    height:13px;
-    text-align:center;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-image: url(images/search_disclosure.png)
+/*    float:left;   */
 }
 
-
-/* DataGrid header checkboxes.  To make a checkbox in a table header, do <label class="tableCheckbox"><input ... />LABEL</label> */
-.tableCheckbox {
-    display: block;
-    float: right;
-    padding-top: 1px;
-    padding-left: 15px;
-    padding-right: 10px;
-    text-indent: -15px;
-    font-weight:normal;
-    font-size:12px;
-}
-.tableCheckbox input {
-    margin:0;
-    vertical-align: bottom;
-    position: relative;
-    left: -5px;
-    top: -1px;
-}
 
 /* DataGrid header pulldown menus */
-span.pulldownMenu {
-    margin:0px 1px 0px 6px;
+
+div.pulldownMenu {
+    display:inline-block;
+    margin:10px 5px 10px 0px;
     padding:0px;
     font-weight:normal;
-    font-size:12px;
-    float:right;
+    font-size:14px;
 }
 div.pulldownMenuLabelOff {
-    display:block;
+    display:inline-block;
     cursor: pointer;
-    margin:1px 1px 0px 1px;
+    font-size: 14px;
+    margin:2px 5px 0px 0px;
     border:0px;
     padding:0px 5px 0px 5px;
     text-decoration:none;
@@ -641,15 +661,14 @@ div.pulldownMenuLabelOff:hover {
     text-decoration:underline;
 }
 div.pulldownMenuLabelOn {
-    display:block;
+    display:inline-block;
     position:relative;
-    margin:0px 0px 0px 0px;
+    margin:0px;
     border-style:solid;
-    border-color:black;
     padding:0px 5px 0px 5px;
     text-decoration:underline;
     border-width:1px 1px 0px 1px;
-    background-color:rgb(229,240,255);
+    background-color:white;
     cursor: pointer;
     z-index:4;
 }
@@ -658,12 +677,12 @@ div.pulldownMenuMenuBlock {
     position:absolute;
     margin:0px;
     border:1px black solid;
-    padding:0px 8px 0px 8px;
+    padding:5px 8px 0px 8px;
     text-decoration:none;
-    background-color:rgb(229,240,255);
+    background-color:white;
     text-shadow:none;
     color:black;
-    font-size:12px;
+    font-size:14px;
     font-weight:normal;
     z-index:3;
     box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
@@ -693,12 +712,12 @@ div.pulldownMenuMenuBlock ul > li > input[type="checkbox"] {
 
 
 /* Styling for a special-purpose "filter criteria" table */
+
 div.filteringSection {
-    border:none;
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    margin:0px 2px 0px 2px;
+    margin:15px 2px 0px 20px;
     max-height: 289px;
 }
 div.filterTable {
@@ -715,8 +734,24 @@ div.filterTable > div.filterColumn {
     border:none;
     vertical-align:top;
 }
+.studyPrevNext {
+    margin: 0px 40px 0px 20px;
+    float: right;
+}
+
+.dropLink {
+    vertical-align: top;
+}
+
+.dropImg {
+    background-image: url(images/download_icon.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
 div.filterTable > div.filterColumn div.filterCriteriaScrollZone {
-    max-height: 264px;
+    max-height: 161px;
     overflow-x: visible;
     overflow-y: auto;
     padding:0px 20px 0px 0px;
@@ -745,6 +780,20 @@ table.filterCriteriaTable tr.nodata:hover {
 table.filterCriteriaTable input[type="checkbox"] {
     margin-left: 4px;
     margin-right: 4px;
+    vertical-align: middle;
+}
+
+div.lastViewed span {
+    display: inline-block;
+    background-color: white;
+    margin-bottom: 5px;
+    font-weight: normal;
+    border: 1px solid #f1f1f1;
+    padding: 9px 10px;
+    font-size: 14px;
+    line-height: normal;
+    border-radius: 3px;
+    margin-right: 10px;
 }
 div.filterHead {
     padding:4px 8px 2px 2px;
@@ -789,82 +838,125 @@ div.filterHeadSearch > input[type="text"] {
 
 
 /* Tab sets for page sections */
-div.pageSectionTabs {
-    padding:0px;
-    margin:10px 8px 0px 8px;
+
+ul.studyTabs {
+    margin: 15px 0px 10px 0px;
+}
+
+.disabled-button {
+    opacity: 0.5;
+}
+
+div.tabBar {
+    padding:0px 10px 0px 10px;
+    background-repeat: repeat-x;
+    background-size: 416px 26px;
+    background-position: bottom;
+    background-image: url(images/tab_section_background.png);
+    margin:20px 0px 20px 0px;
     z-index:3;
 }
-div.pageSectionTabs > div {
-    display:inline-block;
-    color:#6c6c6c;
-    font-size:13px;
-    font-weight:bold;
+div.tabBar > span {
+    display: inline-block;
+    color:#3c3c3c;
+    font-size:14px;
     margin:0px;
-    background: linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
-    background: -o-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
-    background: -moz-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
-    background: -webkit-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
-    background: -ms-linear-gradient(top, rgba(230,230,230,1) 0%, rgba(250,250,250,1) 100%);
     border-style:solid;
-    border-color:#a0a0a0;
-    border-radius: 6px 6px 0px 0px;
-    -webkit-border-radius: 6px 6px 0px 0px;
-    -moz-border-radius: 6px 6px 0px 0px;
-    padding-top:0px;
-    padding-left:7px;
-    padding-right:7px;
+    border-color:#d0d0d0;
+    border-top-width:1px;
+    border-bottom-width:1px;
+    border-left-width:1px;
+    border-right-width:0px;
+    padding:8px 12px 8px 12px;
 }
-div.pageSectionTabs > div.active {
-    border-width:1px 1px 0px 1px;
-    padding-bottom:1px;
+div.tabBar.larger > span {
+    font-size:17px;
+    padding:10px 14px 10px 14px;
+}
+div.tabBar > span:first-of-type {
+    border-top-left-radius:6px;
+}
+div.tabBar > span:last-of-type {
+    border-right-width:1px;
+    border-top-right-radius:6px;
+}
+div.tabBar > span.active {
+    border-bottom-width:0px;
+    padding-bottom:9px;
     z-index:4;
+    background-color: #FFFFFF;
 }
-div.pageSectionTabs > div.inactive {
+div.tabBar.larger > span.active {
+    padding-bottom:11px;
+}
+div.tabBar > span:not(.active) {
+    background-color: #F7F7F7;
     cursor: pointer;
+    box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.09) inset;
+}
+
+
+/* Button bars (largely the same as tab bars) */
+
+div.buttonBar {
+    display:flex;
+    align-items:center;
+    flex-wrap: nowrap;
+    flex-direction: row;    
+    padding:0px 10px 0px 10px;
+    margin:5px 0px 5px 0px;
+}
+div.buttonBar > span {
+    display: inline-block;
+    color:#3c3c3c;
+    font-size:14px;
+    margin:0px;
+    border-style:solid;
+    border-color:#FFFFFF;
+    background-color: #FFFFFF;
     border-width:1px;
-    padding-bottom:0px;
+    padding:8px 12px 8px 12px;
 }
-div.pageSectionTabs > div.inactive:hover {
-    background:none;    /* To cancel the gradient. */
-    background-color:#CECEFF;
+div.buttonBar > span:hover {
+    border-color:#d0d0d0;
+}
+div.buttonBar.larger > span {
+    font-size:17px;
+    padding:10px 14px 10px 14px;
+}
+div.buttonBar > span:first-of-type {
+    border-top-left-radius:6px;
+    border-bottom-left-radius:6px;
+}
+div.buttonBar > span:last-of-type {
+    border-top-right-radius:6px;
+    border-bottom-right-radius:6px;
+}
+div.buttonBar > span.active {
+    border-color:#d0d0d0;
+    background-color: #F7F7F7;
+    box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.09) inset;
+}
+div.buttonBar > span:not(.active) {
+    color:#888888;
+    cursor: pointer;
+}
+div.buttonBar > span:not(.active) > img {
+    opacity:0.4;
 }
 
 
-/* On the page, we will be generating a copy of each tab element, with the copy immediately
-   following the original in the DOM.  The original will be positioned "absolute",
-   and the copy will be the default "relative".
-     Why do this?
-     Because the "absolute" element can be subject to z-index positioning, allowing it to
-   rest on top of surrounding blocks.
-     Meanwhile, the "relative" element creates space in the layout to make room for the
-   next tab - but not exactly the same amount of space.
-     The "relative" element is designed to be exactly two pixels _shorter_ than the "absolute"
-   element, which makes the "absolute" element overlap the pageSectionTabContent div that occurs
-   farther down the page, by two pixels.  This is enough to obscure the solid border line
-   in the pageSectionTabContent div with the light-colored background of the tab, making it
-   look like the tab is selected.
-     The "relative" element is also six pixels _narrower_ than the "absolute" element,
-   which causes the "absolute" elements to overlap each other, making the layout of the tabs
-   more cohesive.
-     Finally, the "active" tab is given a higher z-index, so its borders are always on top. 
-*/
-div.pageSectionTabs > div.absoverlay {
-    padding-top:1px;
-    position:absolute;
-    padding-left:10px;
-    padding-right:10px;
-}
 /* This overrides some of the settings in the pageSection style */
+
 div.pageSectionTabContent {
     margin:0px 8px 3px 8px;
-    border-radius: 0px 6px 6px 6px;
-    -webkit-border-radius: 0px 6px 6px 6px;
-    -moz-border-radius: 0px 6px 6px 6px;
+    border-width:2px 0px 0px 0px;
     z-index:0;
 }
 
 
 /* span popup info boxes */
+
 span.popup:hover {
     background-color:#CECEFF;
 }
@@ -895,6 +987,7 @@ span.popup:hover > span.popupinfo {
 
 
 /* Table cells with popup menus */
+
 td.popupcell:hover {
     background-color:#CECEFF;
 }
@@ -934,13 +1027,6 @@ td.popupcell div.p > div.q > div.s > div.t {
     z-index:2;
     box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
     border-radius: 3px;
-    -webkit-border-radius: 3px;
-    -moz-border-radius: 3px;
-    transform: translate(-4px,-4px);
-    -ms-transform: translate(-4px,-4px);
-    -webkit-transform: translate(-4px,-4px);
-    -o-transform: translate(-4px,-4px);
-    -moz-transform: translate(-4px,-4px);
 }
 td.popupcell:hover div.p > div.q > div.s > div.t {
     display:block;
@@ -977,19 +1063,28 @@ td.popupcell:hover ul.popupmenu {
 
 
 /* Tables for filling out forms */
+
 table.formTable {
-    margin:3px 0px 0px 3px;
+    margin:10px 3px 20px 3px;
     border:none;
-    font-size:12px;
+    font-size:16px;
 }
 table.formTable tr > td {
     text-align:left;
-    vertical-align:middle;
-    padding:0px 0px 3px 0px;
+    vertical-align:top;
+    padding:4px 6px 4px 4px;
 }
+table.formTable tr > td.form-label {
+    word-break: keep-all;
+    color:#a0a0a0;
+    font-size:15px;
+    padding-top:7px;
+    padding-left:16px;
+}
+
 table.formTable tr > td input {
     padding:0px;
-    margin:0px 9px 0px 0px;
+    margin:0;
 }
 table.formTable tr > td input[type="checkbox"] {
     padding:0px;
@@ -1011,22 +1106,26 @@ table.formTable tr > td p {
     margin:3px 3px 0px 0px;
     padding:0px;
 }
-#assaysMeasSelectedTD {
-    border-right: 1px solid rgba(164, 164, 164, 0.7);
-    float: left;
-    vertical-align: top;
-}
-#assaysMeasSelectedTD p {
-    margin: 0.25em;
-    padding: 0 8px;
-}
 table.formTable tr > td textarea {
-    vertical-align:top;
-    font-size:8.5pt;
-    margin:0px 9px 0px 0px;
-    padding:0px;
+    margin:0;
+    padding:0;
 }
 
+#studiesTable td:nth-child(2) {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    width: 40%;
+    overflow: hidden;
+    max-width: 200px;
+}
+
+#studiesTable td:first-child {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    width: 40%;
+    overflow: hidden;
+    max-width: 200px;
+}
 
 tr.multientrybuttonrow:hover div.multientrybutton {
     opacity: 1;
@@ -1039,12 +1138,13 @@ div.multientrybutton {
 /* Autocomplete input element styling */
 
 ul.edd-autocomplete-list {
+    z-index:115;
     display:table;
 }
 ul.edd-autocomplete-list > li {
     display:table-row;
 }
-ul.edd-autocomplete-list > li.not(.odd) {
+ul.edd-autocomplete-list > li:not(.odd) {
     background-color:#FCFCFC;
 }
 ul.edd-autocomplete-list > li > div {
@@ -1074,6 +1174,8 @@ input.autocomplete.wait, input.autocomp.wait {
 ul.ui-autocomplete {
     list-style: none;
 }
+
+.ui-dialog { z-index: 100 !important ;}
 
 .ice_strain {
     font-size: 11px;
@@ -1150,23 +1252,10 @@ div.graphClickWidget {
 
 
 /* Classes for editable fields */
-div.form-label {
-    word-break: break-word;
-    word-wrap: break-word;
-    display: inline-block;
-    max-width: 100%;
-    position: relative;
-    vertical-align: top;
-    padding: 2px 4px 2px 2px;
-}
 div.form-value {
-    word-break: break-word;
+    word-break: break-all;
     word-wrap: break-word;
-    display: inline-block;
-    max-width: 100%;
-    position: relative;
     white-space:pre-wrap;
-    vertical-align: top;
 }
 div.editable-field {
     -moz-box-sizing: border-box;
@@ -1174,11 +1263,9 @@ div.editable-field {
     box-sizing: border-box;
     border-radius: 2.01px;
     cursor: text;
-    display: inline-block;
-    max-width: 100%;
     position: relative;
     vertical-align: top;
-    word-break: break-word;
+    word-break: break-all;
 }
 div.editable-field.inactive {
     padding-right: 27px;
@@ -1189,6 +1276,13 @@ div.editable-field.inactive {
     transition: box-shadow 150ms ease-in 0ms;
     box-shadow: 0 0 0 0 transparent;
 }
+div.editable-field input, div.editable-field textarea {
+    width:90%;
+}
+div.editable-field.inactive input, div.editable-field.inactive textarea {
+    display:none;
+}
+
 div.editable-field:hover, .editable-field.saving {
     box-shadow: 0 0 0 1px rgba(108,164,233,0.6);
 }
@@ -1198,9 +1292,7 @@ div.editable-field.active {
     padding-top: 0px;
     box-shadow: 0 0 0 1px rgba(108,164,233,0.6);
 }
-div.editable-field.active.horizontalButtons {
-    padding-right: 49px;
-}
+
 div.editable-field.active.verticalButtons {
     padding-right: 27px;
 }
@@ -1326,11 +1418,17 @@ div.errorMessage {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
+
+a.close {
+    cursor: pointer;
+}
+
 div.errorMessage > a.close {
     cursor: pointer;
     float: right;
     margin: 0 5px;
 }
+
 .errorlist {
     background-color: #FFF0F0;
     border:  2px solid red !important;
@@ -1366,7 +1464,6 @@ dl.infolist > dd {
 }
 
 .form-label {
-  vertical-align: middle;
 }
 
 form.attachments > * {
@@ -1405,7 +1502,7 @@ ol.comment-list > li {
 
 .meta-remove {
     background-color: transparent;
-    background-image: url("./images/edit-cancel.png");
+    background-image: url("images/edit-cancel.png");
     background-position: 0 50%;
     background-repeat: no-repeat;
     cursor: pointer;
@@ -1439,29 +1536,17 @@ form.comments textarea {
     padding: 1em 0;
 }
 
-div.footer {
-    border-top: 1px solid #6CA5E9;
-    color: #CCC;
-    font-size: 0.85em;
-    margin-top: 2em;
-    padding: 1em;
-}
-div.footer > div.footer-text {
-    margin: 0px auto;
-    text-align: center;
-}
-div.footer > div.footer-text > span {
-    margin: 0 2em;
-}
-
 .groupReplicateRow {
     font-weight: bold;
 }
 
+
+/* File drop-zone styling */
+
 .fd-zone {
     background-repeat: no-repeat;
     background-attachment: scroll;
-    background-position: center; 
+    background-position: center;
     background-image: url(images/dropzone-excel_csv.png);
 }
 .fd-zone.over {
@@ -1479,5 +1564,347 @@ div.footer > div.footer-text > span {
 .fd-zone.text.over {
     background-image: url(images/dropzone-text-over.png);
 }
+
+.fd-zone input[type="file"] {
+    opacity:0;
+}
+
+div.fileDropInfoArea {
+    margin:24px 8px 24px 8px;
+}
+
+div.fileDropInfoIcon {
+    height:128px;
+    background-repeat: no-repeat;
+    background-attachment: scroll;
+    background-position: center; 
+    background-image: url(images/dropzone-csv-over.png);
+}
+div.fileDropInfoIcon.text {
+    background-image: url(images/dropzone-text-over.png);
+}
+div.fileDropInfoIcon.excel {
+    background-image: url(images/dropzone-excel-over.png);
+}
+div.fileDropInfoIcon.xml {
+    background-image: url(images/dropzone-xml-over.png);
+}
+
+div.fileDropInfoName {
+    color:#8DB0E6;
+    text-align:center;
+    font-size:15px;
+    margin:1px 8px 5px 8px;
+    font-weight:bold;
+}
+
+div.fileDropInfoSending {
+    margin: 3px;
+}
+div.fileDropInfoSending span {
+    font-size:12px;
+    margin-right: 10px;
+}
+
+div.fileDropInfoLog {
+    padding:0px;
+    font-size:12px;
+}
+
+
+/* Styles brought over from style.css */
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.axis2 path,
+.axis2 line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.axis2 text {
+    display: none;
+}
+
+.axis-text {
+    z-index: -1; position:relative;
+}
+
+.blankSvg {
+    height:302px;
+    width: auto;
+    position: relative;
+}
+
+.btn-default {
+    outline: none;
+    border-color: #fff;
+}
+
+.btn:focus, .btn:active:focus, .btn.active:focus{
+    outline:none;
+    box-shadow:none;
+    border-color: #fff;
+}
+
+.chart-img {
+    height: 24px;
+    width: 24px
+}
+
+div.tooltip2 {
+  position: absolute;
+  text-align: center;
+  width: 100px;
+  opacity: 0.5;
+  padding: 2px;
+  font: 12px sans-serif;
+  background: white;
+  border: 1px solid grey;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.grid .tick {
+    stroke: lightgrey;
+    stroke-opacity: 0.7;
+    shape-rendering: crispEdges;
+}
+
+.grid path {
+          stroke-width: 0;
+}
+
+.barAssay {
+  display: none;
+}
+
+.barMeasurement {
+    display: none;
+}
+
+.line {
+    fill: none;
+    stroke-width: 1.5px;
+}
+
+.lineNoData {
+    margin-top: 15px;
+}
+
+.dotted-line {
+    fill: none;
+    stroke-dasharray: 10,10;
+}
+
+.dotted-line-random {
+    fill: none;
+    stroke-dasharray: 20,10,5,5,5,10;
+}
+
+
+.tick text{
+  font-size: 12px;
+}
+
+.tick line{
+  opacity: 0.2;
+}
+
+.barTime {
+  display: none;
+}
+
+.rect {
+    opacity: 0.5;
+}
+.toolTip {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    position: absolute;
+    display: none;
+    width: auto;
+    height: auto;
+    background: none repeat scroll 0 0 white;
+    border: 0 none;
+    border-radius: 8px 8px 8px 8px;
+    box-shadow: -3px 3px 15px #888888;
+    color: black;
+    padding: 5px;
+    text-align: center;
+}
+
+.tooMuchData {
+    color: red;
+    text-align: center;
+    font-size: 18px;
+}
+
+.x.axis {
+    line: .1;
+}
+.x.axis path {
+  opacity: .2;
+}
+
+.y.axis path {
+  opacity: .2;
+}
+
+.y-checkbox {
+    margin-left: 10px;
+}
+
+/*
+  New UI CSS below
+*/
+
+.importExport {
+    background-color: #6CA5E9;
+    display: inline-block;
+    margin: 10px 0px 0px 30px;
+    padding: 20px 30px 20px 30px;
+    color: white;
+    border: 1px solid;
+    text-align: center;
+}
+
+.actionButton {
+    display: inline-block;
+    margin: 10px 10px 0px 0px;
+    background-color: rgb(32, 77, 116);
+    border-color: rgb(18, 43, 64);
+    border-radius: 3px;
+    border-style: solid;
+    border-width: 1px;
+    box-shadow: rgba(0, 0, 0, 0.121569) 0px 3px 5px 0px inset;
+    box-sizing: border-box;
+    color: rgb(255, 255, 255);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 18px;
+    margin: 2px 2px 0px 2px;
+    padding: 5px 10px 5px 10px;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.actionButton.primary {
+    color: #fff;
+    background-color: #337ab7;
+    border-color: #2e6da4;
+}
+
+.actionButton.larger {
+    font-size:17px;
+    padding:10px 14px 10px 14px;
+}
+
+.actionButton:disabled {
+    background-color: #FFFFFF;
+    color: #888888;
+    border-color: #888888;
+    cursor: not-allowed;
+}
+
+.assayTable {
+    padding-left: 100px;
+}
+
+#measurementMain {
+    margin-right: 30px;
+}
+
+.filterHeader {
+    font-size: 12px;
+    color: grey;
+    margin-top: 5px;
+}
+
+.navbar .navbar-collapse {
+  text-align: center;
+}
+
+.studyNav {
+    width: 100%;
+    text-align: center;
+}
+
+.studyNav a:hover {
+    color: #111;
+    border-bottom-color: rgba(0,0,0,.1);
+}
+
+.studyNav .nav>li {
+    position: relative;
+    display: block;
+    margin: 0px 15px 30px 15px;
+}
+
+.studyNav .nav>li>a {
+    color: lightgray;
+    position: relative;
+    display: block;
+    padding: 10px 15px;
+    border-bottom: 2px solid lightgray;
+    border-radius: 0px;
+}
+.nav {
+    list-style: none;
+    padding-left: 0;
+}
+
+.studyNav .navbar .nav > .active > a {
+    background:none;
+}
+
+.studyNav .nav>li>a:hover, .nav>li>a:focus {
+    text-decoration: none;
+    background-color: transparent;
+    border-bottom: 2px solid grey;
+    border-radius: 0px;
+    color: black;
+}
+
+#studyTable .nav>li>a:hover, .nav>li>a:focus {
+    text-decoration: none;
+    background-color: transparent;
+    border-radius: 0px;
+    border-bottom: none;
+}
+
+.studyNav .nav-pills {
+    color: black;
+    font-size: 16px;
+    display: inline-block;
+    float: none;
+    vertical-align: top;
+    background-color: white;
+}
+
+.studyNav .nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
+    display: inline-block;
+    float: none;
+    vertical-align: top;
+    background-color: transparent;
+    color:black;
+    border-bottom: 2px solid grey;
+    border-radius: 0px;
+}
+
+.pageDivider {
+    border-bottom: 1px solid rgba(0,0,0,.1);
+    margin-top: -3.6em;
+    margin-bottom: 3.6em;
+}
+
 
 /* End of common styles */

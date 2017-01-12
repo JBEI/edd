@@ -1,6 +1,8 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>
 /// <reference path="AssayTableDataGraphing.ts" />
+/// <reference path="EDDAutocomplete.ts" />
+/// <reference path="EDDGraphingTools.ts" />
 /// <reference path="Utl.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -39,7 +41,7 @@ var EDDTableImport;
     // that will be used to disambiguate labels in imported data.
     function onWindowLoad() {
         var atdata_url;
-        atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
+        atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata/";
         $('.disclose').find('a.discloseLink').on('click', EDDTableImport.disclose);
         // Populate ATData and EDDData objects via AJAX calls
         jQuery.ajax(atdata_url, {
@@ -440,7 +442,7 @@ var EDDTableImport;
                 elementId: "step2textarea",
                 fileInitFn: this.fileDropped.bind(this),
                 processRawFn: this.fileRead.bind(this),
-                url: "/utilities/parsefile",
+                url: "/utilities/parsefile/",
                 processResponseFn: this.fileReturnedFromServer.bind(this),
                 progressBar: this.fileUploadProgressBar
             });
@@ -1823,7 +1825,6 @@ var EDDTableImport;
             }
         };
         IdentifyStructuresStep.prototype.remakeGraphArea = function () {
-            var graphHelper = Object.create(GraphHelperMethods);
             var mode = this.selectMajorKindStep.interpretationMode;
             var sets = this.graphSets;
             var graph = $('#graphDiv');
@@ -1839,7 +1840,7 @@ var EDDTableImport;
             if ((mode === "std" || mode === 'biolector' || mode === 'hplc') && (sets.length > 0)) {
                 graph.removeClass('off');
                 sets.forEach(function (set) {
-                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set);
+                    var singleAssayObj = EDDGraphingTools.transformNewLineItem(EDDData, set);
                     dataSets.push(singleAssayObj);
                 });
                 EDDATDGraphing.addNewSet(dataSets);
@@ -1900,7 +1901,6 @@ var EDDTableImport;
             this.measurementObjSets = {};
             this.currentlyVisibleMeasurementObjSets = [];
             this.metadataObjSets = {};
-            this.autoCompUID = 0;
             this.masterAssaysOptionsDisplayedForProtocol = 0;
             this.selectMajorKindStep = selectMajorKindStep;
             this.identifyStructuresStep = identifyStructuresStep;
@@ -1931,10 +1931,10 @@ var EDDTableImport;
             $('#masterMTypeValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
             $('#masterMUnitsValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
             // enable autocomplete on statically defined fields
-            EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
-            EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
-            EDD_auto.setup_field_autocomplete('#masterMUnits', 'MeasurementUnit');
-            EDD_auto.setup_field_autocomplete('#masterUnits', 'MeasurementUnit');
+            //EDDAuto.BaseAuto.createFromElements('#masterMComp', 'MeasurementCompartment');
+            //EDDAuto.BaseAuto.createFromElements('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
+            //EDDAuto.BaseAuto.createFromElements('#masterMUnits', 'MeasurementUnit');
+            //EDDAuto.BaseAuto.createFromElements('#masterUnits', 'MeasurementUnit');
         }
         TypeDisambiguationStep.prototype.setAllInputsEnabled = function (enabled) {
             var allUserInputs = $("." + TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
@@ -2122,8 +2122,7 @@ var EDDTableImport;
             })[0];
             body = $('<tbody>').appendTo(table)[0];
             uniqueLineNames.forEach(function (name, i) {
-                var disam, row, defaultSel, cell, select, lineNameInput, selectedLineIdInput;
-                disam = _this.lineObjSets[name];
+                var disam, row, defaultSel, cell, select, disam = _this.lineObjSets[name];
                 if (!disam) {
                     disam = new LineDisambiguationRow(body, name, i);
                     _this.lineObjSets[name] = disam;
@@ -2189,8 +2188,7 @@ var EDDTableImport;
             maxRowCreationSeconds = 0;
             totalRowCreationSeconds = 0;
             uniqueAssayNames.forEach(function (assayName, i) {
-                var assayId, disam, row, defaultSelection, cell, aSelect, lineNameInput, selectedLineIdInput;
-                disam = _this.assayObjSets[assayName];
+                var assayId, disam, row, defaultSelection, cell, aSelect, disam = _this.assayObjSets[assayName];
                 if (!disam) {
                     disam = new AssayDisambiguationRow(tableBody, assayName, i);
                     nRows++;
@@ -2274,18 +2272,18 @@ var EDDTableImport;
                     _this.measurementObjSets[name] = disam;
                 }
                 // TODO sizing should be handled in CSS
-                disam.compObj.data('visibleIndex', i);
-                disam.typeObj.data('visibleIndex', i);
-                disam.unitsObj.data('visibleIndex', i);
+                disam.compAuto.visibleInput.data('visibleIndex', i);
+                disam.typeAuto.visibleInput.data('visibleIndex', i);
+                disam.unitsAuto.visibleInput.data('visibleIndex', i);
                 // If we're in MDV mode, the units pulldowns are irrelevant. Toggling
                 // the hidden unit input controls whether it's treated as required.
                 isMdv = mode === 'mdv';
-                disam.unitsObj.toggleClass('off', isMdv);
-                disam.unitsHiddenObj.toggleClass('off', isMdv);
+                disam.unitsAuto.visibleInput.toggleClass('off', isMdv);
+                disam.unitsAuto.hiddenInput.toggleClass('off', isMdv);
                 // Set required inputs as required
-                disam.compHiddenObj.addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-                disam.typeHiddenObj.addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-                disam.unitsHiddenObj.toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, !isMdv);
+                disam.compAuto.hiddenInput.addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+                disam.typeAuto.hiddenInput.addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+                disam.unitsAuto.hiddenInput.toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, !isMdv);
                 _this.currentlyVisibleMeasurementObjSets.push(disam);
             });
             if (uniqueMeasurementNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
@@ -2324,8 +2322,9 @@ var EDDTableImport;
                     disam = new MetadataDisambiguationRow(body, name, i);
                     _this.metadataObjSets[name] = disam;
                 }
-                disam.metaObj.attr('name', 'disamMeta' + i).addClass('autocomp_altype')
-                    .next().attr('name', 'disamMetaHidden' + i);
+                disam.metaAuto.visibleInput.attr('name', 'disamMeta' + i)
+                    .addClass('autocomp_altype');
+                disam.metaAuto.hiddenInput.attr('name', 'disamMetaHidden' + i);
             });
             if (uniqueMetadataNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
                 this.addToggleAllButton(parentDiv, 'Metadata Types');
@@ -2350,7 +2349,7 @@ var EDDTableImport;
             }
             v = changed.data('visibleIndex') || 0;
             this.currentlyVisibleLineObjSets.slice(v).forEach(function (obj) {
-                var textInput = obj.lineNameInput;
+                var textInput = obj.lineAuto.visibleInput;
                 if (textInput.data('setByUser')) {
                     return;
                 }
@@ -2386,11 +2385,12 @@ var EDDTableImport;
             return false;
         };
         TypeDisambiguationStep.prototype.userChangedMeasurementDisam = function (element) {
-            var hiddenInput, textInput, type, rowIndex, nextSets;
+            var auto, hiddenInput, textInput, type, rowIndex, nextSets;
             hiddenInput = $(element);
-            textInput = hiddenInput.prev();
-            type = textInput.data('type');
-            if (type === 'compObj' || type === 'unitsObj') {
+            auto = hiddenInput.data('edd').autocompleteobj; // If this is missing we might as well throw an error
+            textInput = auto.visibleInput;
+            type = auto.modelName;
+            if (type === 'MeasurementCompartment' || type === 'MeasurementUnit') {
                 rowIndex = textInput.data('setByUser', true).data('visibleIndex') || 0;
                 if (rowIndex < this.currentlyVisibleMeasurementObjSets.length - 1) {
                     nextSets = this.currentlyVisibleMeasurementObjSets.slice(rowIndex + 1);
@@ -2406,7 +2406,7 @@ var EDDTableImport;
                     });
                 }
             }
-            // not checking typeObj; form submit sends selected types
+            // not checking typeAuto; form submit sends selected types
             this.checkAllMeasurementCompartmentDisam();
         };
         // Run through the list of currently visible measurement disambiguation form elements,
@@ -2417,8 +2417,8 @@ var EDDTableImport;
             var allSet, mode;
             mode = this.selectMajorKindStep.interpretationMode;
             allSet = this.currentlyVisibleMeasurementObjSets.every(function (obj) {
-                var hidden = obj.compHiddenObj;
-                if (obj.compObj.data('setByUser') || (hidden.val() && hidden.val() !== '0')) {
+                var compAuto = obj.compAuto;
+                if (compAuto.visibleInput.data('setByUser') || (compAuto.visibleInput.val() && compAuto.val() !== '0')) {
                     return true;
                 }
                 return false;
@@ -2482,7 +2482,7 @@ var EDDTableImport;
                     if (set.line_name !== null) {
                         lineDisam = _this.lineObjSets[set.line_name];
                         if (lineDisam) {
-                            lineIdInput = lineDisam.selectedLineIdInput;
+                            lineIdInput = lineDisam.lineAuto.hiddenInput;
                             // if we've disabled import for the associated line, skip adding this
                             // measurement to the list
                             if (lineIdInput.prop('disabled')) {
@@ -2505,7 +2505,7 @@ var EDDTableImport;
                                 return; // continue to the next loop iteration parsedSets.forEach
                             }
                             assay_id = assaySelect.val();
-                            lineIdInput = assayDisam.selectedLineIdInput;
+                            lineIdInput = assayDisam.lineAuto.hiddenInput;
                             lineId = lineIdInput.val();
                         }
                     }
@@ -2516,12 +2516,12 @@ var EDDTableImport;
                     if (set.measurement_name !== null) {
                         measDisam = _this.measurementObjSets[set.measurement_name];
                         if (measDisam) {
-                            measurementTypeId = measDisam.typeHiddenObj.val();
-                            compartmentId = measDisam.compHiddenObj.val() || "0";
-                            unitsId = measDisam.unitsHiddenObj.val() || "1";
+                            measurementTypeId = measDisam.typeAuto.val();
+                            compartmentId = measDisam.compAuto.val() || "0";
+                            unitsId = measDisam.unitsAuto.val() || "1";
                             // If we've disabled import for measurements of this type, skip adding
                             // this measurement to the list
-                            if (measDisam.typeHiddenObj.is(':disabled')) {
+                            if (measDisam.typeAuto.hiddenInput.is(':disabled')) {
                                 return; // continue to the next loop iteration parsedSets.forEach
                             }
                         }
@@ -2536,8 +2536,8 @@ var EDDTableImport;
                 Object.keys(set.metadata_by_name).forEach(function (name) {
                     metaDisam = _this.metadataObjSets[name];
                     if (metaDisam) {
-                        metaId = metaDisam.metaHiddenObj.val();
-                        if (metaId && (!metaDisam.metaHiddenObj.is(':disabled'))) {
+                        metaId = metaDisam.metaAuto.val();
+                        if (metaId && (!metaDisam.metaAuto.hiddenInput.is(':disabled'))) {
                             metaDataById[metaId] = set.metadata_by_name[name];
                             metaDataByName[name] = set.metadata_by_name[name];
                             metaDataPresent = true;
@@ -2724,15 +2724,16 @@ var EDDTableImport;
             _super.apply(this, arguments);
         }
         MetadataDisambiguationRow.prototype.build = function (body, name, i) {
-            this.metaObj = EDD_auto.create_autocomplete(this.row.insertCell())
-                .val(name)
-                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
-            this.metaHiddenObj = this.metaObj
-                .next()
-                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            this.metaObj.attr('name', 'disamMeta' + i).addClass('autocomp_altype')
-                .next().attr('name', 'disamMetaHidden' + i);
-            EDD_auto.setup_field_autocomplete(this.metaObj, 'AssayLineMetadataType', MetadataDisambiguationRow.autoCache);
+            this.metaAuto = new EDDAuto.AssayLineMetadataType({
+                container: $(this.row.insertCell()),
+                visibleValue: name,
+                cache: MetadataDisambiguationRow.autoCache
+            });
+            this.metaAuto.visibleInput.addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                .attr('name', 'disamMeta' + i)
+                .addClass('autocomp_altype');
+            this.metaAuto.hiddenInput.addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                .attr('name', 'disamMetaHidden' + i);
         };
         // Cache for re-use of autocomplete objects
         MetadataDisambiguationRow.autoCache = {};
@@ -2746,34 +2747,30 @@ var EDDTableImport;
         }
         MeasurementDisambiguationRow.prototype.build = function (body, name, i) {
             var _this = this;
-            // create autocompletes
-            ['compObj', 'typeObj', 'unitsObj'].forEach(function (auto) {
-                var cell = $(_this.row.insertCell()).addClass('disamDataCell');
-                _this[auto] = EDD_auto.create_autocomplete(cell)
-                    .data('type', auto)
-                    .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
+            this.compAuto = new EDDAuto.MeasurementCompartment({
+                container: $(this.row.insertCell()),
+                cache: MeasurementDisambiguationRow.compAutoCache
             });
-            // TODO: These size attributes should be handled in CSS, possibly by create_autocomplete.
-            this.typeHiddenObj = this.typeObj
-                .attr('size', 45)
-                .next()
-                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            this.compHiddenObj = this.compObj
-                .attr('size', 20)
-                .next()
-                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            this.unitsHiddenObj = this.unitsObj
-                .attr('size', 10)
-                .next()
-                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            this.typeAuto = new EDDAuto.GenericOrMetabolite({
+                container: $(this.row.insertCell()),
+                cache: MeasurementDisambiguationRow.metaboliteAutoCache
+            });
+            this.unitsAuto = new EDDAuto.MeasurementUnit({
+                container: $(this.row.insertCell()),
+                cache: MeasurementDisambiguationRow.unitAutoCache
+            });
+            // create autocompletes
+            [this.compAuto, this.typeAuto, this.unitsAuto].forEach(function (auto) {
+                var cell = $(_this.row.insertCell()).addClass('disamDataCell');
+                auto.container.addClass('disamDataCell');
+                auto.visibleInput.addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
+                auto.hiddenInput.addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
+            });
             $(this.row).on('change', 'input[type=hidden]', function (ev) {
                 // only watch for changes on the hidden portion, let autocomplete work
                 EDDTableImport.typeDisambiguationStep.userChangedMeasurementDisam(ev.target);
             });
-            EDD_auto.setup_field_autocomplete(this.compObj, 'MeasurementCompartment', MeasurementDisambiguationRow.compAutoCache);
-            EDD_auto.setup_field_autocomplete(this.typeObj, 'GenericOrMetabolite', MeasurementDisambiguationRow.metaboliteAutoCache);
-            EDD_auto.initial_search(this.typeObj, name);
-            EDD_auto.setup_field_autocomplete(this.unitsObj, 'MeasurementUnit', MeasurementDisambiguationRow.unitAutoCache);
+            EDD_auto.initial_search(this.typeAuto, name);
         };
         // Caches for re-use of autocomplete fields
         MeasurementDisambiguationRow.compAutoCache = {};
@@ -2789,49 +2786,39 @@ var EDDTableImport;
         }
         LineDisambiguationRow.prototype.build = function (body, name, i) {
             var defaultSel, cell;
-            defaultSel = LineDisambiguationRow.disambiguateAnAssayOrLine(name, i);
             cell = $(this.row.insertCell()).css('text-align', 'left');
+            defaultSel = LineDisambiguationRow.disambiguateAnAssayOrLine(name, i);
             this.appendLineAutoselect(cell, defaultSel);
-            this.lineNameInput.data('visibleIndex', i);
-            this.selectedLineIdInput.val("new");
+            this.lineAuto.visibleInput.data('visibleIndex', i);
         };
         LineDisambiguationRow.prototype.appendLineAutoselect = function (parentElement, defaultSelection) {
             // create a text input to gather user input
             var lineInputId = 'disamLineInput' + this.visibleIndex;
-            var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
-                .data('setByUser', false)
+            this.lineAuto = new EDDAuto.StudyLine({
+                container: parentElement,
+                hiddenValue: defaultSelection.lineID,
+                emptyCreatesNew: true,
+                nonEmptyRequired: false
+            });
+            this.lineAuto.visibleInput.data('setByUser', false)
                 .attr('id', lineInputId)
-                .attr('placeholder', '(Create New)')
-                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
-                .appendTo(parentElement);
+                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
             // create a hidden form field to store the selected value
-            var selectedLineIdInput = $('<input type=hidden>')
-                .appendTo(parentElement)
-                .attr('id', 'disamLine' + this.visibleIndex)
+            this.lineAuto.hiddenInput.attr('id', 'disamLine' + this.visibleIndex)
                 .attr('name', 'disamLine' + this.visibleIndex)
-                .val("new")
                 .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            // set up autocomplete for using controls created above
-            var model_name = "StudyLines";
-            var opt = {
-                'search_extra': { 'study': EDDData.currentStudyID } };
-            EDD_auto.setup_field_autocomplete(lineNameInput, model_name, EDDData.Lines, opt, [{ "name": "(Create New)", "id": "new" }]);
-            // save references to both the input and the hidden form field that stores the
-            // selected value
-            this.lineNameInput = lineNameInput;
-            this.selectedLineIdInput = selectedLineIdInput;
             // auto-select the line name if possible
-            if (defaultSelection.lineID) {
-                // search for the line ID corresponding to this name.
-                // ATData.existingLines is of type {id: number; n: string;}[]
-                (ATData.existingLines || []).forEach(function (line) {
-                    if (defaultSelection.lineID === line.id) {
-                        lineNameInput.val(line.n);
-                        selectedLineIdInput.val(line.id.toString());
-                        return false; // stop looping
-                    }
-                });
-            }
+            //if (defaultSelection.lineID) {
+            //    // search for the line ID corresponding to this name.
+            // ATData.existingLines is of type {id: number; n: string;}[]
+            //    (ATData.existingLines || []).forEach((line: any) => {  // TODO: possible optimization here -- no need for linear search
+            //        if (defaultSelection.lineID === line.id) {
+            //            lineNameInput.val(line.n);
+            //            selectedLineIdInput.val(line.id.toString());
+            //            return false; // stop looping
+            //        }
+            //    });
+            //}
         };
         LineDisambiguationRow.disambiguateAnAssayOrLine = function (assayOrLine, currentIndex) {
             var startTime = new Date();

@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import operator
 import re
 
+from builtins import str
 from django.conf import settings
 from django.db.models import Q
 from django.http import JsonResponse
@@ -25,7 +26,7 @@ def search_compartment(request):
     # this list is short, always just return the entire thing instead of searching
     return JsonResponse({
         'rows': [
-            {'id': c[0], 'name': c[1]}
+            {'id': c[0], 'name': str(c[1])}
             for c in edd_models.Measurement.Compartment.CHOICE
         ],
     })
@@ -35,12 +36,15 @@ def search_generic(request, model_name, module=edd_models):
     """ A generic model search function; runs a regex search on all text-like fields on a model,
         limited to 20 items. Defaults to loading model from the EDD model module, pass in a
         module kwarg to specify a different module. """
-    Model = getattr(module, model_name)
-    ifields = [
-        f.get_attname()
-        for f in Model._meta.get_fields()
-        if hasattr(f, 'get_attname') and f.get_internal_type() in ['TextField', 'CharField']
-    ]
+    try:
+        Model = getattr(module, model_name)
+        ifields = [
+            f.get_attname()
+            for f in Model._meta.get_fields()
+            if hasattr(f, 'get_attname') and f.get_internal_type() in ['TextField', 'CharField']
+        ]
+    except AttributeError as e:
+        return JsonResponse({'error': 'Unknown search model %s' % model_name}, status=400)
     term = request.GET.get('term', '')
     re_term = re.escape(term)
     term_filters = [Q(**{'%s__iregex' % f: re_term}) for f in ifields]
@@ -81,7 +85,8 @@ AUTOCOMPLETE_METADATA_LOOKUP = {
 
 def search_metadata(request, context):
     """ Autocomplete search on metadata in a context; supported contexts are: 'Assay', 'AssayLine',
-        'Line', and 'Study'. """
+        'Line', and 'Study'. If none of these contexts are provided, then all metadata types
+        are searched. """
     term = request.GET.get('term', '')
     re_term = re.escape(term)
     term_filters = [
@@ -168,7 +173,7 @@ def search_sbml_species(request):
 def search_strain(request):
     """ Autocomplete delegates to ICE search API. """
     auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=request.user.email)
-    ice = IceApi(auth=auth)
+    ice = IceApi(auth=auth, verify_ssl_cert=settings.VERIFY_ICE_CERT)
     term = request.GET.get('term', '')
     found = ice.search_entries(term, suppress_errors=True)
     results = []

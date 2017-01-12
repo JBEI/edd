@@ -78,6 +78,7 @@ class WorklistForm(forms.Form):
             Prefetch('worklistcolumn_set', queryset=WorklistColumn.objects.order_by('ordering', )),
         ),
         required=False,
+        empty_label=None
     )
 
     def __init__(self, *args, **kwargs):

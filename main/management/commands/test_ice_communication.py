@@ -23,7 +23,7 @@ class Command(BaseCommand):
         # get ICE authentication configured via EDD's config files (secrets.env and / or
         # settings/local.py)
         auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=username)
-        ice = IceApi(auth)
+        ice = IceApi(auth, verify_ssl_cert=settings.VERIFY_ICE_CERT)
 
         try:
             print('Contacting ICE at %s' % ice.base_url)

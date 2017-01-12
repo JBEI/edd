@@ -44,6 +44,7 @@ interface AssayRecord extends EDDRecord {
     transcriptions:number[];    // Transcription measurements associated with Assay
     proteins:number[];          // Proteins measurements associated with Assay
     general: number[];          // Measurements for everything else
+    count: number;
 }
 
 
@@ -176,6 +177,8 @@ interface UserRecord {
 interface EDDData {
     currentUserID: number;
     currentStudyID: number;    // Can be null/undefined when no Study is chosen
+    currentStudyWritable: boolean;
+    Studies:{[id:number]: any};
     AssayMeasurements:{[id:number]: AssayMeasurementRecord};
     Assays:{[id:number]: AssayRecord};
     CSources:{[id:number]: CarbonSourceRecord};
@@ -190,6 +193,9 @@ interface EDDData {
     Strains:{[id:number]: StrainRecord};
     UnitTypes:{[id:number]: UnitType};
     Users:{[id:number]: UserRecord};
+
+    Exchange:any;
+    Species:any;
 
     // TODO: is this used anymore?
     MediaTypes:{[shortform:string]: string};

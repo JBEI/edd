@@ -23,12 +23,12 @@
 
 
 {% block body_title %}
-    <h1>Edit Measurements &ndash; <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a></h1>
+    <h4>Edit Measurements &ndash; <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a></h4>
 {% endblock body_title %}
 
 
 {% block content %}
-    <form action="" method="POST">
+    <form action="" method="POST" style="margin-bottom:70px">
         {% csrf_token %}
         <input type="hidden" name="measureId" value="{{ measures }}"/>
         {% for l in lines.values %}

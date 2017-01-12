@@ -24,7 +24,8 @@ study_url_patterns = [
         ])
     ),
     url(r'^map/$', login_required(views.study_map)),
-    url(r'^permissions/$', login_required(views.permissions)),
+    url(r'^permissions/$', login_required(views.StudyPermissionJSONView.as_view())),
+    url(r'^define/$', login_required(views.study_define)),
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^import/',
@@ -34,10 +35,16 @@ study_url_patterns = [
             url(r'^rnaseq/$', login_required(views.study_import_rnaseq)),
             url(r'^rnaseq/parse/$', login_required(views.study_import_rnaseq_parse)),
             url(r'^rnaseq/process/$', login_required(views.study_import_rnaseq_process)),
-            url(r'^rnaseq/edgepro$', login_required(views.study_import_rnaseq_edgepro)),
+            url(r'^rnaseq/edgepro/$', login_required(views.study_import_rnaseq_edgepro)),
         ])
     ),
     url(r'^lines/$', login_required(autocomplete.search_study_lines)),
+    url(r'^rename/$',
+        login_required(views.StudyUpdateView.as_view(update_action='rename'))),
+    url(r'^setdescription/$',
+        login_required(views.StudyUpdateView.as_view(update_action='setdescription'))),
+    url(r'^setcontact/$',
+        login_required(views.StudyUpdateView.as_view(update_action='setcontact'))),
 ]
 
 urlpatterns = [
@@ -70,15 +77,60 @@ urlpatterns = [
         )
     ),
 
+    url(r'^study/search/$', login_required(views.study_search)),
+
+    # Individual study-specific pages loaded by primary key
+    url(
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
+        r'^study/(?P<pk>\d+)/lines',
+        include(
+            [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines_by_pk', )] +
+            study_url_patterns
+        )
+    ),
+
+    # Individual study-specific pages loaded by slug
+    url(
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
+        r'^study/(?P<slug>[-\w]+)/lines',
+        include(
+            [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines', )] +
+            study_url_patterns
+        )
+    ),
+
+    # Individual study-specific pages loaded by primary key
+    url(
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
+        r'^study/(?P<pk>\d+)/overview',
+        include(
+            [url(
+                r'^$',
+                login_required(views.StudyOverviewView.as_view()),
+                name='overview_by_pk',
+            )] +
+            study_url_patterns
+        )
+    ),
+
+    # Individual study-specific pages loaded by slug
+    url(
+        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
+        r'^study/(?P<slug>[-\w]+)/overview',
+        include(
+            [url(r'^$', login_required(views.StudyOverviewView.as_view()), name='overview', )] +
+            study_url_patterns
+        )
+    ),
     # "export" URLs
     url(r'^export/$', login_required(views.ExportView.as_view()), name='export'),
     url(r'^worklist/$', login_required(views.WorklistView.as_view()), name='worklist'),
     url(r'^sbml/$', login_required(views.SbmlView.as_view()), name='sbml'),
 
     # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
-    url(r'^file/download/(?P<file_id>\d+)$', login_required(views.download)),
-    url(r'^file/delete/(?P<file_id>\d+)$', login_required(views.delete_file)),
-    url(r'^utilities/parsefile$', login_required(views.utilities_parse_import_file)),
+    url(r'^file/download/(?P<file_id>\d+)/$', login_required(views.download)),
+    url(r'^file/delete/(?P<file_id>\d+)/$', login_required(views.delete_file)),
+    url(r'^utilities/parsefile/$', login_required(views.utilities_parse_import_file)),
     url(r'^data/carbonsources/$', login_required(views.data_carbonsources)),
     url(r'^data/measurements/$', login_required(views.data_measurements)),
     url(r'^data/metadata/$', login_required(views.data_metadata)),
@@ -96,10 +148,12 @@ urlpatterns = [
     # Call-out for the favicon, which would normally only be accessible via a URL like:
     #   https://edd.example.org/static/favicon.ico
     # This way, browsers can load the favicon from the standard link.
-    url(r'^favicon\.ico$',
+    url(
+        r'^favicon\.ico$',
         RedirectView.as_view(
             url=staticfiles_storage.url('favicon.ico'),
             permanent=False
-            ),
-        name='favicon'),
+        ),
+        name='favicon',
+    ),
 ]

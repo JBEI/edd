@@ -12,6 +12,14 @@ module IndexPage {
 	// Called when the page loads.
 	export function prepareIt() {
         $('.disclose').find('.discloseLink').on('click', disclose);
+
+        $("#addStudyModal").dialog({ minWidth: 675, autoOpen: false });
+
+        $("#addStudyButton").click(function() {
+            $("#addStudyModal").removeClass('off').dialog( "open" );
+            return false;
+        });
+
         IndexPage.prepareTable();
 	}
 
@@ -98,7 +106,8 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
                 'hoverEffect': true,
                 'nowrap': true,
                 'sideMenuItems': sideMenuItems,
-                'contentString': [ '<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>' ].join('')
+                'contentString': [ '<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>' ].join(''),
+                'title': studyDoc.n
             })
         ];
     }
@@ -108,7 +117,8 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             new DataGridDataCell(gridSpec, index, {
                 'maxWidth': '400',
                 'customID': (id) => { return 'editableDescriptionField' + id; },
-                'contentString': gridSpec.dataObj[index].des || ''
+                'contentString': gridSpec.dataObj[index].des || '',
+                'title': gridSpec.dataObj[index].des || '',
             })
         ];
     }
@@ -323,7 +333,9 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 	// The order of the array will be the order they are added to the header bar.
 	// It's perfectly fine to return an empty array.
 	createCustomHeaderWidgets(dataGrid:DataGrid):DataGridHeaderWidget[] {
-		// Create a single widget for showing disabled Studies
+        // override bootsrap
+        $('#hStudyMod').css('border-right', '1px solid lightgrey')
+        // Create a single widget for showing disabled Studies
         var array:DataGridHeaderWidget[] = [
             new DGStudiesSearchWidget(dataGrid, this, 'Search Studies', 40, true),
             new DGPagingWidget(dataGrid, this, this)
@@ -476,18 +488,6 @@ class DGStudiesSearchWidget extends DGSearchWidget {
         this._spec = spec;
 	}
 
-	// This is called to append the widget elements beneath the given element.
-	// If the elements have not been created yet, they are created, and the uniqueID is passed along.
-	appendElements(container:HTMLElement, uniqueID:string):void {
-		super.appendElements(container, uniqueID);
-        var span:HTMLSpanElement = document.createElement("span");
-        var spanID:string = this.dataGridSpec.tableSpec.id+'SearchDisc'+uniqueID;
-        span.setAttribute('id', spanID);
-        span.className = 'searchDisclosure';
-        this.searchDisclosureElement = span;
-		container.appendChild(this.searchDisclosureElement);
-	}
-
     // OVERRIDE
     // HEY GUYS WE DON'T NEED TO FILTER HERE ANYMORE
     applyFilterToIDs(rowIDs:string[]):string[] {
@@ -527,7 +527,6 @@ class DGStudiesSearchWidget extends DGSearchWidget {
     }
 }
 
-// Here's an example of a working DataGridOptionWidget.
 // When checked, this hides all Studies that are not owned by the current user.
 class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
 
@@ -538,7 +537,7 @@ class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
         this._spec = spec;
     }
 
-    getIDFragment():string {
+    getIDFragment(uniqueID):string {
         return 'ShowMyStudiesCB';
     }
 
@@ -562,7 +561,6 @@ class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
     }
 }
 
-// Here's another example of a working DataGridOptionWidget.
 // When unchecked, this hides the set of Studies that are marked as disabled.
 class DGDisabledStudiesWidget extends DataGridOptionWidget {
 
@@ -573,7 +571,7 @@ class DGDisabledStudiesWidget extends DataGridOptionWidget {
         this._spec = spec;
     }
 
-    getIDFragment():string {
+    getIDFragment(uniqueID):string {
         return 'ShowDStudiesCB';
     }
 
@@ -601,7 +599,7 @@ class DGDisabledStudiesWidget extends DataGridOptionWidget {
 		if (data[rowID].dis) {
 			for (var r = 0; r < dataRowObjects.length; r++) {
 				var rowElement = dataRowObjects[r].getElement();
-				rowElement.style.backgroundColor = "#FFC0C0";
+				$(rowElement).addClass('disabledRecord');
 			}
 		}
 	}

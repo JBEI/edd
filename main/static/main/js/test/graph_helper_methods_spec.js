@@ -1,8 +1,8 @@
 /**
- * unit tests for GraphHelperMethods.js 
+ * unit tests for EDDGraphingTools.js
  */
 
-describe('Test GraphHelperMethods', function() {
+describe('Test EDDGraphingTools', function() {
  
 
     var unitTypes = {1:{"id":1,"name":"n/a"},2:{"id":2,"name":"hours"}},
@@ -27,34 +27,34 @@ describe('Test GraphHelperMethods', function() {
     describe('method: renderColor', function() {
         it('should return an object with lineIds as keys and color hex as values', function() {
             var lines = {326: {id:326}, 345:{id:345}};
-            expect(GraphHelperMethods.renderColor(lines)).toEqual({ 326: '#0E6FA4', 345: '#51BFD8' })
+            expect(EDDGraphingTools.renderColor(lines)).toEqual({ 326: '#0E6FA4', 345: '#51BFD8' })
          })
     });
 
-    describe('method: colorMaker', function() {
+    describe('method: EDDGraphingTools.colorMaker', function() {
         it('should return new color object', function() {
             var colors = {0: '#0E6FA4', 1: '#51BFD8'};
             var colorKeys = ['#51BFD8', '#0E6FA4'];
-            expect(GraphHelperMethods.colorMaker(colors, colorKeys, 25)).toEqual(
+            expect(EDDGraphingTools.colorMaker(colors, colorKeys, 25)).toEqual(
                 { 0: '#0E6FA4', 1: '#51BFD8', 23: '#51BFD8', 24: '#0E6FA4' })
          })
     });
 
-    describe('method: objectSize' ,function() {
+    describe('method: EDDGraphingTools.objectSize' ,function() {
       it('should return length', function() {
         var object = {"test": 2, "jbei": 1};
-        expect(GraphHelperMethods.objectSize(object)).toEqual(2);
+        expect(EDDGraphingTools.objectSize(object)).toEqual(2);
       });
     });
 
-    describe('method: reverseMap' ,function() {
-      it('should return a reveresed object', function() {
+    describe('method: EDDGraphingTools.reverseMap' ,function() {
+      it('should return a reversed object', function() {
           var obj = {
             'color': "red",
             'name': 'test'
         };
           var reversedObj = { red: 'color', test: 'name' };
-        expect(GraphHelperMethods.reverseMap(obj)).toEqual(reversedObj);
+        expect(EDDGraphingTools.reverseMap(obj)).toEqual(reversedObj);
       });
     });
 
@@ -68,7 +68,7 @@ describe('Test GraphHelperMethods', function() {
         var assayObject = [{"x": 1, "y": 2, "x_unit": "n/a"}, {"x": 1, "y": 2, "x_unit": "n/a"},
         {"x": 1, "y": 2, "x_unit": "n/a"}, {"x": 1, "y": 2, "x_unit": "n/a"}];
   
-      expect(GraphHelperMethods.concatAssays(assays)).toEqual(assayObject);
+      expect(EDDGraphingTools.concatAssays(assays)).toEqual(assayObject);
       });
 
     });
@@ -76,11 +76,11 @@ describe('Test GraphHelperMethods', function() {
     describe('method: unitName' ,function() {
       it('should return the correct unit name based on the id', function() {
         var id = 1;
-        expect(GraphHelperMethods.unitName(id, unitTypes)).toEqual("n/a");
+        expect(EDDGraphingTools.unitName(id, unitTypes)).toEqual("n/a");
       });
 
       it("should also return the second unit name based on the id", function() {
-        expect(GraphHelperMethods.unitName(2, unitTypes)).toEqual("hours");
+        expect(EDDGraphingTools.unitName(2, unitTypes)).toEqual("hours");
       })
     });
 
@@ -88,17 +88,17 @@ describe('Test GraphHelperMethods', function() {
 
       it('should return the correct formatted schema', function() {
 
-        expect(GraphHelperMethods.transformSingleLineItem(dataObj)[0]).toEqual(transformedData);
+        expect(EDDGraphingTools.transformSingleLineItem(dataObj)[0]).toEqual(transformedData);
         });
       it('should sort the x values', function() {
          var transformedData2 ={ label: 'dt4934', x: 20, y: 3.186, x_unit: 'n/a', y_unit: 'n/a',
                                 name: 'test', color: 'red', nameid: NaN, lineName: 'test',
                                 measurement: 'Optical Density', fullName: 'test Optical Density' };
-         var objectLength = GraphHelperMethods.transformSingleLineItem(dataObj).length;
-        expect(GraphHelperMethods.transformSingleLineItem(dataObj)[objectLength - 1]).toEqual(transformedData2);
+         var objectLength = EDDGraphingTools.transformSingleLineItem(dataObj).length;
+        expect(EDDGraphingTools.transformSingleLineItem(dataObj)[objectLength - 1]).toEqual(transformedData2);
       });
       it('should return the correct number of objects', function() {
-         var objectLength = GraphHelperMethods.transformSingleLineItem(dataObj).length;
+         var objectLength = EDDGraphingTools.transformSingleLineItem(dataObj).length;
         expect(objectLength).toEqual(10);
       })
     });

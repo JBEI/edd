@@ -1,0 +1,199 @@
+{% extends "main/study.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    {{ block.super }}
+    <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Study-Overview.js' %}"></script>
+{% endblock js_css %}
+
+{% block head_title %}
+    {{ block.super }}
+{% endblock head_title %}
+
+{% block body_title %}
+    {{ block.super }}
+{% endblock body_title %}
+
+{% block content %}                  
+    {{ block.super }}
+
+<form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;" id="general">
+    {% csrf_token %}
+
+    <div style="
+        display:flex;
+        flex-wrap: nowrap;
+        flex-direction: row;
+        align-items: top;
+        justify-content: space-between;
+        ">
+        <div style="flex-grow:1">
+            {{ edit_study.non_field_errors }}
+            {{ edit_study.name.errors }}
+
+            <table class="formTable" style="width:90%;">
+                <tr>
+                    <td>
+                        {{ edit_study.description.errors }}
+                        <div class="editable-field inactive" id="editable-study-description">
+                            {% firstof study.description "<i>(Click to add description)</i>"|safe %}
+                            {{ edit_study.description }}
+                        </div>
+                    </td>
+                    <td class="form-label" style="width:70px;">
+                        <label for="{{ edit_study.contact.id_for_label }}">Contact:</label>
+                    </td>
+                    <td style="width:260px;">
+                        {{ edit_study.contact.errors }}
+                        <div class="editable-field inactive" id="editable-study-contact">
+                            {% if study.contact %}
+                                {% if writable %}
+                                    {{ study.contact.first_name }} {{ study.contact.last_name }}
+                                {% else %}
+                                    <a href="mailto:{{ study.contact.email }}">
+                                        {{ study.contact.first_name }} {{ study.contact.last_name }}
+                                    </a>
+                                {% endif %}
+                            {% elif study.contact_extra %}
+                                {{ study.contact_extra }}
+                            {% else %}
+                                <i>(Enter Contact)</i>
+                            {% endif %}
+                            {{ edit_study.contact }}
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</form>
+
+<div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;color:gray;{% if lines %}display:none;{% endif %}">
+    <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;" id="templateDropZone">
+        <div></div>
+        To define your Study details, upload an edited experiment design template file.
+        <a class="dropLink dropImg" href="{% static 'sample_experiment_description.xlsx' %}"> __</a>
+        <div style="float:none" class="helpBadgeDiv">Help
+            <div class="helpContent">
+                <p>A line describes the experimental details of your study by defining the
+                    experimental conditions and associated meta data for i.e. a single flask.  Some examples
+                    that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
+                    speed.  Users can manually add lines, or download the study template for bulk uploads.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="fileDropInfoArea off" id="fileDropInfoArea">
+        <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
+        <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
+        <div class="fileDropInfoSending" id="fileDropInfoSending">
+            <span id="fileUploadMessage">Sending To Server...</span>
+            <progress id="fileUploadProgressBar" />
+        </div>
+        <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
+    </div>
+    or <a class="dropLink" href="/study/{{ study.slug }}/lines">manually add</a> them.
+</div>
+
+<div class="tabBar">
+    {% if writable %}
+        <span class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %}" for="permissionsSection">
+            Permissions
+    </span>{% endif %}<span class="{% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
+        Attachments ({{ study.attachments|length }})
+    </span><span class="{% if new_comment.errors %}active{% endif %}" for="commentsSection">
+        Comments ({{ study.comment_list|length }})
+    </span>
+</div>
+
+{% if writable %}
+    <div class="pageSection pageSectionTabContent {% if new_attach.errors or new_comment.errors %}off{% endif %}" id="permissionsSection">
+        <div class="sectionContent">
+            {% with perms=study.get_combined_permission %}
+                {% if perms %}
+                <table cellpadding="0" cellspacing="0" class="dataTable sortable">
+                    <tr class="columnLabels">
+                        <th class="sortheader smaller">Who</th>
+                        <th class="sortheader smaller">Level</th>
+                    </tr>
+                    {% for perm in perms %}
+                    <tr class="stripeRow{% cycle 'A' 'B' %}">
+                        <td>{{ perm.get_who_label }}</td>
+                        <td>{{ perm.get_type_label }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+            {% endwith %}
+            <div class="sectionActions">
+                <form method="POST" enctype="multipart/form-data" class="edd-form off" id="permissions" action="">
+                    {% csrf_token %}
+                    <div class="permission" id="permission_user_box">
+                    <label for="permission_user">
+                        <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
+                        <span>User</span>
+                    </label>
+                    </div>
+                    <div  class="permission"  id="permission_group_box">
+                    <label for="permission_group">
+                        <input type="radio" id="permission_group" name="class" value="Group"/>
+                        <span>Group</span>
+                    </label>
+                    </div>
+                    <div  class="permission" id="permission_public_box">
+                    <label for="permission_public">
+                        <input type="radio" id="permission_public" name="class" value="Public"/>
+                        <span>Everyone</span>
+                    </label>
+                    </div>
+                    <select name="type">
+                        <option value="N">None</option>
+                        <option value="R">Read</option>
+                        <option value="W">Write</option>
+                    </select>
+                    <button id="set_permission">Set Permission</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<div class="pageSection pageSectionTabContent {% if not new_attach.errors %}off{% endif %}" id="attachmentsSection">
+    <div class="sectionContent">
+        {% with attachments=study.attachments %}
+            {% include "main/include_attachments.html" %}
+        {% endwith %}
+        {% if writable %}
+        <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
+            {% csrf_token %}
+            {{ new_attach.as_p }}
+            <p><button type="submit" name="action" value="attach">Attach File</button></p>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="pageSection pageSectionTabContent {% if not new_comment.errors %}off{% endif %}" id="commentsSection">
+    <div class="sectionContent">
+        <ol class="comment-list">
+            {% for comment in study.comment_list reversed %}
+                <li>
+                    <span>{{ comment.created.full_name }} at {{ comment.created.format_timestamp }}</span>
+                    <p>{{ comment.body }}</p>
+                </li>
+            {% endfor %}
+        </ol>
+        <div class="sectionActions">
+            <form method="POST" class="comments edd-form" action="">
+                {% csrf_token %}
+                {{ new_comment.as_p }}
+                <p><button type="submit" name="action" value="comment">Comment</button></p>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

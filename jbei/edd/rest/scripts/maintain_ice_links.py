@@ -1762,7 +1762,7 @@ def process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_link
         strain_performance.print_summary()
         return False
 
-    # get a reference to the ICE part referenced from this EDD strain. because
+    # get a reference to the ICE entry referenced from this EDD strain. because
     # of some initial gaps in EDD's strain creation process, it's possible that
     # a few non-strains snuck in here that we need to detect.
     # Additionally, looking up the ICE part gives us a cleaner way of working
