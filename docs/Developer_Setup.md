@@ -93,7 +93,7 @@ This section contains directions for setting up a production deployment for EDD 
         * Activate the machine with `eval $(docker-machine env {NAME_OF_ENVIRONMENT})`
         * _NOTE_: Volume mounting directories will use the directories of the host running Docker
           Engine. If you, e.g. try to mount a local.py file, that file _must_ exist at that path
-          on the remote host.
+          on the _remote_ host.
     * Test by running `docker-compose`
 * Complete "Common Setup Tasks" below now that Docker is in place
 
@@ -112,20 +112,16 @@ following steps in the EDD checkout directory to configure EDD and launch it for
 
   To save work later, you may want to manually edit `secrets.env` to set memorable passwords
   of your choosing for EDD services whose web interfaces are exposed via EDD's nginx proxy,
-  or that you intend to expose on your host. For example, services such as
-  RabbitMQ and Flower Passwords are established during the Docker image builds prior to the
-  first run, so make certain you've edited these files before the first build/run, or that
-  you completely remove and rebuild the related Docker containers/volumes if you change
-  these passwords without taking note of the old ones. You can also directly iterface with
-  the services later to change their passwords, but that's significantly more work if you
-  aren't already familiar with them. You'll also need to update this file when configuring
-  some passwords to enable EDD services to communicate with each other.
+  or that you intend to expose on your host. For example, services such as RabbitMQ and Flower
+  passwords are established during container startup, so make certain you have edited these files
+  prior to starting containers. You will also need to update this file when configuring some
+  passwords to enable EDD services to communicate with each other.
 
   After setting passwords in `secrets.env`, you can come back and perform more detailed
   configuration of EDD and Docker later without adding too much work.
 
 * __Build EDD's Docker Images__
-    * Make sure you're targeting the correct Docker machine. In the local development example
+    * Make sure you are targeting the correct Docker machine. In the local development example
       above, run `eval "$(docker-machine env default)"`. If you are using Docker Compose to launch
       EDD on a remote host, your command will be different, and you should make sure you are
       executing Docker on the correct host.
@@ -151,34 +147,35 @@ following steps in the EDD checkout directory to configure EDD and launch it for
 * __Perform other [configuration][6] as desired__
 
   For example, by default, EDD will launch with an empty database, so you may want to use
-  environment variables to load an existing one.
+  environment variables to load an existing database.
     * If you're starting from a blank database, use the web interface to configure EDD for your
       institution.
     * If you haven't loaded EDD from an existing database, you'll need to create an administrator
       account from the command line that you can then use to create measurement types, units, and
       other user accounts to get the system going.
         1. Create an administrator account:
-          `docker-compose exec appserver python manage.py createsuperuser`
+          `docker-compose exec edd python /code/manage.py createsuperuser`
         2. Configure EDD using the web interface
 
            If you need to add any custom metadata types, units, etc. not provided by the default
            installation, use the "Administration" link at top right to add to or remove EDD's
            defaults. It is recommended that you leave defaults in place for consistency with
            collaborators' EDD deployments.
-      * Manually set the hostname in EDD's database.
+    * Manually set the hostname in EDD's database.
 
-        EDD needs the hostname users will use to access it, which may not be the same as the one
-        available to EDD via the host operating system. This value will be used most often to create
-        experiment links in ICE, so an incorrect value will cause users to see bad experiment links
-        to EDD when viewing ICE parts.
+      EDD needs the hostname users will use to access it, which may not be the same as the one
+      available to EDD via the host operating system. This value will be used most often to create
+      experiment links in ICE, so an incorrect value will cause users to see bad experiment links
+      to EDD when viewing ICE parts.
           
-        Use the "Administration" link at top right, then scroll down to the "Sites" heading and
-        click the "Sites" link under it. Change the value from `edd.example.org`, to your hostname.
+      Use the "Administration" link at top right, then scroll down to the "Sites" heading and
+      click the "Sites" link under it. Change the value from `edd.example.org`, to your hostname.
 
 * __Install and configure a supporting [ICE][7] deployment__
 
   EDD requires ICE as a reference for strains used in EDD's experiments. You will not be able to
-  create lines in your EDD studies until EDD can successfully communicate/authenticate with ICE.
+  reference strains in your EDD studies until EDD can successfully communicate/authenticate
+  with ICE.
     * Follow ICE's directions for installation/setup
     * Create a base-64 encoded HMAC key to for signing communication from EDD to ICE. EDD's default
       configuration assumes a key ID of 'edd', but you can change it by overriding the value of
@@ -188,10 +185,9 @@ following steps in the EDD checkout directory to configure EDD and launch it for
 
     * Configure ICE with the HMAC key. In the `rest-auth` folder of the linked ICE deployment, copy
       the `hmac.key` file above to a file named with `ICE_KEY_ID`; 'edd' by default.
-      * Configure EDD with the HMAC key. Edit `secrets.env` to set the value of `ICE_HMAC_KEY` to the
+    * Configure EDD with the HMAC key. Edit `secrets.env` to set the value of `ICE_HMAC_KEY` to the
       value inside `hmac.key`. Do a `docker-compose restart` if you already had Docker running.
     * See directions under Common 'Maintenance/Development Tasks' to test EDD/ICE communication
-
 
 
 ### For Developers:
@@ -205,7 +201,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
         * Install node packages to the local folder: `npm install`
     * Debian:
         * `sudo apt-get install node`
-        * This will install nodejs.  It might be convenient for you to link this to ‘node’
+        * This will install nodejs. It may be convenient for you to link this to ‘node’
           on the command line, but there is sometimes already a program
           ’/usr/sbin/ax25-node’ linked to node.
           This is the “Amateur Packet Radio Node program” and is probably not useful to you.
@@ -219,7 +215,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
     * Dependencies are listed in `packages.json` and may be installed with `npm install`
     * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base
       directory. It will rebuild the TypeScript and automatically run Django's `collectstatic`
-      command to update the Javascript files in use by your instance
+      command to update the Javascript files in use by your instance.
 
 #### Additional Build Process Setup
 
@@ -245,4 +241,4 @@ use the configuration contained in the script; you may need to install a newer v
 [4]:    http://typescriptlang.org/
 [5]:    https://docs.docker.com/engine/installation/linux/
 [6]:    docs/Configuration.md
-[7]:   https://github.com/JBEI/ice
+[7]:    https://github.com/JBEI/ice

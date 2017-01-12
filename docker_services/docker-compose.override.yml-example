@@ -23,8 +23,9 @@ version: '2'
 
 volumes:
 
-  # Uncomment a volume block to override the settings for that block. The example below will replace
-  #   the volume used for solr with one created using `docker volume create --name my_volume`
+  # Uncomment a volume block to override the settings for that block. The example below will
+  #   replace the volume used for solr with one created using:
+  #   `docker volume create --name my_volume`
   #solrdata:
   #  external:
   #    name: my_volume
@@ -32,7 +33,7 @@ volumes:
 services:
 
   # Uncomment a service block to override the settings for that block. Examples below override
-  #   settings to expose service ports to the Docker host.
+  #   settings to expose service ports to all addresses of the Docker host.
   #postgres:
   #  # Make the postgres 5432 port available on the Docker host external network
   #  ports:
@@ -56,6 +57,14 @@ services:
 
   # Override settings for EDD container(s).
   edd:
+
+    # Examples of overriding the default initialize command below.
+    # To initialize EDD without attempting to run database migrations:
+    #command: [-M, init-only]
+    # To initialize EDD without attempting to load a database or re-index:
+    #command: [-DI, init-only]
+    # To initialize EDD but wait for a newly-defined service foobar to listen on port 1234:
+    #command: [--wait-host, foobar, --wait-port, 1234, init-only]
 
     # Override the default environment
     environment:
@@ -98,7 +107,9 @@ services:
     # The default mode is also to run with Python code contained within the edd-core image. To run
     #   with a local copy of code and do, e.g. live code reload, uncomment and edit the volume
     #   below. The first part is your local filesystem path, and /code is the location where the
-    #   container will expect externally-loaded code.
+    #   container will expect externally-loaded code. This setting will ONLY apply to the container
+    #   where it is defined; overrides occur after the extends in the base file. If mounting code
+    #   in the edd service, one should also mount code in the appserver and worker services.
     #volumes:
     #  - /full/path/to/source:/code
 
@@ -115,6 +126,16 @@ services:
     #volumes:
     #  - /full/path/to/local.py:/etc/myorg/edd/local.py
 
+    # Mount a development copy of code, rather than using the code in the image, using volumes.
+    #volumes:
+    #  - /full/path/to/source:/code
+
+  worker:
+
+    # Mount a development copy of code, rather than using the code in the image, using volumes.
+    #volumes:
+    #  - /full/path/to/source:/code
+
   # Override settings for the nginx webserver and proxy
   nginx:
 
@@ -128,7 +149,7 @@ services:
     #volumes:
     #  - /path/to/certs:/var/edd/ssl:ro
     
-    # Make the http/https ports available on the Docker host external network
+    # Make the http/https ports available on the Docker host loopback interface
     ports:
-      - '80:80'
-      - '443:443'
+      - '127.0.0.1:80:80'
+      - '127.0.0.1:443:443'

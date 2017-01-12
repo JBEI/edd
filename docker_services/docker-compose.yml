@@ -68,7 +68,7 @@ services:
       - '25'
   edd:
     build: ./edd/
-    image: edd-core:1.6
+    image: edd-core:latest
     command: [init-only]
     env_file: secrets.env
     environment:

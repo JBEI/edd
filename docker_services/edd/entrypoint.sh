@@ -42,8 +42,8 @@ function print_help() {
     echo "    -S, --no-init-static"
     echo "        Skip initialization of static files."
     echo "    -d, --init-database"
-    echo "        Initialize the database using POSTGRES_DUMP_URL or POSTGRES_DUMP_FILE environment."
-    echo "        Only used to override -A."
+    echo "        Initialize the database using POSTGRES_DUMP_URL or POSTGRES_DUMP_FILE"
+    echo "        environment. Only used to override -A."
     echo "    -D, --no-init-database"
     echo "        Skip initialization of the database."
     echo "    -m, --init-migration"
@@ -55,16 +55,19 @@ function print_help() {
     echo "    -I, --no-init-index"
     echo "        Skip search re-indexing."
     echo "    --local file"
-    echo "        Copy the file specified to the local.py settings prior to launching the command."
-    echo "        This option will be ignored if code is mounted to the container at /code."
+    echo "        Copy the file specified to the local.py settings prior to launching the"
+    echo "        command. This option will be ignored if code is mounted to the container"
+    echo "        at /code."
     echo "    --force-index"
     echo "        Force re-indexing; this option does not apply if -I is set."
     echo "    -w host, --wait-host host"
-    echo "        Wait for a host to begin responding before running commands."
-    echo "        This option may be specified multiple times."
+    echo "        Wait for a host to begin responding before running commands. This option"
+    echo "        may be specified multiple times. The waits will occur in the"
+    echo "        order encountered."
     echo "    -p port, --wait-port port"
-    echo "        Only applies if -w is used. Specifies port to listen on. Defaults to 24051."
-    echo "        This option may be specified multiple times. The Nth port defined applies to the Nth host."
+    echo "        Only applies if -w is used. Specifies port to listen on. Defaults to"
+    echo "        port 24051. This option may be specified multiple times. The Nth port"
+    echo "        defined applies to the Nth host."
     echo
     echo "Commands:"
     echo "    application"
@@ -72,8 +75,8 @@ function print_help() {
     echo "    devmode"
     echo "        Start a Django webserver (manage.py runserver)."
     echo "    init-only [port]"
-    echo "        Container will only perform selected init tasks."
-    echo "        The service will begin listening on the specified port after init, default to 24051."
+    echo "        Container will only perform selected init tasks. The service will begin"
+    echo "        listening on the specified port after init, default to port 24051."
     echo "    test"
     echo "        Execute the EDD unit tests."
     echo "    worker"
@@ -241,11 +244,12 @@ if [ $INIT_DB -eq 1 ]; then
         psql -h postgres -U postgres template1 < /code/docker_services/postgres/init.sql
         # Flag for re-indexing
         REINDEX_EDD=true
+        DATABASE_CREATED=true
     fi
     if [ ! -z $POSTGRES_DUMP_URL ] || \
             ([ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]); then
         # Don't bother dropping and recreating if database just initialized
-        if [ "$REINDEX_EDD" != "true" ]; then
+        if [ "$DATABASE_CREATED" != "true" ]; then
             echo 'DROP DATABASE IF EXISTS edd; CREATE DATABASE edd;' | \
                 psql -h postgres -U postgres
         fi
@@ -258,11 +262,9 @@ if [ $INIT_DB -eq 1 ]; then
     if [ ! -z $POSTGRES_DUMP_URL ]; then
         output $(echo "Copying database from remote $POSTGRES_DUMP_URL …" | \
                 sed -E -e 's/(\w+):\/\/([^:]+):[^@]*@/\1:\/\/\2:****@/')
-        REINDEX_EDD=true
         pg_dump "$POSTGRES_DUMP_URL" | psql -h postgres -U postgres edd
     elif [ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]; then
         output "Copying database from local file $POSTGRES_DUMP_FILE …"
-        REINDEX_EDD=true
         psql -h postgres -U postgres edd < "$POSTGRES_DUMP_FILE"
     else
         output "Skipping database restore. No dump source specified."
