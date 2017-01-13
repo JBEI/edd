@@ -2,16 +2,16 @@ FROM buildpack-deps:stretch
 
 MAINTAINER William Morrell "WCMorrell@lbl.gov"
 
-# Add Tini
-ENV TINI_VERSION v0.13.2
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-RUN chmod +x /tini
-
 RUN apt-get clean && apt-get update \
     && DEBIAN_FRONTENT=noninteractive apt-get install -y -q \
         exim4-daemon-light \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
+
+# Add Tini
+ENV TINI_VERSION v0.13.2
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+RUN chmod +x /tini
 
 COPY entrypoint.sh /bin/
 

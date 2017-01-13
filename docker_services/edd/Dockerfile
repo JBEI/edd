@@ -38,11 +38,16 @@ COPY requirements.txt /tmp/
 # Install remaining packages; numpy, scipy, scikit-learn will all be skipped as already-installed
 RUN pip install -r /tmp/requirements.txt
 
+# Add Tini
+ENV TINI_VERSION v0.13.2
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+RUN chmod +x /tini
+
 # Copy in entrypoint shell scripts
 COPY entrypoint.sh /usr/local/bin
 
 # Copy in EDD python code
 RUN git clone --depth 1 -b master https://github.com/JBEI/edd.git /usr/local/edd
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["--help"]
