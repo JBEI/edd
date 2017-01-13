@@ -9,9 +9,26 @@
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
     <script type="text/javascript">
 
-    $( function() {
-        $( document ).tooltip();
-    } );
+    $(function () {
+        $('#studyLinesTable').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-50 center", at: "right center" },
+            show: null,
+            close: function (event, ui) {
+                ui.tooltip.hover(
+                function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                },
+                function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    })
+                });
+            }
+        });
+    });
 
     </script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>

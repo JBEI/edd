@@ -960,31 +960,6 @@ div.pageSectionTabContent {
 span.popup:hover {
     background-color:#CECEFF;
 }
-span.popup > span.popupinfo {
-    display:none;
-    position:absolute;
-    visibility:hidden;
-    padding:3px 8px;
-    border-width:1px;
-    border-style:solid;
-    border-color:#3C75B9;
-    z-index:2;
-    box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
-    border-radius: 3px;
-    -webkit-border-radius: 3px;
-    -moz-border-radius: 3px;
-    transform: translate(-1px,-3px);
-    -ms-transform: translate(-1px,-3px);
-    -webkit-transform: translate(-1px,-3px);
-    -o-transform: translate(-1px,-3px);
-    -moz-transform: translate(-1px,-3px);
-}
-span.popup:hover > span.popupinfo {
-    display:inline-block;
-    visibility:visible; /* make the section visible */
-    background-color:#E4E4FF;
-}
-
 
 /* Table cells with popup menus */
 
@@ -1044,23 +1019,6 @@ td.popupcell div.p > div.q > div.s > div.t ul {
     white-space:pre-wrap;
     max-width:450px;
 }
-/* new style rules */
-td.popupcell ul.popupmenu {
-    background-color: #E4E4FF;
-    border: 1px solid #3C75B9;
-    border-radius: 3px;
-    box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
-    display: none;
-    list-style-type: none;
-    padding: 3px 8px !important;
-    position: absolute;
-    transform: translate(4px, 0);
-    z-index: 2;
-}
-td.popupcell:hover ul.popupmenu {
-    display: inline-block;
-}
-
 
 /* Tables for filling out forms */
 
@@ -1723,20 +1681,6 @@ div.tooltip2 {
 
 .rect {
     opacity: 0.5;
-}
-.toolTip {
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    position: absolute;
-    display: none;
-    width: auto;
-    height: auto;
-    background: none repeat scroll 0 0 white;
-    border: 0 none;
-    border-radius: 8px 8px 8px 8px;
-    box-shadow: -3px 3px 15px #888888;
-    color: black;
-    padding: 5px;
-    text-align: center;
 }
 
 .tooMuchData {

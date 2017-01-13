@@ -743,7 +743,7 @@ class DataGridSpecLines extends DataGridSpecBase {
                 'checkboxName': 'lineId',
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
                 'sideMenuItems': [
-                    '<a href="#" class="line-edit-link">Edit Line</a>',
+                    '<a href="#" class="line-edit-link" onclick="StudyLines.editLines([' + index + '])">Edit Line</a>',
                     '<a href="/export?lineId=' + index + '">Export Data as CSV/Excel</a>',
                     '<a href="/sbml?lineId=' + index + '">Export Data as SBML</a>'
                 ],
@@ -962,12 +962,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         // Wire up the 'action panels' for the Lines and Assays sections
         var linesTable = this.getTableElement();
         $(linesTable).on('change', ':checkbox', () => StudyLines.queueLinesActionPanelShow());
-
-        // add click handler for menu on line name cells
-        $('#studyLinesTable').on('click', 'a.line-edit-link', (ev) => {
-            StudyLines.editLines([$(ev.target).closest('.popupcell').find('input').val()]);
-            return false;
-        });
 
         // This calls down into the instantiated widget and alters its styling,
         // so we need to do it after the table has been created.

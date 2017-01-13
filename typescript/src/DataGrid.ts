@@ -1398,7 +1398,7 @@ class DataGridDataCell {
     createElement() {
         var id = this.recordID,
             c:HTMLElement = document.createElement("td"),
-            checkId:string, checkName:string, menu;
+            checkId:string, checkName:string, title:string;
         if (this.checkboxWithID) {
             checkId = this.checkboxWithID.call(this.gridSpec, id);
             checkName = this.checkboxName || checkId;
@@ -1414,14 +1414,16 @@ class DataGridDataCell {
         $(this.contentContainerElement).html(this.contentString);
         this.contentFunction.call(this.gridSpec, this.contentContainerElement, id);
         if (this.sideMenuItems && this.sideMenuItems.length) {
-            menu = $('<ul>').addClass('popupmenu').appendTo(c);
+            title = '<span>';
             this.sideMenuItems.forEach((item) => {
-                $('<li>').html(item).appendTo(menu);
+                if ($(item).attr('class') === "line-edit-link") {
+                    $(item).addClass('editLine')
+                }
+                title += ('<ul>' + item + '</ul>');
             });
-        }
-
-        if (this.title) {
-            c.setAttribute('title', this.title);
+            title += '</span>';
+            c.setAttribute('title', title);
+            c.setAttribute('id', id);
         }
 
         var cellClasses = [];
