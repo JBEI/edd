@@ -6,16 +6,13 @@ below. Broadly speaking, each of the Docker containers used by EDD has its own c
 as well as several configuration files for Docker itself. See comments within each file for a
 detailed description of some of the options.
 
-1. __Docker-compose environment variables__: provide basic controls for loading EDD's database from
-  an existing dump, or for controlling TLS and Docker configuration for controlling remote EDD
-  deployments.
-2. __Docker configuration files__
+* __Docker configuration files__
   These files configure EDD's docker containers and enable you to launch EDD and most of its
   dependencies with a single command.
     * `secrets.env`: Stores passwords and URL's for the various services EDD has to connect to,
       and makes them accessible to EDD's Docker containers. Make sure to control access to this
-      file! The file will potentially contain secrets for external services, and should be
-      protected like any other password file. The repository excludes this file, but includes a
+      file! It is meant to contain secrets for external services, and should be protected as any
+      other password file. The repository excludes this file, but includes a
       `secrets.env-example` to use as a template.
     * `docker-compose.yml`: Configures EDD's docker containers as run by Docker-compose. This is
       set up by default in a working configuration, but you may want to change container
@@ -25,40 +22,49 @@ detailed description of some of the options.
       `secrets.env`, but there is an `docker-compose.yml-example` used to generate one. See
       comments in the example file, and the related
       [Docker-compose extends documentation][2] for reference.
-3. __EDD appserver configuration files__: The vast majority of EDD's code runs in Django, and can
-  be configured by overriding the default settings provided with EDD. See "EDD Appserver
+* __EDD Django configuration files__: Much of EDD's functionality runs through the Django
+  framework, and can be configured using Django's settings mechanism. See "EDD Django
   Configuration Files" below for more details.
-4. __Other service-specific scripts and configurations files__ are available by directories
-  matching each service name under `docker_services`. Drill down into these directories to find
-  service-specific configurations.
+* __Service-specific scripts and configuration__: The full definitions of services and
+  configurations used in EDD are contained in the `docker_services` directory. Each service can be
+  configured per the documentation provided by the maintainer of the used image, or a different
+  image can be used. Links to the documentation for EDD service images are provided here
+  for reference:
+    * [postgres][9]
+    * [redis][10]
+    * [solr][11]
+    * [rabbitmq][12]
+    * [nginx][13]
 
 
-## EDD Appserver Configuration Files
+## EDD Django Configuration Files
 
-The vast majority of EDD's code runs in Django, and many of its configuration options are also
-provided out-of-the-box by Django or Django-related libraries. In the style of Django, EDD includes
-a number of default Python configuration files, as well as examples that are set up to make
-configuration more-or-less hassle free. Most of the contained configuration parameters are defined
-by Django in its [documentation][3], but several are custom configuration options defined by EDD.
+As a Django application, EDD loads its configuration with Python code. The settings of EDD are
+designed to load in default values, while allowing for overrides with a `local.py` settings file.
+An example of this file can be found at `edd/settings/local.py-example`. Custom settings are loaded
+with a `volume` definition and the `--local PATH` option to the `command` in each of the `edd`,
+`appserver`, and `worker` services. An example of how to load a custom `local.py` file is included
+in the `docker-compose.override.yml-example` file.
 
-EDD's Django configuration files live under `edd/settings`:
-* `base.py`: defines baseline default settings that make EDD work out-of-the box. You can edit
-  this file directly, but it's cleaner / easier in the long run to override its values by creating
-  a `local.py`. See below for more details.
-* `local.py`: sample file is provided out-of-the-box with EDD. EDD checks for its existence, and
-  any configuration options you define in `local.py` will override the defaults defined in
-  `base.py`. You can copy and edit 'local.py-example' to override any options you want from
-  `base.py`. Note  that `local.py` is purposefully *not* added to EDD's Git repo, since its
-  purpose is to define options specific to a single EDD deployment. As a result, you can update
-  your EDD deployment with a simple `git pull`, followed by a relaunch.
-* `celery.py`: Defines EDD's Celery configuration. EDD ships with some reasonable default settings,
-  but you may have to tune Celery to work with your computing environment/demands. See Celery's
-  [configuration documentation][4], as well as EDD's custom Celery configuration options defined
-  in the file. Values defined here can also be overridden in your `local.py`.
-* `auth.py`: Defines authentication-specific settings that can be overridden in your `local.py`
+Most of the available configuration parameters are defined by Django in its [documentation][3], or
+by Celery in its [configuration documentation][4]. The settings for non-core Django applications
+used by EDD can be found with each individual project:
+* [django_extensions][14]
+* [rest_framework][15]
+* [form_utils][16]
+* [messages_extends][17]
+* [django-allauth][5]
+
+The defaults used by EDD are defined in the following files found under `edd/settings`:
+* `base.py`: defines baseline default settings that make EDD work out-of-the box.
+* `celery.py`: Defines EDD's Celery-specific configuration.
+* `auth.py`: Defines authentication-specific settings.
+
+Settings unique to EDD will generally be prefixed with `EDD_`. Commentary for each of these,
+including possible values, should be included in the `local.py-example` file.
 
 
-## Configuring Social Logins <a name="Social"/>
+### Configuring Social Logins <a name="Social"/>
 
 * For broad overview, refer to the [django-allauth documentation][5].
 * To use a new provider:
@@ -72,7 +78,7 @@ EDD's Django configuration files live under `edd/settings`:
   URLs, etc.
 
 
-## Using an External Postgres Server
+### Using an External Postgres Server
 
 You may want to use an external postgres server instead of the Postgres Docker container configured
 in EDD's default `docker-compose.yml`. If so, you'll want to follow this general outline:
@@ -95,3 +101,12 @@ in EDD's default `docker-compose.yml`. If so, you'll want to follow this general
 [6]:    https://github.com/settings/applications/new
 [7]:    https://console.developers.google.com/
 [8]:    https://www.linkedin.com/secure/developer?newapp=
+[9]:    https://hub.docker.com/_/postgres/
+[10]:   https://hub.docker.com/_/redis/
+[11]:   https://hub.docker.com/_/solr/
+[12]:   https://hub.docker.com/_/rabbitmq/
+[13]:   https://hub.docker.com/_/nginx/
+[14]:   https://django-extensions.readthedocs.io/en/latest/
+[15]:   http://www.django-rest-framework.org/
+[16]:   https://bitbucket.org/carljm/django-form-utils/
+[17]:   https://github.com/AliLozano/django-messages-extends/
