@@ -1191,7 +1191,10 @@ var StudyDataPage;
         });
         // This one is active by default
         $("#lineGraphButton").click(function () {
+            //TODO: clean up
             $('#exportButton').addClass('off');
+            $('#assaysActionPanel').appendTo('#content');
+            $('#mainFilterSection').appendTo('#content');
             viewingMode = 'linegraph';
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
@@ -1217,7 +1220,10 @@ var StudyDataPage;
             $('#graphLoading').removeClass('off');
         });
         $("#barGraphButton").click(function () {
+            //TODO: clean up
             viewingMode = 'bargraph';
+            $('#assaysActionPanel').appendTo('#content');
+            $('#mainFilterSection').appendTo('#content');
             $('#exportButton').addClass('off');
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
@@ -2306,9 +2312,9 @@ var DataGridSpecAssays = (function (_super) {
         return v;
     };
     DataGridSpecAssays.prototype.generateAssayNameCells = function (gridSpec, index) {
-        var record = EDDData.Assays[index], line = EDDData.Lines[record.lid], sideMenuItems = [
-            '<a class="assay-edit-link">Edit Assay</a>',
-            '<a class="assay-reload-link">Reload Data</a>',
+        var record = EDDData.Assays[index], line = EDDData.Lines[record.lid];
+        var sideMenuItems = [
+            '<a class="assay-edit-link" onclick="StudyDataPage.editAssay([' + index + '])">Edit Assay</a>',
             '<a href="/export?assayId=' + index + '">Export Data as CSV</a>'
         ];
         // Set up jQuery modals
@@ -2652,17 +2658,6 @@ var DataGridSpecAssays = (function (_super) {
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
         $(table).on('change', ':checkbox', function () { return StudyDataPage.queueActionPanelRefresh(); });
-        // add click handler for menu on assay name cells
-        $(table).on('click', 'a.assay-edit-link', function (ev) {
-            StudyDataPage.editAssay($(ev.target).closest('.popupcell').find('input').val());
-            return false;
-        }).on('click', 'a.assay-reload-link', function (ev) {
-            var id = $(ev.target).closest('.popupcell').find('input').val(), assay = EDDData.Assays[id];
-            if (assay) {
-                StudyDataPage.requestAssayData(assay);
-            }
-            return false;
-        });
         // Run it once in case the page was generated with checked Assays
         StudyDataPage.queueActionPanelRefresh();
     };
