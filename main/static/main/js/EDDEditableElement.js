@@ -257,7 +257,7 @@ var EDDEditable;
                         this.inputElement.type = "text";
                     }
                     // Set width and height.
-                    this.inputElement.style.width = "100%";
+                    this.inputElement.style.width = "99%";
                     this.inputElement.value = this.getValue();
                 }
                 // Copy font attributes to match.

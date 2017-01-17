@@ -14,7 +14,7 @@
             content: function () {
                 return $(this).prop('title');
             },
-            position: { my: "left-50 center", at: "right center" },
+            position: { my: "left-10 center", at: "right center" },
             show: null,
             close: function (event, ui) {
                 ui.tooltip.hover(
@@ -188,7 +188,7 @@
                 <option value="sbml">as SBML</option>
                 <option value="worklist">as Worklist</option>
                 {# removing this for now until fixed #}
-                {# <option value="study">to New Study</option>#}
+                 <option value="study">to New Study</option>
             </select>
         </label>
         <button type="submit" name="action" value="line_action">Take Action</button>

@@ -1235,7 +1235,7 @@ div.editable-field.inactive {
     box-shadow: 0 0 0 0 transparent;
 }
 div.editable-field input, div.editable-field textarea {
-    width:90%;
+    width:99%;
 }
 div.editable-field.inactive input, div.editable-field.inactive textarea {
     display:none;
@@ -1246,7 +1246,6 @@ div.editable-field:hover, .editable-field.saving {
 }
 div.editable-field.active {
     padding-bottom: 0px;
-    padding-left: 2px;
     padding-top: 0px;
     box-shadow: 0 0 0 1px rgba(108,164,233,0.6);
 }

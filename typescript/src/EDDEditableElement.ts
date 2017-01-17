@@ -331,7 +331,7 @@ module EDDEditable {
 					}
 
 					// Set width and height.
-					this.inputElement.style.width = "100%";
+					this.inputElement.style.width = "99%";
 
 					this.inputElement.value = this.getValue();
 				}

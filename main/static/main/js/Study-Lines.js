@@ -501,7 +501,12 @@ var DataGridSpecLines = (function (_super) {
         this.groupIDsToGroupNames = {};
         // For each group ID, just use parent replicate name
         $.each(rowGroups, function (group, lines) {
-            _this.groupIDsToGroupNames[group] = EDDData.Lines[group].name;
+            if (EDDData.Lines[group] === undefined || EDDData.Lines[group].name === undefined) {
+                _this.groupIDsToGroupNames[group] = null;
+            }
+            else {
+                _this.groupIDsToGroupNames[group] = EDDData.Lines[group].name;
+            }
         });
         // alphanumeric sort of group IDs by name attached to those replicate groups
         this.groupIDsInOrder = Object.keys(rowGroups).sort(function (a, b) {
