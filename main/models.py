@@ -677,13 +677,13 @@ class EDDObject(EDDMetadata, EDDSerialize):
     class Meta:
         db_table = 'edd_object'
     name = models.CharField(
-        help_text=_('Name of this object.'),
+        help_text=_('Name of study.'),
         max_length=255,
         verbose_name=_('Name'),
     )
     description = models.TextField(
         blank=True,
-        help_text=_('Description of this object.'),
+        help_text=_('Description of study.'),
         null=True,
         verbose_name=_('Description'),
     )
