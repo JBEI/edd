@@ -611,6 +611,31 @@ span.tableControl > select {
     font-size:10px;
 }
 
+span.tableControlImport {
+    float:right;
+    font-weight:normal;
+    margin:0px 1px 0px 16px;
+    padding:0px;
+    height:15px;
+    color:#444444;
+    font-size:12px;
+    vertical-align:bottom;
+}
+span.tableControlImport > input[type="checkbox"] {
+    margin:0px 4px 0px 0px;
+    padding:0px;
+    font-size:11px;
+}
+span.tableControlImport > label {
+    display:inline-block;
+    padding:2px 0px 0px 0px;
+}
+span.tableControlImport > select {
+    margin:0px 1px 0px 4px;
+    padding:0px;
+    font-size:10px;
+}
+
 span.tableHeader {
 /*    float: left;  */
     margin-right: 10px;
@@ -952,72 +977,6 @@ div.pageSectionTabContent {
     margin:0px 8px 3px 8px;
     border-width:2px 0px 0px 0px;
     z-index:0;
-}
-
-
-/* span popup info boxes */
-
-span.popup:hover {
-    background-color:#CECEFF;
-}
-
-/* Table cells with popup menus */
-
-td.popupcell:hover {
-    background-color:#CECEFF;
-}
-/* old style rules */
-td.popupcell div.p {
-    display:table;
-    width:100%;
-    padding:0px;
-    border:0px;
-}
-td.popupcell div.p > div.q {
-    display:table-row;
-    padding:0px;
-    border:0px;
-}
-td.popupcell div.p > div.q > div.r {
-    display:table-cell;
-    padding:0px;
-    border:0px;
-}
-td.popupcell div.p > div.q > div.r.checkbox {
-    width:21px;
-}
-td.popupcell div.p > div.q > div.s {
-    display:table-cell;
-    padding:0px;
-    border:0px;
-}
-td.popupcell div.p > div.q > div.s > div.t {
-    display:none;
-    position:absolute;
-    visibility:hidden;
-    padding:3px 8px;
-    border-width:1px;
-    border-style:solid;
-    border-color:#3C75B9;
-    z-index:2;
-    box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
-    border-radius: 3px;
-}
-td.popupcell:hover div.p > div.q > div.s > div.t {
-    display:block;
-    visibility:visible; /* make the section visible */
-    background-color:#E4E4FF;
-}
-td.popupcell hr {
-    padding:0px;
-    margin:4px 0px 2px 0px;
-    border-width:1px 0px 0px 0px;
-    border-style:solid;
-    border-color:rgba(60,117,185,0.3);
-}
-td.popupcell div.p > div.q > div.s > div.t ul {
-    white-space:pre-wrap;
-    max-width:450px;
 }
 
 /* Tables for filling out forms */
