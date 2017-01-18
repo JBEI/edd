@@ -347,7 +347,7 @@ class CreateStudyForm(forms.ModelForm):
         }
         widgets = {
             'name': forms.widgets.TextInput(attrs={'size': 50}),
-            'description': forms.widgets.Textarea(attrs={'cols': 100}),
+            'description': forms.widgets.Textarea(attrs={'cols': 49}),
             'contact': UserAutocompleteWidget(),
         }
 
