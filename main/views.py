@@ -1203,6 +1203,7 @@ def study_import_table(request, pk=None, slug=None):
     study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
     lines = study.line_set.all()
     assays = study.line_set.count()
+    user = study.user_can_write(request.user)
 
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
@@ -1240,6 +1241,7 @@ def study_import_table(request, pk=None, slug=None):
             "showingimport": True,
             "lines": lines,
             "assays": assays,
+            "writable": user
         },
     )
 
