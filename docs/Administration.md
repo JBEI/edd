@@ -26,7 +26,7 @@ running in the development environment.
 * __Dump the production database to file and load into a local test deployment__
     * Create the dump file:
 
-          pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
+          pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username
 
     * Load the dump file:
         * set the `POSTGRES_DUMP_FILE` environment in your `docker-compose.override.yml`
