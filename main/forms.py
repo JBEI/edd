@@ -509,7 +509,8 @@ class LineForm(forms.ModelForm):
             'meta_store': forms.HiddenInput(),
         }
         help_texts = {
-            'name': 'This field is required'
+            'name': 'This field is required',
+            'description': 'Description of line'
         }
 
     def __init__(self, *args, **kwargs):
