@@ -139,19 +139,20 @@ class TableImport(object):
             if assay_name is None or assay_name.strip() == '':
                 # if we have no name, 'named_or_new' and 'new' are treated the same
                 assay_name = str(line.new_assay_number(protocol))
-            key = (line.id, assay_name)
             if protocol is None or line is None:
                 pass  # already logged errors, move on
-            elif key in self._line_assay_lookup:
-                assay = self._line_assay_lookup[key]
             else:
-                assay = line.assay_set.create(
-                    name=assay_name,
-                    protocol=protocol,
-                    experimenter=self._user,
-                )
-                logger.info('Created new Assay %s:%s' % (assay.id, assay_name))
-                self._line_assay_lookup[key] = assay
+                key = (line.id, assay_name)
+                if key in self._line_assay_lookup:
+                    assay = self._line_assay_lookup[key]
+                else:
+                    assay = line.assay_set.create(
+                        name=assay_name,
+                        protocol=protocol,
+                        experimenter=self._user,
+                    )
+                    logger.info('Created new Assay %s:%s' % (assay.id, assay_name))
+                    self._line_assay_lookup[key] = assay
         return assay
 
     def _init_item_line(self, item):
