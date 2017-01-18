@@ -66,6 +66,7 @@ This section contains directions for setting up a development environment for ED
 * Complete "Common Setup Tasks" below to get EDD configured and running for the first time
 * Complete the "For Developers" section below for a few additional development configurations
 
+
 ### Linux / Debian Setup<a name="Debian"/>
 
 This section contains directions for setting up a production deployment for EDD on Debian.
@@ -75,7 +76,7 @@ This section contains directions for setting up a production deployment for EDD 
     * There is a `docker.io` package too; this can work, but it will generally be outdated.
 * Create a user for running EDD; assuming user `jbeideploy` exists for further instructions.
 * As `jbeideploy`, check out code to `/usr/local/edd/` (this will be `$EDD_HOME` below)
-  
+
     git clone https://github.com/JBEI/edd.git
     git checkout [release_branch]
 
@@ -167,7 +168,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
       available to EDD via the host operating system. This value will be used most often to create
       experiment links in ICE, so an incorrect value will cause users to see bad experiment links
       to EDD when viewing ICE parts.
-          
+
       Use the "Administration" link at top right, then scroll down to the "Sites" heading and
       click the "Sites" link under it. Change the value from `edd.example.org`, to your hostname.
 

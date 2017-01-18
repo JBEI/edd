@@ -51,10 +51,10 @@ but this is the safest upgrade process (though also the most time-consuming):
 2. Update the `docker_services` directory to your desired version.
 3. Pull or build the images with `docker-compose pull` or `docker-compose build`.
 4. (optional, but recommended) Disable user access to EDD with `docker-compose down nginx`.
-5. Make a backup of the database. The simplest method with the default EDD configuration is to dump
-   to a file with `docker-compose exec postgres pg_dump -U postgres edd > /path/to/dump.sql`. More
-   advanced methods of backup, or backups for alternate database configurations are beyond the
-   scope of this document.
+5. Make a backup of the database. The simplest method with the default EDD configuration is to
+   dump to a file with `docker-compose exec postgres pg_dump -U postgres edd > /path/to/dump.sql`.
+   More advanced methods of backup, or backups for alternate database configurations are beyond
+   the scope of this document.
 6. Restart the remaining containers with `docker-compose down` followed by `docker-compose up`.
 
 To rollback a failed upgrade:

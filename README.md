@@ -1,15 +1,24 @@
 # Experiment Data Depot
 
-The Experiment Data Depot (EDD) is a web-based repository of processed biological data obtained
-via experimentation.  See the deployed version at [public-edd.jbei.org][1].
+The Experiment Data Depot (EDD) is an online tool designed as a repository of standardized
+biological experimental data and metadata. The EDD can easily uptake experimental data, provide
+visualization of these data, and produce downloadable data in several standard output formats. See
+the deployed version at [public-edd.jbei.org][1].
+
+The EDD is available under a [BSD 3-Clause License][6] and is actively developed at the
+[Lawrence Berkeley National Lab][7] (LBL) by the [Joint BioEnergy Institute][8] (JBEI), supported
+by the U. S. Department of Energy (DOE), Office of Science, Office of Biological and Environmental
+Research, through contract DE-AC02-05CH11231 between LBL and DOE.
+
+The source code of EDD is published on [GitHub][9]. Pull requests should adhere to the
+[Contributing Guidelines][10], and bug reports or feature requests should be directed to the GitHub
+project.
 
 ## Contents
 
 * [Getting Started](#Getting_Started)
 * [Running EDD](#Running_EDD)
-
-For a more detailed reference for EDD's low-level configuration options, see [Configuration][4].
-If you're just starting out with EDD, follow directions here first.
+* [More Resources](#More_Resources)
 
 ---------------------------------------------------------------------------------------------------
 
@@ -83,11 +92,11 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
 
   If using a Linux host or Docker for Mac, use the hostname `localhost`. If using Docker Toolbox or
   docker-machine, use the hostname given by `docker-machine ip default`.
-    * __EDD:__ https://localhost/
-    * __EDD's REST API:__ https://localhost/rest/ (if enabled)
-    * __Solr:__ https://localhost/solr/
-    * __Flower:__ https://localhost/flower/
-    * __RabbitMQ Management Plugin:__ https://localhost/rabbitmq/
+    * __EDD:__ `https://localhost/`
+    * __EDD's REST API:__ `https://localhost/rest/` (if enabled)
+    * __Solr:__ `https://localhost/solr/`
+    * __Flower:__ `https://localhost/flower/`
+    * __RabbitMQ Management Plugin:__ `https://localhost/rabbitmq/`
 
 * __Interfacing with EDD's services from the command line:__
     * To run commands in __new__ containers, use `docker-compose run $SERVICE $COMMAND`,
@@ -101,17 +110,15 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
         * Connect to the Postgres command line: `docker-compose exec postgres psql -U postgres`
         * Connect to the Django shell: `docker-compose exec appserver python manage.py shell`
 
-* __Running Docker commands in new shell sessions__
-    * The `docker` command will look for a Docker daemon running on the local machine by
-      default. Mac hosts currently must use a daemon running in a VirtualBox guest VM. Load
-      the Docker environment on the guest with:
+---------------------------------------------------------------------------------------------------
 
-          eval "$(docker-machine env default)"
+## More Resources <a name="#More_Resources"/>
 
-    * Docker will re-use built images, so changes to code may not be reflected in running
-      containers. (Re)build the container images with current code using:
-
-          docker-compose build
+For a more detailed reference for EDD's low-level configuration options, see [Configuration][4].
+Instructions on administering an EDD instance can be found in the [Administration][11] document,
+and steps to deploy a new instance are in the [Deployment][5] document. Getting a development
+environment set up to modify or contribute to EDD is outlined in the [Developer Setup][12]
+document.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -120,3 +127,10 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
 [3]:    https://docs.docker.com/compose/overview/
 [4]:    docs/Configuration.md
 [5]:    docs/Deployment.md
+[6]:    LICENSE.txt
+[7]:    https://www.lbl.gov
+[8]:    https://www.jbei.org
+[9]:    https://github.com/JBEI/edd
+[10]:   Contributing.md
+[11]:   docs/Administration.md
+[12]:   docs/Developer_Setup.md

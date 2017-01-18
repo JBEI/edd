@@ -14,17 +14,19 @@ detailed description of some of the options.
       file! It is meant to contain secrets for external services, and should be protected as any
       other password file. The repository excludes this file, but includes a
       `secrets.env-example` to use as a template.
-    * `docker-compose.yml`: Configures EDD's docker containers as run by Docker-compose. This is
-      set up by default in a working configuration, but you may want to change container
-      definitions, etc. based on your computing needs / resources and deployment strategy. See the
-      [Docker-compose documentation][1] for reference. Most local changes should go in the
-      `docker-compose.override.yml` file. The override file is not included in the repository, like
-      `secrets.env`, but there is an `docker-compose.yml-example` used to generate one. See
-      comments in the example file, and the related
+    * `docker-compose.yml`: Configures EDD's docker containers as run by Docker Compose. This is
+      set up in a working configuration with basic default settings, but you may wish to change
+      container definitions, etc. based on your computing needs, available resources, and
+      deployment strategy. See the [Docker-compose documentation][1] for reference. Most local
+      changes should go in the `docker-compose.override.yml` file. The override file is not
+      included in the repository -- similar to `secrets.env` -- but there is an example template
+      file `docker-compose.yml-example`. See comments in the example file, and the related
       [Docker-compose extends documentation][2] for reference.
+
 * __EDD Django configuration files__: Much of EDD's functionality runs through the Django
   framework, and can be configured using Django's settings mechanism. See "EDD Django
   Configuration Files" below for more details.
+
 * __Service-specific scripts and configuration__: The full definitions of services and
   configurations used in EDD are contained in the `docker_services` directory. Each service can be
   configured per the documentation provided by the maintainer of the used image, or a different
@@ -41,10 +43,10 @@ detailed description of some of the options.
 
 As a Django application, EDD loads its configuration with Python code. The settings of EDD are
 designed to load in default values, while allowing for overrides with a `local.py` settings file.
-An example of this file can be found at `edd/settings/local.py-example`. Custom settings are loaded
-with a `volume` definition and the `--local PATH` option to the `command` in each of the `edd`,
-`appserver`, and `worker` services. An example of how to load a custom `local.py` file is included
-in the `docker-compose.override.yml-example` file.
+An example of this file can be found at `edd/settings/local.py-example`. Custom settings are
+loaded with a `volume` definition and the `--local PATH` option to the `command` in each of the
+`edd`, `appserver`, and `worker` services. An example of how to load a custom `local.py` file is
+included in the `docker-compose.override.yml-example` file (search for the text `[LOCAL]`).
 
 Most of the available configuration parameters are defined by Django in its [documentation][3], or
 by Celery in its [configuration documentation][4]. The settings for non-core Django applications
