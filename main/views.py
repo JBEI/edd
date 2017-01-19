@@ -5,6 +5,7 @@ import collections
 import json
 import logging
 import re
+import tempfile
 
 from builtins import str
 from django.conf import settings
@@ -966,7 +967,11 @@ def utilities_parse_import_file(request):
     parse_fn = find_parser(edd_import_mode, edd_file_type)
     if parse_fn:
         try:
-            result = parse_fn(request)
+            with tempfile.TemporaryFile() as temp:
+                # write teh request upload to a "real" stream buffer
+                temp.write(request.read())
+                temp.seek(0)
+                result = parse_fn(temp)
             return JsonResponse({
                 'file_type': result.file_type,
                 'file_data': result.parsed_data,
