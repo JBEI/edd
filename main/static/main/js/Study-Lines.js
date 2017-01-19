@@ -379,7 +379,7 @@ var StudyLines;
         if (ids.length > 0) {
             text = 'Edit Line' + (ids.length > 1 ? 's' : '');
         }
-        form.prop('title', text);
+        form.attr('title', text);
         if (ids.length > 1) {
             form.find('.bulk').prop('checked', false).removeClass('off');
             form.on('change.bulk', ':input', function (ev) {
