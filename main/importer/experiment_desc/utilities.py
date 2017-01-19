@@ -340,11 +340,6 @@ class CombinatorialDescriptionInput(object):
     Defines the set of inputs required to combinatorially create Lines and Assays for a Study.
     """
 
-    MULTIVALUED_LINE_METADATA_COLUMN_PKS = [
-        MetadataType.objects.get(for_context=MetadataType.LINE, type_field='strains'),
-        MetadataType.objects.get(for_context=MetadataType.LINE, type_field='carbon_source'),
-    ]
-
     def __init__(self, naming_strategy, description=None, is_control=[False],
                  combinatorial_strain_id_groups=[], replicate_count=1, common_line_metadata={},
                  combinatorial_line_metadata=defaultdict(list), protocol_to_assay_metadata={},
@@ -363,6 +358,11 @@ class CombinatorialDescriptionInput(object):
         :param protocol_to_assay_metadata:
         :param protocol_to_combinatorial_metadata:
         """
+
+        # MULTIVALUED_LINE_METADATA_COLUMN_PKS = [
+        #     MetadataType.objects.get(for_context=MetadataType.LINE, type_field='strains'),
+        #     MetadataType.objects.get(for_context=MetadataType.LINE, type_field='carbon_source'),
+        # ]
 
         # TODO: add support, parsing, DB code for combinatorial use of non-metadata CarbonSource?
 
