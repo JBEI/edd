@@ -41,8 +41,9 @@ class SkylineParser(object):
         samples = sorted(samples)
         proteins = sorted(proteins)
         # 'short and wide'
-        export_table = [
-            [sample] + [summed_areas[(sample, protein)] for protein in proteins]
+        protein_list = list(proteins)
+        export_table = [[''] + protein_list] + [
+            [sample] + [summed_areas[(sample, protein)] for protein in protein_list]
             for sample in samples
         ]
         # 'tall and skinny'
