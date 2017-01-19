@@ -10,4 +10,3 @@ var AdminMetabolicMaps;
     }
     AdminMetabolicMaps.onClickBiomassCalculation = onClickBiomassCalculation;
 })(AdminMetabolicMaps || (AdminMetabolicMaps = {}));
-//# sourceMappingURL=AdminMetabolicMaps.js.map
