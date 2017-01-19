@@ -1316,7 +1316,7 @@ def utilities_parse_import_file(request):
     if parse_fn:
         try:
             with tempfile.TemporaryFile() as temp:
-                # write teh request upload to a "real" stream buffer
+                # write the request upload to a "real" stream buffer
                 temp.write(request.read())
                 temp.seek(0)
                 result = parse_fn(temp)
