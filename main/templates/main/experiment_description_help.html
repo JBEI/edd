@@ -1,0 +1,25 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    {{ block.super }}
+    <script type="text/javascript" src="{% static 'main/js/Experiment-Def-Help.js' %}"></script>
+{% endblock js_css %}
+
+{% block head_title %}
+    {{ block.super }} &mdash; Experiment Description Help
+{% endblock head_title %}
+
+{% block body_title %}
+    {{ block.super }} &mdash; Experiment Description Help
+{% endblock body_title %}
+
+{% block content %}
+    <div class = disclose>
+        <a class="discloseLink" href="#">Line Metadata Types</a>
+        <div id='lineMetadataTypes' class="discloseBody"></div>
+        <a class="discloseLink" href="#">Assay Metadata Types</a>
+        <div id='assayMetadataTypes' class="discloseBody"></div>
+    </div>
+
+{% endblock content %}

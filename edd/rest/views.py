@@ -48,6 +48,10 @@ STUDY_URL_KWARG = 'study'
 BASE_STRAIN_URL_KWARG = 'id'  # NOTE: value impacts url kwarg names for nested resources
 HTTP_MUTATOR_METHODS = ('POST', 'PUT', 'PATCH', 'UPDATE', 'DELETE')
 
+SORT_PARAM = 'sort_order'
+FORWARD_SORT_VALUE = 'ascending'
+REVERSE_SORT_VALUE = 'descending'
+
 # TODO: consider for all models below:
 #   # Required for DjangoModelPermissions bc of get_queryset() override.
 #   # See http://www.django-rest-framework.org/api-guide/permissions/#djangomodelpermissions
@@ -72,6 +76,7 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
 
         params = self.request.query_params
         if params:
+            # group id
             group_id = params.get(METADATA_TYPE_GROUP)
             if group_id:
                 if is_numeric_pk(group_id):
@@ -79,13 +84,25 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
                 else:
                     queryset = queryset.filter(group__group_name=group_id)
 
+            # for context
             for_context = params.get(METADATA_TYPE_CONTEXT)
             if for_context:
                 queryset = queryset.filter(for_context=for_context)
 
+            # type I18N
             type_i18n = params.get(METADATA_TYPE_I18N)
             if type_i18n:
                 queryset = queryset.filter(type_i18n=type_i18n)
+
+            # sort
+            sort = params.get(SORT_PARAM)
+            if sort is not None:
+                queryset = queryset.order_by('type_name')
+
+                if sort == REVERSE_SORT_VALUE:
+                    queryset = queryset.desc()
+                else:
+                    queryset = queryset.asc()
 
             queryset = _do_optional_regex_filter(params, queryset, 'type_name',
                                                  METADATA_TYPE_NAME_REGEX,
