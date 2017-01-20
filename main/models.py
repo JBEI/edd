@@ -2056,7 +2056,7 @@ class ProteinIdentifier(MeasurementType):
                 type_name = measurement_name
                 accession_id = uniprot_id
             # FIXME: this blindly creates a new type; should try external lookups first?
-            p = models.ProteinIdentifier.objects.create(
+            p = ProteinIdentifier.objects.create(
                 type_name=type_name,
                 short_name=uniprot_id,
                 accession_id=accession_id,
