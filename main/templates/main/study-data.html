@@ -42,12 +42,13 @@
         Table
     </span>
 <div class="buttonBar off" id="barGraphTypeButtons">
-    <span id="timeBarGraphButton" class="active" for="barGraphByTime">
-        Time
-    </span><span id="lineBarGraphButton" for="barGraphByLine">
-        Line
-    </span><span id="measurementBarGraphButton" for="barGraphByMeasurement">
+  <span id="measurementBarGraphButton" class="active" for="barGraphByMeasurement">
         Measurement
+    </span> <span id="lineBarGraphButton" for="barGraphByLine">
+        Line
+    </span>
+     <span id="timeBarGraphButton" for="barGraphByTime">
+        Time
     </span>
 </div>
         <div id="filterControlsArea" style="margin:auto 0 auto 15px;">
@@ -99,9 +100,9 @@
         padding:auto;">
     </div>
     <div id="lineGraph" class="off"></div>
-    <div id="barGraphByTime" class="off"></div>
+     <div id="barGraphByMeasurement" class="off"></div>
     <div id="barGraphByLine" class="off"></div>
-    <div id="barGraphByMeasurement" class="off"></div>
+    <div id="barGraphByTime" class="off"></div>
 </div>
 
 {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
