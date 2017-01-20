@@ -13,7 +13,7 @@ module IndexPage {
 	export function prepareIt() {
         $('.disclose').find('.discloseLink').on('click', disclose);
 
-        $("#addStudyModal").dialog({ minWidth: 675, autoOpen: false });
+        $("#addStudyModal").dialog({ minWidth: 600, autoOpen: false });
 
         $("#addStudyButton").click(function() {
             $("#addStudyModal").removeClass('off').dialog( "open" );

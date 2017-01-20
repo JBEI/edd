@@ -405,3 +405,4 @@ class TableImport(object):
 
     def _replace(self):
         return self._data.get('writemode', None) == 'r'
+    

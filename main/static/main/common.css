@@ -263,6 +263,7 @@ div.statusMessage {
     clear: both;
     font-size:14px;
     padding:0.7em 0.6em 0.1em 0.6em;
+    width: 400px
 }
 div.statusMessage > p {
     border-width: 2px;
@@ -270,7 +271,7 @@ div.statusMessage > p {
     border-style: solid;
     color: black;
     margin:0;
-    padding: 0.25em 0.75em;
+    padding: 10px;
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
@@ -969,6 +970,8 @@ div.buttonBar > span:not(.active) {
 div.buttonBar > span:not(.active) > img {
     opacity:0.4;
 }
+
+
 
 
 /* This overrides some of the settings in the pageSection style */

@@ -2024,7 +2024,7 @@ class ProteinIdentifier(MeasurementType):
             if uniprot_id:
                 name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
         # force query to LIMIT 2
-        proteins = models.ProteinIdentifier.objects.filter(name_match_criteria)[:2]
+        proteins = ProteinIdentifier.objects.filter(name_match_criteria)[:2]
 
         if len(proteins) > 1:
             # fail if protein couldn't be uniquely matched

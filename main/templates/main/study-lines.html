@@ -155,7 +155,13 @@
 <div id="editLineModal" class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
     <form action="" method="POST">
         {% csrf_token %}
-        {{ new_line.as_p }}
+         {% if new_line.errors %}
+    <div class="alert alert-warning alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        Line name required.
+    </div>
+    {%  endif %}
+    {{ new_line.as_p }}
         <p class="line-edit-meta">
             <span class="edd-label">
                 <input type="text" class="autocomp autocomp_ltype" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" size="14" />
