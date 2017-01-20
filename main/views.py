@@ -5,6 +5,7 @@ import collections
 import json
 import logging
 import re
+import tempfile
 
 from builtins import str
 from django.conf import settings
@@ -1146,15 +1147,8 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
             perms = json.loads(request.POST.get('data', '[]'))
             # make requested changes as a group, or not at all
             with transaction.atomic():
-                for perm in perms:
-                    manager = self._get_permission_manager(perm)
-                    ptype = perm.get('type', None)
-                    if manager is None or ptype is None:
-                        logger.warning('Invalid permission type for add')
-                    elif ptype == StudyPermission.NONE:
-                        manager.delete()
-                    else:
-                        manager.update_or_create(permission_type=ptype)
+                for permission_def in perms:
+                    self._handle_permission_update(permission_def)
         except Exception as e:
             logger.exception('Error modifying study (%s) permissions: %s', self.object, e)
             return HttpResponse(status=500)
@@ -1178,17 +1172,26 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
             return HttpResponse(status=500)
         return HttpResponse(status=204)
 
-    def _get_permission_manager(self, permission_def):
-        study_id = self.object.pk
+    def _handle_permission_update(self, permission_def):
+        ptype = permission_def.get('type', None)
+        kwargs = dict(study=self.object)
+        defaults = dict(permission_type=ptype)
         if 'group' in permission_def:
-            group_id = permission_def['group'].get('id', 0)
-            return self.object.grouppermission_set.filter(group_id=group_id, study_id=study_id)
+            kwargs.update(group_id=permission_def['group'].get('id', 0))
+            manager = self.object.grouppermission_set
         elif 'user' in permission_def:
-            user_id = permission_def['user'].get('id', 0)
-            return self.object.userpermission_set.filter(user_id=user_id, study_id=study_id)
+            kwargs.update(user_id=permission_def['user'].get('id', 0))
+            manager = self.object.userpermission_set
         elif 'public' in permission_def:
-            return self.object.everyonepermission_set.filter(study_id=study_id)
-        return None
+            manager = self.object.everyonepermission_set
+
+        if manager is None or ptype is None:
+            logger.warning('Invalid permission type for add')
+        elif ptype == StudyPermission.NONE:
+            manager.filter(**kwargs).delete()
+        else:
+            kwargs.update(defaults=defaults)
+            manager.update_or_create(**kwargs)
 
 
 # /study/<study_id>/import
@@ -1201,6 +1204,7 @@ def study_import_table(request, pk=None, slug=None):
     study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
     lines = study.line_set.all()
     assays = study.line_set.count()
+    user = study.user_can_write(request.user)
 
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
@@ -1238,6 +1242,7 @@ def study_import_table(request, pk=None, slug=None):
             "showingimport": True,
             "lines": lines,
             "assays": assays,
+            "writable": user
         },
     )
 
@@ -1310,7 +1315,11 @@ def utilities_parse_import_file(request):
     parse_fn = find_parser(edd_import_mode, edd_file_type)
     if parse_fn:
         try:
-            result = parse_fn(request)
+            with tempfile.TemporaryFile() as temp:
+                # write the request upload to a "real" stream buffer
+                temp.write(request.read())
+                temp.seek(0)
+                result = parse_fn(temp)
             return JsonResponse({
                 'file_type': result.file_type,
                 'file_data': result.parsed_data,

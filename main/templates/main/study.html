@@ -32,7 +32,7 @@
 {% endblock body_prefix %}
 
 {% block body_title %}
-<div class="editable-field inactive" id="editable-study-name">
+<div class="editable-field inactive" id="editable-study-name" style="width: 260px; margin:auto;">
     {{ study.name }}
     {{ edit_study.name }}
 </div>
@@ -61,6 +61,7 @@
         {% endif %}
     </ui>
 </div>
+
 {#  line that goes through the nav bars uncomment if people prefer #}
 {#    <div class="pageDivider"></div>#}
 {% endblock content %}

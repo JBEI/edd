@@ -9,9 +9,26 @@
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
     <script type="text/javascript">
 
-    $( function() {
-        $( document ).tooltip();
-    } );
+    $(function () {
+        $('#studyLinesTable').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-10 center", at: "right center" },
+            show: null,
+            close: function (event, ui) {
+                ui.tooltip.hover(
+                function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                },
+                function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    })
+                });
+            }
+        });
+    });
 
     </script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
@@ -138,7 +155,13 @@
 <div id="editLineModal" class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
     <form action="" method="POST">
         {% csrf_token %}
-        {{ new_line.as_p }}
+         {% if new_line.errors %}
+    <div class="alert alert-warning alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        Line name required.
+    </div>
+    {%  endif %}
+    {{ new_line.as_p }}
         <p class="line-edit-meta">
             <span class="edd-label">
                 <input type="text" class="autocomp autocomp_ltype" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" size="14" />
@@ -171,7 +194,7 @@
                 <option value="sbml">as SBML</option>
                 <option value="worklist">as Worklist</option>
                 {# removing this for now until fixed #}
-                {# <option value="study">to New Study</option>#}
+                 <option value="study">to New Study</option>
             </select>
         </label>
         <button type="submit" name="action" value="line_action">Take Action</button>

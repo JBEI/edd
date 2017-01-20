@@ -501,7 +501,12 @@ var DataGridSpecLines = (function (_super) {
         this.groupIDsToGroupNames = {};
         // For each group ID, just use parent replicate name
         $.each(rowGroups, function (group, lines) {
-            _this.groupIDsToGroupNames[group] = EDDData.Lines[group].name;
+            if (EDDData.Lines[group] === undefined || EDDData.Lines[group].name === undefined) {
+                _this.groupIDsToGroupNames[group] = null;
+            }
+            else {
+                _this.groupIDsToGroupNames[group] = EDDData.Lines[group].name;
+            }
         });
         // alphanumeric sort of group IDs by name attached to those replicate groups
         this.groupIDsInOrder = Object.keys(rowGroups).sort(function (a, b) {
@@ -647,7 +652,7 @@ var DataGridSpecLines = (function (_super) {
                 'checkboxName': 'lineId',
                 'checkboxWithID': function (id) { return 'line' + id + 'include'; },
                 'sideMenuItems': [
-                    '<a href="#" class="line-edit-link">Edit Line</a>',
+                    '<a href="#" class="line-edit-link" onclick="StudyLines.editLines([' + index + '])">Edit Line</a>',
                     '<a href="/export?lineId=' + index + '">Export Data as CSV/Excel</a>',
                     '<a href="/sbml?lineId=' + index + '">Export Data as SBML</a>'
                 ],
@@ -840,11 +845,6 @@ var DataGridSpecLines = (function (_super) {
         // Wire up the 'action panels' for the Lines and Assays sections
         var linesTable = this.getTableElement();
         $(linesTable).on('change', ':checkbox', function () { return StudyLines.queueLinesActionPanelShow(); });
-        // add click handler for menu on line name cells
-        $('#studyLinesTable').on('click', 'a.line-edit-link', function (ev) {
-            StudyLines.editLines([$(ev.target).closest('.popupcell').find('input').val()]);
-            return false;
-        });
         // This calls down into the instantiated widget and alters its styling,
         // so we need to do it after the table has been created.
         this.enableCarbonBalanceWidget(false);

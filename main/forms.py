@@ -347,7 +347,7 @@ class CreateStudyForm(forms.ModelForm):
         }
         widgets = {
             'name': forms.widgets.TextInput(attrs={'size': 50}),
-            'description': forms.widgets.Textarea(attrs={'cols': 100}),
+            'description': forms.widgets.Textarea(attrs={'cols': 49}),
             'contact': UserAutocompleteWidget(),
         }
 
@@ -509,7 +509,8 @@ class LineForm(forms.ModelForm):
             'meta_store': forms.HiddenInput(),
         }
         help_texts = {
-            'name': 'This field is required'
+            'name': 'This field is required',
+            'description': 'Description of line'
         }
 
     def __init__(self, *args, **kwargs):

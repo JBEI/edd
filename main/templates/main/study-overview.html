@@ -36,7 +36,7 @@
 
             <table class="formTable" style="width:90%;">
                 <tr>
-                    <td>
+                    <td style="width:260px;">
                         {{ edit_study.description.errors }}
                         <div class="editable-field inactive" id="editable-study-description">
                             {% firstof study.description "<i>(Click to add description)</i>"|safe %}
@@ -74,7 +74,8 @@
 <div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;color:gray;{% if lines %}display:none;{% endif %}">
     <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;" id="templateDropZone">
         <div></div>
-        To define your Study details, upload an edited experiment design template file.
+        Upload an edited experiment description file.
+        <a href="{% static 'sample_experiment_description.xlsx' %}">Example </a>
         <a class="dropLink dropImg" href="{% static 'sample_experiment_description.xlsx' %}"> __</a>
         <div style="float:none" class="helpBadgeDiv">Help
             <div class="helpContent">
@@ -95,7 +96,7 @@
         </div>
         <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
     </div>
-    or <a class="dropLink" href="/study/{{ study.slug }}/lines">manually add</a> them.
+    or <a class="dropLink" href="/study/{{ study.slug }}/lines">manually describe</a> your experiment.
 </div>
 
 <div class="tabBar">

@@ -1158,7 +1158,7 @@ var DataGridDataCell = (function () {
         $.extend(this, defaults, opt || {});
     }
     DataGridDataCell.prototype.createElement = function () {
-        var id = this.recordID, c = document.createElement("td"), checkId, checkName, menu;
+        var id = this.recordID, c = document.createElement("td"), checkId, checkName, title;
         if (this.checkboxWithID) {
             checkId = this.checkboxWithID.call(this.gridSpec, id);
             checkName = this.checkboxName || checkId;
@@ -1175,13 +1175,16 @@ var DataGridDataCell = (function () {
         $(this.contentContainerElement).html(this.contentString);
         this.contentFunction.call(this.gridSpec, this.contentContainerElement, id);
         if (this.sideMenuItems && this.sideMenuItems.length) {
-            menu = $('<ul>').addClass('popupmenu').appendTo(c);
+            title = '<span>';
             this.sideMenuItems.forEach(function (item) {
-                $('<li>').html(item).appendTo(menu);
+                if ($(item).attr('class') === "line-edit-link") {
+                    $(item).addClass('editLine');
+                }
+                title += ('<ul>' + item + '</ul>');
             });
-        }
-        if (this.title) {
-            c.setAttribute('title', this.title);
+            title += '</span>';
+            c.setAttribute('title', title);
+            c.setAttribute('id', id);
         }
         var cellClasses = [];
         if (this.colspan > 1) {

@@ -1313,6 +1313,8 @@ namespace StudyDataPage {
         $("#lineGraphButton").click(function() {
             //TODO: clean this up
             $('#exportButton').addClass('off');
+            $('#assaysActionPanel').appendTo('#content');
+            $('#mainFilterSection').appendTo('#content');
             viewingMode = 'linegraph';
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
@@ -1343,6 +1345,8 @@ namespace StudyDataPage {
         $("#barGraphButton").click(function() {
             //TODO: clean this up
             viewingMode = 'bargraph';
+            $('#assaysActionPanel').appendTo('#content');
+            $('#mainFilterSection').appendTo('#content');
             $('#exportButton').addClass('off');
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
@@ -2602,9 +2606,11 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
     generateAssayNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-        var record = EDDData.Assays[index], line = EDDData.Lines[record.lid], sideMenuItems = [
-            '<a class="assay-edit-link">Edit Assay</a>',
-            '<a class="assay-reload-link">Reload Data</a>',
+
+
+        var record = EDDData.Assays[index], line = EDDData.Lines[record.lid];
+            var sideMenuItems = [
+            '<a class="assay-edit-link" onclick="StudyDataPage.editAssay([' + index + '])">Edit Assay</a>',
             '<a href="/export?assayId=' + index + '">Export Data as CSV</a>'
         ];
 
@@ -2985,19 +2991,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
         $(table).on('change', ':checkbox', () => StudyDataPage.queueActionPanelRefresh());
-
-        // add click handler for menu on assay name cells
-        $(table).on('click', 'a.assay-edit-link', (ev) => {
-            StudyDataPage.editAssay($(ev.target).closest('.popupcell').find('input').val());
-            return false;
-        }).on('click', 'a.assay-reload-link', (ev:JQueryMouseEventObject):boolean => {
-            var id = $(ev.target).closest('.popupcell').find('input').val(),
-                assay:AssayRecord = EDDData.Assays[id];
-            if (assay) {
-                StudyDataPage.requestAssayData(assay);
-            }
-            return false;
-        });
 
         // Run it once in case the page was generated with checked Assays
         StudyDataPage.queueActionPanelRefresh();

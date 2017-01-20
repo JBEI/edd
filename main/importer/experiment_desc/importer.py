@@ -462,7 +462,9 @@ class CombinatorialCreationImporter(object):
                             'part_number': found_entry.part_id
                         })
                     self.add_error(FOUND_PART_NUMBER_DOESNT_MATCH_QUERY, found_entry.part_id)
+            elif hasattr(settings, 'EDD_ICE_FAIL_MODE') and settings.EDD_ICE_FAIL_MODE == 'fail':
+                self.add_error(PART_NUMBER_MISSING, local_ice_part_number)
             else:
                 # make a note that this part number is missing
-                self.add_error(PART_NUMBER_MISSING, local_ice_part_number)
+                self.add_warning(PART_NUMBER_MISSING, local_ice_part_number)
         return results
