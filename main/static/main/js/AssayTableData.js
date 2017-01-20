@@ -453,6 +453,7 @@ var EDDTableImport;
         // which may call for a reconfiguration of the controls in this step.
         RawInputStep.prototype.previousStepChanged = function () {
             var mode = this.selectMajorKindStep.interpretationMode;
+            console.log(mode);
             // update input visibility based on user selection in step 1
             this.updateInputVisible();
             // By default, our drop zone wants excel or csv files, so we clear the additional classes:
@@ -483,6 +484,20 @@ var EDDTableImport;
                 // We also never ignore gaps, or transpose, for MDV documents.
                 this.ignoreGaps(false);
                 this.transpose(false);
+            }
+            //appends example file proteomics
+            if (mode === 'pr') {
+                $('#prSampleFile').css('display', 'inline-block');
+            }
+            else {
+                $('#prSampleFile').css('display', 'none');
+            }
+            //and for GCMS
+            if ($('#masterProtocol').val() === "1929") {
+                $('#gcmsSampleFile').css('display', 'inline-block');
+            }
+            else {
+                $('#gcmsSampleFile').css('display', 'none');
             }
             if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
                 // If an excel file was dropped in, its content was pulled out and dropped into the text box.
