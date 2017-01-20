@@ -1191,11 +1191,7 @@ var StudyDataPage;
         });
         // This one is active by default
         $("#lineGraphButton").click(function () {
-<<<<<<< HEAD
             //TODO: clean this up
-=======
-            //TODO: clean up
->>>>>>> 8ceec360e039f881ab543932b408cc9e71b682e7
             $('#exportButton').addClass('off');
             $('#assaysActionPanel').appendTo('#content');
             $('#mainFilterSection').appendTo('#content');
@@ -1226,11 +1222,7 @@ var StudyDataPage;
             $('#graphLoading').removeClass('off');
         });
         $("#barGraphButton").click(function () {
-<<<<<<< HEAD
             //TODO: clean this up
-=======
-            //TODO: clean up
->>>>>>> 8ceec360e039f881ab543932b408cc9e71b682e7
             viewingMode = 'bargraph';
             $('#assaysActionPanel').appendTo('#content');
             $('#mainFilterSection').appendTo('#content');
