@@ -379,6 +379,13 @@ var StudyLines;
         if (ids.length > 0) {
             text = 'Edit Line' + (ids.length > 1 ? 's' : '');
         }
+        // $('#editLineModal').dialog({
+        //       resizable: false,
+        //       height:    125,
+        //       width:     300,
+        //       "title": Text
+        //     });
+        $("#editLineModal").dialog({ minWidth: 500, autoOpen: false, title: text });
         form.attr('title', text);
         if (ids.length > 1) {
             form.find('.bulk').prop('checked', false).removeClass('off');
