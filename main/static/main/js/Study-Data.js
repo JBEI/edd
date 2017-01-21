@@ -1117,7 +1117,7 @@ var StudyDataPage;
         postFilteringMeasurements = [];
         // By default, we always show the graph
         viewingMode = 'linegraph';
-        barGraphMode = 'time';
+        barGraphMode = 'measurement';
         barGraphTypeButtonsJQ = $('#barGraphTypeButtons');
         actionPanelIsInBottomBar = true;
         // Start out with every display mode needing a refresh
@@ -1191,7 +1191,7 @@ var StudyDataPage;
         });
         // This one is active by default
         $("#lineGraphButton").click(function () {
-            //TODO: clean up
+            //TODO: clean this up
             $('#exportButton').addClass('off');
             $('#assaysActionPanel').appendTo('#content');
             $('#mainFilterSection').appendTo('#content');
@@ -1199,6 +1199,8 @@ var StudyDataPage;
             $("#tableControlsArea").addClass('off');
             $("#filterControlsArea").removeClass('off');
             $("#tableActionButtons").addClass('off');
+            $('#assaysActionPanel').appendTo('#content');
+            $('#mainFilterSection').appendTo('#content');
             barGraphTypeButtonsJQ.addClass('off');
             $('#lineGraph').removeClass('off');
             $('#barGraphByTime').addClass('off');
@@ -1220,7 +1222,7 @@ var StudyDataPage;
             $('#graphLoading').removeClass('off');
         });
         $("#barGraphButton").click(function () {
-            //TODO: clean up
+            //TODO: clean this up
             viewingMode = 'bargraph';
             $('#assaysActionPanel').appendTo('#content');
             $('#mainFilterSection').appendTo('#content');
@@ -1233,6 +1235,8 @@ var StudyDataPage;
             $('#barGraphByTime').addClass('off');
             $('#barGraphByLine').addClass('off');
             $('#barGraphByMeasurement').addClass('off');
+            $('#assaysActionPanel').appendTo('#content');
+            $('#mainFilterSection').appendTo('#content');
             if (barGraphMode == 'time') {
                 $('#barGraphByTime').removeClass('off');
             }
