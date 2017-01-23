@@ -1,18 +1,21 @@
 
-var CLASSIDS = ['.linechart', '.barAssay', '.barTime', '.barMeasurement'],
-    BUTTONIDS = ['.line', '.groupByProteinBar', '.groupByTimeBar', '.groupByMeasurementBar'],
+var CLASSIDS = ['#lineGraph', '#barGraphByMeasurement', '#barGraphByLine', '#barGraphByTime'],
+    BUTTONIDS = ['#lineGraphButton', '#measurementBarGraphButton', '#lineBarGraphButton', '#timeBarGraphButton'],
     SCREENSHOT_WIDTH = 1280,
     SCREENSHOT_HEIGHT = 900,
     LOAD_WAIT_TIME = 5000,
     page = require("webpage").create();
 
-var renderPage = function(page, elementId, buttonId){
 
+var renderPage = function(page, elementId, buttonId){
+console.log("thsi is the id " + document.querySelector(buttonId))
   var clipRect = page.evaluate(function(buttonId, elementId) {
-        if (buttonId != '.line') {
-            document.querySelector('.active').click();
+      console.log("thsi is the id " + document.querySelector(buttonId))
+        if (buttonId != '#lineGraphButton') {
+            document.querySelector('#barGraphButton').click();
             document.querySelector(buttonId).click();
         } else {
+            console.log("this is the button id " + document.querySelector(buttonId))
             document.querySelector(buttonId).click();
         }
         return document.querySelector(elementId).getBoundingClientRect();

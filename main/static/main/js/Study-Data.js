@@ -1251,7 +1251,6 @@ var StudyDataPage;
         $("#timeBarGraphButton").click(function () {
             barGraphMode = 'time';
             queueRefreshDataDisplayIfStale();
-            $('#graphLoading').addClass('off');
         });
         $("#lineBarGraphButton").click(function () {
             barGraphMode = 'line';
@@ -1260,6 +1259,7 @@ var StudyDataPage;
         $("#measurementBarGraphButton").click(function () {
             barGraphMode = 'measurement';
             queueRefreshDataDisplayIfStale();
+            $('#graphLoading').addClass('off');
         });
         //hides/shows filter section.
         $('#hideFilterSection').click(function (event) {

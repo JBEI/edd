@@ -484,10 +484,11 @@
    },
    "types":{
       "3":{
+         "family":"_",
          "sn":"OD",
          "id":3,
-         "family":"_",
-         "name":"Optical Density"
+         "name":"Optical Density",
+         "uuid":"5dfda6ff-2a62-432e-af5f-75773f284e39"
       }
    }
 }

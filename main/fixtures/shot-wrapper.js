@@ -37,7 +37,7 @@ exports.takeShot = function(cb){
 
             for (var index in newHash) {
                 if (newHash[index] == originalHash[index]) {
-                    console.log('Match: ' + arr[index].slice(23) + 'newHash' + newHash[index])
+                    console.log('Match:   ' + arr[index].slice(23) + 'newHash' + newHash[index])
                 }
                 else {
                     console.log('Image changed!   '  + arr[index].slice(23) + ' , newHash: ' + newHash[index])

@@ -484,10 +484,11 @@
    },
    "types":{
       "84":{
+         "family":"m",
          "sn":"glc__D",
          "id":84,
-         "family":"m",
-         "name":"D-Glucose"
+         "name":"D-Glucose",
+         "uuid":"2677e58a-af10-43cd-a661-3dc3b02ea997"
       }
    }
 }
