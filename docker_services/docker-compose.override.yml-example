@@ -19,7 +19,7 @@
 # Order matters when specifying overrides! Any scalar values will use the last specified value,
 #   while any lists or dictionaries are merged.
 
-version: '2'
+version: '2.1'
 
 volumes:
 
@@ -97,7 +97,7 @@ services:
       #POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
       #POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
 
-    # Uncomment the below section to specify how ports for the main application server are exposed.  
+    # Uncomment the below section to specify how ports for the main application server are exposed.
     #ports:
     #  # Make the http 8000 port available on the Docker host external network
     #  - '8000:8000'
@@ -148,7 +148,7 @@ services:
     #   The final :ro specifier ensures that the path is mounted read-only.
     #volumes:
     #  - /path/to/certs:/var/edd/ssl:ro
-    
+
     # Make the http/https ports available on the Docker host loopback interface
     ports:
       - '127.0.0.1:80:80'

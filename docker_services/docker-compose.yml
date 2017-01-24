@@ -1,4 +1,5 @@
-version: '2'
+---
+version: '2.1'
 volumes:
   pgdata: {}
   solrdata: {}
@@ -12,6 +13,12 @@ services:
     restart: always
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./postgres/healthcheck.sh:/healthcheck.sh
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
     expose:
       - '5432'
     env_file: secrets.env
@@ -20,6 +27,12 @@ services:
     restart: always
     volumes:
       - redisdata:/data
+      - ./redis/healthcheck.sh:/healthcheck.sh
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
     expose:
       - '6379'
     command: redis-server --appendonly yes
