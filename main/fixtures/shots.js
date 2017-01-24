@@ -1,44 +1,48 @@
 
-var CLASSIDS = ['.linechart', '.barAssay', '.barTime', '.barMeasurement'],
-    BUTTONIDS = ['.line', '.groupByProteinBar', '.groupByTimeBar', '.groupByMeasurementBar'],
+var CLASSIDS = ['#lineGraph', '#barGraphByMeasurement', '#barGraphByLine', '#barGraphByTime'],
+    BUTTONIDS = ['#lineGraphButton', '#measurementBarGraphButton', '#lineBarGraphButton', '#timeBarGraphButton'],
     SCREENSHOT_WIDTH = 1280,
     SCREENSHOT_HEIGHT = 900,
     LOAD_WAIT_TIME = 5000,
     page = require("webpage").create();
 
-var renderPage = function(page, elementId, buttonId){
 
-  var clipRect = page.evaluate(function(buttonId, elementId) {
-        if (buttonId != '.line') {
-            document.querySelector('.active').click();
-            document.querySelector(buttonId).click();
-        } else {
-            document.querySelector(buttonId).click();
-        }
-        return document.querySelector(elementId).getBoundingClientRect();
-    }, buttonId, elementId);
-    
-    console.log("this is the clipRect " + JSON.stringify(clipRect));
-    
-    page.clipRect = {
-                top:    clipRect.top,
-                left:   clipRect.left,
-                bottom: clipRect.bottom,
-                width:  clipRect.width,
-                height: clipRect.height
+
+var renderPage = function(page, elementId, buttonId){
+    window.setTimeout(function() {
+        var clipRect = page.evaluate(function(buttonId, elementId) {
+            if (buttonId != '#lineGraphButton') {
+                document.querySelector('#barGraphButton').click();
+                document.querySelector(buttonId).click();
+            }
+            return document.querySelector(elementId).getBoundingClientRect();
+        }, buttonId, elementId);
+    }, 5000);
+
+        // console.log('clip' + JSON.stringify(clipRect));
+        var clipRect =  {"bottom":1251.1875,"height":902,"left":15,"right":1265,"top":349.1875,"width":1250};
+        page.clipRect = {
+            top:    clipRect.top,
+            left:   clipRect.left,
+            bottom: clipRect.bottom,
+            width:  clipRect.width,
+            height: clipRect.height
         };
-    var filename = elementId.slice(1) + '.png';
-    page.render('main/fixtures/newshots/' + filename);
-    console.log("rendered:", filename);
-};
+
+        var filename = elementId.slice(1) + '.png';
+
+        page.render('main/fixtures/newshots/' + filename);
+
+        console.log("rendered:", filename);
+    };
 
 
 
 var exitIfLast = function(index,array){
-    console.log(array.length - index-1, "more screenshots to go!")
-    console.log("~~~~~~~~~~~~~~")
+    console.log(array.length - index-1, "more screenshots to go!");
+    console.log("~~~~~~~~~~~~~~");
     if (index == array.length-1){
-        console.log("exiting phantomjs")
+        console.log("exiting phantomjs");
         phantom.exit();
     }
 };

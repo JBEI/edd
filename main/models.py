@@ -677,13 +677,13 @@ class EDDObject(EDDMetadata, EDDSerialize):
     class Meta:
         db_table = 'edd_object'
     name = models.CharField(
-        help_text=_('Name of study.'),
+        help_text=_('Name of this object.'),
         max_length=255,
         verbose_name=_('Name'),
     )
     description = models.TextField(
         blank=True,
-        help_text=_('Description of study.'),
+        help_text=_('Description of this object.'),
         null=True,
         verbose_name=_('Description'),
     )
@@ -2056,7 +2056,7 @@ class ProteinIdentifier(MeasurementType):
                 type_name = measurement_name
                 accession_id = uniprot_id
             # FIXME: this blindly creates a new type; should try external lookups first?
-            p = models.ProteinIdentifier.objects.create(
+            p = ProteinIdentifier.objects.create(
                 type_name=type_name,
                 short_name=uniprot_id,
                 accession_id=accession_id,

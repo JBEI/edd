@@ -263,7 +263,6 @@ div.statusMessage {
     clear: both;
     font-size:14px;
     padding:0.7em 0.6em 0.1em 0.6em;
-    width: 400px
 }
 div.statusMessage > p {
     border-width: 2px;
@@ -306,6 +305,7 @@ div.statusMessage > p.bad, .bad {
 div.statusMessage > p.success, .success {
   color: #0000ff;
   font-weight: bold;
+    width:300px;
 }
 
 

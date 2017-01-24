@@ -18,10 +18,10 @@ exports.takeShot = function(cb){
         }
         if( stdout ) {
             //where the new captured screenshots are saved
-            var arr = ['main/fixtures/newshots/barAssay.png',
-                       'main/fixtures/newshots/barMeasurement.png',
-                       'main/fixtures/newshots/linechart.png',
-                       'main/fixtures/newshots/barTime.png'];
+            var arr = ['main/fixtures/newshots/lineGraph.png',
+                       'main/fixtures/newshots/barGraphByMeasurement.png',
+                       'main/fixtures/newshots/barGraphByLine.png',
+                       'main/fixtures/newshots/barGraphByTime.png'];
 
             // original hash values from main/fixtures/originalshots
             var originalHash = ['24a15d9a5d739c6dde7d2dbcb5695e02',
@@ -31,13 +31,13 @@ exports.takeShot = function(cb){
             //new hash values created from newshots
             var newHash = [];
 
-            for (var i in arr) {
+            for (var i = 0; i < arr.length; i++) {
                 newHash.push(md5File.sync(arr[i]))
             }
 
-            for (var index in newHash) {
+            for (var index = 0; index < newHash.length; index++) {
                 if (newHash[index] == originalHash[index]) {
-                    console.log('Match: ' + arr[index].slice(23) + 'newHash' + newHash[index])
+                    console.log('Match:   ' + arr[index].slice(23) + 'newHash' + newHash[index])
                 }
                 else {
                     console.log('Image changed!   '  + arr[index].slice(23) + ' , newHash: ' + newHash[index])
