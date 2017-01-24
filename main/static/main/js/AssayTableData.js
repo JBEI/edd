@@ -1965,10 +1965,10 @@ var EDDTableImport;
             $('#masterMTypeValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
             $('#masterMUnitsValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
             // enable autocomplete on statically defined fields
-            //EDDAuto.BaseAuto.createFromElements('#masterMComp', 'MeasurementCompartment');
-            //EDDAuto.BaseAuto.createFromElements('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
-            //EDDAuto.BaseAuto.createFromElements('#masterMUnits', 'MeasurementUnit');
-            //EDDAuto.BaseAuto.createFromElements('#masterUnits', 'MeasurementUnit');
+            EDDAuto.BaseAuto.initPreexisting();
+            EDDAuto.BaseAuto.initPreexisting();
+            EDDAuto.BaseAuto.initPreexisting();
+            EDDAuto.BaseAuto.initPreexisting();
         }
         TypeDisambiguationStep.prototype.setAllInputsEnabled = function (enabled) {
             var allUserInputs = $("." + TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
