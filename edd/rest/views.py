@@ -8,13 +8,15 @@ but are not making use of DRF.
 
 import logging
 import re
+from uuid import UUID
 
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 from edd.rest.serializers import (LineSerializer, MetadataGroupSerializer, MetadataTypeSerializer,
-                                  StrainSerializer, StudySerializer, UserSerializer)
+                                  StrainSerializer, StudySerializer, UserSerializer,
+                                  ProtocolSerializer)
 from jbei.rest.clients.edd.constants import (
     CASE_SENSITIVE_PARAM, LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT, METADATA_TYPE_CONTEXT,
     METADATA_TYPE_GROUP, METADATA_TYPE_I18N, METADATA_TYPE_LOCALE, METADATA_TYPE_NAME_REGEX,
@@ -23,7 +25,8 @@ from jbei.rest.clients.edd.constants import (
     STRAIN_REGISTRY_URL_REGEX,
 )
 from jbei.rest.utils import is_numeric_pk
-from main.models import Line, MetadataType, Strain, Study, StudyPermission, User, MetadataGroup
+from main.models import Line, MetadataType, Strain, Study, StudyPermission, User, MetadataGroup, \
+    Protocol
 from rest_framework import (status, viewsets)
 from rest_framework.exceptions import APIException
 from rest_framework.relations import StringRelatedField
@@ -66,6 +69,7 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = MetadataType.objects.all()  # must be defined for DjangoModelPermissions
     serializer_class = MetadataTypeSerializer
+    TYPE_NAME_PROPERTY = 'type_name'
 
     def get_queryset(self):
         pk = self.kwargs.get('pk', None)
@@ -96,17 +100,102 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
 
             # sort
             sort = params.get(SORT_PARAM)
+
             if sort is not None:
-                queryset = queryset.order_by('type_name')
+                queryset = queryset.order_by(self.TYPE_NAME_PROPERTY)
 
                 if sort == REVERSE_SORT_VALUE:
-                    queryset = queryset.desc()
-                else:
-                    queryset = queryset.asc()
+                    queryset = queryset.reverse()
 
-            queryset = _do_optional_regex_filter(params, queryset, 'type_name',
+            queryset = _do_optional_regex_filter(params, queryset, self.TYPE_NAME_PROPERTY,
                                                  METADATA_TYPE_NAME_REGEX,
                                                  METADATA_TYPE_LOCALE,)
+        return queryset
+
+OWNED_BY = 'owned_by'
+VARIANT_OF = 'variant_of'
+DEFAULT_UNITS_REQUEST_PARAM = 'default_units'
+CATEGORIZATION_REQUEST_PARAM = 'categorization'
+
+
+# TODO: make writable for users with permission
+class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Protocol.objects.all()  # must be defined for DjangoModelPermissions
+    serializer_class = ProtocolSerializer
+    NAME_PROPERTY = 'name'
+    OWNED_BY_PROPERTY = 'owned_by'
+    CATEGORIZATION_PROPERTY = 'categorization'
+    DEFAULT_UNITS_PROPERTY = 'default_units'
+
+    def get_queryset(self):
+        pk = self.kwargs.get('pk', None)
+
+        queryset = Protocol.objects.all()
+        if pk:
+            if is_numeric_pk(pk):
+                queryset = queryset.filter(pk=pk)
+            # TODO: revisit / retest UUID-based lookup...not working
+            else:
+                queryset = queryset.filter(uuid=pk)
+
+        i18n_placeholder = ''  # TODO: implement if I18N implemented for Protocol model
+
+        params = self.request.query_params  # TODO: incomplete. copied from MetadataType above
+        if params:
+            # owned by
+            owned_by = params.get(OWNED_BY)
+            if is_numeric_pk(owned_by):
+                queryset = queryset.filter(owned_by=owned_by)
+            else:
+                # first try UUID-based input since UUID instantiation is the best way to error check
+                # UUID input
+                try:
+                    UUID(owned_by)
+                    queryset = queryset.filter(owned_by__uuid=owned_by)
+                except Exception:
+                    # if this wasn't a valid UUID, assume it's a regex for the username
+                    queryset = _do_optional_regex_filter(params, queryset, 'owned_by__username',
+                                                         self.OWNED_BY_PROPERTY,
+                                                         i18n_placeholder)
+
+            # variant of
+            variant_of = params.get(VARIANT_OF)
+            if variant_of:
+                queryset = queryset.filter(variant_of=variant_of)
+
+            # default units
+            default_units = params.get(DEFAULT_UNITS_REQUEST_PARAM)
+            if default_units:
+                if is_numeric_pk(default_units):
+                    queryset = queryset.filter(default_units=default_units)
+                # first try UUID-based input since UUID instantiation is the best way to error check
+                # UUID input
+                try:
+                    UUID(default_units)
+                    queryset = queryset.filter(default_units__uuid=default_units)
+                except Exception:
+                    # if this wasn't a valid UUID, assume it's a regex for the unit name
+
+                    queryset = _do_optional_regex_filter(params, queryset,
+                                                         'default_units__unit_name',
+                                                         DEFAULT_UNITS_REQUEST_PARAM,
+                                                         i18n_placeholder)
+            # categorization
+            _do_optional_regex_filter(params, queryset, 'categorization',
+                                      CATEGORIZATION_REQUEST_PARAM, i18n_placeholder)
+
+            # sort (based on name)
+            sort = params.get(SORT_PARAM)
+            if sort is not None:
+                queryset = queryset.order_by(self.NAME_PROPERTY)
+
+                if sort == REVERSE_SORT_VALUE:
+                    queryset = queryset.reverse()
+
+            queryset = _do_optional_regex_filter(params, queryset, self.NAME_PROPERTY,
+                                                 'name', i18n_placeholder)
+
+
         return queryset
 
 
