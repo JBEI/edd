@@ -15,40 +15,11 @@
          "tags":[
             "LCMS",
             "HPLC"
-         ]
+         ],
+         "uuid":"2677e58a-af10-43cd-a661-3dc3b02ea997"
       }
    },
    "Lines":{
-      "340":{
-         "control":false,
-         "description":null,
-         "created":{
-            "user":7,
-            "time":1340231737
-         },
-         "modified":{
-            "user":7,
-            "time":1340231737
-         },
-         "contact":{
-            "user_id":7,
-            "extra":"cjjoshua@lbl.gov"
-         },
-         "strain":[
-            149
-         ],
-         "meta":{
-            "19":"M9"
-         },
-         "replicate":339,
-         "carbon":[
-            273
-         ],
-         "active":true,
-         "experimenter":null,
-         "id":340,
-         "name":"G2"
-      },
       "339":{
          "control":false,
          "description":null,
@@ -100,7 +71,7 @@
          "meta":{
             "27":"B10"
          },
-         "replicate":null,
+         "replicate":755,
          "carbon":[
 
          ],
@@ -108,6 +79,96 @@
          "experimenter":4,
          "id":755,
          "name":"blah"
+      },
+      "340":{
+         "control":false,
+         "description":null,
+         "created":{
+            "user":7,
+            "time":1340231737
+         },
+         "modified":{
+            "user":7,
+            "time":1340231737
+         },
+         "contact":{
+            "user_id":7,
+            "extra":"cjjoshua@lbl.gov"
+         },
+         "strain":[
+            149
+         ],
+         "meta":{
+            "19":"M9"
+         },
+         "replicate":339,
+         "carbon":[
+            273
+         ],
+         "active":true,
+         "experimenter":null,
+         "id":340,
+         "name":"G2"
+      },
+      "28053":{
+         "control":false,
+         "description":"",
+         "created":{
+            "user":137,
+            "time":1478909555
+         },
+         "modified":{
+            "user":137,
+            "time":1478909555
+         },
+         "contact":{
+            "user_id":4,
+            "extra":""
+         },
+         "strain":[
+
+         ],
+         "meta":{
+            "27":"B10"
+         },
+         "replicate":null,
+         "carbon":[
+
+         ],
+         "active":false,
+         "experimenter":4,
+         "id":28053,
+         "name":"blah clone"
+      },
+      "28054":{
+         "control":false,
+         "description":"None",
+         "created":{
+            "user":137,
+            "time":1478909555
+         },
+         "modified":{
+            "user":137,
+            "time":1478909555
+         },
+         "contact":{
+            "user_id":7,
+            "extra":""
+         },
+         "strain":[
+            149
+         ],
+         "meta":{
+            "19":"M9"
+         },
+         "replicate":null,
+         "carbon":[
+            273
+         ],
+         "active":false,
+         "experimenter":4,
+         "id":28054,
+         "name":"G1 clone"
       },
       "5372":{
          "control":false,
@@ -130,11 +191,11 @@
          "meta":{
             "19":"M9"
          },
-         "replicate":339,
+         "replicate":755,
          "carbon":[
             273
          ],
-         "active":true,
+         "active":false,
          "experimenter":4,
          "id":5372,
          "name":"G1 clone"
@@ -727,7 +788,7 @@
    },
    "MeasurementTypeCompartments":{
       "0":{
-         "name":"",
+         "name":"N/A",
          "sn":""
       },
       "1":{
@@ -866,6 +927,46 @@
          "active":true,
          "id":2054,
          "name":"1"
+      },
+      "28055":{
+         "lid":755,
+         "description":"test",
+         "created":{
+            "user":137,
+            "time":1479164356
+         },
+         "pid":1929,
+         "modified":{
+            "user":137,
+            "time":1482184215
+         },
+         "meta":{
+
+         },
+         "experimenter":105,
+         "active":true,
+         "id":28055,
+         "name":"test"
+      },
+      "28056":{
+         "lid":339,
+         "description":"test",
+         "created":{
+            "user":137,
+            "time":1479164356
+         },
+         "pid":1929,
+         "modified":{
+            "user":137,
+            "time":1479164356
+         },
+         "meta":{
+
+         },
+         "experimenter":105,
+         "active":true,
+         "id":28056,
+         "name":"test"
       }
    },
    "UnitTypes":{
@@ -946,6 +1047,23 @@
 
    },
    "Protocols":{
+      "1929":{
+         "description":"Gas chromatography-mass spectroscopy: a measure of protein amino acid labeling",
+         "created":{
+            "user":1,
+            "time":1386378201
+         },
+         "modified":{
+            "user":1,
+            "time":1386378201
+         },
+         "meta":{
+
+         },
+         "active":true,
+         "id":1929,
+         "name":"GC-MS"
+      },
       "1930":{
          "description":"High-pressure liquid chromatography: a measure of extracellular metabolite concentration",
          "created":{
@@ -1161,7 +1279,7 @@
          "description":"",
          "name":"Taek Lee",
          "id":14,
-         "email":"tslee@lbl.gov",
+         "email":"TSLee@lbl.gov",
          "initials":"TSL"
       },
       "15":{
@@ -2423,6 +2541,318 @@
          "name":"Constance Bailey",
          "id":115,
          "email":"ConstanceBailey@lbl.gov",
+         "initials":""
+      },
+      "116":{
+         "uid":"gptomaleri",
+         "firstname":"Giovani",
+         "lastname":"Pinton Tomaleri",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Giovani Pinton Tomaleri",
+         "id":116,
+         "email":"GPTomaleri@lbl.gov",
+         "initials":""
+      },
+      "117":{
+         "uid":"lrios",
+         "firstname":"Leonardo",
+         "lastname":"Rios",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Leonardo Rios",
+         "id":117,
+         "email":"LRios@lbl.gov",
+         "initials":""
+      },
+      "118":{
+         "uid":"jeremy.zucker",
+         "firstname":"",
+         "lastname":"",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"",
+         "id":118,
+         "email":"jeremy.zucker@pnnl.gov",
+         "initials":""
+      },
+      "119":{
+         "uid":"chris.w.beitel",
+         "firstname":"",
+         "lastname":"",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"",
+         "id":119,
+         "email":"chris.w.beitel@gmail.com",
+         "initials":""
+      },
+      "120":{
+         "uid":"zak.costello",
+         "firstname":"Zachary",
+         "lastname":"Costello",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Zachary Costello",
+         "id":120,
+         "email":"zak.costello@lbl.gov",
+         "initials":""
+      },
+      "121":{
+         "uid":"rberthomieu",
+         "firstname":"Roland",
+         "lastname":"Berthomieu",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Roland Berthomieu",
+         "id":121,
+         "email":"RBerthomieu@lbl.gov",
+         "initials":""
+      },
+      "122":{
+         "uid":"njacquet",
+         "firstname":"Nicolas",
+         "lastname":"Jacquet",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Nicolas Jacquet",
+         "id":122,
+         "email":"NJacquet@lbl.gov",
+         "initials":""
+      },
+      "123":{
+         "uid":"alberto",
+         "firstname":"Alberto",
+         "lastname":"Rodriguez",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Alberto Rodriguez",
+         "id":123,
+         "email":"alberto@lbl.gov",
+         "initials":""
+      },
+      "124":{
+         "uid":"tlruegg",
+         "firstname":"Thomas",
+         "lastname":"Ruegg",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Thomas Ruegg",
+         "id":124,
+         "email":"TLRuegg@lbl.gov",
+         "initials":""
+      },
+      "125":{
+         "uid":"abrandon",
+         "firstname":"Andrew",
+         "lastname":"Brandon",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Andrew Brandon",
+         "id":125,
+         "email":"ABrandon@lbl.gov",
+         "initials":""
+      },
+      "126":{
+         "uid":"kvuu",
+         "firstname":"Khanh",
+         "lastname":"Vuu",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Khanh Vuu",
+         "id":126,
+         "email":"KVuu@lbl.gov",
+         "initials":""
+      },
+      "127":{
+         "uid":"tiantian",
+         "firstname":"Tian",
+         "lastname":"Tian",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Tian Tian",
+         "id":127,
+         "email":"TianTian@lbl.gov",
+         "initials":""
+      },
+      "128":{
+         "uid":"christopher.w.b",
+         "firstname":"",
+         "lastname":"",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"",
+         "id":128,
+         "email":"christopher.w.b@me.com",
+         "initials":""
+      },
+      "129":{
+         "uid":"tbackman",
+         "firstname":"Tyler",
+         "lastname":"Backman",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Tyler Backman",
+         "id":129,
+         "email":"TBackman@lbl.gov",
+         "initials":""
+      },
+      "130":{
+         "uid":"chunliliu",
+         "firstname":"Chunli",
+         "lastname":"Liu",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Chunli Liu",
+         "id":130,
+         "email":"ChunliLiu@lbl.gov",
+         "initials":""
+      },
+      "131":{
+         "uid":"pdemling",
+         "firstname":"Philipp",
+         "lastname":"Demling",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Philipp Demling",
+         "id":131,
+         "email":"PDemling@lbl.gov",
+         "initials":""
+      },
+      "132":{
+         "uid":"linfang",
+         "firstname":"",
+         "lastname":"",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"",
+         "id":132,
+         "email":"linfang@lbl.gov",
+         "initials":""
+      },
+      "133":{
+         "uid":"krishna.mahadevan",
+         "firstname":"",
+         "lastname":"",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"",
+         "id":133,
+         "email":"krishna.mahadevan@utoronto.ca",
+         "initials":""
+      },
+      "134":{
+         "uid":"shizengwang",
+         "firstname":"Shizeng",
+         "lastname":"Wang",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Shizeng Wang",
+         "id":134,
+         "email":"ShizengWang@lbl.gov",
+         "initials":""
+      },
+      "135":{
+         "uid":"ageudes",
+         "firstname":"",
+         "lastname":"",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"",
+         "id":135,
+         "email":"ageudes@lbl.gov",
+         "initials":""
+      },
+      "136":{
+         "uid":"xiwang",
+         "firstname":"Xi",
+         "lastname":"Wang",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"Xi Wang",
+         "id":136,
+         "email":"XiWang@lbl.gov",
+         "initials":""
+      },
+      "137":{
+         "uid":"tlopez2",
+         "firstname":"",
+         "lastname":"",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"",
+         "id":137,
+         "email":"tlopez@lbl.gov",
+         "initials":""
+      },
+      "138":{
+         "uid":"traci",
+         "firstname":"",
+         "lastname":"",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"",
+         "id":138,
+         "email":"tlopez@lbl.gov",
+         "initials":""
+      },
+      "139":{
+         "uid":"tracilopez",
+         "firstname":"",
+         "lastname":"",
+         "disabled":false,
+         "groups":null,
+         "institution":null,
+         "description":"",
+         "name":"",
+         "id":139,
+         "email":"traciklopez@gmail.com",
          "initials":""
       }
    }

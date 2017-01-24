@@ -20,10 +20,10 @@
     <link rel="stylesheet" type="text/css" href="/static/main/js/lib/qtip/jquery.qtip.min.css" />
     <script type="text/javascript">
 
+        window.EDDData = window.EDDData || {};
+        EDDData.currentUserID = 105;
         EDDData.currentStudyID = 10;
-        EDDData.currentStudyWritable = true;
-        EDDData.Studies = EDDData.Studies || {};
-        EDDData.Studies[10] = {"description": "CJJ Test", "created": {"user": 7, "time": 1340230971}, "modified": {"user": 18, "time": 1435002648}, "contact": {"id": 7, "extra": "cjjoshua@lbl.gov"}, "metabolic_map": null, "meta": {}, "active": true, "id": 10, "name": "CJJ-Test"};
+        EDDData.Studies = {10: {'name': 'CJJ-Test'}}
 
     </script>
     <script type="text/javascript" src="/static/main/js/Utl.js"></script>

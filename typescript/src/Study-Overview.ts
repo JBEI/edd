@@ -65,18 +65,16 @@ module StudyOverview {
     // fileRead(), is passed a processed result from the server as a second argument,
     // rather than the raw contents of the file.
     export function fileReturnedFromServer(fileContainer, result): void {
-        //is this needed?
-        $('#fileDropInfoSending').addClass('off');
 
         var currentPath = window.location.pathname;
         var linesPathName = currentPath.slice(0, -8) + 'lines';
         //display success message
         $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Successfully added ' + result['lines_created'] + ' lines! ' +
-            'Redirecting you to <a style="vertical-align:top" href="/study/{{ study.slug }}/lines">Lines page</a></div>');
+            'Redirecting you to the study details page');
         //redirect to lines page
         setTimeout(function () {
             window.location.pathname = linesPathName;
-        }, 3000);
+        }, 2000);
     }
 
 
