@@ -2436,7 +2436,7 @@ module EDDTableImport {
             $('#masterMUnitsValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
 
             // enable autocomplete on statically defined fields
-            EDDAuto.BaseAuto.initPreexisting();
+            EDDAuto.BaseAuto.initPreexisting($('#typeDisambiguationStep'));
         }
 
         setAllInputsEnabled(enabled: boolean) {
