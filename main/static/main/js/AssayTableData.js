@@ -1966,9 +1966,6 @@ var EDDTableImport;
             $('#masterMUnitsValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
             // enable autocomplete on statically defined fields
             EDDAuto.BaseAuto.initPreexisting();
-            EDDAuto.BaseAuto.initPreexisting();
-            EDDAuto.BaseAuto.initPreexisting();
-            EDDAuto.BaseAuto.initPreexisting();
         }
         TypeDisambiguationStep.prototype.setAllInputsEnabled = function (enabled) {
             var allUserInputs = $("." + TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);

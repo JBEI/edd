@@ -2437,9 +2437,6 @@ module EDDTableImport {
 
             // enable autocomplete on statically defined fields
             EDDAuto.BaseAuto.initPreexisting();
-            EDDAuto.BaseAuto.initPreexisting();
-            EDDAuto.BaseAuto.initPreexisting();
-            EDDAuto.BaseAuto.initPreexisting();
         }
 
         setAllInputsEnabled(enabled: boolean) {
