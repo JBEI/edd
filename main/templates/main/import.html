@@ -15,6 +15,10 @@
       src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
   <script type="text/javascript">
 
+  //remove mian flex layout. work around til garret fixes main flex layout. 
+    $(document).ready(function() {
+      $('.mainFlex').removeClass();
+    });
     var ATData = {}; // this needs to be declared before loading AssayTableData.js!
 
   </script>
