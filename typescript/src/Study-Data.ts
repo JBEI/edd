@@ -1451,7 +1451,11 @@ namespace StudyDataPage {
                 EDDData = $.extend(EDDData || {}, data);
 
                 colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
-
+                // show assay table by default if there are assays but no assaymeasurements
+                if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+                    $('#linegraphbutton').removeClass('active');
+                    $('#dataTableButton').addClass('active');
+                }
                 progressiveFilteringWidget.prepareFilteringSection();
 
                 $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(() => {
