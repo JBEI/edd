@@ -453,6 +453,7 @@ var EDDTableImport;
         // which may call for a reconfiguration of the controls in this step.
         RawInputStep.prototype.previousStepChanged = function () {
             var mode = this.selectMajorKindStep.interpretationMode;
+            console.log(mode);
             // update input visibility based on user selection in step 1
             this.updateInputVisible();
             // By default, our drop zone wants excel or csv files, so we clear the additional classes:
@@ -460,6 +461,9 @@ var EDDTableImport;
             if (mode === 'biolector') {
                 // Biolector data is expected in XML format.
                 $('#step2textarea').addClass('xml');
+                //show example biolector file
+                $('#biolectorFile').css('display', 'inline-block');
+                $('#prSampleFile').css('display', 'none');
                 // It is also expected to be dropped from a file.
                 // So either we're already in file mode and there are already parsed sets available,
                 // Or we are in text entry mode waiting for a file drop.
@@ -467,15 +471,30 @@ var EDDTableImport;
                 this.nextStepCallback();
                 return;
             }
+            else {
+                //hide example biolector file
+                $('#biolectorFile').css('display', 'none');
+            }
             if (mode === 'hplc') {
                 // HPLC data is expected as a text file.
                 $('#step2textarea').addClass('text');
+                $('#hplcExample').css('display', 'inline-block');
+                $('#prSampleFile').css('display', 'none');
+                $('#gcmsSampleFile').css('display', 'none');
                 this.nextStepCallback();
                 return;
             }
+            else {
+                $('#hplcExample').css('display', 'none');
+            }
             if (mode === 'skyline') {
                 this.nextStepCallback();
+                //show skyline example file
+                $('#skylineSample').css('display', 'inline-block');
                 return;
+            }
+            else {
+                $('#skylineSample').css('display', 'none');
             }
             if (mode === 'mdv') {
                 // When JBEI MDV format documents are pasted in, it's always from Excel, so they're always tab-separated.
@@ -483,6 +502,21 @@ var EDDTableImport;
                 // We also never ignore gaps, or transpose, for MDV documents.
                 this.ignoreGaps(false);
                 this.transpose(false);
+            }
+            //appends example file proteomics
+            if (mode === 'pr') {
+                $('#prSampleFile').css('display', 'inline-block');
+            }
+            else {
+                $('#prSampleFile').css('display', 'none');
+            }
+            //for std use GC-MS file
+            if (mode === 'std') {
+                $('#prSampleFile').css('display', 'none');
+                $('#gcmsSampleFile').css('display', 'inline-block');
+            }
+            else {
+                $('#gcmsSampleFile').css('display', 'none');
             }
             if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
                 // If an excel file was dropped in, its content was pulled out and dropped into the text box.

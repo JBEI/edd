@@ -446,7 +446,8 @@ namespace StudyLines {
             text = 'Edit Line' + (ids.length > 1 ? 's' : '');
         }
 
-        form.prop('title', text);
+        $("#editLineModal").dialog({ minWidth: 500, autoOpen: false, title: text });
+
         if (ids.length > 1) {
             form.find('.bulk').prop('checked', false).removeClass('off');
             form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
