@@ -23,12 +23,19 @@ version: '2.1'
 
 volumes:
 
-  # Uncomment a volume block to override the settings for that block. The example below will
-  #   replace the volume used for solr with one created using:
+  # Override existing volume definitions by adding an entry with the same name here. The
+  #   staticdata definition here adds nothing more to the base configuration.
+  staticdata: {}
+  # While the solrdata definition here instructs compose to use the volume named my_volume
+  #   in place of the default PROJECTNAME_solrdata volume created by Compose. To use
+  #   the my_volume volume, you *must* create it yourself using a command like:
   #   `docker volume create --name my_volume`
   #solrdata:
   #  external:
   #    name: my_volume
+
+  # Add new volume definition(s) by creating new name(s).
+  #mycustomdata: {}
 
 services:
 
@@ -116,6 +123,16 @@ services:
   # Override settings for the application server
   appserver:
 
+    # The following ports definition publishes (reading backwards) port 8000 of the container
+    #   on port 8000 of the Docker host using the interface (loopback) with IP 127.0.0.1.
+    ports:
+      - '127.0.0.1:8000:8000'
+
+    # Override the default environment to direct errors to the guilty.
+    environment:
+      EDD_USER: "Alice Liddell"
+      EDD_EMAIL: "aliddell@example.net"
+
     # [DEVMODE] By default, the appserver runs with the application command; uncomment below to
     #   run with the devmode command instead and use Django's ruserver to serve the application.
     #command: [-A, -w, edd, devmode]
@@ -131,6 +148,11 @@ services:
     #  - /full/path/to/source:/code
 
   worker:
+
+    # Override the default environment to direct errors to the guilty.
+    environment:
+      EDD_USER: "Alice Liddell"
+      EDD_EMAIL: "aliddell@example.net"
 
     # Mount a development copy of code, rather than using the code in the image, using volumes.
     #volumes:
