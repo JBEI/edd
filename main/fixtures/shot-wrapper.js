@@ -24,10 +24,10 @@ exports.takeShot = function(cb){
                        'main/fixtures/newshots/barGraphByTime.png'];
 
             // original hash values from main/fixtures/originalshots
-            var originalHash = ['24a15d9a5d739c6dde7d2dbcb5695e02',
-                                '47adb70698d5c41c5abcf6319cdb6281',
-                                '7b0cbf2a6079c0135e62ade28f88e1b2',
-                                '0881c5ee6f544e122846230c48752a37'];
+            var originalHash = ['3749634f906c96c529420bca6a520b66',
+                                'ff920032a15fd14ebdc779eba31f5a04',
+                                '8c4ae2dfd9875061ce681d2936211077',
+                                '280db12668a0e75d4438f1003e5a58bd'];
             //new hash values created from newshots
             var newHash = [];
 
