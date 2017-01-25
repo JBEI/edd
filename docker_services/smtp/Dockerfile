@@ -13,8 +13,9 @@ ENV TINI_VERSION v0.13.2
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini
 
-COPY entrypoint.sh /bin/
+COPY entrypoint.sh healthcheck.sh /bin/
 
 EXPOSE 25
 ENTRYPOINT ["/tini", "--", "/bin/entrypoint.sh"]
 CMD ["exim", "-bd", "-q15m", "-v"]
+HEALTHCHECK --interval=1m --timeout=1s --retries=3 CMD /bin/healthcheck.sh localhost

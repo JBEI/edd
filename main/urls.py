@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from django.conf.urls import include, url
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles.storage import staticfiles_storage
+from django.http import HttpResponse
 from django.views.generic.base import RedirectView
 
 from main import autocomplete, views
@@ -144,6 +145,8 @@ urlpatterns = [
     url(r'^data/users/$', login_required(views.data_users)),
     url(r'^search/$', login_required(views.search)),
     url(r'^search/(?P<model>\w+)/$', login_required(views.model_search)),
+
+    url(r'^health/$', lambda request: HttpResponse()),
 
     # Call-out for the favicon, which would normally only be accessible via a URL like:
     #   https://edd.example.org/static/favicon.ico
