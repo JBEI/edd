@@ -1,12 +1,4 @@
-/**
- * Created by mark.forrer on 1/18/17.
- */
-
-// $.getScript('/main/js/EDD-Rest.js', function()
-// {
-//     // script is now loaded and executed.
-//     // put your dependent JS here.
-// });
+// TODO: pull out reusable REST API code into a separate file
 
 module ExperimentDescriptionHelp {
     var metadata_types_url:string = "/rest/metadata_type/";
@@ -23,19 +15,17 @@ module ExperimentDescriptionHelp {
 
     var ASSAY_DIV_SELECTOR = '#assayMetadataTypes';
     var LINE_DIV_SELECTOR = '#lineMetadataTypes';
+    var PROTOCOL_DIV_SELECTOR = '#protocols';
 
     var LINE_METADATA_CONTEXT = 'L';
     var ASSAY_METADATA_CONTEXT = 'A';
-
-    // TODO: review/implement
-    // omit line / assay metadata types that are already included in help text as built-in
     var omitLineMetadataTypes = ['Line Name', 'Line Description', 'Line Contact',
         'Line Experimenter'];
 
     var omitAssayMetadataTypes = ['Assay Description', 'Assay Experimenter', 'Assay Name'];
 
-    // As soon as the window load signal is sent, call back to the server for the set of reference records
-    // that will be used to disambiguate labels in imported data.
+    // As soon as the window load signal is sent, call back to the server for the set of reference
+    // records that will be used to disambiguate labels in imported data.
     export function onWindowLoad(): void {
         $('.disclose').find('.discloseLink').on('click', disclose);
 
@@ -74,13 +64,12 @@ module ExperimentDescriptionHelp {
     }
 
     function loadAllProtocols():void {
-        var protocolSelector = '#protocols';
         loadProtocols(
             {
                 'success': protocolSuccessHandler,
-                'error': function () { showLoadFailed(protocolSelector); },
+                'error': function () { showLoadFailed(PROTOCOL_DIV_SELECTOR); },
                 'request_all': true, // get all result pages
-                'wait': function() {showWaitMessage(protocolSelector)},
+                'wait': function() {showWaitMessage(PROTOCOL_DIV_SELECTOR)},
                 'sort_order': ascendingSort,
             });
     }
@@ -90,7 +79,7 @@ module ExperimentDescriptionHelp {
         div = $(divSelector);
             div.empty();
             $('<span>')
-                .val('Loading data from server...please wait.')
+                .text('Loading data from server...please wait.')
                 .addClass('wait')
                 .appendTo(div);
     }
@@ -104,10 +93,6 @@ module ExperimentDescriptionHelp {
     }
 
     function protocolSuccessHandler(protocols: any[]) {
-        //TODO: create / use a /rest/measurement_unit or similar REST API resource, use it to
-        // improve display for units in this table.  For now, just having a numeric PK placeholder
-        // in a buried / advanced feature is an okay-though-non-ideal stand-in / reminder. Can
-        // follow up on this in EDD-603.
         var div:JQuery, table:JQuery, head, body, row;
         div = $('#protocols')
                 .empty();
@@ -142,6 +127,11 @@ module ExperimentDescriptionHelp {
                 $('<td>')
                     .text(protocol['description'])
                     .appendTo(row);
+
+                //TODO: create / use a /rest/measurement_unit or similar REST API resource, use it
+                // to improve display for units in this table.  For now, just having a numeric
+                // PK placeholder in a buried / advanced feature is an okay-though-non-ideal
+                // stand-in / reminder. Can follow up on this in EDD-603.
                 $('<td>')
                     .text(protocol['default_units'])
                     .appendTo(row);
@@ -338,7 +328,7 @@ module ExperimentDescriptionHelp {
         div = $(divSelector);
         div.empty();
 
-        span = $("<span>").val('Unable to load data.').addClass('errorMessage').appendTo(div);
+        span = $("<span>").text('Unable to load data.').addClass('errorMessage').appendTo(div);
 
         // TODO: actually support reload
         //$('<a>').val('Retry').appendTo(span);
