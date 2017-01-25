@@ -15,6 +15,10 @@
       src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
   <script type="text/javascript">
 
+  //remove mian flex layout. work around til garret fixes main flex layout.
+    $(document).ready(function() {
+      $('.mainFlex').removeClass();
+    });
     var ATData = {}; // this needs to be declared before loading AssayTableData.js!
 
   </script>
@@ -390,14 +394,14 @@
           in your study and in EDD's database.</p>
         <p>EDD will do its best to  pre-set these values for you based on data already present in
           the system, but you should always verify its work.</p>
-        <h1>Impact on Existing data in the Study</h1>
+        <h4>Impact on Existing data in the Study</h4>
         <p>Recall that if you tell EDD to use pre-existing Assays in this step, the impact on
           existing data in your study will depend on whether you chose "merge" or "replace" in
           Step 1.</p>
-        <h1>Import Scope</h1>
+        <h4>Import Scope</h4>
         <p>Keep in mind that all the Assays in the pulldown and all the Assays created by this step
           of the import process are for the Protocol you've selected in Step 1.</p>
-        <h1>Reducing the amount of work</h1>
+        <h4>Reducing the amount of work</h4>
         <p>This step is normally <em>much simpler and more automated</em> if you've used
           information already known to EDD to label your input.</p>
         <p>Recall that the ideal, and often most efficient workflow, is to establish or use naming
