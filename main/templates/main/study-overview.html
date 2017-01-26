@@ -7,6 +7,28 @@
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study-Overview.js' %}"></script>
+    <script type="text/javascript">
+    $(function () {
+        $('#helpExperimentDescription').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-10 center", at: "right center" },
+            show: null,
+            close: function (event, ui) {
+                ui.tooltip.hover(
+                function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                },
+                function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    })
+                });
+            }
+        });
+    });
+    </script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -71,22 +93,18 @@
     </div>
 </form>
 
-<div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;color:gray; padding-bottom:20px; {% if lines %}display:none;{% endif %}">
-    <div class="fd-zone" style="min-height:220px;font-size:17px;" id="templateDropZone">
+<div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;color:gray; padding-bottom:16px;{% if lines %}display:none;{% endif %}">
+    <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;" id="templateDropZone">
         <div></div>
         Upload an Experiment Description file (
         <a href="{% static 'sample_experiment_description.xlsx' %}">Example </a>
         <a class="dropLink dropImg" href="{% static 'sample_experiment_description.xlsx' %}">
             __</a>)
-        <div style="float:none" class="helpBadgeDiv">Help
-            <div class="helpContent">
-                <p>Drag-and-drop an <a href="experiment_description_help.html">Experiment
+        <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"
+    title='Drag-and-drop an <a href="/help/experiment_description/">Experiment
                     Description file</a> into this grey box
                     to describe your experiment.  Alternatively, you can click on the link below to
-                    manually input your experiment description.
-                </p>
-            </div>
-        </div>
+                    manually input your experiment description.'>Help</div>
     </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
