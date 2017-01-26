@@ -141,6 +141,28 @@ var StudyLines;
             var lineActionButton = $('button[value="line_action"]')[0];
             $(lineActionButton).click();
         });
+        //when the input value changes, assign a pre or postfix to the metadata if one exists
+        var value = $('.edd-label').children('input')[1];
+        $(value).on("change", function () {
+            var val = $(value).val(), type = EDDData.MetaDataTypes[val], input = $('.line-meta-value'), postfixVal = $(this).parent().parent().find(".meta-postfix"), //returns array of postfix elems present
+            prefixVal = $(this).parent().parent().find(".meta-prefix"); //returns array of prefix elems present
+            //if there is a meta postfix val, hide it.
+            if (postfixVal.length > 1) {
+                (postfixVal).hide();
+            }
+            //if there is a meta prefix val, hide it.
+            if (prefixVal.length > 1) {
+                (prefixVal).hide();
+            }
+            if (type) {
+                if (type.pre) {
+                    $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+                }
+                if (type.postfix) {
+                    $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
+                }
+            }
+        });
         $('#editLineModal').on('change', '.line-meta > :input', function (ev) {
             // watch for changes to metadata values, and serialize to the meta_store field
             var form = $(ev.target).closest('form'), metaIn = form.find('[name=line-meta_store]'), meta = JSON.parse(metaIn.val() || '{}');
