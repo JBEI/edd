@@ -1451,10 +1451,10 @@ namespace StudyDataPage {
                 EDDData = $.extend(EDDData || {}, data);
 
                 colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
-                // show assay table by default if there are assays but no assaymeasurements
+                // show assay table by default if there are assays but no assay measurements
                 if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
-                    $('#linegraphbutton').removeClass('active');
-                    $('#dataTableButton').addClass('active');
+                    //TODO: create prepare it for no data?
+                    $('#dataTableButton').click();
                 }
                 progressiveFilteringWidget.prepareFilteringSection();
 
@@ -1722,6 +1722,13 @@ namespace StudyDataPage {
         } else {
             $('#selectedDiv').addClass('off');
             $('#displayedDiv').removeClass('off');
+        }
+        //if there are assays but no data, show empty assays
+        //note: this is to combat the current default setting for showing graph on page load
+        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0 ) {
+            if (!$('#TableShowEAssaysCB').prop('checked')) {
+                $('#TableShowEAssaysCB').click();
+            }
         }
     }
 
