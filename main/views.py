@@ -1067,7 +1067,7 @@ def study_search(request):
     query = request.GET.get('q', 'active:true')
     opt = request.GET.copy()
     opt['edismax'] = True
-    data = solr.query(query=query, options=opt)
+    data = solr.query(query=query, options=opt.dict())
     # loop through results and attach URL to each
     query_response = data['response']
     for doc in query_response['docs']:
