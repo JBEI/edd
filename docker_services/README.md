@@ -65,20 +65,56 @@ Docker Compose will create volumes using the default `local` storage driver, usi
 `PROJECTNAME_VOLUME`, e.g. `edd_pgdata`. Alternate existing volumes may be used by setting
 configuration in the `docker-compose.override.yml` file.
 
+### Images
+
+Images are the base of a container filesystem, and are what makes a container stateless. EDD uses
+a mix of "official" images from the [Docker Hub][4], and custom images defined by Dockerfiles in
+this repository. The bold links below point to the README documentation for each image. Custom
+images also include links to the README for the base image.
+
+* __[edd-core][5]__: custom Dockerfile, based on [buildpack-deps:stretch][6]
+* __[postgres][7]__: official Postgres image, using version 9.4
+* __[redis][8]__: official Redis image, using version 3.2
+* __[solr][9]__: custom Dockerfile, based on the [official Solr image][10] version 5.5
+* __[rabbitmq][11]__: official RabbitMQ image, using version 3.6-management
+* __[flower][12]__: custom Dockerfile, based on [buildpack-deps:stretch][6]
+* __[exim4][13]__: custom Dockerfile, [buildpack-deps:stretch][6]
+* __[nginx][14]__: custom Dockerfile, based on the [official Nginx image][15] version 1.11
+
 ### Services (Containers)
-    * __edd__: runs initial startup tasks and prepares the other services
-    * __appserver__: runs the EDD web application
-    * __worker__: long-running and background tasks are run here with Celery
-    * __postgres__: provides EDD's database
-    * __redis__: provides the cache back-end for EDD
-    * __solr__: provides a search index for EDD
-    * __rabbitmq__: messaging bus that supports Celery
-    * __flower__: management / monitoring application for Celery
-    * __smtp__: mail server that supports emails from EDD
-    * __nginx__: webserver that proxies clients' HTTP requests to other Docker services
+
+The individual services are defined by the combination of images with configuration for networks,
+storage, service dependencies, environment, custom commands, and anything else controlling how
+the service is run. With the exception of the first three services -- `edd`, `appserver`, and
+`worker` -- there is a one-to-one relationship from images to services. The three exceptions
+all make use of the `edd-core` image, and execute different commands to use the same code for
+different roles.
+
+* __edd__: runs initial startup tasks and prepares the other services
+* __appserver__: runs the EDD web application
+* __worker__: long-running and background tasks are run here with Celery
+* __postgres__: provides EDD's database
+* __redis__: provides the cache back-end for EDD
+* __solr__: provides a search index for EDD
+* __rabbitmq__: messaging bus that supports Celery
+* __flower__: management / monitoring application for Celery
+* __smtp__: mail server that supports emails from EDD
+* __nginx__: webserver that proxies clients' HTTP requests to other Docker services
 
 ---------------------------------------------------------------------------------------------------
 
-[1]:    https://public-edd.jbei.org
+[1]:    ../README.md
 [2]:    https://docker.io
 [3]:    https://docs.docker.com/compose/overview/
+[4]:    https://hub.docker.com/explore/
+[5]:    edd/README.md
+[6]:    https://hub.docker.com/_/buildpack-deps/
+[7]:    https://hub.docker.com/_/postgres/
+[8]:    https://hub.docker.com/_/redis/
+[9]:    solr/README.md
+[10]:   https://hub.docker.com/_/solr/
+[11]:   https://hub.docker.com/_/rabbitmq/
+[12]:   flower/README.md
+[13]:   smtp/README.md
+[14]:   nginx/README.md
+[15]:   https://hub.docker.com/_/nginx/
