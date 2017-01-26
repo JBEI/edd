@@ -144,8 +144,8 @@ var StudyLines;
         //when the input value changes, assign a pre or postfix to the metadata if one exists
         var value = $('.edd-label').children('input')[1];
         $(value).on("change", function () {
-            var val = $(value).val(), type = EDDData.MetaDataTypes[val], input = $('.line-meta-value'), postfixVal = $(this).parent().parent().find(".meta-postfix"), //returns array of postfix elems present
-            prefixVal = $(this).parent().parent().find(".meta-prefix"); //returns array of prefix elems present
+            var val = $(value).val(), type = EDDData.MetaDataTypes[val], input = $('.line-meta-value'), line = $(this).parents('.line-edit-meta'), postfixVal = line.find(".meta-postfix"), //returns array of postfix elems present
+            prefixVal = line.find(".meta-prefix"); //returns array of prefix elems present
             //if there is a meta postfix val, hide it.
             if (postfixVal.length > 1) {
                 (postfixVal).hide();
@@ -385,13 +385,9 @@ var StudyLines;
         postfixVal = $(refRow).find('.meta-postfix'); //returns array of postfix elems present
         prefixVal = $(refRow).find('.meta-prefix'); //returns array of prefix elems present
         //if there is a meta postfix val, hide it.
-        if (postfixVal.length > 0) {
-            (postfixVal).hide();
-        }
+        (postfixVal).hide();
         //if there is a meta prefix val, hide it.
-        if (prefixVal.length > 0) {
-            (prefixVal).hide();
-        }
+        (prefixVal).hide();
         if (type.pre) {
             $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
         }
