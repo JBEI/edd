@@ -354,12 +354,22 @@ var StudyLines;
         form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
     }
     function insertLineMetadataRow(refRow, key, value) {
-        var row, type, label, input, id = 'line-meta-' + key;
+        var row, type, label, input, postfixVal, prefixVal, id = 'line-meta-' + key;
         row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
         type = EDDData.MetaDataTypes[key];
         label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
         // bulk checkbox?
         input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
+        postfixVal = $(refRow).find('.meta-postfix'); //returns array of postfix elems present
+        prefixVal = $(refRow).find('.meta-prefix'); //returns array of prefix elems present
+        //if there is a meta postfix val, hide it.
+        if (postfixVal.length > 0) {
+            (postfixVal).hide();
+        }
+        //if there is a meta prefix val, hide it.
+        if (prefixVal.length > 0) {
+            (prefixVal).hide();
+        }
         if (type.pre) {
             $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
         }
