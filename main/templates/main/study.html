@@ -46,7 +46,7 @@
         </li>
         {% if lines %}
             <li class="{% if showinglines %}active{% endif %}">
-               <a href="/study/{{ study.slug }}/lines">Lines</a>
+               <a href="/study/{{ study.slug }}/lines">Experiment Description</a>
             </li>
         {% endif %}
         {% if assays %}
@@ -54,12 +54,13 @@
             <a href="/study/{{ study.slug }}/">Data</a>
             </li>
         {% endif %}
-        {% if writable %}
+    {% if writable %}
             <li class="{% if showingimport %}active{% endif %}">
                 <a href="/study/{{ study.id }}/import">Import Data</a>
             </li>
         {% endif %}
     </ui>
+
 </div>
 
 {#  line that goes through the nav bars uncomment if people prefer #}

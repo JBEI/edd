@@ -269,7 +269,6 @@ var StudyLines;
             $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportLineButton").removeClass('off');
             if (checkedLen) {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', false);
-                $('#addNewLineButton').prop('disabled', true);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
                 $('#exportLineButton').attr('title', 'Export your lines in a file type of your choosing');
                 if (checkedLen < 2) {
@@ -278,7 +277,6 @@ var StudyLines;
             }
             else {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', true);
-                $('#addNewLineButton').prop('disabled', false);
                 $('#worklistButton').attr('title', 'select line(s) first');
                 $('#exportLineButton').attr('title', 'select line(s) first');
             }

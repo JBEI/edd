@@ -1251,7 +1251,6 @@ var StudyDataPage;
         $("#timeBarGraphButton").click(function () {
             barGraphMode = 'time';
             queueRefreshDataDisplayIfStale();
-            $('#graphLoading').addClass('off');
         });
         $("#lineBarGraphButton").click(function () {
             barGraphMode = 'line';
@@ -1260,6 +1259,7 @@ var StudyDataPage;
         $("#measurementBarGraphButton").click(function () {
             barGraphMode = 'measurement';
             queueRefreshDataDisplayIfStale();
+            $('#graphLoading').addClass('off');
         });
         //hides/shows filter section.
         $('#hideFilterSection').click(function (event) {
@@ -1323,6 +1323,11 @@ var StudyDataPage;
             'success': function (data) {
                 EDDData = $.extend(EDDData || {}, data);
                 colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
+                // show assay table by default if there are assays but no assay measurements
+                if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+                    //TODO: create prepare it for no data?
+                    $('#dataTableButton').click();
+                }
                 StudyDataPage.progressiveFilteringWidget.prepareFilteringSection();
                 $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(function () {
                     queueRefreshDataDisplayIfStale();
@@ -1563,6 +1568,13 @@ var StudyDataPage;
         else {
             $('#selectedDiv').addClass('off');
             $('#displayedDiv').removeClass('off');
+        }
+        //if there are assays but no data, show empty assays
+        //note: this is to combat the current default setting for showing graph on page load
+        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+            if (!$('#TableShowEAssaysCB').prop('checked')) {
+                $('#TableShowEAssaysCB').click();
+            }
         }
     }
     function remakeMainGraphArea() {

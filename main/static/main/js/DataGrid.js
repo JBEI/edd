@@ -1177,12 +1177,19 @@ var DataGridDataCell = (function () {
         if (this.sideMenuItems && this.sideMenuItems.length) {
             title = '<span>';
             this.sideMenuItems.forEach(function (item) {
-                if ($(item).attr('class') === "line-edit-link") {
-                    $(item).addClass('editLine');
+                //TODO: clean up
+                if (item.slice(0, 1) != ('<')) {
+                    title += ('<ul>' + item + '</ul>');
                 }
-                title += ('<ul>' + item + '</ul>');
+                else if ($(item).attr('class') === "line-edit-link") {
+                    $(item).addClass('editLine');
+                    title += ('<ul>' + item + '</ul>');
+                }
+                else {
+                    title += ('<ul>' + item + '</ul>');
+                }
+                title += '</span>';
             });
-            title += '</span>';
             c.setAttribute('title', title);
             c.setAttribute('id', id);
         }

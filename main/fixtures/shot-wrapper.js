@@ -18,26 +18,26 @@ exports.takeShot = function(cb){
         }
         if( stdout ) {
             //where the new captured screenshots are saved
-            var arr = ['main/fixtures/newshots/barAssay.png',
-                       'main/fixtures/newshots/barMeasurement.png',
-                       'main/fixtures/newshots/linechart.png',
-                       'main/fixtures/newshots/barTime.png'];
+            var arr = ['main/fixtures/newshots/lineGraph.png',
+                       'main/fixtures/newshots/barGraphByMeasurement.png',
+                       'main/fixtures/newshots/barGraphByLine.png',
+                       'main/fixtures/newshots/barGraphByTime.png'];
 
             // original hash values from main/fixtures/originalshots
-            var originalHash = ['24a15d9a5d739c6dde7d2dbcb5695e02',
-                                '47adb70698d5c41c5abcf6319cdb6281',
-                                '7b0cbf2a6079c0135e62ade28f88e1b2',
-                                '0881c5ee6f544e122846230c48752a37'];
+            var originalHash = ['3749634f906c96c529420bca6a520b66',
+                                'ff920032a15fd14ebdc779eba31f5a04',
+                                '8c4ae2dfd9875061ce681d2936211077',
+                                '280db12668a0e75d4438f1003e5a58bd'];
             //new hash values created from newshots
             var newHash = [];
 
-            for (var i in arr) {
+            for (var i = 0; i < arr.length; i++) {
                 newHash.push(md5File.sync(arr[i]))
             }
 
-            for (var index in newHash) {
+            for (var index = 0; index < newHash.length; index++) {
                 if (newHash[index] == originalHash[index]) {
-                    console.log('Match: ' + arr[index].slice(23) + 'newHash' + newHash[index])
+                    console.log('Match:   ' + arr[index].slice(23) + 'newHash' + newHash[index])
                 }
                 else {
                     console.log('Image changed!   '  + arr[index].slice(23) + ' , newHash: ' + newHash[index])

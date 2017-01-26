@@ -650,6 +650,7 @@ module EDDTableImport {
             if (mode === 'biolector') {
                 // Biolector data is expected in XML format.
                 $('#step2textarea').addClass('xml');
+                $('#gcmsSampleFile').css('display', 'none');
                 //show example biolector file
                 $('#biolectorFile').css('display', 'inline-block');
                 $('#prSampleFile').css('display', 'none');
@@ -676,6 +677,7 @@ module EDDTableImport {
             }
             if (mode === 'skyline') {
                 this.nextStepCallback();
+                $('#gcmsSampleFile').css('display', 'none');
                 //show skyline example file
                 $('#skylineSample').css('display', 'inline-block');
                 return;
