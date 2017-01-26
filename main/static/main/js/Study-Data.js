@@ -1323,11 +1323,6 @@ var StudyDataPage;
             'success': function (data) {
                 EDDData = $.extend(EDDData || {}, data);
                 colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
-                // show assay table by default if there are assays but no assay measurements
-                if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
-                    //TODO: create prepare it for no data?
-                    $('#dataTableButton').click();
-                }
                 StudyDataPage.progressiveFilteringWidget.prepareFilteringSection();
                 $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(function () {
                     queueRefreshDataDisplayIfStale();
@@ -1391,6 +1386,17 @@ var StudyDataPage;
         });
     }
     StudyDataPage.requestAssayData = requestAssayData;
+    //when all ajax requests are finished, determine if there are AssayMeasurements.
+    $(document).ajaxStop(function () {
+        // show assay table by default if there are assays but no assay measurements
+        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+            //TODO: create prepare it for no data?
+            $('#dataTableButton').click();
+        }
+        else {
+            $('#lineGraphButton').click();
+        }
+    });
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
