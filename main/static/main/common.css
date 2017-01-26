@@ -1047,6 +1047,10 @@ table.formTable tr > td textarea {
     max-width: 200px;
 }
 
+#studyAssaysTable tbody > tr:hover, #studyLinesTable tbody > tr:hover, #studiesTable tbody > tr:hover {
+    background-color: #CCF;
+}
+
 tr.multientrybuttonrow:hover div.multientrybutton {
     opacity: 1;
 }
@@ -1380,9 +1384,6 @@ dl.infolist > dd {
 .disabledObject {
   font-style: italic;
   background: #fffff0;
-}
-
-.form-label {
 }
 
 form.attachments > * {

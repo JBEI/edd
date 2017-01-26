@@ -2466,7 +2466,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // Specification for the table as a whole
     defineTableSpec():DataGridTableSpec {
         return new DataGridTableSpec('assays', {
-            'defaultSort': 1
+            'defaultSort': 0
         });
     }
 

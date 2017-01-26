@@ -2204,7 +2204,7 @@ var DataGridSpecAssays = (function (_super) {
     // Specification for the table as a whole
     DataGridSpecAssays.prototype.defineTableSpec = function () {
         return new DataGridTableSpec('assays', {
-            'defaultSort': 1
+            'defaultSort': 0
         });
     };
     DataGridSpecAssays.prototype.findMetaDataIDsUsedInAssays = function () {
