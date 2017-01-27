@@ -14,45 +14,45 @@ var ExperimentDescriptionHelp;
     var omitAssayMetadataTypes = ['Assay Description', 'Assay Experimenter', 'Assay Name'];
     // As soon as the window load signal is sent, call back to the server for the set of reference
     // records that will be used to disambiguate labels in imported data.
-    function onWindowLoad() {
+    function onDocumentReady() {
         $('.disclose').find('.discloseLink').on('click', disclose);
         loadAllLineMetadataTypes();
         loadAllAssayMetadataTypes();
         loadAllProtocols();
     }
-    ExperimentDescriptionHelp.onWindowLoad = onWindowLoad;
+    ExperimentDescriptionHelp.onDocumentReady = onDocumentReady;
     function disclose() {
         $(this).closest('.disclose').toggleClass('discloseHide');
         return false;
     }
     ExperimentDescriptionHelp.disclose = disclose;
     function loadAllLineMetadataTypes() {
-        EddRest.Api.loadMetadataTypes({
+        EddRest.loadMetadataTypes({
             'success': lineMetaSuccessHandler,
             'error': lineErrorHandler,
             'request_all': true,
             'wait': function () { showWaitMessage(LINE_DIV_SELECTOR); },
-            'context': EddRest.Api.LINE_METADATA_CONTEXT,
-            'sort_order': EddRest.Api.ascendingSort,
+            'context': EddRest.LINE_METADATA_CONTEXT,
+            'sort_order': EddRest.ASCENDING_SORT,
         });
     }
     function loadAllAssayMetadataTypes() {
-        EddRest.Api.loadMetadataTypes({
+        EddRest.loadMetadataTypes({
             'success': assayMetaSuccessHandler,
             'error': assayErrorHandler,
             'request_all': true,
             'wait': function () { showWaitMessage(ASSAY_DIV_SELECTOR); },
-            'context': EddRest.Api.ASSAY_METADATA_CONTEXT,
-            'sort_order': EddRest.Api.ascendingSort,
+            'context': EddRest.ASSAY_METADATA_CONTEXT,
+            'sort_order': EddRest.ASCENDING_SORT,
         });
     }
     function loadAllProtocols() {
-        EddRest.Api.loadProtocols({
+        EddRest.loadProtocols({
             'success': protocolSuccessHandler,
             'error': function () { showLoadFailed(PROTOCOL_DIV_SELECTOR); },
             'request_all': true,
             'wait': function () { showWaitMessage(PROTOCOL_DIV_SELECTOR); },
-            'sort_order': EddRest.Api.ascendingSort,
+            'sort_order': EddRest.ASCENDING_SORT,
         });
     }
     function showWaitMessage(divSelector) {
@@ -163,7 +163,5 @@ var ExperimentDescriptionHelp;
             }
         }).appendTo(span);
     }
-    $(window).on('load', function () {
-        ExperimentDescriptionHelp.onWindowLoad();
-    });
 })(ExperimentDescriptionHelp || (ExperimentDescriptionHelp = {}));
+$(ExperimentDescriptionHelp.onDocumentReady);

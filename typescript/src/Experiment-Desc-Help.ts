@@ -17,7 +17,7 @@ module ExperimentDescriptionHelp {
 
     // As soon as the window load signal is sent, call back to the server for the set of reference
     // records that will be used to disambiguate labels in imported data.
-    export function onWindowLoad(): void {
+    export function onDocumentReady(): void {
         $('.disclose').find('.discloseLink').on('click', disclose);
 
         loadAllLineMetadataTypes();
@@ -31,37 +31,37 @@ module ExperimentDescriptionHelp {
     }
 
     function loadAllLineMetadataTypes():void {
-        EddRest.Api.loadMetadataTypes(
+        EddRest.loadMetadataTypes(
             {
                 'success': lineMetaSuccessHandler,
                 'error': lineErrorHandler,
                 'request_all': true, // get all result pages
                 'wait': function() {showWaitMessage(LINE_DIV_SELECTOR)},
-                'context': EddRest.Api.LINE_METADATA_CONTEXT,
-                'sort_order': EddRest.Api.ascendingSort,
+                'context': EddRest.LINE_METADATA_CONTEXT,
+                'sort_order': EddRest.ASCENDING_SORT,
             });
     }
 
     function loadAllAssayMetadataTypes(): void {
-        EddRest.Api.loadMetadataTypes(
+        EddRest.loadMetadataTypes(
             {
                 'success': assayMetaSuccessHandler,
                 'error': assayErrorHandler,
                 'request_all': true, // get all result pages
                 'wait': function() {showWaitMessage(ASSAY_DIV_SELECTOR)},
-                'context': EddRest.Api.ASSAY_METADATA_CONTEXT,
-                'sort_order': EddRest.Api.ascendingSort,
+                'context': EddRest.ASSAY_METADATA_CONTEXT,
+                'sort_order': EddRest.ASCENDING_SORT,
             });
     }
 
     function loadAllProtocols():void {
-        EddRest.Api.loadProtocols(
+        EddRest.loadProtocols(
             {
                 'success': protocolSuccessHandler,
                 'error': function () { showLoadFailed(PROTOCOL_DIV_SELECTOR); },
                 'request_all': true, // get all result pages
                 'wait': function() { showWaitMessage(PROTOCOL_DIV_SELECTOR); },
-                'sort_order': EddRest.Api.ascendingSort,
+                'sort_order': EddRest.ASCENDING_SORT,
             });
     }
 
@@ -86,7 +86,7 @@ module ExperimentDescriptionHelp {
     function protocolSuccessHandler(protocols: any[]) {
         var div:JQuery, table:JQuery, head, body, row;
         div = $('#protocols')
-                .empty();
+            .empty();
 
         if(protocols.length > 0) {
             table = $('<table>')
@@ -140,8 +140,8 @@ module ExperimentDescriptionHelp {
 
         if(metadataTypes) {
             list = $('<ol>')
-            .addClass('metadataList')
-            .appendTo(div);
+                .addClass('metadataList')
+                .appendTo(div);
 
             metadataTypes.forEach((metadataType: any): boolean => {
                 var typeName:string, omit:boolean;
@@ -194,11 +194,8 @@ module ExperimentDescriptionHelp {
             }
         }).appendTo(span);
     }
-
-    $(window).on('load', function() {
-        ExperimentDescriptionHelp.onWindowLoad();
-    });
-
 }
+
+$(ExperimentDescriptionHelp.onDocumentReady);
 
 
