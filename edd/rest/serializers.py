@@ -3,7 +3,8 @@ Defines serializers for EDD's nascent REST API, as supported by the django rest 
 (http://www.django-rest-framework.org/)
 """
 
-from main.models import Line, MetadataType, MetadataGroup, Strain, Study, Update, User, Protocol
+from main.models import Line, MetadataType, MetadataGroup, Strain, Study, Update, User, Protocol, \
+    MeasurementUnit
 from rest_framework import reverse, serializers
 
 
@@ -101,6 +102,13 @@ class MetadataTypeSerializer(serializers.ModelSerializer):
         depth = 0
         fields = ('pk', 'type_name', 'type_i18n', 'input_size', 'input_type', 'default_value',
                   'prefix', 'postfix', 'for_context', 'type_class', 'group')
+
+
+class MeasurementUnitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MeasurementUnit
+        depth = 0
+        fields = ('pk', 'unit_name', 'display', 'alternate_names', 'type_group')
 
 
 class ProtocolSerializer(serializers.ModelSerializer):

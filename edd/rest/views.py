@@ -16,7 +16,7 @@ from django.shortcuts import get_object_or_404
 
 from edd.rest.serializers import (LineSerializer, MetadataGroupSerializer, MetadataTypeSerializer,
                                   StrainSerializer, StudySerializer, UserSerializer,
-                                  ProtocolSerializer)
+                                  ProtocolSerializer, MeasurementUnitSerializer)
 from jbei.rest.clients.edd.constants import (
     CASE_SENSITIVE_PARAM, LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT, METADATA_TYPE_CONTEXT,
     METADATA_TYPE_GROUP, METADATA_TYPE_I18N, METADATA_TYPE_LOCALE, METADATA_TYPE_NAME_REGEX,
@@ -26,7 +26,7 @@ from jbei.rest.clients.edd.constants import (
 )
 from jbei.rest.utils import is_numeric_pk
 from main.models import Line, MetadataType, Strain, Study, StudyPermission, User, MetadataGroup, \
-    Protocol
+    Protocol, MeasurementUnit
 from rest_framework import (status, viewsets)
 from rest_framework.exceptions import APIException
 from rest_framework.relations import StringRelatedField
@@ -114,16 +114,54 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
 
 OWNED_BY = 'owned_by'
 VARIANT_OF = 'variant_of'
-DEFAULT_UNITS_REQUEST_PARAM = 'default_units'
-CATEGORIZATION_REQUEST_PARAM = 'categorization'
+DEFAULT_UNITS_QUERY_PARAM = 'default_units'
+CATEGORIZATION_QUERY_PARAM = 'categorization'
+
+
+# TODO: make writable for users with permission
+class MeasurementUnitViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = MeasurementUnit.objects.all()  # must be defined for DjangoModelPermissions
+    serializer_class = MeasurementUnitSerializer
+
+    # API query parameter names...may diverge from Django Model field names over time
+    unit_name_param = 'unit_name'
+    alternate_names_param = 'alternate_names'
+    type_group_param = 'type_group'
+
+    def get_queryset(self):
+        pk = self.kwargs.get('pk', None)
+
+        queryset = MeasurementUnit.objects.all()
+
+        if pk:
+            queryset = queryset.filter(pk=pk)
+
+        params = self.request.query_params
+
+        i18n_placeholder = ''
+
+        queryset = _do_optional_regex_filter(params, queryset, 'unit_name', self.unit_name_param,
+                                             i18n_placeholder)
+
+        queryset = _do_optional_regex_filter(params, queryset, 'alternate_names',
+                                             self.alternate_names_param, i18n_placeholder)
+
+        queryset = _do_optional_regex_filter(params, queryset, 'type_group', self.type_group_param,
+                                             i18n_placeholder)
+        return queryset
 
 
 # TODO: make writable for users with permission
 class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Protocol.objects.all()  # must be defined for DjangoModelPermissions
     serializer_class = ProtocolSerializer
+
+    # Django model object property (used several times)
     NAME_PROPERTY = 'name'
-    OWNED_BY_PROPERTY = 'owned_by'
+
+    # API query parameter names...may diverge from Django Model field names over time
+    NAME_QUERY_PARAM = 'name'
+    OWNED_BY_QUERY_PARAM = 'owned_by'
     CATEGORIZATION_PROPERTY = 'categorization'
     DEFAULT_UNITS_PROPERTY = 'default_units'
 
@@ -155,7 +193,7 @@ class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
                 except Exception:
                     # if this wasn't a valid UUID, assume it's a regex for the username
                     queryset = _do_optional_regex_filter(params, queryset, 'owned_by__username',
-                                                         self.OWNED_BY_PROPERTY,
+                                                         self.OWNED_BY_QUERY_PARAM,
                                                          i18n_placeholder)
 
             # variant of
@@ -164,7 +202,7 @@ class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
                 queryset = queryset.filter(variant_of=variant_of)
 
             # default units
-            default_units = params.get(DEFAULT_UNITS_REQUEST_PARAM)
+            default_units = params.get(DEFAULT_UNITS_QUERY_PARAM)
             if default_units:
                 if is_numeric_pk(default_units):
                     queryset = queryset.filter(default_units=default_units)
@@ -178,11 +216,11 @@ class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
 
                     queryset = _do_optional_regex_filter(params, queryset,
                                                          'default_units__unit_name',
-                                                         DEFAULT_UNITS_REQUEST_PARAM,
+                                                         DEFAULT_UNITS_QUERY_PARAM,
                                                          i18n_placeholder)
             # categorization
-            _do_optional_regex_filter(params, queryset, 'categorization',
-                                      CATEGORIZATION_REQUEST_PARAM, i18n_placeholder)
+            queryset = _do_optional_regex_filter(params, queryset, 'categorization',
+                                                 CATEGORIZATION_QUERY_PARAM, i18n_placeholder)
 
             # sort (based on name)
             sort = params.get(SORT_PARAM)
@@ -193,8 +231,7 @@ class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
                     queryset = queryset.reverse()
 
             queryset = _do_optional_regex_filter(params, queryset, self.NAME_PROPERTY,
-                                                 'name', i18n_placeholder)
-
+                                                 self.NAME_QUERY_PARAM, i18n_placeholder)
 
         return queryset
 

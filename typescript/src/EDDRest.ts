@@ -33,6 +33,7 @@ namespace EddRest {
     /* REST API resource URLs */
     const metadata_types_url: string = "/rest/metadata_type/";
     const protocols_url: string = '/rest/protocol/';
+    const measurement_units_url: string = '/rest/measurement_unit';
 
     /**
      * Initiates one or more asynchronous requests to load Protocols from the REST API back
@@ -142,7 +143,77 @@ namespace EddRest {
                         success(receivedSoFar);
                     }
                 },
-                'error': function (jqXHR, textStatus: string, errorThrown: string) {
+                'error': (jqXHR, textStatus: string, errorThrown: string) => {
+                    error = options['error'];
+                    if (error) {
+                        error(jqXHR, textStatus, errorThrown);
+                    }
+                }
+            }
+        );
+    }
+
+    /**
+     * Initiates one or more asynchronous requests to load MeasurementUnits from the REST API back
+     * end.
+     */
+    export function loadMeasurementUnits(options: any): void {
+        var queryParams: any, requestAll: boolean, success: any, error: any, waitHandler: any,
+            unitName: string, alternateNames: string, typeGroup: string, receivedSoFar: any[], pageNum;
+
+        requestAll = options[REQUEST_ALL_OPTION] === true;
+
+        waitHandler = options[WAIT_HANDLER_OPTION];
+        if (waitHandler) {
+            waitHandler();
+        }
+
+        // build up a dictionary of query parameters based on optional function inputs
+        queryParams = {};
+        unitName = options['unit_name'];
+        if (unitName) {
+            queryParams.unit_name = unitName;
+        }
+        alternateNames = options['alternate_names'];
+        if (alternateNames) {
+            queryParams.alternate_names = alternateNames;
+        }
+        typeGroup = options['type_group'];
+        if (typeGroup) {
+            queryParams.type_group = typeGroup;
+        }
+
+        insertPaginationParams(options, queryParams);
+        insertSortOrderParam(options, queryParams);
+
+        receivedSoFar = options['received_so_far'] || [];
+
+        // query the REST API for requested metadata types
+        jQuery.ajax(
+            measurement_units_url,
+            {
+                'dataType': 'json',
+                'data': queryParams,
+                'success': function (responseJson) {
+                    var singlePageResults: any[];
+
+                    singlePageResults = responseJson[RESULTS];
+                    receivedSoFar = receivedSoFar.concat(singlePageResults);
+
+                    // if results had to be paginated and aren't all received yet, make a
+                    // recursive call to get the rest
+                    if (requestAll && responseJson[NEXT_PAGE_URL] !== null) {
+                        options.received_so_far = receivedSoFar;
+                        pageNum = options[PAGE_OPTION] || 1;
+                        options.page = pageNum + 1;
+                        loadMeasurementUnits(options);
+                    }
+                    else {
+                        success = options['success'];
+                        success(receivedSoFar);
+                    }
+                },
+                'error': (jqXHR, textStatus: string, errorThrown: string) => {
                     error = options['error'];
                     if (error) {
                         error(jqXHR, textStatus, errorThrown);

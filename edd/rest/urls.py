@@ -4,7 +4,8 @@ import rest_framework.routers as rest_routers
 
 from .views import (LineViewSet, MetadataGroupViewSet, MetadataTypeViewSet,
                     STRAIN_NESTED_RESOURCE_PARENT_PREFIX, StrainStudiesView, StrainViewSet,
-                    StudyLineView, StudyStrainsView, StudyViewSet, ProtocolViewSet)
+                    StudyLineView, StudyStrainsView, StudyViewSet, ProtocolViewSet,
+                    MeasurementUnitViewSet)
 import rest_framework_nested.routers as nested_routers
 
 
@@ -13,6 +14,7 @@ base_rest_api_router = rest_routers.DefaultRouter()
 base_rest_api_router.register(r'line', LineViewSet)
 base_rest_api_router.register(r'study', StudyViewSet, 'study')
 base_rest_api_router.register(r'strain', StrainViewSet, 'strain')
+base_rest_api_router.register(r'measurement_unit', MeasurementUnitViewSet, 'measurement_unit')
 base_rest_api_router.register(r'metadata_type', MetadataTypeViewSet)
 base_rest_api_router.register(r'metadata_group', MetadataGroupViewSet)
 base_rest_api_router.register(r'protocol', ProtocolViewSet)

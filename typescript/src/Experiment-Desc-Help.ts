@@ -7,6 +7,12 @@ module ExperimentDescriptionHelp {
     var LINE_DIV_SELECTOR = '#lineMetadataTypes';
     var PROTOCOL_DIV_SELECTOR = '#protocols';
 
+    var protocols = [];
+
+    var measurementUnits = {};
+
+    var loadedProtocols = false;
+
     // Metadata types present in the database that should be omitted from the lists displayed
     // in the help page... they duplicate baked-in line/assay characteristics displayed in a
     // separate table.
@@ -23,6 +29,7 @@ module ExperimentDescriptionHelp {
         loadAllLineMetadataTypes();
         loadAllAssayMetadataTypes();
         loadAllProtocols();
+        loadAllMeasurementUnits();
     }
 
     export function disclose() {
@@ -36,7 +43,7 @@ module ExperimentDescriptionHelp {
                 'success': lineMetaSuccessHandler,
                 'error': lineErrorHandler,
                 'request_all': true, // get all result pages
-                'wait': function() {showWaitMessage(LINE_DIV_SELECTOR)},
+                'wait': function() { showWaitMessage(LINE_DIV_SELECTOR); },
                 'context': EddRest.LINE_METADATA_CONTEXT,
                 'sort_order': EddRest.ASCENDING_SORT,
             });
@@ -48,7 +55,7 @@ module ExperimentDescriptionHelp {
                 'success': assayMetaSuccessHandler,
                 'error': assayErrorHandler,
                 'request_all': true, // get all result pages
-                'wait': function() {showWaitMessage(ASSAY_DIV_SELECTOR)},
+                'wait': function() { showWaitMessage(ASSAY_DIV_SELECTOR); },
                 'context': EddRest.ASSAY_METADATA_CONTEXT,
                 'sort_order': EddRest.ASCENDING_SORT,
             });
@@ -57,12 +64,50 @@ module ExperimentDescriptionHelp {
     function loadAllProtocols():void {
         EddRest.loadProtocols(
             {
-                'success': protocolSuccessHandler,
-                'error': function () { showLoadFailed(PROTOCOL_DIV_SELECTOR); },
+                'success': protocolsSuccessHandler,
+                'error': () => { showLoadFailed(PROTOCOL_DIV_SELECTOR); },
                 'request_all': true, // get all result pages
-                'wait': function() { showWaitMessage(PROTOCOL_DIV_SELECTOR); },
-                'sort_order': EddRest.ASCENDING_SORT,
+                'wait': () => { showWaitMessage(PROTOCOL_DIV_SELECTOR); },
+                'sort_order': EddRest.ASCENDING_SORT
             });
+    }
+
+    function loadAllMeasurementUnits(): void {
+        // purposefully omit wait handler... wait message unlikely to ever be seen / possible race
+        // condition with protocol error handler since results are displayed in the same
+        // place.  measurement units  and associated wait/error messages aren't helpful by
+        // themselves in this context anyway since they're only displayed as context for protocols.
+        EddRest.loadMeasurementUnits(
+            {
+                'success': measurementUnitsSuccessHandler,
+                'error': measurementUnitsErrorHandler,
+                'request_all': true,
+            }
+        )
+    }
+
+    function measurementUnitsSuccessHandler(measurementUnitsLoaded:any[]): void {
+
+        // cache measurement units as a dictionary of pk -> value so we can easily look them up
+        measurementUnits = {};
+        measurementUnitsLoaded.forEach((measurementUnit:any) => {
+            var pk:number = measurementUnit['pk'];
+            measurementUnits[pk] = measurementUnit;
+        });
+
+        // attempt to re/build protocols table now that we have names for each associated
+        // measurement unit (though possibly not protocols yet)
+        showProtocols();
+    }
+
+    function protocolsSuccessHandler(protocolsLoaded:any[]): void {
+        // store in case related measurement units query hasn't returned
+        protocols = protocolsLoaded;
+        loadedProtocols = true;
+
+        // show anyway (though maybe temporarily with only the units pk if units query hasn't
+        // returned yet).
+        showProtocols();
     }
 
     function showWaitMessage(divSelector:string) {
@@ -83,8 +128,16 @@ module ExperimentDescriptionHelp {
         showMetadataTypes(ASSAY_DIV_SELECTOR, metadataTypes, omitAssayMetadataTypes);
     }
 
-    function protocolSuccessHandler(protocols: any[]) {
+    function showProtocols() {
         var div:JQuery, table:JQuery, head, body, row;
+
+        // if protocols haven't been loaded yet (e.g. this function is called when measurement units
+        // query returns first), just wait until they are...otherwise, we can't distinguish between
+        // the "no protocols" case and the "protocols haven't loaded yet" case.
+        if(!loadedProtocols) {
+            return;
+        }
+
         div = $('#protocols')
             .empty();
 
@@ -111,6 +164,8 @@ module ExperimentDescriptionHelp {
                 .appendTo(table);
 
             protocols.forEach((protocol: any): void => {
+                var unitsObj:any, unitsPk:number, unitsStr: string;
+
                 row = $('<tr>').appendTo(body);
                 $('<td>')
                     .text(protocol['name'])
@@ -119,12 +174,19 @@ module ExperimentDescriptionHelp {
                     .text(protocol['description'])
                     .appendTo(row);
 
-                //TODO: create / use a /rest/measurement_unit or similar REST API resource, use it
-                // to improve display for units in this table.  For now, just having a numeric
-                // PK placeholder in a buried / advanced feature is an okay-though-non-ideal
-                // stand-in / reminder. Can follow up on this in EDD-603.
+
+                unitsPk = protocol['default_units'];
+
+                unitsStr = 'None';
+                if (unitsPk) {
+
+                    // if the related query has returned, look up the name of the related default units
+                    unitsStr = (!$.isEmptyObject(measurementUnits))
+                                    ? measurementUnits[unitsPk].unit_name
+                                    : String(unitsPk);
+                }
                 $('<td>')
-                    .text(protocol['default_units'])
+                    .text(unitsStr)
                     .appendTo(row);
             });
         } else {
@@ -165,11 +227,15 @@ module ExperimentDescriptionHelp {
     }
 
     function lineErrorHandler(jqXHR, textStatus:string, errorThrown:string): void {
-        showLoadFailed(LINE_DIV_SELECTOR);
+        showLoadFailed(this.LINE_DIV_SELECTOR);
     }
 
     function assayErrorHandler(jqXHR, textStatus:string, errorThrown:string): void {
-        showLoadFailed(ASSAY_DIV_SELECTOR);
+        showLoadFailed(this.ASSAY_DIV_SELECTOR);
+    }
+
+    function measurementUnitsErrorHandler(jqXHR, textStatus:string, errorThrown:string): void {
+        console.error('Error loading measurement units: ', textStatus, ' ', errorThrown);
     }
 
     function showLoadFailed(divSelector:string): void {
@@ -179,7 +245,7 @@ module ExperimentDescriptionHelp {
 
         span = $("<span>").text('Unable to load data.').addClass('errorMessage').appendTo(div);
 
-        $('<a>').text(' Retry').on('click', (e) => {
+        $('<a>').text(' Retry').on('click', () => {
             switch(divSelector) {
                 case LINE_DIV_SELECTOR:
                     loadAllLineMetadataTypes();

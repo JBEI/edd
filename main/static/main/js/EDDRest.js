@@ -27,6 +27,7 @@ var EddRest;
     /* REST API resource URLs */
     var metadata_types_url = "/rest/metadata_type/";
     var protocols_url = '/rest/protocol/';
+    var measurement_units_url = '/rest/measurement_unit';
     /**
      * Initiates one or more asynchronous requests to load Protocols from the REST API back
      * end.
@@ -123,6 +124,64 @@ var EddRest;
         });
     }
     EddRest.loadMetadataTypes = loadMetadataTypes;
+    /**
+     * Initiates one or more asynchronous requests to load MeasurementUnits from the REST API back
+     * end.
+     */
+    function loadMeasurementUnits(options) {
+        var queryParams, requestAll, success, error, waitHandler, unitName, alternateNames, typeGroup, receivedSoFar, pageNum;
+        requestAll = options[EddRest.REQUEST_ALL_OPTION] === true;
+        waitHandler = options[EddRest.WAIT_HANDLER_OPTION];
+        if (waitHandler) {
+            waitHandler();
+        }
+        // build up a dictionary of query parameters based on optional function inputs
+        queryParams = {};
+        unitName = options['unit_name'];
+        if (unitName) {
+            queryParams.unit_name = unitName;
+        }
+        alternateNames = options['alternate_names'];
+        if (alternateNames) {
+            queryParams.alternate_names = alternateNames;
+        }
+        typeGroup = options['type_group'];
+        if (typeGroup) {
+            queryParams.type_group = typeGroup;
+        }
+        insertPaginationParams(options, queryParams);
+        insertSortOrderParam(options, queryParams);
+        receivedSoFar = options['received_so_far'] || [];
+        // query the REST API for requested metadata types
+        jQuery.ajax(measurement_units_url, {
+            'dataType': 'json',
+            'data': queryParams,
+            'success': function (responseJson) {
+                var singlePageResults;
+                singlePageResults = responseJson[EddRest.RESULTS];
+                receivedSoFar = receivedSoFar.concat(singlePageResults);
+                // if results had to be paginated and aren't all received yet, make a
+                // recursive call to get the rest
+                if (requestAll && responseJson[EddRest.NEXT_PAGE_URL] !== null) {
+                    options.received_so_far = receivedSoFar;
+                    pageNum = options[EddRest.PAGE_OPTION] || 1;
+                    options.page = pageNum + 1;
+                    loadMeasurementUnits(options);
+                }
+                else {
+                    success = options['success'];
+                    success(receivedSoFar);
+                }
+            },
+            'error': function (jqXHR, textStatus, errorThrown) {
+                error = options['error'];
+                if (error) {
+                    error(jqXHR, textStatus, errorThrown);
+                }
+            }
+        });
+    }
+    EddRest.loadMeasurementUnits = loadMeasurementUnits;
     function insertPaginationParams(options, queryParams) {
         var pageNum, pageSize, sortOrder;
         pageNum = options[EddRest.PAGE_OPTION] || 1;

@@ -6,6 +6,9 @@ var ExperimentDescriptionHelp;
     var ASSAY_DIV_SELECTOR = '#assayMetadataTypes';
     var LINE_DIV_SELECTOR = '#lineMetadataTypes';
     var PROTOCOL_DIV_SELECTOR = '#protocols';
+    var protocols = [];
+    var measurementUnits = {};
+    var loadedProtocols = false;
     // Metadata types present in the database that should be omitted from the lists displayed
     // in the help page... they duplicate baked-in line/assay characteristics displayed in a
     // separate table.
@@ -19,6 +22,7 @@ var ExperimentDescriptionHelp;
         loadAllLineMetadataTypes();
         loadAllAssayMetadataTypes();
         loadAllProtocols();
+        loadAllMeasurementUnits();
     }
     ExperimentDescriptionHelp.onDocumentReady = onDocumentReady;
     function disclose() {
@@ -48,12 +52,42 @@ var ExperimentDescriptionHelp;
     }
     function loadAllProtocols() {
         EddRest.loadProtocols({
-            'success': protocolSuccessHandler,
+            'success': protocolsSuccessHandler,
             'error': function () { showLoadFailed(PROTOCOL_DIV_SELECTOR); },
             'request_all': true,
             'wait': function () { showWaitMessage(PROTOCOL_DIV_SELECTOR); },
-            'sort_order': EddRest.ASCENDING_SORT,
+            'sort_order': EddRest.ASCENDING_SORT
         });
+    }
+    function loadAllMeasurementUnits() {
+        // purposefully omit wait handler... wait message unlikely to ever be seen / possible race
+        // condition with protocol error handler since results are displayed in the same
+        // place.  measurement units  and associated wait/error messages aren't helpful by
+        // themselves in this context anyway since they're only displayed as context for protocols.
+        EddRest.loadMeasurementUnits({
+            'success': measurementUnitsSuccessHandler,
+            'error': measurementUnitsErrorHandler,
+            'request_all': true,
+        });
+    }
+    function measurementUnitsSuccessHandler(measurementUnitsLoaded) {
+        // cache measurement units as a dictionary of pk -> value so we can easily look them up
+        measurementUnits = {};
+        measurementUnitsLoaded.forEach(function (measurementUnit) {
+            var pk = measurementUnit['pk'];
+            measurementUnits[pk] = measurementUnit;
+        });
+        // attempt to re/build protocols table now that we have names for each associated
+        // measurement unit (though possibly not protocols yet)
+        showProtocols();
+    }
+    function protocolsSuccessHandler(protocolsLoaded) {
+        // store in case related measurement units query hasn't returned
+        protocols = protocolsLoaded;
+        loadedProtocols = true;
+        // show anyway (though maybe temporarily with only the units pk if units query hasn't
+        // returned yet).
+        showProtocols();
     }
     function showWaitMessage(divSelector) {
         var div;
@@ -70,8 +104,14 @@ var ExperimentDescriptionHelp;
     function assayMetaSuccessHandler(metadataTypes) {
         showMetadataTypes(ASSAY_DIV_SELECTOR, metadataTypes, omitAssayMetadataTypes);
     }
-    function protocolSuccessHandler(protocols) {
+    function showProtocols() {
         var div, table, head, body, row;
+        // if protocols haven't been loaded yet (e.g. this function is called when measurement units
+        // query returns first), just wait until they are...otherwise, we can't distinguish between
+        // the "no protocols" case and the "protocols haven't loaded yet" case.
+        if (!loadedProtocols) {
+            return;
+        }
         div = $('#protocols')
             .empty();
         if (protocols.length > 0) {
@@ -91,6 +131,7 @@ var ExperimentDescriptionHelp;
             body = $('<tbody>')
                 .appendTo(table);
             protocols.forEach(function (protocol) {
+                var unitsObj, unitsPk, unitsStr;
                 row = $('<tr>').appendTo(body);
                 $('<td>')
                     .text(protocol['name'])
@@ -98,12 +139,16 @@ var ExperimentDescriptionHelp;
                 $('<td>')
                     .text(protocol['description'])
                     .appendTo(row);
-                //TODO: create / use a /rest/measurement_unit or similar REST API resource, use it
-                // to improve display for units in this table.  For now, just having a numeric
-                // PK placeholder in a buried / advanced feature is an okay-though-non-ideal
-                // stand-in / reminder. Can follow up on this in EDD-603.
+                unitsPk = protocol['default_units'];
+                unitsStr = 'None';
+                if (unitsPk) {
+                    // if the related query has returned, look up the name of the related default units
+                    unitsStr = (!$.isEmptyObject(measurementUnits))
+                        ? measurementUnits[unitsPk].unit_name
+                        : String(unitsPk);
+                }
                 $('<td>')
-                    .text(protocol['default_units'])
+                    .text(unitsStr)
                     .appendTo(row);
             });
         }
@@ -138,17 +183,20 @@ var ExperimentDescriptionHelp;
         }
     }
     function lineErrorHandler(jqXHR, textStatus, errorThrown) {
-        showLoadFailed(LINE_DIV_SELECTOR);
+        showLoadFailed(this.LINE_DIV_SELECTOR);
     }
     function assayErrorHandler(jqXHR, textStatus, errorThrown) {
-        showLoadFailed(ASSAY_DIV_SELECTOR);
+        showLoadFailed(this.ASSAY_DIV_SELECTOR);
+    }
+    function measurementUnitsErrorHandler(jqXHR, textStatus, errorThrown) {
+        console.error('Error loading measurement units: ', textStatus, ' ', errorThrown);
     }
     function showLoadFailed(divSelector) {
         var div, span;
         div = $(divSelector);
         div.empty();
         span = $("<span>").text('Unable to load data.').addClass('errorMessage').appendTo(div);
-        $('<a>').text(' Retry').on('click', function (e) {
+        $('<a>').text(' Retry').on('click', function () {
             switch (divSelector) {
                 case LINE_DIV_SELECTOR:
                     loadAllLineMetadataTypes();
