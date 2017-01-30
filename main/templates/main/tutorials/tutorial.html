@@ -1,0 +1,37 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block head_title %}
+   Tutorials
+{% endblock head_title %}
+
+{% block body_title %}
+  Tutorials
+{% endblock body_title %}
+
+{% block content %}
+
+<h2>Table of Contents</h2>
+    <table>
+	<tr>
+		<TD> How to Login</TD>
+	</tr>
+	<tr>
+		<TD><a href="{% url 'main:work-list' %}">Generate a Worklist</a></TD>
+	</tr>
+	<tr>
+		<TD><a href="{% url 'main:export-data' %}">Export Data from a Study</a></TD>
+	</tr>
+    <tr>
+		<TD><a href="{% url 'main:export-sbml' %}">Export Data as SBML</a></TD>
+	</tr>
+    <tr>
+		<TD><a href="{% url 'main:PCAP' %}">Import 3 Different Types of Files</a></TD>
+	</tr>
+    <tr>
+		<TD><a href="{% url 'main:data-viz' %}">Data Visualization</a></TD>
+	</tr>
+
+</table>
+
+{% endblock content %}

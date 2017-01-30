@@ -106,7 +106,7 @@
      <span><a href="{% url 'edd_utils:index' %}">Utilities</a></span>
         <span>
         {% block top_help %}
-        <a href="{% static 'main/help/index.html' %}">Help</a>
+        <a href="{% url 'main:tutorial' %}">Tutorial</a>
         {% endblock top_help %}
         </span>
     </div>
