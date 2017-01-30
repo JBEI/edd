@@ -1244,12 +1244,31 @@ namespace StudyDataPage {
 
         actionPanelRefreshTimer = null;
 
+        $('#studyAssaysTable').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-50 center", at: "right center" },
+            show: null,
+            close: function (event, ui:any) {
+                ui.tooltip.hover(
+                function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                },
+                function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    })
+                });
+            }
+        });
         // This only adds code that turns the other buttons off when a button is made active,
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
         Utl.ButtonBar.prepareButtonBars();
         // Prepend show/hide filter button for better alignment
         // Note: this will be removed when we implement left side filtering
+
         var showHideFilterButton = $('#hideFilterSection');
         $('#assaysActionPanel').prepend(showHideFilterButton);
 

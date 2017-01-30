@@ -1090,8 +1090,6 @@ class DataGrid {
 
 }
 
-
-// TODO: This should be moved to Study-Lines.
 class LineResults extends DataGrid {
 
     constructor(dataGridSpec:DataGridSpecBase) {

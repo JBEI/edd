@@ -936,7 +936,6 @@ var DataGrid = (function () {
     };
     return DataGrid;
 }());
-// TODO: This should be moved to Study-Lines.
 var LineResults = (function (_super) {
     __extends(LineResults, _super);
     function LineResults(dataGridSpec) {

@@ -7,28 +7,6 @@
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study-Overview.js' %}"></script>
-    <script type="text/javascript">
-    $(function () {
-        $('#helpExperimentDescription').tooltip({
-            content: function () {
-                return $(this).prop('title');
-            },
-            position: { my: "left-10 center", at: "right center" },
-            show: null,
-            close: function (event, ui) {
-                ui.tooltip.hover(
-                function () {
-                    $(this).stop(true).fadeTo(400, 1);
-                },
-                function () {
-                    $(this).fadeOut("400", function () {
-                        $(this).remove();
-                    })
-                });
-            }
-        });
-    });
-    </script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -45,13 +23,7 @@
 <form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;" id="general">
     {% csrf_token %}
 
-    <div style="
-        display:flex;
-        flex-wrap: nowrap;
-        flex-direction: row;
-        align-items: top;
-        justify-content: space-between;
-        ">
+    <div class="overviewFlex">
         <div style="flex-grow:1">
             {{ edit_study.non_field_errors }}
             {{ edit_study.name.errors }}
@@ -93,8 +65,8 @@
     </div>
 </form>
 
-<div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;color:gray; padding-bottom:16px;{% if lines %}display:none;{% endif %}">
-    <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;" id="templateDropZone">
+<div class="overviewDropZone" style="{% if lines %}display:none;{% endif %}">
+    <div class="fd-zone" id="templateDropZone">
         <div></div>
         Upload an edited experiment description file.
         <a href="{% static 'sample_experiment_description.xlsx' %}">Example </a>

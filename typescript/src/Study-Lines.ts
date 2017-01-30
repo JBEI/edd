@@ -61,6 +61,25 @@ namespace StudyLines {
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
 
+        $('#studyLinesTable').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-10 center", at: "right center" },
+            show: null,
+            close: function (event, ui:any) {
+                ui.tooltip.hover(
+                function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                },
+                function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    })
+                });
+            }
+        });
+
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', (e) => {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
