@@ -1875,5 +1875,12 @@ div.tooltip2 {
     margin-bottom: 3.6em;
 }
 
+/* Tutorial style */
+
+.tutorialContents> ul {
+    padding: 4px;
+    margin-left: 10px;
+}
+
 
 /* End of common styles */

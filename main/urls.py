@@ -61,7 +61,7 @@ urlpatterns = [
                 name='PCAP'),
             url(r'^/export-as-sbml/$', login_required(views.TutorialViewExportSBML.as_view()),
                 name='export-sbml'),
-            url(r'^/data-visualization/$', login_required(views.TutorialViewExportSBML.as_view()),
+            url(r'^/data-visualization/$', login_required(views.TutorialViewDataViz.as_view()),
                 name='data-viz'),
         ])
     ),
