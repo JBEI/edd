@@ -1090,18 +1090,6 @@ class DataGrid {
 
 }
 
-class LineResults extends DataGrid {
-
-    constructor(dataGridSpec:DataGridSpecBase) {
-        super(dataGridSpec);
-    }
-
-    _getClasses():string {
-        return 'dataTable sortable dragboxes hastablecontrols';
-    }
-
-}
-
 
 // Type definition for the records contained in a DataGrid
 class DataGridRecordSet {

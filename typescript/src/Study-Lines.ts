@@ -549,7 +549,17 @@ namespace StudyLines {
     }
 };
 
+class LineResults extends DataGrid {
 
+    constructor(dataGridSpec:DataGridSpecBase) {
+        super(dataGridSpec);
+    }
+
+    _getClasses():string {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    }
+
+}
 
 // The spec object that will be passed to DataGrid to create the Lines table
 class DataGridSpecLines extends DataGridSpecBase {

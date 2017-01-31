@@ -472,6 +472,16 @@ var StudyLines;
     StudyLines.onClickedMetabolicMapName = onClickedMetabolicMapName;
 })(StudyLines || (StudyLines = {}));
 ;
+var LineResults = (function (_super) {
+    __extends(LineResults, _super);
+    function LineResults(dataGridSpec) {
+        _super.call(this, dataGridSpec);
+    }
+    LineResults.prototype._getClasses = function () {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    };
+    return LineResults;
+}(DataGrid));
 // The spec object that will be passed to DataGrid to create the Lines table
 var DataGridSpecLines = (function (_super) {
     __extends(DataGridSpecLines, _super);
