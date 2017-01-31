@@ -22,7 +22,8 @@ source-control, defining the core structure. There is also `docker-compose.overr
 checked in to source-control, and which contains customizations specific to each deployment.
 By default, the `docker-compose` command will read both of these files, then merge the results
 producing the final configuration. More information on customizing configuration is contained
-in comments in the example file, `docker-compose.override.yml-example`.
+in comments in the example file, `docker-compose.override.yml-example`. To validate the files and
+view the merged results, run `docker-compose config`.
 
 ## Configuration Files and Generator Scripts
 
