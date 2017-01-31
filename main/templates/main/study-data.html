@@ -11,29 +11,6 @@
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/createMultiAxisLine.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study-Data.js' %}"></script>
-    <script type="text/javascript">
-
-    $(function () {
-        $('#studyAssaysTable').tooltip({
-            content: function () {
-                return $(this).prop('title');
-            },
-            position: { my: "left-50 center", at: "right center" },
-            show: null,
-            close: function (event, ui) {
-                ui.tooltip.hover(
-                function () {
-                    $(this).stop(true).fadeTo(400, 1);
-                },
-                function () {
-                    $(this).fadeOut("400", function () {
-                        $(this).remove();
-                    })
-                });
-            }
-        });
-    });
-    </script>
     <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
 {% endblock js_css %}
 
@@ -43,7 +20,7 @@
 
 {% block body_prefix %}
     {{ block.super }}
-<form action="" class="noMargins" style="height:100%;" method="POST">
+<form action="" class="noMargins" method="POST">
     {% csrf_token %}
 {% endblock body_prefix %}
 
@@ -109,12 +86,7 @@
         vertical-align: middle;">
         No measurements.
     </div>
-    <div id="tooManyPoints" class="off" style="
-        height: 300px;
-        width: 100%;
-        padding:auto;
-        text-align: center;
-        vertical-align: middle;">
+    <div id="tooManyPoints" class="off" class="tooManyPoints">
         Too many points to display!  Please change your filter settings.
     </div>
     <div id="graphLoading" class="wait-larger" style="
@@ -132,24 +104,11 @@
 {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
 <table id="studyAssaysTable" class="off"></table>
 
-<div id="assaysActionPanel" class="sectionActions" style="
-    display:flex;
-    flex-direction: row;
-    justify-content: flex-start; /* align items in Main Axis */
-    align-items: stretch; /* align items in Cross Axis */
-    align-content: stretch; /* Extra space in Cross Axis */
-    flex-wrap: nowrap;">
+<div id="assaysActionPanel" class="sectionActions assayActions">
 
-    <div style="
-        flex-grow:0;
-        margin:0 15px 0 auto;
-        font-size:0.9em;
-        display:flex;
-        flex-direction: column;
-        justify-content: center;
-        " class="{% if not assays %}off{% endif %}">
-        <div id="displayedDiv" style="padding:1px;">0 displayed</div>
-        <div id="selectedDiv" style="padding:1px;">0 selected</div>
+    <div class="{% if not assays %}off{% endif %} assayFlex">
+        <div id="displayedDiv" class="assayDisplayed">0 displayed</div>
+        <div id="selectedDiv" class="assayDisplayed">0 selected</div>
     </div>
 <div class="off">
     <input id="assay_action_mark" type="radio" name="assay_action" value="mark"/>
@@ -230,8 +189,6 @@
 
 {% block body_postfix %}
 </form>
-
-{# FUN FACT: jQueryUI's "modal" widget actually rips the element you're turning into a modal right out of the DOM and appends it to the end, thus separating it from any form you've declared outside the modal contents.  So, we are forced to create four self-contained forms, even though the page could easily work as one. #}
 
 <div id="addMeasurement" class="off" title="Add Measurements To Selected Assays">
     <form action="" method="POST">

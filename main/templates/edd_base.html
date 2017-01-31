@@ -32,8 +32,11 @@
     {% endif %}
 {% endblock js_css%}
 </head>
-<body>
-
+<body style="background-color:
+                {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %} #f4fef4
+                {% elif request.edd_deployment|slice:":4" == "TEST" %} #fff0f2
+                {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %} #fff6e5
+                {% endif %}">
 {% block body_prefix %}
 {% endblock body_prefix %}
 <div class="mainFlex">
@@ -63,14 +66,13 @@
             </div>
         </div>
         <div class="statusMessage">
-{#        unncomment below when merge: #}
-{#            {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %}#}
-{#                <span class="dev">{{ request.edd_deployment}}</span>#}
-{#            {% elif request.edd_deployment|slice:":4" == "TEST" %}#}
-{#                <span class="test">{{ request.edd_deployment }}</span>#}
-{#            {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %}#}
-{#                <span class="int">{{ request.edd_deployment }}</span>#}
-{#            {% endif %}#}
+            {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %}
+                <span class="dev">{{ request.edd_deployment}}</span>
+            {% elif request.edd_deployment|slice:":4" == "TEST" %}
+                <span class="test">{{ request.edd_deployment }}</span>
+            {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %}
+                <span class="int">{{ request.edd_deployment }}</span>
+            {% endif %}
         {% block status %}
             {% if messages %}
                 {% csrf_token %}
@@ -106,7 +108,7 @@
      <span><a href="{% url 'edd_utils:index' %}">Utilities</a></span>
         <span>
         {% block top_help %}
-        <a href="{% static 'main/help/index.html' %}">Help</a>
+        <a href="{% url 'main:tutorial' %}">Tutorial</a>
         {% endblock top_help %}
         </span>
     </div>

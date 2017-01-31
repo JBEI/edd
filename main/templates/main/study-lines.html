@@ -7,30 +7,6 @@
     <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
-    <script type="text/javascript">
-
-    $(function () {
-        $('#studyLinesTable').tooltip({
-            content: function () {
-                return $(this).prop('title');
-            },
-            position: { my: "left-10 center", at: "right center" },
-            show: null,
-            close: function (event, ui) {
-                ui.tooltip.hover(
-                function () {
-                    $(this).stop(true).fadeTo(400, 1);
-                },
-                function () {
-                    $(this).fadeOut("400", function () {
-                        $(this).remove();
-                    })
-                });
-            }
-        });
-    });
-
-    </script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
@@ -45,7 +21,7 @@
 
 {% block body_prefix %}
     {{ block.super }}
-<form action="" class="noMargins" style="height:100%;" method="POST">
+<form action="" class="noMargins" method="POST">
     {% csrf_token %}
 {% endblock body_prefix %}
 
@@ -59,7 +35,7 @@
          {% if new_line.errors %}
     <div class="alert alert-warning alert-dismissible" style="width:313px" role="alert">
         <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        Line name required for adding new line.
+   {{ new_line.errors }}
     </div>
     {%  endif %}
 <div style="margin-left:15px;">
@@ -72,18 +48,13 @@
             </p>
         </div>
     </div>
-    <div class="noLines" style="display: none;">
+    <div class="noLines">
         <h3 style="margin-bottom:12px">This study has no lines. </h3>
     </div>
     {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
     <table id="studyLinesTable"></table>
 </div>
-<div id="actionsBar" class="sectionActions" style="
-    display:flex;
-    flex-wrap: nowrap;
-    flex-direction: row;
-    margin: 10px 29px 32px 10px;
-    justify-content: space-between;">
+<div id="actionsBar" class="sectionActions lineFlex">
     <div id="disabledButtons" class="flex-grow:1;">
         <button id="addNewLineButton"
                 class="actionButton primary {% if not writable %}off{% endif %}"
@@ -190,8 +161,7 @@
                 <option value="csv">as CSV/etc</option>
                 <option value="sbml">as SBML</option>
                 <option value="worklist">as Worklist</option>
-                {# removing this for now until fixed #}
-                 <option value="study">to New Study</option>
+                <option value="study">to New Study</option>
             </select>
         </label>
         <button type="submit" name="action" value="line_action">Take Action</button>

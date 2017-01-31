@@ -50,6 +50,21 @@ study_url_patterns = [
 urlpatterns = [
     # "homepage" URLs
     url(r'^$', login_required(views.StudyIndexView.as_view()), name='index'),
+    url(r'^tutorials/',
+        include([
+            url(r'^$', login_required(views.TutorialView.as_view()), name='tutorial'),
+            url(r'^/generate-work-list/$', login_required(views.TutorialViewGenerate.as_view()),
+                name='work-list'),
+            url(r'^/export-data/$', login_required(views.TutorialViewExport.as_view()),
+                name='export-data'),
+            url(r'^/PCAP-example/$', login_required(views.TutorialViewPCAP.as_view()),
+                name='PCAP'),
+            url(r'^/export-as-sbml/$', login_required(views.TutorialViewExportSBML.as_view()),
+                name='export-sbml'),
+            url(r'^/data-visualization/$', login_required(views.TutorialViewDataViz.as_view()),
+                name='data-viz'),
+        ])
+    ),
     url(
         r'^study/$',
         login_required(views.StudyCreateView.as_view()),
@@ -82,7 +97,7 @@ urlpatterns = [
     # Individual study-specific pages loaded by primary key
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<pk>\d+)/lines',
+        r'^study/(?P<pk>\d+)/experiment-description',
         include(
             [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines_by_pk', )] +
             study_url_patterns
@@ -92,7 +107,7 @@ urlpatterns = [
     # Individual study-specific pages loaded by slug
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<slug>[-\w]+)/lines',
+        r'^study/(?P<slug>[-\w]+)/experiment-description',
         include(
             [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines', )] +
             study_url_patterns
@@ -142,6 +157,8 @@ urlpatterns = [
         login_required(views.data_sbml_reaction_species)),
     url(r'^data/strains/$', login_required(views.data_strains)),
     url(r'^data/users/$', login_required(views.data_users)),
+    url(r'help/experiment_description/$', login_required(views.ExperimentDescriptionHelp.as_view()),
+        name='experiment_description_help', ),
     url(r'^search/$', login_required(views.search)),
     url(r'^search/(?P<model>\w+)/$', login_required(views.model_search)),
 
