@@ -304,6 +304,10 @@ class StudyUpdateView(generic.edit.BaseUpdateView, StudyDetailBaseView):
         )
 
 
+class ExperimentDescriptionHelp(generic.TemplateView):
+    template_name = 'main/experiment_description_help.html'
+
+
 class StudyOverviewView(StudyDetailBaseView):
     """
     Study overview page, displays study name, description, comments, attachments, permissions.

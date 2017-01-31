@@ -68,12 +68,15 @@
 <div class="overviewDropZone" style="{% if lines %}display:none;{% endif %}">
     <div class="fd-zone" id="templateDropZone">
         <div></div>
-        Upload an edited experiment description file.
+        Upload an Experiment Description file (
         <a href="{% static 'sample_experiment_description.xlsx' %}">Example </a>
-        <a class="dropLink dropImg" href="{% static 'sample_experiment_description.xlsx' %}"> __</a>
-        <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription" title='You can learn more about defining experimental details here:
-         <a style="color:blue" href="#"">Experiment description file</a>'>Help
-        </div>
+        <a class="dropLink dropImg" href="{% static 'sample_experiment_description.xlsx' %}">
+            __</a>)
+        <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"
+    title='Drag-and-drop an &lt;a href=&quot;/help/experiment_description/&quot;&gt;Experiment
+                    Description file&lt;/a&gt; into this grey box
+                    to describe your experiment.  Alternatively, you can click on the link below to
+                    manually input your experiment description.'>Help</div>
     </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>

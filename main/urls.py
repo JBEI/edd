@@ -157,6 +157,8 @@ urlpatterns = [
         login_required(views.data_sbml_reaction_species)),
     url(r'^data/strains/$', login_required(views.data_strains)),
     url(r'^data/users/$', login_required(views.data_users)),
+    url(r'help/experiment_description/$', login_required(views.ExperimentDescriptionHelp.as_view()),
+        name='experiment_description_help', ),
     url(r'^search/$', login_required(views.search)),
     url(r'^search/(?P<model>\w+)/$', login_required(views.model_search)),
 
