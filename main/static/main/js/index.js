@@ -342,7 +342,6 @@ var DataGridSpecStudies = (function (_super) {
         else {
             this.dataObj = this._transformData(replacement); // transform also handles storing sort keys
             this._size = totalSize || this.viewSize();
-            this._offset = totalOffset || 0;
         }
         return this;
     };

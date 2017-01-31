@@ -46,7 +46,7 @@
         </li>
         {% if lines %}
             <li class="{% if showinglines %}active{% endif %}">
-               <a href="/study/{{ study.slug }}/lines">Experiment Description</a>
+               <a href="/study/{{ study.slug }}/experiment-description">Experiment Description</a>
             </li>
         {% endif %}
         {% if assays %}
@@ -56,9 +56,9 @@
         {% endif %}
     </ui>
     {% if writable %}
-         <button  style="{% if showingimport %}display:none; {% endif %} float:right;" type="button" class=" actionButton primary larger">
+        <button style="{% if showingimport %}display:none;{% endif %}float:right;" type="button" class="actionButton primary larger">
             <a style="color:white;" href="/study/{{ study.id }}/import">Import Data</a>
-         </button>
+        </button>
     {% endif %}
 </div>
 
