@@ -185,7 +185,7 @@ namespace StudyLines {
 
         $(value).on("change",function() {
              var val: any = $(value).val(),
-                type: any = EDDData.MetaDataTypes[val],
+                type: MetadataTypeRecord = EDDData.MetaDataTypes[val],
                 input = $('.line-meta-value'),
                 line = $(this).parents('.line-edit-meta'),
                 postfixVal =line.find(".meta-postfix"), //returns array of postfix elems present
@@ -193,11 +193,11 @@ namespace StudyLines {
 
                 //if there is a meta postfix val, hide it.
              if (postfixVal.length > 1) {
-                (postfixVal).hide();
+                (postfixVal).remove();
              }
              //if there is a meta prefix val, hide it.
              if (prefixVal.length > 1) {
-                (prefixVal).hide();
+                (prefixVal).remove();
              }
              if (type) {
                  if (type.pre) {

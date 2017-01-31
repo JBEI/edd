@@ -148,11 +148,11 @@ var StudyLines;
             prefixVal = line.find(".meta-prefix"); //returns array of prefix elems present
             //if there is a meta postfix val, hide it.
             if (postfixVal.length > 1) {
-                (postfixVal).hide();
+                (postfixVal).remove();
             }
             //if there is a meta prefix val, hide it.
             if (prefixVal.length > 1) {
-                (prefixVal).hide();
+                (prefixVal).remove();
             }
             if (type) {
                 if (type.pre) {
