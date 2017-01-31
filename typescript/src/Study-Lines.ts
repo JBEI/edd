@@ -189,9 +189,9 @@ namespace StudyLines {
                 input = $('.line-meta-value'),
                 line = $(this).parents('.line-edit-meta');
 
-                //remove post and prefix meta values
-                line.find('.meta-postfix').remove();
-                line.find('.meta-prefix').remove();
+             //remove post and prefix meta values
+             line.find('.meta-postfix').remove();
+             line.find('.meta-prefix').remove();
 
              if (type) {
                  if (type.pre) {
