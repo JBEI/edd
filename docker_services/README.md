@@ -54,12 +54,12 @@ Containers are designed to be stateless. Any filesystem changes to a container w
 removal and re-launch of that container. Stateful changes are handled via mounting Docker Volumes
 in the container. EDD defines the following Volumes:
 
-    * __pgdata__: the Postgres databases.
-    * __solrdata__: Solr search indices.
-    * __attachdata__: uploaded attachments in the EDD application.
-    * __staticdata__: static assets used in the EDD application (e.g. images, scripts).
-    * __redisdata__: the Redis append-only file.
-    * __tlsdata__: cryptographic keys and certificates for securing with TLS.
+* __pgdata__: the Postgres databases.
+* __solrdata__: Solr search indices.
+* __attachdata__: uploaded attachments in the EDD application.
+* __staticdata__: static assets used in the EDD application (e.g. images, scripts).
+* __redisdata__: the Redis append-only file.
+* __tlsdata__: cryptographic keys and certificates for securing with TLS.
 
 Docker Compose will create volumes using the default `local` storage driver, using the names
 `PROJECTNAME_VOLUME`, e.g. `edd_pgdata`. Alternate existing volumes may be used by setting
