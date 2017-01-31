@@ -54,13 +54,12 @@
             <a href="/study/{{ study.slug }}/">Data</a>
             </li>
         {% endif %}
-    {% if writable %}
-            <li class="{% if showingimport %}active{% endif %}">
-                <a href="/study/{{ study.id }}/import">Import Data</a>
-            </li>
-        {% endif %}
     </ui>
-
+    {% if writable %}
+         <button  style="{% if showingimport %}display:none; {% endif %} float:right;" type="button" class=" actionButton primary larger">
+            <a style="color:white;" href="/study/{{ study.id }}/import">Import Data</a>
+         </button>
+    {% endif %}
 </div>
 
 {#  line that goes through the nav bars uncomment if people prefer #}

@@ -28,18 +28,20 @@
 
 {% endblock js_css %}
 
-
 {% block head_title %}
-    {{ block.super }}
+  {% if selection.studies|length == 1 %}
+    Data Import For {{ selection.studies.0.name }}
+  {% else %}
+    Data Import For {{ selection.studies|length }} Studies
+  {% endif %}
 {% endblock head_title %}
 
 {% block body_title %}
-    {{ block.super }}
+  Data Import For
+   <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a>
 {% endblock body_title %}
 
-
 {% block content %}
-    {{ block.super }}
 <form method="post" id="assayTableForm" action="/study/{{ study.id }}/import/">
 {% csrf_token %}
 
