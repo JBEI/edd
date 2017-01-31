@@ -153,7 +153,6 @@ class StudyObjectMixin(generic.detail.SingleObjectMixin):
             return qs
         return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
 
-
 class StudyIndexView(generic.edit.CreateView):
     """
     View for the the index page.
@@ -236,6 +235,30 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         return False
 
 
+class TutorialView(StudyIndexView):
+    template_name = "main/tutorials/tutorial.html"
+
+
+class TutorialViewGenerate(TutorialView):
+    template_name = "main/tutorials/generateWorklist.html"
+
+
+class TutorialViewExport(TutorialView):
+    template_name = "main/tutorials/exportData.html"
+
+
+class TutorialViewPCAP(TutorialView):
+    template_name = "main/tutorials/PCAP.html"
+
+
+class TutorialViewExportSBML(TutorialView):
+    template_name = "main/tutorials/SBML.html"
+
+
+class TutorialViewDataViz(TutorialView):
+    template_name = "main/tutorials/dataViz.html"
+
+
 class StudyUpdateView(generic.edit.BaseUpdateView, StudyDetailBaseView):
     """ View used to handle POST to update single Study fields. """
     update_action = None
@@ -279,6 +302,10 @@ class StudyUpdateView(generic.edit.BaseUpdateView, StudyDetailBaseView):
             encoder=JSONDecimalEncoder,
             status=400,
         )
+
+
+class ExperimentDescriptionHelp(generic.TemplateView):
+    template_name = 'main/experiment_description_help.html'
 
 
 class StudyOverviewView(StudyDetailBaseView):

@@ -6,11 +6,10 @@
     <body>
         <h1>Page Unavailable</h1>
         <p>EDD has encountered an error and cannot show this page. The site administrators have been notified of the problem, please check back later.</p>
-        {% if messages %}
+            {% if messages %}
             {% for message in messages %}
             <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
             {% endfor %}
         {% endif %}
     </body>
 </html>
-

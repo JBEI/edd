@@ -39,6 +39,22 @@ var StudyLines;
         StudyLines.actionPanelIsInBottomBar = false;
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
+        $('#studyLinesTable').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-10 center", at: "right center" },
+            show: null,
+            close: function (event, ui) {
+                ui.tooltip.hover(function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                }, function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    });
+                });
+            }
+        });
         // put the click handler at the document level, then filter to any link inside a .disclose
         $(document).on('click', '.disclose .discloseLink', function (e) {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
@@ -456,6 +472,16 @@ var StudyLines;
     StudyLines.onClickedMetabolicMapName = onClickedMetabolicMapName;
 })(StudyLines || (StudyLines = {}));
 ;
+var LineResults = (function (_super) {
+    __extends(LineResults, _super);
+    function LineResults(dataGridSpec) {
+        _super.call(this, dataGridSpec);
+    }
+    LineResults.prototype._getClasses = function () {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    };
+    return LineResults;
+}(DataGrid));
 // The spec object that will be passed to DataGrid to create the Lines table
 var DataGridSpecLines = (function (_super) {
     __extends(DataGridSpecLines, _super);

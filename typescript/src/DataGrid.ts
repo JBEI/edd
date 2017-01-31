@@ -1091,20 +1091,6 @@ class DataGrid {
 }
 
 
-// TODO: This should be moved to Study-Lines.
-class LineResults extends DataGrid {
-
-    constructor(dataGridSpec:DataGridSpecBase) {
-        super(dataGridSpec);
-    }
-
-    _getClasses():string {
-        return 'dataTable sortable dragboxes hastablecontrols';
-    }
-
-}
-
-
 // Type definition for the records contained in a DataGrid
 class DataGridRecordSet {
     [index:string]:DataGridRecord;
@@ -1418,7 +1404,6 @@ class DataGridDataCell {
             this.sideMenuItems.forEach((item) => {
                 //TODO: clean up
                 if (item.slice(0,1) != ('<')) {
-                    title += ('<ul>' + item + '</ul>');
                 }
                 else if ($(item).attr('class') === "line-edit-link") {
                     $(item).addClass('editLine');

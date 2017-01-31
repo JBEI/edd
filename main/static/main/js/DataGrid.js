@@ -936,17 +936,6 @@ var DataGrid = (function () {
     };
     return DataGrid;
 }());
-// TODO: This should be moved to Study-Lines.
-var LineResults = (function (_super) {
-    __extends(LineResults, _super);
-    function LineResults(dataGridSpec) {
-        _super.call(this, dataGridSpec);
-    }
-    LineResults.prototype._getClasses = function () {
-        return 'dataTable sortable dragboxes hastablecontrols';
-    };
-    return LineResults;
-}(DataGrid));
 // Type definition for the records contained in a DataGrid
 var DataGridRecordSet = (function () {
     function DataGridRecordSet() {
@@ -1179,7 +1168,6 @@ var DataGridDataCell = (function () {
             this.sideMenuItems.forEach(function (item) {
                 //TODO: clean up
                 if (item.slice(0, 1) != ('<')) {
-                    title += ('<ul>' + item + '</ul>');
                 }
                 else if ($(item).attr('class') === "line-edit-link") {
                     $(item).addClass('editLine');

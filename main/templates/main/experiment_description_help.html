@@ -1,0 +1,561 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/help.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/Experiment-Desc-Help.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/EDDRest.js' %}"></script>
+{% endblock js_css %}
+
+{% block head_title %}
+    {{ block.super }} &mdash; Experiment Description File
+{% endblock head_title %}
+
+{% block body_title %}
+    {{ block.super }} &mdash; Experiment Description File
+{% endblock body_title %}
+
+{% block content %}
+<h2><span class="TODO">DRAFT</span></h2><p class="TODO">
+    This document is a work-in-progress draft.  It should be helpful as-is, but expect an
+    updated version soon based on review that's already underway.
+</p>
+    <h1>What's an Experiment Description file?</h1>
+<p>
+An experiment description file is a simple Excel file that allows you to quickly enter the
+experimental conditions for your study.  EDD needs to know what the experimental conditions are for
+measurements you're importing, preferably before you import the data into EDD, or even measure it in
+    the lab (see <span class="TODO">here</span> for why). An experiment description file is
+    normally the most efficient way to input that information.</p>
+    <p>
+
+Before getting into the details of all the options available in the file, consider downloading the
+sample file.  If the sample file makes sense to you out-of-the-box, run with it!  If this is your
+first time using EDD, and you aren’t familiar with the concepts, the first thing to do is to learn
+about lines.</p>
+    <div class = "disclose discloseHide">
+        <h4><a class="discloseLink" href="#">What are lines?</a></h4>
+    <div class="discloseBody"><p>
+    A "line" in EDD is a distinct set of experimental conditions, e.g. a single preparation of culture.
+    A line generally corresponds to the contents of a shake flask or well plate, though it could also be,
+    for example, a tube containing extract from an arabidopsis seed. We chose the term "line" because
+    the set of experimental conditions represents a line of enquiry.  You may, for example, take
+    multiple aliquots from the same flask during the course of your experiment, which is why we avoided
+    the ambiguous term "sample".
+</p>
+<p>
+    Each line has a unique name within the EDD study, an optional description, and some associated
+    metadata that capture the experimental conditions, e.g. growth temperature, strain, media, etc.
+    Through an intermediary called an “assay” that you may read about later, a line captures the
+    association of a set of experimental conditions with the resulting measurements.  Many casual EDD
+    users won’t need to worry about the details of what an assay is.
+</p>
+
+<h4>Line naming</h4>
+    <p>
+        You’ll often want the line names you enter in EDD to be a little more descriptive than the shorthand
+        labels you cram onto tiny tubes in the lab.  You’ll likely want to name your lines in EDD for
+        experimental conditions that make them unique so that you and other researchers can easily distinguish
+        between them in the user interface or in outputs exported from EDD.  For example, “WT-LB” (short
+        for “wild type in LB media”) is a lot more descriptive than the “A1” label you might write on
+        the associated tube.
+    </p>
+    <p>
+        Your organization will likely encourage you to use a standard line naming convention to help other
+        researchers easily understand your data. See examples below for some typical line names and
+        characteristics.
+    </p></div>
+</div>
+
+<img src=""/>
+<div class="caption">Figure 1: EDD terms corresponding to parts of a sample laboratory experiment</div>
+<h3>Experiment description file format</h3>
+<p>
+<span class="TODO">TODO: re/verify examples here once ICE exception is resolved that prevents
+communication with non-production instances.</span></p>
+<p>An experiment description file is an efficient way for you to add lines to your study with a minimum
+of data entry.  In the simplest case, each row of the file represents experimental conditions for a
+single line of enquiry in your study.  For example, consider the following single-row experiment
+description file:</p>
+
+<table class="figureTable">
+    <thead>
+        <th>Line Name</th>
+        <th>Line Description</th>
+        <th>Media</th>
+        <th>Part ID</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>WT-Control</td>
+            <td>Wildtype s. cervisae</td>
+            <td>LB</td>
+            <td>JBx_042441</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">
+    Figure 2: Simple experiment description file
+    EDD_Sample_1_Single_line.xlsx
+</div>
+<p>
+    Dropping this file into EDD creates a single line, visible in the study’s “Lines” section in
+    nearly identical form to the input file:
+</p>
+<table class="figureTable">
+    <thead>
+        <th>Name</th>
+        <th>Strain</th>
+        <th>Carbon Source(s)</th>
+        <th>Labeling</th>
+        <th>Media</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>WT-Control</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">Figure 3: Resulting lines table in EDD</div>
+<p>
+    The contents of EDD’s table are nearly identical to the input file, with some simple exceptions.
+    Most notably, “Part ID” is provided as input to help EDD locate the relevant strain in ICE, but it
+    isn’t particularly recognizable to experimentalists.  Instead of the part id provided as input to
+    creating the line, EDD displays the associated strain name instead, which should be more useful,
+    while also linking the name to the related ICE entry.
+</p>
+<p>
+    You can create multiple lines, each with replicates, with only a slightly more complicated file:
+</p>
+<table class="figureTable">
+    <thead>
+        <th>Line Name</th>
+        <th>Line Description</th>
+        <th>Media</th>
+        <th>Part ID</th>
+        <th>Replicate Count</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>WT-Control</td>
+            <td>Wildtype s. cervisae</td>
+            <td>LB</td>
+            <td>JBx_042441</td>
+            <td>3</td>
+        </tr>
+        <tr>
+            <td>413</td>
+            <td>gre3∆;    pMOXYL3 pRS413</td>
+            <td>LB</td>
+            <td>JBx_039498</td>
+            <td>3</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">
+    <span class="figureTitle">Figure 4: Creating multiple lines and replicates</span>
+    EDD_Sample_2_Multiple_Lines_And_Replicates.xlsx
+</div>
+<p>
+    Each row of the Experiment Description file in Figure 4 is a set of values that define distinct
+experimental conditions, along with replicates of each.  Lines created by this Experiment
+Description file would appear in EDD as shown in Figure 5.  Note that using the replicates column
+caused the suffix “R-#” to be appended to the line name from the original file to make the resulting
+line names unique within the study.
+</p>
+<table class="figureTable">
+    <thead>
+        <th>Name</th>
+        <th>Strain</th>
+        <th>Carbon Source(s)</th>
+        <th>Labeling</th>
+        <th>Media</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>WT-Control-R1</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr>
+        <tr>
+            <td>WT-Control-R2</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr>
+        <tr>
+            <td>WT-Control-R3</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr>
+        <tr>
+            <td>413-R1</td>
+            <td>JBEI-9005</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr>
+        <tr>
+            <td>413-R2</td>
+            <td>JBEI-9005</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr>
+        <tr>
+            <td>413-R3</td>
+            <td>JBEI-9005</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">Figure 5: Resulting lines table in EDD</div>
+
+<h4>Column Options</h4>
+<p>Column headers in the Experiment Description file describe characteristics you'll assign to the
+lines, and maybe assays, in your study.  You can create an Experiment Description file with minimal
+input, but truly capturing the conditions of your experiment for posterity often takes a reasonable
+amount of additional effort.  The list of conditions supported by EDD is available below, and we
+suggest that you scan the list and include all the relevant data in your Experiment Description file.
+</p>
+<p>Some fixed line and assay characteristics are baked into the EDD code and into its Experiment
+Description file format, while others are defined by metadata types that system administrators enter
+into EDD’s database.</p>
+<p>
+    Chances are good that many experimenters can just run with a subset of the columns from the sample
+file, but see below if you need to add other columns to fully describe the experimental conditions
+in your study.  The goal is to enter enough data into EDD to allow another researcher to reproduce
+your study with little or no additional context.  You should also prioritize entering unambiguous /
+machine-readable metadata in columns rather than describing your experiment in text in the
+“Description” column.
+</p>
+<h5>Primary line characteristics</h5>
+<p>
+These fundamental line characteristics are hard-coded into EDD, and will always be available in
+Experiment Description files.
+</p>
+<table class="figureTable">
+    <thead>
+        <th>Line Characteristic</th>
+        <th>Required Column Header</th>
+        <th>Description</th>
+        <th>Interpretation in Experiment Description file</th>
+        <th>Required?</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Name</td>
+            <td>Line Name</td>
+            <td>
+                A short description that uniquely identifies this set of experimental conditions within
+                your study.  Experimenters often include, for example, the strain number, plate number,
+                etc.
+            </td>
+            <td>
+                Exact value is used to name the line, or the prefix for line names if multiple replicates
+                are used or if combinatorial line creation features are in use (see below).  This value
+                will also be the prefix for assays created by the file. Values that duplicate existing
+                lines in the study or other rows in the file will cause the entire file upload to fail.
+            </td>
+            <td>YES</td>
+        </tr>
+        <tr>
+            <td>Description</td>
+            <td>Line Description</td>
+            <td>
+                <p>
+                A short human-readable description for the line.  Ideally all experimental
+                conditions will be captured as machine-readable metadata, but anything not currently
+                captured as metadata should be inserted here.</p>
+                <p>Column header value matches the one generated by ICE’s bulk download and used by EDD’s
+                bulk line creation script.</p>
+            </td>
+            <td>
+                The exact text of the description.
+            </td>
+            <td>No, but strongly encouraged</td>
+        </tr>
+        <tr>
+            <td>Part ID(s)</td>
+            <td>Part ID</td>
+            <td>
+                The unique ICE part number identifiers for strains in this culture. Note that
+                non-strain ICE entries are not presently allowed in EDD.  See below for advanced use,
+                and note that this header matches the format of ICE’s bulk export and EDD’s bulk
+                line creation script.
+            </td>
+            <td>
+                Used to link EDD lines to the referenced ICE strains.  See below for directions on
+                including multiple stains in the same line.
+            </td>
+            <td>No, but strongly encouraged where applicable</td>
+        </tr>
+        <tr>
+            <td>Replicates</td>
+            <td>Replicate Count</td>
+            <td>The number of experimental replicates for this set of conditions</td>
+            <td>
+                Used to create replicates of this line without having to duplicate data entry for it.
+                If more than one replicate is created for a line, the line name will have the suffix
+                “-R#” appended, where # is the replicate number.
+            </td>
+            <td>No, but strongly encouraged, especially to save data entry work for EDD line creation</td>
+        </tr>
+    </tbody>
+</table>
+
+<h5>Optional user-specified metadata</h5>
+<p>
+In addition to the line characteristics built into EDD, you may also use Experiment Description
+    files to provide any line or assay metadata defined in EDD’s database using the Administration
+    tools (with a few exceptions in the initial version--see below).  The difference between
+    user-specified line characteristics and built-in characteristics should be transparent to most
+    users.  In fact, all of the previous examples have used “Media”, which is not, strictly speaking,
+    one of the built-in line characteristics described in the table above.
+</p>
+<p>
+    To enter user-defined metadata in your Experiment Description file, just paste the exact text of the
+    metadata name as a column header.  Again the “Media” column in examples above satisfies this
+    criterion.
+</p>
+<div class = "disclose discloseHide">
+    <a class="discloseLink" href="#">Line Metadata Types</a>
+    <div id='lineMetadataTypes' class="discloseBody"></div>
+</div>
+<div class="disclose discloseHide">
+    <a class="discloseLink" href="#">Assay Metadata Types</a>
+    <div id='assayMetadataTypes' class="discloseBody"></div>
+</div>
+
+<b>Unsupported values</b>: the following line characteristics aren’t supported in the initial version
+of the Experiment Description file (pending resolution of <a href="https://support.jbei
+.org/browse/EDD-438">EDD-438</a>): control, carbon source (s), line experimenter, line contact.
+
+<h4>File Format Housekeeping</h4>
+<p>
+You may define columns in any order, as long as the single required column, “Line Name”, is present.
+    You also don’t have to worry about capitalization or accidental use of leading/trailing
+    whitespace in the column headers.  With the exception of line names, you can leave any
+    non-header cell blank to omit that metadata for lines/assays created by the corresponding table
+    row.  At the time of writing, there’s no error checking on non-time inputs, so enter your data
+    carefully!
+</p>
+
+<h4>Advanced Use</h4>
+<h5>Bulk Line Creation</h5>
+
+<h6>ICE Bulk Export</h6>
+<p>
+    If your experiment involves use of a large strain library, or many combinations of experimental
+conditions, you may want to consider how to reduce the amount of data entry required to create lines
+in your EDD study.  One option is to use ICE’s bulk export feature to create a CSV file as a starting
+point for your EDD Experiment Description file.  EDD’s Experiment Description file purposefully uses
+the same “Part ID” column header as ICE’s export, so all you have to do is remove the other
+    unnecessary
+columns from the ICE export, then add other columns to fully describe your experiment.
+</p>
+
+<h6>Combinatorial Line Creation</h6>
+<p>
+    To reduce the need for repetitive data entry, you can append “s” or “(s)” to the end of most column
+headers in an Experiment Description file, then add comma-separated values in that column to have
+EDD generate lines combinatorially.  Figure 6 shows an example file that creates lines combinatorially
+using different media.
+</p>
+<p>Note that when using combinatorial input, EDD will insert the combinatorial values into the
+    line names so that names are unique.  The relative order of metadata columns in your file will
+    dictate the ordering of those values within the resulting line names.  <span class="TODO">TODO:
+    verify or debunk/implement this claim.</span>
+</p>
+<table class="figureTable">
+    <thead>
+        <th>Line Name</th>
+        <th>Line Description</th>
+        <th>Media</th>
+        <th>Part ID</th>
+        <th>Replicate Count</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>WT-Control</td>
+            <td>Wildtype s. cervisae</td>
+            <td>LB, EZ, Minimal</td>
+            <td>JBx_042441</td>
+            <td>3</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">
+Figure 6: Using combinatorial input for media
+EDD_Sample_3_Combinatorial_Media_Values.xlsx
+</div>
+<p>
+    Rather than requiring values from 4 of the columns to be entered repetitively for each line,
+    inserting media values combinatorially in this example allowed each unique value to be entered
+    only once.  Figure 7 shows the resulting lines table in EDD.  Note that both entries for the
+    “Media” column and replicate numbers have been automatically inserted into the line names to
+    keep them unique.
+</p>
+<table class="figureTable">
+    <thead>
+        <th>Name</th>
+        <th>Strain</th>
+        <th>Carbon Source(s)</th>
+        <th>Labeling</th>
+        <th>Media</th>
+    </thead>
+    <tbody>
+<tr>
+<td>WT-Control-LB-R1</td>
+<td>JW0111</td>
+<td>--</td>
+<td>--</td>
+<td>LB</td>
+</tr>
+<tr>
+<td>WT-Control-LB-R2</td>
+<td>JW0111</td>
+<td>--</td>
+<td>--</td>
+<td>LB</td>
+</tr>
+<tr>
+<td>WT-Control-LB-R3</td>
+<td>JW0111</td>
+<td>--</td>
+<td>--</td>
+<td>LB</td>
+    </tr>
+<tr>
+<td>WT-Control-EZ-R1</td>
+<td>JW0111</td>
+<td>--</td>
+<td>--</td>
+<td>EZ</td>
+    </tr><tr>
+<td>WT-Control-EZ-R2</td>
+<td>JW0111</td>
+<td>--</td>
+<td>--</td>
+<td>EZ</td>
+    </tr><tr>
+<td>WT-Control-EZ-R3</td>
+<td>JW0111</td>
+<td>--</td>
+<td>--</td>
+<td>EZ</td>
+    </tr><tr>
+<td>WT-Control-Minimal-R1</td>
+<td>JW0111</td>
+<td>--</td>
+<td>--</td>
+<td>Minimal</td>
+    </tr><tr>
+<td>WT-Control-Minimal-R2</td>
+<td>JW0111</td>
+<td>--</td>
+<td>--</td>
+<td>Minimal</td>
+    </tr><tr>
+<td>WT-Control-Minimal-R3</td>
+<td>JW0111</td>
+<td>--</td>
+<td>--</td>
+<td>Minimal</td>
+</tr></tbody></table>
+<div class="caption">Figure 7: Resulting lines table in EDD</div>
+<p>
+For studies with very large numbers of lines, your browser may time out while lines / assays are
+    being created, giving the appearance that your file upload attempt failed.  If this is the case,
+    try refreshing your study after a few minutes to see whether the attempt succeeded.  This
+    timeout shouldn’t occur often, and future improvements may help to avoid it.  You can also use
+    the bulk line creation script to avoid this problem (see below).
+</p>
+<h6>Combinatorial Assay Creation</h6>
+<p>
+You can also use experiment description files to combinatorially create assays associated with the
+    lines in your study.  Chances are good that you don’t need to create assays or to know what
+    assays are, but see below if you're an advanced user or if you've been asked to create some
+    assays.
+</p>
+    <div class = "disclose discloseHide">
+    <h7><a class="discloseLink" href="#">What's an Assay?</a></h7>
+    <div class="discloseBody"><p>
+        An "assay" is the application of a specific protocol (e.g. proteomics) to a line.  In the
+        simple case, you can often think of an assay as the result of loading your sample into
+        the experimental measurement platform.  Any of the following lab examples would result in
+        creation of an assay in EDD:
+    </p>
+    <ol>
+        <li>Using a spectrophotometer to measure optical density of a sample</li>
+        <li>Performing proteomics measurements on a sample</li>
+    </ol>
+    <p>
+       Many assays will only be performed once during the course of an experiment, and will be said
+        to occur at a fixed point in time. In many cases.  However, automated platforms such as
+        the BioHector [sic] may perform multiple assays on the same sample over time. An assay
+        can contain one or more measurements.   <span class="TODO">TODO: verify claim here regarding
+        assay time</span>
+    </p></div>
+</div>
+<p>
+    In addition to creating lines, you can also use an Experiment Description file to create assays
+    associated with them.  To create an assay using this method, you’ll need to assign at least one
+    metadata value to the assay.  Recall that an assay is the application of a specific experimental
+    protocol to a line (see Figure 1 above).
+</p>
+<p>
+    To provide assay metadata in your Experiment Description file, add one or more column headers
+    that start with a protocol name and end with the name of the assay metadata you want to insert..
+    For example, the sample file has column “Targeted Proteomics Time(s)”.  Breaking this header
+    down into its parts:
+</p>
+<table class="figureTable" id="lineNamePartsTable">
+    <tr><td>“Targeted Proteomics”:</td><td>the protocol</td></tr>
+    <tr><td>“ “</td><td>a space separator</td></tr>
+    <tr><td>“Time”</td><td>the name of the assay metadata</td></tr>
+    <tr><td>“(s)”</td><td>denotes that cell contents are comma-delimited combinatorial
+        values</td></tr>
+</table>
+<div class = "disclose discloseHide">
+    <a class="discloseLink" href="#">Protocols in this EDD instance</a>
+    <div id='protocols' class="discloseBody"></div>
+</div>
+
+<h6>Special case: assay times</h6>
+    <p>To clarify units for time, assay times must be entered with a trailing “h”. For example “12h”
+        indicates that an assay was performed at 12 hours.  Precision of your data entry for time
+        dictates the number of digits of time inserted into the related assay names.  Assay names
+        will be created using number of maximum number of digits after the decimal point of any time
+        value in your file.
+</p>
+<h6>Special case: strain groups</h6>
+<span class="TODO">TODO: update following testing of this feature: line names should change</span>
+<p>
+    EDD has limited support for creating lines that contain multiple strains (i.e. for
+    experimenting with consortia).  To specify multiple strains to be used together as a group,
+    enclose part number groups in parenthesis, separate them with commas, and delimit individual
+    part ids within each group with a semicolon.  For example, (JBx_123;JBx_456), (JBX_789).
+</p>
+<h6>Bulk Creation Script</h6>
+<p>
+    EDD ships with a command line based bulk line creation script that follows a similar format and
+    usage pattern to the experiment description file.  This script is largely superceded by the
+    experiment description file feature, but is also an option for avoiding browser timeouts for
+    creation of large numbers of lines.   See documentation for the bulk line creation script in
+    EDD’s <a href="https://github.com/JBEI/edd/tree/master/jbei">Github repo</a>.
+</p>
+
+{% endblock content %}

@@ -1131,6 +1131,22 @@ var StudyDataPage;
         assaysDataGridSpec = null;
         StudyDataPage.assaysDataGrid = null;
         actionPanelRefreshTimer = null;
+        $('#studyAssaysTable').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-50 center", at: "right center" },
+            show: null,
+            close: function (event, ui) {
+                ui.tooltip.hover(function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                }, function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    });
+                });
+            }
+        });
         // This only adds code that turns the other buttons off when a button is made active,
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
@@ -1323,11 +1339,6 @@ var StudyDataPage;
             'success': function (data) {
                 EDDData = $.extend(EDDData || {}, data);
                 colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
-                // show assay table by default if there are assays but no assay measurements
-                if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
-                    //TODO: create prepare it for no data?
-                    $('#dataTableButton').click();
-                }
                 StudyDataPage.progressiveFilteringWidget.prepareFilteringSection();
                 $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(function () {
                     queueRefreshDataDisplayIfStale();
@@ -1391,6 +1402,17 @@ var StudyDataPage;
         });
     }
     StudyDataPage.requestAssayData = requestAssayData;
+    //when all ajax requests are finished, determine if there are AssayMeasurements.
+    $(document).ajaxStop(function () {
+        // show assay table by default if there are assays but no assay measurements
+        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+            //TODO: create prepare it for no data?
+            $('#dataTableButton').click();
+        }
+        else {
+            $('#lineGraphButton').click();
+        }
+    });
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
@@ -2198,7 +2220,7 @@ var DataGridSpecAssays = (function (_super) {
     // Specification for the table as a whole
     DataGridSpecAssays.prototype.defineTableSpec = function () {
         return new DataGridTableSpec('assays', {
-            'defaultSort': 1
+            'defaultSort': 0
         });
     };
     DataGridSpecAssays.prototype.findMetaDataIDsUsedInAssays = function () {

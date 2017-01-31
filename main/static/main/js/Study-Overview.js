@@ -30,6 +30,22 @@ var StudyOverview;
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
         });
+        $('#helpExperimentDescription').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-10 center", at: "right center" },
+            show: null,
+            close: function (event, ui) {
+                ui.tooltip.hover(function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                }, function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    });
+                });
+            }
+        });
         this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
         Utl.FileDropZone.create({
             elementId: "templateDropZone",
