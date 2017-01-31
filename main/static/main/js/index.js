@@ -13,6 +13,11 @@ var IndexPage;
     // Called when the page loads.
     function prepareIt() {
         $('.disclose').find('.discloseLink').on('click', disclose);
+        $("#addStudyModal").dialog({ minWidth: 600, autoOpen: false });
+        $("#addStudyButton").click(function () {
+            $("#addStudyModal").removeClass('off').dialog("open");
+            return false;
+        });
         IndexPage.prepareTable();
     }
     IndexPage.prepareIt = prepareIt;
@@ -97,7 +102,8 @@ var DataGridSpecStudies = (function (_super) {
                 'hoverEffect': true,
                 'nowrap': true,
                 'sideMenuItems': sideMenuItems,
-                'contentString': ['<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>'].join('')
+                'contentString': ['<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>'].join(''),
+                'title': studyDoc.n
             })
         ];
     };
@@ -106,7 +112,8 @@ var DataGridSpecStudies = (function (_super) {
             new DataGridDataCell(gridSpec, index, {
                 'maxWidth': '400',
                 'customID': function (id) { return 'editableDescriptionField' + id; },
-                'contentString': gridSpec.dataObj[index].des || ''
+                'contentString': gridSpec.dataObj[index].des || '',
+                'title': gridSpec.dataObj[index].des || '',
             })
         ];
     };
@@ -303,6 +310,8 @@ var DataGridSpecStudies = (function (_super) {
     // The order of the array will be the order they are added to the header bar.
     // It's perfectly fine to return an empty array.
     DataGridSpecStudies.prototype.createCustomHeaderWidgets = function (dataGrid) {
+        // override bootsrap
+        $('#hStudyMod').css('border-right', '1px solid lightgrey');
         // Create a single widget for showing disabled Studies
         var array = [
             new DGStudiesSearchWidget(dataGrid, this, 'Search Studies', 40, true),
@@ -333,7 +342,6 @@ var DataGridSpecStudies = (function (_super) {
         else {
             this.dataObj = this._transformData(replacement); // transform also handles storing sort keys
             this._size = totalSize || this.viewSize();
-            this._offset = totalOffset || 0;
         }
         return this;
     };
@@ -455,17 +463,6 @@ var DGStudiesSearchWidget = (function (_super) {
         };
         this._spec = spec;
     }
-    // This is called to append the widget elements beneath the given element.
-    // If the elements have not been created yet, they are created, and the uniqueID is passed along.
-    DGStudiesSearchWidget.prototype.appendElements = function (container, uniqueID) {
-        _super.prototype.appendElements.call(this, container, uniqueID);
-        var span = document.createElement("span");
-        var spanID = this.dataGridSpec.tableSpec.id + 'SearchDisc' + uniqueID;
-        span.setAttribute('id', spanID);
-        span.className = 'searchDisclosure';
-        this.searchDisclosureElement = span;
-        container.appendChild(this.searchDisclosureElement);
-    };
     // OVERRIDE
     // HEY GUYS WE DON'T NEED TO FILTER HERE ANYMORE
     DGStudiesSearchWidget.prototype.applyFilterToIDs = function (rowIDs) {
@@ -483,7 +480,6 @@ var DGStudiesSearchWidget = (function (_super) {
     };
     return DGStudiesSearchWidget;
 }(DGSearchWidget));
-// Here's an example of a working DataGridOptionWidget.
 // When checked, this hides all Studies that are not owned by the current user.
 var DGOnlyMyStudiesWidget = (function (_super) {
     __extends(DGOnlyMyStudiesWidget, _super);
@@ -491,7 +487,7 @@ var DGOnlyMyStudiesWidget = (function (_super) {
         _super.call(this, grid, spec);
         this._spec = spec;
     }
-    DGOnlyMyStudiesWidget.prototype.getIDFragment = function () {
+    DGOnlyMyStudiesWidget.prototype.getIDFragment = function (uniqueID) {
         return 'ShowMyStudiesCB';
     };
     DGOnlyMyStudiesWidget.prototype.getLabelText = function () {
@@ -515,7 +511,6 @@ var DGOnlyMyStudiesWidget = (function (_super) {
     };
     return DGOnlyMyStudiesWidget;
 }(DataGridOptionWidget));
-// Here's another example of a working DataGridOptionWidget.
 // When unchecked, this hides the set of Studies that are marked as disabled.
 var DGDisabledStudiesWidget = (function (_super) {
     __extends(DGDisabledStudiesWidget, _super);
@@ -523,7 +518,7 @@ var DGDisabledStudiesWidget = (function (_super) {
         _super.call(this, grid, spec);
         this._spec = spec;
     }
-    DGDisabledStudiesWidget.prototype.getIDFragment = function () {
+    DGDisabledStudiesWidget.prototype.getIDFragment = function (uniqueID) {
         return 'ShowDStudiesCB';
     };
     DGDisabledStudiesWidget.prototype.getLabelText = function () {
@@ -550,7 +545,7 @@ var DGDisabledStudiesWidget = (function (_super) {
         if (data[rowID].dis) {
             for (var r = 0; r < dataRowObjects.length; r++) {
                 var rowElement = dataRowObjects[r].getElement();
-                rowElement.style.backgroundColor = "#FFC0C0";
+                $(rowElement).addClass('disabledRecord');
             }
         }
     };

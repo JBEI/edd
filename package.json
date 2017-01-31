@@ -4,7 +4,8 @@
   "description": "Nodejs code associated with the Django port of EDD.",
   "main": "index.js",
   "dependencies": {
-    "grunt": "^1.0.1"
+    "grunt": "^1.0.1",
+    "grunt-protractor-runner": "^4.0.0"
   },
   "devDependencies": {
     "generator-karma": "^2.0.0",

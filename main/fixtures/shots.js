@@ -1,71 +1,71 @@
 
-var CLASSIDS = ['.linechart', '.barAssay', '.barTime', '.barMeasurement'],
-    BUTTONIDS = ['.line', '.groupByProteinBar', '.groupByTimeBar', '.groupByMeasurementBar'],
+var DIVIDS = ['blank', '#lineGraph', '#barGraphByMeasurement', '#barGraphByLine', '#barGraphByTime'],
+    BUTTONIDS = ['blank', '#lineGraphButton', '#measurementBarGraphButton', '#lineBarGraphButton', '#timeBarGraphButton'],
     SCREENSHOT_WIDTH = 1280,
     SCREENSHOT_HEIGHT = 900,
-    LOAD_WAIT_TIME = 5000,
+
     page = require("webpage").create();
-
-var renderPage = function(page, elementId, buttonId){
-
-  var clipRect = page.evaluate(function(buttonId, elementId) {
-        if (buttonId != '.line') {
-            document.querySelector('.active').click();
-            document.querySelector(buttonId).click();
-        } else {
-            document.querySelector(buttonId).click();
-        }
-        return document.querySelector(elementId).getBoundingClientRect();
-    }, buttonId, elementId);
-    
-    console.log("this is the clipRect " + JSON.stringify(clipRect));
-    
-    page.clipRect = {
-                top:    clipRect.top,
-                left:   clipRect.left,
-                bottom: clipRect.bottom,
-                width:  clipRect.width,
-                height: clipRect.height
-        };
-    var filename = elementId.slice(1) + '.png';
-    page.render('main/fixtures/newshots/' + filename);
-    console.log("rendered:", filename);
-};
-
-
-
-var exitIfLast = function(index,array){
-    console.log(array.length - index-1, "more screenshots to go!")
-    console.log("~~~~~~~~~~~~~~")
-    if (index == array.length-1){
-        console.log("exiting phantomjs")
-        phantom.exit();
-    }
-};
-
-var takeScreenshot = function(elementId, buttonId){
-
-    console.log("opening with: ", elementId);
-    console.log('button ', buttonId);
-
     page.viewportSize = {width:SCREENSHOT_WIDTH, height:SCREENSHOT_HEIGHT};
 
-    page.open('http://127.0.0.1:8081/');
-
-    console.log("waiting for page to load...");
-
-    page.onLoadFinished = function() {
-        setTimeout(function(){
-            console.log("that's long enough");
-            renderPage(page, elementId, buttonId);
-            exitIfLast(index,CLASSIDS);
-            index++;
-            takeScreenshot(CLASSIDS[index], BUTTONIDS[index]);
-        },LOAD_WAIT_TIME)
+function run(i) {
+    if (i < 0) {
+        return phantom.exit();
     }
+    page.open('http://127.0.0.1:8081/', function (status) {
+        var id = BUTTONIDS[i];
+        page.onLoadFinished = function () {
+            console.log('page loaded');
+            if (i === 1) {
+                page.evaluate(function (id) {
+                    document.querySelector(id).click();
+                }, id)
+            }
+            if (i === 2 ) {
+                page.evaluate(function (id) {
+                    document.querySelector('#barGraphButton').click();
+                    document.querySelector(id).click();
+                }, id);
+            } else if (i === 3) {
+                clipRect = page.evaluate(function (id) {
+                    document.querySelector('#barGraphButton').click();
+                    document.querySelector(id).click();
+                }, id);
+            } else if (i === 4) {
+               page.evaluate(function (id) {
+                document.querySelector('#barGraphButton').click();
+                document.querySelector(id).click();
+            }, id);
+            }
 
-};
+            var clipRect = {
+                "bottom": 1251.1875,
+                "height": 902,
+                "left": 15,
+                "right": 1265,
+                "top": 349.1875,
+                "width": 1250
+            };
 
-var index = 0; 
+            page.clipRect = {
+                top: clipRect.top,
+                left: clipRect.left,
+                bottom: clipRect.bottom,
+                width: clipRect.width,
+                height: clipRect.height
+            };
 
-takeScreenshot(CLASSIDS[index], BUTTONIDS[index]);
+            var filename = DIVIDS[i].slice(1) + '.png';
+            console.log('file name ' + filename);
+
+            setTimeout(function () {
+                page.render('main/fixtures/newshots/' + filename);
+            }, 2000);
+
+        };
+        setTimeout(function() {
+    run(i - 1);
+}, 3000)
+
+    })
+}
+run(4);

@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import operator
 import re
 
+from builtins import str
 from django.conf import settings
 from django.db.models import Q
 from django.http import JsonResponse
@@ -172,7 +173,7 @@ def search_sbml_species(request):
 def search_strain(request):
     """ Autocomplete delegates to ICE search API. """
     auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=request.user.email)
-    ice = IceApi(auth=auth)
+    ice = IceApi(auth=auth, verify_ssl_cert=settings.VERIFY_ICE_CERT)
     term = request.GET.get('term', '')
     found = ice.search_entries(term, suppress_errors=True)
     results = []

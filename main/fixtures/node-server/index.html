@@ -4,422 +4,330 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>
+
     CJJ-Test - Experiment Data Depot
+
 </title>
-    <script type="text/javascript" src="/static/main/js/lib/jquery/jquery-2.1.4.min.js"></script>
+    <script type="text/javascript" src="/static/main/js/lib/jquery/jquery-3.1.0.min.js"></script>
     <script type="text/javascript" src="https://support.jbei.org/s/d3a33d14666229eeb44aa891f5cfdb9a-T/en_US2qlmkc/70120/555786f388e7417b872cf1ceee812d89/2.0.8/_/download/batch/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector.js?locale=en-US&amp;collectorId=0c7d3216"></script>
+    <link rel="stylesheet" type="text/css" href="/static/main/js/lib/bootstrap/bootstrap.css" />
+    <script type="text/javascript" src="/static/main/js/lib/bootstrap/bootstrap.js"></script>
     <link rel="stylesheet" type="text/css" href="/static/main/common.css" />
 
-
-
+    <link rel="stylesheet" type="text/css" href="/static/main/js/lib/jquery-ui/jquery-ui.min.css" />
+    <script type="text/javascript" src="/static/main/js/lib/jquery-ui/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="/static/main/js/lib/qtip/jquery.qtip.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/main/js/lib/qtip/jquery.qtip.min.css" />
     <script type="text/javascript">
 
         window.EDDData = window.EDDData || {};
         EDDData.currentUserID = 105;
+        EDDData.currentStudyID = 10;
+        EDDData.Studies = {10: {'name': 'CJJ-Test'}}
 
     </script>
+    <script type="text/javascript" src="/static/main/js/Utl.js"></script>
+    <script type="text/javascript" src="/static/main/js/Dragboxes.js"></script>
+    <script type="text/javascript" src="/static/main/js/EDDAutocomplete.js"></script>
+    <script type="text/javascript" src="/static/main/js/EDDEditableElement.js"></script>
+    <script type="text/javascript" src="/static/main/js/Study.js"></script>
 
-
-    <script type="text/javascript" src="/static/main/js/lib/jquery-ui/jquery-ui.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="/static/main/js/lib/jquery-ui/jquery-ui.min.css" />
-    <script type="text/javascript" src="/static/main/js/lib/qtip/jquery.qtip.min.js"></script>
     <script type="text/javascript" src="/static/main/js/lib/underscore/underscore.js"></script>
     <script type="text/javascript" src="/static/main/js/lib/d3/d3.v2.js"></script>
     <script type="text/javascript" src="/static/main/js/lib/d3/d3.tip.js"></script>
-    <script type="text/javascript" src="/static/main/js/lib/bootstrap/bootstrap.js"></script>
-    <link rel="stylesheet" type="text/css" href="/static/main/js/lib/qtip/jquery.qtip.min.css" />
-    <link rel="stylesheet" type="text/css" href="/static/main/js/lib/bootstrap/bootstrap.min.css" />
-    <script type="text/javascript" src="/static/main/js/autocomplete2.js"></script>
-    <script type="text/javascript">
-
-        EDDData.currentStudyID = 10;
-
-    </script>
-    <script type="text/javascript" src="/static/main/js/Dragboxes.js"></script>
     <script type="text/javascript" src="/static/main/js/DataGrid.js"></script>
-    <script type="text/javascript" src="/static/main/js/GraphHelperMethods.js"></script>
-    <script type="text/javascript" src="/static/main/js/Utl.js"></script>
-    <script type="text/javascript" src="/static/main/js/BiomassCalculationUI.js"></script>
-    <script type="text/javascript" src="/static/main/js/Study.js"></script>
-    <script type="text/javascript" src="/static/main/js/StudyGraphing.js"></script>
-    <script type="text/javascript" src="/static/main/js/StudyGraphingHelperMethods.js"></script>
-    <script type="text/javascript" src="/static/main/js/CarbonSummation.js"></script>
-    <script type="text/javascript" src="/static/main/js/StudyCarbonBalance.js"></script>
+    <script type="text/javascript" src="/static/main/js/EDDGraphingTools.js"></script>
     <script type="text/javascript" src="/static/main/js/StudySBMLExport.js"></script>
-    <link rel="stylesheet" type="text/css" href="/static/main/style.css">
-
-    <script type="text/javascript" src="/static/main/js/createMultiAxisLine.js"></script>
-    <script type="text/javascript" src="/static/main/js/GroupedBarMeasurement.js"></script>
-    <script type="text/javascript" src="/static/main/js/LineGraphHelperMethods.js"></script>
-    <script type="text/javascript" src="/static/main/js/BarGraphHelperMethods.js"></script>
+    <script type="text/javascript" src="/static/main/js/Study-Data.js"></script>
+    <script type="text/javascript">
+    </script>
+    <script type="text/javascript" src="/static/main/js/Utl.js"></script>
 
 </head>
-<body style="background-color:
-                 #f4fef4
-                ">
-    <div class="topBanner">
-        <div class="siteLogo">
-            <a href="/">
-                <img src="/static/main/images/JBEI_Corner_Logo-EDD.png"
-                        alt="EDD Logo - Home"/>
-            </a>
-        </div>
-        <div class="userMenu">
-
-                <div>
-                    <span class="user_welcome">Teresa Lopez</span>
-                </div>
-                <div>
-                    <a href="/accounts/logout/">Logout</a>
-                </div>
+<body>
 
 
-            <div><a href="/utilities/">Utilities</a></div>
-            <div>
 
-            <a href="/static/main/help/index.html">Help</a>
+
+
+
+
+<form action="" class="noMargins" style="height:100%;" method="POST">
+    <input type='hidden' name='csrfmiddlewaretoken' value='WcTSVf0ng8oDZlR9G6GlCUOaSTHtTIji' />
+
+<div class="mainFlex">
+    <div id="content" class="content">
+        <div class="topBanner">
+            <div class="siteLogo">
+                <a href="/">
+                    <img style="width:50px;" src="/static/main/images/edd_logo.png" alt="EDD Logo - Home" />
+                </a>
+            </div>
+            <div class="pageName">
+
+
+<div class="editable-field inactive" id="editable-study-name" style="width: 700px; margin:auto;">
+    CJJ-Test
+
+</div>
+
 
             </div>
-        </div>
-        <div class="pageName">
+            <div class="userMenu">
 
-    <h1>CJJ-Test</h1>
-
-        </div>
-    </div>
-    <div class="statusMessage">
-
-            <span class="dev">DEVELOPMENT</span>
-
-
-
-
-    </div>
-    <div class="content">
-
-    <div class="pageSection">
-        <div class="sectionHead" id="genInfoViewBanner">General Information</div>
-
-        <div class="disclose">
-            <div class="sectionChapter">
-                <span class="discloseLink">Edit Details</span>
-            </div>
-            <div class="sectionActions discloseBody">
-                <form action="" class="edd-form" enctype="multipart/form-data" method="POST">
-                    <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
-                    <p><label for="id_study-name">Study Name</label> <input id="id_study-name" maxlength="255" name="study-name" size="50" type="text" value="CJJ-Test" /></p>
-<p><label for="id_study-description">Description</label> <textarea cols="100" id="id_study-description" name="study-description" rows="10">
-CJJ Test</textarea></p>
-<p><label for="id_study-contact_0">Contact</label> <input class="autocomp autocomp_user" id="id_study-contact_0" name="study-contact_0" type="text" value="cjjoshua" /><input id="id_study-contact_1" name="study-contact_1" type="hidden" value="7" /></p>
-                    <p>
-                        <label></label>
-                        <button id="update_study" name="action" value="update">Update Study</button>
-                    </p>
-                </form>
-            </div>
-        </div>
-
-
-        <div class="disclose discloseHide" id="permissions">
-            <div class="sectionChapter" id="permissionsBanner">
-                <span class="discloseLink">Permissions</span>
-            </div>
-            <div class="sectionActions discloseBody">
-
-
-                    <table cellpadding="0" cellspacing="0" class="dataTable sortable">
-                        <tr class="columnLabels">
-                            <th class="sortheader smaller">Who</th>
-                            <th class="sortheader smaller">Level</th>
-                        </tr>
-
-                        <tr class="stripeRowA">
-                            <td>ESE</td>
-                            <td>Write</td>
-                        </tr>
-
-                    </table>
-
-
-                <div class="sectionActions">
-                    <form method="POST" enctype="multipart/form-data" class="permissions edd-form off" action="">
-                        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
-                        <span id="permission_user_box">
-                        <label for="permission_user">
-                            <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
-                            <span>User</span>
-                        </label>
-                        </span>
-                        <span id="permission_group_box">
-                        <label for="permission_group">
-                            <input type="radio" id="permission_group" name="class" value="Group"/>
-                            <span>Group</span>
-                        </label>
-                        </span>
-                        <span id="permission_public_box">
-                        <label for="permission_public">
-                            <input type="radio" id="permission_public" name="class" value="Public"/>
-                            <span>Public</span>
-                        </label>
-                        </span>
-                        <select name="type">
-                            <option value="N">None</option>
-                            <option value="R">Read</option>
-                            <option value="W">Write</option>
-                        </select>
-                        <button id="set_permission">Set Permission</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="disclose discloseHide" id="attachments">
-            <div class="sectionChapter" id="attachmentsBanner">
-                <span class="discloseLink">Attachments (0)</span>
-            </div>
-            <div class="sectionActions discloseBody">
-
-
-
-<table cellpadding="0" cellspacing="0" class="dataTable sortable">
-
-
-</table>
-
-
-                <div class="sectionActionsw">
-
-                    <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
-                        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
-                        <p><label for="id_file">Attachment</label> <input id="id_file" name="file" type="file" /></p>
-<p><label for="id_description">Description</label> <input id="id_description" name="description" type="text" /></p>
-                        <p><button type="submit" name="action" value="attach">Attach File</button></p>
-                    </form>
-
-                </div>
-            </div>
-        </div>
-        <div class="disclose discloseHide" id="comments">
-            <div class="sectionChapter" id="commentsBanner">
-                <span class="discloseLink">Comments (0)</span>
-            </div>
-            <div class="sectionActions discloseBody">
-                <ol class="comment-list">
-
-                </ol>
-                <div class="sectionActions">
-                    <form method="POST" class="comments edd-form" action="">
-                        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
-                        <p> <textarea cols="40" id="id_body" name="body" rows="10">
-</textarea></p>
-                        <p><button type="submit" name="action" value="comment">Comment</button></p>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-<div class="pageSectionTabs" id="graphTabsOverviewSelected">
-        <div class="active absoverlay">Data Overview</div>
-        <div class="active">Data Overview</div>
-    </div>
-    <div class="pageSection pageSectionTabContent" id="overviewSection">
-        <div class="sectionContent">
-            <div class="btn-group" data-toggle="buttons" id="chartType">
-                <label class="btn btn-default btn-sm active line" >
-                    <input value="linechart" type="radio" autocomplete="off" checked>
-                    <img src="/static/main/images/chart_curve.png" /> </label>
-                <label class="btn btn-default btn-sm" style="margin-right: 20px;">
-                    <input type="radio" autocomplete="off">
-                    <img src="/static/main/images/chart_bar.png" />
-                </label>
-                <label class="btn btn-default btn-sm groupByTimeBar hidden">
-                    <input value="timeBar" type="radio" autocomplete="off">Time
-                </label>
-                <label class="btn btn-default btn-sm groupByProteinBar hidden">
-                    <input type="radio" autocomplete="off"
-                           value="barAssay">Line
-                </label>
-                <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
-                    <input type="radio" value="groupedMeasurement" autocomplete="off">Measurement
-                </label>
-                </div>
-            </div>
-                <div class="linechart">
-                    <div style="display:none" class="checkbox y-checkbox">
-                    <label><input type="checkbox" value="">hide y-axis</label>
+                    <div>
+                        <div class="user_welcome"> </div>
+                        <a href="/accounts/logout/">Logout</a>
                     </div>
-                </div>
-                <div class="barTime">
-                    <div style="display:none" class="checkbox y-checkbox">
-                    <label><input type="checkbox" value="">hide y-axis</label>
-                    </div>
-                </div>
-                <div class="barAssay">
-                    <div style="display:none" class="checkbox y-checkbox">
-                    <label><input type="checkbox" value="">hide y-axis</label>
-                    </div>
-                </div>
-                <div class="barMeasurement">
-                    <div class="checkbox y-checkbox" style="display:none">
-                    <label><input type="checkbox" value="">hide y-axis</label>
-                    </div>
-                </div>
 
-            <div id="maingraph" class="graphContainer"></div>
-
-        <div class="sectionChapter disclose discloseHide">
-            <span class="discloseLink"><span>Filtering</span></span>
-            <span class="tableControl" id="pointsDisplayedSpan"></span>
-            <div id="mainFilterSection" class="filteringSection discloseBody">
-                <div class="filterTable"></div>
-            </div>
             </div>
         </div>
-    </div>
+        <div class="statusMessage">
 
 
 
-    <div class="bare-header">
-        <a href="/study/10/import">Import tabular data...</a>
-    </div>
-    <div class="pageSection minor disclose discloseHide" id="lineMain">
-        <div class="sectionHead">
-            <span class="discloseLink"><a href="#">Add A New Line</a></span>
-            <div class="clear"></div>
+
+
+
+
+
+
+
+
         </div>
-        <div class="sectionContent discloseBody">
-            <form action="" class="line-edit edd-form" method="POST">
-                <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
-                <p><label for="id_line-name"><input type="checkbox" class="off bulk" name="line-_bulk_name" checked="checked" value/>Line</label> <input id="id_line-name" maxlength="255" name="line-name" type="text" /> <span class="helptext">This field is required</span></p>
-<p><label for="id_line-description"><input type="checkbox" class="off bulk" name="line-_bulk_description" checked="checked" value/>Description</label> <textarea cols="40" id="id_line-description" name="line-description" rows="2">
-</textarea></p>
-<p><label for="id_line-control"><input type="checkbox" class="off bulk" name="line-_bulk_control" checked="checked" value/>Is Control?</label> <input id="id_line-control" name="line-control" type="checkbox" /></p>
-<p><label for="id_line-contact_0"><input type="checkbox" class="off bulk" name="line-_bulk_contact" checked="checked" value/>Contact</label> <input class="autocomp autocomp_user" id="id_line-contact_0" name="line-contact_0" type="text" /><input id="id_line-contact_1" name="line-contact_1" type="hidden" /></p>
-<p><label for="id_line-experimenter_0"><input type="checkbox" class="off bulk" name="line-_bulk_experimenter" checked="checked" value/>Experimenter</label> <input class="autocomp autocomp_user" id="id_line-experimenter_0" name="line-experimenter_0" type="text" /><input id="id_line-experimenter_1" name="line-experimenter_1" type="hidden" /></p>
-<p><label for="id_line-carbon_source_0"><input type="checkbox" class="off bulk" name="line-_bulk_carbon_source" checked="checked" value/>Carbon Source</label> <input class="autocomp autocomp_carbon" id="id_line-carbon_source_0" name="line-carbon_source_0" type="text" /><input id="id_line-carbon_source_1" name="line-carbon_source_1" type="hidden" /></p>
-<p><label for="id_line-strains_0"><input type="checkbox" class="off bulk" name="line-_bulk_strains" checked="checked" value/>Strains</label> <input class="autocomp autocomp_reg" id="id_line-strains_0" name="line-strains_0" type="text" /><input id="id_line-strains_1" name="line-strains_1" type="hidden" /><input id="id_line-meta_store" name="line-meta_store" type="hidden" value="{}" /><input id="initial-line-id_line-meta_store" name="initial-line-meta_store" type="hidden" value="{}" /><input id="id_line-ids" name="line-ids" type="hidden" /></p>
-                <p class="line-edit-meta">
-                    <span class="label">
-                        <input type="text" class="autocomp autocomp_ltype" placeholder="Metadata Type" size="12" />
-                        <input type="hidden" class="line-meta-type" value="" />
-                    </span>
-                    <input type="text" class="line-meta-value" placeholder="Metadata Value" />
-                    <button class="line-meta-add">Add Value</button>
-                </p>
-                <button type="submit" name="action" value="line">Add Line</button>
-            </form>
+
+
+<div class="studyNav">
+    <ui class="nav nav-pills navbar">
+        <li class="">
+            <a href="/study/cjj-test/overview">Overview</a>
+        </li>
+
+            <li class="">
+               <a href="/study/cjj-test/lines">Lines</a>
+            </li>
+
+
+            <li class="active">
+            <a href="/study/cjj-test/">Data</a>
+            </li>
+
+
+            <li class="">
+                <a href="/study/10/import">Import Data</a>
+            </li>
+
+    </ui>
+</div>
+
+
+
+
+
+<div class="buttonBar" id="displayModeButtons">
+    <span class="active" id="lineGraphButton" for="graphDisplayContainer">
+        <img src="/static/main/images/study-data-icon-lines.png" style="vertical-align: bottom" width="18" height="18" />
+        Line Graph
+    </span><span id="barGraphButton" for="graphDisplayContainer">
+        <img src="/static/main/images/study-data-icon-bars.png" style="vertical-align: bottom" width="18" height="18" />
+        Bar Graphs
+    </span><span id="dataTableButton" for="studyAssaysTable">
+        <img src="/static/main/images/study-data-icon-chart.png" style="vertical-align: bottom" width="18" height="18" />
+        Table
+    </span>
+<div class="buttonBar off" id="barGraphTypeButtons">
+  <span id="measurementBarGraphButton" class="active" for="barGraphByMeasurement">
+        Measurement
+    </span> <span id="lineBarGraphButton" for="barGraphByLine">
+        Line
+    </span>
+     <span id="timeBarGraphButton" for="barGraphByTime">
+        Time
+    </span>
+</div>
+        <div id="filterControlsArea" style="margin:auto 0 auto 15px;">
+        <div id="filterControlsMenu" class="pulldownMenu">
+            <div id="filterControlsMenuLabel" class="pulldownMenuLabelOff">View options ▾</div>
+            <div class="pulldownMenuMenuBlock off">
+                <ul>
+                    <li>
+                        <input id="filteringShowDisabledCheckbox" name="filteringShowDisabled" type="checkbox" value="1">
+                        <label for="filteringShowDisabledCheckbox" title="Show assays that have been disabled.">Show Disabled</label>
+                    </li>
+                    <li>
+                        <input id="filteringShowEmptyCheckbox" name="filteringShowEmpty" type="checkbox" value="1">
+                        <label for="filteringShowEmptyCheckbox" title="Show assays that don't have any measurements in them.">Show Empty</label>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
+    <div id="tableControlsArea" class="off" style="margin:auto 0 auto 0;">
+
+    </div>
+</div>
 
 
-    <form action="" class="line-action" method="POST">
-        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
-        <div class="pageSection">
 
-            <table id="studyLinesTable"></table>
-            <div id="linesActionPanel" class="sectionActions off">
-                <span id="linesSelectedCell">0 selected</span>
 
-                <button id="cloneLineButton" type="submit" name="action" value="clone">Clone Line</button>
-                <button id="editLineButton">Edit Line</button>
-                <button id="groupLineButton" type="submit" name="action" value="group">Group As Replicates</button>
-                <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
-                <label for="line_action_mark">
+<div id="graphDisplayContainer">
+    <div id="noData" class="off" style="
+        height: 300px;
+        width: 100%;
+        padding:auto;
+        text-align: center;
+        vertical-align: middle;">
+        No measurements.
+    </div>
+    <div id="tooManyPoints" class="off" style="
+        height: 300px;
+        width: 100%;
+        padding:auto;
+        text-align: center;
+        vertical-align: middle;">
+        Too many points to display!  Please change your filter settings.
+    </div>
+    <div id="graphLoading" class="wait-larger" style="
+        opacity:0.7;
+        height: 300px;
+        width: 100%;
+        padding:auto;">
+    </div>
+    <div id="lineGraph" class="off"></div>
+     <div id="barGraphByMeasurement" class="off"></div>
+    <div id="barGraphByLine" class="off"></div>
+    <div id="barGraphByTime" class="off"></div>
+</div>
+
+
+<table id="studyAssaysTable" class="off"></table>
+
+<div id="assaysActionPanel" class="sectionActions" style="
+    display:flex;
+    flex-direction: row;
+    justify-content: flex-start; /* align items in Main Axis */
+    align-items: stretch; /* align items in Cross Axis */
+    align-content: stretch; /* Extra space in Cross Axis */
+    flex-wrap: nowrap;">
+
+    <div style="
+        flex-grow:0;
+        margin:0 15px 0 auto;
+        font-size:0.9em;
+        display:flex;
+        flex-direction: column;
+        justify-content: center;
+        " class="">
+        <div id="displayedDiv" style="padding:1px;">0 displayed</div>
+        <div id="selectedDiv" style="padding:1px;">0 selected</div>
+    </div>
+<div class="off">
+    <input id="assay_action_mark" type="radio" name="assay_action" value="mark"/>
+    <label for="assay_action_mark">
                     <span>Mark as</span>
                     <select name="disable">
                         <option value="true">Disabled</option>
                         <option value="false">Enabled</option>
                     </select>
-                </label>
-
-                <input type="radio" id="line_action_export" name="line_action" value="export" />
-                <label for="line_action_export">
-                    <span>Export Data</span>
-                    <select name="export">
-                        <option value="csv">as CSV/etc</option>
-                        <option value="sbml">as SBML</option>
-                        <option value="worklist">as Worklist</option>
-                        <option value="study">to New Study</option>
-                    </select>
-                </label>
-                <button type="submit" name="action" value="line_action">Take Action</button>
-            </div>
-        </div>
-
-
-        <div class="pageSection minor disclose discloseHide" id="assayMain">
-            <div class="sectionHead">
-                <span class="discloseLink"><a href="#">Add Assays To Selected Lines</a></span>
-            </div>
-            <div class="sectionContent discloseBody assay-edit edd-form">
-                <p><label for="id_assay-name">Name</label> <input id="id_assay-name" maxlength="255" name="assay-name" type="text" /> <span class="helptext">If left blank, a name in form [Line]-[Protocol]-[#] will be generated. </span></p>
-<p><label for="id_assay-description">Description</label> <textarea cols="40" id="id_assay-description" name="assay-description" rows="2">
-</textarea></p>
-<p><label for="id_assay-protocol">Protocol</label> <select id="id_assay-protocol" name="assay-protocol">
-<option value="" selected="selected">---------</option>
-<option value="1940">2-P pathway</option>
-<option value="1931">CEMS</option>
-<option value="1938">DNS</option>
-<option value="5108">Enzyme Characterization - Plate Reader</option>
-<option value="1927">FAEE</option>
-<option value="5107">Flow Cytometry Characterization</option>
-<option value="1936">GC-FID</option>
-<option value="1929">GC-MS</option>
-<option value="1930">HPLC</option>
-<option value="1925">HPLC1</option>
-<option value="1926">HPLC2</option>
-<option value="1933">HPLC OA</option>
-<option value="1928">HPLCstd</option>
-<option value="1934">LC-MS</option>
-<option value="1935">LC-MS Tyr</option>
-<option value="1932">O2/CO2</option>
-<option value="1924">OD600</option>
-<option value="1939">Proteomics</option>
-<option value="1942">Shotgun (Discovery) Proteomics</option>
-<option value="1941">Targeted Proteomics</option>
-<option value="1937">Transcriptomics</option>
-</select></p>
-<p><label for="id_assay-experimenter_0">Experimenter</label> <input class="autocomp autocomp_user" id="id_assay-experimenter_0" name="assay-experimenter_0" type="text" /><input id="id_assay-experimenter_1" name="assay-experimenter_1" type="hidden" /><input id="id_assay-assay_id" name="assay-assay_id" type="hidden" /></p>
-                <button type="submit" name="action" value="assay">Add Assay</button>
-            </div>
-        </div>
-
-    </form>
-
-    <form action="" class="assay-action" method="POST">
-        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
-        <div class="pageSection" id="assaysSection">
-            <!-- individual protocol assay sections inserted here -->
-            <div id="assaysActionPanel" class="sectionActions off">
-                <span id="assaysSelectedCell">0 selected</span>
-
-                <input id="assay_action_mark" type="radio" name="assay_action" value="mark" />
-                <label for="assay_action_mark">
-                    <span>Mark as</span>
-                    <select name="disable">
-                        <option value="true">Disabled</option>
-                        <option value="false">Enabled</option>
-                    </select>
-                </label>
-                <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
-                <label for="assay_action_delete">Delete Measurements</label>
-                <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
-                <label for="assay_action_edit">Edit Measurements</label>
-                <input id="assay_action_export" type="radio" name="assay_action" value="export" />
-
-                <label for="assay_action_export">Export Data</label>
-                <button name="action" type="submit" value="assay_action">Take Action</button>
-                <div class="clear"></div>
-            </div>
-        </div>
+    </label>
+    <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
+    <label for="assay_action_delete">Delete Measurements</label>
+    <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
+    <label for="assay_action_edit">Edit Measurements</label>
+    <input id="assay_action_export" type="radio" name="assay_action" value="export" />
+    <label for="assay_action_export">Export Data</label>
+    <button name="action" type="submit" value="assay_action">Take Action</button>
+    <div class="clear"></div>
+</div>
+    <div id="tableActionButtons" class="off" style="margin:auto 0 auto 0;">
+        <button id="editMeasurementButton"
+                class="actionButton "
+                disabled="true"
+                title="Edit selected measurements">
+            Edit Measurements
+        </button>
+        <button id="addMeasurementButton"
+                class="actionButton "
+                type="button"
+                disabled="true"
+                title="Add a measurement to selected assays">
+            Add Measurement
+        </button>
+        <button id="deleteButton"
+                class="actionButton "
+                type="submit"
+                name="action"
+                disabled="true"
+                title="Delete selected assays and/or measurements">
+            Delete
+        </button>
+        <button id="disableButton"
+                class="actionButton "
+                type="submit"
+                name="action"
+                value="disable"
+                disabled="true"
+                title="Disable selected assays and/or measurements">
+            Disable
+        </button>
+        <button id="enableButton"
+                class="actionButton off"
+                type="submit"
+                name="action"
+                value="enable"
+                disabled="true"
+                title="Re-enable selected assays and/or measurements">
+            Re-Enable
+        </button>
+    </div>
 
 
-        <div class="pageSection minor disclose discloseHide" id="measurementMain">
-            <div class="sectionHead">
-                <span class="discloseLink"><a href="#">Add Measurements To Selected Assays</a></span>
-            </div>
-            <div class="sectionContent discloseBody measurement-create edd-form">
-                <p><label for="id_measurement-measurement_type_0">Type</label> <input class="autocomp autocomp_measure" id="id_measurement-measurement_type_0" name="measurement-measurement_type_0" type="text" /><input id="id_measurement-measurement_type_1" name="measurement-measurement_type_1" type="hidden" /></p>
+    <div style="margin:auto 30px auto 15px;" class="" title="Add New Line">
+        <button type="button" id="exportButton" class="actionButton primary off">
+            Export Data
+        </button>
+    </div>
+</div>
+
+<div>
+    <input id="hideFilterSection"type="button" style="margin: 14px 0px 0px 15px;" value="Hide Filter Section">
+</div>
+
+<div id="mainFilterSection" class="filteringSection">
+</div>
+
+
+    </div>
+    <div id="bottomBar" class="bottomBar">
+
+
+    </div>
+</div>
+    <div class="footer-text">
+        <span class="footer-text-app">JBEI Experiment Data Depot DEVELOPMENT</span>
+        <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
+
+                <span><a href="/admin/">Administration</a></span>
+
+     <span><a href="/utilities/">Utilities</a></span>
+        <span>
+
+        <a href="/static/main/help/index.html">Help</a>
+
+        </span>
+     <span>
+        <a href="/static/main/manual/user-manual.html">User Manual</a>
+        </span>
+    </div>
+
+</form>
+
+
+
+<div id="addMeasurement" class="off" title="Add Measurements To Selected Assays">
+    <form action="" method="POST">
+        <input type='hidden' name='csrfmiddlewaretoken' value='WcTSVf0ng8oDZlR9G6GlCUOaSTHtTIji' />
+        <p><label for="id_measurement-measurement_type_0">Type</label> <input class="autocomp" eddautocompletetype="MeasurementType" id="id_measurement-measurement_type_0" name="measurement-measurement_type_0" type="text" /><input id="id_measurement-measurement_type_1" name="measurement-measurement_type_1" type="hidden" /></p>
 <p><label for="id_measurement-y_units">Units</label> <select id="id_measurement-y_units" name="measurement-y_units">
 <option value="" selected="selected">---------</option>
 <option value="1">n/a</option>
@@ -446,30 +354,49 @@ CJJ Test</textarea></p>
 <option value="1">Intracellular/Cytosol (Cy)</option>
 <option value="2">Extracellular</option>
 </select> <span class="helptext">(optional) Select if the measurement is inside or outside the organism</span></p>
-                <button type="submit" name="action" value="measurement">Add Measurement</button>
-            </div>
-        </div>
-
+        <button type="submit" name="action" value="measurement">Add Measurement</button>
     </form>
+</div>
+
+<div id="assayMain" class="off" title="Edit Assay">
+    <form action="" method="POST">
+        <input type='hidden' name='csrfmiddlewaretoken' value='WcTSVf0ng8oDZlR9G6GlCUOaSTHtTIji' />
+        <p><label for="id_assay-name">Name</label> <input id="id_assay-name" maxlength="255" name="assay-name" type="text" /> <span class="helptext">If left blank, a name in form [Line]-[Protocol]-[#] will be generated. </span></p>
+<p><label for="id_assay-description">Description</label> <textarea cols="40" id="id_assay-description" name="assay-description" rows="2">
+</textarea> <span class="helptext">Description of this object.</span></p>
+<p><label for="id_assay-protocol">Protocol</label> <select id="id_assay-protocol" name="assay-protocol">
+<option value="" selected="selected">---------</option>
+<option value="1940">2-P pathway</option>
+<option value="1931">CEMS</option>
+<option value="1938">DNS</option>
+<option value="5108">Enzyme Characterization - Plate Reader</option>
+<option value="1927">FAEE</option>
+<option value="5107">Flow Cytometry Characterization</option>
+<option value="1936">GC-FID</option>
+<option value="1929">GC-MS</option>
+<option value="1930">HPLC</option>
+<option value="1925">HPLC1</option>
+<option value="1926">HPLC2</option>
+<option value="1933">HPLC OA</option>
+<option value="1928">HPLCstd</option>
+<option value="1934">LC-MS</option>
+<option value="1935">LC-MS Tyr</option>
+<option value="1932">O2/CO2</option>
+<option value="1924">OD600</option>
+<option value="1939">Proteomics</option>
+<option value="1942">Shotgun (Discovery) Proteomics</option>
+<option value="1941">Targeted Proteomics</option>
+<option value="1937">Transcriptomics</option>
+</select> <span class="helptext">The Protocol used to create this Assay.</span></p>
+<p><label for="id_assay-experimenter_0">Experimenter</label> <input class="autocomp" eddautocompletetype="User" id="id_assay-experimenter_0" name="assay-experimenter_0" type="text" /><input id="id_assay-experimenter_1" name="assay-experimenter_1" type="hidden" /> <span class="helptext">EDD User that set up the experimental conditions of this Assay.</span><input id="id_assay-assay_id" name="assay-assay_id" type="hidden" /></p>
+        <button type="submit" name="action" value="measurement">Add Assay</button>
+    </form>
+</div>
 
 
-    </div>
-    <div class="footer">
-        <div class="footer-text">
-            <span class="footer-text-app">JBEI Experiment Data Depot DEVELOPMENT</span>
-            <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
-        </div>
-    </div>
-
-<!-- Prevent our copy of jQuery from registering as an AMD module on sites that use RequireJS. -->
-
-</body>
-</html>
-
-    </div>
 
 
-<!-- Prevent our copy of jQuery from registering as an AMD module on sites that use RequireJS. -->
+
 
 </body>
 </html>

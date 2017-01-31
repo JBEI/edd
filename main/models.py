@@ -825,6 +825,12 @@ class EDDObject(EDDMetadata, EDDSerialize):
             'created': self.created.to_json(depth) if self.created else None,
         }
 
+    # Used in overview.html.  Serializing directly in the template creates strings like u'description' that
+    # Javascript can't parse.
+    def to_json_str(self, depth=0):
+        json_dict = self.to_json(depth)
+        return json.dumps(json_dict, ensure_ascii=False).encode("utf8")
+
     def user_can_read(self, user):
         return True
 
@@ -2016,7 +2022,7 @@ class ProteinIdentifier(MeasurementType):
             if uniprot_id:
                 name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
         # force query to LIMIT 2
-        proteins = models.ProteinIdentifier.objects.filter(name_match_criteria)[:2]
+        proteins = ProteinIdentifier.objects.filter(name_match_criteria)[:2]
 
         if len(proteins) > 1:
             # fail if protein couldn't be uniquely matched
@@ -2050,7 +2056,7 @@ class ProteinIdentifier(MeasurementType):
                 type_name = measurement_name
                 accession_id = uniprot_id
             # FIXME: this blindly creates a new type; should try external lookups first?
-            p = models.ProteinIdentifier.objects.create(
+            p = ProteinIdentifier.objects.create(
                 type_name=type_name,
                 short_name=uniprot_id,
                 accession_id=accession_id,

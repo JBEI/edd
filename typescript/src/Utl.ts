@@ -50,6 +50,144 @@ module Utl {
 		    }
 		    return mUnits;
 		}
+
+
+		// Helper function to do a little more prep on objects when calling jQuery's Alax handler.
+		// If options contains "data", it is assumed to be a constructed formData object.
+		// If options contains a "rawdata" object, it is assumed to be a standard key-value collection
+		// If options contains "type", the form type will be set to it - valid values are 'GET' or 'POST'.
+		//   If "type" is not specified, it will be 'POST'.
+		// If options contains a "progressBar" object, that object is assumed to be an HTML element of type "progress",
+		//   and the bar will be updated to reflect the upload and/or download completion.
+		static callAjax(options) {
+			var debug = options.debug || false;
+			var processData = false;
+			var formData = options.rawdata || options.data;
+			var url = options.url || '';
+			var type = options.type || 'POST';
+			if ((options.rawdata) && (type != 'POST')) {
+				// Turns object name/attribute pairs into a query string, e.g. ?a=4&b=3 .
+				// Never what we want when using POST.
+				processData = true;
+			}
+			if (debug) { console.log('Calling ' + url); }
+			var headers = {}
+			if (type == 'POST') {
+				headers["X-CSRFToken"] = jQuery.cookie('csrftoken');
+			}
+			$.ajax({
+				xhr: function() {
+					var xhr = new XMLHttpRequest();
+					if (options.progressBar && (options.upEnd - options.upStart > 0)) {
+						// Specifying evt:any to deal with TypeScript compile error
+						// ">> ../site/ALWindow.ts(197,15): error TS2339: Property 'lengthComputable' does not exist on type 'Event'."
+						xhr.upload.addEventListener("progress", function(evt:any) {
+							if (evt.lengthComputable) {
+								var p = ((evt.loaded / evt.total) * (options.upEnd - options.upStart)) + options.upStart;
+								options.progressBar.setProgress(p);
+								if (debug) { console.log('Upload Progress ' + p + '...'); }
+							} else if (debug) {
+								console.log('Upload Progress...');
+							}
+						}, false);
+					}
+					if (options.progressBar && (options.downEnd - options.downStart > 0)) {
+						xhr.addEventListener("progress", function(evt) {
+							if (evt.lengthComputable) {
+								var p = ((evt.loaded / evt.total) * (options.downEnd - options.downStart)) + options.downStart;
+								options.progressBar.setProgress(p);
+								if (debug) { console.log('Download Progress ' + p + '...'); }
+							} else if (debug) {
+								console.log('Download Progress...');
+							}
+						}, false);
+					}
+	                return xhr;
+				},
+				headers: headers,
+				type: type,
+				url: url,
+				data: formData,
+				cache: false,
+				error: function( jqXHR, textStatus, errorThrown ) {
+					if (debug) {
+						console.log(textStatus + ' ' + errorThrown);
+						console.log(jqXHR.responseText);
+					}
+				},
+				contentType: false,
+				processData: processData,
+				success: function() {
+					var a = Array.prototype.slice.call(arguments, -1);
+					if (debug) { console.log(a[0].responseJSON); }
+					if (options.success) {
+						options.success.apply(this, arguments);
+					}
+				}
+			});
+		}
+	}
+
+
+
+	export class Tabs {
+	    // Set up click-to-browse tabs
+	    static prepareTabs() {
+	        // declare the click handler at the document level, then filter to any link inside a .tab
+	        $(document).on('click', '.tabBar span:not(.active)', (e) => {
+	            var targetTab = $(e.target).closest('span');
+	            var activeTabs = targetTab.closest('div.tabBar').children('span.active');
+
+	            activeTabs.removeClass('active');
+	            targetTab.addClass('active');
+
+	            var targetTabContentID = targetTab.attr('for');
+	            var activeTabEls = activeTabs.get();
+
+	            if (targetTabContentID) {
+		            // Hide the content section for whatever tabs were active, then show the one selected
+		            for ( var i = 0; i < activeTabEls.length; i++ ) {
+		                var a = activeTabEls[i];
+		                var tabContentID = $(a).attr('for');
+		                if (tabContentID) {
+			                $('#'+tabContentID).addClass('off');
+			        	}
+		            }
+		            $('#'+targetTabContentID).removeClass('off');
+		    	}
+	        });
+	    }
+	}
+
+
+	// This is currently implemented almost exactly like Tabs above.
+	export class ButtonBar {
+	    // Set up click-to-browse tabs
+	    static prepareButtonBars() {
+	        // declare the click handler at the document level, then filter to any link inside a .tab
+	        $(document).on('click', '.buttonBar span:not(.active)', (e) => {
+	            var targetButton = $(e.target).closest('span');
+	            var activeButtons = targetButton.closest('div.buttonBar').children('span.active');
+
+	            activeButtons.removeClass('active');
+	            targetButton.addClass('active');
+
+	            var targetButtonContentID = targetButton.attr('for');
+	            var activeButtonEls = activeButtons.get();
+
+	            if (targetButtonContentID) {
+		            // Hide the content section for whatever buttons were active, then show the one selected
+		            for ( var i = 0; i < activeButtonEls.length; i++ ) {
+		                var a = activeButtonEls[i];
+		                var ButtonContentID = $(a).attr('for');
+		                if (ButtonContentID) {
+			                $('#'+ButtonContentID).addClass('off');
+			        	}
+		            }
+		            $('#'+targetButtonContentID).removeClass('off');
+		    	}
+	        });
+	    }
 	}
 
 

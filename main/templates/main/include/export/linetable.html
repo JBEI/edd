@@ -1,13 +1,6 @@
 {% load i18n %}
 
-<div class="disclose discloseHide" id="existinglineshide">
-  <div style="margin:10px">
-    <a href="#" class="discloseLink">
-      {% blocktrans with measurement=selection.measurements|length assays=selection.assays|length lines=selection.lines|length %}
-        {{ measurements }} Measurements in {{ assays }} Assays in {{ lines }} Lines Selected
-      {% endblocktrans %}
-    </a>
-  </div>
+<div id="existinglines">
   <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;"> 
     <!--
     Table displaying selected lines; used for table and SBML export pages
@@ -33,7 +26,7 @@
         <th class="sortheader" style="text-align:center" id="hExperimenter">
           <div>{% trans "Experimenter" %}</div>
         </th>
-        <th class="sortheader" style="text-align:left;border-right-width:0px" id="hModified">
+        <th class="sortheader" style="text-align:left" id="hModified">
           <div>{% trans "Last Modified" %}</div>
         </th>
       </tr>

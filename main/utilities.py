@@ -15,10 +15,10 @@ from threadlocals.threadlocals import get_current_request
 
 from edd.utilities import JSONEncoder
 from . import models
-from .models import (
-    CarbonSource, GeneIdentifier, MeasurementUnit, Metabolite, MetadataType, ProteinIdentifier,
-    Strain,
-)
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class JSONDecimalEncoder(JSONEncoder):
@@ -81,10 +81,10 @@ def get_edddata_study(study):
         the given study. """
 
     metab_types = study.get_metabolite_types_used()
-    gene_types = GeneIdentifier.objects.filter(assay__line__study=study).distinct()
-    protein_types = ProteinIdentifier.objects.filter(assay__line__study=study).distinct()
+    gene_types = models.GeneIdentifier.objects.filter(assay__line__study=study).distinct()
+    protein_types = models.ProteinIdentifier.objects.filter(assay__line__study=study).distinct()
     protocols = study.get_protocols_used()
-    carbon_sources = CarbonSource.objects.filter(line__study=study).distinct()
+    carbon_sources = models.CarbonSource.objects.filter(line__study=study).distinct()
     assays = study.get_assays().select_related(
         'line__name', 'created__mod_by', 'updated__mod_by',
     )
@@ -128,8 +128,8 @@ def get_edddata_study(study):
 
 
 def get_edddata_misc():
-    mdtypes = MetadataType.objects.all().select_related('group')
-    unit_types = MeasurementUnit.objects.all()
+    mdtypes = models.MetadataType.objects.all().select_related('group')
+    unit_types = models.MeasurementUnit.objects.all()
     # TODO: find if any of these are still needed on front-end, could eliminate call
     return {
         # Measurement units
@@ -147,7 +147,7 @@ def get_edddata_misc():
 
 def get_edddata_carbon_sources():
     """All available CarbonSource records."""
-    carbon_sources = CarbonSource.objects.all()
+    carbon_sources = models.CarbonSource.objects.all()
     return {
         "MediaTypes": media_types,
         "CSourceIDs": [cs.id for cs in carbon_sources],
@@ -159,7 +159,7 @@ def get_edddata_carbon_sources():
 # TODO unit test
 def get_edddata_measurement():
     """All data not associated with a study or related objects."""
-    metab_types = Metabolite.objects.all()
+    metab_types = models.Metabolite.objects.all()
     return {
         "MetaboliteTypeIDs": [mt.id for mt in metab_types],
         "MetaboliteTypes": {mt.id: mt.to_json() for mt in metab_types},
@@ -167,7 +167,7 @@ def get_edddata_measurement():
 
 
 def get_edddata_strains():
-    strains = Strain.objects.all().select_related("created", "updated")
+    strains = models.Strain.objects.all().select_related("created", "updated")
     return {
         "StrainIDs": [s.id for s in strains],
         "EnabledStrainIDs": [s.id for s in strains if s.active],
@@ -256,6 +256,7 @@ def get_absolute_url(relative_url):
     if current_request and not current_request.is_secure():
         protocol = 'http://'
     return protocol + Site.objects.get_current().domain + relative_url
+
 
 extensions_to_icons = {
     '.zip':  'icon-zip.png',

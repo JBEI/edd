@@ -1,0 +1,69 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
+    <script type="text/javascript">
+
+        EDDData.currentStudyID = {{ study.id }};
+        EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
+        EDDData.Studies = EDDData.Studies || {};
+        EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
+
+    </script>
+    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/EDDEditableElement.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Study.js' %}"></script>
+{% endblock js_css %}
+
+{% block head_title %}
+    {{ study.name }} - Experiment Data Depot
+{% endblock head_title %}
+
+{% block body_prefix %}
+    {# The the 'Lines' and 'data' Study pages declare a form here that starts outside the main flex structure and ecapsulates most of the page, including the title area where the Study name is edited and the bottom bar.  The 'Overview' page cannot do this, since its lower sections need their own forms, but it still needs to encapsulate the title, so we set it up differently.  This difference is why we can't move the form up into study.html . #}
+    {{ block.super }}
+{% endblock body_prefix %}
+
+{% block body_title %}
+<div class="editable-field inactive" id="editable-study-name" style="width: 700px; margin:auto;">
+    {{ study.name }}
+    {{ edit_study.name }}
+</div>
+{% endblock body_title %}
+
+{% block content %}
+<div class="studyNav">
+    <ui class="nav nav-pills navbar">
+        <li class="{% if showingoverview %}active{% endif %}">
+            <a href="/study/{{ study.slug }}/overview">Overview</a>
+        </li>
+        {% if lines %}
+            <li class="{% if showinglines %}active{% endif %}">
+               <a href="/study/{{ study.slug }}/experiment-description">Experiment Description</a>
+            </li>
+        {% endif %}
+        {% if assays %}
+            <li class="{% if showingdata %}active{% endif %}">
+            <a href="/study/{{ study.slug }}/">Data</a>
+            </li>
+        {% endif %}
+    </ui>
+    {% if writable %}
+        <button  style="{% if showingimport %}display:none; {% endif %} float:right;" type="button" class=" actionButton primary larger">
+            <a style="color:white;" href="/study/{{ study.id }}/import">Import Data</a>
+        </button>
+    {% endif %}
+</div>
+
+{% endblock content %}
+
+{% block body_postfix %}
+    {{ block.super }}
+{% endblock body_postfix %}

@@ -15,6 +15,19 @@ img.exampleImage {
 	box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
 }
 
+.stepBorder {
+	background: #fcfcfc;
+    margin: 10px 8px 3px 8px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #a0a0a0;
+}
+
+.stepSeparator {
+	border-top:1px solid #6CA5E9;
+	padding:0em 1em 3px 3em;
+}
+
 /* Formatting for the label that appears when a step is disabled or irrelevant */
 
 div.disabledStepLabel {				
@@ -32,6 +45,7 @@ div.disabledStepLabel {
 
 div.resetButtonDiv {
 	float:right;
+	cursor: pointer;
 	padding:1px 5px;
 	margin:0px 6px 0px 4px;
 	color:#400;
@@ -56,47 +70,7 @@ textarea.dataTextArea {
 	width:98.5%;
 }
 
-div.fileDropInfoArea {
-	margin:24px 8px 24px 8px;
-}
-
-div.fileDropInfoIcon {
-    height:128px;
-    background-repeat: no-repeat;
-    background-attachment: scroll;
-    background-position: center; 
-    background-image: url(images/dropzone-csv-over.png);
-}
-div.fileDropInfoIcon.text {
-    background-image: url(images/dropzone-text-over.png);
-}
-div.fileDropInfoIcon.excel {
-    background-image: url(images/dropzone-excel-over.png);
-}
-div.fileDropInfoIcon.xml {
-    background-image: url(images/dropzone-xml-over.png);
-}
-
-div.fileDropInfoName {
-	color:#8DB0E6;
-	text-align:center;
-	font-size:15px;
-	margin:1px 8px 5px 8px;
-	font-weight:bold;
-}
-
-div.fileDropInfoSending {
-	margin: 3px;
-}
-div.fileDropInfoSending span {
-	font-size:12px;
-	margin-right: 10px;
-}
-
-div.fileDropInfoLog {
-	padding:0px;
-	font-size:12px;
-}
+/* (The file drop zone styling is in common.css) */
 
 
 /* The Step 3 data layout table and graph */
