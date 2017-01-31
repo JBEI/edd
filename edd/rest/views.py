@@ -188,7 +188,6 @@ class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
                 # first try UUID-based input since UUID instantiation is the best way to error check
                 # UUID input
                 try:
-                    UUID(owned_by)
                     queryset = queryset.filter(owned_by__uuid=owned_by)
                 except Exception:
                     # if this wasn't a valid UUID, assume it's a regex for the username
@@ -209,7 +208,6 @@ class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
                 # first try UUID-based input since UUID instantiation is the best way to error check
                 # UUID input
                 try:
-                    UUID(default_units)
                     queryset = queryset.filter(default_units__uuid=default_units)
                 except Exception:
                     # if this wasn't a valid UUID, assume it's a regex for the unit name
