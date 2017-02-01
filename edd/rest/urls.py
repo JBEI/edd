@@ -22,12 +22,12 @@ base_rest_api_router.register(r'protocol', ProtocolViewSet)
 # non-working dev code...maybe useful as an example for further work later on.
 # this was the first attempt to create nested resources based on some misleading docs on the django
 # rest framework
-# rest_api_router.register(r'study/(?P<study>\d+)/lines', views.StudyLineView,
+# rest_api_router.register(r'study/(?P<study>\d+)/experiment-description', views.StudyLineView,
 #                         "StudyLine")
-# rest_api_router.register(r'study/(?P<study>\d+)/lines(/(?P<line>\d+))?',
+# rest_api_router.register(r'study/(?P<study>\d+)/experiment-description(/(?P<line>\d+))?',
 #                          views.StudyListLinesView.as_view(),
 #                          "StudyListLinesView1")
-# rest_api_router.register(r'study/(?P<study>\d+)/lines',
+# rest_api_router.register(r'study/(?P<study>\d+)/experiment-description',
 #                        views.StudyListLinesView.as_view(),
 #                        "StudyListLinesView")
 

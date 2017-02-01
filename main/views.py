@@ -991,7 +991,7 @@ class SbmlView(EDDExportView):
         return super(SbmlView, self).render_to_response(context, **kwargs)
 
 
-# /study/<study_id>/lines/
+# /study/<study_id>/experiment-description/
 def study_lines(request, pk=None, slug=None):
     """ Request information on lines in a study. """
     obj = load_study(request, pk=pk, slug=slug)

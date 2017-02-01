@@ -484,7 +484,7 @@ class EddApi(RestApiClient):
             response = self.session.get(query_url, headers=self._json_header)
         else:
             # make the HTTP request
-            url = '%s/rest/study/%d/lines/' % (self.base_url, study_pk)
+            url = '%s/rest/study/%d/exeriment-description/' % (self.base_url, study_pk)
 
             params = {}
 
@@ -554,7 +554,7 @@ class EddApi(RestApiClient):
         """
         self._prevent_write_while_disabled()
 
-        url = '%s/rest/study/%d/lines/' % (self.base_url, study_id)
+        url = '%s/rest/study/%d/experiment-description/' % (self.base_url, study_id)
 
         new_line = {
             "study": study_id,
