@@ -64,7 +64,7 @@ var StudyOverview;
     // rather than the raw contents of the file.
     function fileReturnedFromServer(fileContainer, result) {
         var currentPath = window.location.pathname;
-        var linesPathName = currentPath.slice(0, -8) + 'lines';
+        var linesPathName = currentPath.slice(0, -8) + 'experiment-description';
         //display success message
         $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Successfully added ' + result['lines_created'] + ' lines! ' +
             'Redirecting you to the study details page');
