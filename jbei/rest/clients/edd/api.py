@@ -554,7 +554,7 @@ class EddApi(RestApiClient):
         """
         self._prevent_write_while_disabled()
 
-        url = '%s/rest/study/%d/experiment-description/' % (self.base_url, study_id)
+        url = '%s/rest/study/%d/lines/' % (self.base_url, study_id)
 
         new_line = {
             "study": study_id,
