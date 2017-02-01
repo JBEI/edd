@@ -39,7 +39,7 @@ study_url_patterns = [
             url(r'^rnaseq/edgepro/$', login_required(views.study_import_rnaseq_edgepro)),
         ])
     ),
-    url(r'^lines/$', login_required(autocomplete.search_study_lines)),
+    url(r'^experiment-description/$', login_required(autocomplete.search_study_lines)),
     url(r'^rename/$',
         login_required(views.StudyUpdateView.as_view(update_action='rename'))),
     url(r'^setdescription/$',
