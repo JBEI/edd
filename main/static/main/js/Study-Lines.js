@@ -395,9 +395,9 @@ var StudyLines;
         postfixVal = $(refRow).find('.meta-postfix'); //returns array of postfix elems present
         prefixVal = $(refRow).find('.meta-prefix'); //returns array of prefix elems present
         //if there is a meta postfix val, hide it.
-        (postfixVal).hide();
+        (postfixVal).remove();
         //if there is a meta prefix val, hide it.
-        (prefixVal).hide();
+        (prefixVal).remove();
         if (type.pre) {
             $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
         }
