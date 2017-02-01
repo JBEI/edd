@@ -138,16 +138,14 @@ def _find_table_of_values (worksheet,
   else :
     assert_is_two_dimensional_list(rows)
   n_rows = len(rows)
-  if (column_search_text is not None) :   # TODO: Why are we assuming this is case insensitive?
+  if (column_search_text is not None) :
+    # We assume this is case insensitive, so Joe Scientist doesn't need to
+    # learn about Caps Lock.
     column_search_text = column_search_text.lower()
   if (column_labels is not None) :
     column_labels = set([ cl.lower() for cl in column_labels ])
   possible_tables = []
-  # TODO: This outer while loop makes things very difficult to follow.
-  # It would be cleaner to break the worksheet up into a list
-  # of table-like chunks of rows in one loop,
-  # then feed them through one of 3 the different parsing loops (inside this block)
-  # in a second phase, perhaps using subroutines for each of the three kinds of loop.
+
   row_index = 0
   while (row_index < n_rows) :
     row = rows[row_index]
@@ -315,12 +313,7 @@ def _find_table_of_values (worksheet,
     tables = []
     for tmp in possible_tables :
       headers = None
-      #for row in tmp[1:] : # internal consistency check
-      #  assert len(row) == len(tmp[0]), (len(row), len(tmp[0]))
-      # TODO: Headers should be split from the table by the logic above,
-      # not down here.
-      # Also TODO: Support multiple rows of headers for parsing methods that
-      # allow it (e.g. freeform table, selection 1 on the data import page)
+
       if (number_of_numerical_cells(tmp[0]) == 0): 
         headers = tmp[0]
         table = tmp[1:]
