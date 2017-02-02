@@ -936,16 +936,6 @@ var DataGrid = (function () {
     };
     return DataGrid;
 }());
-var LineResults = (function (_super) {
-    __extends(LineResults, _super);
-    function LineResults(dataGridSpec) {
-        _super.call(this, dataGridSpec);
-    }
-    LineResults.prototype._getClasses = function () {
-        return 'dataTable sortable dragboxes hastablecontrols';
-    };
-    return LineResults;
-}(DataGrid));
 // Type definition for the records contained in a DataGrid
 var DataGridRecordSet = (function () {
     function DataGridRecordSet() {

@@ -17,12 +17,20 @@ function finish {
 trap finish EXIT
 
 set +e
-EDD_USER=$(git config --get user.name)
-EDD_EMAIL=$(git config --get user.email)
+if [ ! -z "$2" ]; then
+    EDD_EMAIL="$2"
+else
+    EDD_EMAIL=$(git config --get user.email)
+fi
+if [ ! -z "$1" ]; then
+    EDD_USER="$1"
+else
+    EDD_USER=$(git config --get user.name)
+fi
 if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
     echo "${SEPARATOR}"
-    echo "Could not detect git user. Please re-run this script after configuring your"
-    echo "git install with commands like these:"
+    echo "Could not detect git user. Please re-run this script with your name and email, or"
+    echo "after configuring your git install with commands like these:"
     echo ""
     echo -e "\t${BOLD}git config --global user.name 'Alice Liddell'${RESET}"
     echo -e "\t${BOLD}git config --global user.email 'aliddell@example.net'${RESET}"
@@ -51,19 +59,12 @@ if [ ! -f "$DIR/secrets.env" ]; then
     rm "$DIR/secrets.env.bak"
 fi
 
-if [ ! -f "$DIR/edd/settings/local.py" ]; then
-    echo "Copying example local.py settings …"
-    cp "$DIR/edd/settings/local.py-example" "$DIR/edd/settings/local.py"
-    # in-place edit, save backup to .bak file
-    sed -i.bak -e "s/'Jay Bay'/'${EDD_USER}'/;s/'admin@example.org'/'${EDD_EMAIL}'/" \
-        "$DIR/edd/settings/local.py"
-    # remove backup file
-    rm "$DIR/edd/settings/local.py.bak"
-fi
-
 if [ ! -f "$DIR/docker-compose.override.yml" ]; then
     echo "Copying example docker-compose.override.yml settings …"
     cp "$DIR/docker-compose.override.yml-example" "$DIR/docker-compose.override.yml"
+    sed -i.bak -e "s/Alice Liddell/${EDD_USER}/;s/aliddell@example.net/${EDD_EMAIL}/" \
+        "$DIR/docker-compose.override.yml"
+    rm "$DIR/docker-compose.override.yml.bak"
 fi
 
 COMPLETE="true"

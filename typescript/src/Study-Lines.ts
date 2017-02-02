@@ -198,6 +198,31 @@ namespace StudyLines {
             $(lineActionButton).click();
         });
 
+        //when the input value changes, assign a pre or postfix to the metadata if one exists
+
+        var value: any = $('.edd-label').children('input')[1];
+
+        $(value).on("change",function() {
+             var val: any = $(value).val(),
+                type: MetadataTypeRecord = EDDData.MetaDataTypes[val],
+                input = $('.line-meta-value'),
+                line = $(this).parents('.line-edit-meta');
+
+             //remove post and prefix meta values
+             line.find('.meta-postfix').remove();
+             line.find('.meta-prefix').remove();
+
+             if (type) {
+                 if (type.pre) {
+                    $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+                 }
+
+                 if (type.postfix) {
+                    $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
+                 }
+             }
+         });
+
         $('#editLineModal').on('change', '.line-meta > :input', (ev) => {
             // watch for changes to metadata values, and serialize to the meta_store field
             var form = $(ev.target).closest('form'),
@@ -434,14 +459,22 @@ namespace StudyLines {
         form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
     }
 
-
     function insertLineMetadataRow(refRow, key, value) {
-        var row, type, label, input, id = 'line-meta-' + key;
+        var row, type, label, input, postfixVal, prefixVal, id = 'line-meta-' + key;
         row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
         type = EDDData.MetaDataTypes[key];
         label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
         // bulk checkbox?
         input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
+        postfixVal = $(refRow).find('.meta-postfix'); //returns array of postfix elems present
+        prefixVal = $(refRow).find('.meta-prefix'); //returns array of prefix elems present
+        //if there is a meta postfix val, hide it.
+
+        (postfixVal).remove();
+
+        //if there is a meta prefix val, hide it.
+        (prefixVal).remove();
+
         if (type.pre) {
             $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
         }
@@ -450,7 +483,7 @@ namespace StudyLines {
             $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
         }
         return row;
-    }
+}
 
 
     export function editLines(ids:number[]):void {
@@ -549,7 +582,17 @@ namespace StudyLines {
     }
 };
 
+class LineResults extends DataGrid {
 
+    constructor(dataGridSpec:DataGridSpecBase) {
+        super(dataGridSpec);
+    }
+
+    _getClasses():string {
+        return 'dataTable sortable dragboxes hastablecontrols';
+    }
+
+}
 
 // The spec object that will be passed to DataGrid to create the Lines table
 class DataGridSpecLines extends DataGridSpecBase {
