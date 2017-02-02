@@ -145,15 +145,18 @@ def _find_table_of_values(
     else:
         assert_is_two_dimensional_list(rows)
     n_rows = len(rows)
+    # We assume these are case insensitive, so Joe Scientist doesn't need to
+    # learn about Caps Lock.
     if (column_search_text is not None):
         column_search_text = column_search_text.lower()
     if (column_labels is not None):
         column_labels = set([cl.lower() for cl in column_labels])
     possible_tables = []
-    i_row = 0
-    while (i_row < n_rows):
-        row = rows[i_row]
-        i_row += 1
+
+    row_index = 0
+    while (row_index < n_rows):
+        row = rows[row_index]
+        row_index += 1
         n_values = number_of_non_blank_cells(row)
         if n_values >= 2:
             if column_labels is not None:
@@ -167,9 +170,9 @@ def _find_table_of_values(
                         headers.append(value)
                 if len(headers) >= 2:
                     table = []
-                    while i_row < n_rows:
-                        row = [rows[i_row][k] for k in column_indices]
-                        i_row += 1
+                    while row_index < n_rows:
+                        row = [rows[row_index][k] for k in column_indices]
+                        row_index += 1
                         # stop when we hit a row where (at least) the first cell is blank
                         if (row[0] is None):
                             break
@@ -193,9 +196,9 @@ def _find_table_of_values(
                         continue
                     if isinstance(value, string_types) and column_search_text in value.lower():
                         headers = row[i_cell:]
-                        while (i_row < n_rows):
-                            row = rows[i_row][i_cell:]
-                            i_row += 1
+                        while (row_index < n_rows):
+                            row = rows[row_index][i_cell:]
+                            row_index += 1
                             if (row[0] is not None):
                                 table.append(list(row))
                             else:
@@ -213,62 +216,99 @@ def _find_table_of_values(
                         "values": table,
                     }]
             else:
-                n_numeric = number_of_numerical_cells(row)
-                j_row = i_row
-                tmp = []
-                # start with the first non-blank cell in this row, and examine all
-                # successive rows
-                for i_cell, value in enumerate(row):
-                    if value is None:
-                        continue
-                    # iterate over the following rows and see if they follow our rules
-                    # for well-formed tables
-                    start_row = row[i_cell:]
-                    tmp.append(list(start_row))
-                    while (j_row < n_rows):
-                        next_row = rows[j_row][i_cell:]
-                        remainder = rows[j_row][0:i_cell]  # left-ward cells
-                        j_row += 1
-                        if (len(next_row) != len(start_row)):
-                            break
-                        # case 0: there are overhanging non-blank cells to the left of
-                        # the starting row
-                        if number_of_non_blank_cells(remainder) > 0:
-                            tmp = []
-                            break
-                        n_next_values = number_of_non_blank_cells(next_row)
-                        n_next_numeric = number_of_numerical_cells(next_row)
-                        if n_next_values == 0:
-                            # blank row, definitely end of "table"
-                            break
-                        if enforce_non_blank_cells and n_next_values != n_values:
-                            # case 1: incomplete row, strict conditions
-                            break
-                        elif next_row[0] is None or next_row[-1] is None:
-                            # case 2: first cell is blank, not a valid row
-                            if followed_by_blank_row:
-                                tmp = []
-                            break
-                        elif n_next_values > n_values:
-                            # case 3: row appears to be longer than starting row, i.e. not a
-                            # consistent table structure
-                            tmp = []
-                            break
-                        elif n_next_numeric >= 1:
-                            # case 4: numerical values present - append to tmp
-                            tmp.append(list(next_row))
-                        # case 4b: no numeric data, but multiple non-empty cells
-                        elif not expect_numeric_data and n_next_values >= 2:
-                            tmp.append(list(next_row))
-                        # case 5: no numeric values, and therefore not useful
+                contiguous_rows = []
+                contiguous_rows.append(row)
+                row_index_inner = row_index
+                # scan ahead in the table for additional rows that are non-blank, and collect them
+                while (row_index_inner < n_rows):
+                    nb_row = rows[row_index_inner]
+                    row_index_inner += 1
+                    nb_values = number_of_non_blank_cells(nb_row)
+                    if nb_values > 0:
+                        contiguous_rows.append(nb_row)
+                    else:
+                        break
+          
+                # If we only found one row, it might be a headerless run of values.
+                # But if it doesn't contain anything that looks numeric, forget it.
+                if len(contiguous_rows) < 2:
+                    n_numeric = number_of_numerical_cells(contiguous_rows[0])
+                    if n_numeric < 1:
+                        row_index = row_index_inner
+                        continue  # Continue outer while loop - go to next chunk
+
+                first_non_empty_column = None
+                last_non_empty_column = None
+                # If some rows begin or end before or after others, we'll consider the table
+                # to have 'irregular row sizes'.
+                irregular_row_sizes = False
+                found_blank_cells = False
+                for c_rows_index, c_row in enumerate(contiguous_rows):
+
+                    first_non_empty_cell = None
+                    last_non_empty_cell = None
+                    for c_cell_index, c_cell in enumerate(c_row):
+                        if c_cell is None:
+                            # If we've already found one non-empty cell,
+                            # and the row is still continuing, count it as a
+                            # blank cell inside the table.
+                            if first_non_empty_cell is not None:
+                              found_blank_cells = True
+                            continue
+                        if first_non_empty_cell is None:
+                            first_non_empty_cell = c_cell_index
                         else:
-                            break
-                    break
+                            first_non_empty_cell = min(first_non_empty_cell, c_cell_index)
+                        if last_non_empty_cell is None:
+                            last_non_empty_cell = c_cell_index
+                        else:
+                            last_non_empty_cell = max(last_non_empty_cell, c_cell_index)
+
+                    if first_non_empty_column is not None:
+                        if first_non_empty_column != first_non_empty_cell:
+                            first_non_empty_column = min(first_non_empty_column, first_non_empty_cell)
+                            irregular_row_sizes = True
+                    else:
+                        first_non_empty_column = first_non_empty_cell
+
+                    if last_non_empty_column is not None:
+                        if last_non_empty_column != last_non_empty_cell:
+                            last_non_empty_column = max(last_non_empty_column, last_non_empty_cell)
+                            irregular_row_sizes = True
+                    else:
+                        last_non_empty_column = last_non_empty_cell
+
+                # It would be extremely odd if we got this.
+                if (first_non_empty_column is None) or (last_non_empty_column is None):
+                    row_index = row_index_inner
+                    continue  # Outer while loop
+
+                # Enforcing non-blank-ness means we want a rectangular table, with no holes.
+                if enforce_non_blank_cells and (irregular_row_sizes or found_blank_cells):
+                    row_index = row_index_inner
+                    continue  # Outer while loop
+
+                largest_row_size = (last_non_empty_column - first_non_empty_column) + 1
+
+                # We are not going to bother with a 'table' that is 1x1, 1x2, 2x1, 1x3, or 3x1.
+                if largest_row_size * len(contiguous_rows) < 4:
+                    row_index = row_index_inner
+                    continue  # Outer while loop
+
+                # We are going to push these rows in 'unfiltered', starting
+                # from the first non-empty column, under the assumption that
+                # empty leading cells are structurally relevant -
+                # e.g. they indicate null values, or act as spacing for headers.
+                tmp = []
+                for c_rows_index, c_row in enumerate(contiguous_rows):
+                    c_row_part = c_row[first_non_empty_column:]
+                    tmp.append( list(c_row_part) )
+
                 # check that we have a reasonable number of rows in current table
-                if ((len(tmp) > minimum_number_of_data_rows) or
-                        (n_numeric == 0 and len(tmp) > minimum_number_of_data_rows - 1)):
+                if len(tmp) > minimum_number_of_data_rows:
                     possible_tables.append(tmp)
-                    i_row = j_row
+                    row_index = row_index_inner
+
     if column_search_text is not None:
         raise ValueError(
             "The specified search text '%s' could not be associated "
@@ -290,9 +330,7 @@ def _find_table_of_values(
         tables = []
         for tmp in possible_tables:
             headers = None
-            # internal consistency check
-            for row in tmp[1:]:
-                assert len(row) == len(tmp[0]), (len(row), len(tmp[0]))
+
             if number_of_numerical_cells(tmp[0]) == 0:
                 headers = tmp[0]
                 table = tmp[1:]

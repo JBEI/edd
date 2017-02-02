@@ -2168,7 +2168,7 @@ module EDDTableImport {
                             }
                         }
                         return;
-                    } else if (label === '' || value === '') {
+                    } else if (value === '') {
                         // Now that we've dealt with timestamps, we proceed on to other data types.
                         // All the other data types do not accept a blank value, so we weed them out now.
                         return;
@@ -2187,6 +2187,8 @@ module EDDTableImport {
                             this.uniqueMeasurementNames.push(value);
                         }
                         set.measurement_name = value;
+                        return;
+                    } else if (label === '') {
                         return;
                     } else if (pulldown === TypeEnum.Metadata_Name) {   // Metadata
                         if (!seenMetadataNames[label]) {
