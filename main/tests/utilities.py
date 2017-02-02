@@ -8,7 +8,7 @@ from openpyxl import load_workbook
 
 from django.test import TestCase
 
-from main.importer.experiment_desc.parsers import ExperimentDefFileParser
+from main.importer.experiment_desc.parsers import ExperimentDescFileParser
 from main.importer.experiment_desc.parsers import JsonInputParser
 from main.models import (
     CarbonSource, MetadataType, Protocol, Strain, Study, User)
@@ -423,8 +423,8 @@ class CombinatorialCreationTests(TestCase):
         # Parse JSON inputs
         if is_excel_file:
             input = load_workbook(input, read_only=True, data_only=True)
-            parser = ExperimentDefFileParser(protocols_by_pk, line_metadata_types,
-                                             assay_metadata_types)
+            parser = ExperimentDescFileParser(protocols_by_pk, line_metadata_types,
+                                              assay_metadata_types)
         else:
             from pprint import pprint
             pprint(input)

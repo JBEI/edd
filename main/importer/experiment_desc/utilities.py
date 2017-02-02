@@ -416,9 +416,6 @@ class CombinatorialDescriptionInput(object):
     def fractional_time_digits(self, count):
         self.naming_strategy.fractional_time_digits = count
 
-    def _fail_on_ice_error(self):
-        return hasattr(settings, 'EDD_ICE_FAIL_MODE') and settings.EDD_ICE_FAIL_MODE == 'fail'
-
     def replace_strain_part_numbers_with_pks(self, strains_by_part_number, importer,
                                              ignore_integer_values=False):
         """
@@ -437,12 +434,12 @@ class CombinatorialDescriptionInput(object):
                 strain = strains_by_part_number.get(part_number, None)
                 if strain:
                     part_number_list[part_index] = strain.pk
-                elif self._fail_on_ice_error():
+                elif self.fail_on_missing_strain():
                     importer.add_error(UNMATCHED_PART_NUMBER, part_number)
                 else:
                     importer.add_warning(UNMATCHED_PART_NUMBER, part_number)
 
-    def get_unique_strain_ids(self, unique_strain_ids=set()):
+    def get_unique_strain_ids(self, unique_strain_ids):
         """
         Gets a list of unique strain identifiers for this CombinatorialDescriptionInput. Note that
         the type of identifier in use depends on client code.
@@ -721,7 +718,7 @@ class CombinatorialDescriptionInput(object):
                     ###############################################################################
                     # loop over combinatorial assay creation metadata
                     ###############################################################################
-                    # (most likely time as in template files)
+                    # (most likely time as in experiment description files)
                     combo = self.protocol_to_combinatorial_metadata_dict[protocol_pk]
                     visited_pks = set()
                     # outer loop for combinatorial
@@ -839,6 +836,17 @@ class CombinatorialCreationPerformance(object):
         self._subsection_start_time = None
         logger.info('Done with study population in %0.3f seconds' %
                     self.total_time_delta.total_seconds())
+
+
+def fail_on_missing_strain():
+    """
+        Tests what action EDD is configured to take when user has provided a part number in an
+        Experiment Description file that's confirmed missing from the attached ICE instance. This is
+        an error unless EDD is specifically configured to ignore it (e.g. in development). Note
+        that this definition purposefully excludes communication errors
+    """
+    return ((not hasattr(settings, 'MISSING_ICE_PART_ACTION')) or
+             settings.MISSING_ICE_PART_ACTION.upper() != 'WARN')
 
 
 def find_existing_strains(ice_parts, importer):

@@ -9,7 +9,7 @@ module ExperimentDescriptionHelp {
 
     var protocols = [];
 
-    var measurementUnits = {};
+    var measurementUnits = {};  // maps pk -> MeasurementUnit
 
     var loadedProtocols = false;
 

@@ -270,7 +270,7 @@ class CombinatorialInputParser(object):
         raise NotImplementedError()  # require subclasses to implement
 
 
-class ExperimentDefFileParser(CombinatorialInputParser):
+class ExperimentDescFileParser(CombinatorialInputParser):
     """
     File parser that takes a study "template file" as input and reads the contents into a list of
     CombinatorialCreationInput objects.
@@ -278,8 +278,8 @@ class ExperimentDefFileParser(CombinatorialInputParser):
 
     def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk,
                  require_strains=False):
-        super(ExperimentDefFileParser, self).__init__(protocols_by_pk, line_metadata_types_by_pk,
-                                                      assay_metadata_types_by_pk)
+        super(ExperimentDescFileParser, self).__init__(protocols_by_pk, line_metadata_types_by_pk,
+                                                       assay_metadata_types_by_pk)
         self.protocols_by_name = {
             protocol.name.upper(): protocol
             for protocol_pk, protocol in protocols_by_pk.iteritems()
