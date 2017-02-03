@@ -9,7 +9,7 @@ volumes:
   tlsdata: {}
 services:
   postgres:
-    image: postgres:9.4
+    image: postgres:9.6
     restart: always
     volumes:
       - pgdata:/var/lib/postgresql/data
