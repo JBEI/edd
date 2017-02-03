@@ -71,7 +71,7 @@ urlpatterns = [
         login_required(views.StudyCreateView.as_view()),
         name='create_study'
     ),
-    url(r'^study/search/$', login_required(views.study_search)),
+    url(r'^study/study-search/$', login_required(views.study_search)),
 
     # Individual study-specific pages loaded by primary key
     url(

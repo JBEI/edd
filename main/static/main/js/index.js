@@ -288,7 +288,7 @@ var DataGridSpecStudies = (function (_super) {
     DataGridSpecStudies.prototype.requestPageOfData = function (callback) {
         var _this = this;
         $.ajax({
-            'url': '/study/search/',
+            'url': '/study/study-search/',
             'type': 'GET',
             'data': $.extend({}, this._searchOpt, {
                 'q': this._query,
