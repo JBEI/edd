@@ -42,16 +42,16 @@
 <div class="studyNav">
     <ui class="nav nav-pills navbar">
         <li class="{% if showingoverview %}active{% endif %}">
-            <a href="/study/{{ study.slug }}/overview">Overview</a>
+            <a href="{% url 'main:overview' slug=study.slug %}">Overview</a>
         </li>
         {% if lines %}
             <li class="{% if showinglines %}active{% endif %}">
-               <a href="/study/{{ study.slug }}/experiment-description">Experiment Description</a>
+               <a href="{% url 'main:lines' slug=study.slug %}">Experiment Description</a>
             </li>
         {% endif %}
         {% if assays %}
             <li class="{% if showingdata %}active{% endif %}">
-            <a href="/study/{{ study.slug }}/">Data</a>
+            <a href="{% url 'main:detail' slug=study.slug %}"/">Data</a>
             </li>
         {% endif %}
     </ui>
