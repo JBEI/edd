@@ -35,7 +35,7 @@
          {% if new_line.errors %}
     <div class="alert alert-warning alert-dismissible" style="width:313px" role="alert">
         <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-   {{ new_line.errors }}
+    <p>{{ new_line.errors.as_text  }}</p>
     </div>
     {%  endif %}
 <div style="margin-left:15px;">

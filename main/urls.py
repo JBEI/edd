@@ -97,9 +97,6 @@ urlpatterns = [
         )
     ),
 
-    url(r'^study/search/$', login_required(views.study_search)),
-
-
     # Individual study-specific pages loaded by slug
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
