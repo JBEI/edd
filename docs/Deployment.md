@@ -25,6 +25,12 @@ script handles creating two files based on included example files:
 More information and examples can be found in the example files, and copied into the files created
 by the `init-config.sh` script.
 
+The `init-config.sh` script can also optionally take a `--project NAME` argument, and will attempt
+to create a virtualenv with `virtualenvwrapper`, and set the `COMPOSE_PROJECT_NAME` environment
+when the virtualenv is activated. This is useful to have the Docker containers started by Compose
+have a prefix other than `dockerservices`. It will also allow `workon NAME` to take you directly
+to the `docker_services` directory of the deployment.
+
 ## TLS configuration
 
 The included Nginx image will look for TLS-related files mounted to `/var/edd/ssl/` in the nginx
