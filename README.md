@@ -14,12 +14,6 @@ The source code of EDD is published on [GitHub][9]. Pull requests should adhere 
 [Contributing Guidelines][10], and bug reports or feature requests should be directed to the GitHub
 project.
 
-## Contents
-
-* [Getting Started](#Getting_Started)
-* [Running EDD](#Running_EDD)
-* [More Resources](#More_Resources)
-
 ---------------------------------------------------------------------------------------------------
 
 ## Getting Started <a name="#Getting_Started"/>
