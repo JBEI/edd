@@ -81,7 +81,8 @@ if [ ! -f "$DIR/docker-compose.override.yml" ]; then
 fi
 
 if [ ! -z "$PROJECT" ]; then
-    if [ -x `which mkvirtualenv` ]; then
+    if [ -x `which virtualenvwrapper.sh` ]; then
+        source `which virtualenvwrapper.sh`
         if lsvirtualenv -b | grep -qe "^${PROJECT}$"; then
             echo "Specified project name ${PROJECT}, but a virtualenv with that name"
             echo "already exists. No virtualenv was creted for the project."
