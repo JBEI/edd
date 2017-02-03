@@ -8,6 +8,7 @@ echo "pg_hba.conf; when EDD attempts to connect, it finds no database (because c
 echo "refused), then helpfully drops/re-creates the database. I'm adding the script as a Work In"
 echo "Progress. Actual database upgrades should instead do a pg_dump on the old database version,"
 echo "and load that dump into a volume for the new database version."
+exit 0
 
 function print_help() {
     echo "Upgrades a database in a named Docker volume to later PostgreSQL versions."
@@ -72,4 +73,5 @@ if [ $# -eq 3 ]; then
     docker volume rm "$temp_volume"
 else
     print_help
+    exit 0
 fi
