@@ -5,7 +5,7 @@ BOLD="\033[1m"
 RESET="\033[0m"
 SEPARATOR="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 
-function finish {
+function finish() {
     if [ "${COMPLETE}" = "false" ]; then
         echo "${SEPARATOR}"
         echo "The init-config.sh script did not complete before exiting. Please correct any"
@@ -17,6 +17,19 @@ function finish {
 trap finish EXIT
 
 set +e
+PROJECT=
+while [ ! $# -eq 0 ]; do
+    case "$1" in
+        --project)
+            PROJECT="$2"
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 if [ ! -z "$2" ]; then
     EDD_EMAIL="$2"
 else
@@ -65,6 +78,23 @@ if [ ! -f "$DIR/docker-compose.override.yml" ]; then
     sed -i.bak -e "s/Alice Liddell/${EDD_USER}/;s/aliddell@example.net/${EDD_EMAIL}/" \
         "$DIR/docker-compose.override.yml"
     rm "$DIR/docker-compose.override.yml.bak"
+fi
+
+if [ ! -z "$PROJECT" ]; then
+    if [ -x `which mkvirtualenv` ]; then
+        if lsvirtualenv -b | grep -qe "^${PROJECT}$"; then
+            echo "Specified project name ${PROJECT}, but a virtualenv with that name"
+            echo "already exists. No virtualenv was creted for the project."
+            exit 1
+        fi
+        mkvirtualenv -a "$DIR" "$PROJECT"
+        echo "export COMPOSE_PROJECT_NAME=$PROJECT" >> $VIRTUAL_ENV/bin/postactivate
+        echo "unset COMPOSE_PROJECT_NAME" >> $VIRTUAL_ENV/bin/predeactivate
+    else
+        echo "A project name was specified, but virtualenvwrapper is not installed."
+        echo "No virtualenv was created for the project."
+        exit 1
+    fi
 fi
 
 COMPLETE="true"

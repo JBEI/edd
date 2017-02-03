@@ -99,16 +99,9 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
     * __RabbitMQ Management Plugin:__ `https://localhost/rabbitmq/`
 
 * __Interfacing with EDD's services from the command line:__
-    * To run commands in __new__ containers, use `docker-compose run $SERVICE $COMMAND`,
-      e.g.: `docker-compose run edd python manage.py shell`. Many Docker tutorals use "run" to
-      simplify the directions, but it should generally be avoided since it creates new containers
-      unnecessarily.
     * Run commands in __existing__ containers with `docker-compose exec $SERVICE $COMMAND`,
-      e.g.: `docker-compose exec appserver python manage.py shell`
-    * Restart misbehaving services with:  `docker-compose restart $SERVICE`
-    * Other useful sample commands:
-        * Connect to the Postgres command line: `docker-compose exec postgres psql -U postgres`
-        * Connect to the Django shell: `docker-compose exec appserver python manage.py shell`
+      e.g.: `docker-compose exec edd python /code/manage.py shell`
+    * Restart misbehaving services with: `docker-compose restart $SERVICE`
 
 ---------------------------------------------------------------------------------------------------
 
