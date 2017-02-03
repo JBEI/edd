@@ -93,7 +93,7 @@ namespace StudyLines {
 
 
         $.ajax({
-            'url': 'edddata/',
+            'url': '../edddata/',
             'type': 'GET',
             'error': (xhr, status, e) => {
                 $('#overviewSection').prepend("<div class='noData'>Error. Please reload</div>");

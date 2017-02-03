@@ -244,7 +244,6 @@ class Comment(models.Model):
         related_name='comments',
     )
     body = models.TextField(
-        help_text=_('Content of the comment.'),
         verbose_name=_('Comment'),
     )
     created = models.ForeignKey(
@@ -277,7 +276,6 @@ class Attachment(models.Model):
         related_name='files',
     )
     file = models.FileField(
-        help_text=_('Path to file data.'),
         max_length=255,
         upload_to='%Y/%m/%d',
         verbose_name=_('File Path'),
@@ -295,7 +293,6 @@ class Attachment(models.Model):
     )
     description = models.TextField(
         blank=True,
-        help_text=_('Description of attachment file contents.'),
         null=False,
         verbose_name=_('Description'),
     )

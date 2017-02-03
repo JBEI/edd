@@ -83,13 +83,13 @@ module StudyOverview {
     // This is called upon receiving a response from a file upload operation, and unlike
     // fileRead(), is passed a processed result from the server as a second argument,
     // rather than the raw contents of the file.
-    export function fileReturnedFromServer(fileContainer, result): void {
+    export function fileReturnedFromServer(result): void {
 
         var currentPath = window.location.pathname;
-        var linesPathName = currentPath.slice(0, -8) + 'experiment-description';
+        var linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
         //display success message
-        $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Successfully added ' + result['lines_created'] + ' lines! ' +
-            'Redirecting you to the study details page');
+        $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Success!' + result['lines_created'] + ' lines ' +
+            'added! Redirecting to the experiment description page');
         //redirect to lines page
         setTimeout(function () {
             window.location.pathname = linesPathName;
@@ -203,6 +203,21 @@ module StudyOverview {
             })
             .find(':radio').trigger('change').end()
             .removeClass('off');
+        //set style on inputs for permissions
+        $('#permission_user_box').find('input').eq(1).addClass('permissionUser');
+        $('#permission_group_box').find('input').eq(1).addClass('permissionGroup');
+        $('#permission_public_box').addClass('permissionGroup');
+
+        // Set up the Add Measurement to Assay modal
+        $("#permissionsSection").dialog({
+            minWidth: 500,
+            autoOpen: false
+        });
+
+        $("#addPermission").click(function() {
+           $("#permissionsSection").removeClass('off').dialog( "open" );
+            return false;
+        });
     }
 
 

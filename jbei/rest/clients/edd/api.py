@@ -484,7 +484,7 @@ class EddApi(RestApiClient):
             response = self.session.get(query_url, headers=self._json_header)
         else:
             # make the HTTP request
-            url = '%s/rest/study/%d/exeriment-description/' % (self.base_url, study_pk)
+            url = '%s/rest/study/%d/lines/' % (self.base_url, study_pk)
 
             params = {}
 

@@ -64,7 +64,7 @@ var StudyLines;
         $('#worklistButton').attr('title', 'select line(s) first');
         $('#exportLineButton').attr('title', 'select line(s) first');
         $.ajax({
-            'url': 'edddata/',
+            'url': '../edddata/',
             'type': 'GET',
             'error': function (xhr, status, e) {
                 $('#overviewSection').prepend("<div class='noData'>Error. Please reload</div>");

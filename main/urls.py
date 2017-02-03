@@ -54,15 +54,15 @@ urlpatterns = [
     url(r'^tutorials/',
         include([
             url(r'^$', login_required(views.TutorialView.as_view()), name='tutorial'),
-            url(r'^/generate-work-list/$', login_required(views.TutorialViewGenerate.as_view()),
+            url(r'^generate-work-list/$', login_required(views.TutorialViewGenerate.as_view()),
                 name='work-list'),
-            url(r'^/export-data/$', login_required(views.TutorialViewExport.as_view()),
+            url(r'^export-data/$', login_required(views.TutorialViewExport.as_view()),
                 name='export-data'),
-            url(r'^/PCAP-example/$', login_required(views.TutorialViewPCAP.as_view()),
+            url(r'^PCAP-example/$', login_required(views.TutorialViewPCAP.as_view()),
                 name='PCAP'),
-            url(r'^/export-as-sbml/$', login_required(views.TutorialViewExportSBML.as_view()),
+            url(r'^export-as-sbml/$', login_required(views.TutorialViewExportSBML.as_view()),
                 name='export-sbml'),
-            url(r'^/data-visualization/$', login_required(views.TutorialViewDataViz.as_view()),
+            url(r'^data-visualization/$', login_required(views.TutorialViewDataViz.as_view()),
                 name='data-viz'),
         ])
     ),
@@ -78,56 +78,27 @@ urlpatterns = [
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^study/(?P<pk>\d+)/',
         include(
-            [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail_by_pk', )] +
-            study_url_patterns
-        )
+            [
+                url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail_by_pk', ),
+                url(r'^experiment-description/$', login_required(views.StudyLinesView.as_view()), name='lines_by_pk', ),
+                url(r'^overview/$', login_required(views.StudyOverviewView.as_view()), name='overview_by_pk', ),
+            ] + study_url_patterns)
     ),
-
     # Individual study-specific pages loaded by slug
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^study/(?P<slug>[-\w]+)/',
         include(
-            [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail', )] +
+            [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail', ),
+             url(r'^experiment-description/$', login_required(views.StudyLinesView.as_view()), name='lines', ),
+             url(r'^overview/$', login_required(views.StudyOverviewView.as_view()), name='overview', ),
+             ] +
             study_url_patterns
         )
     ),
 
     url(r'^study/search/$', login_required(views.study_search)),
 
-    # Individual study-specific pages loaded by primary key
-    url(
-        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<pk>\d+)/experiment-description',
-        include(
-            [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines_by_pk', )] +
-            study_url_patterns
-        )
-    ),
-
-    # Individual study-specific pages loaded by slug
-    url(
-        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<slug>[-\w]+)/experiment-description',
-        include(
-            [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines', )] +
-            study_url_patterns
-        )
-    ),
-
-    # Individual study-specific pages loaded by primary key
-    url(
-        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<pk>\d+)/overview',
-        include(
-            [url(
-                r'^$',
-                login_required(views.StudyOverviewView.as_view()),
-                name='overview_by_pk',
-            )] +
-            study_url_patterns
-        )
-    ),
 
     # Individual study-specific pages loaded by slug
     url(

@@ -420,7 +420,7 @@ class CreateAttachmentForm(forms.ModelForm):
         model = Attachment
         fields = ('file', 'description', )
         labels = {
-            'file': _('Attachment'),
+            'file': _(''),
             'description': _('Description'),
         }
         widgets = {

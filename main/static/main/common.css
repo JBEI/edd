@@ -194,7 +194,7 @@ a:hover {
 }
 .discloseLink {
     cursor:pointer;
-    color: #606060;
+    color: black;
 }
 .top {
     vertical-align: top !important;
@@ -560,6 +560,7 @@ table.dataTable tr.columnLabels > th.sortheader:hover {
     text-decoration:underline;
     background-color:#CCF;
 }
+
 tr.columnLabels > th.sortedup > div {
     background-image: url(images/sortup-dark.png);
     background-repeat: no-repeat;
@@ -1483,7 +1484,7 @@ ol.comment-list > li {
     padding-left: 14px;
 }
 form.comments textarea {
-    width: 100%;
+    width: 50%;
 }
 
 .exportOptions > p {
@@ -1870,11 +1871,40 @@ div.tooltip2 {
 }
 
 .pageDivider {
-    border-bottom: 1px solid rgba(0,0,0,.1);
-    margin-top: -3.6em;
-    margin-bottom: 3.6em;
+    position:relative;
+    margin-top:30px;
+    margin-bottom:10px;
+    font-weight:600;
 }
 
+.pageDivider span {
+    background-color: white;
+    padding-right: 10px;
+}
+.pageDivider:after {
+    content:"";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0.5em;
+    border-top: 1px solid lightgray;
+    z-index: -1;
+}
+
+.permissionUser {
+    margin-left: 9px;
+    margin-bottom: 10px;
+}
+
+.permissionGroup {
+
+    margin-bottom: 10px;
+}
+
+.indent {
+    margin-left:33px;
+}
 /* Tutorial style */
 
 .tutorialContents> ul {
