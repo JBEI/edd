@@ -7,28 +7,6 @@
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study-Overview.js' %}"></script>
-    <script type="text/javascript">
-    $(function () {
-        $('#helpExperimentDescription').tooltip({
-            content: function () {
-                return $(this).prop('title');
-            },
-            position: { my: "left-10 center", at: "right center" },
-            show: null,
-            close: function (event, ui) {
-                ui.tooltip.hover(
-                function () {
-                    $(this).stop(true).fadeTo(400, 1);
-                },
-                function () {
-                    $(this).fadeOut("400", function () {
-                        $(this).remove();
-                    })
-                });
-            }
-        });
-    });
-    </script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -45,13 +23,7 @@
 <form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;" id="general">
     {% csrf_token %}
 
-    <div style="
-        display:flex;
-        flex-wrap: nowrap;
-        flex-direction: row;
-        align-items: top;
-        justify-content: space-between;
-        ">
+    <div class="overviewFlex">
         <div style="flex-grow:1">
             {{ edit_study.non_field_errors }}
             {{ edit_study.name.errors }}
@@ -93,18 +65,19 @@
     </div>
 </form>
 
-<div style="background-color:#EEEEEE;border:1px solid #E0E0E0;text-align:center;color:gray; padding-bottom:16px;{% if lines %}display:none;{% endif %}">
-    <div class="fd-zone" style="min-height:220px;padding:5px;font-size:17px;" id="templateDropZone">
+<div class="overviewDropZone" style="{% if lines %}display:none;{% endif %}">
+    <div class="fd-zone" id="templateDropZone">
         <div></div>
         Upload an Experiment Description file (
         <a href="{% static 'sample_experiment_description.xlsx' %}">Example </a>
         <a class="dropLink dropImg" href="{% static 'sample_experiment_description.xlsx' %}">
             __</a>)
         <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"
-    title='Drag-and-drop an &lt;a href=&quot;/help/experiment_description/&quot;&gt;Experiment
-                    Description file&lt;/a&gt; into this grey box
+    title='Drag-and-drop an Experiement description file into this grey box
                     to describe your experiment.  Alternatively, you can click on the link below to
-                    manually input your experiment description.'>Help</div>
+                    manually input your experiment description.
+                    &lt;a style="color:blue" href=&quot;/help/experiment_description/&quot;&gt; What is an Experiment
+                    Description file&lt;/a&gt;?'>Help</div>
     </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
@@ -115,26 +88,20 @@
         </div>
         <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
     </div>
-    or <a class="dropLink" href="/study/{{ study.slug }}/lines">manually describe</a> your experiment.
+    or <a class="dropLink"  href="{% url 'main:lines' slug=study.slug %}">manually describe</a> your experiment.
 </div>
 
-<div class="tabBar">
-    {% if writable %}
-        <span class="{% if not new_attach.errors %}{% if not new_comment.errors %}active{% endif %}{% endif %}" for="permissionsSection">
-            Permissions
-    </span>{% endif %}<span class="{% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
-        Attachments ({{ study.attachments|length }})
-    </span><span class="{% if new_comment.errors %}active{% endif %}" for="commentsSection">
-        Comments ({{ study.comment_list|length }})
-    </span>
-</div>
-
-{% if writable %}
-    <div class="pageSection pageSectionTabContent {% if new_attach.errors or new_comment.errors %}off{% endif %}" id="permissionsSection">
-        <div class="sectionContent">
+  {% if writable %}
+<div class="disclose discloseHide">
+    <div class=" pageDivider {% if not new_attach.errors %}{% if not new_comment.errors %}{% endif %}{% endif %}" for="permissionsSection">
+        <span class="discloseLink"> Permissions </span>
+        </div>
+     <div class="discloseBody">
+          <div class="sectionContent indent">
+          <div>Current Permissions</div>
             {% with perms=study.get_combined_permission %}
                 {% if perms %}
-                <table cellpadding="0" cellspacing="0" class="dataTable sortable">
+                <table style="width:50%; margin: 10px 0px 24px 37px" cellpadding="0" cellspacing="0" class="dataTable sortable">
                     <tr class="columnLabels">
                         <th class="sortheader smaller">Who</th>
                         <th class="sortheader smaller">Level</th>
@@ -148,71 +115,87 @@
                 </table>
                 {% endif %}
             {% endwith %}
-            <div class="sectionActions">
-                <form method="POST" enctype="multipart/form-data" class="edd-form off" id="permissions" action="">
+        <button class="actionButton primary" id="addPermission" >Add permission</button>
+     </div>
+    </div>
+ </div>
+{% endif %}
+
+    <div class="disclose discloseHide">
+        <div  class="pageDivider{% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
+            <span class="discloseLink"> Attachments ({{ study.attachments|length }})</span>
+       </div>
+        <div style="padding-bottom: 10px;" class="discloseBody {% if not new_attach.errors %}{% endif %}" id="attachmentsSection">
+            <div class="sectionContent indent">
+                {% with attachments=study.attachments %}
+                    {% include "main/include_attachments.html" %}
+                {% endwith %}
+                {% if writable %}
+                <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
                     {% csrf_token %}
-                    <div class="permission" id="permission_user_box">
-                    <label for="permission_user">
-                        <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
-                        <span>User</span>
-                    </label>
-                    </div>
-                    <div  class="permission"  id="permission_group_box">
-                    <label for="permission_group">
-                        <input type="radio" id="permission_group" name="class" value="Group"/>
-                        <span>Group</span>
-                    </label>
-                    </div>
-                    <div  class="permission" id="permission_public_box">
-                    <label for="permission_public">
-                        <input type="radio" id="permission_public" name="class" value="Public"/>
-                        <span>Everyone</span>
-                    </label>
-                    </div>
-                    <select name="type">
-                        <option value="N">None</option>
-                        <option value="R">Read</option>
-                        <option value="W">Write</option>
-                    </select>
-                    <button id="set_permission">Set Permission</button>
+                    {{ new_attach.as_p }}
+                    <p><button type="submit" name="action" value="attach">Attach File</button></p>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+</div>
+
+<div class="disclose discloseHide">
+    <div class="pageDivider{% if new_comment.errors %}{% endif %}" for="commentsSection">
+        <span class="discloseLink"> Comments ({{ study.comment_list|length }}) </span>
+    </div>
+    <div class="discloseBody{% if not new_comment.errors %}{% endif %}" id="commentsSection">
+        <div class="indent sectionContent">
+            <ol class="comment-list">
+                {% for comment in study.comment_list reversed %}
+                    <li>
+                        <span>{{ comment.created.full_name }} at {{ comment.created.format_timestamp }}</span>
+                        <p>{{ comment.body }}</p>
+                    </li>
+                {% endfor %}
+            </ol>
+            <div class="sectionActions">
+                <form method="POST" class="comments edd-form" action="">
+                    {% csrf_token %}
+                    {{ new_comment.as_p }}
+                    <p><button type="submit" name="action" value="comment">Add Comment</button></p>
                 </form>
             </div>
         </div>
     </div>
-{% endif %}
-
-<div class="pageSection pageSectionTabContent {% if not new_attach.errors %}off{% endif %}" id="attachmentsSection">
-    <div class="sectionContent">
-        {% with attachments=study.attachments %}
-            {% include "main/include_attachments.html" %}
-        {% endwith %}
-        {% if writable %}
-        <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
-            {% csrf_token %}
-            {{ new_attach.as_p }}
-            <p><button type="submit" name="action" value="attach">Attach File</button></p>
-        </form>
-        {% endif %}
-    </div>
 </div>
 
-<div class="pageSection pageSectionTabContent {% if not new_comment.errors %}off{% endif %}" id="commentsSection">
-    <div class="sectionContent">
-        <ol class="comment-list">
-            {% for comment in study.comment_list reversed %}
-                <li>
-                    <span>{{ comment.created.full_name }} at {{ comment.created.format_timestamp }}</span>
-                    <p>{{ comment.body }}</p>
-                </li>
-            {% endfor %}
-        </ol>
+{# add permissions modal #}
+<div class="indent off" title="Add Permission" id="permissionsSection">
         <div class="sectionActions">
-            <form method="POST" class="comments edd-form" action="">
+            <form method="POST" enctype="multipart/form-data" class="edd-form" id="permissions" action="">
                 {% csrf_token %}
-                {{ new_comment.as_p }}
-                <p><button type="submit" name="action" value="comment">Comment</button></p>
+                <div class="permission" id="permission_user_box">
+                <label for="permission_user">
+                    <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
+                    <span>User</span>
+                </label>
+                </div>
+                <div  class="permission"  id="permission_group_box">
+                <label for="permission_group">
+                    <input type="radio" id="permission_group" name="class" value="Group"/>
+                    <span>Group</span>
+                </label>
+                </div>
+                <div  class="permission" id="permission_public_box">
+                <label for="permission_public">
+                    <input type="radio" id="permission_public" name="class" value="Public"/>
+                    <span>Everyone</span>
+                </label>
+                </div>
+                <select name="type">
+                    <option value="N">None</option>
+                    <option value="R">Read</option>
+                    <option value="W">Write</option>
+                </select>
+                <button id="set_permission">Set Permission</button>
             </form>
-        </div>
     </div>
 </div>
 

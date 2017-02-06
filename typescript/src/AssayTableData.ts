@@ -640,7 +640,6 @@ module EDDTableImport {
         // which may call for a reconfiguration of the controls in this step.
         previousStepChanged(): void {
             var mode = this.selectMajorKindStep.interpretationMode;
-            console.log(mode);
             // update input visibility based on user selection in step 1
             this.updateInputVisible();
 
@@ -650,10 +649,10 @@ module EDDTableImport {
             if (mode === 'biolector') {
                 // Biolector data is expected in XML format.
                 $('#step2textarea').addClass('xml');
-                $('#gcmsSampleFile').css('display', 'none');
+                $('#gcmsSampleFile').hide();
                 //show example biolector file
-                $('#biolectorFile').css('display', 'inline-block');
-                $('#prSampleFile').css('display', 'none');
+                $('#biolectorFile').show();
+                $('#prSampleFile').hide();
                 // It is also expected to be dropped from a file.
                 // So either we're already in file mode and there are already parsed sets available,
                 // Or we are in text entry mode waiting for a file drop.
@@ -662,27 +661,27 @@ module EDDTableImport {
                 return;
             } else {
                 //hide example biolector file
-                $('#biolectorFile').css('display', 'none');
+                $('#biolectorFile').hide();
             }
             if (mode === 'hplc') {
                 // HPLC data is expected as a text file.
                 $('#step2textarea').addClass('text');
-                $('#hplcExample').css('display', 'inline-block');
-                $('#prSampleFile').css('display', 'none');
-                $('#gcmsSampleFile').css('display', 'none');
+                $('#hplcExample').show();
+                $('#prSampleFile').hide();
+                $('#gcmsSampleFile').hide();
                 this.nextStepCallback();
                 return;
             } else {
-                $('#hplcExample').css('display', 'none');
+                $('#hplcExample').hide();
             }
             if (mode === 'skyline') {
                 this.nextStepCallback();
-                $('#gcmsSampleFile').css('display', 'none');
+                $('#gcmsSampleFile').hide();
                 //show skyline example file
-                $('#skylineSample').css('display', 'inline-block');
+                $('#skylineSample').show();
                 return;
             } else {
-                $('#skylineSample').css('display', 'none');
+                $('#skylineSample').hide();
             }
             if (mode === 'mdv') {
                 // When JBEI MDV format documents are pasted in, it's always from Excel, so they're always tab-separated.
@@ -695,16 +694,16 @@ module EDDTableImport {
 
             //appends example file proteomics
             if (mode === 'pr') {
-                $('#prSampleFile').css('display', 'inline-block');
+                $('#prSampleFile').show();
             } else {
-                $('#prSampleFile').css('display', 'none');
+                $('#prSampleFile').hide();
             }
             //for std use GC-MS file
             if (mode === 'std') {
-                 $('#prSampleFile').css('display', 'none');
-                $('#gcmsSampleFile').css('display', 'inline-block');
+                 $('#prSampleFile').hide();
+                $('#gcmsSampleFile').show();
             } else {
-                $('#gcmsSampleFile').css('display', 'none');
+                $('#gcmsSampleFile').hide();
             }
             if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
                 // If an excel file was dropped in, its content was pulled out and dropped into the text box.
@@ -2169,7 +2168,7 @@ module EDDTableImport {
                             }
                         }
                         return;
-                    } else if (label === '' || value === '') {
+                    } else if (value === '') {
                         // Now that we've dealt with timestamps, we proceed on to other data types.
                         // All the other data types do not accept a blank value, so we weed them out now.
                         return;
@@ -2188,6 +2187,8 @@ module EDDTableImport {
                             this.uniqueMeasurementNames.push(value);
                         }
                         set.measurement_name = value;
+                        return;
+                    } else if (label === '') {
                         return;
                     } else if (pulldown === TypeEnum.Metadata_Name) {   // Metadata
                         if (!seenMetadataNames[label]) {
@@ -2438,10 +2439,7 @@ module EDDTableImport {
             $('#masterMUnitsValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
 
             // enable autocomplete on statically defined fields
-            //EDDAuto.BaseAuto.createFromElements('#masterMComp', 'MeasurementCompartment');
-            //EDDAuto.BaseAuto.createFromElements('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
-            //EDDAuto.BaseAuto.createFromElements('#masterMUnits', 'MeasurementUnit');
-            //EDDAuto.BaseAuto.createFromElements('#masterUnits', 'MeasurementUnit');
+            EDDAuto.BaseAuto.initPreexisting($('#typeDisambiguationStep'));
         }
 
         setAllInputsEnabled(enabled: boolean) {
@@ -3536,25 +3534,12 @@ module EDDTableImport {
 
             this.lineAuto.visibleInput.data('setByUser', false)
                 .attr('id', lineInputId)
-                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
 
             // create a hidden form field to store the selected value
             this.lineAuto.hiddenInput.attr('id', 'disamLine' + this.visibleIndex)
                 .attr('name', 'disamLine' + this.visibleIndex)
                 .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-
-            // auto-select the line name if possible
-            //if (defaultSelection.lineID) {
-            //    // search for the line ID corresponding to this name.
-                // ATData.existingLines is of type {id: number; n: string;}[]
-            //    (ATData.existingLines || []).forEach((line: any) => {  // TODO: possible optimization here -- no need for linear search
-            //        if (defaultSelection.lineID === line.id) {
-            //            lineNameInput.val(line.n);
-            //            selectedLineIdInput.val(line.id.toString());
-            //            return false; // stop looping
-            //        }
-            //    });
-            //}
         }
 
 

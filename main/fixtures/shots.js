@@ -1,5 +1,6 @@
 
-var CLASSIDS = ['blank', '#lineGraph', '#barGraphByMeasurement', '#barGraphByLine', '#barGraphByTime'],
+var DIVIDS = ['blank', '#lineGraph', '#barGraphByMeasurement', '#barGraphByLine', '#barGraphByTime'],
+    BUTTONIDS = ['blank', '#lineGraphButton', '#measurementBarGraphButton', '#lineBarGraphButton', '#timeBarGraphButton'],
     SCREENSHOT_WIDTH = 1280,
     SCREENSHOT_HEIGHT = 900,
 
@@ -11,29 +12,29 @@ function run(i) {
         return phantom.exit();
     }
     page.open('http://127.0.0.1:8081/', function (status) {
+        var id = BUTTONIDS[i];
         page.onLoadFinished = function () {
             console.log('page loaded');
-            console.log(i);
             if (i === 1) {
-                page.evaluate(function () {
-                    document.querySelector('#lineGraphButton').click();
-                })
+                page.evaluate(function (id) {
+                    document.querySelector(id).click();
+                }, id)
             }
             if (i === 2 ) {
-                page.evaluate(function () {
-                document.querySelector('#barGraphButton').click();
-                document.querySelector('#measurementBarGraphButton').click();
-                });
-            } else if (i === 3) {
-                page.evaluate(function () {
+                page.evaluate(function (id) {
                     document.querySelector('#barGraphButton').click();
-                    document.querySelector('#lineBarGraphButton').click();
-                });
+                    document.querySelector(id).click();
+                }, id);
+            } else if (i === 3) {
+                clipRect = page.evaluate(function (id) {
+                    document.querySelector('#barGraphButton').click();
+                    document.querySelector(id).click();
+                }, id);
             } else if (i === 4) {
-                page.evaluate(function () {
+               page.evaluate(function (id) {
                 document.querySelector('#barGraphButton').click();
-                document.querySelector('#timeBarGraphButton').click();
-            });
+                document.querySelector(id).click();
+            }, id);
             }
 
             var clipRect = {
@@ -53,12 +54,11 @@ function run(i) {
                 height: clipRect.height
             };
 
-            var filename = CLASSIDS[i].slice(1) + '.png';
+            var filename = DIVIDS[i].slice(1) + '.png';
             console.log('file name ' + filename);
 
             setTimeout(function () {
                 page.render('main/fixtures/newshots/' + filename);
-                console.log('hopefully printed something');
             }, 2000);
 
         };

@@ -1,0 +1,177 @@
+---
+# This docker-compose.override.yml file contains local overrides to the Docker Compose
+#   configuration of EDD. A copy based on docker-compose.override.yml-example -- containing some
+#   example overrides in configuration to use in development environments -- will be created from
+#   running the init-config.sh script. Change the values here to alter the settings used when
+#   launching with the `docker-compose` commands.
+
+# SECURITY:
+# Note that defaults configured in this file MUST keep default EDD installs secure so that clients
+#   who install EDD out-of-the-box aren't introducing security risks or exposing services
+#   unintentionally.
+
+# To use the docker-compose.yml file without these overrides, launch Docker Compose like this:
+#   docker-compose -f docker-compose.yml {COMMAND}
+
+# To use the docker-compose.yml file with different overrides, launch Docker Compose like this:
+#   docker-compose -f docker-compose.yml -f different.yml {COMMAND}
+
+# Order matters when specifying overrides! Any scalar values will use the last specified value,
+#   while any lists or dictionaries are merged.
+
+version: '2.1'
+
+volumes:
+
+  # Override existing volume definitions by adding an entry with the same name here. The
+  #   staticdata definition here adds nothing more to the base configuration.
+  staticdata: {}
+  # While the solrdata definition here instructs compose to use the volume named my_volume
+  #   in place of the default PROJECTNAME_solrdata volume created by Compose. To use
+  #   the my_volume volume, you *must* create it yourself using a command like:
+  #   `docker volume create --name my_volume`
+  #solrdata:
+  #  external:
+  #    name: my_volume
+
+  # Add new volume definition(s) by creating new name(s).
+  #mycustomdata: {}
+
+services:
+
+  # Uncomment a service block to override the settings for that block. Examples below override
+  #   settings to expose service ports to all addresses of the Docker host.
+  #postgres:
+  #  # Make the postgres 5432 port available on the Docker host external network
+  #  ports:
+  #    - '5432:5432'
+  #redis:
+  #  # Make the redis 6379 port available on the Docker host external network
+  #  ports:
+  #    - '6379:6379'
+  #solr:
+  #  # Make the solr 8983 port available on the Docker host external network
+  #  ports:
+  #    - '8983:8983'
+  #rabbitmq:
+  #  # Make the rabbitmq management 15672 port available on the Docker host external network
+  #  ports:
+  #    - '15672:15672'
+  #flower:
+  #  # Make the flower 5555 port available on the Docker host external network
+  #  ports:
+  #    - '5555:5555'
+
+  # Override settings for EDD container(s).
+  edd:
+
+    # Examples of overriding the default initialize command below.
+    # To initialize EDD without attempting to run database migrations:
+    #command: [-M, init-only]
+    # To initialize EDD without attempting to load a database or re-index:
+    #command: [-DI, init-only]
+    # To initialize EDD but wait for a newly-defined service foobar to listen on port 1234:
+    #command: [--wait-host, foobar, --wait-port, 1234, init-only]
+
+    # Override the default environment
+    environment:
+
+      # Set the deployment environment flag. Supported values are:
+      #   * DEVELOPMENT,
+      #   * INTEGRATION,
+      #   * PRODUCTION,
+      #   * TEST,
+      #   * or, any of those strings followed by an arbitrary suffix.
+      # Values other than PRODUCTION will create obvious labeling differences in the UI to make
+      #   them easy to distinguish, and to help prevent accidental data changes in production
+      #   during the testing process.
+      EDD_DEPLOYMENT_ENVIRONMENT: "TEST"
+
+      # The below options will set the default administrative user when using the stock local
+      #   settings file. The values will be replaced in this example after running the
+      #   init-config.sh script. To set multiple administrative users, or change any other
+      #   local settings, see the command in the appserver container definition with [LOCAL].
+      EDD_USER: "Alice Liddell"
+      EDD_EMAIL: "aliddell@example.net"
+
+      # Uncomment below to run EDD in debug mode
+      #EDD_DEBUG: "true"
+
+      # The POSTGRES_DUMP variables control cloning of a database prior to EDD launch.
+      POSTGRES_DUMP_FILE: ''
+      POSTGRES_DUMP_URL: ''
+      # Uncomment below lines to copy values from environment on launch, rather than hard-coding
+      #POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
+      #POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
+
+    # Uncomment the below section to specify how ports for the main application server are exposed.
+    #ports:
+    #  # Make the http 8000 port available on the Docker host external network
+    #  - '8000:8000'
+    #  # Alternate configuration: make appserver port 8000 accessible to Docker localhost:8400
+    #  - '127.0.0.1:8400:8000'
+
+    # The default mode is also to run with Python code contained within the edd-core image. To run
+    #   with a local copy of code and do, e.g. live code reload, uncomment and edit the volume
+    #   below. The first part is your local filesystem path, and /code is the location where the
+    #   container will expect externally-loaded code. This setting will ONLY apply to the container
+    #   where it is defined; overrides occur after the extends in the base file. If mounting code
+    #   in the edd service, one should also mount code in the appserver and worker services.
+    #volumes:
+    #  - /full/path/to/source:/code
+
+  # Override settings for the application server
+  appserver:
+
+    # The following ports definition publishes (reading backwards) port 8000 of the container
+    #   on port 8000 of the Docker host using the interface (loopback) with IP 127.0.0.1.
+    ports:
+      - '127.0.0.1:8000:8000'
+
+    # Override the default environment to direct errors to the guilty.
+    environment:
+      EDD_USER: "Alice Liddell"
+      EDD_EMAIL: "aliddell@example.net"
+
+    # [DEVMODE] By default, the appserver runs with the application command; uncomment below to
+    #   run with the devmode command instead and use Django's ruserver to serve the application.
+    #command: [-A, -w, edd, devmode]
+
+    # [LOCAL] For more control over settings on each container, use the --local flag to pass a
+    #   path to a local.py file to use.
+    #command: [-A, --local, /etc/myorg/edd/local.py, -w, edd, application]
+    #volumes:
+    #  - /full/path/to/local.py:/etc/myorg/edd/local.py
+
+    # Mount a development copy of code, rather than using the code in the image, using volumes.
+    #volumes:
+    #  - /full/path/to/source:/code
+
+  worker:
+
+    # Override the default environment to direct errors to the guilty.
+    environment:
+      EDD_USER: "Alice Liddell"
+      EDD_EMAIL: "aliddell@example.net"
+
+    # Mount a development copy of code, rather than using the code in the image, using volumes.
+    #volumes:
+    #  - /full/path/to/source:/code
+
+  # Override settings for the nginx webserver and proxy
+  nginx:
+
+    # Uncomment the below volume to mount a folder containing TLS certificates/keys for copying.
+    #   The container expects the following files:
+    #     * certificate.key = the private key for the certificate
+    #     * certificate.chained.crt = the certificate for the domain + intermediate certificates
+    #     * trustchain.crt = the intermediate certificates in the trust chain to the CA
+    #     * dhparam.pem = PEM-format file containing parameters to use in Diffie-Hellman exchange
+    #   The final :ro specifier ensures that the path is mounted read-only.
+    #volumes:
+    #  - /path/to/certs:/var/edd/ssl:ro
+
+    # Make the http/https ports available on the Docker host loopback interface
+    ports:
+      - '127.0.0.1:80:80'
+      - '127.0.0.1:443:443'

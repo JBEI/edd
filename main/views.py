@@ -156,7 +156,6 @@ class StudyObjectMixin(generic.detail.SingleObjectMixin):
             return qs
         return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
 
-
 class StudyIndexView(generic.edit.CreateView):
     """
     View for the the index page.
@@ -237,6 +236,30 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             request, 'Unknown action, or you do not have permission to modify this study.'
         )
         return False
+
+
+class TutorialView(StudyIndexView):
+    template_name = "main/tutorials/tutorial.html"
+
+
+class TutorialViewGenerate(TutorialView):
+    template_name = "main/tutorials/generateWorklist.html"
+
+
+class TutorialViewExport(TutorialView):
+    template_name = "main/tutorials/exportData.html"
+
+
+class TutorialViewPCAP(TutorialView):
+    template_name = "main/tutorials/PCAP.html"
+
+
+class TutorialViewExportSBML(TutorialView):
+    template_name = "main/tutorials/SBML.html"
+
+
+class TutorialViewDataViz(TutorialView):
+    template_name = "main/tutorials/dataViz.html"
 
 
 class StudyUpdateView(generic.edit.BaseUpdateView, StudyDetailBaseView):
@@ -970,14 +993,6 @@ class SbmlView(EDDExportView):
                 return response
         return super(SbmlView, self).render_to_response(context, **kwargs)
 
-
-# /study/<study_id>/lines/
-def study_lines(request, pk=None, slug=None):
-    """ Request information on lines in a study. """
-    obj = load_study(request, pk=pk, slug=slug)
-    return JsonResponse(Line.objects.filter(study=obj), encoder=JSONDecimalEncoder)
-
-
 # /study/<study_id>/measurements/<protocol_id>/
 def study_measurements(request, pk=None, slug=None, protocol=None):
     """ Request measurement data in a study. """
@@ -1074,7 +1089,7 @@ def study_search(request):
     query = request.GET.get('q', 'active:true')
     opt = request.GET.copy()
     opt['edismax'] = True
-    data = solr.query(query=query, options=opt)
+    data = solr.query(query=query, options=opt.dict())
     # loop through results and attach URL to each
     query_response = data['response']
     for doc in query_response['docs']:

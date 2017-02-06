@@ -1244,12 +1244,31 @@ namespace StudyDataPage {
 
         actionPanelRefreshTimer = null;
 
+        $('#studyAssaysTable').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-50 center", at: "right center" },
+            show: null,
+            close: function (event, ui:any) {
+                ui.tooltip.hover(
+                function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                },
+                function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    })
+                });
+            }
+        });
         // This only adds code that turns the other buttons off when a button is made active,
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
         Utl.ButtonBar.prepareButtonBars();
         // Prepend show/hide filter button for better alignment
         // Note: this will be removed when we implement left side filtering
+
         var showHideFilterButton = $('#hideFilterSection');
         $('#assaysActionPanel').prepend(showHideFilterButton);
 
@@ -1451,11 +1470,7 @@ namespace StudyDataPage {
                 EDDData = $.extend(EDDData || {}, data);
 
                 colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
-                // show assay table by default if there are assays but no assaymeasurements
-                if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
-                    $('#linegraphbutton').removeClass('active');
-                    $('#dataTableButton').addClass('active');
-                }
+
                 progressiveFilteringWidget.prepareFilteringSection();
 
                 $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(() => {
@@ -1527,6 +1542,16 @@ namespace StudyDataPage {
         });
     }
 
+    //when all ajax requests are finished, determine if there are AssayMeasurements.
+    $(document).ajaxStop(function() {
+        // show assay table by default if there are assays but no assay measurements
+        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+            //TODO: create prepare it for no data?
+            $('#dataTableButton').click();
+        } else {
+            $('#lineGraphButton').click();
+        }
+    });
 
     function processMeasurementData(protocol, data) {
         var assaySeen = {},
@@ -1584,7 +1609,6 @@ namespace StudyDataPage {
         }
         queueRefreshDataDisplayIfStale();
     }
-
 
     export function queueRefreshDataDisplayIfStale() {
         if (refresDataDisplayIfStaleTimer) {
@@ -1722,6 +1746,13 @@ namespace StudyDataPage {
         } else {
             $('#selectedDiv').addClass('off');
             $('#displayedDiv').removeClass('off');
+        }
+        //if there are assays but no data, show empty assays
+        //note: this is to combat the current default setting for showing graph on page load
+        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0 ) {
+            if (!$('#TableShowEAssaysCB').prop('checked')) {
+                $('#TableShowEAssaysCB').click();
+            }
         }
     }
 
@@ -2454,7 +2485,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // Specification for the table as a whole
     defineTableSpec():DataGridTableSpec {
         return new DataGridTableSpec('assays', {
-            'defaultSort': 1
+            'defaultSort': 0
         });
     }
 

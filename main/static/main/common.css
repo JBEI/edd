@@ -194,7 +194,7 @@ a:hover {
 }
 .discloseLink {
     cursor:pointer;
-    color: #606060;
+    color: black;
 }
 .top {
     vertical-align: top !important;
@@ -205,6 +205,7 @@ a:hover {
 form.noMargins {
     margin:0;
     padding:0;
+    height:100%;
 }
 
 
@@ -441,6 +442,53 @@ div.sectionActions {
     margin: 10px 0px 10px 0px;
     padding:0;
 }
+
+div.lineFlex {
+    display:flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    margin: 10px 29px 32px 10px;
+    justify-content: space-between;"
+}
+
+div.overviewFlex {
+    display:flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    align-items: top;
+    justify-content: space-between;
+}
+
+div.assayDisplayed {
+    padding:1px;
+}
+
+div.tooManyPoints {
+    height: 300px;
+    width: 100%;
+    padding:auto;
+    text-align: center;
+    vertical-align: middle;
+}
+
+div.assayFlex {
+    flex-grow:0;
+    margin:0 15px 0 auto;
+    font-size:0.9em;
+    display:flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+div.assayActions {
+    display:flex;
+    flex-direction: row;
+    justify-content: flex-start; /* align items in Main Axis */
+    align-items: stretch; /* align items in Cross Axis */
+    align-content: stretch; /* Extra space in Cross Axis */
+    flex-wrap: nowrap;"
+}
+
 div.pageSection.discloseHide.minor {
     background: transparent;
     border-width: 0;
@@ -455,6 +503,10 @@ div.pageSection.minor div.sectionHead {
 ul.studyTabs {
     margin: 15px 0px 10px 0px;
      border-bottom: 1px solid lightgray;
+}
+
+div.noLines {
+    display: none;
 }
 
 
@@ -508,6 +560,7 @@ table.dataTable tr.columnLabels > th.sortheader:hover {
     text-decoration:underline;
     background-color:#CCF;
 }
+
 tr.columnLabels > th.sortedup > div {
     background-image: url(images/sortup-dark.png);
     background-repeat: no-repeat;
@@ -1047,6 +1100,10 @@ table.formTable tr > td textarea {
     max-width: 200px;
 }
 
+#studyAssaysTable tbody > tr:hover, #studyLinesTable tbody > tr:hover, #studiesTable tbody > tr:hover {
+    background-color: #CCF;
+}
+
 tr.multientrybuttonrow:hover div.multientrybutton {
     opacity: 1;
 }
@@ -1382,9 +1439,6 @@ dl.infolist > dd {
   background: #fffff0;
 }
 
-.form-label {
-}
-
 form.attachments > * {
     float: left;
     margin: 0;
@@ -1430,7 +1484,7 @@ ol.comment-list > li {
     padding-left: 14px;
 }
 form.comments textarea {
-    width: 100%;
+    width: 50%;
 }
 
 .exportOptions > p {
@@ -1467,6 +1521,9 @@ form.comments textarea {
     background-attachment: scroll;
     background-position: center;
     background-image: url(images/dropzone-csv.png);
+    min-height:220px;
+    padding:5px;
+    font-size:17px;
 }
 .fd-zone.over {
     background-image: url(images/dropzone-excel_csv-over.png);
@@ -1515,6 +1572,14 @@ div.fileDropInfoName {
     font-size:15px;
     margin:1px 8px 5px 8px;
     font-weight:bold;
+}
+
+div.overviewDropZone {
+    background-color:#EEEEEE;
+    border:1px solid #E0E0E0;
+    text-align:center;
+    color:gray;
+    padding-bottom:16px;
 }
 
 div.fileDropInfoSending {
@@ -1806,9 +1871,45 @@ div.tooltip2 {
 }
 
 .pageDivider {
-    border-bottom: 1px solid rgba(0,0,0,.1);
-    margin-top: -3.6em;
-    margin-bottom: 3.6em;
+    position:relative;
+    margin-top:30px;
+    margin-bottom:10px;
+    font-weight:600;
+}
+
+.pageDivider span {
+    background-color: white;
+    padding-right: 10px;
+}
+.pageDivider:after {
+    content:"";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0.5em;
+    border-top: 1px solid lightgray;
+    z-index: -1;
+}
+
+.permissionUser {
+    margin-left: 9px;
+    margin-bottom: 10px;
+}
+
+.permissionGroup {
+
+    margin-bottom: 10px;
+}
+
+.indent {
+    margin-left:33px;
+}
+/* Tutorial style */
+
+.tutorialContents> ul {
+    padding: 4px;
+    margin-left: 10px;
 }
 
 

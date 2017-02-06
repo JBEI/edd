@@ -1,0 +1,197 @@
+---
+version: '2.1'
+volumes:
+  pgdata: {}
+  solrdata: {}
+  attachdata: {}
+  staticdata: {}
+  redisdata: {}
+  tlsdata: {}
+services:
+  postgres:
+    image: postgres:9.6
+    restart: always
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/healthcheck.sh:/healthcheck.sh
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    expose:
+      - '5432'
+    env_file: secrets.env
+  redis:
+    image: redis:3.2
+    restart: always
+    volumes:
+      - redisdata:/data
+      - ./redis/healthcheck.sh:/healthcheck.sh
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    expose:
+      - '6379'
+    command: redis-server --appendonly yes
+  solr:
+    build: ./solr/
+    image: solr:5.5-edd
+    restart: always
+    volumes:
+      - solrdata:/opt/solr/server/solr
+    # the built Solr image has a default healthcheck; can override interval etc.
+    healthcheck:
+      interval: 1m
+      timeout: 15s
+      retries: 3
+    expose:
+      - '8983'
+  rabbitmq:
+    image: rabbitmq:3.6-management
+    restart: always
+    hostname: rabbitmq
+    env_file: secrets.env
+    environment:
+      HOSTNAME: rabbitmq
+      RABBITMQ_DEFAULT_USER: edd_user
+      RABBITMQ_DEFAULT_VHOST: edd
+      RABBITMQ_NODENAME: rabbit@rabbitmq
+    expose:
+      - '5672'
+      - '15672'
+    volumes:
+      - ./rabbitmq/healthcheck.sh:/healthcheck.sh
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+  flower:
+    build: ./flower/
+    image: flower:0.9-edd
+    restart: always
+    env_file: secrets.env
+    environment:
+      AMQP_ADMIN_HOST: rabbitmq
+      AMQP_ADMIN_USERNAME: edd_user
+      AMQP_HOST: rabbitmq
+      AMQP_USERNAME: edd_user
+      FLOWER_URL_PREFIX: flower
+    depends_on:
+      - rabbitmq
+    links:
+      - rabbitmq
+    expose:
+      - '5555'
+    healthcheck:
+      test: ['CMD', '/opt/celery-flower/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+  smtp:
+    build: ./smtp/
+    image: exim4:1.0-edd
+    restart: always
+    expose:
+      - '25'
+    healthcheck:
+      test: ['CMD', '/bin/healthcheck.sh', 'appserver']
+      interval: 1m
+      timeout: 1s
+      retries: 3
+  edd:
+    build: ./edd/
+    image: edd-core:latest
+    command: [init-only]
+    env_file: secrets.env
+    environment:
+      SEARCH_URL: "solr://solr:8983/solr/"
+      EDD_DEBUG: "false"
+    expose:
+      - '24051'
+    volumes:
+      - attachdata:/var/www/uploads
+      - staticdata:/var/www/static
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', '-LSs', 'http://localhost:24051/']
+      interval: 1m
+      timeout: 1s
+      retries: 3
+  worker:
+    extends:
+      service: edd
+    restart: always
+    command: [-A, -w, edd, worker]
+    depends_on:
+      - edd
+      - postgres
+      - rabbitmq
+      - redis
+      - solr
+    links:
+      - edd
+      - postgres
+      - rabbitmq
+      - redis
+      - smtp
+      - solr
+    environment:
+      - C_FORCE_ROOT=true
+    healthcheck:
+      test: ['CMD', 'celery', 'inspect', 'ping', '-A', 'edd', '--workdir', '/code']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+  appserver:
+    extends:
+      service: edd
+    restart: always
+    command: [-A, -w, edd, application]
+    depends_on:
+      - edd
+      - postgres
+      - rabbitmq
+      - redis
+      - solr
+    links:
+      - edd
+      - postgres
+      - rabbitmq
+      - redis
+      - smtp
+      - solr
+    expose:
+      - '8000'
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', '-LSs', 'http://localhost:8000/health/']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+  nginx:
+    build: ./nginx/
+    image: nginx:1.11-edd
+    restart: always
+    depends_on:
+      - appserver
+      - flower
+      - rabbitmq
+      - solr
+    links:
+      - appserver
+      - flower
+      - rabbitmq
+      - solr
+    volumes_from:
+      - appserver
+    volumes:
+      - tlsdata:/etc/ssl/edd
+    # TODO: once Let's Encrypt used to init certificates, remove -k option to curl
+    # TODO: add dedicated /health location in nginx config instead of reading file
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', '-kLSs', 'https://localhost/static/500.html']
+      interval: 1m
+      timeout: 5s
+      retries: 3
