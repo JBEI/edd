@@ -25,10 +25,3 @@ SKIPPED_KEY = 'skipped_columns'
 SUSPECTED_MATCH_STRAINS = 'suspected_match_strains'
 UNMATCHED_HEADERS_KEY = 'unmatched_column_header_indexes'
 UNMATCHED_PART_NUMBER = 'unmatched_part_number'
-
-OK = 200
-INTERNAL_SERVER_ERROR = 500
-BAD_REQUEST = 400
-CONFLICT = 409
-UNPROCESSABLE = 422
-
