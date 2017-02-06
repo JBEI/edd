@@ -6,7 +6,6 @@
 /// <reference path="DataGrid.ts" />
 
 declare var EDDData:EDDData;
-
 namespace StudyLines {
     'use strict';
 
@@ -262,7 +261,7 @@ namespace StudyLines {
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
-                url: 'measurements/' + id + '/',
+                url: '../measurements/' + id + '/',
                 type: 'GET',
                 dataType: 'json',
                 error: (xhr, status) => {
