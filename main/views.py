@@ -28,7 +28,7 @@ from rest_framework.exceptions import MethodNotAllowed
 
 from main.importer.experiment_desc.constants import ICE_COMMUNICATION_ERROR, UNPROCESSABLE, \
     INTERNAL_SERVER_ERROR
-from main.importer.experiment_desc.importer import ERRORS_KEY
+from main.importer.experiment_desc.importer import ERRORS_KEY, _build_errors_dict
 from . import autocomplete, models as edd_models, redis
 from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
@@ -1254,7 +1254,7 @@ def study_import_table(request, pk=None, slug=None):
     )
 
 
-# /study/<study_id>/define/
+# /study/<study_id>/describe_experiment/
 @ensure_csrf_cookie
 def study_define(request, pk=None, slug=None):
     """
@@ -1284,15 +1284,12 @@ def study_define(request, pk=None, slug=None):
             status_code, reply_content = (
                 importer.do_import(request, not is_excel_file, allow_duplicate_names,
                                    dry_run, ignore_ice_communication_errors))
-        return JsonResponse(reply_content, status_code)
+        return JsonResponse(reply_content, status=status_code)
     except RuntimeError as e:
-        logger.exception('Failed to import study definition')
+        logger.exception('Exception describing experiment')
         importer.errors['exceptions'].append(e)
         return JsonResponse(
-            {
-                'errors': importer.errors,
-                'warnings': importer.warnings,
-            },
+            _build_errors_dict(importer.errors, importer.warnings),
             status=INTERNAL_SERVER_ERROR
         )
 

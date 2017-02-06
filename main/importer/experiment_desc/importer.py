@@ -67,14 +67,14 @@ def define_study(stream, user, study, is_json,
                               ignore_ice_communication_errors=ignore_ice_errors)
 
 
-def _build_errors_dict(errors, warnings, val=None):
-    if val is None:
-        val = {}
+def _build_errors_dict(errors, warnings, content=None):
+    if content is None:
+        content = {}
     if errors:
-        val[ERRORS_KEY] = errors
+        content[ERRORS_KEY] = errors
     if warnings:
-        val[WARNINGS_KEY] = warnings
-    return val
+        content[WARNINGS_KEY] = warnings
+    return content
 
 
 class CombinatorialCreationImporter(object):
@@ -165,7 +165,7 @@ class CombinatorialCreationImporter(object):
         # database insertions. Note: returning normally causes the transaction to commit, but that
         # is ok here since no DB changes have occurred yet
         if self.errors:
-            return (BAD_REQUEST, _build_errors_dict(self.errors, self.warnings))
+            return BAD_REQUEST, _build_errors_dict(self.errors, self.warnings)
 
         with transaction.atomic(savepoint=False):
             return self._define_study(
@@ -275,7 +275,7 @@ class CombinatorialCreationImporter(object):
             content = {
                 'planned_results': planned_names
             }
-            _build_errors_dict(self.errors, self.warnings, val=content)
+            _build_errors_dict(self.errors, self.warnings, content=content)
 
             status = 200
             if self.errors and not allow_duplicate_names:
@@ -326,7 +326,9 @@ class CombinatorialCreationImporter(object):
             'assays_created': total_assay_count,
             'runtime_seconds': performance.total_time_delta.total_seconds()
         }
-        return OK, _build_errors_dict(content)  # just add warnings -- no errors at this point
+
+        # just add warnings -- no errors at this point
+        return OK, _build_errors_dict(self.errors, self.warnings, content=content)
 
     def _compute_and_check_names(self, combinatorial_inputs, strains_by_pk, allow_duplicate_names):
         """
