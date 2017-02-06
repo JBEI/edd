@@ -5,15 +5,14 @@ administrator account.
 This initial version is mostly a cut-and-paste job from other scripts, and serves mainly as a
 simple test of EDD's new supporting REST API features and a simplification for repeatedly
 computing these statistics.
-Usage statistics should eventually be integrated into EDD's API.
+Usage statistics should likely eventually be integrated into EDD's UI.
 """
 import argparse
+import arrow
 import os
-
 import re
-from collections import defaultdict
-
 import requests
+from collections import defaultdict
 from dateutil import tz
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
@@ -21,7 +20,6 @@ from jbei.rest.auth import EddSessionAuth
 from jbei.rest.clients import EddApi
 from jbei.rest.utils import is_url_secure
 from jbei.utils import session_login, TerminalFormats, UserInputTimer
-import arrow
 
 from .settings import (EDD_REQUEST_TIMEOUT, EDD_URL, VERIFY_EDD_CERT)
 
