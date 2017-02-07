@@ -310,7 +310,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 
     requestPageOfData(callback?:(success:boolean) => void):DGPageDataSource {
         $.ajax({
-            'url': '/study/search/',
+            'url': '/study/study-search/',
             'type': 'GET',
             'data': $.extend({}, this._searchOpt, {
                 'q': this._query,

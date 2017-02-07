@@ -83,13 +83,14 @@ module StudyOverview {
     // This is called upon receiving a response from a file upload operation, and unlike
     // fileRead(), is passed a processed result from the server as a second argument,
     // rather than the raw contents of the file.
-    export function fileReturnedFromServer(result): void {
+    export function fileReturnedFromServer(fileContainer, result): void {
 
         var currentPath = window.location.pathname;
         var linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
         //display success message
-        $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Success!' + result['lines_created'] + ' lines ' +
+        $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Success! ' + result['lines_created'] + ' lines ' +
             'added! Redirecting to the experiment description page');
+
         //redirect to lines page
         setTimeout(function () {
             window.location.pathname = linesPathName;
