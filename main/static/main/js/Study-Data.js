@@ -1346,7 +1346,7 @@ var StudyDataPage;
                 //pulling in protocol measurements AssayMeasurements
                 $.each(EDDData.Protocols, function (id, protocol) {
                     $.ajax({
-                        url: '../measurements/' + id + '/',
+                        url: 'measurements/' + id + '/',
                         type: 'GET',
                         dataType: 'json',
                         error: function (xhr, status) {
@@ -1391,7 +1391,7 @@ var StudyDataPage;
     function requestAssayData(assay) {
         var protocol = EDDData.Protocols[assay.pid];
         $.ajax({
-            url: ['../measurements', assay.pid, assay.id, ''].join('/'),
+            url: ['measurements', assay.pid, assay.id, ''].join('/'),
             type: 'GET',
             dataType: 'json',
             error: function (xhr, status) {
