@@ -380,23 +380,34 @@ class CreateStudyForm(forms.ModelForm):
                 user=s.created.mod_by,
                 permission_type=StudyPermission.WRITE,
             )
-            # get the ID of the group that should have study read permissions by default.
-            # TODO: this should be configurable in a later version, but for now we'll hard/code
-            # in a way that tolerates non-existence / removal of the default group used at JBEI
-            default_group_name = 'ESE'
-            try:
-                default_group = Group.objects.get(name=default_group_name)
-                s.grouppermission_set.update_or_create(
-                    group_id=default_group.pk,
-                    permission_type=StudyPermission.READ,
-                )
-            except Group.DoesNotExist as dne:
-                logger.exception(
-                    'Error retrieving information for the hard-coded default-read group for '
-                    'studies, "%s". Studies will not default to visible for any particular '
-                    'group.',
-                    default_group_name
-                )
+
+            # if configured, apply default group read permissions to the new study
+            _SETTING_NAME = 'EDD_DEFAULT_STUDY_READ_GROUPS'
+            default_group_names = (settings.EDD_DEFAULT_STUDY_READ_GROUPS
+                                   if hasattr(settings, _SETTING_NAME)
+                                   else None)
+            if default_group_names:
+                default_groups = Group.objects.filter(name__in=default_group_names)
+                requested_groups = len(default_group_names)
+                found_groups = len(default_groups)
+                if requested_groups != found_groups:
+                    logger.exception(
+                            'Error retrieving information for the default-read group(s) for '
+                            'studies. Only %(found)d of %(requested)d'
+                            'group names via %(setting_name)s were found in the database. As '
+                            'a result, new studies may not be assigned the desired '
+                            'read permissions by default.' % {
+                                'found': found_groups,
+                                'requested': requested_groups,
+                                'setting_name': _SETTING_NAME,
+                    })
+
+                for group in default_groups:
+                    s.grouppermission_set.update_or_create(
+                        group_id=group.pk,
+                        permission_type=StudyPermission.READ,
+                    )
+
             # create copies of passed in Line IDs
             self.save_lines(s)
         return s
