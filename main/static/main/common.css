@@ -1517,7 +1517,7 @@ form.comments textarea {
     background-repeat: no-repeat;
     background-attachment: scroll;
     background-position: center;
-    background-image: url(images/dropzone-csv.png);
+    background-image: url(images/dropzone-excel_csv.png);
     min-height:220px;
     padding:5px;
     font-size:17px;

@@ -40,7 +40,7 @@
         </div>
     {% endif %}
     <h2 {%  if latest_viewed_studies %} style="margin-bottom:12px;" {% else %} style="margin-bottom: 50px;" {% endif %}>
-        Recently viewed Studies:</h2>
+        Recently Viewed Studies:</h2>
     <div class="lastViewed">
         {% for study in latest_viewed_studies %}
             <span><a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a></span>
