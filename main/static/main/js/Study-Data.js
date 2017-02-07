@@ -161,7 +161,7 @@ var StudyDataPage;
             this.repopulateColumns();
         };
         ProgressiveFilteringWidget.prototype.repopulateLineFilters = function () {
-            var filteredAssayIds = this.buildAssayIDSet();
+            var filteredAssayIds = this.buildAssayIDSet(EDDData);
             this.assayFilters.forEach(function (filter) {
                 filter.populateFilterFromRecordIDs(filteredAssayIds);
                 filter.populateTable();
@@ -217,7 +217,7 @@ var StudyDataPage;
             }
         };
         // Build a list of all the Assay IDs in the Study.
-        ProgressiveFilteringWidget.prototype.buildAssayIDSet = function () {
+        ProgressiveFilteringWidget.prototype.buildAssayIDSet = function (EDDData) {
             var _this = this;
             var assayIds = [];
             $.each(EDDData.Assays, function (assayId, assay) {
@@ -247,7 +247,7 @@ var StudyDataPage;
                 this.showingEmpty = showingEmptyCB;
                 this.repopulateAllFilters();
             }
-            var filteredAssayIds = this.buildAssayIDSet();
+            var filteredAssayIds = this.buildAssayIDSet(EDDData);
             var filteringResults = {};
             filteringResults['allAssays'] = filteredAssayIds;
             $.each(this.assayFilters, function (i, filter) {
