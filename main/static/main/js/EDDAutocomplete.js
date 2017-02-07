@@ -60,24 +60,21 @@ var EDDAuto;
             // somewhere.)
             this.columns = [new AutoColumn('Name', '300px', 'name')];
         }
-        BaseAuto.initPreexisting = function () {
-            // Using 'for' instead of '$.each()' because TypeScript likes to monkey with 'this'. 
-            var autcompletes = $('input.autocomp').get();
-            for (var i = 0; i < autcompletes.length; i++) {
-                var a = autcompletes[i];
-                var autocompleteType = $(a).attr('eddautocompletetype');
+        BaseAuto.initPreexisting = function (context) {
+            $('input.autocomp', context).each(function (i, element) {
+                var visibleInput = $(element), autocompleteType = $(element).attr('eddautocompletetype');
                 if (!autocompleteType) {
                     throw Error("eddautocompletetype must be defined!");
                 }
                 var opt = {
-                    container: $(a).parent(),
-                    visibleInput: $(a),
-                    hiddenInput: $(a).next('input[type=hidden]')
+                    container: visibleInput.parent(),
+                    visibleInput: visibleInput,
+                    hiddenInput: visibleInput.next('input[type=hidden]')
                 };
-                // This will automatically attach the created object to both input elements,
-                // in the jQuery data interface, under the 'edd' object, attribute 'autocompleteobj'.
+                // This will automatically attach the created object to both input elements, in
+                // the jQuery data interface, under the 'edd' object, attribute 'autocompleteobj'.
                 new EDDAuto[autocompleteType](opt);
-            }
+            });
         };
         BaseAuto.prototype.init = function () {
             var _this = this;

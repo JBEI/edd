@@ -28,18 +28,20 @@
 
 {% endblock js_css %}
 
-
 {% block head_title %}
-    {{ block.super }}
+  {% if selection.studies|length == 1 %}
+    Data Import For {{ selection.studies.0.name }}
+  {% else %}
+    Data Import For {{ selection.studies|length }} Studies
+  {% endif %}
 {% endblock head_title %}
 
 {% block body_title %}
-    {{ block.super }}
+  Data Import For
+   <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a>
 {% endblock body_title %}
 
-
 {% block content %}
-    {{ block.super }}
 <form method="post" id="assayTableForm" action="/study/{{ study.id }}/import/">
 {% csrf_token %}
 
@@ -275,26 +277,26 @@
           steps.</p>
       </div>
     </div>
-      <div id="prSampleFile" style="display: none">
+      <span id="prSampleFile" hidden>
           Or upload edited
             <a href="{% static 'test_proteomics.csv' %}">Example File</a>
-        </div>
-      <div id="gcmsSampleFile">
+        </span>
+      <span id="gcmsSampleFile">
           Or upload edited
             <a href="{% static 'GC-MS_example.xlsx' %}">Example File</a>
-        </div>
-      <div id="biolectorFile" style="display: none">
+        </span>
+      <span id="biolectorFile" hidden>
           Or upload edited
             <a href="{% static 'Biolector.xml' %}">Example File</a>
-        </div>
-      <div id="skylineSample" style="display: none">
+        </span>
+      <span id="skylineSample" hidden>
           Or upload edited
             <a href="{% static 'skyline_example.csv' %}">Example File</a>
-        </div>
-      <div id="hplcExample" style="display: none">
+        </span>
+      <span id="hplcExample" hidden>
           Or upload edited
             <a href="{% static 'HPLC_example.txt' %}">Example File</a>
-        </div>
+        </span>
     <div class="resetButtonDiv" id="resetstep2">Reset</div>
 
     <span class="tableControlImport">
@@ -526,7 +528,7 @@
         <tr>
           <td>
             <label for="masterUnits">
-              <input type="text" size="15" name="masterUnits" id="masterUnits"
+              <input class="autocomp" type="text" size="15" name="masterUnits" id="masterUnits"
                   eddautocompletetype="MeasurementUnit"
                   value="" />
               <input type="hidden" name="masterUnitsValue" />
@@ -586,7 +588,7 @@
         <p>EDD isn't familiar with your experiment, so please double-check the system and
           yourself!</p>
       </div>
-    </div>    
+    </div>
   </div>
   <div class="sectionContent" id="reviewSummarySection">
     <p class="disabledStepLabel" id="completeAllStepsFirstLabel">Complete the preceding steps

@@ -420,7 +420,7 @@ class CreateAttachmentForm(forms.ModelForm):
         model = Attachment
         fields = ('file', 'description', )
         labels = {
-            'file': _('Attachment'),
+            'file': _(''),
             'description': _('Description'),
         }
         widgets = {
@@ -509,8 +509,8 @@ class LineForm(forms.ModelForm):
             'meta_store': forms.HiddenInput(),
         }
         help_texts = {
-            'name': 'This field is required',
-            'description': 'Description of line'
+            'name': _('This field is required'),
+            'description': _('Description of line')
         }
 
     def __init__(self, *args, **kwargs):

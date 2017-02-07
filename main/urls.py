@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from django.conf.urls import include, url
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles.storage import staticfiles_storage
+from django.http import HttpResponse
 from django.views.generic.base import RedirectView
 
 from main import autocomplete, views
@@ -38,7 +39,7 @@ study_url_patterns = [
             url(r'^rnaseq/edgepro/$', login_required(views.study_import_rnaseq_edgepro)),
         ])
     ),
-    url(r'^lines/$', login_required(autocomplete.search_study_lines)),
+    url(r'^experiment-description/$', login_required(autocomplete.search_study_lines)),
     url(r'^rename/$',
         login_required(views.StudyUpdateView.as_view(update_action='rename'))),
     url(r'^setdescription/$',
@@ -50,65 +51,48 @@ study_url_patterns = [
 urlpatterns = [
     # "homepage" URLs
     url(r'^$', login_required(views.StudyIndexView.as_view()), name='index'),
+    url(r'^tutorials/',
+        include([
+            url(r'^$', login_required(views.TutorialView.as_view()), name='tutorial'),
+            url(r'^generate-work-list/$', login_required(views.TutorialViewGenerate.as_view()),
+                name='work-list'),
+            url(r'^export-data/$', login_required(views.TutorialViewExport.as_view()),
+                name='export-data'),
+            url(r'^PCAP-example/$', login_required(views.TutorialViewPCAP.as_view()),
+                name='PCAP'),
+            url(r'^export-as-sbml/$', login_required(views.TutorialViewExportSBML.as_view()),
+                name='export-sbml'),
+            url(r'^data-visualization/$', login_required(views.TutorialViewDataViz.as_view()),
+                name='data-viz'),
+        ])
+    ),
     url(
         r'^study/$',
         login_required(views.StudyCreateView.as_view()),
         name='create_study'
     ),
-    url(r'^study/search/$', login_required(views.study_search)),
+    url(r'^study/study-search/$', login_required(views.study_search)),
 
     # Individual study-specific pages loaded by primary key
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^study/(?P<pk>\d+)/',
         include(
-            [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail_by_pk', )] +
-            study_url_patterns
-        )
+            [
+                url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail_by_pk', ),
+                url(r'^experiment-description/$', login_required(views.StudyLinesView.as_view()), name='lines_by_pk', ),
+                url(r'^overview/$', login_required(views.StudyOverviewView.as_view()), name='overview_by_pk', ),
+            ] + study_url_patterns)
     ),
-
     # Individual study-specific pages loaded by slug
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^study/(?P<slug>[-\w]+)/',
         include(
-            [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail', )] +
-            study_url_patterns
-        )
-    ),
-
-    url(r'^study/search/$', login_required(views.study_search)),
-
-    # Individual study-specific pages loaded by primary key
-    url(
-        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<pk>\d+)/lines',
-        include(
-            [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines_by_pk', )] +
-            study_url_patterns
-        )
-    ),
-
-    # Individual study-specific pages loaded by slug
-    url(
-        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<slug>[-\w]+)/lines',
-        include(
-            [url(r'^$', login_required(views.StudyLinesView.as_view()), name='lines', )] +
-            study_url_patterns
-        )
-    ),
-
-    # Individual study-specific pages loaded by primary key
-    url(
-        # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
-        r'^study/(?P<pk>\d+)/overview',
-        include(
-            [url(
-                r'^$',
-                login_required(views.StudyOverviewView.as_view()),
-                name='overview_by_pk',
-            )] +
+            [url(r'^$', login_required(views.StudyDetailView.as_view()), name='detail', ),
+             url(r'^experiment-description/$', login_required(views.StudyLinesView.as_view()), name='lines', ),
+             url(r'^overview/$', login_required(views.StudyOverviewView.as_view()), name='overview', ),
+             ] +
             study_url_patterns
         )
     ),
@@ -146,6 +130,8 @@ urlpatterns = [
         name='experiment_description_help', ),
     url(r'^search/$', login_required(views.search)),
     url(r'^search/(?P<model>\w+)/$', login_required(views.model_search)),
+
+    url(r'^health/$', lambda request: HttpResponse()),
 
     # Call-out for the favicon, which would normally only be accessible via a URL like:
     #   https://edd.example.org/static/favicon.ico

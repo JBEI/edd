@@ -49,7 +49,7 @@ module EDDAuto {
         validIdRequired?:boolean,    // TODO: Implement
 
         // Whether a blank field defaults to show a "(Create New)" placeholder and submits a hidden Id of 'new'.
-        // Default is false.        
+        // Default is false.
         emptyCreatesNew?:boolean,    // TODO: Implement
 
         // an optional dictionary to use / maintain as a cache of query results for this
@@ -107,24 +107,22 @@ module EDDAuto {
         static _uniqueIndex = 1;
 
 
-        static initPreexisting() {
-            // Using 'for' instead of '$.each()' because TypeScript likes to monkey with 'this'. 
-            var autcompletes = $('input.autocomp').get();
-            for ( var i = 0; i < autcompletes.length; i++ ) {
-                var a = autcompletes[i];
-                var autocompleteType = $(a).attr('eddautocompletetype');
+        static initPreexisting(context?: Element|JQuery) {
+            $('input.autocomp', context).each((i, element) => {
+                var visibleInput: JQuery = $(element),
+                    autocompleteType: string = $(element).attr('eddautocompletetype');
                 if (!autocompleteType) {
                     throw Error("eddautocompletetype must be defined!");
                 }
                 var opt:AutocompleteOptions = {
-                    container: $(a).parent(),
-                    visibleInput: $(a),
-                    hiddenInput: $(a).next('input[type=hidden]')
+                    container: visibleInput.parent(),
+                    visibleInput: visibleInput,
+                    hiddenInput: visibleInput.next('input[type=hidden]')
                 };
-                // This will automatically attach the created object to both input elements,
-                // in the jQuery data interface, under the 'edd' object, attribute 'autocompleteobj'.
+                // This will automatically attach the created object to both input elements, in
+                // the jQuery data interface, under the 'edd' object, attribute 'autocompleteobj'.
                 new EDDAuto[autocompleteType](opt);
-            }
+            });
         }
 
 
@@ -178,7 +176,7 @@ module EDDAuto {
         init() {
             // this.cacheId might have been set by a constructor in a subclass
             this.cacheId = this.opt['cacheId']
-                || this.cacheId 
+                || this.cacheId
                 || 'cache_' + (++EDD_auto.cache_counter);
             this.cache = this.opt['cache']
                 || (EDDData[this.cacheId] = EDDData[this.cacheId] || {});
@@ -742,7 +740,7 @@ $.widget('custom.mcautocomplete', $.ui.autocomplete, {
     },
     _renderMenu: function(ul, items) {
         var self = this, thead;
-    
+
         if (this.options.showHeader) {
             var table=$('<li class="ui-widget-header"></div>');
             // Column headers

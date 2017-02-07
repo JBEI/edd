@@ -19,7 +19,7 @@ ADD requirements.txt /tmp/
 RUN pip install --upgrade pip setuptools wheel \
     && pip install -r /tmp/requirements.txt
 
-ADD celeryconfig.py flowerconfig.py entrypoint.sh /opt/celery-flower/
+ADD celeryconfig.py flowerconfig.py entrypoint.sh healthcheck.sh /opt/celery-flower/
 WORKDIR /opt/celery-flower
 
 EXPOSE 5555

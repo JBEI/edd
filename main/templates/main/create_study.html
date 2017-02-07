@@ -22,7 +22,7 @@
 <form action="{% url 'main:create_study' %}"  class="edd-form" method="POST">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit" name="action" value="assay">Add Study</button>
+        <button type="submit">Add Study</button>
     </form>
 
 {% endblock content %}

@@ -43,7 +43,7 @@ if DEBUG:  # noqa
         'debug_toolbar.middleware.DebugToolbarMiddleware',
     ) + MIDDLEWARE_CLASSES  # noqa
     DEBUG_TOOLBAR_CONFIG = {
-        'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
+        'JQUERY_URL': '/static/main/js/lib/jquery/jquery-3.1.0.min.js',
     }
 
 USE_CELERY = True

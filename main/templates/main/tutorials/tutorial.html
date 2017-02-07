@@ -1,0 +1,22 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block head_title %}
+   Tutorials
+{% endblock head_title %}
+
+{% block body_title %}
+  Tutorials
+{% endblock body_title %}
+
+{% block content %}
+
+<h3>Table of Contents</h3>
+    <div class="tutorialContents">
+        <ul><a href="{% url 'main:work-list' %}">Generate a Worklist</a></ul>
+        <ul><a href="{% url 'main:export-data' %}">Export Data from a Study</a></ul>
+        <ul><a href="{% url 'main:export-sbml' %}">Export Data as SBML</a></ul>
+        <ul><a href="{% url 'main:PCAP' %}">Import 3 Different Types of Files</a></ul>
+        <ul><a href="{% url 'main:data-viz' %}">Data Visualization</a></ul>
+    </div>
+{% endblock content %}
