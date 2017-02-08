@@ -390,7 +390,7 @@ div.helpBadgeDiv:hover div.helpContent {
 
 /* Page sections */
 div.pageSection {
-    margin:10px 40px 3px 20px;
+    margin:10px 40px 3px 0px;
 }
 
 div.newPageSection {

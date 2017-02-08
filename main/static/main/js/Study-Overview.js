@@ -191,6 +191,7 @@ var StudyOverview;
             $("#permissionsSection").removeClass('off').dialog("open");
             return false;
         });
+        //TODO: remove this and fix bug
         $("#attachmentsSection a:contains('Delete')").hide();
     }
     function onChangedMetabolicMap() {
