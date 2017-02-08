@@ -144,4 +144,5 @@ urlpatterns = [
         ),
         name='favicon',
     ),
+    url(r'^pages/', include('django.contrib.flatpages.urls')),
 ]
