@@ -172,7 +172,7 @@ namespace StudyLines {
 
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
-        $("#addAssayModal").dialog({ autoOpen: false });
+        $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
         $("#exportModal").dialog({ autoOpen: false });
 
         $("#addAssayButton").click(function() {
