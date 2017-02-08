@@ -66,7 +66,7 @@
 </form>
 
 <div class="overviewDropZone" style="{% if lines %}display:none;{% endif %}">
-    <div class="fd-zone" id="templateDropZone">
+    <div class="fd-zone excel" id="templateDropZone">
         <div></div>
         Upload an Experiment Description file (
         <a href="{% static 'sample_experiment_description.xlsx' %}">Example </a>
@@ -115,7 +115,7 @@
                 </table>
                 {% endif %}
             {% endwith %}
-        <button class="actionButton primary" id="addPermission" >Add permission</button>
+        <button class="actionButton primary" id="addPermission" >Add or edit permission</button>
      </div>
     </div>
  </div>
