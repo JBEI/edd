@@ -383,30 +383,24 @@ class CreateStudyForm(forms.ModelForm):
 
             # if configured, apply default group read permissions to the new study
             _SETTING_NAME = 'EDD_DEFAULT_STUDY_READ_GROUPS'
-            default_group_names = (settings.EDD_DEFAULT_STUDY_READ_GROUPS
-                                   if hasattr(settings, _SETTING_NAME)
-                                   else None)
+            default_group_names = getattr(settings, _SETTING_NAME, None)
             if default_group_names:
                 default_groups = Group.objects.filter(name__in=default_group_names)
                 requested_groups = len(default_group_names)
                 found_groups = len(default_groups)
                 if requested_groups != found_groups:
-                    logger.exception(
-                            'Error retrieving information for the default-read group(s) for '
-                            'studies. Only %(found)d of %(requested)d'
-                            'group names via %(setting_name)s were found in the database. As '
-                            'a result, new studies may not be assigned the desired '
-                            'read permissions by default.' % {
+                    logger.error(
+                            'Setting only %(found)d of %(requested)d default read permissions for '
+                            'study %(study)d. Check %(setting_name)s and update this study.' % {
                                 'found': found_groups,
                                 'requested': requested_groups,
-                                'setting_name': _SETTING_NAME,
-                    })
+                                'study': s.id,
+                                'setting_name': _SETTING_NAME, })
 
                 for group in default_groups:
-                    s.grouppermission_set.update_or_create(
-                        group_id=group.pk,
-                        permission_type=StudyPermission.READ,
-                    )
+                    s.grouppermission_set.update_or_create(group_id=group.pk,
+                                                           defaults={'permission_type':
+                                                                     StudyPermission.READ})
 
             # create copies of passed in Line IDs
             self.save_lines(s)
