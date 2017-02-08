@@ -56,6 +56,8 @@ PUBLISH_REST_API = False
 # until the "web of EDD's" can be implemented.
 EDD_ONLY_SUPERUSER_CREATE = False
 
+# Uncomment to give read permission to new studies to a list of user groups by default
+# EDD_DEFAULT_STUDY_READ_GROUPS = ['GROUP NAME']
 
 ###################################################################################################
 # You can override the default logging configuration
