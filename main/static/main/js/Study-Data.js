@@ -1409,9 +1409,6 @@ var StudyDataPage;
             //TODO: create prepare it for no data?
             $('#dataTableButton').click();
         }
-        else {
-            $('#lineGraphButton').click();
-        }
     });
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;

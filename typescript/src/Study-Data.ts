@@ -1548,8 +1548,6 @@ namespace StudyDataPage {
         if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
             //TODO: create prepare it for no data?
             $('#dataTableButton').click();
-        } else {
-            $('#lineGraphButton').click();
         }
     });
 
