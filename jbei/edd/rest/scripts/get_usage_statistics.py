@@ -45,18 +45,22 @@ def main():
             description="Queries EDD's REST API to for the quarterly number of studies created.",
             usage='python -m jbei.edd.rest.scripts.%(prog)s [options]',)
 
-    parser.add_argument('-username', '-u', help='Provide an EDD username via the command '
-                                                'line (helps with repeated use / testing of '
-                                                'this script)')
-    parser.add_argument('-password', '-p', help='Provide an EDD password via the command '
-                                                'line (user is prompted otherwise) '
-                                                'A convenience for repeated use / '
-                                                'testing of this script.')
-    parser.add_argument('-start', help='The first year whose usage statistics should be '
-                                        'queried', default=2014)
+    parser.add_argument('-username',
+                        '-u',
+                        help='Provide an EDD username via the command line (helps with repeated '
+                             'use / testing of this script)')
+    parser.add_argument('-password',
+                        '-p',
+                        help='Provide an EDD password via the command line (user is prompted '
+                             'otherwise). A convenience for repeated use / testing of this script.')
+    parser.add_argument('-start',
+                        help='The first year whose usage statistics should be queried',
+                        default=2014)
     parser.add_argument('-end', help='The last year whose usage statistics should be queried.',
                         default=arrow.utcnow().year)
-    parser.add_argument('-timezone', '-tz', help='Time zone for which date queries apply',
+    parser.add_argument('-timezone',
+                        '-tz',
+                        help='Time zone for which date queries apply',
                         default='US/Pacific')
     args = parser.parse_args()
 

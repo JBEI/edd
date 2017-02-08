@@ -8,6 +8,8 @@ but are not making use of DRF.
 
 import logging
 import re
+from uuid import UUID
+
 from rest_framework.exceptions import ParseError
 
 
@@ -465,7 +467,6 @@ class StudyViewSet(viewsets.ReadOnlyModelViewSet):  # read-only for now...see TO
     API endpoint that provides read-only access to studies, subject to user/role read access
     controls. Study write access is a TODO.
     """
-    queryset = Study.objects.none()  # TODO: required for...?
     serializer_class = StudySerializer
     contact = StringRelatedField(many=False)
 
@@ -480,25 +481,44 @@ class StudyViewSet(viewsets.ReadOnlyModelViewSet):  # read-only for now...see TO
         # if the user's admin / staff role gives read access to all Studies, don't bother querying
         # the database for specific permissions defined on this study
         if permission == StudyPermission.READ and Study.user_role_can_read(user):
+            logger.debug('User role has study read permission')
             study_query = Study.objects.all()
         else:
+            logger.debug('Searching for studies user %s has read access to.' % user.username)
             user_permission_q = Study.user_permission_q(user, permission)
             # NOTE: distinct is required since this query can return multiple rows for the same
             # study, one per permission that gives this user access to it
             study_query = Study.objects.filter(user_permission_q).distinct()
 
-        study_pk = self.kwargs.get('pk', None)
-        if study_pk:
-            if is_numeric_pk(study_pk):
-                study_query = study_query.filter(pk=study_pk)
-            else:
+        # if client provided a study ID, filter based on it
+        # TODO: nice-to-have UUID / slug based lookup drafted here isn't working, but log statements
+        # inserted here imply that the logic is correct/similar queries work from the command line.
+        # circle back to this and to any other related code when revisiting the REST
+        # API...
+        # TODO: misleading 'pk' kwarg is set by router...investigate later.
+        study_id = self.kwargs.get('pk', None)
+        if study_id:
+            # test whether this is an integer pk
+            found_identifier_format = False
+            try:
+                study_query = study_query.filter(pk=int(study_id))
+                found_identifier_format = True
+            except ValueError:
+                logger.debug('Study identifier "%s" is not an integer pk' % study_id)
+
+            # if format not found, try UUID
+            if not found_identifier_format:
                 try:
-                    study_query = study_query.filter(uuid=study_pk)
-                except:
-                    raise ParseError(detail='%(param)s %(value)s is not a valid integer or '
-                                            'UUID.' % {
-                                                'param': 'pk', 'value': study_pk,
-                                            })
+                    logger.debug('Trying UUID %s' % study_id)
+                    study_query = study_query.filter(uuid=UUID(study_id))
+                    found_identifier_format = True
+                except ValueError:
+                    logger.debug('Study identifier "%s" is not a UUID' % study_id)
+
+            # otherwise assume it's a slug
+            if not found_identifier_format:
+                logger.debug('Treating identifier "%s" as a slug' % study_id)
+                study_query = study_query.filter(slug=study_id)
 
         study_query = _optional_timestamp_filter(study_query,
                                                  self.request.query_params)
