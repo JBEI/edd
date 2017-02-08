@@ -2353,7 +2353,7 @@ var DataGridSpecAssays = (function (_super) {
             '<a href="/export?assayId=' + index + '">Export Data as CSV</a>'
         ];
         // Set up jQuery modals
-        $("#assayMain").dialog({ autoOpen: false });
+        $("#assayMain").dialog({ minWidth: 500, autoOpen: false });
         // TODO we probably don't want to special-case like this by name
         if (EDDData.Protocols[record.pid].name == "Transcriptomics") {
             sideMenuItems.push('<a href="import/rnaseq/edgepro?assay=' + index + '">Import RNA-seq data from EDGE-pro</a>');
