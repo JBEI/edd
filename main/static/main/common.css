@@ -1527,11 +1527,11 @@ form.comments textarea {
     background-image: url(images/dropzone-excel_csv-over.png);
 }
 
-#templateDropZone.fd-zone {
+.fd-zone.excel {
     background-image: url(images/dropzone-excel.png);
 }
 
-#templateDropZone.fd-zone.over {
+.fd-zone.excel.over {
      background-image: url(images/dropzone-excel-over.png);
 }
 .fd-zone.xml {
