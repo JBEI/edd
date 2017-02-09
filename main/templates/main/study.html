@@ -40,7 +40,7 @@
 
 {% block content %}
 <div class="studyNav">
-    <ui class="nav nav-pills navbar">
+    <ui class="nav nav-pills navbar" style="margin-right:-40px;">
         <li class="{% if showingoverview %}active{% endif %}">
             <a href="{% url 'main:overview' slug=study.slug %}">Overview</a>
         </li>
