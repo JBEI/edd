@@ -25,7 +25,7 @@ __Jen's User Story__:
 Jennifer is a scientist at JBEI interested in engineering E. coli to produce a biofuel. She chooses a pathway to produce
  a good biofuel and finds genes for each step in the pathway. She designs her constructs, gets her DNA synthesized by an
 outside company, assembles the plasmids and transforms them into E. coli. Because she is a good scientist she puts the
-information regarding the strains and plasmids into the JBEI ICE-registry. Other scientits can then obtain those same
+information regarding the strains and plasmids into the JBEI ICE-registry. Other scientists can then obtain those same
 strains and plasmids if they are interesting in replicating her experiment. Once she has her biofuel producing
 organism she measures how much biofuel it makes but it only produces a small amount. She then decides to check for
 pathway protein production to see if there are any bottlenecks in her pathway. She meets with the Proteomics team to
@@ -38,7 +38,7 @@ samples that are being analyzed and check that any new protein sequences need fo
 The Proteomics team prepares the samples for analysis and then exports a Worklist from the EDD study that Jen
 created for the LC-MS system. After the data is collected the Proteomics team processes the data with Skyline and
 imports the data into the EDD. The Proteomics team informs Jennifer that her data is available in the EDD, so
-she goes to her study and visualizes the proteomic data with the awesome graph tool (with erAror bars coming soon)
+she goes to her study and visualizes the proteomic data with the awesome graph tool (with error bars coming soon)
 in the EDD and goes on to win a Nobel prize.
 
 ## Import Data for a completed experiment
@@ -86,7 +86,7 @@ After he logs in, he gets to the homepage and the first thing he sees is a butto
 “input data” and is taken to a page where there are instructions and options on how to input his data. First he has to
 create a new study for his experiment.  He then sees that he has to enter the experiment details by
 downloading a sample template. e enters the shaking speed, etc of the experiments he has already completed for the
-experiment descrption file.  He also decides to link his electronic notebooks so that others
+experiment description file.  He also decides to link his electronic notebooks so that others
 can see more of his protocols. He then looks at the list of available data types and chooses the type of data he would
 like to input. He chooses the data type and sees  “have you put your data in the correct format?” This sentence is a
 link that expands. When he clicks to expand, he sees examples of the correct way to format his data.  He sees that his
@@ -105,7 +105,7 @@ needs to add it (for example 3 gene cluster copy number measurements, every expe
 EDD should handle them flawlessly and intuitively).
 
 
-##Data Download
+## Data Download
 
 __User  Goals__:
 
