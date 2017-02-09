@@ -42,11 +42,11 @@ body {
     height: 100%;
     line-height: 1;
 }
-p {
-    margin:0.4em;
-    padding:0.2em;
-}
 
+p {
+    margin: 0.4em;
+    padding: 0.2em;
+}
 
 /* Links */
 
@@ -306,7 +306,7 @@ div.statusMessage > p.bad, .bad {
 div.statusMessage > p.success, .success {
   color: #0000ff;
   font-weight: bold;
-    width:300px;
+  width:300px;
 }
 
 
@@ -509,6 +509,11 @@ div.noLines {
     display: none;
 }
 
+/* alert */
+.alert {
+    width: 40%;
+    height: 50px;
+}
 
 /* Data tables and controls */
 

@@ -88,13 +88,14 @@ module StudyOverview {
         var currentPath = window.location.pathname;
         var linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
         //display success message
-        $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Success! ' + result['lines_created'] + ' lines ' +
-            'added! Redirecting to the experiment description page');
 
+        $('#linesAdded').append('<p style="margin:auto">Success! ' + result['lines_created'] + ' lines ' +
+            'added!</p>');
+        $('#linesAdded').show();
         //redirect to lines page
         setTimeout(function () {
             window.location.pathname = linesPathName;
-        }, 2000);
+        }, 1000);
     }
 
 
