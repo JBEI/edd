@@ -51,21 +51,6 @@ study_url_patterns = [
 urlpatterns = [
     # "homepage" URLs
     url(r'^$', login_required(views.StudyIndexView.as_view()), name='index'),
-    url(r'^tutorials/',
-        include([
-            url(r'^$', login_required(views.TutorialView.as_view()), name='tutorial'),
-            url(r'^generate-work-list/$', login_required(views.TutorialViewGenerate.as_view()),
-                name='work-list'),
-            url(r'^export-data/$', login_required(views.TutorialViewExport.as_view()),
-                name='export-data'),
-            url(r'^PCAP-example/$', login_required(views.TutorialViewPCAP.as_view()),
-                name='PCAP'),
-            url(r'^export-as-sbml/$', login_required(views.TutorialViewExportSBML.as_view()),
-                name='export-sbml'),
-            url(r'^data-visualization/$', login_required(views.TutorialViewDataViz.as_view()),
-                name='data-viz'),
-        ])
-    ),
     url(
         r'^study/$',
         login_required(views.StudyCreateView.as_view()),
