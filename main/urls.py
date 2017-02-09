@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import HttpResponse
 from django.views.generic.base import RedirectView
+from django.contrib.flatpages import views
 
 from main import autocomplete, views
 
@@ -129,5 +130,5 @@ urlpatterns = [
         ),
         name='favicon',
     ),
-    url(r'^pages/', include('django.contrib.flatpages.urls')),
+    url(r'^pages/', include('django.contrib.flatpages.urls'))
 ]
