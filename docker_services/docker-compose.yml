@@ -130,6 +130,7 @@ services:
       VIRTUAL_HOST: "wcmorrell-mr.dhcp.lbl.gov"
       VIRTUAL_NETWORK: "edd_proxynet"
       VIRTUAL_PORT: "8000"
+      VIRTUAL_STATIC: "true"
     depends_on:
       - postgres
       - rabbitmq
