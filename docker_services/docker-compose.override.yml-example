@@ -67,11 +67,23 @@ services:
 
     # Examples of overriding the default initialize command below.
     # To initialize EDD without attempting to run database migrations:
-    #command: [-M, init-only]
+    #command: [-M, application]
     # To initialize EDD without attempting to load a database or re-index:
-    #command: [-DI, init-only]
+    #command: [-DI, application]
     # To initialize EDD but wait for a newly-defined service foobar to listen on port 1234:
-    #command: [--wait-host, foobar, --wait-port, 1234, init-only]
+    #command: [--wait-host, foobar, --wait-port, 1234, application]
+    # To run all setup tasks, but not launch the EDD application:
+    #command: [init-only]
+    # [DEVMODE] By default, edd runs with the application command; uncomment below to run with
+    #   the devmode command instead, and use Django's ruserver to serve the application.
+    #command: [-A, -w, edd, devmode]
+    # [LOCAL] For more control over settings on each container, use the --local flag to pass a
+    #   path to a local.py file to use. The path must be mounted in the volumes section! Take care
+    #   to use only one volumes section, if multiples are specified in a service, only the last
+    #   specified is used.
+    #command: [-A, --local, /etc/myorg/edd/local.py, -w, edd, application]
+    #volumes:
+    #  - /full/path/to/local.py:/etc/myorg/edd/local.py
 
     # Override the default environment
     environment:
@@ -98,18 +110,21 @@ services:
       #EDD_DEBUG: "true"
 
       # The POSTGRES_DUMP variables control cloning of a database prior to EDD launch.
-      POSTGRES_DUMP_FILE: ''
-      POSTGRES_DUMP_URL: ''
+      #POSTGRES_DUMP_FILE: ''
+      #POSTGRES_DUMP_URL: ''
       # Uncomment below lines to copy values from environment on launch, rather than hard-coding
       #POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
       #POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
 
-    # Uncomment the below section to specify how ports for the main application server are exposed.
-    #ports:
-    #  # Make the http 8000 port available on the Docker host external network
-    #  - '8000:8000'
-    #  # Alternate configuration: make appserver port 8000 accessible to Docker localhost:8400
-    #  - '127.0.0.1:8400:8000'
+      # Set these variables to control proxy through nginx
+      VIRTUAL_HOST: edd.example.net
+      LETSENCRYPT_HOST: edd.example.net
+      LETSENCRYPT_EMAIL: "aliddell@example.net"
+
+    # The following ports definition publishes (reading backwards) port 8000 of the container
+    #   on port 8000 of the Docker host using the interface (loopback) with IP 127.0.0.1.
+    ports:
+      - '127.0.0.1:8000:8000'
 
     # The default mode is also to run with Python code contained within the edd-core image. To run
     #   with a local copy of code and do, e.g. live code reload, uncomment and edit the volume
@@ -117,33 +132,6 @@ services:
     #   container will expect externally-loaded code. This setting will ONLY apply to the container
     #   where it is defined; overrides occur after the extends in the base file. If mounting code
     #   in the edd service, one should also mount code in the appserver and worker services.
-    #volumes:
-    #  - /full/path/to/source:/code
-
-  # Override settings for the application server
-  appserver:
-
-    # The following ports definition publishes (reading backwards) port 8000 of the container
-    #   on port 8000 of the Docker host using the interface (loopback) with IP 127.0.0.1.
-    ports:
-      - '127.0.0.1:8000:8000'
-
-    # Override the default environment to direct errors to the guilty.
-    environment:
-      EDD_USER: "Alice Liddell"
-      EDD_EMAIL: "aliddell@example.net"
-
-    # [DEVMODE] By default, the appserver runs with the application command; uncomment below to
-    #   run with the devmode command instead and use Django's ruserver to serve the application.
-    #command: [-A, -w, edd, devmode]
-
-    # [LOCAL] For more control over settings on each container, use the --local flag to pass a
-    #   path to a local.py file to use.
-    #command: [-A, --local, /etc/myorg/edd/local.py, -w, edd, application]
-    #volumes:
-    #  - /full/path/to/local.py:/etc/myorg/edd/local.py
-
-    # Mount a development copy of code, rather than using the code in the image, using volumes.
     #volumes:
     #  - /full/path/to/source:/code
 

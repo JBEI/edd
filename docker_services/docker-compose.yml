@@ -1,5 +1,8 @@
 ---
 version: '2.1'
+networks:
+  proxynet: {}
+  backnet: {}
 volumes:
   pgdata: {}
   solrdata: {}
@@ -11,6 +14,8 @@ services:
   postgres:
     image: postgres:9.6
     restart: always
+    networks:
+      - backnet
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/healthcheck.sh:/healthcheck.sh
@@ -25,6 +30,8 @@ services:
   redis:
     image: redis:3.2
     restart: always
+    networks:
+      - backnet
     volumes:
       - redisdata:/data
       - ./redis/healthcheck.sh:/healthcheck.sh
@@ -40,6 +47,8 @@ services:
     build: ./solr/
     image: solr:5.5-edd
     restart: always
+    networks:
+      - backnet
     volumes:
       - solrdata:/opt/solr/server/solr
     # the built Solr image has a default healthcheck; can override interval etc.
@@ -62,6 +71,8 @@ services:
     expose:
       - '5672'
       - '15672'
+    networks:
+      - backnet
     volumes:
       - ./rabbitmq/healthcheck.sh:/healthcheck.sh
     healthcheck:
@@ -80,6 +91,9 @@ services:
       AMQP_HOST: rabbitmq
       AMQP_USERNAME: edd_user
       FLOWER_URL_PREFIX: flower
+    networks:
+      - backnet
+      - proxynet
     depends_on:
       - rabbitmq
     links:
@@ -95,6 +109,8 @@ services:
     build: ./smtp/
     image: exim4:1.0-edd
     restart: always
+    networks:
+      - backnet
     expose:
       - '25'
     healthcheck:
@@ -105,59 +121,21 @@ services:
   edd:
     build: ./edd/
     image: edd-core:latest
-    command: [init-only]
+    restart: always
+    command: ['application']
     env_file: secrets.env
     environment:
-      SEARCH_URL: "solr://solr:8983/solr/"
       EDD_DEBUG: "false"
-    expose:
-      - '24051'
-    volumes:
-      - attachdata:/var/www/uploads
-      - staticdata:/var/www/static
-    healthcheck:
-      test: ['CMD', 'curl', '--fail', '-LSs', 'http://localhost:24051/']
-      interval: 1m
-      timeout: 1s
-      retries: 3
-  worker:
-    extends:
-      service: edd
-    restart: always
-    command: [-A, -w, edd, worker]
+      SEARCH_URL: "solr://solr:8983/solr/"
+      VIRTUAL_HOST: "wcmorrell-mr.dhcp.lbl.gov"
+      VIRTUAL_NETWORK: "edd_proxynet"
+      VIRTUAL_PORT: "8000"
     depends_on:
-      - edd
       - postgres
       - rabbitmq
       - redis
       - solr
     links:
-      - edd
-      - postgres
-      - rabbitmq
-      - redis
-      - smtp
-      - solr
-    environment:
-      - C_FORCE_ROOT=true
-    healthcheck:
-      test: ['CMD', 'celery', 'inspect', 'ping', '-A', 'edd', '--workdir', '/code']
-      interval: 1m
-      timeout: 5s
-      retries: 3
-  appserver:
-    extends:
-      service: edd
-    restart: always
-    command: [-A, -w, edd, application]
-    depends_on:
-      - edd
-      - postgres
-      - rabbitmq
-      - redis
-      - solr
-    links:
-      - edd
       - postgres
       - rabbitmq
       - redis
@@ -165,29 +143,73 @@ services:
       - solr
     expose:
       - '8000'
+    networks:
+      - backnet
+      - proxynet
+    volumes:
+      - attachdata:/var/www/uploads
+      - staticdata:/var/www/static
     healthcheck:
       test: ['CMD', 'curl', '--fail', '-LSs', 'http://localhost:8000/health/']
       interval: 1m
       timeout: 5s
       retries: 3
+  worker:
+    build: ./edd/
+    image: edd-core:latest
+    env_file: secrets.env
+    environment:
+      C_FORCE_ROOT: "true"
+      EDD_DEBUG: "false"
+      SEARCH_URL: "solr://solr:8983/solr/"
+    networks:
+      - backnet
+    volumes:
+      - attachdata:/var/www/uploads
+      - staticdata:/var/www/static
+    restart: always
+    command: [-A, -w, edd, -p, '8000', worker]
+    depends_on:
+      - edd
+      - postgres
+      - rabbitmq
+      - redis
+      - solr
+    links:
+      - edd
+      - postgres
+      - rabbitmq
+      - redis
+      - smtp
+      - solr
+    healthcheck:
+      test: ['CMD', 'celery', 'inspect', 'ping', '-A', 'edd', '--workdir', '/code']
+      interval: 1m
+      timeout: 5s
+      retries: 3
   nginx:
-    build: ./nginx/
-    image: nginx:1.11-edd
+    image: nginx:1.11
+    container_name: nginx
     restart: always
     depends_on:
-      - appserver
+      - edd
       - flower
       - rabbitmq
       - solr
     links:
-      - appserver
+      - edd
       - flower
       - rabbitmq
       - solr
-    volumes_from:
-      - appserver
+    networks:
+      - proxynet
     volumes:
-      - tlsdata:/etc/ssl/edd
+      - /etc/nginx/conf.d
+      - /etc/nginx/vhost.d
+      - /etc/usr/share/nginx/html
+      - tlsdata:/etc/nginx/certs:ro
+      - attachdata:/usr/share/nginx/html/uploads:ro
+      - staticdata:/usr/share/nginx/html/static:ro
     # TODO: once Let's Encrypt used to init certificates, remove -k option to curl
     # TODO: add dedicated /health location in nginx config instead of reading file
     healthcheck:
@@ -195,3 +217,20 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+  nginx-gen:
+    image: jwilder/docker-gen
+    container_name: nginx-gen
+    entrypoint:
+      - '/usr/local/bin/docker-gen'
+      - '-watch'
+      - '-notify-sighup'
+      - 'nginx'
+      - '/etc/docker-gen/templates/nginx.tmpl'
+      - '/etc/nginx/conf.d/default.conf'
+    networks:
+      - proxynet
+    volumes_from:
+      - nginx
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./nginx/nginx.tmpl:/etc/docker-gen/templates/nginx.tmpl:ro
