@@ -66,8 +66,10 @@ var StudyOverview;
         var currentPath = window.location.pathname;
         var linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
         //display success message
-        $('#linesAdded').append('<p style="margin:auto">Success! ' + result['lines_created'] + ' lines ' +
-            'added!</p>');
+        $('<p>', {
+            text: 'Success! ' + result['lines_created'] + ' lines added!',
+            style: 'margin:auto'
+        }).appendTo('#linesAdded');
         $('#linesAdded').show();
         //redirect to lines page
         setTimeout(function () {
@@ -145,19 +147,19 @@ var StudyOverview;
         $('#set_everyone_permission').on('click', function () {
             $('#permission_public').prop('checked', true);
         });
+        $('#set_group_permission').on('click', function () {
+            $('#permission_group').prop('checked', true);
+        });
+        $('#set_user_permission').on('click', function () {
+            $('#permission_user').prop('checked', true);
+        });
         $('form#permissions')
-            .on('change', ':input', function (ev) {
-            $(ev.target).parent().find('input[name=class]').prop('checked', true);
-        })
             .on('submit', function (ev) {
             var perm = {}, klass, auto;
             auto = $('form#permissions').find('[name=class]:checked');
             klass = auto.val();
-            perm.type = $(auto).nextAll().eq(2).val();
-            if (!perm.type) {
-                perm.type = $(auto).parent().next().val();
-            }
-            perm[klass.toLowerCase()] = { 'id': auto.closest('.permission').find('input:hidden').eq(1).val() };
+            perm.type = $(auto).siblings('select').val();
+            perm[klass.toLowerCase()] = { 'id': $(auto).siblings('input:hidden').val() };
             $.ajax({
                 'url': '/study/' + EDDData.currentStudyID + '/permissions/',
                 'type': 'POST',
@@ -166,31 +168,19 @@ var StudyOverview;
                     'csrfmiddlewaretoken': $('form#permissions').find('[name=csrfmiddlewaretoken]').val()
                 },
                 'success': function () {
-                    var permissionUser;
+                    var permissionTarget;
                     console.log(['Set permission: ', JSON.stringify(perm)].join(''));
                     //reset permission options
-                    $('form#permissions').find('.autocomp_search').next().next().val('N');
+                    $('form#permissions').find('.autocomp_search').siblings('select').val('N');
                     //reset input
                     $('form#permissions').find('.autocomp_search').val('');
-                    //check to see if this is a user, perm, or everyone
-                    if (perm.user) {
-                        permissionUser = EDDData.Users[perm.user['id']].name[0];
-                    }
-                    else if (perm.group) {
-                        //TODO: why doesn't Groups exist on EDDData?
-                        // permissionUser = EDDData.Groups[perm.group['id']].name
-                        permissionUser = "group";
-                    }
-                    else {
-                        permissionUser = "everyone";
-                    }
-                    $('<div>').text('Set Permission for ' + permissionUser).addClass('success')
+                    $('<div>').text('Permission Updated').addClass('success')
                         .appendTo($('form#permissions')).delay(2000).fadeOut(2000);
                 },
                 'error': function (xhr, status, err) {
                     console.log(['Setting permission failed: ', status, ';', err].join(''));
                     //reset permission options
-                    $('form#permissions').find('.autocomp_search').next().next().val('N');
+                    $('form#permissions').find('.autocomp_search').siblings('select').val('N');
                     //reset input
                     $('form#permissions').find('.autocomp_search').val('');
                     $('<div>').text('Server Error: ' + err).addClass('bad')

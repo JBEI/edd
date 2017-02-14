@@ -32,7 +32,7 @@
 {% endblock body_prefix %}
 
 {% block body_title %}
-<div class="editable-field inactive" id="editable-study-name" style="width: 700px; margin:auto;">
+<div class="editable-field inactive editableStudyName" id="editable-study-name">
     {{ study.name }}
     {{ edit_study.name }}
 </div>
@@ -40,7 +40,7 @@
 
 {% block content %}
 <div class="studyNav">
-    <ui class="nav nav-pills navbar" style="margin-right:-40px;">
+    <ui class="nav nav-pills navbar">
         <li class="{% if showingoverview %}active{% endif %}">
             <a href="{% url 'main:overview' slug=study.slug %}">Overview</a>
         </li>

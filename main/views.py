@@ -320,6 +320,9 @@ class StudyOverviewView(StudyDetailBaseView):
         context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
+        context['permission_none'] = StudyPermission.NONE
+        context['permission_read'] = StudyPermission.READ
+        context['permission_write'] = StudyPermission.WRITE
         return context
 
     def handle_attach(self, request, context, *args, **kwargs):

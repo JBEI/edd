@@ -1390,6 +1390,10 @@ td.editable-field span.icon.icon-cancel {
     background-image: url(images/edit-cancel.png);
 }
 
+.editableStudyName {
+    width: 700px;
+    margin:auto;
+}
 
 div.errorMessage {
     background: #FFF0F0;
@@ -1841,6 +1845,7 @@ div.tooltip2 {
 .nav {
     list-style: none;
     padding-left: 0;
+    margin-right:-40px;
 }
 
 .studyNav .navbar .nav > .active > a {

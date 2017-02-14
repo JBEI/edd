@@ -31,6 +31,10 @@
             <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             <p>{{ edit_study.name.errors.as_text }}</p>
         </div>
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <p>{{ edit_study.non_field_errors.as_text }}</p>
+        </div>
         {% endif %}
         <div class="alert alert-danger alert-dismissible" role="alert" id="dropError" hidden>
             <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -186,9 +190,9 @@
                     <span>User</span>
                 </label>
                     <select id="user_permission_options" name="type">
-                        <option value="N">None</option>
-                        <option value="R">Read</option>
-                        <option value="W">Write</option>
+                        <option value={{ permission_none }}>None</option>
+                        <option value={{ permission_read }}>Read</option>
+                        <option value={{ permission_write }}>Write</option>
                     </select>
                 <button id="set_user_permission">Set Permission</button>
                 </div>
@@ -198,21 +202,21 @@
                     <span>Group</span>
                 </label>
                     <select id="group_permission_options" name="type">
-                        <option value="N">None</option>
-                        <option value="R">Read</option>
-                        <option value="W">Write</option>
+                        <option value={{ permission_none }}>None</option>
+                        <option value={{ permission_read }}>Read</option>
+                        <option value={{ permission_write }}>Write</option>
                     </select>
                 <button id="set_group_permission">Set Permission</button>
                 </div>
                 <div  class="permission" id="permission_public_box">
-                <label for="permission_public">
                     <input type="radio" id="permission_public" name="class" value="Public" hidden/>
+                <label for="permission_public">
                     <span>Everyone</span>
                 </label>
                     <select name="type">
-                        <option value="N">None</option>
-                        <option value="R">Read</option>
-                        <option value="W">Write</option>
+                        <option value={{ permission_none }}>None</option>
+                        <option value={{ permission_read }}>Read</option>
+                        <option value={{ permission_write }}>Write</option>
                     </select>
                 <button id="set_everyone_permission">Set Permission</button>
                 </div>
