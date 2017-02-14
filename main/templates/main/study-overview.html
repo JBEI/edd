@@ -173,34 +173,46 @@
 </div>
 
 {# add permissions modal #}
-<div class="indent off" title="Add Permission" id="permissionsSection">
+<div class="indent off" title="Add or Edit Permissions" id="permissionsSection">
         <div class="sectionActions">
             <form method="POST" enctype="multipart/form-data" class="edd-form" id="permissions" action="">
                 {% csrf_token %}
                 <div class="permission" id="permission_user_box">
                 <label for="permission_user">
-                    <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
+                    <input type="radio" id="permission_user" name="class" value="User" checked="checked" hidden/>
                     <span>User</span>
                 </label>
+                    <select id="user_permission_options" name="type">
+                        <option value="N">None</option>
+                        <option value="R">Read</option>
+                        <option value="W">Write</option>
+                    </select>
+                <button id="set_user_permission">Set Permission</button>
                 </div>
                 <div  class="permission"  id="permission_group_box">
                 <label for="permission_group">
-                    <input type="radio" id="permission_group" name="class" value="Group"/>
+                    <input type="radio" id="permission_group" name="class" value="Group" hidden/>
                     <span>Group</span>
                 </label>
+                    <select id="group_permission_options" name="type">
+                        <option value="N">None</option>
+                        <option value="R">Read</option>
+                        <option value="W">Write</option>
+                    </select>
+                <button id="set_group_permission">Set Permission</button>
                 </div>
                 <div  class="permission" id="permission_public_box">
                 <label for="permission_public">
-                    <input type="radio" id="permission_public" name="class" value="Public"/>
+                    <input type="radio" id="permission_public" name="class" value="Public" hidden/>
                     <span>Everyone</span>
                 </label>
+                    <select name="type">
+                        <option value="N">None</option>
+                        <option value="R">Read</option>
+                        <option value="W">Write</option>
+                    </select>
+                <button id="set_everyone_permission">Set Permission</button>
                 </div>
-                <select name="type">
-                    <option value="N">None</option>
-                    <option value="R">Read</option>
-                    <option value="W">Write</option>
-                </select>
-                <button id="set_permission">Set Permission</button>
             </form>
     </div>
 </div>

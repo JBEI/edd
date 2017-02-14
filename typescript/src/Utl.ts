@@ -71,7 +71,7 @@ module Utl {
 				processData = true;
 			}
 			if (debug) { console.log('Calling ' + url); }
-			var headers = {}
+			var headers = {};
 			if (type == 'POST') {
 				headers["X-CSRFToken"] = jQuery.cookie('csrftoken');
 			}
@@ -110,6 +110,7 @@ module Utl {
 				data: formData,
 				cache: false,
 				error: function( jqXHR, textStatus, errorThrown ) {
+
 					if (debug) {
 						console.log(textStatus + ' ' + errorThrown);
 						console.log(jqXHR.responseText);
@@ -751,7 +752,7 @@ module Utl {
 						alert('Failed to read the file! Error: ' + e.fdError)
 					},
 					func: 'text'
-				})
+				});
 			// No need to check stopProcessing - there's no way it could have been modified since the last step.
 			} else if (!fileContainer.skipUpload) {
 				this.uploadFile(fileContainer);
@@ -770,6 +771,7 @@ module Utl {
 			// so we set up the progressBar and callback events before triggering the call to upload.
 			f.event('done', function(xhr) {
 				var result = jQuery.parseJSON(xhr.responseText);
+
 				if (result.python_error) {
 					alert(result.python_error);	// TODO: This is a bit extreme. Might want to just pass it to the callback.
 				} else if (typeof t.processResponseFn === "function") {
@@ -780,8 +782,14 @@ module Utl {
 
 			f.event('error', function(e, xhr) {
 				// TODO: Again, heavy handed. Might want to just embed this in FileDropZoneFileContainer
+				var response = xhr.response.split('"'); //error response. split on "".
+                var parseResponse = response[3].replace(/_/g, " "); //replace underscore with space.
+				var errorMessage = parseResponse.charAt(0).toUpperCase() + parseResponse.slice(1); //capitalize first letter
 				// and make an error handler callback.
-				alert('Error uploading ' + f.name + ': ' + xhr.status + ', ' + xhr.statusText);
+				$('#dropError').append('<div id="successLines" >Error uploading! <span id="fileUploadError">' + errorMessage + '</span>. '
+					+ xhr.status + ', ' + xhr.statusText);
+				$('#fileUploadError').css('font-weight', 'bold');
+				$('#dropError').show();
 				fileContainer.allWorkFinished = true;
 			});
 
@@ -789,7 +797,7 @@ module Utl {
 				// This ensures that the CSRF middleware in Django doesn't reject our HTTP request.
 				xhr.setRequestHeader("X-CSRFToken", t.csrftoken);
 				// We want to pass along our own guess at the file type, since it's based on a more specific set of criteria.
-				xhr.setRequestHeader('X-EDD-File-Type', fileContainer.fileType)
+				xhr.setRequestHeader('X-EDD-File-Type', fileContainer.fileType);
 
             	$.each(fileContainer.extraHeaders, (name: string, value: string): void => {
 					xhr.setRequestHeader('X-EDD-' + name, value)
@@ -801,7 +809,7 @@ module Utl {
 				if (fileContainer.progressBar) {
 					fileContainer.progressBar.setProgress(0);
 				}
-			})
+			});
 
 			// Update progress when browser reports it:
 			f.event('progress', function(current, total) {
@@ -809,7 +817,7 @@ module Utl {
 					var width = current / total * 100;
 					fileContainer.progressBar.setProgress(width);
 				}
-			})
+			});
 
 			f.sendTo(this.url);
 		}

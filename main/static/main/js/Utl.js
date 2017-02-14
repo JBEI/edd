@@ -687,8 +687,14 @@ var Utl;
             });
             f.event('error', function (e, xhr) {
                 // TODO: Again, heavy handed. Might want to just embed this in FileDropZoneFileContainer
+                var response = xhr.response.split('"'); //error response. split on "".
+                var parseResponse = response[3].replace(/_/g, " "); //replace underscore with space.
+                var errorMessage = parseResponse.charAt(0).toUpperCase() + parseResponse.slice(1); //capitalize first letter
                 // and make an error handler callback.
-                alert('Error uploading ' + f.name + ': ' + xhr.status + ', ' + xhr.statusText);
+                $('#dropError').append('<div id="successLines" >Error uploading! <span id="fileUploadError">' + errorMessage + '</span>. '
+                    + xhr.status + ', ' + xhr.statusText);
+                $('#fileUploadError').css('font-weight', 'bold');
+                $('#dropError').show();
                 fileContainer.allWorkFinished = true;
             });
             f.event('xhrSetup', function (xhr) {
