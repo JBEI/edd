@@ -72,11 +72,15 @@ if [ ! -f "$DIR/secrets.env" ]; then
     rm "$DIR/secrets.env.bak"
 fi
 
+# basic replacement script for sed
+REPLACEMENT=$(cat <<EOT
+    s/#EDD_USER: "Alice Liddell"/EDD_USER: "${EDD_USER}"/;
+    s/#EDD_EMAIL: "aliddell@example.net"/EDD_EMAIL: "${EDD_EMAIL}"/;
+EOT)
 if [ ! -f "$DIR/docker-compose.override.yml" ]; then
     echo "Copying example docker-compose.override.yml settings …"
     cp "$DIR/docker-compose.override.yml-example" "$DIR/docker-compose.override.yml"
-    sed -i.bak -e "s/Alice Liddell/${EDD_USER}/;s/aliddell@example.net/${EDD_EMAIL}/" \
-        "$DIR/docker-compose.override.yml"
+    sed -i.bak -e "${REPLACEMENT}" "$DIR/docker-compose.override.yml"
     rm "$DIR/docker-compose.override.yml.bak"
 fi
 

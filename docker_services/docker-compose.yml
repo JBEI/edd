@@ -127,7 +127,7 @@ services:
     environment:
       EDD_DEBUG: "false"
       SEARCH_URL: "solr://solr:8983/solr/"
-      VIRTUAL_HOST: "wcmorrell-mr.dhcp.lbl.gov"
+      # These will not do anything without VIRTUAL_HOST set in override file
       VIRTUAL_NETWORK: "edd_proxynet"
       VIRTUAL_PORT: "8000"
       VIRTUAL_STATIC: "true"
@@ -190,6 +190,7 @@ services:
       retries: 3
   nginx:
     image: nginx:1.11
+    # using container_name means there will only ever be one nginx container!
     container_name: nginx
     restart: always
     depends_on:
@@ -207,7 +208,7 @@ services:
     volumes:
       - /etc/nginx/conf.d
       - /etc/nginx/vhost.d
-      - /etc/usr/share/nginx/html
+      - /usr/share/nginx/html
       - tlsdata:/etc/nginx/certs:ro
       - attachdata:/usr/share/nginx/html/uploads:ro
       - staticdata:/usr/share/nginx/html/static:ro
@@ -220,6 +221,7 @@ services:
       retries: 3
   nginx-gen:
     image: jwilder/docker-gen
+    # using container_name means there will only ever be one nginx-gen container!
     container_name: nginx-gen
     entrypoint:
       - '/usr/local/bin/docker-gen'
@@ -235,3 +237,23 @@ services:
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ./nginx/nginx.tmpl:/etc/docker-gen/templates/nginx.tmpl:ro
+  letsencrypt:
+    # TODO: this should probably get forked;
+    #   - the project is not maintained
+    #   - has hard dependency on another project (kuba/simp_le) that is not maintained
+    #   - same dependency is referencing an older branch that has tests marked as failing
+    #   - entire combination has stopped working as Let's Encrypt APIs updated
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: letsencrypt
+    depends_on:
+      - nginx
+      - edd
+    networks:
+      - proxynet
+    volumes_from:
+      - nginx
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - tlsdata:/etc/nginx/certs:rw
+    environment:
+      NGINX_DOCKER_GEN_CONTAINER: nginx-gen

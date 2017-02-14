@@ -87,6 +87,8 @@ services:
 
     # Override the default environment
     environment:
+      # The following is not strictly necessary, just here so there is not an empty dictionary
+      EDD_CONTAINER: "edd"
 
       # Set the deployment environment flag. Supported values are:
       #   * DEVELOPMENT,
@@ -97,14 +99,17 @@ services:
       # Values other than PRODUCTION will create obvious labeling differences in the UI to make
       #   them easy to distinguish, and to help prevent accidental data changes in production
       #   during the testing process.
-      EDD_DEPLOYMENT_ENVIRONMENT: "TEST"
+      #EDD_DEPLOYMENT_ENVIRONMENT: "TEST"
 
       # The below options will set the default administrative user when using the stock local
       #   settings file. The values will be replaced in this example after running the
       #   init-config.sh script. To set multiple administrative users, or change any other
       #   local settings, see the command in the appserver container definition with [LOCAL].
-      EDD_USER: "Alice Liddell"
-      EDD_EMAIL: "aliddell@example.net"
+      #EDD_USER: "Alice Liddell"
+      #EDD_EMAIL: "aliddell@example.net"
+
+      # Set the hostname to use for proxy in nginx
+      #VIRTUAL_HOST: "example.net"
 
       # Uncomment below to run EDD in debug mode
       #EDD_DEBUG: "true"
@@ -117,9 +122,14 @@ services:
       #POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
 
       # Set these variables to control proxy through nginx
-      VIRTUAL_HOST: edd.example.net
-      LETSENCRYPT_HOST: edd.example.net
-      LETSENCRYPT_EMAIL: "aliddell@example.net"
+      #VIRTUAL_HOST: edd.example.net
+      #LETSENCRYPT_HOST: edd.example.net
+      #LETSENCRYPT_EMAIL: "aliddell@example.net"
+      # The below line directs to use staging Let's Encrypt server. It is commented out by
+      #   default, but should be enabled while troubleshooting any errors getting a certificate.
+      #   Troubleshooting against the production Let's Encrypt server is likely to hit rate
+      #   limits; see <https://letsencrypt.org/docs/staging-environment/>.
+      #LETSENCRYPT_TEST: "TRUE"
 
     # The following ports definition publishes (reading backwards) port 8000 of the container
     #   on port 8000 of the Docker host using the interface (loopback) with IP 127.0.0.1.
@@ -139,8 +149,13 @@ services:
 
     # Override the default environment to direct errors to the guilty.
     environment:
-      EDD_USER: "Alice Liddell"
-      EDD_EMAIL: "aliddell@example.net"
+      # The following is not strictly necessary, just here so there is not an empty dictionary
+      EDD_CONTAINER: "worker"
+
+      # The worker container has its own environment; there could be a different administrative
+      #   user for the worker processes than the main web processes.
+      #EDD_USER: "Alice Liddell"
+      #EDD_EMAIL: "aliddell@example.net"
 
     # Mount a development copy of code, rather than using the code in the image, using volumes.
     #volumes:
