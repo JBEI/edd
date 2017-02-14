@@ -691,7 +691,7 @@ var Utl;
                 var parseResponse = response[3].replace(/_/g, " "); //replace underscore with space.
                 var errorMessage = parseResponse.charAt(0).toUpperCase() + parseResponse.slice(1); //capitalize first letter
                 // and make an error handler callback.
-                $('#dropError').append('<div id="successLines" >Error uploading! <span id="fileUploadError">' + errorMessage + '</span>. '
+                $('#dropError').append('<div id="errorLines" >Error uploading! <span id="fileUploadError">' + errorMessage + '</span>. '
                     + xhr.status + ', ' + xhr.statusText);
                 $('#fileUploadError').css('font-weight', 'bold');
                 $('#dropError').show();

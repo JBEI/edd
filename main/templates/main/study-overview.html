@@ -32,6 +32,9 @@
             <p>{{ edit_study.name.errors.as_text }}</p>
         </div>
         {% endif %}
+        <div class="alert alert-danger alert-dismissible" role="alert" id="dropError" hidden>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
         <div id="linesAdded" class="alert alert-success alert-dismissible" role="alert" hidden>
             <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         </div>
@@ -122,7 +125,7 @@
                 </table>
                 {% endif %}
             {% endwith %}
-        <button class="actionButton primary" id="addPermission" >Add or edit permission</button>
+        <button class="actionButton primary" id="addPermission" >Configure Permissions</button>
      </div>
  </div>
 {% endif %}
@@ -173,7 +176,7 @@
 </div>
 
 {# add permissions modal #}
-<div class="indent off" title="Add or Edit Permissions" id="permissionsSection">
+<div class="indent off" title="Configure Permissions" id="permissionsSection">
         <div class="sectionActions">
             <form method="POST" enctype="multipart/form-data" class="edd-form" id="permissions" action="">
                 {% csrf_token %}
