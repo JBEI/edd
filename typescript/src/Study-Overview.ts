@@ -71,6 +71,7 @@ module StudyOverview {
             processRawFn: this.fileRead.bind(this),
             url: '/study/' + EDDData.currentStudyID + '/define/',
             processResponseFn: this.fileReturnedFromServer.bind(this),
+            processErrorFn: this.fileErrorReturnedFromServer.bind(this),
             progressBar: this.fileUploadProgressBar
         });
 
@@ -99,6 +100,22 @@ module StudyOverview {
         setTimeout(function () {
             window.location.pathname = linesPathName;
         }, 1000);
+    }
+
+
+    // This is called upon receiving an errror in a file upload operation, and
+    // is passed an unprocessed result from the server as a second argument.
+    export function fileErrorReturnedFromServer(fileContainer, response): void {
+
+        alert(result.python_error);
+        // reset the drop zone here
+
+        var r = response.split('"'); //error response. split on "".
+        var errorMessage = r[3];
+        // and make an error handler callback.
+        $('#dropError').append('<div id="errorLines" >Error uploading! <span id="fileUploadError">' + errorMessage + '</span>. ');
+        $('#fileUploadError').css('font-weight', 'bold');
+        $('#dropError').show();
     }
 
 

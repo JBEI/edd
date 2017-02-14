@@ -634,6 +634,7 @@ module Utl {
 	//	url: The URL to upload the file.
 	//	progressBar: A ProgressBar object for tracking the upload progress.
 	//	processResponseFn: Called when the server sends back its results.
+	//  processErrorFn: Called as an alternative to processResponseFn if the server reports an error.
 	// }
 	// All callbacks are given a FileDropZoneFileContainer object as their first argument.
 
@@ -652,12 +653,14 @@ module Utl {
 		fileInitFn: any;
 		processRawFn: any;
 		processResponseFn: any;
+		processErrorFn: any;
 
 		static fileContainerIndexCounter: number = 0;
 
 		// If processRawFn is provided, it will be called with the raw file data from the drop zone.
 		// If url is provided and processRawFn returns false (or was not provided) the file will be sent to the given url.
 		// If processResponseFn is provided, it will be called with the returned result of the url call.
+		// If an error occurs, processErrorFn will be called with the result.
         constructor(options:any) {
 
 			this.progressBar = options.progressBar || null;
@@ -676,6 +679,7 @@ module Utl {
 			this.fileInitFn = options.fileInitFn;
 			this.processRawFn = options.processRawFn;
 			this.processResponseFn = options.processResponseFn;
+			this.processErrorFn = options.processErrorFn;
 			this.url = options.url;
 		}
 
@@ -772,7 +776,12 @@ module Utl {
 				var result = jQuery.parseJSON(xhr.responseText);
 
 				if (result.python_error) {
-					alert(result.python_error);	// TODO: This is a bit extreme. Might want to just pass it to the callback.
+					// If we were given a function to process the error, use it.
+					if (typeof t.processErrorFn === "function") {
+						t.processErrorFn(fileContainer, xhr.response);
+					} else {
+						alert(result.python_error);
+					}
 				} else if (typeof t.processResponseFn === "function") {
 					t.processResponseFn(fileContainer, result);
 				}
@@ -780,13 +789,9 @@ module Utl {
 			});
 
 			f.event('error', function(e, xhr) {
-				// TODO: Again, heavy handed. Might want to just embed this in FileDropZoneFileContainer
-				var response = xhr.response.split('"'); //error response. split on "".
-                var errorMessage = response[3];
-				// and make an error handler callback.
-				$('#dropError').append('<div id="errorLines" >Error uploading! <span id="fileUploadError">' + errorMessage + '</span>. ');
-				$('#fileUploadError').css('font-weight', 'bold');
-				$('#dropError').show();
+				if (typeof t.processErrorFn === "function") {
+					t.processErrorFn(fileContainer, xhr.response);
+				}
 				fileContainer.allWorkFinished = true;
 			});
 
