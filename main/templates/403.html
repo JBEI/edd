@@ -1,36 +1,15 @@
-<!doctype html>
-<html>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <link rel="stylesheet" type="text/css" href="/static/main/common.css" />
-    <head>
-        <title>EDD - Error: Forbidden</title>
-    </head>
-    <body>
-        <div class="topBanner">
-            <div class="siteLogo">
-                <a href="/">
-                    <img style="width:50px" src="/static/main/images/edd_logo.png" alt="EDD Logo - Home"/>
-                </a>
-            </div>
-            <div class="pageName">Experiment Data Depot</div>
-        </div>
-        <div class="content">
-            <h1> Forbidden</h1>
-            <p>The requested operation is forbidden and cannot be completed. Please reload.
-                The site administrators have been notified of the problem, please check back later.</p>
-            {% if messages %}
-            {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-            {% endfor %}
-        {% endif %}
-        </div>
-        <div class="footer">
-            <div class="footer-text">
-                <span class="footer-text-app">JBEI Experiment Data Depot</span>
-                <span class="footer-text-contact">
-                    <a href="mailto:jbei-edd-admin@lbl.gov?subject=EDD">Contact</a>
-                </span>
-            </div>
-        </div>
-    </body>
-</html>
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block head_title %}
+    EDD - Error: Forbidden
+{% endblock head_title %}
+
+{% block body_title %}
+    Forbidden
+{% endblock body_title %}
+
+{% block content %}
+    <p>The requested operation is forbidden and cannot be completed. Please reload.
+        The site administrators have been notified of the problem, please check back later.</p>
+{% endblock content %}
