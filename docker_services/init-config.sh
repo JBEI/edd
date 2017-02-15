@@ -92,9 +92,12 @@ if [ ! -z "$PROJECT" ]; then
             echo "already exists. No virtualenv was creted for the project."
             exit 1
         fi
-        mkvirtualenv -a "$DIR" "$PROJECT"
-        echo "export COMPOSE_PROJECT_NAME=$PROJECT" >> $VIRTUAL_ENV/bin/postactivate
-        echo "unset COMPOSE_PROJECT_NAME" >> $VIRTUAL_ENV/bin/predeactivate
+        # mkvirtualenv ends up triggering the EXIT trap with set -e
+        set +e
+        mkvirtualenv -a "$DIR" --no-pip --no-setuptools "$PROJECT"
+        set -e
+        echo "export COMPOSE_PROJECT_NAME=$PROJECT" >> $WORKON_HOME/$PROJECT/bin/postactivate
+        echo "unset COMPOSE_PROJECT_NAME" >> $WORKON_HOME/$PROJECT/bin/predeactivate
     else
         echo "A project name was specified, but virtualenvwrapper is not installed."
         echo "No virtualenv was created for the project."
