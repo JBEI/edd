@@ -3,6 +3,7 @@
 /// <reference path="Dragboxes.ts" />
 /// <reference path="DataGrid.ts" />
 
+// import {error} from "util";
 declare var EDDData:EDDData;
 
 module StudyOverview {
@@ -106,16 +107,32 @@ module StudyOverview {
     // This is called upon receiving an errror in a file upload operation, and
     // is passed an unprocessed result from the server as a second argument.
     export function fileErrorReturnedFromServer(fileContainer, response): void {
-
-        alert(result.python_error);
         // reset the drop zone here
-
+        clearDropZone();
+        //parse xhr.response
         var r = response.split('"'); //error response. split on "".
-        var errorMessage = r[3];
-        // and make an error handler callback.
-        $('#dropError').append('<div id="errorLines" >Error uploading! <span id="fileUploadError">' + errorMessage + '</span>. ');
-        $('#fileUploadError').css('font-weight', 'bold');
-        $('#dropError').show();
+        var errorMessage = "Error uploading! " + r[3];
+        // and create dismissible error alert
+        alertError(errorMessage);
+    }
+
+    function alertError(message): void {
+        $('#alert_placeholder').append('<div class="alert alert-danger alert-dismissible"><button type="button" ' +
+            'class="close" data-dismiss="alert">&times;</button>'+ message +'</div>');
+        alertTimeout(5000);
+    }
+
+    function alertTimeout(wait): void {
+        setTimeout(function () {
+            $('#alert_placeholder').children('.alert:first-child').remove();
+        }, wait);
+    }
+
+    function clearDropZone(): void {
+        $('#templateDropZone').removeClass('off');
+        $('#fileDropInfoIcon').addClass('off');
+        $('#fileDropInfoName').addClass('off');
+        $('#fileDropInfoSending').addClass('off');
     }
 
 

@@ -53,6 +53,7 @@ var StudyOverview;
             processRawFn: this.fileRead.bind(this),
             url: '/study/' + EDDData.currentStudyID + '/define/',
             processResponseFn: this.fileReturnedFromServer.bind(this),
+            processErrorFn: this.fileErrorReturnedFromServer.bind(this),
             progressBar: this.fileUploadProgressBar
         });
         Utl.Tabs.prepareTabs();
@@ -77,6 +78,34 @@ var StudyOverview;
         }, 1000);
     }
     StudyOverview.fileReturnedFromServer = fileReturnedFromServer;
+    // This is called upon receiving an errror in a file upload operation, and
+    // is passed an unprocessed result from the server as a second argument.
+    function fileErrorReturnedFromServer(fileContainer, response) {
+        // reset the drop zone here
+        clearDropZone();
+        //parse xhr.response
+        var r = response.split('"'); //error response. split on "".
+        var errorMessage = "Error uploading! " + r[3];
+        // and create dismissible error alert
+        alertError(errorMessage);
+    }
+    StudyOverview.fileErrorReturnedFromServer = fileErrorReturnedFromServer;
+    function alertError(message) {
+        $('#alert_placeholder').append('<div class="alert alert-danger alert-dismissible"><button type="button" ' +
+            'class="close" data-dismiss="alert">&times;</button>' + message + '</div>');
+        alertTimeout(5000);
+    }
+    function alertTimeout(wait) {
+        setTimeout(function () {
+            $('#alert_placeholder').children('.alert:first-child').remove();
+        }, wait);
+    }
+    function clearDropZone() {
+        $('#templateDropZone').removeClass('off');
+        $('#fileDropInfoIcon').addClass('off');
+        $('#fileDropInfoName').addClass('off');
+        $('#fileDropInfoSending').addClass('off');
+    }
     // Here, we take a look at the type of the dropped file and decide whether to
     // send it to the server, or process it locally.
     // We inform the FileDropZone of our decision by setting flags in the fileContiner object,
