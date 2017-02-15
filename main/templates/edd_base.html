@@ -109,13 +109,7 @@
      <span><a href="{% url 'edd_utils:index' %}">Utilities</a></span>
         <span>
         {% block top_help %}
-          {% load flatpages %}
-            {% get_flatpages as flatpages %}
-                {% for page in flatpages %}
-                    {% if forloop.last %}
-                        <span><a href="pages{{ page.url }}">{{ page.title }}</a></span>
-                    {% endif %}
-                {% endfor %}
+            <span><a href="pages/tutorials">Tutorials</a></span>
         {% endblock top_help %}
         </span>
     </div>
