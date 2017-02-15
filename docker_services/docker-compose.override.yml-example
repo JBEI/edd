@@ -108,9 +108,6 @@ services:
       #EDD_USER: "Alice Liddell"
       #EDD_EMAIL: "aliddell@example.net"
 
-      # Set the hostname to use for proxy in nginx
-      #VIRTUAL_HOST: "example.net"
-
       # Uncomment below to run EDD in debug mode
       #EDD_DEBUG: "true"
 
