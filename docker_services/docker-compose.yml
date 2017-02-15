@@ -212,10 +212,9 @@ services:
       - tlsdata:/etc/nginx/certs:ro
       - attachdata:/usr/share/nginx/html/uploads:ro
       - staticdata:/usr/share/nginx/html/static:ro
-    # TODO: once Let's Encrypt used to init certificates, remove -k option to curl
-    # TODO: add dedicated /health location in nginx config instead of reading file
+      - ./nginx/healthcheck.sh:/bin/healthcheck.sh
     healthcheck:
-      test: ['CMD', 'curl', '--fail', '-kLSs', 'https://localhost/static/500.html']
+      test: ['CMD', '/bin/healthcheck.sh']
       interval: 1m
       timeout: 5s
       retries: 3
