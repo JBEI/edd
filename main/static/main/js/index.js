@@ -174,8 +174,8 @@ var DataGridSpecStudies = (function (_super) {
             new DataGridColumnGroupSpec('Owner Initials'),
             new DataGridColumnGroupSpec('Owner Full Name', { 'hiddenByDefault': true }),
             new DataGridColumnGroupSpec('Institute', { 'hiddenByDefault': true }),
-            new DataGridColumnGroupSpec('Date Created', { 'hiddenByDefault': true }),
-            new DataGridColumnGroupSpec('Last Modified')
+            new DataGridColumnGroupSpec('Date Created'),
+            new DataGridColumnGroupSpec('Last Modified', { 'hiddenByDefault': true })
         ];
     };
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table content will be removed.
