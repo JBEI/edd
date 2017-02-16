@@ -1,0 +1,22 @@
+{% extends "edd_base.html" %}
+{% load flatpages %}
+{% load staticfiles %}
+
+{% block head_title %}
+   Tutorials
+{% endblock head_title %}
+
+{% block body_title %}
+  Tutorials
+{% endblock body_title %}
+
+{% block content %}
+
+<h3>Table of Contents</h3>
+     {% get_flatpages as flatpages %}
+          <ul class="tutorialContents">
+            {% for page in flatpages %}
+              <ul><a href="/pages{{ page.url }}">{{ page.title }}</a></ul>
+            {% endfor %}
+          </ul>
+{% endblock content %}
