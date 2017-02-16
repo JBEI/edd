@@ -974,7 +974,13 @@ class Study(EDDObject):
 
     @staticmethod
     def user_role_can_read(user):
-        return user.is_superuser or user.is_staff
+        """
+            Tests whether the user's role alone is sufficient to grant read access to this
+            study.
+            :param user: the user
+            :return: True if the user role has read access, false otherwise
+        """
+        return user.is_superuser
 
     def user_can_read(self, user):
         """ Utility method testing if a user has read access to a Study. """

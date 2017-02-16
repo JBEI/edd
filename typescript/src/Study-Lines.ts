@@ -117,19 +117,6 @@ namespace StudyLines {
         });
     }
 
-
-    function show_int() {
-        $('#show').val("hide");
-        $('#lineDescription').css('display', 'block');
-    }
-
-
-    function show_hide() {
-        $('#show').val("show");
-        $('#lineDescription').css('display', 'none');
-    }
-
-
     export function processCarbonBalanceData() {
         // Prepare the carbon balance graph
         this.carbonBalanceData = new CarbonBalance.Display();
@@ -348,7 +335,7 @@ namespace StudyLines {
 
     function linesActionPanelShow() {
         // Figure out how many lines are selected.
-        var checkedBoxes = [], checkedLen;
+        var checkedBoxes = [], checkedBoxLen;
         if (this.linesDataGrid) {
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
@@ -356,19 +343,19 @@ namespace StudyLines {
             $('.lineExplanation').css('display', 'block');
             $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton, #worklistButton, #exportLineButton").addClass('off');
         } else {
-            checkedLen = checkedBoxes.length;
-            $('#linesSelectedCell').empty().text(checkedLen + ' selected');
+            checkedBoxLen = checkedBoxes.length;
+            $('#linesSelectedCell').empty().text(checkedBoxLen + ' selected');
             // enable singular/plural changes
             $('#editButton').data({
-                'count': checkedLen,
+                'count': checkedBoxLen,
                 'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
             });
-            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportLineButton").removeClass('off');
-            if (checkedLen) {
+            // $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportLineButton").removeClass('off');
+            if (checkedBoxLen) {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',false);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
                 $('#exportLineButton').attr('title', 'Export your lines in a file type of your choosing');
-                if (checkedLen < 2) {
+                if (checkedBoxLen < 2) {
                     $('#groupButton').prop('disabled', true);
                 }
             } else {
