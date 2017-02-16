@@ -117,19 +117,6 @@ namespace StudyLines {
         });
     }
 
-
-    function show_int() {
-        $('#show').val("hide");
-        $('#lineDescription').css('display', 'block');
-    }
-
-
-    function show_hide() {
-        $('#show').val("show");
-        $('#lineDescription').css('display', 'none');
-    }
-
-
     export function processCarbonBalanceData() {
         // Prepare the carbon balance graph
         this.carbonBalanceData = new CarbonBalance.Display();
