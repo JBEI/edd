@@ -198,7 +198,7 @@ var StudyLines;
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, function (id, protocol) {
             $.ajax({
-                url: '../measurements/' + id + '/',
+                url: '/study/' + EDDData.currentStudyID + '/measurements/' + id + '/',
                 type: 'GET',
                 dataType: 'json',
                 error: function (xhr, status) {

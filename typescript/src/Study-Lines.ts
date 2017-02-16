@@ -251,7 +251,7 @@ namespace StudyLines {
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
-                url: '../measurements/' + id + '/',
+                url: '/study/' + EDDData.currentStudyID + '/measurements/' + id + '/',
                 type: 'GET',
                 dataType: 'json',
                 error: (xhr, status) => {
