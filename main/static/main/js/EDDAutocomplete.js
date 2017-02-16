@@ -549,6 +549,7 @@ var EDDAuto;
             this.modelName = 'Registry';
             this.columns = EDDAuto.Registry.columns;
             this.cacheId = 'Registries';
+            this.value_key = 'recordId';
             this.init();
         }
         Registry.columns = [new AutoColumn('Name', '300px', 'name')];
