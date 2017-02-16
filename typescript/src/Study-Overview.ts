@@ -3,7 +3,6 @@
 /// <reference path="Dragboxes.ts" />
 /// <reference path="DataGrid.ts" />
 
-// import {error} from "util";
 declare var EDDData:EDDData;
 
 module StudyOverview {
