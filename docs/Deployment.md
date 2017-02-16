@@ -14,7 +14,7 @@ included `Dockerfile`s.
 
 ## Initial configuration
 
-There are many configuration options that can be set before launching EDD. The `init-config.sh`
+There are many configuration options that can be set before launching EDD. The `init-config`
 script handles creating two files based on included example files:
 
   * __`secrets.env`__: Contains environment variables loaded into containers at launch; these
@@ -23,9 +23,9 @@ script handles creating two files based on included example files:
     Docker containers. Non-secret environment, and other launch options will be put into this file.
 
 More information and examples can be found in the example files, and copied into the files created
-by the `init-config.sh` script.
+by the `init-config` script.
 
-The `init-config.sh` script can also optionally take a `--project NAME` argument, and will attempt
+The `init-config` script can also optionally take a `--project NAME` argument, and will attempt
 to create a virtualenv with `virtualenvwrapper`, and set the `COMPOSE_PROJECT_NAME` environment
 when the virtualenv is activated. This is useful to have the Docker containers started by Compose
 have a prefix other than `dockerservices`. It will also allow `workon NAME` to take you directly
