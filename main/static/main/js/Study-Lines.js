@@ -496,6 +496,19 @@ var LineResults = (function (_super) {
     };
     return LineResults;
 }(DataGrid));
+var DGSelectAllLinesWidget = (function (_super) {
+    __extends(DGSelectAllLinesWidget, _super);
+    function DGSelectAllLinesWidget() {
+        _super.apply(this, arguments);
+    }
+    DGSelectAllLinesWidget.prototype.clickHandler = function () {
+        _super.prototype.clickHandler.call(this);
+        //update selected text
+        var checkedBoxLen = $('#studyLinesTable').find('tbody input[type=checkbox]:checked').length;
+        $('#linesSelectedCell').empty().text(checkedBoxLen + ' selected');
+    };
+    return DGSelectAllLinesWidget;
+}(DGSelectAllWidget));
 // The spec object that will be passed to DataGrid to create the Lines table
 var DataGridSpecLines = (function (_super) {
     __extends(DataGridSpecLines, _super);
@@ -862,7 +875,7 @@ var DataGridSpecLines = (function (_super) {
         widgetSet.push(showCarbonBalanceWidget);
         this.carbonBalanceWidget = showCarbonBalanceWidget;
         // A "select all / select none" button
-        var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
+        var selectAllWidget = new DGSelectAllLinesWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(selectAllWidget);
         return widgetSet;
