@@ -1479,12 +1479,7 @@ var DGSelectAllWidget = (function (_super) {
         this.updateButtonLabel();
     };
     DGSelectAllWidget.prototype.testIfAnySelected = function () {
-        if ($(this.dataGridSpec.tableElement).find('tbody input[type=checkbox]:checked').length > 0) {
-            this.anySelected = true;
-        }
-        else {
-            this.anySelected = false;
-        }
+        this.anySelected = $(this.dataGridSpec.tableElement).find('tbody input[type=checkbox]:checked').length > 0;
         return this.anySelected;
     };
     return DGSelectAllWidget;

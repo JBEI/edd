@@ -1808,11 +1808,7 @@ class DGSelectAllWidget extends DataGridHeaderWidget {
 
 
     testIfAnySelected():boolean {
-        if ($(this.dataGridSpec.tableElement).find('tbody input[type=checkbox]:checked').length > 0) {
-            this.anySelected = true;
-        } else {
-            this.anySelected = false;
-        }
+        this.anySelected = $(this.dataGridSpec.tableElement).find('tbody input[type=checkbox]:checked').length > 0;
         return this.anySelected;
     }
 }
