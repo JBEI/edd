@@ -169,6 +169,7 @@ namespace StudyLines {
 
         $("#exportLineButton").click(function() {
             $("#exportModal").removeClass('off').dialog( "open" );
+            includeAllLines();
             //add table to form as hidden field.
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
@@ -177,6 +178,7 @@ namespace StudyLines {
         });
 
         $('#worklistButton').click(function () {
+            includeAllLines();
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
             table.hide();
@@ -249,7 +251,7 @@ namespace StudyLines {
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
-                url: 'measurements/' + id + '/',
+                url: '../measurements/' + id + '/',
                 type: 'GET',
                 dataType: 'json',
                 error: (xhr, status) => {
@@ -261,6 +263,25 @@ namespace StudyLines {
         });
     }
 
+    //when all ajax requests are finished, determine if there are AssayMeasurements.
+    $(document).ajaxStop(function() {
+        // hide export button if there are assays but no assay measurements
+        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+            $('#exportLineButton').prop('disabled', true);
+            $('#exportLineButton').prop('title', "Import data first");
+        }
+        else {
+            $('#exportLineButton').prop('disabled', false);
+            $('#exportLineButton').prop('title', 'Download data');
+        }
+    });
+
+    function includeAllLines() {
+        if ($('#studyLinesTable').find('input.checkbox:checked').length === 0) {
+            //checks all checkboxes.
+            $('#studyLinesTable td input:checkbox').prop('checked', true);
+        };
+    }
 
     function processMeasurementData(protocol, data) {
         var assaySeen = {},
@@ -350,7 +371,6 @@ namespace StudyLines {
                 'count': checkedBoxLen,
                 'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
             });
-            // $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportLineButton").removeClass('off');
             if (checkedBoxLen) {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',false);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
@@ -360,8 +380,6 @@ namespace StudyLines {
                 }
             } else {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',true);
-                $('#worklistButton').attr('title', 'select line(s) first');
-                $('#exportLineButton').attr('title', 'select line(s) first');
             }
         }
     }

@@ -1305,6 +1305,7 @@ namespace StudyDataPage {
         //click handler for export assay measurements
         $('#exportButton').click(function(ev) {
             ev.preventDefault();
+            includeAllLines();
             $('input[value="export"]').prop('checked', true);
             $('button[value="assay_action"]').click();
             return false;
@@ -1494,6 +1495,13 @@ namespace StudyDataPage {
         });
     }
 
+    function includeAllLines() {
+        if ($('#studyAssaysTable').find('input.checkbox:checked').length === 0) {
+            //checks all checkboxes.
+            $('#studyAssaysTable td input:checkbox').prop('checked', true);
+        };
+    }
+
     function allActiveAssays() {
         var assays = _.keys(EDDData.Assays);
 
@@ -1548,6 +1556,11 @@ namespace StudyDataPage {
         if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
             //TODO: create prepare it for no data?
             $('#dataTableButton').click();
+            $('#exportButton').prop('disabled', true);
+            $('#exportButton').prop('title', 'Import data first');
+        } else {
+            $('#exportButton').prop('disabled', false);
+            $('#exportButton').prop('title', 'Download data');
         }
     });
 
