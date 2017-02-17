@@ -120,6 +120,10 @@ services:
 
       # Set these variables to control proxy through nginx
       #VIRTUAL_HOST: edd.example.net
+      # If doing local-only testing, no certificates are generated, and nginx will not listen on
+      #   port 443; set the HTTPS_METHOD to "noredirect" to access via port 80 without automatic
+      #   redirect to 443
+      #HTTPS_METHOD: "noredirect"
       #LETSENCRYPT_HOST: edd.example.net
       #LETSENCRYPT_EMAIL: "aliddell@example.net"
       # The below line directs to use staging Let's Encrypt server. It is commented out by
