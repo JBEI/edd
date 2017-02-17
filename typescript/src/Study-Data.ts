@@ -1269,6 +1269,20 @@ namespace StudyDataPage {
         // Prepend show/hide filter button for better alignment
         // Note: this will be removed when we implement left side filtering
 
+        //when all ajax requests are finished, determine if there are AssayMeasurements.
+        $(document).ajaxStop(function() {
+            // show assay table by default if there are assays but no assay measurements
+            if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+                //TODO: create prepare it for no data?
+                $('#dataTableButton').click();
+                $('#exportButton').prop('disabled', true);
+                $('#exportButton').prop('title', 'Import data first');
+            } else {
+                $('#exportButton').prop('disabled', false);
+                $('#exportButton').prop('title', 'Download data');
+            }
+        });
+
         var showHideFilterButton = $('#hideFilterSection');
         $('#assaysActionPanel').prepend(showHideFilterButton);
 
@@ -1305,7 +1319,7 @@ namespace StudyDataPage {
         //click handler for export assay measurements
         $('#exportButton').click(function(ev) {
             ev.preventDefault();
-            includeAllLines();
+            includeAllLinesIfEmpty();
             $('input[value="export"]').prop('checked', true);
             $('button[value="assay_action"]').click();
             return false;
@@ -1495,7 +1509,7 @@ namespace StudyDataPage {
         });
     }
 
-    function includeAllLines() {
+    function includeAllLinesIfEmpty() {
         if ($('#studyAssaysTable').find('input.checkbox:checked').length === 0) {
             //checks all checkboxes.
             $('#studyAssaysTable td input:checkbox').prop('checked', true);
@@ -1549,20 +1563,6 @@ namespace StudyDataPage {
             success: processMeasurementData.bind(this, protocol)
         });
     }
-
-    //when all ajax requests are finished, determine if there are AssayMeasurements.
-    $(document).ajaxStop(function() {
-        // show assay table by default if there are assays but no assay measurements
-        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
-            //TODO: create prepare it for no data?
-            $('#dataTableButton').click();
-            $('#exportButton').prop('disabled', true);
-            $('#exportButton').prop('title', 'Import data first');
-        } else {
-            $('#exportButton').prop('disabled', false);
-            $('#exportButton').prop('title', 'Download data');
-        }
-    });
 
     function processMeasurementData(protocol, data) {
         var assaySeen = {},

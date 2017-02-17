@@ -154,7 +154,7 @@
 <div id="exportModal" class="off" title="Export as">
     <form action="" method="POST" id="exportForm">
         {% csrf_token %}
-        <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" />
+        <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" hidden/>
         <label for="line_action_export">
             <span>Export Lines</span>
             <select name="export">

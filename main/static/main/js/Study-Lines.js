@@ -63,6 +63,18 @@ var StudyLines;
         $(window).on('resize', queuePositionActionsBar);
         $('#worklistButton').attr('title', 'select line(s) first');
         $('#exportLineButton').attr('title', 'select line(s) first');
+        //when all ajax requests are finished, determine if there are AssayMeasurements.
+        $(document).ajaxStop(function () {
+            // hide export button if there are assays but no assay measurements
+            if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+                $('#exportLineButton').prop('disabled', true);
+                $('#exportLineButton').prop('title', "Import data first");
+            }
+            else {
+                $('#exportLineButton').prop('disabled', false);
+                $('#exportLineButton').prop('title', 'Download data');
+            }
+        });
         $.ajax({
             'url': '../edddata/',
             'type': 'GET',
@@ -128,14 +140,21 @@ var StudyLines;
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
         $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
-        $("#exportModal").dialog({ autoOpen: false });
+        $("#exportModal").dialog({
+            minWidth: 400,
+            autoOpen: false,
+            minHeight: 0,
+            create: function () {
+                $(this).css("maxHeight", 400);
+            }
+        });
         $("#addAssayButton").click(function () {
             $("#addAssayModal").removeClass('off').dialog("open");
             return false;
         });
         $("#exportLineButton").click(function () {
             $("#exportModal").removeClass('off').dialog("open");
-            includeAllLines();
+            includeAllLinesIfEmpty();
             //add table to form as hidden field.
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
@@ -143,7 +162,7 @@ var StudyLines;
             return false;
         });
         $('#worklistButton').click(function () {
-            includeAllLines();
+            includeAllLinesIfEmpty();
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
             table.hide();
@@ -210,19 +229,7 @@ var StudyLines;
         });
     }
     StudyLines.prepareAfterLinesTable = prepareAfterLinesTable;
-    //when all ajax requests are finished, determine if there are AssayMeasurements.
-    $(document).ajaxStop(function () {
-        // hide export button if there are assays but no assay measurements
-        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
-            $('#exportLineButton').prop('disabled', true);
-            $('#exportLineButton').prop('title', "Import data first");
-        }
-        else {
-            $('#exportLineButton').prop('disabled', false);
-            $('#exportLineButton').prop('title', 'Download data');
-        }
-    });
-    function includeAllLines() {
+    function includeAllLinesIfEmpty() {
         if ($('#studyLinesTable').find('input.checkbox:checked').length === 0) {
             //checks all checkboxes.
             $('#studyLinesTable td input:checkbox').prop('checked', true);
