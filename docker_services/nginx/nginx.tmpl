@@ -206,8 +206,10 @@ server {
         {{ if eq $proto "uwsgi" }}
         include uwsgi_params;
         uwsgi_pass {{ trim $proto }}://{{ trim $upstream_name }};
-        {{ else }}
+        {{ else if $vhostStatic }}
         try_files $uri @upstream_proxy;
+        {{ else }}
+        proxy_pass            {{ trim $proto }}://{{ trim $upstream_name }};
         {{ end }}
         {{ if (exists (printf "/etc/nginx/htpasswd/%s" $host)) }}
         auth_basic  "Restricted {{ $host }}";
@@ -220,7 +222,7 @@ server {
         {{ end }}
     }
 
-    {{ if (ne $proto "uwsgi") }}
+    {{ if $vhostStatic }}
     location @upstream_proxy {
       proxy_pass_header     Server;
       proxy_connect_timeout 20;
