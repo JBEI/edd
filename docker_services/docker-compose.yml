@@ -93,7 +93,6 @@ services:
       FLOWER_URL_PREFIX: flower
     networks:
       - backnet
-      - proxynet
     depends_on:
       - rabbitmq
     links:
