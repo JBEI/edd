@@ -1510,10 +1510,15 @@ namespace StudyDataPage {
     }
 
     function includeAllLinesIfEmpty() {
-        if ($('#studyAssaysTable').find('input.checkbox:checked').length === 0) {
-            //checks all checkboxes.
-            $('#studyAssaysTable td input:checkbox').prop('checked', true);
-        };
+        if ($('#studyAssaysTable').find('tbody input[type=checkbox]:checked').length === 0) {
+            //append study id to form
+            var study = _.keys(EDDData.Studies)[0];
+            $('<input>').attr({
+                type: 'hidden',
+                value: study,
+                name: 'studyId',
+            }).appendTo('form');
+        }
     }
 
     function allActiveAssays() {

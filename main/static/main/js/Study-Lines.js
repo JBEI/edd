@@ -231,10 +231,14 @@ var StudyLines;
     StudyLines.prepareAfterLinesTable = prepareAfterLinesTable;
     function includeAllLinesIfEmpty() {
         if ($('#studyLinesTable').find('input.checkbox:checked').length === 0) {
-            //checks all checkboxes.
-            $('#studyLinesTable td input:checkbox').prop('checked', true);
+            //append study id to form
+            var study = _.keys(EDDData.Studies)[0];
+            $('<input>').attr({
+                type: 'hidden',
+                value: study,
+                name: 'studyId',
+            }).appendTo('form');
         }
-        ;
     }
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;
