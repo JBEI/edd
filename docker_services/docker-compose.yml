@@ -192,16 +192,6 @@ services:
     # using container_name means there will only ever be one nginx container!
     container_name: nginx
     restart: always
-    depends_on:
-      - edd
-      - flower
-      - rabbitmq
-      - solr
-    links:
-      - edd
-      - flower
-      - rabbitmq
-      - solr
     networks:
       - proxynet
     volumes:
