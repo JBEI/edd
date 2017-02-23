@@ -58,8 +58,7 @@ RNA-seq data import
 
 {% include "main/include_messages.html" %}
 
-<form method="post" id="data-form"
-      action="/study/{{ study.id }}/import/rnaseq/process">
+<form method="post" id="data-form" action="{% url 'main:edd-pk:rnaseq-process' pk=study.id %}">
   {% csrf_token %}
   <input type="hidden" name="action" value="parse"/>
   <input type="hidden" name="format" value="htseq-combined"/>
@@ -109,8 +108,7 @@ orf2  329       258       407       122       136       117
 </div>
 </form>
 
-<form method="post" id="rnaseqForm"
-      action="/study/{{ study.id }}/import/rnaseq">
+<form method="post" id="rnaseqForm" action="{% url 'main:edd-pk:rnaseq' pk=study.id %}">
   {% csrf_token %}
   <input type="hidden" name="study_id" value="{{ study.id }}" id="study-id"/>
   <input type="hidden" name="n_cols" value=0" id="n-cols"/>

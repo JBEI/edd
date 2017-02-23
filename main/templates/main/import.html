@@ -42,7 +42,8 @@
 {% endblock body_title %}
 
 {% block content %}
-<form method="post" id="assayTableForm" action="/study/{{ study.id }}/import/">
+<form method="post" id="assayTableForm"
+    action="{% url 'main:edd-slug:table-import' slug=study.slug %}">
 {% csrf_token %}
 
 <!-- Step 1 -->

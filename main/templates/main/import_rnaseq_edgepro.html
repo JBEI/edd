@@ -59,8 +59,7 @@ EDGE-pro RNA-seq data import
 
 {% include "main/include_messages.html" %}
 
-<form method="post" id="data-form"
-      action="/study/{{ study.id }}/import/rnaseq/process">
+<form method="post" id="data-form" action="{% url 'main:edd-pk:rnaseq-process' pk=study.id %}">
   {% csrf_token %}
   <input type="hidden" name="action" value="parse"/>
   <input type="hidden" name="format" value="edgepro"/>
@@ -87,7 +86,7 @@ EDGE-pro RNA-seq data import
     and RPKMs for every gene.  This form is for processing individual results
     for a single assay or timepoint; if you need to import data from multiple
     samples (in a different format), use the
-    <a href="/study/{{ study.id }}/import/rnaseq">general-purpose interface</a>.
+    <a href="{% url 'main:edd-pk:rnaseq' pk=study.id %}">general-purpose interface</a>.
     </p>
     <textarea name="data" id="data-field"></textarea>
     <span>
@@ -99,7 +98,6 @@ EDGE-pro RNA-seq data import
 </form>
 
 <form method="post" id="rnaseqForm">
-    <!--action="/study/{{ study.id }}/import/rnaseq/edgepro">-->
   <input type="hidden" name="format" value="edgepro"/>
   <input type="hidden" name="data_table" id="data-table" value=""/>
   {% csrf_token %}
