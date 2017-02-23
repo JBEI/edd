@@ -5,8 +5,7 @@ module.exports = function(config) {
   config.set({
 
     // base path that will be used to resolve all patterns (eg. files, exclude)
-    basePath: '',
-
+    basePath: '.',
 
     // frameworks to use
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
@@ -19,8 +18,6 @@ module.exports = function(config) {
       'main/static/main/js/lib/jquery/jquery.js',
       'main/static/main/js/lib/jquery-ui/jquery-ui.min.js',
       'bower_components/jasmine-jquery/lib/jasmine-jquery.js',
-      'main/static/main/js/test/test.html',
-      'main/fixtures/index.html',
       'main/static/main/js/EDDGraphingTools.js',
       'main/static/main/js/DataGrid.js',
       'main/static/main/js/Utl.js',
@@ -29,14 +26,12 @@ module.exports = function(config) {
       'main/static/main/js/Study-Data.js',
       'main/static/main/js/test/*.js',
       'main/static/main/js/lib/underscore/underscore.js',
-      // 'main/static/main/js/Study.js',
       'main/static/main/js/Study-Create.js',
         // JSON fixture
       { pattern:  'main/static/main/js/test/*.json',
         watched:  true,
         served:   true,
         included: false },
-      {pattern: 'main/static/main/js/test/test.html', watched: true, served: true, included: true},
     ],
 
     proxies: {

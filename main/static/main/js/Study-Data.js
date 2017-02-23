@@ -1111,7 +1111,6 @@ var StudyDataPage;
     StudyDataPage.GeneFilterSection = GeneFilterSection;
     // Called when the page loads.
     function prepareIt() {
-        var _this = this;
         StudyDataPage.progressiveFilteringWidget = new ProgressiveFilteringWidget();
         postFilteringAssays = [];
         postFilteringMeasurements = [];
@@ -1313,6 +1312,7 @@ var StudyDataPage;
                 $('#filterControlsMenu > div.pulldownMenuMenuBlock').addClass('off');
             }
         });
+        fetchEDDData(callback);
         // Simply setting display:none doesn't work on flex items.
         // They still occupy space in the layout.
         // barGraphTypeButtonsJQ.detach();
@@ -1329,6 +1329,9 @@ var StudyDataPage;
         // Callbacks to respond to the filtering section
         $('#mainFilterSection').on('mouseover mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
             .on('keydown', filterTableKeyDown.bind(this));
+    }
+    StudyDataPage.prepareIt = prepareIt;
+    function fetchEDDData(callback) {
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
@@ -1336,30 +1339,35 @@ var StudyDataPage;
                 $('#content').prepend("<div class='noData'>Error. Please reload</div>");
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
-            'success': function (data) {
-                EDDData = $.extend(EDDData || {}, data);
-                colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
-                StudyDataPage.progressiveFilteringWidget.prepareFilteringSection();
-                $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(function () {
-                    queueRefreshDataDisplayIfStale();
-                });
-                //pulling in protocol measurements AssayMeasurements
-                $.each(EDDData.Protocols, function (id, protocol) {
-                    $.ajax({
-                        url: 'measurements/' + id + '/',
-                        type: 'GET',
-                        dataType: 'json',
-                        error: function (xhr, status) {
-                            console.log('Failed to fetch measurement data on ' + protocol.name + '!');
-                            console.log(status);
-                        },
-                        success: processMeasurementData.bind(_this, protocol)
-                    });
-                });
-            }
+            'success': callback
         });
     }
-    StudyDataPage.prepareIt = prepareIt;
+    StudyDataPage.fetchEDDData = fetchEDDData;
+    function callback(data) {
+        EDDData = $.extend(EDDData || {}, data);
+        colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
+        StudyDataPage.progressiveFilteringWidget.prepareFilteringSection();
+        $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(function () {
+            queueRefreshDataDisplayIfStale();
+        });
+        fetchMeasurements(EDDData);
+    }
+    function fetchMeasurements(EDDData) {
+        var _this = this;
+        //pulling in protocol measurements AssayMeasurements
+        $.each(EDDData.Protocols, function (id, protocol) {
+            $.ajax({
+                url: 'measurements/' + id + '/',
+                type: 'GET',
+                dataType: 'json',
+                error: function (xhr, status) {
+                    console.log('Failed to fetch measurement data on ' + protocol.name + '!');
+                    console.log(status);
+                },
+                success: processMeasurementData.bind(_this, protocol)
+            });
+        });
+    }
     function allActiveAssays() {
         var assays = _.keys(EDDData.Assays);
         var filteredIDs = [];

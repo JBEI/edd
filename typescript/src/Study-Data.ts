@@ -1439,6 +1439,8 @@ namespace StudyDataPage {
             }
         });
 
+        fetchEDDData(callback);
+
         // Simply setting display:none doesn't work on flex items.
         // They still occupy space in the layout.
         // barGraphTypeButtonsJQ.detach();
@@ -1458,7 +1460,9 @@ namespace StudyDataPage {
         // Callbacks to respond to the filtering section
         $('#mainFilterSection').on('mouseover mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
             .on('keydown', filterTableKeyDown.bind(this));
+    }
 
+    export function fetchEDDData(callback) {
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
@@ -1466,31 +1470,36 @@ namespace StudyDataPage {
                 $('#content').prepend("<div class='noData'>Error. Please reload</div>");
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
-            'success': (data) => {
-                EDDData = $.extend(EDDData || {}, data);
+            'success': callback
+        });
+    }
 
-                colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
+    function callback(data) {
+        EDDData = $.extend(EDDData || {}, data);
 
-                progressiveFilteringWidget.prepareFilteringSection();
+        colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
 
-                $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(() => {
-                    queueRefreshDataDisplayIfStale();
-                });
+        progressiveFilteringWidget.prepareFilteringSection();
 
-                //pulling in protocol measurements AssayMeasurements
-                $.each(EDDData.Protocols, (id, protocol) => {
-                    $.ajax({
-                        url: 'measurements/' + id + '/',
-                        type: 'GET',
-                        dataType: 'json',
-                        error: (xhr, status) => {
-                            console.log('Failed to fetch measurement data on ' + protocol.name + '!');
-                            console.log(status);
-                        },
-                        success: processMeasurementData.bind(this, protocol)
-                    });
-                });
-            }
+        $('#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox').change(() => {
+            queueRefreshDataDisplayIfStale();
+        });
+        fetchMeasurements(EDDData);
+    }
+
+    function fetchMeasurements(EDDData) {
+        //pulling in protocol measurements AssayMeasurements
+        $.each(EDDData.Protocols, (id, protocol) => {
+            $.ajax({
+                url: 'measurements/' + id + '/',
+                type: 'GET',
+                dataType: 'json',
+                error: (xhr, status) => {
+                    console.log('Failed to fetch measurement data on ' + protocol.name + '!');
+                    console.log(status);
+                },
+                success: processMeasurementData.bind(this, protocol)
+            });
         });
     }
 
