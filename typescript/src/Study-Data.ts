@@ -2648,7 +2648,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         ];
 
         // Set up jQuery modals
-        $("#assayMain").dialog({ autoOpen: false });
+        $("#assayMain").dialog({ minWidth: 500, autoOpen: false });
 
         // TODO we probably don't want to special-case like this by name
         if (EDDData.Protocols[record.pid].name == "Transcriptomics") {

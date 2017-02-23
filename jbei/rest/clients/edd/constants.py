@@ -22,6 +22,11 @@ LOCALE_PARAM = 'locale'
 CASE_SENSITIVE_PARAM = 'case_sensitive'
 CASE_SENSITIVE_DEFAULT = False
 
+CREATED_AFTER_PARAM = 'created_after'
+CREATED_BEFORE_PARAM = 'created_before'
+UPDATED_BEFORE_PARAM = 'updated_before'
+UPDATED_AFTER_PARAM = 'updated_after'
+
 PAGE_SIZE_QUERY_PARAM = 'page_size'
 PAGE_NUMBER_QUERY_PARAM = 'page'
 RESULTS_OFFSET_QUERY_PARAM = 'offset'
