@@ -126,7 +126,7 @@
         <!-- source of measurement type property data -->
         <field name="source" type="tag_lower" indexed="true" stored="true" />
         <!-- synonyms and alternate names for measurement type -->
-        <field name="synonym" type="text_lower" indexed="true" stored="true" />
+        <field name="synonym" type="text_lower" indexed="true" stored="true" multiValued="true" />
 
         <!-- == metabolite-specific fields == -->
         <!-- metabolite physical properties -->
