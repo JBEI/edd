@@ -24,3 +24,10 @@ SKIPPED_KEY = 'Skipped columns'
 SUSPECTED_MATCH_STRAINS = 'Suspected match strains'
 UNMATCHED_HEADERS_KEY = 'Unmatched column header indexes'
 UNMATCHED_PART_NUMBER = 'Unmatched part number'
+
+OK = 200
+INTERNAL_SERVER_ERROR = 500
+BAD_REQUEST = 400
+CONFLICT = 409
+UNPROCESSABLE = 422
+
