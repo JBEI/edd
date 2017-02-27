@@ -92,6 +92,19 @@ namespace StudyLines {
         $('#exportLineButton').attr('title', 'select line(s) first');
 
 
+        //when all ajax requests are finished, determine if there are AssayMeasurements.
+        $(document).ajaxStop(function() {
+            // hide export button if there are assays but no assay measurements
+            if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+                $('#exportLineButton').prop('disabled', true);
+                $('#exportLineButton').prop('title', "Import data first");
+            }
+            else {
+                $('#exportLineButton').prop('disabled', false);
+                $('#exportLineButton').prop('title', 'Download data');
+            }
+        });
+
         $.ajax({
             'url': '../edddata/',
             'type': 'GET',
@@ -160,7 +173,14 @@ namespace StudyLines {
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
         $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
-        $("#exportModal").dialog({ autoOpen: false });
+        $("#exportModal").dialog({
+            minWidth: 400,
+            autoOpen: false,
+            minHeight: 0,
+            create: function() {
+                $(this).css("maxHeight", 400);
+            }
+        });
 
         $("#addAssayButton").click(function() {
             $("#addAssayModal").removeClass('off').dialog( "open" );
@@ -169,6 +189,7 @@ namespace StudyLines {
 
         $("#exportLineButton").click(function() {
             $("#exportModal").removeClass('off').dialog( "open" );
+            includeAllLinesIfEmpty();
             //add table to form as hidden field.
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
@@ -177,6 +198,7 @@ namespace StudyLines {
         });
 
         $('#worklistButton').click(function () {
+            includeAllLinesIfEmpty();
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
             table.hide();
@@ -248,7 +270,7 @@ namespace StudyLines {
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
-                url: 'measurements/' + id + '/',
+                url: '/study/' + EDDData.currentStudyID + '/measurements/' + id + '/',
                 type: 'GET',
                 dataType: 'json',
                 error: (xhr, status) => {
@@ -260,6 +282,17 @@ namespace StudyLines {
         });
     }
 
+    function includeAllLinesIfEmpty() {
+        if ($('#studyLinesTable').find('input.checkbox:checked').length === 0) {
+            //append study id to form
+            var study = _.keys(EDDData.Studies)[0];
+            $('<input>').attr({
+                type: 'hidden',
+                value: study,
+                name: 'studyId',
+            }).appendTo('form');
+        }
+    }
 
     function processMeasurementData(protocol, data) {
         var assaySeen = {},
@@ -349,7 +382,6 @@ namespace StudyLines {
                 'count': checkedBoxLen,
                 'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
             });
-            // $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportLineButton").removeClass('off');
             if (checkedBoxLen) {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',false);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
@@ -359,8 +391,6 @@ namespace StudyLines {
                 }
             } else {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',true);
-                $('#worklistButton').attr('title', 'select line(s) first');
-                $('#exportLineButton').attr('title', 'select line(s) first');
             }
         }
     }

@@ -170,7 +170,7 @@
     <form action="" method="POST" id="exportForm">
         {% csrf_token %}
         <input type="radio" id="line_action_export" checked="checked" name="line_action"
-                value="export" />
+                value="export" hidden="hidden" />
         <label for="line_action_export">
             <span>Export Lines</span>
             <select name="export">
