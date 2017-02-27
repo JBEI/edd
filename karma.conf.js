@@ -28,14 +28,18 @@ module.exports = function(config) {
       'main/static/main/js/lib/underscore/underscore.js',
       'main/static/main/js/Study-Create.js',
         // JSON fixture
-      { pattern:  'main/static/main/js/test/*.json',
+      { pattern:  'main/static/main/js/test/EDDData.json',
+        watched:  true,
+        served:   true,
+        included: false },
+        { pattern:  'main/static/main/js/test/SpecRunner.html',
         watched:  true,
         served:   true,
         included: false },
     ],
 
     proxies: {
-      '/edddata/': 'main/static/main/js/test/EDDData.json'
+      '/edddata/': '/base/main/static/main/js/test/EDDData.json'
     },
 
     // enable / disable watching file and executing tests whenever any file changes

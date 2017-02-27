@@ -1439,7 +1439,7 @@ namespace StudyDataPage {
             }
         });
 
-        fetchEDDData(callback);
+        fetchEDDData(onSuccess);
 
         // Simply setting display:none doesn't work on flex items.
         // They still occupy space in the layout.
@@ -1474,7 +1474,7 @@ namespace StudyDataPage {
         });
     }
 
-    function callback(data) {
+    function onSuccess(data) {
         EDDData = $.extend(EDDData || {}, data);
 
         colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
@@ -1536,31 +1536,6 @@ namespace StudyDataPage {
         }
     }
 
-
-    export function requestAssayData(assay) {
-        var protocol = EDDData.Protocols[assay.pid];
-        $.ajax({
-            url: ['measurements', assay.pid, assay.id, ''].join('/'),
-            type: 'GET',
-            dataType: 'json',
-            error: (xhr, status) => {
-                console.log('Failed to fetch measurement data on ' + assay.name + '!');
-                console.log(status);
-            },
-            success: processMeasurementData.bind(this, protocol)
-        });
-    }
-
-    //when all ajax requests are finished, determine if there are AssayMeasurements.
-    $(document).ajaxStop(function() {
-        // show assay table by default if there are assays but no assay measurements
-        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
-            //TODO: create prepare it for no data?
-            $('#dataTableButton').click();
-        } else {
-            $('#lineGraphButton').click();
-        }
-    });
 
     function processMeasurementData(protocol, data) {
         var assaySeen = {},

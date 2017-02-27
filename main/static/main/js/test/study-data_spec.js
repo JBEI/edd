@@ -36,12 +36,6 @@ describe("prepare it", function () {
     });
 
     describe('method: StudyDataPage.progressiveFilteringWidget.buildAssayIDSet', function() {
-        it('should return a data grid data cell with the strain name', function() {
-            spyOn(StudyDataPage.progressiveFilteringWidget, 'buildAssayIDSet');
-            EDDData = getJSONFixture('EDDData.json');
-            StudyDataPage.progressiveFilteringWidget.buildAssayIDSet(EDDData);
-            expect(StudyDataPage.progressiveFilteringWidget.buildAssayIDSet).toHaveBeenCalled();
-         });
         it('should return an array', function() {
             expect(StudyDataPage.progressiveFilteringWidget.buildAssayIDSet(EDDData)).toEqual([ '2049', '2050', '2051', '2052', '2053', '2054' ]);
         })
