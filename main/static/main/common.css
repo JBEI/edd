@@ -42,11 +42,11 @@ body {
     height: 100%;
     line-height: 1;
 }
-p {
-    margin:0.4em;
-    padding:0.2em;
-}
 
+p {
+    margin: 0.4em;
+    padding: 0.2em;
+}
 
 /* Links */
 
@@ -306,7 +306,7 @@ div.statusMessage > p.bad, .bad {
 div.statusMessage > p.success, .success {
   color: #0000ff;
   font-weight: bold;
-    width:300px;
+  width:300px;
 }
 
 
@@ -389,9 +389,6 @@ div.helpBadgeDiv:hover div.helpContent {
 }
 
 /* Page sections */
-div.pageSection {
-    margin:10px 40px 3px 20px;
-}
 
 div.newPageSection {
     margin:10px 40px 3px 20px;
@@ -509,6 +506,11 @@ div.noLines {
     display: none;
 }
 
+/* alert */
+.alert {
+    width: 40%;
+    height: 50px;
+}
 
 /* Data tables and controls */
 
@@ -1385,6 +1387,10 @@ td.editable-field span.icon.icon-cancel {
     background-image: url(images/edit-cancel.png);
 }
 
+.editableStudyName {
+    width: 700px;
+    margin:auto;
+}
 
 div.errorMessage {
     background: #FFF0F0;
@@ -1836,6 +1842,7 @@ div.tooltip2 {
 .nav {
     list-style: none;
     padding-left: 0;
+    margin-right:-40px;
 }
 
 .studyNav .navbar .nav > .active > a {
@@ -1899,13 +1906,11 @@ div.tooltip2 {
 }
 
 .permissionUser {
-    margin-left: 9px;
-    margin-bottom: 10px;
+    margin: 0px 10px 10px 9px;
 }
 
 .permissionGroup {
-
-    margin-bottom: 10px;
+    margin: 0px 10px 10px 0px;
 }
 
 .indent {

@@ -1,0 +1,16 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block head_title %}
+    EDD - Error: Bad request
+{% endblock head_title %}
+
+{% block body_title %}
+    Error - Bad Request
+{% endblock body_title %}
+
+{% block content %}
+    <p> The request cannot be fulfilled do to a bad syntax error or server issues.
+        The site administrators have been notified of the problem, please check back later.
+    </p>
+{% endblock content %}

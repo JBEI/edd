@@ -23,7 +23,8 @@ class UpdateSerializer(serializers.ModelSerializer):
 class StudySerializer(serializers.ModelSerializer):
     class Meta:
         model = Study
-        fields = ('pk', 'name', 'description', 'created', 'updated', 'contact', 'contact_extra',
+        fields = ('pk', 'name', 'uuid', 'slug', 'description', 'created', 'updated', 'contact',
+                  'contact_extra',
                   'metabolic_map', 'meta_store')
         # here after
         # confirming that Lines (our primary concern at the moment) work

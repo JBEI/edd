@@ -1269,6 +1269,20 @@ namespace StudyDataPage {
         // Prepend show/hide filter button for better alignment
         // Note: this will be removed when we implement left side filtering
 
+        //when all ajax requests are finished, determine if there are AssayMeasurements.
+        $(document).ajaxStop(function() {
+            // show assay table by default if there are assays but no assay measurements
+            if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+                //TODO: create prepare it for no data?
+                $('#dataTableButton').click();
+                $('#exportButton').prop('disabled', true);
+                $('#exportButton').prop('title', 'Import data first');
+            } else {
+                $('#exportButton').prop('disabled', false);
+                $('#exportButton').prop('title', 'Download data');
+            }
+        });
+
         var showHideFilterButton = $('#hideFilterSection');
         $('#assaysActionPanel').prepend(showHideFilterButton);
 
@@ -1305,6 +1319,7 @@ namespace StudyDataPage {
         //click handler for export assay measurements
         $('#exportButton').click(function(ev) {
             ev.preventDefault();
+            includeAllLinesIfEmpty();
             $('input[value="export"]').prop('checked', true);
             $('button[value="assay_action"]').click();
             return false;
@@ -1494,6 +1509,18 @@ namespace StudyDataPage {
         });
     }
 
+    function includeAllLinesIfEmpty() {
+        if ($('#studyAssaysTable').find('tbody input[type=checkbox]:checked').length === 0) {
+            //append study id to form
+            var study = _.keys(EDDData.Studies)[0];
+            $('<input>').attr({
+                type: 'hidden',
+                value: study,
+                name: 'studyId',
+            }).appendTo('form');
+        }
+    }
+
     function allActiveAssays() {
         var assays = _.keys(EDDData.Assays);
 
@@ -1541,15 +1568,6 @@ namespace StudyDataPage {
             success: processMeasurementData.bind(this, protocol)
         });
     }
-
-    //when all ajax requests are finished, determine if there are AssayMeasurements.
-    $(document).ajaxStop(function() {
-        // show assay table by default if there are assays but no assay measurements
-        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
-            //TODO: create prepare it for no data?
-            $('#dataTableButton').click();
-        }
-    });
 
     function processMeasurementData(protocol, data) {
         var assaySeen = {},
@@ -2648,7 +2666,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         ];
 
         // Set up jQuery modals
-        $("#assayMain").dialog({ autoOpen: false });
+        $("#assayMain").dialog({ minWidth: 500, autoOpen: false });
 
         // TODO we probably don't want to special-case like this by name
         if (EDDData.Protocols[record.pid].name == "Transcriptomics") {

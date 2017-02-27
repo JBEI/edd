@@ -25,8 +25,21 @@
 
     <div class="overviewFlex">
         <div style="flex-grow:1">
-            {{ edit_study.non_field_errors }}
             {{ edit_study.name.errors }}
+        {% if form.errors %}
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <p>{{ edit_study.name.errors.as_text }}</p>
+        </div>
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <p>{{ edit_study.non_field_errors.as_text }}</p>
+        </div>
+        {% endif %}
+        <div id="linesAdded" class="alert alert-success alert-dismissible" role="alert" hidden>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div id="alert_placeholder"></div>
 
             <table class="formTable" style="width:90%;">
                 <tr>
@@ -73,11 +86,10 @@
         <a class="dropLink dropImg" href="{% static 'sample_experiment_description.xlsx' %}">
             __</a>)
         <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"
-    title='Drag-and-drop an Experiement description file into this grey box
+    title='Drag-and-drop an &lt;a style="color:blue" href=&quot;
+    /help/experiment_description/&quot;&gt; Experiment description file&lt;/a&gt; into this grey box
                     to describe your experiment.  Alternatively, you can click on the link below to
-                    manually input your experiment description.
-                    &lt;a style="color:blue" href=&quot;/help/experiment_description/&quot;&gt; What is an Experiment
-                    Description file&lt;/a&gt;?'>Help</div>
+                    manually input your experiment description.'>Help</div>
     </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
@@ -98,7 +110,6 @@
         </div>
      <div class="discloseBody">
           <div class="sectionContent indent">
-          <div>Current Permissions</div>
             {% with perms=study.get_combined_permission %}
                 {% if perms %}
                 <table style="width:50%; margin: 10px 0px 24px 37px" cellpadding="0" cellspacing="0" class="dataTable sortable">
@@ -115,9 +126,8 @@
                 </table>
                 {% endif %}
             {% endwith %}
-        <button class="actionButton primary" id="addPermission" >Add or edit permission</button>
+        <button class="actionButton primary" id="addPermission" >Configure Permissions</button>
      </div>
-    </div>
  </div>
 {% endif %}
 
@@ -134,7 +144,7 @@
                 <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
                     {% csrf_token %}
                     {{ new_attach.as_p }}
-                    <p><button type="submit" name="action" value="attach">Attach File</button></p>
+                    <p><button type="submit" class="actionButton primary"  style="margin-top:-4px" name="action" value="attach">Attach File</button></p>
                 </form>
                 {% endif %}
             </div>
@@ -159,7 +169,7 @@
                 <form method="POST" class="comments edd-form" action="">
                     {% csrf_token %}
                     {{ new_comment.as_p }}
-                    <p><button type="submit" name="action" value="comment">Add Comment</button></p>
+                    <p><button type="submit" class="actionButton primary" name="action" value="comment">Add Comment</button></p>
                 </form>
             </div>
         </div>
@@ -167,34 +177,46 @@
 </div>
 
 {# add permissions modal #}
-<div class="indent off" title="Add Permission" id="permissionsSection">
+<div class="indent off" title="Configure Permissions" id="permissionsSection">
         <div class="sectionActions">
             <form method="POST" enctype="multipart/form-data" class="edd-form" id="permissions" action="">
                 {% csrf_token %}
                 <div class="permission" id="permission_user_box">
                 <label for="permission_user">
-                    <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
+                    <input type="radio" id="permission_user" name="class" value="User" checked="checked" hidden/>
                     <span>User</span>
                 </label>
+                    <select id="user_permission_options" name="type">
+                        <option value={{ permission_none }}>None</option>
+                        <option value={{ permission_read }}>Read</option>
+                        <option value={{ permission_write }}>Write</option>
+                    </select>
+                <button id="set_user_permission">Set Permission</button>
                 </div>
                 <div  class="permission"  id="permission_group_box">
                 <label for="permission_group">
-                    <input type="radio" id="permission_group" name="class" value="Group"/>
+                    <input type="radio" id="permission_group" name="class" value="Group" hidden/>
                     <span>Group</span>
                 </label>
+                    <select id="group_permission_options" name="type">
+                        <option value={{ permission_none }}>None</option>
+                        <option value={{ permission_read }}>Read</option>
+                        <option value={{ permission_write }}>Write</option>
+                    </select>
+                <button id="set_group_permission">Set Permission</button>
                 </div>
                 <div  class="permission" id="permission_public_box">
+                    <input type="radio" id="permission_public" name="class" value="Public" hidden/>
                 <label for="permission_public">
-                    <input type="radio" id="permission_public" name="class" value="Public"/>
                     <span>Everyone</span>
                 </label>
+                    <select name="type">
+                        <option value={{ permission_none }}>None</option>
+                        <option value={{ permission_read }}>Read</option>
+                        <option value={{ permission_write }}>Write</option>
+                    </select>
+                <button id="set_everyone_permission">Set Permission</button>
                 </div>
-                <select name="type">
-                    <option value="N">None</option>
-                    <option value="R">Read</option>
-                    <option value="W">Write</option>
-                </select>
-                <button id="set_permission">Set Permission</button>
             </form>
     </div>
 </div>

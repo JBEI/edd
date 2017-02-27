@@ -1801,42 +1801,14 @@ class DGSelectAllWidget extends DataGridHeaderWidget {
 
 
     clickHandler():void {
-        var sequence = this.dataGridOwnerObject.currentSequence();
-        // Have DataGrid apply function to everything in current sequence
-        this.dataGridOwnerObject.applyToRecordSet((rows) => {
-            // each row in sequence
-            rows.forEach((row) => {
-                if (row.dataGridDataCells) {
-                    // each cell in row
-                    row.dataGridDataCells.forEach((cell) => {
-                        var checkbox = cell.getCheckboxElement();
-                        if (checkbox) {
-                            $(cell.checkboxElement).prop('checked', !this.anySelected);
-                        }
-                    });
-                }
-            });
-        }, sequence);
+        $(this.dataGridSpec.tableElement).find('tbody input[type=checkbox]').prop('checked', !this.anySelected);
         this.anySelected = !this.anySelected;
         this.updateButtonLabel();
     }
 
 
     testIfAnySelected():boolean {
-        var sequence = this.dataGridOwnerObject.currentSequence();
-        // Cannot use applyToRecordSet here because we will very likely want to exit early
-        this.anySelected = !(this.dataGridOwnerObject.testRecordSet((rows) => {
-            return rows.every((row) => {
-                if (!row.dataGridDataCells) { return true; }
-                // each cell in row
-                return row.dataGridDataCells.every((cell) => {
-                    var checkbox = cell.getCheckboxElement();
-                    if (!checkbox) { return true; }    // On to the next one
-                    // If it's checked, exit early, with our question answered.
-                    return !(checkbox.checked);
-                });
-            });
-        }, sequence));
+        this.anySelected = $(this.dataGridSpec.tableElement).find('tbody input[type=checkbox]:checked').length > 0;
         return this.anySelected;
     }
 }

@@ -71,7 +71,7 @@ module Utl {
 				processData = true;
 			}
 			if (debug) { console.log('Calling ' + url); }
-			var headers = {}
+			var headers = {};
 			if (type == 'POST') {
 				headers["X-CSRFToken"] = jQuery.cookie('csrftoken');
 			}
@@ -634,6 +634,7 @@ module Utl {
 	//	url: The URL to upload the file.
 	//	progressBar: A ProgressBar object for tracking the upload progress.
 	//	processResponseFn: Called when the server sends back its results.
+	//  processErrorFn: Called as an alternative to processResponseFn if the server reports an error.
 	// }
 	// All callbacks are given a FileDropZoneFileContainer object as their first argument.
 
@@ -652,12 +653,14 @@ module Utl {
 		fileInitFn: any;
 		processRawFn: any;
 		processResponseFn: any;
+		processErrorFn: any;
 
 		static fileContainerIndexCounter: number = 0;
 
 		// If processRawFn is provided, it will be called with the raw file data from the drop zone.
 		// If url is provided and processRawFn returns false (or was not provided) the file will be sent to the given url.
 		// If processResponseFn is provided, it will be called with the returned result of the url call.
+		// If an error occurs, processErrorFn will be called with the result.
         constructor(options:any) {
 
 			this.progressBar = options.progressBar || null;
@@ -676,6 +679,7 @@ module Utl {
 			this.fileInitFn = options.fileInitFn;
 			this.processRawFn = options.processRawFn;
 			this.processResponseFn = options.processResponseFn;
+			this.processErrorFn = options.processErrorFn;
 			this.url = options.url;
 		}
 
@@ -751,7 +755,7 @@ module Utl {
 						alert('Failed to read the file! Error: ' + e.fdError)
 					},
 					func: 'text'
-				})
+				});
 			// No need to check stopProcessing - there's no way it could have been modified since the last step.
 			} else if (!fileContainer.skipUpload) {
 				this.uploadFile(fileContainer);
@@ -770,8 +774,14 @@ module Utl {
 			// so we set up the progressBar and callback events before triggering the call to upload.
 			f.event('done', function(xhr) {
 				var result = jQuery.parseJSON(xhr.responseText);
+
 				if (result.python_error) {
-					alert(result.python_error);	// TODO: This is a bit extreme. Might want to just pass it to the callback.
+					// If we were given a function to process the error, use it.
+					if (typeof t.processErrorFn === "function") {
+						t.processErrorFn(fileContainer, xhr.response);
+					} else {
+						alert(result.python_error);
+					}
 				} else if (typeof t.processResponseFn === "function") {
 					t.processResponseFn(fileContainer, result);
 				}
@@ -779,9 +789,9 @@ module Utl {
 			});
 
 			f.event('error', function(e, xhr) {
-				// TODO: Again, heavy handed. Might want to just embed this in FileDropZoneFileContainer
-				// and make an error handler callback.
-				alert('Error uploading ' + f.name + ': ' + xhr.status + ', ' + xhr.statusText);
+				if (typeof t.processErrorFn === "function") {
+					t.processErrorFn(fileContainer, xhr.response);
+				}
 				fileContainer.allWorkFinished = true;
 			});
 
@@ -789,7 +799,7 @@ module Utl {
 				// This ensures that the CSRF middleware in Django doesn't reject our HTTP request.
 				xhr.setRequestHeader("X-CSRFToken", t.csrftoken);
 				// We want to pass along our own guess at the file type, since it's based on a more specific set of criteria.
-				xhr.setRequestHeader('X-EDD-File-Type', fileContainer.fileType)
+				xhr.setRequestHeader('X-EDD-File-Type', fileContainer.fileType);
 
             	$.each(fileContainer.extraHeaders, (name: string, value: string): void => {
 					xhr.setRequestHeader('X-EDD-' + name, value)
@@ -801,7 +811,7 @@ module Utl {
 				if (fileContainer.progressBar) {
 					fileContainer.progressBar.setProgress(0);
 				}
-			})
+			});
 
 			// Update progress when browser reports it:
 			f.event('progress', function(current, total) {
@@ -809,7 +819,7 @@ module Utl {
 					var width = current / total * 100;
 					fileContainer.progressBar.setProgress(width);
 				}
-			})
+			});
 
 			f.sendTo(this.url);
 		}

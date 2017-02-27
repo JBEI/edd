@@ -186,8 +186,8 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             new DataGridColumnGroupSpec('Owner Initials'),
             new DataGridColumnGroupSpec('Owner Full Name', { 'hiddenByDefault': true }),
             new DataGridColumnGroupSpec('Institute', { 'hiddenByDefault': true }),
-            new DataGridColumnGroupSpec('Date Created', { 'hiddenByDefault': true }),
-            new DataGridColumnGroupSpec('Last Modified')
+            new DataGridColumnGroupSpec('Date Created'),
+            new DataGridColumnGroupSpec('Last Modified', { 'hiddenByDefault': true })
 		];
 	}
 

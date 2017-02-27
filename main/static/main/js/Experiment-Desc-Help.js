@@ -7,7 +7,7 @@ var ExperimentDescriptionHelp;
     var LINE_DIV_SELECTOR = '#lineMetadataTypes';
     var PROTOCOL_DIV_SELECTOR = '#protocols';
     var protocols = [];
-    var measurementUnits = {}; // maps pk -> MeasurementUnit
+    var measurementUnits = {};
     var loadedProtocols = false;
     // Metadata types present in the database that should be omitted from the lists displayed
     // in the help page... they duplicate baked-in line/assay characteristics displayed in a

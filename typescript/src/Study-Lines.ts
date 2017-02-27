@@ -92,6 +92,19 @@ namespace StudyLines {
         $('#exportLineButton').attr('title', 'select line(s) first');
 
 
+        //when all ajax requests are finished, determine if there are AssayMeasurements.
+        $(document).ajaxStop(function() {
+            // hide export button if there are assays but no assay measurements
+            if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+                $('#exportLineButton').prop('disabled', true);
+                $('#exportLineButton').prop('title', "Import data first");
+            }
+            else {
+                $('#exportLineButton').prop('disabled', false);
+                $('#exportLineButton').prop('title', 'Download data');
+            }
+        });
+
         $.ajax({
             'url': '../edddata/',
             'type': 'GET',
@@ -116,19 +129,6 @@ namespace StudyLines {
             }
         });
     }
-
-
-    function show_int() {
-        $('#show').val("hide");
-        $('#lineDescription').css('display', 'block');
-    }
-
-
-    function show_hide() {
-        $('#show').val("show");
-        $('#lineDescription').css('display', 'none');
-    }
-
 
     export function processCarbonBalanceData() {
         // Prepare the carbon balance graph
@@ -172,8 +172,15 @@ namespace StudyLines {
 
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
-        $("#addAssayModal").dialog({ autoOpen: false });
-        $("#exportModal").dialog({ autoOpen: false });
+        $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
+        $("#exportModal").dialog({
+            minWidth: 400,
+            autoOpen: false,
+            minHeight: 0,
+            create: function() {
+                $(this).css("maxHeight", 400);
+            }
+        });
 
         $("#addAssayButton").click(function() {
             $("#addAssayModal").removeClass('off').dialog( "open" );
@@ -182,6 +189,7 @@ namespace StudyLines {
 
         $("#exportLineButton").click(function() {
             $("#exportModal").removeClass('off').dialog( "open" );
+            includeAllLinesIfEmpty();
             //add table to form as hidden field.
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
@@ -190,6 +198,7 @@ namespace StudyLines {
         });
 
         $('#worklistButton').click(function () {
+            includeAllLinesIfEmpty();
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
             table.hide();
@@ -199,7 +208,6 @@ namespace StudyLines {
         });
 
         //when the input value changes, assign a pre or postfix to the metadata if one exists
-
         var value: any = $('.edd-label').children('input')[1];
 
         $(value).on("change",function() {
@@ -262,7 +270,7 @@ namespace StudyLines {
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
-                url: 'measurements/' + id + '/',
+                url: '/study/' + EDDData.currentStudyID + '/measurements/' + id + '/',
                 type: 'GET',
                 dataType: 'json',
                 error: (xhr, status) => {
@@ -274,6 +282,17 @@ namespace StudyLines {
         });
     }
 
+    function includeAllLinesIfEmpty() {
+        if ($('#studyLinesTable').find('input.checkbox:checked').length === 0) {
+            //append study id to form
+            var study = _.keys(EDDData.Studies)[0];
+            $('<input>').attr({
+                type: 'hidden',
+                value: study,
+                name: 'studyId',
+            }).appendTo('form');
+        }
+    }
 
     function processMeasurementData(protocol, data) {
         var assaySeen = {},
@@ -348,7 +367,7 @@ namespace StudyLines {
 
     function linesActionPanelShow() {
         // Figure out how many lines are selected.
-        var checkedBoxes = [], checkedLen;
+        var checkedBoxes = [], checkedBoxLen;
         if (this.linesDataGrid) {
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
@@ -356,25 +375,22 @@ namespace StudyLines {
             $('.lineExplanation').css('display', 'block');
             $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton, #worklistButton, #exportLineButton").addClass('off');
         } else {
-            checkedLen = checkedBoxes.length;
-            $('#linesSelectedCell').empty().text(checkedLen + ' selected');
+            checkedBoxLen = checkedBoxes.length;
+            $('#linesSelectedCell').empty().text(checkedBoxLen + ' selected');
             // enable singular/plural changes
             $('#editButton').data({
-                'count': checkedLen,
+                'count': checkedBoxLen,
                 'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
             });
-            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportLineButton").removeClass('off');
-            if (checkedLen) {
+            if (checkedBoxLen) {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',false);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
                 $('#exportLineButton').attr('title', 'Export your lines in a file type of your choosing');
-                if (checkedLen < 2) {
+                if (checkedBoxLen < 2) {
                     $('#groupButton').prop('disabled', true);
                 }
             } else {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',true);
-                $('#worklistButton').attr('title', 'select line(s) first');
-                $('#exportLineButton').attr('title', 'select line(s) first');
             }
         }
     }
@@ -592,6 +608,16 @@ class LineResults extends DataGrid {
         return 'dataTable sortable dragboxes hastablecontrols';
     }
 
+}
+
+class DGSelectAllLinesWidget extends DGSelectAllWidget {
+
+    clickHandler():void {
+        super.clickHandler();
+        //update selected text
+        var checkedBoxLen = $('#studyLinesTable').find('tbody input[type=checkbox]:checked').length;
+        $('#linesSelectedCell').empty().text(checkedBoxLen + ' selected');
+     }
 }
 
 // The spec object that will be passed to DataGrid to create the Lines table
@@ -1002,7 +1028,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         widgetSet.push(showCarbonBalanceWidget);
         this.carbonBalanceWidget = showCarbonBalanceWidget;
         // A "select all / select none" button
-        var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
+        var selectAllWidget = new DGSelectAllLinesWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(selectAllWidget);
         return widgetSet;

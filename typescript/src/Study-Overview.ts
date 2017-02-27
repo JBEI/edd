@@ -71,6 +71,7 @@ module StudyOverview {
             processRawFn: this.fileRead.bind(this),
             url: '/study/' + EDDData.currentStudyID + '/define/',
             processResponseFn: this.fileReturnedFromServer.bind(this),
+            processErrorFn: this.fileErrorReturnedFromServer.bind(this),
             progressBar: this.fileUploadProgressBar
         });
 
@@ -88,13 +89,49 @@ module StudyOverview {
         var currentPath = window.location.pathname;
         var linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
         //display success message
-        $('#general').append('<div id="successLines" class="success" style="margin-bottom: 17px;">Success! ' + result['lines_created'] + ' lines ' +
-            'added! Redirecting to the experiment description page');
 
+        $('<p>', {
+             text: 'Success! ' + result['lines_created'] + ' lines added!',
+             style: 'margin:auto'
+         }).appendTo('#linesAdded');
+
+        $('#linesAdded').show();
         //redirect to lines page
         setTimeout(function () {
             window.location.pathname = linesPathName;
-        }, 2000);
+        }, 1000);
+    }
+
+
+    // This is called upon receiving an errror in a file upload operation, and
+    // is passed an unprocessed result from the server as a second argument.
+    export function fileErrorReturnedFromServer(fileContainer, response): void {
+        // reset the drop zone here
+        clearDropZone();
+        //parse xhr.response
+        var r = response.split('"'); //error response. split on "".
+        var errorMessage = "Error uploading! " + r[3];
+        // and create dismissible error alert
+        alertError(errorMessage);
+    }
+
+    function alertError(message): void {
+        $('#alert_placeholder').append('<div class="alert alert-danger alert-dismissible"><button type="button" ' +
+            'class="close" data-dismiss="alert">&times;</button>'+ message +'</div>');
+        alertTimeout(5000);
+    }
+
+    function alertTimeout(wait): void {
+        setTimeout(function () {
+            $('#alert_placeholder').children('.alert:first-child').remove();
+        }, wait);
+    }
+
+    function clearDropZone(): void {
+        $('#templateDropZone').removeClass('off');
+        $('#fileDropInfoIcon').addClass('off');
+        $('#fileDropInfoName').addClass('off');
+        $('#fileDropInfoSending').addClass('off');
     }
 
 
@@ -166,22 +203,24 @@ module StudyOverview {
             container:$('#permission_group_box')
         });
 
+        //check public permission input on click
+        $('#set_everyone_permission').on('click', function() {
+            $('#permission_public').prop('checked', true);
+        });
+        $('#set_group_permission').on('click', function() {
+            $('#permission_group').prop('checked', true);
+        });
+        $('#set_user_permission').on('click', function() {
+            $('#permission_user').prop('checked', true);
+        });
+
         $('form#permissions')
-            .on('change', ':radio', (ev:JQueryInputEventObject):void => {
-                var radio: JQuery = $(ev.target);
-                $('#permissions').find(':radio').each((i: number, r: Element): void => {
-                    $(r).closest('span').find('.autocomp').prop('disabled', !$(r).prop('checked'));
-                });
-                if (radio.prop('checked')) {
-                    radio.closest('span').find('.autocomp:visible').focus();
-                }
-            })
             .on('submit', (ev:JQueryEventObject): boolean => {
                 var perm: any = {}, klass: string, auto: JQuery;
                 auto = $('form#permissions').find('[name=class]:checked');
                 klass = auto.val();
-                perm.type = $('form#permissions').find('[name=type]').val();
-                perm[klass.toLowerCase()] = { 'id':  auto.closest('.permission').find('input:hidden').val()};
+                perm.type = $(auto).siblings('select').val();
+                perm[klass.toLowerCase()] = { 'id':  $(auto).siblings('input:hidden').val()};
                 $.ajax({
                     'url': '/study/' + EDDData.currentStudyID + '/permissions/',
                     'type': 'POST',
@@ -190,12 +229,22 @@ module StudyOverview {
                         'csrfmiddlewaretoken': $('form#permissions').find('[name=csrfmiddlewaretoken]').val()
                     },
                     'success': (): void => {
+                        var permissionTarget;
                         console.log(['Set permission: ', JSON.stringify(perm)].join(''));
-                        $('<div>').text('Set Permission').addClass('success')
-                            .appendTo($('form#permissions')).delay(5000).fadeOut(2000);
+                        //reset permission options
+                        $('form#permissions').find('.autocomp_search').siblings('select').val('N');
+                        //reset input
+                        $('form#permissions').find('.autocomp_search').val('');
+
+                        $('<div>').text('Permission Updated').addClass('success')
+                            .appendTo($('form#permissions')).delay(2000).fadeOut(2000);
                     },
                     'error': (xhr, status, err): void => {
                         console.log(['Setting permission failed: ', status, ';', err].join(''));
+                        //reset permission options
+                        $('form#permissions').find('.autocomp_search').siblings('select').val('N');
+                        //reset input
+                        $('form#permissions').find('.autocomp_search').val('');
                         $('<div>').text('Server Error: ' + err).addClass('bad')
                             .appendTo($('form#permissions')).delay(5000).fadeOut(2000);
                     }
@@ -205,8 +254,8 @@ module StudyOverview {
             .find(':radio').trigger('change').end()
             .removeClass('off');
         //set style on inputs for permissions
-        $('#permission_user_box').find('input').eq(1).addClass('permissionUser');
-        $('#permission_group_box').find('input').eq(1).addClass('permissionGroup');
+        $('#permission_user_box').find('input').insertBefore('#user_permission_options').addClass('permissionUser');
+        $('#permission_group_box').find('input').insertBefore('#group_permission_options').addClass('permissionGroup');
         $('#permission_public_box').addClass('permissionGroup');
 
         // Set up the Add Measurement to Assay modal

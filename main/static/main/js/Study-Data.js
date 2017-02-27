@@ -1153,6 +1153,20 @@ var StudyDataPage;
         Utl.ButtonBar.prepareButtonBars();
         // Prepend show/hide filter button for better alignment
         // Note: this will be removed when we implement left side filtering
+        //when all ajax requests are finished, determine if there are AssayMeasurements.
+        $(document).ajaxStop(function () {
+            // show assay table by default if there are assays but no assay measurements
+            if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+                //TODO: create prepare it for no data?
+                $('#dataTableButton').click();
+                $('#exportButton').prop('disabled', true);
+                $('#exportButton').prop('title', 'Import data first');
+            }
+            else {
+                $('#exportButton').prop('disabled', false);
+                $('#exportButton').prop('title', 'Download data');
+            }
+        });
         var showHideFilterButton = $('#hideFilterSection');
         $('#assaysActionPanel').prepend(showHideFilterButton);
         $("#dataTableButton").click(function () {
@@ -1185,6 +1199,7 @@ var StudyDataPage;
         //click handler for export assay measurements
         $('#exportButton').click(function (ev) {
             ev.preventDefault();
+            includeAllLinesIfEmpty();
             $('input[value="export"]').prop('checked', true);
             $('button[value="assay_action"]').click();
             return false;
@@ -1360,6 +1375,17 @@ var StudyDataPage;
         });
     }
     StudyDataPage.prepareIt = prepareIt;
+    function includeAllLinesIfEmpty() {
+        if ($('#studyAssaysTable').find('tbody input[type=checkbox]:checked').length === 0) {
+            //append study id to form
+            var study = _.keys(EDDData.Studies)[0];
+            $('<input>').attr({
+                type: 'hidden',
+                value: study,
+                name: 'studyId',
+            }).appendTo('form');
+        }
+    }
     function allActiveAssays() {
         var assays = _.keys(EDDData.Assays);
         var filteredIDs = [];
@@ -1402,14 +1428,6 @@ var StudyDataPage;
         });
     }
     StudyDataPage.requestAssayData = requestAssayData;
-    //when all ajax requests are finished, determine if there are AssayMeasurements.
-    $(document).ajaxStop(function () {
-        // show assay table by default if there are assays but no assay measurements
-        if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
-            //TODO: create prepare it for no data?
-            $('#dataTableButton').click();
-        }
-    });
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
@@ -2353,7 +2371,7 @@ var DataGridSpecAssays = (function (_super) {
             '<a href="/export?assayId=' + index + '">Export Data as CSV</a>'
         ];
         // Set up jQuery modals
-        $("#assayMain").dialog({ autoOpen: false });
+        $("#assayMain").dialog({ minWidth: 500, autoOpen: false });
         // TODO we probably don't want to special-case like this by name
         if (EDDData.Protocols[record.pid].name == "Transcriptomics") {
             sideMenuItems.push('<a href="import/rnaseq/edgepro?assay=' + index + '">Import RNA-seq data from EDGE-pro</a>');

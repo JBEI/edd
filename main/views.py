@@ -156,6 +156,7 @@ class StudyObjectMixin(generic.detail.SingleObjectMixin):
             return qs
         return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
 
+
 class StudyIndexView(generic.edit.CreateView):
     """
     View for the the index page.
@@ -238,30 +239,6 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         return False
 
 
-class TutorialView(StudyIndexView):
-    template_name = "main/tutorials/tutorial.html"
-
-
-class TutorialViewGenerate(TutorialView):
-    template_name = "main/tutorials/generateWorklist.html"
-
-
-class TutorialViewExport(TutorialView):
-    template_name = "main/tutorials/exportData.html"
-
-
-class TutorialViewPCAP(TutorialView):
-    template_name = "main/tutorials/PCAP.html"
-
-
-class TutorialViewExportSBML(TutorialView):
-    template_name = "main/tutorials/SBML.html"
-
-
-class TutorialViewDataViz(TutorialView):
-    template_name = "main/tutorials/dataViz.html"
-
-
 class StudyUpdateView(generic.edit.BaseUpdateView, StudyDetailBaseView):
     """ View used to handle POST to update single Study fields. """
     update_action = None
@@ -323,6 +300,9 @@ class StudyOverviewView(StudyDetailBaseView):
         context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
+        context['permission_none'] = StudyPermission.NONE
+        context['permission_read'] = StudyPermission.READ
+        context['permission_write'] = StudyPermission.WRITE
         return context
 
     def handle_attach(self, request, context, *args, **kwargs):

@@ -428,6 +428,10 @@ class CreateAttachmentForm(forms.ModelForm):
             'file': _(''),
             'description': _('Description'),
         }
+        help_texts = {
+            'description': _(''),
+            'file': _(''),
+        }
         widgets = {
             'description': forms.widgets.TextInput(),
         }
@@ -454,6 +458,9 @@ class CreateCommentForm(forms.ModelForm):
         fields = ('body', )
         labels = {
             'body': _('')
+        }
+        help_texts = {
+            'body': _(''),
         }
 
     def __init__(self, *args, **kwargs):
