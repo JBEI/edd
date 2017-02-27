@@ -63,6 +63,18 @@ var StudyLines;
         $(window).on('resize', queuePositionActionsBar);
         $('#worklistButton').attr('title', 'select line(s) first');
         $('#exportLineButton').attr('title', 'select line(s) first');
+        //when all ajax requests are finished, determine if there are AssayMeasurements.
+        $(document).ajaxStop(function () {
+            // hide export button if there are assays but no assay measurements
+            if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+                $('#exportLineButton').prop('disabled', true);
+                $('#exportLineButton').prop('title', "Import data first");
+            }
+            else {
+                $('#exportLineButton').prop('disabled', false);
+                $('#exportLineButton').prop('title', 'Download data');
+            }
+        });
         $.ajax({
             'url': '../edddata/',
             'type': 'GET',
@@ -128,13 +140,21 @@ var StudyLines;
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
         $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
-        $("#exportModal").dialog({ autoOpen: false });
+        $("#exportModal").dialog({
+            minWidth: 400,
+            autoOpen: false,
+            minHeight: 0,
+            create: function () {
+                $(this).css("maxHeight", 400);
+            }
+        });
         $("#addAssayButton").click(function () {
             $("#addAssayModal").removeClass('off').dialog("open");
             return false;
         });
         $("#exportLineButton").click(function () {
             $("#exportModal").removeClass('off').dialog("open");
+            includeAllLinesIfEmpty();
             //add table to form as hidden field.
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
@@ -142,6 +162,7 @@ var StudyLines;
             return false;
         });
         $('#worklistButton').click(function () {
+            includeAllLinesIfEmpty();
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
             table.hide();
@@ -196,7 +217,7 @@ var StudyLines;
         //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, function (id, protocol) {
             $.ajax({
-                url: 'measurements/' + id + '/',
+                url: '/study/' + EDDData.currentStudyID + '/measurements/' + id + '/',
                 type: 'GET',
                 dataType: 'json',
                 error: function (xhr, status) {
@@ -208,6 +229,17 @@ var StudyLines;
         });
     }
     StudyLines.prepareAfterLinesTable = prepareAfterLinesTable;
+    function includeAllLinesIfEmpty() {
+        if ($('#studyLinesTable').find('input.checkbox:checked').length === 0) {
+            //append study id to form
+            var study = _.keys(EDDData.Studies)[0];
+            $('<input>').attr({
+                type: 'hidden',
+                value: study,
+                name: 'studyId',
+            }).appendTo('form');
+        }
+    }
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
@@ -290,7 +322,6 @@ var StudyLines;
                 'count': checkedBoxLen,
                 'ids': checkedBoxes.map(function (box) { return box.value; })
             });
-            // $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #worklistButton, #exportLineButton").removeClass('off');
             if (checkedBoxLen) {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', false);
                 $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
@@ -301,8 +332,6 @@ var StudyLines;
             }
             else {
                 $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', true);
-                $('#worklistButton').attr('title', 'select line(s) first');
-                $('#exportLineButton').attr('title', 'select line(s) first');
             }
         }
     }
