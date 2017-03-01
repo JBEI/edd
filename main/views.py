@@ -788,7 +788,6 @@ class StudyDetailView(StudyDetailBaseView):
         return super(StudyDetailView, self).get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-
         self.object = self.get_object()
         action = request.POST.get('action', None)
         context = self.get_context_data(object=self.object, action=action, request=request)
