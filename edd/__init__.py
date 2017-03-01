@@ -7,6 +7,7 @@ import re
 import urlparse
 
 from django.views import debug
+from six import string_types
 
 # specify a default settings, in case DJANGO_SETTINGS_MODULE env is not set
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "edd.settings")
@@ -32,8 +33,10 @@ def cleanse_setting(key, value):  # noqa
     cleansed = _cleanse_setting(key, value)
     if HIDDEN_SETTING.search(key):
         try:
-            parsed = urlparse.urlparse(value)
-            if parsed.password:
+            parsed = None
+            if isinstance(value, string_types):
+                parsed = urlparse.urlparse(value)
+            if parsed and parsed.password:
                 # urlparse returns a read-only tuple, use a list to rewrite parts
                 parsed_list = list(parsed)
                 parsed_list[1] = parsed.netloc.replace(':%s' % parsed.password, ':**********', 1)
