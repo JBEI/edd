@@ -23,6 +23,7 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.contrib.sites.shortcuts import get_current_site
 from messages_extends import constants as msg_constants
 from rest_framework.exceptions import MethodNotAllowed
 
