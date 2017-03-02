@@ -1772,6 +1772,12 @@ class MeasurementType(models.Model, EDDSerialize):
         unique=True,
         verbose_name=_('UUID'),
     )
+    alt_names = ArrayField(
+        VarCharField(),
+        default=list,
+        help_text=_('Alternate names for this Measurement Type.'),
+        verbose_name=_('Synonyms'),
+    )
 
     def save(self, *args, **kwargs):
         if self.uuid is None:
@@ -1865,9 +1871,21 @@ class Metabolite(MeasurementType):
         help_text=_('Formula string defining this molecule.'),
         verbose_name=_('Formula'),
     )
+    smiles = VarCharField(
+        blank=True,
+        help_text=_('SMILES string defining molecular structure.'),
+        null=True,
+        verbose_name=_('SMILES'),
+    )
+    id_map = ArrayField(
+        VarCharField(),
+        default=list,
+        help_text=_('List of identifiers mapping to external chemical datasets.'),
+        verbose_name=_('External IDs'),
+    )
     tags = ArrayField(
         VarCharField(),
-        default=[],
+        default=list,
         help_text=_('List of tags for classifying this molecule.'),
         verbose_name=_('Tags'),
     )
