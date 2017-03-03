@@ -9,8 +9,8 @@ class Branding(models.Model):
     """
     Branding associated with EDD instance
     """
-    logo_name = models.TextField()
-    logo_file = models.ImageField(null=True)
+    logo_name = models.TextField(default='EDD')
+    logo_file = models.ImageField(default='/static/main/images/edd_letters.png', null=True)
     favicon_file = models.ImageField(default='/static/main/images/edd_letters.png', null=True)
     style_sheet = models.FileField(null=True)
     sites = models.ManyToManyField(Site, through='Page')
