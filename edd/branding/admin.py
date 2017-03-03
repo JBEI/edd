@@ -7,10 +7,10 @@ from .models import Branding, Page
 
 
 class JoinedInLine(admin.TabularInline):
-    """ Inline submodel for editing attachments """
+    """ Inline submodel for setting site"""
     model = Page
     extra = 0
-#     customize fields to get site name and site url.
+    # customize fields to get site name and site url.
     raw_id_fields = ('site', 'branding')
 
 

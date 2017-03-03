@@ -20,7 +20,7 @@ class Branding(models.Model):
 
 class Page(models.Model):
     """
-    Join Branding and Site
+    Join Branding and Site models
     """
     site = models.OneToOneField(
         Site,
