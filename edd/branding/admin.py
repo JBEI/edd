@@ -16,10 +16,10 @@ class JoinedInLine(admin.TabularInline):
 
 class BrandingAdmin(admin.ModelAdmin):
     actions = ['use_this_branding']
-    list_display = ('logo_name', 'logo_file', 'flavicon_file', 'style_sheet')
+    list_display = ('logo_name', 'logo_file', 'favicon_file', 'style_sheet')
     fieldsets = (
         (None, {
-            "fields": ('logo_name', 'logo_file', 'flavicon_file', 'style_sheet')
+            "fields": ('logo_name', 'logo_file', 'favicon_file', 'style_sheet')
         }),
     )
 

@@ -9,10 +9,11 @@ class Branding(models.Model):
     """
     Branding associated with EDD instance
     """
-    logo_name = models.TextField(blank=True, null=True)
-    logo_file = models.ImageField(upload_to='uploads/', null=True)
-    flavicon_file = models.ImageField(upload_to='uploads/', default='/static/main/images/edd_letters.png', null=True)
-    style_sheet = models.FileField(upload_to='uploads/', null=True)
+    logo_name = models.TextField()
+    logo_file = models.ImageField(null=True)
+    favicon_file = models.ImageField(default='/static/main/images/edd_letters.png', null=True)
+    style_sheet = models.FileField(null=True)
+    sites = models.ManyToManyField(Site, through='Page')
 
     def __str__(self):
         return self.logo_name
@@ -25,6 +26,7 @@ class Page(models.Model):
     site = models.OneToOneField(
         Site,
         unique=True,
+        on_delete=models.CASCADE,
     )
     branding = models.ForeignKey(
         Branding,

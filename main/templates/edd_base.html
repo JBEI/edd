@@ -10,8 +10,8 @@
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
-<link rel="stylesheet" type="text/css" href="{% stylesheet %}" />
-    {% block js_css %}
+    <link rel="stylesheet" type="text/css" href="{% stylesheet %}" />
+{% block js_css %}
         {% if user.is_authenticated %}
         <script type="text/javascript">
             window.EDDData = window.EDDData || {};
