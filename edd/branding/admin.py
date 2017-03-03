@@ -3,13 +3,13 @@
 from django.contrib import admin
 from django.contrib.sites.shortcuts import get_current_site
 
-from .models import Branding, Join
+from .models import Branding, Page
 
 
 class JoinedInLine(admin.TabularInline):
     """ Inline submodel for editing attachments """
-    model = Join
-    extra = 1
+    model = Page
+    extra = 0
 #     customize fields to get site name and site url.
     raw_id_fields = ('site', 'branding')
 
@@ -29,7 +29,7 @@ class BrandingAdmin(admin.ModelAdmin):
         # get current site
         current_site = get_current_site(request)
         # update site and branding
-        Join.objects.update_or_create(
+        Page.objects.update_or_create(
             site=current_site,
             defaults={
                 'branding': selected

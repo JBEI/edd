@@ -9,10 +9,10 @@ def logo(context):
     try:
         request = context['request']
         site = get_current_site(request)
-        logo_url = site.join.branding.logo_file.url
+        logo_url = site.page.branding.logo_file.url
     except:
         # if there is no branding..do not show a logo
-        logo_url = ""
+        logo_url = "/static/main/images/edd_letters.png"
     return logo_url
 
 
@@ -21,7 +21,7 @@ def stylesheet(context):
     try:
         request = context['request']
         site = get_current_site(request)
-        stylesheet_url = site.join.branding.style_sheet.url
+        stylesheet_url = site.page.branding.style_sheet.url
     except:
         # if there is no branding..do not show a logo
         stylesheet_url = ""

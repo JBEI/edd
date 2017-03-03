@@ -46,9 +46,9 @@
         <div class="topBanner">
             <div class="siteLogo">
                 <a href="{% url 'main:index' %}">
-                    <img style="width:50px;" src="{% static 'main/images/edd_logo.png' %}" alt="EDD Logo - Home" />
+                    <img class="eddLogo" src="{% static 'main/images/edd_logo.png' %}" alt="EDD Logo - Home" />
                 </a>
-                    <img src="{% logo %}" alt="EDD Logo - Home2" />
+                    <img class="companyLogo" src="{% logo %}" alt="EDD Logo - Home2" />
             </div>
             <div class="pageName">
                 {% block body_title %}

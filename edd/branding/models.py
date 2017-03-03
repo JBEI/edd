@@ -11,14 +11,14 @@ class Branding(models.Model):
     """
     logo_name = models.TextField(blank=True, null=True)
     logo_file = models.ImageField(upload_to='uploads/', null=True)
-    flavicon_file = models.ImageField(upload_to='uploads/', null=True)
+    flavicon_file = models.ImageField(upload_to='uploads/', default='/static/main/images/edd_letters.png', null=True)
     style_sheet = models.FileField(upload_to='uploads/', null=True)
 
     def __str__(self):
         return self.logo_name
 
 
-class Join(models.Model):
+class Page(models.Model):
     """
     Join Branding and Site
     """
