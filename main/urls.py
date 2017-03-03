@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import HttpResponse
 from django.views.generic.base import RedirectView
+from edd.branding.views import favicon
 
 from main import views
 
@@ -128,11 +129,8 @@ urlpatterns = [
     # This way, browsers can load the favicon from the standard link.
     url(
         r'^favicon\.ico$',
-        RedirectView.as_view(
-            url=staticfiles_storage.url('favicon.ico'),
-            permanent=False
-        ),
-        name='favicon',
+        favicon,
+        name='favicon'
     ),
     url(r'^pages/', include('django.contrib.flatpages.urls', namespace='edd-flatpages')),
 ]

@@ -1756,6 +1756,14 @@ div.tooltip2 {
     text-align: center;
 }
 
+.eddLogo {
+    width:50px;
+}
+
+.companyLogo {
+    width:150px;
+}
+
 .actionButton {
     display: inline-block;
     margin: 10px 10px 0px 0px;
