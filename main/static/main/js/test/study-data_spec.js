@@ -7,7 +7,7 @@
  */
 
 describe("prepare it", function () {
-    var EDDData;
+    var EDDData, carbon;
     beforeEach(function() {
        jasmine.getJSONFixtures().fixturesPath='base/main/static/main/js/test/';
        EDDData = getJSONFixture('EDDData.json');
@@ -36,8 +36,18 @@ describe("prepare it", function () {
     });
 
     describe('method: StudyDataPage.progressiveFilteringWidget.buildAssayIDSet', function() {
-        it('should return an array', function() {
-            expect(StudyDataPage.progressiveFilteringWidget.buildAssayIDSet(EDDData)).toEqual([ '2049', '2050', '2051', '2052', '2053', '2054' ]);
+        it('should return an array with active ids', function() {
+            expect(StudyDataPage.progressiveFilteringWidget.buildAssayIDSet(EDDData)).toEqual(
+                [ '2050', '2051', '2053', '2054' ]
+            );
+        })
+    });
+    describe('method: StudyDataPage.progressiveFilteringWidget.checkRedrawRequired', function() {
+        it('should return false if true is not passed in', function() {
+            expect(StudyDataPage.progressiveFilteringWidget.checkRedrawRequired()).toBeFalsy()
+        });
+        it('should return true if true is passed as an optional parameter', function() {
+            expect(StudyDataPage.progressiveFilteringWidget.checkRedrawRequired(true)).toBeTruthy()
         })
     });
 });

@@ -8,10 +8,12 @@
 
 describe('Test DataGridSpecLines', function() {
     
-    var dataGrid;
+    var dataGrid, disabledLinesWidget, dataGridOptionsWidget;
 
      beforeEach(function() {
        dataGrid = new DataGridSpecLines();
+       disabledLinesWidget = new DGDisabledLinesWidget();
+       dataGridOptionsWidget =  new DataGridOptionWidget();
        jasmine.getJSONFixtures().fixturesPath='base/main/static/main/js/test/';
        EDDData = getJSONFixture('EDDData.json');
        $.ajax = function (param) {
@@ -49,5 +51,18 @@ describe('Test DataGridSpecLines', function() {
         var callback = jasmine.createSpy();
         StudyDataPage.fetchEDDData(callback);
         expect(callback).toHaveBeenCalled();
+    });
+    describe("Line results method: applyFilterToIDs", function() {
+        it("calls the function", function () {
+            spyOn(disabledLinesWidget, "applyFilterToIDs");
+            disabledLinesWidget.applyFilterToIDs();
+            expect(disabledLinesWidget.applyFilterToIDs).toHaveBeenCalled();
+        });
+        it("returns active rowIDs", function () {
+            disabledLinesWidget.checkBoxElement = false;
+            expect(disabledLinesWidget.applyFilterToIDs(["755", "339", "5372", "340", "341"])).toEqual(
+                ["755", "5372", "340", "341"]
+            );
+        });
     });
 });
