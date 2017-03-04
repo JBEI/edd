@@ -4,22 +4,32 @@ from __future__ import unicode_literals
 import logging
 import traceback
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
+
+import requests
+from django.core.mail import mail_admins
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from django.db import transaction
 from io import BytesIO
+
 from openpyxl import load_workbook
+from pprint import pformat
+
+from requests.packages.urllib3 import HTTPResponse
 
 from .constants import (
     FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
     NON_STRAIN_ICE_ENTRY,
-    PART_NUMBER_MISSING, BAD_REQUEST, INTERNAL_SERVER_ERROR, UNPROCESSABLE, OK)
+    PART_NUMBER_NOT_FOUND, BAD_REQUEST, INTERNAL_SERVER_ERROR, UNPROCESSABLE, OK, FORBIDDEN,
+    FORBIDDEN_PART_KEY, GENERIC_ICE_RELATED_ERROR, IGNORE_ICE_RELATED_ERRORS_PARAM,
+    ALLOW_DUPLICATE_NAMES_PARAM, NOT_FOUND)
 from .parsers import ExperimentDescFileParser, JsonInputParser
-from .utilities import (CombinatorialCreationPerformance, fail_on_missing_strain,
-                        find_existing_strains, )
+from .utilities import (CombinatorialCreationPerformance, find_existing_strains)
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients import IceApi
-from jbei.rest.clients.ice.api import Strain as IceStrain
+from jbei.rest.clients.ice.api import Strain as IceStrain, VERIFY_SSL_DEFAULT, DEFAULT_RESULT_LIMIT, \
+    ICE_URL
 from jbei.rest.clients.ice.utils import make_entry_url
 from main.models import Protocol, MetadataType, Strain, Assay, Line
 
@@ -28,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 ERRORS_KEY = 'errors'
 WARNINGS_KEY = 'warnings'
-_IGNORE_ICE_ERRORS_DEFAULT = False
+_IGNORE_ICE_RELATED_ERRORS_DEFAULT = False
 
 _ALLOW_DUPLICATE_NAMES_DEFAULT = False
 _DRY_RUN_DEFAULT = False
@@ -39,7 +49,7 @@ _DRY_RUN_DEFAULT = False
 @transaction.atomic(savepoint=False)
 def define_study(stream, user, study, is_json,
                  allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT, dry_run=_DRY_RUN_DEFAULT,
-                 ignore_ice_errors=_IGNORE_ICE_ERRORS_DEFAULT):
+                 ignore_ice_errors=_IGNORE_ICE_RELATED_ERRORS_DEFAULT):
     # TODO: relocate to a Celery task and add related user notifications/context-appropriate
     # error handling following initial testing/deployment.
     # This function's parameters are structured in a similar form to the Celery task, though
@@ -64,28 +74,41 @@ def define_study(stream, user, study, is_json,
     """
     importer = CombinatorialCreationImporter(study, user)
     return importer.do_import(stream, is_json, allow_duplicate_names, dry_run,
-                              ignore_ice_communication_errors=ignore_ice_errors)
+                              ignore_ice_related_errors=ignore_ice_errors)
 
 
-def _build_errors_dict(errors, warnings, content=None):
-    if content is None:
-        content = {}
+def _build_response_content(errors, warnings, val=None):
+    """
+    Builds a dictionary of response content that summarizes processing performed by the
+    experiment description attempt, including any errors or warnings that occurred along the way.
+    :param errors: a dictionary of errors that maps one of the known keys to a list of values
+    associated with that error (e.g. ICE part IDs)
+    :param warnings: a dictionary of warnings that maps one of the known keys to a list of values
+    associated with that warning (e.g. ICE part IDs)
+    :param val: the existing dictionary to add errors and warnings to, or if None, a new one
+    will be created.
+    :return: the dictionary containing errors and warnings
+    """
+    if val is None:
+        val = {}
     if errors:
-        content[ERRORS_KEY] = errors
+        val[ERRORS_KEY] = errors
     if warnings:
-        content[WARNINGS_KEY] = warnings
-    return content
+        val[WARNINGS_KEY] = warnings
+    return val
 
 
 class CombinatorialCreationImporter(object):
     REQUIRE_STRAINS = True
-    ICE_COMMUNICATION_ERROR_KEY = 'ICE_COMMUNICATION_ERROR'
 
     def __init__(self, study, user):
 
         self.performance = CombinatorialCreationPerformance()
         self.errors = defaultdict(list)
         self.warnings = defaultdict(list)
+        self._input_summary = None
+
+        self.exception_interrupted_ice_queries = False
 
         ###########################################################################################
         # Gather context from EDD's database
@@ -100,8 +123,7 @@ class CombinatorialCreationImporter(object):
         self.protocols_by_pk = {protocol.pk: protocol for protocol in protocols_qs}
 
         # build up dictionaries of Line and Assay metadata types with unique names (guaranteed by
-        # DB constraints)
-        # TODO: I18N
+        # DB constraints) TODO: I18N
         line_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.LINE)
         self.line_metadata_types_by_pk = {
             meta_type.pk: meta_type
@@ -116,20 +138,41 @@ class CombinatorialCreationImporter(object):
         }
         self.performance.end_context_queries()
 
+    @property
+    def _ice_username(self):
+        if self.user:
+            return self.user.email
+        return None
+
+    def add_issue(self, is_error, type, value):
+        if is_error:
+            self.add_error(type, value)
+        else:
+            self.add_warning(type, value)
+
     def add_error(self, error_type, error_value):
         self.errors[error_type].append(error_value)
 
     def add_warning(self, warning_type, warning_value):
         self.warnings[warning_type].append(warning_value)
 
-    def do_import(self, input_data, is_json, allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
+    def do_import(self, request, is_json, allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
                   dry_run=_DRY_RUN_DEFAULT,
-                  ignore_ice_communication_errors=_IGNORE_ICE_ERRORS_DEFAULT):
+                  ignore_ice_related_errors=_IGNORE_ICE_RELATED_ERRORS_DEFAULT):
         """
         Performs the import or raises an Exception if an unexpected / unhandled error occurred
 
         :return: a json dict with a summary of import results (for success or failure)
         """
+
+        ############################################################################################
+        # Clear out state from previous import attempts using this importer
+        ############################################################################################
+        self.performance.reset()
+        self._input_summary = None
+        self.errors.clear()
+        self.warnings.clear()
+        self.exception_interrupted_ice_queries = False
 
         ###########################################################################################
         # Parse / validate the input against metadata defined in the database
@@ -141,13 +184,15 @@ class CombinatorialCreationImporter(object):
         line_metadata_types_by_pk = self.line_metadata_types_by_pk
         assay_metadata_types_by_pk = self.assay_metadata_types_by_pk
 
-        # read in the file contents (should be relatively short since they're likely manual input)
+        # parse the input contents (should be relatively short since they're likely manual input)
         if is_json:
             parser = JsonInputParser(protocols_by_pk, line_metadata_types_by_pk,
                                      assay_metadata_types_by_pk,
                                      require_strains=self.REQUIRE_STRAINS)
+            self._input_summary = request # cache for possible inclusion in error emails
+            input_data = request
         else:
-            input_data = load_workbook(BytesIO(input_data.read()), read_only=True, data_only=True)
+            input_data = load_workbook(BytesIO(request.read()), read_only=True, data_only=True)
             if len(input_data.worksheets) == 0:
                 self.add_error('no_input', 'no worksheets in file')
 
@@ -165,20 +210,26 @@ class CombinatorialCreationImporter(object):
         # database insertions. Note: returning normally causes the transaction to commit, but that
         # is ok here since no DB changes have occurred yet
         if self.errors:
-            return BAD_REQUEST, _build_errors_dict(self.errors, self.warnings)
+            return BAD_REQUEST, _build_response_content(self.errors, self.warnings)
+
+        # cache a human-readable summary of input for possible use in error emails
+        if is_json:
+            self._input_summary = parser.parsed_json
+        else:
+            self._input_summary = request.META.get('HTTP_X_FILE_NAME')
 
         with transaction.atomic(savepoint=False):
             return self._define_study(
                 combinatorial_inputs=line_def_inputs,
                 allow_duplicate_names=allow_duplicate_names,
                 dry_run=dry_run,
-                ignore_ice_communication_errors=ignore_ice_communication_errors,
+                ignore_ice_related_errors=ignore_ice_related_errors,
             )
 
     def _define_study(self, combinatorial_inputs,
                       allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
                       dry_run=_DRY_RUN_DEFAULT,
-                      ignore_ice_communication_errors=_IGNORE_ICE_ERRORS_DEFAULT):
+                      ignore_ice_related_errors=_IGNORE_ICE_RELATED_ERRORS_DEFAULT):
         """
         Queries EDD and ICE to verify that the required ICE strains have an entry in EDD's
         database. If not, creates them.  Once strains are created, combinatorially creates lines
@@ -197,7 +248,8 @@ class CombinatorialCreationImporter(object):
 
         # TODO: to support JSON with possible mixed known/unknown strains for the combinatorial
         # GUI, test whether input resulted from JSON, then skip initial part number lookup for
-        # anything that is an integer. Maybe there's a better solution?
+        # anything that is an integer (assuming it's a local pk for a known strain).
+        # Maybe there's a better solution?
 
         ###########################################################################################
         # Search ICE for entries corresponding to the part numbers in the file
@@ -206,8 +258,9 @@ class CombinatorialCreationImporter(object):
         # build a list of unique part numbers found in the input file. we'll query ICE to get
         # references to them. Note: ideally we'd do this externally to the @atomic block, but other
         # EDD queries have to precede this one
+        # TODO: restore keeping part numbers in the order found for readability in user messages
         unique_part_numbers = set()
-        ice_entries = {}
+        ice_parts_by_number = OrderedDict()
 
         for combo in combinatorial_inputs:
             unique_part_numbers = combo.get_unique_strain_ids(unique_part_numbers)
@@ -220,35 +273,51 @@ class CombinatorialCreationImporter(object):
         # nontrivial error handling to handle ICE/communication errors while still informing the
         # user about problems that occurred / gaps in data entry
         try:
-            # get an ICE connection to look up strain UUID's from part number user input
-            ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user.email),
-                         verify_ssl_cert=settings.VERIFY_ICE_CERT)
-            ice_entries = self.get_ice_entries(ice, unique_part_numbers)
-            performance.end_ice_search(unique_part_number_count)
-        except Exception as err:
-            self._handle_ice_exception(err, ignore_ice_communication_errors,
-                                       unique_part_number_count, len(ice_entries))
-        performance.end_ice_search(unique_part_number_count)
+            self.get_ice_entries(unique_part_numbers, ice_parts_by_number,
+                                 ignore_ice_related_errors=ignore_ice_related_errors)
 
-        # if we've detected errors before modifying the study, fail before attempting db mods
+        # handle uncaught errors as a result of ICE communication (e.g.
+        # requests.ConnectionErrors that we purposefully avoid catching above since they likely
+        # impact all future requests)
+        except IOError as err:
+            self._handle_systemic_ice_error(ignore_ice_related_errors,
+                                            unique_part_numbers, ice_parts_by_number)
+        performance.end_ice_search(len(ice_parts_by_number), unique_part_number_count)
+
+        # if we've detected one or more systemic ICE-related errors during individual queries for
+        # part ID's, send a single error email to admins that aggregates them as determined by
+        # error handling in get_ice_entries()
         if self.errors:
-            return INTERNAL_SERVER_ERROR, _build_errors_dict(self.errors, self.warnings)
+            self._notify_admins_of_systemic_ice_related_errors(ignore_ice_related_errors,
+                                                               allow_duplicate_names, unique_part_numbers,
+                                                               ice_parts_by_number)
+
+            status_code = (NOT_FOUND if self.errors.get(PART_NUMBER_NOT_FOUND, False)
+                           else INTERNAL_SERVER_ERROR)
+            return status_code, _build_response_content(self.errors, self.warnings)
+        elif GENERIC_ICE_RELATED_ERROR in self.warnings:
+            self._notify_admins_of_systemic_ice_related_errors(ignore_ice_related_errors,
+                                                               allow_duplicate_names,
+                                                               unique_part_numbers,
+                                                               ice_parts_by_number)
 
         ###########################################################################################
         # Search EDD for existing strains using UUID's queried from ICE
         ###########################################################################################
 
         # query EDD for Strains by UUID's found in ICE
-        strain_search_count = len(ice_entries)
-        strains_by_part_number, non_existent_edd_strains = find_existing_strains(ice_entries, self)
+        strain_search_count = len(ice_parts_by_number)
+        edd_strains_by_part_number, non_existent_edd_strains = (
+            find_existing_strains(ice_parts_by_number, self))
         performance.end_edd_strain_search(strain_search_count)
 
         ###########################################################################################
-        # Create any missing strains in EDD's database, but go ahead with caching strain data in
-        # EDD since it's likely to be used below or referenced again (even if this is a dry run)
+        # Create any missing strains in EDD's database.
+        # Even if this is a dry run, we'll go ahead with caching since it's likely to be used below
+        # or referenced again soon.
         ###########################################################################################
-        self.create_missing_strains(non_existent_edd_strains, strains_by_part_number)
-        strains_by_pk = {strain.pk: strain for strain in strains_by_part_number.itervalues()}
+        self.create_missing_strains(non_existent_edd_strains, edd_strains_by_part_number)
+        strains_by_pk = {strain.pk: strain for strain in edd_strains_by_part_number.itervalues()}
         performance.end_edd_strain_creation(len(non_existent_edd_strains))
 
         ###########################################################################################
@@ -256,7 +325,8 @@ class CombinatorialCreationImporter(object):
         # to create Line entries in EDD's database
         ###########################################################################################
         for input_set in combinatorial_inputs:
-            input_set.replace_strain_part_numbers_with_pks(strains_by_part_number, self)
+            input_set.replace_strain_part_numbers_with_pks(edd_strains_by_part_number,
+                                                           ice_parts_by_number)
 
         ###########################################################################################
         # Compute line/assay names if needed as output for a dry run, or if needed to proactively
@@ -275,7 +345,7 @@ class CombinatorialCreationImporter(object):
             content = {
                 'planned_results': planned_names
             }
-            _build_errors_dict(self.errors, self.warnings, content=content)
+            _build_response_content(self.errors, self.warnings, val=content)
 
             status = 200
             if self.errors and not allow_duplicate_names:
@@ -285,7 +355,7 @@ class CombinatorialCreationImporter(object):
 
         # if we've detected errors before modifying the study, fail before attempting db mods
         if self.errors:
-            return UNPROCESSABLE, _build_errors_dict(self.errors, self.warnings)
+            return UNPROCESSABLE, _build_response_content(self.errors, self.warnings)
 
         ###########################################################################################
         # Create requested lines and assays in the study
@@ -327,8 +397,7 @@ class CombinatorialCreationImporter(object):
             'runtime_seconds': performance.total_time_delta.total_seconds()
         }
 
-        # just add warnings -- no errors at this point
-        return OK, _build_errors_dict(self.errors, self.warnings, content=content)
+        return OK, _build_response_content(self.errors, self.warnings, content)
 
     def _compute_and_check_names(self, combinatorial_inputs, strains_by_pk, allow_duplicate_names):
         """
@@ -428,7 +497,7 @@ class CombinatorialCreationImporter(object):
 
         return all_planned_names
 
-    def create_missing_strains(self, non_existent_edd_strains, strains_by_part_number):
+    def create_missing_strains(self, non_existent_edd_strains, edd_strains_by_part_number):
         """
         Creates Strain entries from the associated ICE entries for any parts.
 
@@ -450,9 +519,10 @@ class CombinatorialCreationImporter(object):
                 registry_id=ice_entry.uuid,
                 registry_url=make_entry_url(settings.ICE_URL, ice_entry.id)
             )
-            strains_by_part_number[ice_entry.part_id] = strain
+            edd_strains_by_part_number[ice_entry.part_id] = strain
 
-    def get_ice_entries(self, ice, part_numbers):
+    def get_ice_entries(self, part_numbers, part_number_to_part,
+                        ignore_ice_related_errors=_IGNORE_ICE_RELATED_ERRORS_DEFAULT):
         """
         Queries ICE for parts with the provided (locally-unique) numbers, logging errors for any
         parts that weren't found into the errors parameter. Note that we're purposefully trading
@@ -464,12 +534,46 @@ class CombinatorialCreationImporter(object):
             from ICE. Existing entries will be replaced with the Entries read from ICE, or keys
             will be removed for those that aren't found in ICE.
         """
+
+        # get an ICE connection to look up strain UUID's from part number user input
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=self._ice_username),
+                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
+
         list_position = 0
-        results = {}
+
+        # treat inability to locate an individual part as an error if globally configured to ignore
+        # missing strains, or if specifically requested for on this attempt
+        treat_as_error = not ignore_ice_related_errors
+
         for local_ice_part_number in part_numbers:
-            found_entry = ice.get_entry(local_ice_part_number)
+            # query ICE for this part
+            found_entry = None
+            try:
+                found_entry = ice.get_entry(local_ice_part_number)
+
+            # catch only HTTPErrors, which are likely to apply only to a single ICE entry.
+            # Note that ConnectionErrors and similar that are more likely to be systemic aren't
+            # caught here and will immediately abort the remaining ICE queries.
+            except requests.exceptions.HTTPError as http_err:
+                # Track errors, while providing special-case error handling/labeling for ICE
+                # permissions errors that are useful to detect on multiple parts in one attempt.
+                response_status = http_err.response.status
+
+                # if error reflects a condition likely to repeat for each entry,
+                # or that isn't useful to know individually per entry, abort the remaining queries.
+                # Note this test only covers the error conditions known to be produced by
+                # ICE, not all the possible HTTP error codes we could handle more explicitly. Also
+                # note that 404 is handled above in get_entry().
+                if response_status != FORBIDDEN:
+                    self._handle_systemic_ice_error(ignore_ice_related_errors,
+                                                    part_numbers, part_number_to_part)
+                    return
+
+                # aggregate errors that are helpful to detect on a per-part basis
+                self.add_issue(treat_as_error, FORBIDDEN_PART_KEY, local_ice_part_number)
+
             if found_entry:
-                results[local_ice_part_number] = found_entry
+                part_number_to_part[local_ice_part_number] = found_entry
                 # double-check for a coding error that occurred during testing. initial test parts
                 # had "JBX_*" part numbers that matched their numeric ID, but this isn't always the
                 # case!
@@ -484,57 +588,42 @@ class CombinatorialCreationImporter(object):
                             'part_number': found_entry.part_id
                         })
                     self.add_error(FOUND_PART_NUMBER_DOESNT_MATCH_QUERY, found_entry.part_id)
-            elif fail_on_missing_strain():
-                # collect the full set of missing strains rather than failing after the first
-                self.add_error(PART_NUMBER_MISSING, local_ice_part_number)
+
             else:
-                self.add_warning(PART_NUMBER_MISSING, local_ice_part_number)
+                # collect the full set of missing strains rather than failing after the first
+                self.add_issue(treat_as_error, PART_NUMBER_NOT_FOUND, local_ice_part_number)
 
-        return results
-
-    def _handle_ice_exception(self, err, ignore_ice_errors, part_number_count, found_entries_count):
+    def _handle_systemic_ice_error(self, ignore_ice_related_errors, part_numbers, ice_entries):
         """
-        Builds a helpful error / warning message and handles ICE exceptions as dictated by
-        EDD's configuration.
-        :param err: the exception that occurred when attempting to communicate with ICE.
+        Builds a helpful user-space error / warning message, then caches it
+        :param err:
+        :param ignore_ice_related_errors:
+        :param part_number_count:
+        :param ice_entries:
+        :param ice_username:
+        :return:
         """
-        logger.exception('Error searching ICE for strains during experiment description.')
-        from django.core.mail import mail_admins
+        logger.exception('Error querying ICE for part number(s)')
 
-        # even though we may be working around the error, email EDD admins since they should
-        # look into / resolve this without user intervention
-        if ((not hasattr(settings, 'EMAIL_ADMINS_FOR_ICE_COMMUNICATION_ERRORS')) or
-                settings.EMAIL_ADMINS_FOR_ICE_COMMUNICATION_ERRORS is not False):
+        self.exception_interrupted_ice_queries = True
+        base_message = ("ICE couldn't be contacted to find strains referenced in your "
+                        "file, and EDD administrators have been notified of the problem.")
 
-            # build traceback string to include in the email
-            formatted_lines = traceback.format_exc().splitlines()
-            traceback_str = '\n'.join(formatted_lines)
-
-            mail_admins(subject='ICE Communication error during experiment description',
-                        message='The following error occurred when attempting to define the '
-                                'experiment for study %(study_pk)d. s\n\n'
-                                'The contents of the full traceback was:\n\n'
-                                '%(traceback)s' % {
-                                    'study_pk': self.study.pk,
-                                    'traceback': traceback_str,
-                                }, fail_silently=True)
-        base_message = ("An error occurred while attempting to locate ICE strains "
-                        "matching part numbers in the input. The problem occurred either "
-                        "because one of the part ID's you provided is incorrect, "
-                        "or as a result of a communication error with ICE. ICE 5.2.1 "
-                        "doesn't allow EDD to detect the difference between these two scenarios. "
-                        "You can try uploading your file again, or double-check your part ID's.")
-
-        # The normal case should be to reject the upload and force the user to aknowledge /
-        # override the problem rather than silently working around it. In this unlikely case,
+        # If not specifically-requested by the UI, the normal case should be to reject the upload
+        # and force the user to acknowledge / override the problem rather than silently working
+        # around it. In this unlikely case,
         # this approach is slightly more work for  users, but also allows them to prevent
         # creating inconsistencies that they'll have  to resolve later using more
         # labor-intensive processes (e.g. potentially expensive manual line edits).
-        if not ignore_ice_errors:
-            self.add_error(self.ICE_COMMUNICATION_ERROR_KEY,
-                           '%(base_message)s The error was: %(err)s' % {
-                               'base_message': base_message,
-                               'err': str(err) })
+        if not ignore_ice_related_errors:
+            self.add_error(GENERIC_ICE_RELATED_ERROR,
+                           "%(base_message)s\n\n You can try again later, or proceed now and omit "
+                           "strain data from new lines in your study. If you omit strain "
+                           "data now, you'll have to manually edit your lines later after the "
+                           "problem is fixed.  Depending on the experiment, manually filling in "
+                           "the missing strain data later could be more work. \n\n"
+                           "Do you want to proceed without including the strains you used?" % {
+                               'base_message': base_message})
 
         # If user got feedback re: ICE communication errors and chose to proceed anyway,
         # build a descriptive warning message re: the error, then proceed with line/assay
@@ -543,16 +632,191 @@ class CombinatorialCreationImporter(object):
 
             # build a nice warning message that summarizes the state of the study following
             # creation
+            found_entries_count = len(ice_entries)
+            unique_part_number_count = len(part_numbers)
             if found_entries_count:
                 percent_found = float(len(ice_entries)) / unique_part_number_count
-                warn_msg = ("%(base_message)s Lines will be created in "
-                            "this study, but some won't be associated with ICE "
-                            "strains as requested. %(found)d of %(total) unique strains "
-                            "(%(percent)0.2f) were found before the error occurred." % {
+                warn_msg = ("%(base_message)s\n\n Lines were added to your study, but some won't "
+                            "be associated with ICE strains. %(found)d of %(total)d "
+                            "unique strains (%(percent)0.2f) were found before the error "
+                            "occurred. The rest will need to be added later after the problem is "
+                            "fixed." % {
                                 'base_message': base_message, 'found': found_entries_count,
                                 'total': unique_part_number_count, 'percent': percent_found,
                             })
             else:
-                warn_msg = ('No lines created in this study will be associated with ICE '
+                warn_msg = ('No lines created in this study could be associated with ICE '
                             'strains.')
-            self.add_warning(self.ICE_COMMUNICATION_ERROR_KEY, warn_msg)
+            self.add_warning(GENERIC_ICE_RELATED_ERROR, warn_msg)
+
+    def _notify_admins_of_systemic_ice_related_errors(self, ignore_ice_related_errors,
+                                                      allow_duplicate_names, unique_part_numbers,
+                                                      ice_parts_by_number):
+        """
+        If configured, builds and sends a time-saving notification email re: ICE communication
+        problems to EDD admins. The email informs admins of problems that should be resolved without
+        user involvement, and aggregates/captures relevant context that will be hard to remember
+        and extract from log content and complex related code.
+        """
+
+        # even though users may be able to work around the error, email EDD admins since they
+        # should look into / resolve systemic ICE communication errors without user
+        # intervention. Since communication via the Internet is involved, possible that the
+        # errors during a workaround are different than during the first attempt. We'll clearly
+        # mark that case in the email subject, but still send the email.
+
+        if (GENERIC_ICE_RELATED_ERROR not in self.errors and GENERIC_ICE_RELATED_ERROR not in
+                self.warnings):
+            return
+
+        subject = 'ICE-related error during Experiment Description%s' % (
+                   ': (User Ignored)' if ignore_ice_related_errors else '')
+
+        # build traceback string to include in the email
+        formatted_lines = traceback.format_exc().splitlines()
+        traceback_str = '\n'.join(formatted_lines)
+
+        part_numbers_not_found = [part_number for part_number in unique_part_numbers if
+                                  part_number if not ice_parts_by_number.get(part_number, False)]
+        not_found_part_count = len(part_numbers_not_found)
+        desired_part_count = len(unique_part_numbers)
+        not_found_part_percent = 100 * ((float(not_found_part_count) / desired_part_count)
+                                 if desired_part_count else 0)
+
+        message = ('One or more error(s) occurred when attempting to add Experiment '
+                   'Description data for EDD study %(study_pk)d:\n\n'
+                   '\tStudy URL: %(study_pk)s\n'
+                   '\tUsername: %(ice_username)s\n'
+                   '\tRelevant request parameters:\n'
+                   '\t\t%(ignore_ice_errors_param)s: %(ignore_ice_errors_val)s\n'
+                   '\t\t%(allow_duplicate_names_param)s: %(allow_duplicate_names_val)s\n'
+                   '\tUnique part numbers (%(unique_part_number_count)d): '
+                   '%(unique_part_numbers)s\n'
+                   '\tParts not found in ICE (%(not_found_part_count)d or '
+                   '%(not_found_percent)0.2f%%): '
+                   '%(parts_not_found)s\n'
+                   '\tErrors detected during Experiment Description processing (may not '
+                   'include the error below, if there\'s a traceback): %(errors)s\n\n'
+                   '\tWarnings detected during Experiment Description processing:\n'
+                   '\t %(warnings)s\n\n'
+                   '\tUser input source: %(user_input_source)s\n\n'
+                   'The contents of the most-recent full traceback was:\n\n'
+                   '%(traceback)s' % {
+                            'study_pk': self.study.pk,
+                            'study_url': reverse('main:overview_by_pk',
+                                                 kwargs={'pk': self.study.pk}),
+                            'ice_username': self._ice_username,
+                            'ignore_ice_errors_param': IGNORE_ICE_RELATED_ERRORS_PARAM,
+                            'allow_duplicate_names_val': allow_duplicate_names,
+                            'ignore_ice_errors': str(ignore_ice_related_errors),
+                            'ignore_ice_errors_val': ignore_ice_related_errors,
+                            'allow_duplicate_names_param': ALLOW_DUPLICATE_NAMES_PARAM,
+                            'not_found_part_count': not_found_part_count,
+                            'parts_not_found': str(part_numbers_not_found),
+                            'not_found_percent': not_found_part_percent,
+                            'unique_part_number_count': desired_part_count,
+                            'unique_part_numbers': str(unique_part_numbers),
+                            'errors': pformat(str(self.errors)),
+                            'warnings': pformat(str(self.warnings)),
+                            'user_input_source': pformat(str(self._input_summary)),
+                            'traceback': traceback_str,
+                        })
+
+        mail_admins(subject=subject, message=message, fail_silently=True)
+
+
+class IceTestStub(IceApi):
+
+    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT,
+                 verify_ssl_cert=VERIFY_SSL_DEFAULT):
+        super(IceTestStub, self).__init__(auth, base_url=base_url, result_limit=result_limit,
+                                          verify_ssl_cert=verify_ssl_cert)
+
+        self._query_num = 0
+        self._fail_on_query_num = 2  # set to nonzero to test failure/partial success!
+
+    """
+    A variant of IceAPI that captures important test conditions for Experiment Description ICE
+    queries and allows us to quickly do basic testing without having CI yet / putting more effort
+    into automated tests. Note: code here is very simple, but actually took a while to find,
+    since there as so many similarly named classes/options in requests, Django, etc that aren't
+    well-documented.  This code is worth keeping until replaced with an automated test.
+    """
+
+    def get_entry(self, entry_id, suppress_errors=False):
+        self._query_num += 1
+
+        # if configured, work normally, deferring failure until the requested query #
+        if self._query_num != self._fail_on_query_num:
+            logger.debug('On query %d ...waiting to fail on #%d..' % (
+                self._query_num, self._fail_on_query_num))
+            return super(IceTestStub, self).get_entry(entry_id, suppress_errors=suppress_errors)
+
+        # NOTE: all tests below assume the first-run case where ignore_ice_related_errors=False.
+        # All the expected results still hold if it's False, except the response should always be
+        #  200 (success)
+
+        ############################################################################################
+        # Test condition 1:
+        ############################################################################################
+        # Uncomment this block to test connection errors.
+        #
+        # Expected results to verify (manually for now):
+        #    A) admin email sent (probably via an added log message...not working in DEV ATM)
+        #    B) generic user-facing error message about ICE-related problems
+        #    C) 500 "internal server error" response (use Chrome's "network" develop tool)
+        ############################################################################################
+        # raise requests.exceptions.ConnectionError()
+
+        ############################################################################################
+        # Test condition 2:
+        ############################################################################################
+        # Uncomment this block to test bad user data entry for part IDs
+        #
+        # Expected results to verify (manually for now):
+        #    A) *NO* admin email sent (probably via an added log message...not working in DEV ATM)
+        #    B) User error message lists parts that couldn't be found
+        #    C) 404 "not found" response (use Chrome's "network" develop tool)
+        ############################################################################################
+        # return None
+
+        ############################################################################################
+        # Test conditions 3-4:
+        ############################################################################################
+        # uncomment a single status code and the bottom code block in this
+        # method to test various supported error responses from ICE.
+        #
+        # Expected results to verify (manually for now):
+        #    A) Admin email sent (probably via an added log message...not working in DEV ATM)
+        #    B) User error message mentions generic ICE-related problems
+        #    C) 500 "internal server error" response (use Chrome's "network" develop tool)
+
+        # Condition 3
+        # message = 'Bad client request'
+        # status = BAD_REQUEST
+
+        # Condition 4
+        # message = 'Internal Server Error'
+        # status = INTERNAL_SERVER_ERROR
+
+        ############################################################################################
+        # Test condition 5:
+        ############################################################################################
+        # Uncomment a  status code and the bottom code block in this
+        # method to test various supported error responses from ICE.
+        #
+        # Expected results to verify (manually for now):
+        #    A) *NO* Admin email sent (probably via an added log message...not working in DEV ATM)
+        #    B) User error message specifically mentions ICE permission problems
+        #    C) 403 "forbidden" response (use Chrome's "network" develop tool)
+        message = 'Forbidden'
+        status = FORBIDDEN
+
+        ############################################################################################
+        # Supporting error-generation code for test conditions 3-5 above
+        ############################################################################################
+        from requests import HTTPError
+        response = HTTPResponse(status=status)
+        error = HTTPError(message, response=response)
+        raise error
+

@@ -70,13 +70,6 @@ TYPICAL_ICE_PART_NUMBER_PATTERN = re.compile(TYPICAL_JBEI_ICE_PART_NUMBER_REGEX,
 # WARNING: Use in any context other than local testing can expose user credentials to a third party!
 VERIFY_ICE_CERT = True
 
-# True to allow line creation via Experiment Description files when user has provided ICE one
-# or more part ID's that aren't in ICE.  Other option is 'Warn'.
-MISSING_ICE_PART_ACTION = 'Fail'
-
-# Override with False to work around ICE problems, or to silence known errors in non-production
-# environments (e.g. development)
-EMAIL_ADMINS_FOR_ICE_COMMUNICATION_ERRORS = True
 
 ##############################
 # Solr/Haystack Configuration
