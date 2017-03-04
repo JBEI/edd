@@ -298,7 +298,9 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_fields(self, request, obj=None):
         return [
             ('type_name', 'short_name', ),
-            'type_source', 'study_list',
+            'alt_names',
+            'type_source',
+            'study_list',
         ]
 
     def get_list_display(self, request):
@@ -329,7 +331,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         return ['type_source', 'study_list', ]
 
     def get_search_fields(self, request):
-        return ['type_name', 'short_name', ]
+        return ['type_name', 'short_name', 'alt_names', ]
 
     def merge_with_action(self, request, queryset):
         MergeForm = self.get_merge_form(request)
@@ -408,7 +410,7 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
         return super(MetaboliteAdmin, self).get_fields(request, obj) + [
             ('molecular_formula', 'molar_mass', 'charge', ),  # grouping in tuple puts in a row
-            'type_source', 'study_list',
+            'smiles', 'id_map', 'tags',
         ]
 
     def get_list_display(self, request):
@@ -426,9 +428,6 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
         qs = super(MetaboliteAdmin, self).get_queryset(request)
         qs = qs.select_related('type_source')
         return qs
-
-    def get_readonly_fields(self, request, obj=None):
-        return ['type_source', 'study_list', ]
 
     def _tags(self, obj):
         return ', '.join(obj.tags)
@@ -501,7 +500,6 @@ class GeneAdmin(MeasurementTypeAdmin):
         return super(GeneAdmin, self).get_fields(request, obj) + [
             ('location_in_genome', 'positive_strand', 'location_start', 'location_end',
              'gene_length'),  # join these on the same row
-            'study_list',
         ]
 
     def get_list_display(self, request):

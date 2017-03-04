@@ -1,5 +1,6 @@
 {% extends "main/study.html" %}
 {% load staticfiles %}
+{% load i18n %}
 
 
 {% block js_css %}
@@ -34,17 +35,22 @@
     {{ block.super }}
          {% if new_line.errors %}
     <div class="alert alert-warning alert-dismissible" style="width:313px" role="alert">
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
     <p>{{ new_line.errors.as_text  }}</p>
     </div>
     {%  endif %}
 <div style="margin-left:15px;">
-    Manually add/edit lines below<div style="float:none; margin-left:15px"class="helpBadgeDiv">help
+    Manually add/edit lines below
+    <div style="float:none; margin-left:15px" class="helpBadgeDiv">help
         <div class="helpContent">
-            <p>A line describes the experimental details of your study by defining the
-                experimental conditions and associated meta data for i.e. a single flask.  Some examples
-                that might be defined in a line are strain, carbon source, part id, metabolicmics time, and shaking
-                speed.  Users can manually add lines, or download the study template for bulk uploads.
+            <p>
+                A line describes the experimental details of your study by defining the
+                experimental conditions and associated meta data for i.e. a single flask. Some
+                examples that might be defined in a line are strain, carbon source, part id,
+                metabolicmics time, and shaking speed. Users can manually add lines, or download
+                the study template for bulk uploads.
             </p>
         </div>
     </div>
@@ -113,7 +119,8 @@
         </button>
     </div>
     <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">
-        <button style="margin-right:30px" type="button" id="worklistButton" class="actionButton primary">
+        <button style="margin-right:30px" type="button" id="worklistButton"
+                class="actionButton primary">
             Generate Worklist
         </button>
         <button type="button" id="exportLineButton" class="actionButton primary">
@@ -126,13 +133,15 @@
 {% block body_postfix %}
 </form>
 
-<div id="editLineModal" title="Add new line " class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
+<div id="editLineModal" title="Add new line"
+        class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
     <form action="" method="POST">
         {% csrf_token %}
         {{ new_line.as_p }}
         <p class="line-edit-meta">
             <span class="edd-label">
-                <input type="text" class="autocomp autocomp_ltype" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" size="14" />
+                <input type="text" class="autocomp autocomp_ltype" size="14"
+                        eddautocompletetype="LineMetadataType" placeholder="Metadata Type" />
                 <input type="hidden" class="line-meta-type" value="" />
             </span>
             <input type="text" class="line-meta-value" placeholder="Metadata Value" />
@@ -142,19 +151,26 @@
     </form>
 </div>
 
-<div id="addAssayModal" class="off"
-     title="{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}">
+{% if new_assay.is_editing %}
+    {% trans 'Edit Assay' context 'modal title' as add_assay_modal_title %}
+    {% trans 'Edit Assay' context 'button' as add_assay_button %}
+{% else %}
+    {% trans 'Add Assays To Selected Lines' as add_assay_modal_title %}
+    {% trans 'Add Assay' context 'button' as add_assay_button %}
+{% endif %}
+<div id="addAssayModal" class="off" title="{{ add_assay_modal_title}}">
     <form action="" method="POST">
         {% csrf_token %}
         {{ new_assay.as_p }}
-        <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
+        <button type="submit" name="action" value="assay">{{ add_assay_button }}</button>
     </form>
 </div>
 
 <div id="exportModal" class="off" title="Export as">
     <form action="" method="POST" id="exportForm">
         {% csrf_token %}
-        <input type="radio" id="line_action_export" checked="checked" name="line_action" value="export" hidden/>
+        <input type="radio" id="line_action_export" checked="checked" name="line_action"
+                value="export" hidden="hidden" />
         <label for="line_action_export">
             <span>Export Lines</span>
             <select name="export">

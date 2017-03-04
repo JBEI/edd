@@ -433,7 +433,14 @@ class MeasurementTypeSearch(SolrSearch):
         queryopt = super(MeasurementTypeSearch, self).get_queryopt(query, **kwargs)
         queryopt['defType'] = 'edismax'
         queryopt['qf'] = ' '.join([
-            'name^10', 'name_edge^5', 'name_ng^2', 'code^10', 'formula', 'tags',
+            'name^10',  # put high weight on matching name
+            'name_edge^5',  # half as much on matching begin/end of name
+            'name_ng^2',  # smaller weight on matching substring
+            'synonym^8',  # high weight on matching synonyms
+            'synonym_edge^4',  # half as much on matching begin/end of synonym
+            'synonym_ng^2',  # smaller weight on matching substring of synonym
+            'code^10',  # high weight on matching the BIGG/SBML short name
+            'm_formula',  # small weight on matching formula string
         ])
         queryopt['q.alt'] = '*:*'
         if kwargs.get('family', None):

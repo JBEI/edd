@@ -1,5 +1,6 @@
 <!doctype html>
 {% load staticfiles %}
+{% load branding %}
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -9,26 +10,27 @@
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% stylesheet %}" />
 {% block js_css %}
-    {% if user.is_authenticated %}
-    <script type="text/javascript">
-        window.EDDData = window.EDDData || {};
-        EDDData.currentUserID = {{ user.id }};
-        $(document).on('click', '.statusMessage a.close', function (ev) {
-            var link = $(this),
-                href = link.attr('close-href'),
-                token = $('.statusMessage [name=csrfmiddlewaretoken]').first().val();
-            ev.preventDefault();
-            if (href) {
-                $.post(href, {'csrfmiddlewaretoken': token}, function () {
+        {% if user.is_authenticated %}
+        <script type="text/javascript">
+            window.EDDData = window.EDDData || {};
+            EDDData.currentUserID = {{ user.id }};
+            $(document).on('click', '.statusMessage a.close', function (ev) {
+                var link = $(this),
+                    href = link.attr('close-href'),
+                    token = $('.statusMessage [name=csrfmiddlewaretoken]').first().val();
+                ev.preventDefault();
+                if (href) {
+                    $.post(href, {'csrfmiddlewaretoken': token}, function () {
+                        link.parent().fadeOut();
+                    });
+                } else {
                     link.parent().fadeOut();
-                });
-            } else {
-                link.parent().fadeOut();
-            }
-        });
+                }
+            });
 
-    </script>
+        </script>
     {% endif %}
 {% endblock js_css%}
 </head>
@@ -44,9 +46,9 @@
         <div class="topBanner">
             <div class="siteLogo">
                 <a href="{% url 'main:index' %}">
-                    <img style="width:50px;" src="{% static 'main/images/edd_logo.png' %}" alt="EDD Logo - Home" />
+                    <img class="eddLogo" src="{% static 'main/images/edd_logo.png' %}" alt="EDD Logo - Home" />
                 </a>
-                <img src="/static/main/images/JBEI_Corner_Logo-EDD.png" alt="EDD Logo - Home"/>
+                    <img class="companyLogo" src="{% logo %}" alt="EDD Logo - Home2" />
             </div>
             <div class="pageName">
                 {% block body_title %}
@@ -101,7 +103,7 @@
     </div>
 </div>
     <div class="footer-text">
-        <span class="footer-text-app">JBEI Experiment Data Depot {{ request.edd_deployment }}</span>
+        <span class="footer-text-app">JBEI Experiment Data Depot</span>
         <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
         {% if user.is_staff %}
                 <span><a href="{% url 'admin:index' %}">Administration</a></span>
