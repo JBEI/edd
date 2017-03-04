@@ -70,7 +70,6 @@ TYPICAL_ICE_PART_NUMBER_PATTERN = re.compile(TYPICAL_JBEI_ICE_PART_NUMBER_REGEX,
 # WARNING: Use in any context other than local testing can expose user credentials to a third party!
 VERIFY_ICE_CERT = True
 
-
 ##############################
 # Solr/Haystack Configuration
 ##############################
