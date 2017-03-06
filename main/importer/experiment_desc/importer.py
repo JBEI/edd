@@ -677,7 +677,7 @@ class CombinatorialCreationImporter(object):
         traceback_str = '\n'.join(formatted_lines)
 
         part_numbers_not_found = [part_number for part_number in unique_part_numbers if
-                                  part_number if not ice_parts_by_number.get(part_number, False)]
+                                  part_number not in ice_parts_by_number]
         not_found_part_count = len(part_numbers_not_found)
         desired_part_count = len(unique_part_numbers)
         not_found_part_percent = 100 * ((float(not_found_part_count) / desired_part_count)
