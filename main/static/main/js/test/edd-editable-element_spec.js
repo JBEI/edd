@@ -15,7 +15,7 @@ describe("EDDEditableElement", function () {
             expect(EDDEditable.EditableElement).toHaveBeenCalled()
         });
         it('should set a unique index of 3', function() {
-            //not sure why
+            //thought this would equal 1
             expect(EDDEditable.EditableElement._uniqueIndex).toEqual(3);
         });
         it('should set a null value for prevEditableElement', function() {

@@ -280,7 +280,7 @@ module StudyOverview {
 
         // Have to reproduce these here rather than using EditableStudyElement because the inheritance is different
         editAllowed(): boolean { return EDDData.currentStudyWritable; }
-        canCommit(value): boolean { return EDDData.currentStudyWritable; }w
+        canCommit(value): boolean { return EDDData.currentStudyWritable; }
 
         getFormURL(): string {
             return '/study/' + EDDData.currentStudyID + '/setcontact/';

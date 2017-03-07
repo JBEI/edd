@@ -235,7 +235,7 @@ namespace StudyDataPage {
 
 
         repopulateLineFilters(): void {
-            var filteredAssayIds = this.buildAssayIDSet(EDDData);
+            var filteredAssayIds = this.buildAssayIDSet();
             this.assayFilters.forEach((filter) => {
                 filter.populateFilterFromRecordIDs(filteredAssayIds);
                 filter.populateTable();
@@ -297,7 +297,7 @@ namespace StudyDataPage {
         }
 
         // Build a list of all the Assay IDs in the Study.
-        buildAssayIDSet(EDDData): any[] {
+        buildAssayIDSet(): any[] {
             var assayIds: any[] = [];
             $.each(EDDData.Assays, (assayId, assay) => {
                 var line = EDDData.Lines[assay.lid];
@@ -328,7 +328,7 @@ namespace StudyDataPage {
                 this.repopulateAllFilters();
             }
 
-            var filteredAssayIds = this.buildAssayIDSet(EDDData);
+            var filteredAssayIds = this.buildAssayIDSet();
 
             var filteringResults:ValueToUniqueList = {};
             filteringResults['allAssays'] = filteredAssayIds;

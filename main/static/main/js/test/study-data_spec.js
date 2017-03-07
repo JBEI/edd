@@ -37,7 +37,7 @@ describe("prepare it", function () {
 
     describe('method: StudyDataPage.progressiveFilteringWidget.buildAssayIDSet', function() {
         it('should return an array with active ids', function() {
-            expect(StudyDataPage.progressiveFilteringWidget.buildAssayIDSet(EDDData)).toEqual(
+            expect(StudyDataPage.progressiveFilteringWidget.buildAssayIDSet()).toEqual(
                 [ '2050', '2051', '2053', '2054' ]
             );
         })

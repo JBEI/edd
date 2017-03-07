@@ -2,7 +2,7 @@
  * unit tests for AssayTableData.js
  */
 
-describe(" AssayTableData.js", function () {
+describe("AssayTableData.js", function () {
     var selectMajorKindStep;
     beforeEach(function() {
        jasmine.getJSONFixtures().fixturesPath='base/main/static/main/js/test/';
@@ -22,7 +22,6 @@ describe(" AssayTableData.js", function () {
     });
      describe('method: SelectMajorKindStep.getUserWarnings', function() {
         it ('should return an empty array', function() {
-            //this should be returning false..
             expect(selectMajorKindStep.getUserWarnings()).toEqual([])
         })
     });
