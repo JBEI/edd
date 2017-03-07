@@ -1422,6 +1422,20 @@ var StudyDataPage;
                 queueRefreshDataDisplayIfStale();
         }
     }
+    function requestAssayData(assay) {
+        var protocol = EDDData.Protocols[assay.pid];
+        $.ajax({
+            url: ['measurements', assay.pid, assay.id, ''].join('/'),
+            type: 'GET',
+            dataType: 'json',
+            error: function (xhr, status) {
+                console.log('Failed to fetch measurement data on ' + assay.name + '!');
+                console.log(status);
+            },
+            success: processMeasurementData.bind(this, protocol)
+        });
+    }
+    StudyDataPage.requestAssayData = requestAssayData;
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
