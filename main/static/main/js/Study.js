@@ -15,16 +15,16 @@ var StudyBase;
     }
     StudyBase.prepareIt = prepareIt;
     // Base class for the non-autocomplete inline editing fields for the Study
-    var EditableStudyElment = (function (_super) {
-        __extends(EditableStudyElment, _super);
-        function EditableStudyElment() {
+    var EditableStudyElement = (function (_super) {
+        __extends(EditableStudyElement, _super);
+        function EditableStudyElement() {
             _super.apply(this, arguments);
         }
-        EditableStudyElment.prototype.editAllowed = function () { return EDDData.currentStudyWritable; };
-        EditableStudyElment.prototype.canCommit = function (value) { return EDDData.currentStudyWritable; };
-        return EditableStudyElment;
+        EditableStudyElement.prototype.editAllowed = function () { return EDDData.currentStudyWritable; };
+        EditableStudyElement.prototype.canCommit = function (value) { return EDDData.currentStudyWritable; };
+        return EditableStudyElement;
     }(EDDEditable.EditableElement));
-    StudyBase.EditableStudyElment = EditableStudyElment;
+    StudyBase.EditableStudyElement = EditableStudyElement;
     var EditableStudyName = (function (_super) {
         __extends(EditableStudyName, _super);
         function EditableStudyName() {
@@ -46,7 +46,7 @@ var StudyBase;
             return '(Enter a name for your Study)';
         };
         return EditableStudyName;
-    }(EditableStudyElment));
+    }(EditableStudyElement));
     StudyBase.EditableStudyName = EditableStudyName;
 })(StudyBase || (StudyBase = {}));
 ;

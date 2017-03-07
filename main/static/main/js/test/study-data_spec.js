@@ -7,7 +7,7 @@
  */
 
 describe("prepare it", function () {
-    var EDDData, carbon;
+    var EDDData;
     beforeEach(function() {
        jasmine.getJSONFixtures().fixturesPath='base/main/static/main/js/test/';
        EDDData = getJSONFixture('EDDData.json');

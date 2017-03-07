@@ -1462,7 +1462,7 @@ namespace StudyDataPage {
             .on('keydown', filterTableKeyDown.bind(this));
     }
 
-    export function fetchEDDData(callback) {
+    export function fetchEDDData(success) {
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
@@ -1470,7 +1470,7 @@ namespace StudyDataPage {
                 $('#content').prepend("<div class='noData'>Error. Please reload</div>");
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
-            'success': callback
+            'success': success
         });
     }
 

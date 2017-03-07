@@ -251,7 +251,7 @@ module StudyOverview {
     }
 
 
-    export class EditableStudyDescription extends StudyBase.EditableStudyElment {
+    export class EditableStudyDescription extends StudyBase.EditableStudyElement {
 
         constructor(inputElement: HTMLElement) {        
             super(inputElement);
@@ -278,9 +278,9 @@ module StudyOverview {
 
     export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
 
-        // Have to reproduce these here rather than using EditableStudyElment because the inheritance is different
+        // Have to reproduce these here rather than using EditableStudyElement because the inheritance is different
         editAllowed(): boolean { return EDDData.currentStudyWritable; }
-        canCommit(value): boolean { return EDDData.currentStudyWritable; }
+        canCommit(value): boolean { return EDDData.currentStudyWritable; }w
 
         getFormURL(): string {
             return '/study/' + EDDData.currentStudyID + '/setcontact/';

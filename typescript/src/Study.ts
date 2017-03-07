@@ -14,14 +14,14 @@ module StudyBase {
 
 
     // Base class for the non-autocomplete inline editing fields for the Study
-    export class EditableStudyElment extends EDDEditable.EditableElement {
+    export class EditableStudyElement extends EDDEditable.EditableElement {
 
         editAllowed(): boolean { return EDDData.currentStudyWritable; }
         canCommit(value): boolean { return EDDData.currentStudyWritable; }
     }
 
 
-    export class EditableStudyName extends EditableStudyElment {
+    export class EditableStudyName extends EditableStudyElement {
         canCommit(value): boolean {
             return EDDData.currentStudyWritable && (this.getEditedValue() != '');
         }

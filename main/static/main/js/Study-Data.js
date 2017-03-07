@@ -1331,7 +1331,7 @@ var StudyDataPage;
             .on('keydown', filterTableKeyDown.bind(this));
     }
     StudyDataPage.prepareIt = prepareIt;
-    function fetchEDDData(callback) {
+    function fetchEDDData(success) {
         $.ajax({
             'url': 'edddata/',
             'type': 'GET',
@@ -1339,7 +1339,7 @@ var StudyDataPage;
                 $('#content').prepend("<div class='noData'>Error. Please reload</div>");
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
-            'success': callback
+            'success': success
         });
     }
     StudyDataPage.fetchEDDData = fetchEDDData;

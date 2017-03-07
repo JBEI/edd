@@ -19,15 +19,18 @@ module.exports = function(config) {
       'main/static/main/js/lib/jquery-ui/jquery-ui.min.js',
       'bower_components/jasmine-jquery/lib/jasmine-jquery.js',
       'main/static/main/js/EDDGraphingTools.js',
-      'main/static/main/js/DataGrid.js',
       'main/static/main/js/Utl.js',
+      'main/static/main/js/DataGrid.js',
       'main/static/main/js/EDDEditableElement.js',
       'main/static/main/js/Study-Lines.js',
       'main/static/main/js/Study-Data.js',
+      'main/static/main/js/AssayTableData.js',
+      'main/static/main/js/AssayTableDataGraphing.js',
+      'main/static/main/js/EDDEditableElement.js',
       'main/static/main/js/test/*.js',
       'main/static/main/js/lib/underscore/underscore.js',
       'main/static/main/js/Study-Create.js',
-        // JSON fixture
+       // JSON fixture
       { pattern:  'main/static/main/js/test/EDDData.json',
         watched:  true,
         served:   true,
@@ -35,11 +38,12 @@ module.exports = function(config) {
         { pattern:  'main/static/main/js/test/SpecRunner.html',
         watched:  true,
         served:   true,
-        included: false },
+        included: false }
     ],
 
     proxies: {
-      '/edddata/': '/base/main/static/main/js/test/EDDData.json'
+      '/edddata/': '/base/main/static/main/js/test/EDDData.json',
+      '/study/10/assaydata/': '/base/main/static/main/js/test/assay.json'
     },
 
     // enable / disable watching file and executing tests whenever any file changes
