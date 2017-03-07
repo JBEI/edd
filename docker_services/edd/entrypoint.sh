@@ -327,11 +327,11 @@ service_wait rabbitmq 5672
 # Start up the command
 case "$COMMAND" in
     application)
-        banner "Starting production apppserver"
+        banner "Starting production appserver"
         exec gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
         ;;
     devmode)
-        banner "Starting development apppserver"
+        banner "Starting development appserver"
         exec python manage.py runserver 0.0.0.0:8000
         ;;
     init-only)
