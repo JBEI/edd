@@ -195,6 +195,15 @@ while [ ! $# -eq 0 ]; do
     esac
 done
 
+# Check for required environment!
+if [ -z "${EDD_USER}" ]; then
+    (>&2 echo "No EDD_USER environment set; did you run init-config.sh before launching Docker?")
+    exit 1
+elif [ -z "${EDD_EMAIL}" ]; then
+    (>&2 echo "No EDD_EMAIL environment set; did you run init-config.sh before launching Docker?")
+    exit 1
+fi
+
 output "EDD_DEPLOYMENT_ENVIRONMENT:" \
     "${EDD_DEPLOYMENT_ENVIRONMENT:-'Not specified. Assuming PRODUCTION.'}"
 # Look for code mounted at /code and symlink to /usr/local/edd if none found
@@ -318,11 +327,11 @@ service_wait rabbitmq 5672
 # Start up the command
 case "$COMMAND" in
     application)
-        banner "Starting production apppserver"
+        banner "Starting production appserver"
         exec gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
         ;;
     devmode)
-        banner "Starting development apppserver"
+        banner "Starting development appserver"
         exec python manage.py runserver 0.0.0.0:8000
         ;;
     init-only)

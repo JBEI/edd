@@ -21,7 +21,7 @@ project.
 With [Docker][2] and [Docker Compose][3] installed, launching the entire EDD software stack is as
 simple as copying the `docker_services` directory of the code repository and running:
 
-    ./init-config.sh "Your Name" "youremail@example.com"
+    . init-config
     docker-compose up -d
 
 Without additional configuration, the launched copy of EDD will be using default options, so some

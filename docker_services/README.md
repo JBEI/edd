@@ -40,14 +40,29 @@ arguments (or git configured values), and generates random passwords in the latt
 
 ### Networks (Communication)
 
-There is currently no specific network configuration used in EDD. A default network, named
-`PROJECTNAME_default`, is a virtual network with a private address space for all the containers
-to use. Each container is assigned an IP address in the 172.16.0.0/12 block, addressable by all
-other containers attached to the network. Some containers are configured to expose ports by
+EDD uses two virtual Docker networks: a proxy network (`PROJECTNAME_proxynet`), and a backend
+network (`PROJECTNAME_backnet`). These separate networks make it possible to limit connections
+between containers to those that are necessary for the containers to do the work. The two networks
+roughly are responsible for connecting the containers that interact with the host network, and the
+containers that interact with other containers.
+
+Each container is assigned an IP address in the 172.16.0.0/12 block, addressable by all other
+containers attached to the same network. Some containers are configured to expose ports by
 instructing Docker to listen to ports on a host interface, and forwarding packets to ports on
 the private Docker virtual network. For example, the generated `docker-compose.override.yml`
 will forward ports 80 and 443 on the Docker host loopback network interface to the same ports on
 the virtual network interface of the `nginx` service.
+
+The proxy network connects the services which will reach the external host network via the nginx
+proxy. The containers on the proxy network are `nginx` itself, the companion containers used to
+generate the nginx configuration and certificates, and the core EDD service. Since no other
+services get proxied at this time, nothing else needs to connect to the network.
+
+Most of the other containers are connected to the backend network. This network connects the core
+EDD service to the other services used in the application. Having a network defined only for the
+internal services helps to keep boundaries between these services and the outside world. All
+changes to these services from the outside, come only via the EDD core service, unless additional
+port mappings are defined in the override Compose file.
 
 ### Volumes (Storage)
 
@@ -80,7 +95,9 @@ images also include links to the README for the base image.
 * __[rabbitmq][11]__: official RabbitMQ image, using version 3.6-management
 * __[flower][12]__: custom Dockerfile, based on [buildpack-deps:stretch][6]
 * __[exim4][13]__: custom Dockerfile, [buildpack-deps:stretch][6]
-* __[nginx][14]__: custom Dockerfile, based on the [official Nginx image][15] version 1.11
+* __[nginx][14]__: [official Nginx image][15], using version 1.11
+* __[jwilder/docker-gen][16]__: third-party image, using latest release
+* __[jrcs/letsencrypt-nginx-proxy-companion][17]__: third-party image, using latest release
 
 ### Services (Containers)
 
@@ -101,6 +118,8 @@ different roles.
 * __flower__: management / monitoring application for Celery
 * __smtp__: mail server that supports emails from EDD
 * __nginx__: webserver that proxies clients' HTTP requests to other Docker services
+* __nginx-gen__: listens for container events, generates nginx config to proxy requests
+* __letsencrypt__: monitors TLS certificates and creates/renews with [Let's Encrypt][18]
 
 ---------------------------------------------------------------------------------------------------
 
@@ -119,3 +138,6 @@ different roles.
 [13]:   smtp/README.md
 [14]:   nginx/README.md
 [15]:   https://hub.docker.com/_/nginx/
+[16]:   https://github.com/jwilder/docker-gen
+[17]:   https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
+[18]:   https://letsencrypt.org

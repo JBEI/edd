@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+
+# Basic idea of this script is to check that other software is installed and config files are
+#   copied from the examples. The script is only tested with BASH. It probably will not work in
+#   alternate shells.
+
+COMPLETE="false"
+BOLD="\033[1m"
+RESET="\033[0m"
+SEPARATOR="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+GETOPT=`which getopt`
+GIT=`which git`
+
+function check_brew() {
+    if [ ! -x `which brew` ]; then
+        # Install brew if missing
+
+        /usr/bin/ruby -e \
+            "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+        if [ ! $? -eq 0 ]; then
+            exit 1
+        fi
+    fi
+}
+
+function check_gnu_getopt() {
+    opt=`getopt -o 'a' -- -a`
+    if [ "$opt" == " -a --" ]; then
+        # GNU getopt is in use
+        GETOPT=`which getopt`
+    elif [ "$(uname)" == "Darwin" ]; then
+        check_brew
+        echo "Updating Homebrew"
+        brew update
+        brew install gnu-getopt
+        GETOPT="$(brew --prefix gnu-getopt)/bin/getopt"
+    else
+        (>&2 echo "GNU getopt not installed, ignoring script arguments")
+    fi
+}
+
+function print_help() {
+    echo "Usage: . init-config [options]"
+}
+
+EDD_EMAIL=
+EDD_USER=
+PROJECT=
+if [ ! $# -eq 0 ]; then
+    check_gnu_getopt
+    short='p:u:m:d:'
+    long='help,project:,user:,mail:,noinput,domain:'
+    params=`$GETOPT -o "$short" -l "$long" --name "$0" -- "$@"`
+    eval set -- "$params"
+    while [ ! $# -eq 0 ]; do
+        case "$1" in
+            --help)
+                print_help
+                exit 0
+                ;;
+            --project | -p)
+                PROJECT="$2"
+                shift 2
+                ;;
+            --user | -u)
+                EDD_USER="$2"
+                shift 2
+                ;;
+            --mail | -m)
+                EDD_EMAIL="$2"
+                shift 2
+                ;;
+            --noinput)
+                shift
+                NOINPUT=1
+                ;;
+            --domain | -d)
+                DOMAIN="$2"
+                shift 2
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+fi
+
+if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
+    if [ -x "$GIT" ]; then
+        EDD_EMAIL=$("$GIT" config --get user.email)
+        EDD_USER=$("$GIT" config --get user.name)
+    fi
+    if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
+        if [ $NOINPUT -eq 1 ]; then
+            echo "${SEPARATOR}"
+            echo "Could not detect git user. Please re-run this script with your name and email,"
+            echo "or after configuring your git install with commands like these:"
+            echo ""
+            echo -e "\t${BOLD}git config --global user.name 'Alice Liddell'${RESET}"
+            echo -e "\t${BOLD}git config --global user.email 'aliddell@example.net'${RESET}"
+            echo ""
+            exit 1
+        else
+            echo "TODO: interactive prompt for user name and email"
+            exit 1
+        fi
+    fi
+fi
+
+if [ ! -f "$DIR/secrets.env" ]; then
+    WRITE_SECRETS=y
+elif [ "$NOINPUT" != "1" ]; then
+    read -n 1 -p "Found existing secrets.env. Overwrite? (y/N): " WRITE_SECRETS
+    echo
+fi
+
+if [ "$WRITE_SECRETS" == "y" ]; then
+    COUNTER=1
+    echo "Copying example secrets.env and generating secrets …"
+    cp "$DIR/secrets.env-example" "$DIR/secrets.env"
+    # replacing the secret{n} values
+    while [ $COUNTER -lt 5 ]; do
+        EDD_SECRET=`echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32`
+        # in-place edit, save backup to .bak file
+        sed -i.bak -e "s/secret${COUNTER}/${EDD_SECRET}/" "$DIR/secrets.env"
+        let COUNTER=COUNTER+1
+    done
+    # replace Django secret
+    EDD_SECRET=`echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32`
+    # in-place edit, save backup to .bak file
+    sed -i.bak -e "s/put some random secret text here/${EDD_SECRET}/" "$DIR/secrets.env"
+    # remove backup file
+    rm "$DIR/secrets.env.bak"
+fi
+
+if [ ! -f "$DIR/docker-compose.override.yml" ]; then
+    WRITE_OVERRIDE=y
+elif [ "$NOINPUT" != "1" ]; then
+    read -n 1 -p "Found existing docker-compose.override.yml. Overwrite? (y/N): " WRITE_OVERRIDE
+    echo
+fi
+
+# basic replacement script for sed
+REPLACEMENT="$(cat <<EOT
+    s/#EDD_USER: "Alice Liddell"/EDD_USER: "${EDD_USER}"/;
+    s/#EDD_EMAIL: "aliddell@example.net"/EDD_EMAIL: "${EDD_EMAIL}"/;
+EOT
+)"
+if [ ! -z "$DOMAIN" ]; then
+    REPLACEMENT="$REPLACEMENT;$(cat <<EOT
+    s/#VIRTUAL_HOST: edd.example.net/VIRTUAL_HOST: "${DOMAIN}"/;
+    s/#LETSENCRYPT_HOST: edd.example.net/LETSENCRYPT_HOST: "${DOMAIN}"/;
+    s/#LETSENCRYPT_EMAIL: "aliddell@example.net"/LETSENCRYPT_EMAIL: "${EDD_EMAIL}"/;
+EOT
+)"
+fi
+
+if [ "$WRITE_OVERRIDE" == "y" ]; then
+    echo "Copying example docker-compose.override.yml settings …"
+    cp "$DIR/docker-compose.override.yml-example" "$DIR/docker-compose.override.yml"
+    sed -i.bak -e "${REPLACEMENT}" "$DIR/docker-compose.override.yml"
+    rm "$DIR/docker-compose.override.yml.bak"
+fi
+
+if [ ! -x `which virtualenvwrapper.sh` ]; then
+    (>&2 echo "virtualenvwrapper is not installed. Cannot create a project for this edd install.")
+elif [ ! -z "$PROJECT" ]; then
+    MAKE_VIRTUALENV=y
+elif [ "$NOINPUT" != "1" ]; then
+    read -n 1 -p "Create a project name for this install? (y/N): " MAKE_VIRTUALENV
+    echo
+    if [ "$MAKE_VIRTUALENV" == "y" ]; then
+        read -p "Project name: [edd] " PROJECT
+        if [ -z "$PROJECT" ]; then
+            PROJECT=edd
+        fi
+    fi
+fi
+
+if [ "$MAKE_VIRTUALENV" == "y" ]; then
+    source `which virtualenvwrapper.sh`
+    while lsvirtualenv -b | grep -qe "^${PROJECT}$"; do
+        read -p "A virtualenv named '${PROJECT}' exists, choose another project name: " TEMP
+        if [ ! -z "$TEMP" ]; then
+            PROJECT="$TEMP"
+        fi
+    done
+    mkvirtualenv -a "$DIR" --no-pip --no-setuptools "$PROJECT"
+    echo "export COMPOSE_PROJECT_NAME=$PROJECT" >> $WORKON_HOME/$PROJECT/bin/postactivate
+    echo "unset COMPOSE_PROJECT_NAME" >> $WORKON_HOME/$PROJECT/bin/predeactivate
+fi
+
+COMPLETE="true"
