@@ -26,6 +26,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
 from rest_framework.exceptions import MethodNotAllowed
 
+from main.importer.experiment_desc.constants import (
+    INTERNAL_SERVER_ERROR, UNPREDICTED_ERROR,
+    ALLOW_DUPLICATE_NAMES_PARAM, IGNORE_ICE_RELATED_ERRORS_PARAM)
+from main.importer.experiment_desc.importer import _build_response_content
 from . import autocomplete, models as edd_models, redis
 from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
@@ -1245,24 +1249,26 @@ def study_import_table(request, pk=None, slug=None):
     )
 
 
-# /study/<study_id>/define/
+# /study/<study_id>/describe_experiment/
 @ensure_csrf_cookie
-def study_define(request, pk=None, slug=None):
+def study_describe_experiment(request, pk=None, slug=None):
     """
-    View for defining a study's lines / assays from a template file. On success, renders the study
-    page, with a summary of the created lines/assays. On failure, returns a JSON string with a
-    description of the error message.
+    View for defining a study's lines / assays from an Experiment Description file.
     """
 
+    # load the study first to detect any permission errors / fail early
     study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
 
     if request.method != "POST":
         raise MethodNotAllowed(request.method)
 
+    # parse request parameter input to keep subsequent code relatively format-agnostic
     user = request.user
     dry_run = 'dryRun' in request.META.keys()
-    allow_duplicate_names = 'allowDuplicateNames' in request.META.keys()
+    allow_duplicate_names = ALLOW_DUPLICATE_NAMES_PARAM in request.META.keys()
+    ignore_ice_related_errors = IGNORE_ICE_RELATED_ERRORS_PARAM in request.META.keys()
 
+    # detect the input format
     is_excel_file = request.META[FILE_TYPE_HEADER] == 'xlsx'
     if is_excel_file:
         file_name = request.META['HTTP_X_FILE_NAME']
@@ -1270,22 +1276,23 @@ def study_define(request, pk=None, slug=None):
     else:
         logger.info('Parsing request body as JSON input')
 
+    # attempt the import
     importer = CombinatorialCreationImporter(study, user)
     try:
         with transaction.atomic(savepoint=False):
-            result = importer.do_import(request, not is_excel_file, allow_duplicate_names, dry_run)
-        if not dry_run and 'errors' in result:
-            return JsonResponse(result, status=400)
-        return JsonResponse(result)
+            status_code, reply_content = (
+                importer.do_import(request, not is_excel_file, allow_duplicate_names,
+                                   dry_run, ignore_ice_related_errors))
+        return JsonResponse(reply_content, status=status_code)
+
     except RuntimeError as e:
-        logger.exception('Failed to import study definition')
-        importer.errors['exceptions'].append(e)
+        # log the exception, but return a response to the GUI/client anyway to help it remain
+        # responsive
+        logger.exception('Unpredicted exception occurred during experiment description processing')
+        importer.errors[UNPREDICTED_ERROR].append(str(e))
         return JsonResponse(
-            {
-                'errors': importer.errors,
-                'warnings': importer.warnings,
-            },
-            status=500
+            _build_response_content(importer.errors, importer.warnings),
+            status=INTERNAL_SERVER_ERROR
         )
 
 
