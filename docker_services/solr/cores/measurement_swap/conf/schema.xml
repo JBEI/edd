@@ -125,6 +125,8 @@
         <field name="family" type="text_lower" indexed="true" stored="true" />
         <!-- source of measurement type property data -->
         <field name="source" type="tag_lower" indexed="true" stored="true" />
+        <!-- synonyms and alternate names for measurement type -->
+        <field name="synonym" type="text_lower" indexed="true" stored="true" multiValued="true" />
 
         <!-- == metabolite-specific fields == -->
         <!-- metabolite physical properties -->
@@ -152,18 +154,23 @@
         <field name="_version_" type="tlong" indexed="true" stored="true" />
         <!-- field needed for default request handlers, not actually used -->
         <field name="text" type="text_lower" indexed="true" stored="false" multiValued="true" />
-        <!-- name of the study in ngram form for substring matches -->
+        <!-- name of the measurement type in ngram form for substring matches -->
         <field name="name_ng" type="ngram" indexed="true" stored="false" />
         <field name="name_edge" type="edge_ngram" indexed="true" stored="false" />
         <!-- name of the metabolite in sort_lower form for sorting -->
         <field name="name_s" type="sort_lower" indexed="true" stored="false" multiValued="false" />
+        <!-- synonyms of the measurement type in ngram form for substring matches -->
+        <field name="synonym_ng" type="ngram" indexed="true" stored="false" />
+        <field name="synonym_edge" type="edge_ngram" indexed="true" stored="false" />
     </fields>
 
     <uniqueKey>id</uniqueKey>
-    
+
     <!-- copy ngram fields -->
     <copyField source="name" dest="name_ng" />
     <copyField source="name" dest="name_edge" />
     <copyField source="name" dest="name_s" />
+    <copyField source="synonym" dest="synonym_ng" />
+    <copyField source="synonym" dest="synonym_edge" />
 
 </schema>

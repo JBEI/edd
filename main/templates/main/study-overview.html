@@ -17,67 +17,85 @@
     {{ block.super }}
 {% endblock body_title %}
 
-{% block content %}                  
+{% block content %}
     {{ block.super }}
 
-<form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;" id="general">
+<form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;"
+        id="general">
     {% csrf_token %}
 
     <div class="overviewFlex">
         <div style="flex-grow:1">
-            {{ edit_study.non_field_errors }}
-            {{ edit_study.name.errors }}
+        {% if edit_study.errors %}
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <p>{{ edit_study.name.errors.as_text }}</p>
+        </div>
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <p>{{ edit_study.non_field_errors.as_text }}</p>
+        </div>
+        {% endif %}
+        <div id="linesAdded" class="alert alert-success alert-dismissible" role="alert" hidden>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div id="alert_placeholder"></div>
 
-            <table class="formTable" style="width:90%;">
-                <tr>
-                    <td style="width:260px;">
-                        {{ edit_study.description.errors }}
-                        <div class="editable-field inactive" id="editable-study-description">
-                            {% firstof study.description "<i>(Click to add description)</i>"|safe %}
-                            {{ edit_study.description }}
-                        </div>
-                    </td>
-                    <td class="form-label" style="width:70px;">
-                        <label for="{{ edit_study.contact.id_for_label }}">Contact:</label>
-                    </td>
-                    <td style="width:260px;">
-                        {{ edit_study.contact.errors }}
-                        <div class="editable-field inactive" id="editable-study-contact">
-                            {% if study.contact %}
-                                {% if writable %}
-                                    {{ study.contact.first_name }} {{ study.contact.last_name }}
-                                {% else %}
-                                    <a href="mailto:{{ study.contact.email }}">
-                                        {{ study.contact.first_name }} {{ study.contact.last_name }}
-                                    </a>
-                                {% endif %}
-                            {% elif study.contact_extra %}
-                                {{ study.contact_extra }}
+        <table class="formTable" style="width:90%;">
+            <tr>
+                <td style="width:260px;">
+                    {{ edit_study.description.errors }}
+                    <div class="editable-field inactive" id="editable-study-description">
+                        {% firstof study.description "<i>(Click to add description)</i>"|safe %}
+                        {{ edit_study.description }}
+                    </div>
+                </td>
+                <td class="form-label" style="width:70px;">
+                    <label for="{{ edit_study.contact.id_for_label }}">Contact:</label>
+                </td>
+                <td style="width:260px;">
+                    {{ edit_study.contact.errors }}
+                    <div class="editable-field inactive" id="editable-study-contact">
+                        {% if study.contact %}
+                            {% if writable %}
+                                {{ study.contact.first_name }} {{ study.contact.last_name }}
                             {% else %}
-                                <i>(Enter Contact)</i>
+                                <a href="mailto:{{ study.contact.email }}">
+                                    {{ study.contact.first_name }} {{ study.contact.last_name }}
+                                </a>
                             {% endif %}
-                            {{ edit_study.contact }}
-                        </div>
-                    </td>
-                </tr>
-            </table>
+                        {% elif study.contact_extra %}
+                            {{ study.contact_extra }}
+                        {% else %}
+                            <i>(Enter Contact)</i>
+                        {% endif %}
+                        {{ edit_study.contact }}
+                    </div>
+                </td>
+            </tr>
+        </table>
         </div>
     </div>
 </form>
 
 <div class="overviewDropZone" style="{% if lines %}display:none;{% endif %}">
-    <div class="fd-zone" id="templateDropZone">
+    <div class="fd-zone excel" id="templateDropZone">
         <div></div>
         Upload an Experiment Description file (
-        <a href="{% static 'sample_experiment_description.xlsx' %}">Example </a>
-        <a class="dropLink dropImg" href="{% static 'sample_experiment_description.xlsx' %}">
-            __</a>)
+        <a href="{% static 'sample_experiment_description.xlsx' %}">
+            Example <span class="dropLink dropImg">__</span>
+        </a>)
         <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"
-    title='Drag-and-drop an Experiement description file into this grey box
-                    to describe your experiment.  Alternatively, you can click on the link below to
-                    manually input your experiment description.
-                    &lt;a style="color:blue" href=&quot;/help/experiment_description/&quot;&gt; What is an Experiment
-                    Description file&lt;/a&gt;?'>Help</div>
+                title="Drag-and-drop an &lt;a style=&quot;color:blue&quot; href=&quot;
+                    /help/experiment_description/&quot;&gt;Experiment description file&lt;/a&gt;
+                    into this grey box to describe your experiment. Alternatively, you can click
+                    on the link below to manually input your experiment description.">Help</div>
     </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
@@ -88,20 +106,21 @@
         </div>
         <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
     </div>
-    or <a class="dropLink"  href="{% url 'main:lines' slug=study.slug %}">manually describe</a> your experiment.
+    or <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">manually describe</a>
+    your experiment.
 </div>
 
-  {% if writable %}
+{% if writable %}
 <div class="disclose discloseHide">
-    <div class=" pageDivider {% if not new_attach.errors %}{% if not new_comment.errors %}{% endif %}{% endif %}" for="permissionsSection">
+    <div class="pageDivider" for="permissionsSection">
         <span class="discloseLink"> Permissions </span>
-        </div>
+    </div>
      <div class="discloseBody">
           <div class="sectionContent indent">
-          <div>Current Permissions</div>
             {% with perms=study.get_combined_permission %}
                 {% if perms %}
-                <table style="width:50%; margin: 10px 0px 24px 37px" cellpadding="0" cellspacing="0" class="dataTable sortable">
+                <table style="width:50%; margin: 10px 0px 24px 37px" cellpadding="0"
+                        cellspacing="0" class="dataTable sortable">
                     <tr class="columnLabels">
                         <th class="sortheader smaller">Who</th>
                         <th class="sortheader smaller">Level</th>
@@ -115,30 +134,33 @@
                 </table>
                 {% endif %}
             {% endwith %}
-        <button class="actionButton primary" id="addPermission" >Add permission</button>
+        <button class="actionButton primary" id="addPermission" >Configure Permissions</button>
      </div>
-    </div>
  </div>
 {% endif %}
 
-    <div class="disclose discloseHide">
-        <div  class="pageDivider{% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
-            <span class="discloseLink"> Attachments ({{ study.attachments|length }})</span>
-       </div>
-        <div style="padding-bottom: 10px;" class="discloseBody {% if not new_attach.errors %}{% endif %}" id="attachmentsSection">
-            <div class="sectionContent indent">
-                {% with attachments=study.attachments %}
-                    {% include "main/include_attachments.html" %}
-                {% endwith %}
-                {% if writable %}
-                <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
-                    {% csrf_token %}
-                    {{ new_attach.as_p }}
-                    <p><button type="submit" name="action" value="attach">Attach File</button></p>
-                </form>
-                {% endif %}
-            </div>
+<div class="disclose discloseHide">
+    <div class="pageDivider {% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
+        <span class="discloseLink"> Attachments ({{ study.attachments|length }})</span>
+    </div>
+    <div style="padding-bottom: 10px;" class="discloseBody" id="attachmentsSection">
+        <div class="sectionContent indent">
+            {% with attachments=study.attachments %}
+                {% include "main/include_attachments.html" %}
+            {% endwith %}
+            {% if writable %}
+            <form method="POST" enctype="multipart/form-data"
+                    class="attachments edd-form" action="">
+                {% csrf_token %}
+                {{ new_attach.as_p }}
+                <p>
+                    <button type="submit" class="actionButton primary" style="margin-top:-4px"
+                            name="action" value="attach">Attach File</button>
+                </p>
+            </form>
+            {% endif %}
         </div>
+    </div>
 </div>
 
 <div class="disclose discloseHide">
@@ -150,7 +172,8 @@
             <ol class="comment-list">
                 {% for comment in study.comment_list reversed %}
                     <li>
-                        <span>{{ comment.created.full_name }} at {{ comment.created.format_timestamp }}</span>
+                        <span>{{ comment.created.full_name }} at
+                            {{ comment.created.format_timestamp }}</span>
                         <p>{{ comment.body }}</p>
                     </li>
                 {% endfor %}
@@ -159,7 +182,10 @@
                 <form method="POST" class="comments edd-form" action="">
                     {% csrf_token %}
                     {{ new_comment.as_p }}
-                    <p><button type="submit" name="action" value="comment">Add Comment</button></p>
+                    <p>
+                        <button type="submit" class="actionButton primary" name="action"
+                                value="comment">Add Comment</button>
+                    </p>
                 </form>
             </div>
         </div>
@@ -167,35 +193,49 @@
 </div>
 
 {# add permissions modal #}
-<div class="indent off" title="Add Permission" id="permissionsSection">
-        <div class="sectionActions">
-            <form method="POST" enctype="multipart/form-data" class="edd-form" id="permissions" action="">
-                {% csrf_token %}
-                <div class="permission" id="permission_user_box">
+<div class="indent off" title="Configure Permissions" id="permissionsSection">
+    <div class="sectionActions">
+        <form method="POST" enctype="multipart/form-data" class="edd-form" id="permissions"
+                action="">
+            {% csrf_token %}
+            <div class="permission" id="permission_user_box">
                 <label for="permission_user">
-                    <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
+                    <input type="radio" id="permission_user" name="class" value="User"
+                            checked="checked" hidden/>
                     <span>User</span>
                 </label>
-                </div>
-                <div  class="permission"  id="permission_group_box">
+                <select id="user_permission_options" name="type">
+                    <option value={{ permission_none }}>None</option>
+                    <option value={{ permission_read }}>Read</option>
+                    <option value={{ permission_write }}>Write</option>
+                </select>
+                <button id="set_user_permission">Set Permission</button>
+            </div>
+            <div  class="permission"  id="permission_group_box">
                 <label for="permission_group">
-                    <input type="radio" id="permission_group" name="class" value="Group"/>
+                    <input type="radio" id="permission_group" name="class" value="Group" hidden/>
                     <span>Group</span>
                 </label>
-                </div>
-                <div  class="permission" id="permission_public_box">
+                <select id="group_permission_options" name="type">
+                    <option value={{ permission_none }}>None</option>
+                    <option value={{ permission_read }}>Read</option>
+                    <option value={{ permission_write }}>Write</option>
+                </select>
+                <button id="set_group_permission">Set Permission</button>
+            </div>
+            <div  class="permission" id="permission_public_box">
+                <input type="radio" id="permission_public" name="class" value="Public" hidden/>
                 <label for="permission_public">
-                    <input type="radio" id="permission_public" name="class" value="Public"/>
                     <span>Everyone</span>
                 </label>
-                </div>
                 <select name="type">
-                    <option value="N">None</option>
-                    <option value="R">Read</option>
-                    <option value="W">Write</option>
+                    <option value={{ permission_none }}>None</option>
+                    <option value={{ permission_read }}>Read</option>
+                    <option value={{ permission_write }}>Write</option>
                 </select>
-                <button id="set_permission">Set Permission</button>
-            </form>
+                <button id="set_everyone_permission">Set Permission</button>
+            </div>
+        </form>
     </div>
 </div>
 

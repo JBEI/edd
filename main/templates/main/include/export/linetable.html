@@ -1,6 +1,13 @@
 {% load i18n %}
 
-<div id="existinglines">
+<div class="disclose" id="existinglines">
+    <div style="margin:10px">
+        <a href="#" class="discloseLink">
+            {% blocktrans with measurement=selection.measurements|length assays=selection.assays|length lines=selection.lines|length %}
+                {{ measurements }} Measurements in {{ assays }} Assays in {{ lines }} Lines Selected
+            {% endblocktrans %}
+        </a>
+    </div>
   <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;"> 
     <!--
     Table displaying selected lines; used for table and SBML export pages

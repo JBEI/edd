@@ -156,33 +156,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
   See "Running EDD" below for a list of helpful commands. If you skipped the previous step, this
   command will take significantly longer the first time you run it, since Docker has to initially
   build / configure the EDD services before they can run.
-
-* __Perform other [configuration][6] as desired__
-
-  For example, by default, EDD will launch with an empty database, so you may want to use
-  environment variables to load an existing database.
-    * If you're starting from a blank database, use the web interface to configure EDD for your
-      institution.
-    * If you haven't loaded EDD from an existing database, you'll need to create an administrator
-      account from the command line that you can then use to create measurement types, units, and
-      other user accounts to get the system going.
-        1. Create an administrator account:
-          `docker-compose exec edd python /code/manage.py createsuperuser`
-        2. Configure EDD using the web interface
-
-           If you need to add any custom metadata types, units, etc. not provided by the default
-           installation, use the "Administration" link at top right to add to or remove EDD's
-           defaults. It is recommended that you leave defaults in place for consistency with
-           collaborators' EDD deployments.
-    * Manually set the hostname in EDD's database.
-
-      EDD needs the hostname users will use to access it, which may not be the same as the one
-      available to EDD via the host operating system. This value will be used most often to create
-      experiment links in ICE, so an incorrect value will cause users to see bad experiment links
-      to EDD when viewing ICE parts.
-
-      Use the "Administration" link at top right, then scroll down to the "Sites" heading and
-      click the "Sites" link under it. Change the value from `edd.example.org`, to your hostname.
+  
 
 * __Install and configure a supporting [ICE][7] deployment__
 

@@ -42,11 +42,11 @@ body {
     height: 100%;
     line-height: 1;
 }
-p {
-    margin:0.4em;
-    padding:0.2em;
-}
 
+p {
+    margin: 0.4em;
+    padding: 0.2em;
+}
 
 /* Links */
 
@@ -306,7 +306,7 @@ div.statusMessage > p.bad, .bad {
 div.statusMessage > p.success, .success {
   color: #0000ff;
   font-weight: bold;
-    width:300px;
+  width:300px;
 }
 
 
@@ -389,9 +389,6 @@ div.helpBadgeDiv:hover div.helpContent {
 }
 
 /* Page sections */
-div.pageSection {
-    margin:10px 40px 3px 20px;
-}
 
 div.newPageSection {
     margin:10px 40px 3px 20px;
@@ -509,6 +506,11 @@ div.noLines {
     display: none;
 }
 
+/* alert */
+.alert {
+    width: 40%;
+    height: 50px;
+}
 
 /* Data tables and controls */
 
@@ -1385,6 +1387,10 @@ td.editable-field span.icon.icon-cancel {
     background-image: url(images/edit-cancel.png);
 }
 
+.editableStudyName {
+    width: 700px;
+    margin:auto;
+}
 
 div.errorMessage {
     background: #FFF0F0;
@@ -1406,9 +1412,6 @@ div.errorMessage > a.close {
 }
 
 .errorlist {
-    background-color: #FFF0F0;
-    border:  2px solid red !important;
-    border-radius: 6px;
     list-style: none;
     margin: 0;
     padding: 3px;
@@ -1520,13 +1523,22 @@ form.comments textarea {
     background-repeat: no-repeat;
     background-attachment: scroll;
     background-position: center;
-    background-image: url(images/dropzone-csv.png);
+    background-image: url(images/dropzone-excel_csv.png);
     min-height:220px;
     padding:5px;
     font-size:17px;
 }
+
 .fd-zone.over {
     background-image: url(images/dropzone-excel_csv-over.png);
+}
+
+.fd-zone.excel {
+    background-image: url(images/dropzone-excel.png);
+}
+
+.fd-zone.excel.over {
+     background-image: url(images/dropzone-excel-over.png);
 }
 .fd-zone.xml {
     background-image: url(images/dropzone-xml.png);
@@ -1744,6 +1756,14 @@ div.tooltip2 {
     text-align: center;
 }
 
+.eddLogo {
+    width:50px;
+}
+
+.companyLogo {
+    width:100px;
+}
+
 .actionButton {
     display: inline-block;
     margin: 10px 10px 0px 0px;
@@ -1830,6 +1850,7 @@ div.tooltip2 {
 .nav {
     list-style: none;
     padding-left: 0;
+    margin-right:-40px;
 }
 
 .studyNav .navbar .nav > .active > a {
@@ -1893,13 +1914,11 @@ div.tooltip2 {
 }
 
 .permissionUser {
-    margin-left: 9px;
-    margin-bottom: 10px;
+    margin: 0px 10px 10px 9px;
 }
 
 .permissionGroup {
-
-    margin-bottom: 10px;
+    margin: 0px 10px 10px 0px;
 }
 
 .indent {

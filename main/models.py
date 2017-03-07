@@ -974,7 +974,13 @@ class Study(EDDObject):
 
     @staticmethod
     def user_role_can_read(user):
-        return user.is_superuser or user.is_staff
+        """
+            Tests whether the user's role alone is sufficient to grant read access to this
+            study.
+            :param user: the user
+            :return: True if the user role has read access, false otherwise
+        """
+        return user.is_superuser
 
     def user_can_read(self, user):
         """ Utility method testing if a user has read access to a Study. """
@@ -1766,6 +1772,12 @@ class MeasurementType(models.Model, EDDSerialize):
         unique=True,
         verbose_name=_('UUID'),
     )
+    alt_names = ArrayField(
+        VarCharField(),
+        default=list,
+        help_text=_('Alternate names for this Measurement Type.'),
+        verbose_name=_('Synonyms'),
+    )
 
     def save(self, *args, **kwargs):
         if self.uuid is None:
@@ -1859,9 +1871,21 @@ class Metabolite(MeasurementType):
         help_text=_('Formula string defining this molecule.'),
         verbose_name=_('Formula'),
     )
+    smiles = VarCharField(
+        blank=True,
+        help_text=_('SMILES string defining molecular structure.'),
+        null=True,
+        verbose_name=_('SMILES'),
+    )
+    id_map = ArrayField(
+        VarCharField(),
+        default=list,
+        help_text=_('List of identifiers mapping to external chemical datasets.'),
+        verbose_name=_('External IDs'),
+    )
     tags = ArrayField(
         VarCharField(),
-        default=[],
+        default=list,
         help_text=_('List of tags for classifying this molecule.'),
         verbose_name=_('Tags'),
     )

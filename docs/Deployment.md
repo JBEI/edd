@@ -52,6 +52,39 @@ data volume for use in future launches.
 If alternate TLS configuration -- or any other Nginx configuration -- is desired, replace the
 default `nginx` service image with one containing options for your alternate configuration.
 
+## Other [configuration][6] as desired
+
+* __Default__
+
+  For example, by default, EDD will launch with an empty database, so you may want to use
+  environment variables to load an existing database.
+    * If you're starting from a blank database, use the web interface to configure EDD for your
+      institution.
+    * If you haven't loaded EDD from an existing database, you'll need to create an administrator
+      account from the command line that you can then use to create measurement types, units, and
+      other user accounts to get the system going.
+        1. Create an administrator account:
+          `docker-compose exec edd python /code/manage.py createsuperuser`
+        2. Configure EDD using the web interface
+           If you need to add any custom metadata types, units, etc. not provided by the default
+           installation, use the "Administration" link at top right to add to or remove EDD's
+           defaults. It is recommended that you leave defaults in place for consistency with
+           collaborators' EDD deployments.
+           
+* __Manually set the hostname in EDD's database.__
+      EDD needs the hostname users will use to access it, which may not be the same as the one
+      available to EDD via the host operating system. This value will be used most often to create
+      experiment links in ICE, so an incorrect value will cause users to see bad experiment links
+      to EDD when viewing ICE parts.
+      Use the "Administration" link at top right, then scroll down to the "Sites" heading and
+      click the "Sites" link under it. Change the value from `edd.example.org`, to your hostname.
+
+* __Manually set your logo, favicon icon and stylesheets__
+      Use the same "Administration" link at top right, then scroll down to the "Branding" heading and
+      click the "Brandings" link under it. Upload your files here. After uploading your files, scroll down to Pages.
+      Click on the magnifying glass and select your hostname. Then save. You will now see your branding in Brandings.
+      Select the branding you just created and choose the Action "Use this branding". Then click "Go".
+
 ## Custom Python configuration
 
 The following configuration options are specific to EDD and may be overridden in a `local.py`.

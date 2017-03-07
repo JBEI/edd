@@ -24,7 +24,6 @@
   </script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/createMultiAxisLine.js' %}"></script>
 
 {% endblock js_css %}
 
@@ -42,7 +41,7 @@
 {% endblock body_title %}
 
 {% block content %}
-<form method="post" id="assayTableForm" action="/study/{{ study.id }}/import/">
+<form method="post" id="assayTableForm" action="{% url 'main:table-import' slug=study.slug %}">
 {% csrf_token %}
 
 <!-- Step 1 -->
@@ -591,8 +590,8 @@
     </div>
   </div>
   <div class="sectionContent" id="reviewSummarySection">
-    <p class="disabledStepLabel" id="completeAllStepsFirstLabel">Complete the preceding steps
-      first!</p>
+    <div class="disabledStepLabel" id="completeAllStepsFirstLabel">Complete the preceding steps
+      first!</div>
     <div id="summaryContentDiv"></div>
   </div>
   <div class="sectionContent step5Subsection off" id="reviewErrorsSection">

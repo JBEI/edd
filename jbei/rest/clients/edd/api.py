@@ -19,8 +19,8 @@ from .constants import (
     METADATA_TYPE_LOCALE, METADATA_TYPE_NAME_REGEX, PAGE_NUMBER_QUERY_PARAM,
     PAGE_SIZE_QUERY_PARAM, STRAIN_CASE_SENSITIVE, STRAIN_DESCRIPTION_KEY, STRAIN_NAME,
     STRAIN_NAME_KEY, STRAIN_NAME_REGEX, STRAIN_REG_ID_KEY, STRAIN_REG_URL_KEY, STRAIN_REGISTRY_ID,
-    STRAIN_REGISTRY_URL_REGEX,
-)
+    STRAIN_REGISTRY_URL_REGEX, CREATED_BEFORE_PARAM, CREATED_AFTER_PARAM, UPDATED_AFTER_PARAM,
+    UPDATED_BEFORE_PARAM)
 from jbei.rest.api import RestApiClient
 from jbei.rest.auth import EddSessionAuth
 from jbei.rest.sessions import Session, PagedResult, PagedSession
@@ -360,6 +360,27 @@ class EddApi(RestApiClient):
             response.raise_for_status()
 
         return DrfPagedResult.of(response.content, model_class=MetadataType)
+
+    def search_studies(self, created_after=None, created_before=None, updated_after=None,
+                       updated_before=None, page_number=None):
+        # TODO: implement/test other search parameters
+        search_params = {}
+        _set_if_value_valid(search_params, CREATED_AFTER_PARAM, created_after)
+        _set_if_value_valid(search_params, CREATED_BEFORE_PARAM, created_before)
+        _set_if_value_valid(search_params, UPDATED_AFTER_PARAM, updated_after)
+        _set_if_value_valid(search_params, UPDATED_BEFORE_PARAM, updated_before)
+        _set_if_value_valid(search_params, PAGE_SIZE_QUERY_PARAM, self.result_limit)
+        _set_if_value_valid(search_params, PAGE_NUMBER_QUERY_PARAM, page_number)
+
+        # make the HTTP request
+        url = '%s/rest/study' % self.base_url
+        response = self.session.get(url, params=search_params, headers=self._json_header)
+
+        # throw an error for unexpected reply
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        return DrfPagedResult.of(response.content, model_class=Study)
 
     def search_strains(self, query_url=None, local_pk=None, registry_id=None,
                        registry_url_regex=None, name=None,

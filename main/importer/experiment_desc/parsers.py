@@ -10,6 +10,8 @@ from collections import Sequence
 from django.conf import settings
 from six import string_types
 
+from openpyxl.utils.cell import get_column_letter
+
 from .constants import (
     DUPLICATE_ASSAY_METADATA,
     INVALID_CELL_FORMAT,
@@ -20,7 +22,7 @@ from .constants import (
     PART_NUMBER_PATTERN_UNMATCHED_WARNING,
     ROWS_MISSING_REPLICATE_COUNT,
     SKIPPED_KEY,
-    UNMATCHED_HEADERS_KEY,
+    UNMATCHED_COL_HEADERS_KEY,
 )
 from .utilities import AutomatedNamingStrategy, CombinatorialDescriptionInput, NamingStrategy
 
@@ -270,7 +272,7 @@ class CombinatorialInputParser(object):
         raise NotImplementedError()  # require subclasses to implement
 
 
-class ExperimentDefFileParser(CombinatorialInputParser):
+class ExperimentDescFileParser(CombinatorialInputParser):
     """
     File parser that takes a study "template file" as input and reads the contents into a list of
     CombinatorialCreationInput objects.
@@ -278,8 +280,9 @@ class ExperimentDefFileParser(CombinatorialInputParser):
 
     def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk,
                  require_strains=False):
-        super(ExperimentDefFileParser, self).__init__(protocols_by_pk, line_metadata_types_by_pk,
-                                                      assay_metadata_types_by_pk)
+        super(ExperimentDescFileParser, self).__init__(protocols_by_pk, line_metadata_types_by_pk,
+                                                       assay_metadata_types_by_pk)
+
         self.protocols_by_name = {
             protocol.name.upper(): protocol
             for protocol_pk, protocol in protocols_by_pk.iteritems()
@@ -329,6 +332,8 @@ class ExperimentDefFileParser(CombinatorialInputParser):
         # (we need a pk to store it, and the parser
         assay_time_type = self.assay_metadata_types_by_name.get('TIME', None)
         self.assay_time_metadata_type_pk = assay_time_type.pk if assay_time_type else None
+
+        self.importer = None
 
         self.max_fractional_time_digits = 0
 
@@ -435,13 +440,11 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 # dropped columns (can be displayed later in the UI)
                 if line_metadata_type is None:
                     skipped = {
-                        'col_index': col_index,
+                        'col_letter': get_column_letter(col_index+1),
                         'title:': cell_content,
                     }
-                    if self.REQUIRE_COL_HEADER_MATCH:
-                        self.importer.add_error(SKIPPED_KEY, skipped)
-                    else:
-                        self.importer.add_warning(SKIPPED_KEY, skipped)
+                    is_error = self.REQUIRE_COL_HEADER_MATCH
+                    self.importer.add_issue(is_error, SKIPPED_KEY, skipped)
 
         # test whether we've located all the required columns
         found_col_labels = ((layout.line_name_col is not None) and
@@ -529,8 +532,9 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 # in the database. This check is especially important for the Time metadata
                 # assumed by the file format.
                 else:
-                    logger.debug('Column header "%s" didnt match known metadata types')
-                    self.importer.add_error(UNMATCHED_HEADERS_KEY, col_index)
+                    col_letter = get_column_letter(col_index+1)
+                    logger.debug("""Column header "%s" didn't match known metadata types""")
+                    self.importer.add_error(UNMATCHED_COL_HEADERS_KEY, col_letter)
                     return True
 
     def _parse_line_metadata_header(self, column_layout, upper_content, col_index):
@@ -724,7 +728,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 cell_content = self._get_string_cell_content(
                     cols_list,
                     row_num,
-                    col_index
+                    col_index, convert_to_string=True
                 )
 
                 if col_index in layout.combinatorial_col_indices:
@@ -751,7 +755,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                 cell_content = self._get_string_cell_content(
                     cols_list,
                     row_num,
-                    col_index
+                    col_index, convert_to_string=True
                 )
 
                 # skip blank cells
@@ -781,11 +785,11 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                     if row_inputs.has_assay_metadata_type(protocol.pk, assay_metadata_type.pk):
                         # TODO could improve this error content with a more complex data structure
                         self.importer.add_error(
-                            'duplicate_assay_matadata_columns',
+                            DUPLICATE_ASSAY_METADATA,
                             {
                                 'protocol_id': protocol.pk,
                                 'metadata_id': assay_metadata_type.pk,
-                                'column_index': col_index,
+                                'column_letter': get_column_letter(col_index+1),
                             }
                         )
                     row_inputs.add_common_assay_metadata(
@@ -796,7 +800,7 @@ class ExperimentDefFileParser(CombinatorialInputParser):
 
         return row_inputs
 
-    def _get_string_cell_content(self, row, row_num, col_index):
+    def _get_string_cell_content(self, row, row_num, col_index, convert_to_string=False):
         cell_content = row[col_index].value
 
         if cell_content is None:
@@ -806,9 +810,15 @@ class ExperimentDefFileParser(CombinatorialInputParser):
             return cell_content.strip()
 
         else:
-            logger.warning('Invalid cell format for cell %s' % str(cell_content.__type__))
-            self.importer.add_error(INVALID_CELL_FORMAT, (row_num, col_index + 1))
-            return None
+            actual_type = str(type(cell_content))
+            if convert_to_string:
+                logger.warning('Converted non-string data of type %s to string' % actual_type)
+                return str(cell_content)
+            else:
+                logger.warning('Invalid cell format for cell %s' % actual_type)
+                self.importer.add_error(INVALID_CELL_FORMAT,
+                                        (row_num, get_column_letter(col_index +1)))
+                return None
 
     def _parse_combinatorial_input(self, row_inputs, cell_content, row_num, col_index,
                                    metadata_type_pk, error_key, protocol=None,
@@ -845,16 +855,17 @@ class ExperimentDefFileParser(CombinatorialInputParser):
                     row_inputs.add_combinatorial_line_metadata(metadata_type_pk,
                                                                parsed_value)
             except ValueError:
+                col_letter = get_column_letter(col_index+1)
                 logger.warning(
                     'ValueError parsing token "%(token)s" from cell content "%(cell)s" in '
-                    'row_num=%(row)d col_num=%(col)d' % {
+                    'row_num=%(row)d col_letter=%(col)s' % {
                         'token': token,
                         'cell': cell_content,
                         'row': row_num,
-                        'col': col_index+1,
+                        'col': col_letter,
                     }
                 )
-                self.importer.add_error(error_key, (row_num, col_index+1,))
+                self.importer.add_error(error_key, (row_num, col_letter,))
                 break
 
 
@@ -873,6 +884,7 @@ class JsonInputParser(CombinatorialInputParser):
         self.assay_metadata_types_by_pk = assay_metadata_types_by_pk
         self.require_strains = require_strains
         self.max_fractional_time_digits = 0
+        self.parsed_json = None
 
     def parse(self, source, importer):
 
@@ -885,9 +897,11 @@ class JsonInputParser(CombinatorialInputParser):
         ###########################################################################################
         # Once validated, parse the JSON string into a Python dict or list
         # if validation succeeded, extract the naming strategy from the JSON, then pass the rest
-        # as parameters to CombinatorialDescriptionInput
+        # as parameters to CombinatorialDescriptionInput. Also cache for possible later use by
+        # client code (e.g. in err emails)
 
         parsed_json = json.loads(source)
+        self.parsed_json = parsed_json
 
         max_decimal_digits = 0
 

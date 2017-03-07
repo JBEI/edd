@@ -135,6 +135,7 @@ INSTALLED_APPS = (
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    'django.contrib.flatpages',
     # 'allauth.socialaccount.providers.github',
     # 'allauth.socialaccount.providers.google',
     # 'allauth.socialaccount.providers.linkedin_oauth2',
@@ -143,6 +144,7 @@ INSTALLED_APPS = (
     'main',
     'edd_utils',
     'edd.profile',
+    'edd.branding'
 )
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
