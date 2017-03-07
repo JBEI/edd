@@ -282,14 +282,14 @@ var StudyOverview;
             return '(click to add description)';
         };
         return EditableStudyDescription;
-    }(StudyBase.EditableStudyElment));
+    }(StudyBase.EditableStudyElement));
     StudyOverview.EditableStudyDescription = EditableStudyDescription;
     var EditableStudyContact = (function (_super) {
         __extends(EditableStudyContact, _super);
         function EditableStudyContact() {
             _super.apply(this, arguments);
         }
-        // Have to reproduce these here rather than using EditableStudyElment because the inheritance is different
+        // Have to reproduce these here rather than using EditableStudyElement because the inheritance is different
         EditableStudyContact.prototype.editAllowed = function () { return EDDData.currentStudyWritable; };
         EditableStudyContact.prototype.canCommit = function (value) { return EDDData.currentStudyWritable; };
         EditableStudyContact.prototype.getFormURL = function () {

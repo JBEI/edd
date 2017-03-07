@@ -6,7 +6,6 @@
 /// <reference path="DataGrid.ts" />
 
 declare var EDDData:EDDData;
-
 namespace StudyLines {
     'use strict';
 
