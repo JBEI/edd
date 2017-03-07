@@ -113,7 +113,7 @@ services:
     expose:
       - '25'
     healthcheck:
-      test: ['CMD', '/bin/healthcheck.sh', 'appserver']
+      test: ['CMD', '/bin/healthcheck.sh', 'edd']
       interval: 1m
       timeout: 1s
       retries: 3
