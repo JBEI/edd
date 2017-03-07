@@ -76,7 +76,7 @@ services:
     #command: [init-only]
     # [DEVMODE] By default, edd runs with the application command; uncomment below to run with
     #   the devmode command instead, and use Django's ruserver to serve the application.
-    #command: [-A, -w, edd, devmode]
+    #command: [-A, devmode]
     # [LOCAL] For more control over settings on each container, use the --local flag to pass a
     #   path to a local.py file to use. The path must be mounted in the volumes section! Take care
     #   to use only one volumes section, if multiples are specified in a service, only the last
@@ -119,6 +119,9 @@ services:
       #POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
 
       # Set these variables to control proxy through nginx
+      # NOTE: IP addresses not accepted for VIRTUAL_HOST. For local testing, create an entry in
+      # /etc/hosts, e.g. 192.168.99.100 local-development, then add the host name you chose to
+      # ALLOWED_HOSTS in your local.py
       #VIRTUAL_HOST: edd.example.net
       # If doing local-only testing, no certificates are generated, and nginx will not listen on
       #   port 443; set the HTTPS_METHOD to "noredirect" to access via port 80 without automatic
