@@ -24,6 +24,11 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
     expose:
       - '5432'
     env_file: secrets.env
@@ -40,6 +45,11 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
     expose:
       - '6379'
     command: redis-server --appendonly yes
@@ -56,6 +66,11 @@ services:
       interval: 1m
       timeout: 15s
       retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
     expose:
       - '8983'
   rabbitmq:
@@ -80,6 +95,11 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
   flower:
     build: ./flower/
     image: flower:0.9-edd
@@ -104,6 +124,11 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
   smtp:
     build: ./smtp/
     image: exim4:1.0-edd
@@ -117,6 +142,11 @@ services:
       interval: 1m
       timeout: 1s
       retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
   edd:
     build: ./edd/
     image: edd-core:latest
@@ -154,6 +184,11 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
   worker:
     build: ./edd/
     image: edd-core:latest
@@ -187,6 +222,11 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
   nginx:
     image: nginx:1.11
     # using container_name means there will only ever be one nginx container!
@@ -207,6 +247,11 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
   nginx-gen:
     image: jwilder/docker-gen
     # using container_name means there will only ever be one nginx-gen container!
@@ -225,6 +270,11 @@ services:
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ./nginx/nginx.tmpl:/etc/docker-gen/templates/nginx.tmpl:ro
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
   letsencrypt:
     # TODO: this should probably get forked;
     #   - the project is not maintained
@@ -245,3 +295,8 @@ services:
       - tlsdata:/etc/nginx/certs:rw
     environment:
       NGINX_DOCKER_GEN_CONTAINER: nginx-gen
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
