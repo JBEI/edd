@@ -609,6 +609,15 @@ var DataGridSpecLines = (function (_super) {
         }
         return '';
     };
+    DataGridSpecLines.prototype.loadLineDescription = function (index) {
+        var line;
+        if ((line = EDDData.Lines[index])) {
+            if (line.description != null) {
+                return line.description.toUpperCase();
+            }
+        }
+        return '';
+    };
     DataGridSpecLines.prototype.loadStrainName = function (index) {
         // ensure a strain ID exists on line, is a known strain, uppercase first found name or '?'
         var line, strain;
@@ -672,17 +681,21 @@ var DataGridSpecLines = (function (_super) {
                 'name': 'Strain',
                 'sortBy': this.loadStrainName,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(3, 'hLinesCarbon', {
+            new DataGridHeaderSpec(3, 'hLinesDescription', {
+                'name': 'Description',
+                'sortBy': this.loadLineDescription,
+                'sortAfter': 0 }),
+            new DataGridHeaderSpec(4, 'hLinesCarbon', {
                 'name': 'Carbon Source(s)',
                 'size': 's',
                 'sortBy': this.loadCarbonSource,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(4, 'hLinesLabeling', {
+            new DataGridHeaderSpec(5, 'hLinesLabeling', {
                 'name': 'Labeling',
                 'size': 's',
                 'sortBy': this.loadCarbonSourceLabeling,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(5, 'hLinesCarbonBalance', {
+            new DataGridHeaderSpec(6, 'hLinesCarbonBalance', {
                 'name': 'Carbon Balance',
                 'size': 's',
                 'sortBy': this.loadLineName })
@@ -755,6 +768,20 @@ var DataGridSpecLines = (function (_super) {
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 'contentString': content.join('; ') || '--'
+            })
+        ];
+    };
+    DataGridSpecLines.prototype.generateDescriptionCells = function (gridSpec, index) {
+        var line, strings = ['--'];
+        if ((line = EDDData.Lines[index])) {
+            if (line.description && line.description.length) {
+                strings = line.description;
+            }
+        }
+        return [
+            new DataGridDataCell(gridSpec, index, {
+                'rowspan': gridSpec.rowSpanForRecord(index),
+                'contentString': strings
             })
         ];
     };
@@ -831,10 +858,11 @@ var DataGridSpecLines = (function (_super) {
         leftSide = [
             new DataGridColumnSpec(1, this.generateLineNameCells),
             new DataGridColumnSpec(2, this.generateStrainNameCells),
-            new DataGridColumnSpec(3, this.generateCarbonSourceCells),
-            new DataGridColumnSpec(4, this.generateCarbonSourceLabelingCells),
+            new DataGridColumnSpec(3, this.generateDescriptionCells),
+            new DataGridColumnSpec(4, this.generateCarbonSourceCells),
+            new DataGridColumnSpec(5, this.generateCarbonSourceLabelingCells),
             // The Carbon Balance cells are populated by a callback, triggered when first displayed
-            new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
+            new DataGridColumnSpec(6, this.generateCarbonBalanceBlankCells)
         ];
         metaDataCols = this.metaDataIDsUsedInLines.map(function (id, index) {
             return new DataGridColumnSpec(6 + index, _this.makeMetaDataCellsGeneratorFunction(id));
@@ -850,6 +878,7 @@ var DataGridSpecLines = (function (_super) {
         var topSection = [
             new DataGridColumnGroupSpec('Line Name', { 'showInVisibilityList': false }),
             new DataGridColumnGroupSpec('Strain'),
+            new DataGridColumnGroupSpec('Description'),
             new DataGridColumnGroupSpec('Carbon Source(s)'),
             new DataGridColumnGroupSpec('Labeling'),
             this.carbonBalanceCol = new DataGridColumnGroupSpec('Carbon Balance', {
