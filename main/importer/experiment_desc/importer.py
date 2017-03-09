@@ -347,7 +347,7 @@ class CombinatorialCreationImporter(object):
             }
             _build_response_content(self.errors, self.warnings, val=content)
 
-            status = 200
+            status = OK
             if self.errors and not allow_duplicate_names:
                 status = UNPROCESSABLE
 
@@ -557,10 +557,9 @@ class CombinatorialCreationImporter(object):
             except requests.exceptions.HTTPError as http_err:
                 # Track errors, while providing special-case error handling/labeling for ICE
                 # permissions errors that are useful to detect on multiple parts in one attempt.
-                # Note that depending on the error type, there may not be a response code (e.g.
-                # transient 500 errors observed on edd-test/registry-test.jbei.org)
-                response_status = http_err.response.status if hasattr(http_err.response,
-                                                                      'status') else 'Unknown'
+                # Note that depending on the error type, there may not be a response
+                response_status = (http_err.response.status_code
+                                   if hasattr(http_err, 'response') else None)
 
                 # if error reflects a condition likely to repeat for each entry,
                 # or that isn't useful to know individually per entry, abort the remaining queries.
