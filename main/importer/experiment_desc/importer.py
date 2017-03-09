@@ -558,15 +558,13 @@ class CombinatorialCreationImporter(object):
                 # Track errors, while providing special-case error handling/labeling for ICE
                 # permissions errors that are useful to detect on multiple parts in one attempt.
                 # Note that depending on the error type, there may not be a response
-                response_status = (http_err.response.status_code
-                                   if hasattr(http_err, 'response') else None)
 
                 # if error reflects a condition likely to repeat for each entry,
                 # or that isn't useful to know individually per entry, abort the remaining queries.
                 # Note this test only covers the error conditions known to be produced by
                 # ICE, not all the possible HTTP error codes we could handle more explicitly. Also
                 # note that 404 is handled above in get_entry().
-                if response_status != FORBIDDEN:
+                if http_err.response.status_code != FORBIDDEN:
                     self._handle_systemic_ice_error(ignore_ice_related_errors,
                                                     part_numbers, part_number_to_part)
                     return
