@@ -12,7 +12,7 @@ class Branding(models.Model):
     logo_name = models.TextField(default='EDD')
     logo_file = models.ImageField(default='/static/main/images/edd_letters.png', null=True)
     favicon_file = models.ImageField(default='/static/main/images/edd_letters.png', null=True)
-    style_sheet = models.FileField(null=True)
+    style_sheet = models.FileField(null=True, blank=True)
     sites = models.ManyToManyField(Site, through='Page')
 
     def __str__(self):
