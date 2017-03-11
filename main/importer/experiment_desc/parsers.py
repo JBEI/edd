@@ -17,13 +17,12 @@ from .constants import (
     INVALID_CELL_FORMAT,
     INVALID_REPLICATE_COUNT,
     MISSING_LINE_NAME_ROWS_KEY,
-    MISSING_STRAINS_KEY,
     PARSE_ERROR,
     PART_NUMBER_PATTERN_UNMATCHED_WARNING,
     ROWS_MISSING_REPLICATE_COUNT,
     SKIPPED_KEY,
-    UNMATCHED_COL_HEADERS_KEY,
-)
+    UNMATCHED_COL_HEADERS_KEY, INCORRECT_FILE_FORMAT, MULTIPLE_WORKSHEETS_FOUND,
+    UNSUPPORTED_LINE_METADATA, EMPTY_WORKBOOK)
 from .utilities import AutomatedNamingStrategy, CombinatorialDescriptionInput, NamingStrategy
 
 
@@ -165,6 +164,9 @@ class ColumnLayout:
 
         return value[1]
 
+    def get_line_metadata_type(self, col_index):
+        return self.col_index_to_line_meta_pk.get(col_index, None)
+
     @property
     def unique_protocols(self):
         return self.unique_assay_protocols.keys()
@@ -278,16 +280,19 @@ class ExperimentDescFileParser(CombinatorialInputParser):
     CombinatorialCreationInput objects.
     """
 
-    def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk,
-                 require_strains=False):
+    def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk):
         super(ExperimentDescFileParser, self).__init__(protocols_by_pk, line_metadata_types_by_pk,
                                                        assay_metadata_types_by_pk)
 
+        self.line_metadata_types_by_pk = line_metadata_types_by_pk
+
+        # build a dict of Protocol name -> Protocol to simplify parsing
         self.protocols_by_name = {
             protocol.name.upper(): protocol
             for protocol_pk, protocol in protocols_by_pk.iteritems()
         }
 
+        # build dicts that map each metadata type name -> MetaDataType to simplify parsing
         self.line_metadata_types_by_name = {
             meta.type_name.upper(): meta
             for pk, meta in line_metadata_types_by_pk.iteritems()
@@ -298,15 +303,21 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             for pk, meta in assay_metadata_types_by_pk.iteritems()
         }
 
+        # build a list of line metadata types whose parsing isn't supported pending resolution of
+        # EDD-438. Note that these *are* supported via JSON pk input, we just aren't supporting
+        # lookup for now since it may be done for us, or will at least be impacted by EDD-438
+        self.unsupported_line_meta_types_by_pk = {
+            pk: meta for pk, meta in line_metadata_types_by_pk.iteritems() if meta.type_name in
+            ['Control', 'Carbon Source(s)', 'Line Contact', 'Line Experimenter', ]
+        }
+
         # print a warning for unlikely case-sensitivity-only metadata naming differences that
-        # clash with
-        # tolerant case-insensitive matching of user input in the file (which is a lot more
-        # likely to be
-        # inconsistent)
+        # clash with tolerant case-insensitive matching of user input in the file (which is a lot
+        # more likely to be inconsistent)
         if len(self.line_metadata_types_by_name) != len(line_metadata_types_by_pk):
             logger.warning(
                 'Found some line metadata types that differ only by case. Case-insensitive '
-                'matching in this function will arbitrarily choose one'
+                'matching in parsing code will arbitrarily choose one'
             )
 
         if len(self.assay_metadata_types_by_name) != len(assay_metadata_types_by_pk):
@@ -319,9 +330,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # and not print a warning here.
 
         self.column_layout = None
-
-        # true to require that each line have at least one associated strain
-        self.require_strains = require_strains
 
         # true to treat all unmatched column headers as an
         # error. False to ignore unmatch line headers, but to treat those that start with a
@@ -340,32 +348,67 @@ class ExperimentDescFileParser(CombinatorialInputParser):
     def parse(self, wb, importer):
         logger.warning('In parse(). workbook has %d sheets' % len(wb.worksheets))
 
+        if len(wb.worksheets) == 0:
+            importer.add_error(EMPTY_WORKBOOK, 'No worksheets were found in the file')
+            return
+
         # Clear out state from any previous use of this parser instance
         self.column_layout = None
         self.importer = importer
 
         # loop over rows
         parsed_row_inputs = []
-        for worksheet in wb.worksheets:
 
-            # loop over columns
-            row_index = 0
-            for cols_list in worksheet.iter_rows():
-                row_index += 1
+        if len(wb.worksheets) > 1:
+            sheet_name = wb.get_sheet_names[0]
+            importer.add_warning(MULTIPLE_WORKSHEETS_FOUND,
+                                 'All but the first sheet, "%(sheet_name)s", were ignored' % {
+                                     'sheet_name': sheet_name,
+                                 })
+        worksheet = wb.worksheets[0]
 
-                logger.warning('Examining row %d' % (row_index+1))
+        # loop over columns
+        row_index = 0
+        for cols_list in worksheet.iter_rows():
+            row_index += 1
 
-                # identify columns of interest first by looking for required labels
-                if not self.column_layout:
-                    self.column_layout = self.read_column_layout(cols_list)
+            logger.warning('Examining row %d' % (row_index+1))
 
-                # if column labels have been identified, look for line creation input data
-                else:
-                    #  remove
-                    row_num = row_index + 1
-                    row_inputs = self.read_row(cols_list, row_num)
-                    if row_inputs:
-                        parsed_row_inputs.append(row_inputs)
+            # identify columns of interest first by looking for required labels
+            if not self.column_layout:
+                self.column_layout = self.read_column_layout(cols_list)
+
+            # if column labels have been identified, look for line creation input data
+            else:
+                #  remove
+                row_num = row_index + 1
+                row_inputs = self.read_row(cols_list, row_num)
+                if row_inputs:
+                    parsed_row_inputs.append(row_inputs)
+
+        if not self.column_layout:
+            importer.add_error(INCORRECT_FILE_FORMAT, 'No column header was found matching the '
+                                                      'single required value "Line Name"')
+            return
+
+        column_layout = self.column_layout
+
+        # provide a good user-facing warning message as a reminder of line metadata types that
+        # aren't supported, but were found in the input file
+        unsupported_value_columns = [col_index for col_index, meta_pk in
+                                     column_layout.col_index_to_line_meta_pk.iteritems()
+                                     if meta_pk in self.unsupported_line_meta_types_by_pk]
+        if unsupported_value_columns:
+            unsupported_values = []
+            for col_index in unsupported_value_columns:
+                meta_pk = column_layout.get_line_metadata_type(col_index)
+                meta_type = self.line_metadata_types_by_pk[meta_pk]
+                value = '"%(name)s" ("%(col)s")' % {
+                            'name': meta_type.type_name,
+                            'col': get_column_letter(col_index+1)}
+                unsupported_values.append(value)
+
+            importer.add_warning(UNSUPPORTED_LINE_METADATA, ', '.join(unsupported_values))
 
         for combinatorial_input in parsed_row_inputs:
             combinatorial_input.fractional_time_digits = self.max_fractional_time_digits
@@ -447,8 +490,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     self.importer.add_issue(is_error, SKIPPED_KEY, skipped)
 
         # test whether we've located all the required columns
-        found_col_labels = ((layout.line_name_col is not None) and
-                            ((not self.require_strains) or layout.strain_ids_col))
+        found_col_labels = layout.line_name_col is not None
 
         # return the columns found in this row if at least the
         # minimum required columns were found
@@ -717,8 +759,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     elif individual_strain_ids:
                         row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
 
-            if self.require_strains and not individual_strain_ids:
-                self.importer.add_error(MISSING_STRAINS_KEY, row_num)
 
         ###################################################
         # line metadata
@@ -728,7 +768,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 cell_content = self._get_string_cell_content(
                     cols_list,
                     row_num,
-                    col_index, convert_to_string=True
+                    col_index,
+                    convert_to_string=True
                 )
 
                 if col_index in layout.combinatorial_col_indices:
@@ -875,18 +916,16 @@ class JsonInputParser(CombinatorialInputParser):
     class maintain a cache of protocols and metadata types defined in the database, so the
     lifecycle of each instance should be short.
     """
-    def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk,
-                 require_strains=False):
+    def __init__(self, protocols_by_pk, line_metadata_types_by_pk, assay_metadata_types_by_pk):
         super(JsonInputParser, self).__init__(protocols_by_pk, line_metadata_types_by_pk,
                                               assay_metadata_types_by_pk)
         self.protocols_by_pk = protocols_by_pk
         self.line_metadata_types_by_pk = line_metadata_types_by_pk
         self.assay_metadata_types_by_pk = assay_metadata_types_by_pk
-        self.require_strains = require_strains
         self.max_fractional_time_digits = 0
         self.parsed_json = None
 
-    def parse(self, source, importer):
+    def parse(self, stream, importer):
 
         combinatorial_inputs = []
         self.importer = importer
@@ -900,8 +939,11 @@ class JsonInputParser(CombinatorialInputParser):
         # as parameters to CombinatorialDescriptionInput. Also cache for possible later use by
         # client code (e.g. in err emails)
 
-        parsed_json = json.loads(source)
+        parsed_json = json.loads(stream)
         self.parsed_json = parsed_json
+
+        if not parsed_json:
+            return None
 
         max_decimal_digits = 0
 

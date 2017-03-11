@@ -28,7 +28,8 @@ from rest_framework.exceptions import MethodNotAllowed
 
 from main.importer.experiment_desc.constants import (
     INTERNAL_SERVER_ERROR, UNPREDICTED_ERROR,
-    ALLOW_DUPLICATE_NAMES_PARAM, IGNORE_ICE_RELATED_ERRORS_PARAM)
+    ALLOW_DUPLICATE_NAMES_PARAM, IGNORE_ICE_RELATED_ERRORS_PARAM, BAD_REQUEST,
+    UNSUPPORTED_FILE_TYPE)
 from main.importer.experiment_desc.importer import _build_response_content
 from . import autocomplete, models as edd_models, redis
 from .importer import (
@@ -1249,7 +1250,7 @@ def study_import_table(request, pk=None, slug=None):
     )
 
 
-# /study/<study_id>/describe_experiment/
+# /study/<study_id>/define/
 @ensure_csrf_cookie
 def study_describe_experiment(request, pk=None, slug=None):
     """
@@ -1269,10 +1270,19 @@ def study_describe_experiment(request, pk=None, slug=None):
     ignore_ice_related_errors = IGNORE_ICE_RELATED_ERRORS_PARAM in request.META.keys()
 
     # detect the input format
-    is_excel_file = request.META[FILE_TYPE_HEADER] == 'xlsx'
-    if is_excel_file:
-        file_name = request.META['HTTP_X_FILE_NAME']
-        logger.info('Parsing template file "%s"' % file_name)
+    has_file_type = FILE_TYPE_HEADER in request.META
+    file_type = request.META.get(FILE_TYPE_HEADER, '')
+    is_excel_file = 'XLSX' == file_type.upper()
+    if has_file_type:
+        if is_excel_file:
+            file_name = request.META['HTTP_X_FILE_NAME']
+            logger.info('Parsing template file "%s"' % file_name)
+
+        else:
+            self.add_error(UNSUPPORTED_FILE_TYPE, file_type)
+            return JsonResponse(
+                    _build_response_content({UNSUPPORTED_FILE_TYPE: file_type}, {}),
+                    status=BAD_REQUEST)
     else:
         logger.info('Parsing request body as JSON input')
 
@@ -1281,8 +1291,8 @@ def study_describe_experiment(request, pk=None, slug=None):
     try:
         with transaction.atomic(savepoint=False):
             status_code, reply_content = (
-                importer.do_import(request, not is_excel_file, allow_duplicate_names,
-                                   dry_run, ignore_ice_related_errors))
+                importer.do_import(request, allow_duplicate_names,
+                                   dry_run, ignore_ice_related_errors, excel_filename=file_name))
         return JsonResponse(reply_content, status=status_code)
 
     except RuntimeError as e:
