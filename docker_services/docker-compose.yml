@@ -140,7 +140,7 @@ services:
     healthcheck:
       test: ['CMD', '/bin/healthcheck.sh', 'edd']
       interval: 1m
-      timeout: 1s
+      timeout: 10s
       retries: 3
     logging:
       driver: 'json-file'
@@ -220,7 +220,7 @@ services:
     healthcheck:
       test: ['CMD', 'celery', 'inspect', 'ping', '-A', 'edd', '--workdir', '/code']
       interval: 1m
-      timeout: 5s
+      timeout: 10s
       retries: 3
     logging:
       driver: 'json-file'
