@@ -172,6 +172,7 @@ namespace StudyLines {
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
         $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
+        $('#descriptionModal').dialog({ minWidth: 500, autoOpen: false });
         $("#exportModal").dialog({
             minWidth: 400,
             autoOpen: false,
@@ -573,7 +574,7 @@ namespace StudyLines {
         cellObjs.forEach((cell:DataGridDataCell) => {
             this.carbonBalanceData.createCBGraphForLine(cell.recordID, cell.cellElement);
         });
-        this.carbonBalanceDisplayIsFresh = true;
+        this.carbonBalanceDiplayIsFresh = true;
     }
 
 
@@ -773,13 +774,13 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridHeaderSpec(1, 'hLinesName', {
                 'name': 'Name',
                 'sortBy': this.loadLineName }),
-            new DataGridHeaderSpec(2, 'hLinesStrain', {
-                'name': 'Strain',
-                'sortBy': this.loadStrainName,
-                'sortAfter': 0 }),
-            new DataGridHeaderSpec(3, 'hLinesDescription', {
+            new DataGridHeaderSpec(2, 'hLinesDescription', {
                 'name': 'Description',
                 'sortBy': this.loadLineDescription,
+                'sortAfter': 0 }),
+            new DataGridHeaderSpec(3, 'hLinesStrain', {
+                'name': 'Strain',
+                'sortBy': this.loadStrainName,
                 'sortAfter': 0 }),
             new DataGridHeaderSpec(4, 'hLinesCarbon', {
                 'name': 'Carbon Source(s)',
@@ -876,16 +877,19 @@ class DataGridSpecLines extends DataGridSpecBase {
     }
 
     generateDescriptionCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
-        var line, strings = ['--'];
+        var line, strings = '--', id;
         if ((line = EDDData.Lines[index])) {
             if (line.description && line.description.length) {
-                strings = line.description;
+                strings = line.description
+                // strings3 = '<a href="#" class="line-description" onclick="this.openModal([' + strings + '])">' + strings + '</a>'
             }
         }
+        id = strings.split(' ').join('');
         return [
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': strings
+                'contentString': strings,
+                'id': id,
             })
         ];
     }
@@ -969,8 +973,8 @@ class DataGridSpecLines extends DataGridSpecBase {
             rightSide:DataGridColumnSpec[];
         leftSide = [
             new DataGridColumnSpec(1, this.generateLineNameCells),
-            new DataGridColumnSpec(2, this.generateStrainNameCells),
-            new DataGridColumnSpec(3, this.generateDescriptionCells),
+            new DataGridColumnSpec(2, this.generateDescriptionCells),
+            new DataGridColumnSpec(3, this.generateStrainNameCells),
             new DataGridColumnSpec(4, this.generateCarbonSourceCells),
             new DataGridColumnSpec(5, this.generateCarbonSourceLabelingCells),
             // The Carbon Balance cells are populated by a callback, triggered when first displayed
@@ -991,8 +995,8 @@ class DataGridSpecLines extends DataGridSpecBase {
     defineColumnGroupSpec():DataGridColumnGroupSpec[] {
         var topSection:DataGridColumnGroupSpec[] = [
             new DataGridColumnGroupSpec('Line Name', { 'showInVisibilityList': false }),
-            new DataGridColumnGroupSpec('Strain'),
             new DataGridColumnGroupSpec('Description'),
+            new DataGridColumnGroupSpec('Strain'),
             new DataGridColumnGroupSpec('Carbon Source(s)'),
             new DataGridColumnGroupSpec('Labeling'),
             this.carbonBalanceCol = new DataGridColumnGroupSpec('Carbon Balance', {

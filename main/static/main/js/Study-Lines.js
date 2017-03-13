@@ -140,6 +140,7 @@ var StudyLines;
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
         $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
+        $('#descriptionModal').dialog({ minWidth: 500, autoOpen: false });
         $("#exportModal").dialog({
             minWidth: 400,
             autoOpen: false,
@@ -493,7 +494,7 @@ var StudyLines;
         cellObjs.forEach(function (cell) {
             _this.carbonBalanceData.createCBGraphForLine(cell.recordID, cell.cellElement);
         });
-        this.carbonBalanceDisplayIsFresh = true;
+        this.carbonBalanceDiplayIsFresh = true;
     }
     StudyLines.rebuildCarbonBalanceGraphs = rebuildCarbonBalanceGraphs;
     // They want to select a different metabolic map.
@@ -677,13 +678,13 @@ var DataGridSpecLines = (function (_super) {
             new DataGridHeaderSpec(1, 'hLinesName', {
                 'name': 'Name',
                 'sortBy': this.loadLineName }),
-            new DataGridHeaderSpec(2, 'hLinesStrain', {
-                'name': 'Strain',
-                'sortBy': this.loadStrainName,
-                'sortAfter': 0 }),
-            new DataGridHeaderSpec(3, 'hLinesDescription', {
+            new DataGridHeaderSpec(2, 'hLinesDescription', {
                 'name': 'Description',
                 'sortBy': this.loadLineDescription,
+                'sortAfter': 0 }),
+            new DataGridHeaderSpec(3, 'hLinesStrain', {
+                'name': 'Strain',
+                'sortBy': this.loadStrainName,
                 'sortAfter': 0 }),
             new DataGridHeaderSpec(4, 'hLinesCarbon', {
                 'name': 'Carbon Source(s)',
@@ -772,16 +773,18 @@ var DataGridSpecLines = (function (_super) {
         ];
     };
     DataGridSpecLines.prototype.generateDescriptionCells = function (gridSpec, index) {
-        var line, strings = ['--'];
+        var line, strings = '--', id;
         if ((line = EDDData.Lines[index])) {
             if (line.description && line.description.length) {
                 strings = line.description;
             }
         }
+        id = strings.split(' ').join('');
         return [
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': strings
+                'contentString': strings,
+                'id': id,
             })
         ];
     };
@@ -857,8 +860,8 @@ var DataGridSpecLines = (function (_super) {
         var leftSide, metaDataCols, rightSide;
         leftSide = [
             new DataGridColumnSpec(1, this.generateLineNameCells),
-            new DataGridColumnSpec(2, this.generateStrainNameCells),
-            new DataGridColumnSpec(3, this.generateDescriptionCells),
+            new DataGridColumnSpec(2, this.generateDescriptionCells),
+            new DataGridColumnSpec(3, this.generateStrainNameCells),
             new DataGridColumnSpec(4, this.generateCarbonSourceCells),
             new DataGridColumnSpec(5, this.generateCarbonSourceLabelingCells),
             // The Carbon Balance cells are populated by a callback, triggered when first displayed
@@ -877,8 +880,8 @@ var DataGridSpecLines = (function (_super) {
     DataGridSpecLines.prototype.defineColumnGroupSpec = function () {
         var topSection = [
             new DataGridColumnGroupSpec('Line Name', { 'showInVisibilityList': false }),
-            new DataGridColumnGroupSpec('Strain'),
             new DataGridColumnGroupSpec('Description'),
+            new DataGridColumnGroupSpec('Strain'),
             new DataGridColumnGroupSpec('Carbon Source(s)'),
             new DataGridColumnGroupSpec('Labeling'),
             this.carbonBalanceCol = new DataGridColumnGroupSpec('Carbon Balance', {

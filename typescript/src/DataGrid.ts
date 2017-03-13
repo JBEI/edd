@@ -1355,6 +1355,7 @@ class DataGridDataCell {
     checkboxName:string;
     customID:(index:number)=>string;
     sideMenuItems:string[];
+    id:string;
 
     // Local data
     cellElement:HTMLElement;
@@ -1419,6 +1420,9 @@ class DataGridDataCell {
             c.setAttribute('id', id);
         }
 
+        if (this.id) {
+            c.setAttribute('id', this.id);
+        }
         var cellClasses = [];
 
         if (this.colspan > 1) {
