@@ -1181,9 +1181,6 @@ var DataGridDataCell = (function () {
             c.setAttribute('title', title);
             c.setAttribute('id', id);
         }
-        if (this.id) {
-            c.setAttribute('id', this.id);
-        }
         var cellClasses = [];
         if (this.colspan > 1) {
             c.setAttribute('colspan', this.colspan.toString(10));

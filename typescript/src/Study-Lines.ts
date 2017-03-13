@@ -172,7 +172,6 @@ namespace StudyLines {
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
         $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
-        $('#descriptionModal').dialog({ minWidth: 500, autoOpen: false });
         $("#exportModal").dialog({
             minWidth: 400,
             autoOpen: false,
@@ -877,19 +876,16 @@ class DataGridSpecLines extends DataGridSpecBase {
     }
 
     generateDescriptionCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
-        var line, strings = '--', id;
+        var line, strings = '--';
         if ((line = EDDData.Lines[index])) {
             if (line.description && line.description.length) {
-                strings = line.description
-                // strings3 = '<a href="#" class="line-description" onclick="this.openModal([' + strings + '])">' + strings + '</a>'
+                strings = line.description;
             }
         }
-        id = strings.split(' ').join('');
         return [
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 'contentString': strings,
-                'id': id,
             })
         ];
     }

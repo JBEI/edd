@@ -140,7 +140,6 @@ var StudyLines;
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
         $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
-        $('#descriptionModal').dialog({ minWidth: 500, autoOpen: false });
         $("#exportModal").dialog({
             minWidth: 400,
             autoOpen: false,
@@ -773,18 +772,16 @@ var DataGridSpecLines = (function (_super) {
         ];
     };
     DataGridSpecLines.prototype.generateDescriptionCells = function (gridSpec, index) {
-        var line, strings = '--', id;
+        var line, strings = '--';
         if ((line = EDDData.Lines[index])) {
             if (line.description && line.description.length) {
                 strings = line.description;
             }
         }
-        id = strings.split(' ').join('');
         return [
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 'contentString': strings,
-                'id': id,
             })
         ];
     };
