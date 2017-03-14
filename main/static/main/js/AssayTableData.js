@@ -2437,7 +2437,6 @@ var EDDTableImport;
                         // using placeholder instead of val to avoid triggering autocomplete change
                         following.attr('placeholder', textInput.val());
                         following.next().val(hiddenInput.val());
-                        console.log(textInput.val());
                         return false;
                     });
                 }
@@ -2836,6 +2835,7 @@ var EDDTableImport;
                 emptyCreatesNew: true,
                 nonEmptyRequired: false
             });
+            //if there is a line name, auto fill line.
             $(this.lineAuto.container[0]).children('.autocomp').val(defaultSelection.name);
             this.lineAuto.visibleInput.data('setByUser', false)
                 .attr('id', lineInputId)

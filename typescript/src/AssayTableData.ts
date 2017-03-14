@@ -3044,7 +3044,6 @@ module EDDTableImport {
                         // using placeholder instead of val to avoid triggering autocomplete change
                         following.attr('placeholder', textInput.val());
                         following.next().val(hiddenInput.val());
-                        console.log(textInput.val());
                         return false;
                     });
                 }
