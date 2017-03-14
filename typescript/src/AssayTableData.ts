@@ -3044,6 +3044,7 @@ module EDDTableImport {
                         // using placeholder instead of val to avoid triggering autocomplete change
                         following.attr('placeholder', textInput.val());
                         following.next().val(hiddenInput.val());
+                        console.log(textInput.val());
                         return false;
                     });
                 }
@@ -3532,6 +3533,8 @@ module EDDTableImport {
                 nonEmptyRequired:false
             });
 
+            $(this.lineAuto.container[0]).children().eq(0).val(defaultSelection.name);
+
             this.lineAuto.visibleInput.data('setByUser', false)
                 .attr('id', lineInputId)
                 .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
@@ -3597,24 +3600,29 @@ module EDDTableImport {
                 if (assayOrLine === line.n) {
                     // The Line name, case-sensitive, is the best match
                     selections.lineID = line.id;
+                    selections.name = line.n;
                     return false;  // do not need to continue
                 } else if (highest < 0.8 && assayOrLine.toLowerCase() === line.n.toLowerCase()) {
                     // The same thing case-insensitive is second best.
                     highest = 0.8;
                     selections.lineID = line.id;
+                    selections.name = line.n;
                 } else if (highest < 0.7 && assayOrLine.indexOf(line.n) >= 0) {
                     // Finding the Line name within the string is odd, but good.
                     highest = 0.7;
                     selections.lineID = line.id;
+                    selections.name = line.n;
                 } else if (highest < 0.6 && line.n.indexOf(assayOrLine) >= 0) {
                     // Finding the string within the Line name is also good.
                     highest = 0.6;
                     selections.lineID = line.id;
+                    selections.name = line.n;
                 } else if (highest < 0.5 && currentIndex === i) {
                     // Again, if all else fails, just choose the Line that matches the current index
                     // in sorted order, in a loop.
                     highest = 0.5;
                     selections.lineID = line.id;
+                    selections.name = line.n;
                 }
                 return true;
             });
