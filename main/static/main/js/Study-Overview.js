@@ -51,7 +51,7 @@ var StudyOverview;
             elementId: "templateDropZone",
             fileInitFn: this.fileDropped.bind(this),
             processRawFn: this.fileRead.bind(this),
-            url: '/study/' + EDDData.currentStudyID + '/define/',
+            url: '/study/' + EDDData.currentStudyID + '/describe/',
             processResponseFn: this.fileReturnedFromServer.bind(this),
             processErrorFn: this.fileErrorReturnedFromServer.bind(this),
             progressBar: this.fileUploadProgressBar

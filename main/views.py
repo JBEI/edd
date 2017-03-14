@@ -1250,7 +1250,7 @@ def study_import_table(request, pk=None, slug=None):
     )
 
 
-# /study/<study_id>/define/
+# /study/<study_id>/describe/
 @ensure_csrf_cookie
 def study_describe_experiment(request, pk=None, slug=None):
     """

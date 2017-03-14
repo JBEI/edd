@@ -45,7 +45,7 @@ admin_email_format = ("""\
 One or more error(s) occurred when attempting to add Experiment Description data for EDD study \
 %(study_pk)d "%(study_name)s":
 
-    Study URL: %(study_pk)s
+    Study URL: %(study_url)s
     Username: %(ice_username)s
     Relevant request parameters:
         %(ignore_ice_errors_param)s: %(ignore_ice_errors_val)s
@@ -64,7 +64,7 @@ if there's a traceback):
 
     The contents of the most-recent full traceback was:
 
-        %(traceback)""")
+        %(traceback)s""")
 
 
 # for safety / for now get repeatable reads within this method, even though writes start much later
@@ -557,6 +557,7 @@ class CombinatorialCreationImporter(object):
         # get an ICE connection to look up strain UUID's from part number user input
         ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=self._ice_username),
                      verify_ssl_cert=settings.VERIFY_ICE_CERT)
+        ice.timeout = settings.ICE_REQUEST_TIMEOUT
 
         list_position = 0
 
@@ -704,19 +705,21 @@ class CombinatorialCreationImporter(object):
         message = (admin_email_format % {
                         'study_pk': self.study.pk,
                         'study_name': self.study.name,
-                        'study_url': reverse('main:overview_by_pk',
+                        'study_url': reverse('main:edd-pk:overview',
                                              kwargs={'pk': self.study.pk}),
                         'ice_username': self._ice_username,
                         'ignore_ice_errors_param': IGNORE_ICE_RELATED_ERRORS_PARAM,
-                        'allow_duplicate_names_val': allow_duplicate_names,
-                        'ignore_ice_errors': str(ignore_ice_related_errors),
-                        'ignore_ice_errors_val': ignore_ice_related_errors,
+                        'ignore_ice_errors_val': str(ignore_ice_related_errors),
                         'allow_duplicate_names_param': ALLOW_DUPLICATE_NAMES_PARAM,
-                        'not_found_part_count': not_found_part_count,
-                        'parts_not_found': str(part_numbers_not_found),
-                        'not_found_percent': not_found_part_percent,
+                        'allow_duplicate_names_val': allow_duplicate_names,
+
                         'unique_part_number_count': desired_part_count,
                         'unique_part_numbers': str(unique_part_numbers),
+
+                        'not_found_part_count': not_found_part_count,
+                        'not_found_percent': not_found_part_percent,
+                        'parts_not_found': str(part_numbers_not_found),
+
                         'errors': json.dumps(self.errors, indent=_ADMIN_EMAIL_INDENT),
                         'warnings': json.dumps(self.warnings, indent=_ADMIN_EMAIL_INDENT),
                         'user_input_source': str(self._input_summary),

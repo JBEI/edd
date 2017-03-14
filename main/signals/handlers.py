@@ -404,7 +404,9 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study, study_creation_d
 
     ice = None
     if not settings.USE_CELERY:
-        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email))
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email),
+                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
+        ice.timeout = settings.ICE_REQUEST_TIMEOUT
 
     study_url = get_abs_study_url(study)
     index = 0
@@ -472,7 +474,9 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     """
     ice = None
     if not settings.USE_CELERY:
-        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email))
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email),
+                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
+        ice.timeout = settings.ICE_REQUEST_TIMEOUT
 
     index = 0
 
