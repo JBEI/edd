@@ -3533,7 +3533,8 @@ module EDDTableImport {
                 nonEmptyRequired:false
             });
 
-            $(this.lineAuto.container[0]).children().eq(0).val(defaultSelection.name);
+            //if there is a line name, auto fill line.
+            $(this.lineAuto.container[0]).children('.autocomp').val(defaultSelection.name);
 
             this.lineAuto.visibleInput.data('setByUser', false)
                 .attr('id', lineInputId)

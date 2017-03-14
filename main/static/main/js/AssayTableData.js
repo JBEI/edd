@@ -2836,7 +2836,7 @@ var EDDTableImport;
                 emptyCreatesNew: true,
                 nonEmptyRequired: false
             });
-            $(this.lineAuto.container[0]).children().eq(0).val(defaultSelection.name);
+            $(this.lineAuto.container[0]).children('.autocomp').val(defaultSelection.name);
             this.lineAuto.visibleInput.data('setByUser', false)
                 .attr('id', lineInputId)
                 .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
