@@ -1279,7 +1279,6 @@ def study_describe_experiment(request, pk=None, slug=None):
             logger.info('Parsing template file "%s"' % file_name)
 
         else:
-            self.add_error(UNSUPPORTED_FILE_TYPE, file_type)
             return JsonResponse(
                     _build_response_content({UNSUPPORTED_FILE_TYPE: file_type}, {}),
                     status=BAD_REQUEST)
