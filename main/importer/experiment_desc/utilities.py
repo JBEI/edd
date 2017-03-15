@@ -443,8 +443,7 @@ class CombinatorialDescriptionInput(object):
                 # should already have resulted in error/warning messages
                 # during the preceding ICE queries, and we don't need to track two errors for
                 # the same problem.
-                elif ice_parts_by_number.get(part_number, False):
-
+                elif part_number in ice_parts_by_number:
                     self.add_error(UNMATCHED_PART_NUMBER, part_number)
 
     def get_unique_strain_ids(self, unique_strain_ids):

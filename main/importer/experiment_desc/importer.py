@@ -25,10 +25,9 @@ from .constants import (
     NON_STRAIN_ICE_ENTRY,
     PART_NUMBER_NOT_FOUND, BAD_REQUEST, INTERNAL_SERVER_ERROR, OK, FORBIDDEN,
     FORBIDDEN_PART_KEY, GENERIC_ICE_RELATED_ERROR, IGNORE_ICE_RELATED_ERRORS_PARAM,
-    ALLOW_DUPLICATE_NAMES_PARAM, NOT_FOUND, NO_INPUT)
+    ALLOW_DUPLICATE_NAMES_PARAM, NO_INPUT)
 from .parsers import ExperimentDescFileParser, JsonInputParser
 from .utilities import (CombinatorialCreationPerformance, find_existing_strains)
-from pprint import pformat
 
 
 logger = logging.getLogger(__name__)

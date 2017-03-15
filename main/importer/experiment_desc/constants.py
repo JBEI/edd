@@ -74,7 +74,8 @@ GENERIC_ICE_RELATED_ERROR = 'ICE-related error'
 # Proactive check for an EDD and/or ICE error detected during earlier testing of
 # maintain_ice_links.py. We can remove this if we go a while without seeing it in production.
 # MF 3/1/17
-PART_NUMBER_PATTERN_UNMATCHED_WARNING = 'Part number pattern unmatched for part(s)'
+PART_NUMBER_PATTERN_UNMATCHED_WARNING = ("One or more part numbers didn't match the expected "
+                                         "pattern. This probably indicates a data entry error:")
 
 ####################################################################################################
 # Generic errors... likely require admin investigation / determination re: cause
