@@ -25,8 +25,9 @@ from .constants import (
     NON_STRAIN_ICE_ENTRY,
     PART_NUMBER_NOT_FOUND, BAD_REQUEST, INTERNAL_SERVER_ERROR, OK, FORBIDDEN,
     FORBIDDEN_PART_KEY, GENERIC_ICE_RELATED_ERROR, IGNORE_ICE_RELATED_ERRORS_PARAM,
-    ALLOW_DUPLICATE_NAMES_PARAM, NO_INPUT)
-from .parsers import ExperimentDescFileParser, JsonInputParser
+    ALLOW_DUPLICATE_NAMES_PARAM, NO_INPUT, DUPLICATE_INPUT_LINE_NAMES, DUPLICATE_INPUT_ASSAY_NAMES,
+    ZERO_REPLICATES)
+from .parsers import ExperimentDescFileParser, JsonInputParser, _InputFileRow
 from .utilities import (CombinatorialCreationPerformance, find_existing_strains)
 
 
@@ -114,10 +115,22 @@ def _build_response_content(errors, warnings, val=None):
     if val is None:
         val = {}
     if errors:
-        val[ERRORS_KEY] = errors
+        val[ERRORS_KEY] = _build_detail_string(errors)
     if warnings:
-        val[WARNINGS_KEY] = warnings
+        val[WARNINGS_KEY] = _build_detail_string(warnings)
     return val
+
+
+def _build_detail_string(summary_dict):
+    result = {}
+    for summary, details in summary_dict.iteritems():
+        if isinstance(details, list) or isinstance(details, tuple):
+            details_str = ', '.join([str(detail) for detail in details])
+        else:
+            details_str = str(details)
+
+        result[summary] = details_str
+    return result
 
 
 class CombinatorialCreationImporter(object):
@@ -382,6 +395,10 @@ class CombinatorialCreationImporter(object):
         total_assay_count = 0
         for input_set in combinatorial_inputs:
 
+            # test for
+            if input_set.replicate_count == 0:
+                self.add_error(ZERO_REPLICATES, '')
+
             creation_visitor = input_set.populate_study(
                 study,
                 line_metadata_types=line_metadata_types,
@@ -440,6 +457,11 @@ class CombinatorialCreationImporter(object):
         duplicated_new_line_names = set()
         protocol_to_duplicate_new_assay_names = defaultdict(list)
 
+        # for Experiment Description files, track which file row created the duplication to help
+        # users track it down. This can be hard in a large file.
+        line_name_to_input_rows = defaultdict(list)
+        protocol_to_assay_name_to_input_rows = defaultdict(lambda: defaultdict(list))
+
         # line name -> protocol -> [assay name], across all combinatorial inputs.
         all_planned_names = defaultdict(lambda: defaultdict(list))
 
@@ -464,6 +486,9 @@ class CombinatorialCreationImporter(object):
                 else:
                     unique_input_line_names.add(line_name)
 
+                if isinstance(input_set, _InputFileRow):
+                    line_name_to_input_rows[line_name].append(input_set.row_number)
+
                 # defaultdict, so side effect is assignment
                 all_protocol_to_assay_names = all_planned_names[line_name]
 
@@ -471,7 +496,11 @@ class CombinatorialCreationImporter(object):
                     all_planned_assay_names = all_protocol_to_assay_names[protocol_pk]
 
                     for assay_name in assay_names:
-                        all_planned_assay_names.append(assay_names)
+                        all_planned_assay_names.append(assay_name)
+
+                        if isinstance(input_set, _InputFileRow):
+                            protocol_to_assay_name_to_input_rows[protocol_pk][assay_name].append(
+                                    input_set.row_number)
 
                         unique_assay_names = protocol_to_unique_input_assay_names[protocol_pk]
 
@@ -487,10 +516,26 @@ class CombinatorialCreationImporter(object):
 
         # return early if the input isn't self-consistent
         for dupe in duplicated_new_line_names:
-            self.add_error('duplicate_input_line_names', dupe)
+            message = dupe
+            row_nums = [str(row_num) for row_num in line_name_to_input_rows[dupe]]
+            if row_nums:
+                message = '%(line_name)s (row %(rows_list)s)' % {
+                    'line_name': dupe,
+                    'rows_list': ', '.join(row_nums),
+                }
 
-        for dupe in protocol_to_duplicate_new_assay_names:
-            self.add_error('duplicate_input_assay_names', dupe)
+            self.add_error(DUPLICATE_INPUT_LINE_NAMES, message)
+
+        for protocol, dupe in protocol_to_duplicate_new_assay_names.iteritems():
+            message = dupe
+            row_nums = [str(row_num) for row_num in protocol_to_assay_name_to_input_rows[
+                protocol_pk][dupe]]
+            if row_nums:
+                message = '%(assay_name)s (row %(rows_list)s' % {
+                    'assay_name': dupe,
+                    'rows_list': ', '.join(row_nums),
+                }
+            self.add_error(DUPLICATE_INPUT_ASSAY_NAMES, message)
 
         if duplicated_new_line_names or protocol_to_duplicate_new_assay_names:
             return all_planned_names

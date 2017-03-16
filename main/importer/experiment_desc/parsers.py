@@ -16,13 +16,13 @@ from .constants import (
     DUPLICATE_ASSAY_METADATA,
     INVALID_CELL_FORMAT,
     INVALID_REPLICATE_COUNT,
-    MISSING_LINE_NAME_ROWS_KEY,
+    MISSING_REQUIRED_LINE_NAME,
     PARSE_ERROR,
     PART_NUMBER_PATTERN_UNMATCHED_WARNING,
     ROWS_MISSING_REPLICATE_COUNT,
-    SKIPPED_KEY,
-    UNMATCHED_COL_HEADERS_KEY, INCORRECT_FILE_FORMAT, MULTIPLE_WORKSHEETS_FOUND,
-    UNSUPPORTED_LINE_METADATA, EMPTY_WORKBOOK)
+    INVALID_COLUMN_HEADER,
+    UNMATCHED_ASSAY_COL_HEADERS_KEY, MISSING_REQUIRED_COLUMN, MULTIPLE_WORKSHEETS_FOUND,
+    UNSUPPORTED_LINE_METADATA, EMPTY_WORKBOOK, ZERO_REPLICATES)
 from .utilities import AutomatedNamingStrategy, CombinatorialDescriptionInput, NamingStrategy
 
 
@@ -245,8 +245,9 @@ class _InputFileRow(CombinatorialDescriptionInput):
     often, is just a degenerate case of combinatorial creation.
     """
 
-    def __init__(self, assay_time_meta_pk):
+    def __init__(self, assay_time_meta_pk, row_number):
         super(_InputFileRow, self).__init__(_ExperimentDescNamingStrategy(assay_time_meta_pk))
+        self.row_number = row_number
 
     @property
     def base_line_name(self):
@@ -255,6 +256,8 @@ class _InputFileRow(CombinatorialDescriptionInput):
     @base_line_name.setter
     def base_line_name(self, name):
         self.naming_strategy.base_line_name = name
+
+
 
 
 class CombinatorialInputParser(object):
@@ -370,7 +373,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # loop over columns
         row_index = 0
         for cols_list in worksheet.iter_rows():
-            row_index += 1
 
             logger.warning('Examining row %d' % (row_index+1))
 
@@ -386,8 +388,10 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 if row_inputs:
                     parsed_row_inputs.append(row_inputs)
 
+            row_index += 1
+
         if not self.column_layout:
-            importer.add_error(INCORRECT_FILE_FORMAT, 'No column header was found matching the '
+            importer.add_error(MISSING_REQUIRED_COLUMN, 'No column header was found matching the '
                                                       'single required value "Line Name"')
             return
 
@@ -479,15 +483,15 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     col_index
                 )
 
-                # if we didn't process this column, track a warning that describes
+                # if we couldn't process this column, track a warning that describes
                 # dropped columns (can be displayed later in the UI)
                 if line_metadata_type is None:
-                    skipped = {
-                        'col_letter': get_column_letter(col_index+1),
-                        'title:': cell_content,
+                    skipped = '%(title)s (%(col)s)' % {
+                        'title': cell_content,
+                        'col': get_column_letter(col_index+1),
                     }
                     is_error = self.REQUIRE_COL_HEADER_MATCH
-                    self.importer.add_issue(is_error, SKIPPED_KEY, skipped)
+                    self.importer.add_issue(is_error, INVALID_COLUMN_HEADER, skipped)
 
         # test whether we've located all the required columns
         found_col_labels = layout.line_name_col is not None
@@ -575,8 +579,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # assumed by the file format.
                 else:
                     col_letter = get_column_letter(col_index+1)
-                    logger.debug("""Column header "%s" didn't match known metadata types""")
-                    self.importer.add_error(UNMATCHED_COL_HEADERS_KEY, col_letter)
+                    logger.debug("""Column header suffix "%s" didn't match known metadata types""")
+                    self.importer.add_error(UNMATCHED_ASSAY_COL_HEADERS_KEY, col_letter)
                     return True
 
     def _parse_line_metadata_header(self, column_layout, upper_content, col_index):
@@ -616,7 +620,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             method which optional columns have been defined, as well as what order the columns are
             in (arbitrary column order is supported).
         """
-        row_inputs = _InputFileRow(self.assay_time_metadata_type_pk)
+        row_inputs = _InputFileRow(self.assay_time_metadata_type_pk, row_num)
         layout = self.column_layout
 
         ###################################################
@@ -625,7 +629,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         cell_content = self._get_string_cell_content(
             cols_list,
             row_num,
-            layout.line_name_col
+            layout.line_name_col,
+            convert_to_string=True
         )
 
         if cell_content:
@@ -635,13 +640,13 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # errors with a single pass
         else:
             logger.debug(
-                'Parse error: Cell in row %(row_num)d, column %(col)d was empty, but was expected '
+                'Parse error: Cell %(row_num)d%(col)s was empty, but was expected '
                 'to contain a name for the EDD line.' % {
                     'row_num': row_num,
-                    'col': layout.line_name_col + 1,
+                    'col': get_column_letter(layout.line_name_col + 1),
                 }
             )
-            self.importer.add_error(MISSING_LINE_NAME_ROWS_KEY, row_num)
+            self.importer.add_error(MISSING_REQUIRED_LINE_NAME, row_num)
 
         ###################################################
         # Line description
@@ -686,8 +691,19 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             if cell_content is not None:
                 try:
                     row_inputs.replicate_count = int(cell_content)
+                    if row_inputs.replicate_count == 0:
+                        cell = '%(row)d%(col)s' % {
+                            'value': str(cell_content), 'row': row_num,
+                            'col': get_column_letter(layout.replicate_count_col + 1),
+                        }
+                        self.importer.add_error(ZERO_REPLICATES, cell)
                 except ValueError:
-                    self.importer.add_error(INVALID_REPLICATE_COUNT, cell_content)
+                    message = '%(value)s (%(row)d%(col)s)' % {
+                        'value': str(cell_content),
+                        'row': row_num,
+                        'col': get_column_letter(layout.replicate_count_col+1),
+                    }
+                    self.importer.add_error(INVALID_REPLICATE_COUNT, message)
             else:
                 row_inputs.replicate_count = 1
                 self.importer.add_warning(ROWS_MISSING_REPLICATE_COUNT, row_num)
@@ -851,14 +867,18 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             return cell_content.strip()
 
         else:
-            actual_type = str(type(cell_content))
+            actual_type = type(cell_content).__name__
             if convert_to_string:
                 logger.warning('Converted non-string data of type %s to string' % actual_type)
                 return str(cell_content)
             else:
-                logger.warning('Invalid cell format for cell %s' % actual_type)
-                self.importer.add_error(INVALID_CELL_FORMAT,
-                                        (row_num, get_column_letter(col_index +1)))
+                msg = '%(row)d%(col)s (value: %(value)s, type: %(type)s)' % {
+                    'row': row_num,
+                    'col': get_column_letter(col_index+1),
+                    'type': actual_type,
+                    'value': cell_content,
+                }
+                self.importer.add_error(INVALID_CELL_FORMAT, msg)
                 return None
 
     def _parse_combinatorial_input(self, row_inputs, cell_content, row_num, col_index,

@@ -697,6 +697,8 @@ class CombinatorialDescriptionInput(object):
                 self._visit_new_lines_and_assays(study, strain_ids, line_metadata, visitor)
 
     def _visit_new_lines_and_assays(self, study, strain_ids, line_metadata_dict, visitor):
+        if self.replicate_count == 0:
+            self.importer.add_error(ZERO_REPLICATES, '')
         for replicate_num in range(1, self.replicate_count + 1):
             control_variants = [self.is_control]
             if isinstance(self.is_control, Sequence):
