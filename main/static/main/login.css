@@ -72,3 +72,21 @@ a.socialaccount_provider.linkedin_oauth2 {
 ul {
     list-style: none;
 }
+
+input.password1 {
+    margin-left: 22px;
+    margin-bottom: 10px;
+}
+
+input.password2 {
+    margin-bottom: 26px;
+}
+
+input.passwordButton {
+    float: right;
+}
+
+a.forgotPassword {
+    color: red;
+    font-size: 12px;
+}
