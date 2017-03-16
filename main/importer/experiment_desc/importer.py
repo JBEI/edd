@@ -40,7 +40,7 @@ _IGNORE_ICE_RELATED_ERRORS_DEFAULT = False
 _ALLOW_DUPLICATE_NAMES_DEFAULT = False
 _DRY_RUN_DEFAULT = False
 
-_ADMIN_EMAIL_INDENT = 2
+_ADMIN_EMAIL_INDENT = 3
 admin_email_format = ("""\
 One or more error(s) occurred when attempting to add Experiment Description data for EDD study \
 %(study_pk)d "%(study_name)s":
@@ -50,16 +50,12 @@ One or more error(s) occurred when attempting to add Experiment Description data
     Relevant request parameters:
         %(ignore_ice_errors_param)s: %(ignore_ice_errors_val)s
         %(allow_duplicate_names_param)s: %(allow_duplicate_names_val)s
-    Unique part numbers (%(unique_part_number_count)d): "%(unique_part_numbers)s
-    Parts not found in ICE (%(not_found_part_count)d or %(not_found_percent)0.2f%%):
-        "%(parts_not_found)s
+    Unique part numbers (%(unique_part_number_count)d): %(unique_part_numbers)s
+    Parts not found in ICE (%(not_found_part_count)d or %(not_found_percent)0.2f%%): \
+%(parts_not_found)s
     Errors detected during Experiment Description processing (may not include the error below, \
-if there's a traceback):
-        %(errors)s
-
-    Warnings detected during Experiment Description processing:
-        %(warnings)s
-
+if there's a traceback): %(errors)s
+    Warnings detected during Experiment Description processing: %(warnings)s
     User input source: %(user_input_source)s
 
     The contents of the most-recent full traceback was:
@@ -758,11 +754,11 @@ class CombinatorialCreationImporter(object):
                         'allow_duplicate_names_val': allow_duplicate_names,
 
                         'unique_part_number_count': desired_part_count,
-                        'unique_part_numbers': str(unique_part_numbers),
+                        'unique_part_numbers': ', '.join(unique_part_numbers),
 
                         'not_found_part_count': not_found_part_count,
                         'not_found_percent': not_found_part_percent,
-                        'parts_not_found': str(part_numbers_not_found),
+                        'parts_not_found': ', '.join(part_numbers_not_found),
 
                         'errors': json.dumps(self.errors, indent=_ADMIN_EMAIL_INDENT),
                         'warnings': json.dumps(self.warnings, indent=_ADMIN_EMAIL_INDENT),

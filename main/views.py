@@ -1265,9 +1265,9 @@ def study_describe_experiment(request, pk=None, slug=None):
 
     # parse request parameter input to keep subsequent code relatively format-agnostic
     user = request.user
-    dry_run = 'dryRun' in request.META.keys()
-    allow_duplicate_names = ALLOW_DUPLICATE_NAMES_PARAM in request.META.keys()
-    ignore_ice_related_errors = IGNORE_ICE_RELATED_ERRORS_PARAM in request.META.keys()
+    dry_run = 'dryRun' in request.META
+    allow_duplicate_names = ALLOW_DUPLICATE_NAMES_PARAM in request.META
+    ignore_ice_related_errors = IGNORE_ICE_RELATED_ERRORS_PARAM in request.META
 
     # detect the input format
     has_file_type = FILE_TYPE_HEADER in request.META
