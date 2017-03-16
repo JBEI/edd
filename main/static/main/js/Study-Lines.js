@@ -493,7 +493,7 @@ var StudyLines;
         cellObjs.forEach(function (cell) {
             _this.carbonBalanceData.createCBGraphForLine(cell.recordID, cell.cellElement);
         });
-        this.carbonBalanceDisplayIsFresh = true;
+        this.carbonBalanceDiplayIsFresh = true;
     }
     StudyLines.rebuildCarbonBalanceGraphs = rebuildCarbonBalanceGraphs;
     // They want to select a different metabolic map.
@@ -609,6 +609,15 @@ var DataGridSpecLines = (function (_super) {
         }
         return '';
     };
+    DataGridSpecLines.prototype.loadLineDescription = function (index) {
+        var line;
+        if ((line = EDDData.Lines[index])) {
+            if (line.description != null) {
+                return line.description.toUpperCase();
+            }
+        }
+        return '';
+    };
     DataGridSpecLines.prototype.loadStrainName = function (index) {
         // ensure a strain ID exists on line, is a known strain, uppercase first found name or '?'
         var line, strain;
@@ -668,21 +677,25 @@ var DataGridSpecLines = (function (_super) {
             new DataGridHeaderSpec(1, 'hLinesName', {
                 'name': 'Name',
                 'sortBy': this.loadLineName }),
-            new DataGridHeaderSpec(2, 'hLinesStrain', {
+            new DataGridHeaderSpec(2, 'hLinesDescription', {
+                'name': 'Description',
+                'sortBy': this.loadLineDescription,
+                'sortAfter': 0 }),
+            new DataGridHeaderSpec(3, 'hLinesStrain', {
                 'name': 'Strain',
                 'sortBy': this.loadStrainName,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(3, 'hLinesCarbon', {
+            new DataGridHeaderSpec(4, 'hLinesCarbon', {
                 'name': 'Carbon Source(s)',
                 'size': 's',
                 'sortBy': this.loadCarbonSource,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(4, 'hLinesLabeling', {
+            new DataGridHeaderSpec(5, 'hLinesLabeling', {
                 'name': 'Labeling',
                 'size': 's',
                 'sortBy': this.loadCarbonSourceLabeling,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(5, 'hLinesCarbonBalance', {
+            new DataGridHeaderSpec(6, 'hLinesCarbonBalance', {
                 'name': 'Carbon Balance',
                 'size': 's',
                 'sortBy': this.loadLineName })
@@ -758,6 +771,20 @@ var DataGridSpecLines = (function (_super) {
             })
         ];
     };
+    DataGridSpecLines.prototype.generateDescriptionCells = function (gridSpec, index) {
+        var line, strings = '--';
+        if ((line = EDDData.Lines[index])) {
+            if (line.description && line.description.length) {
+                strings = line.description;
+            }
+        }
+        return [
+            new DataGridDataCell(gridSpec, index, {
+                'rowspan': gridSpec.rowSpanForRecord(index),
+                'contentString': strings,
+            })
+        ];
+    };
     DataGridSpecLines.prototype.generateCarbonSourceCells = function (gridSpec, index) {
         var line, strings = ['--'];
         if ((line = EDDData.Lines[index])) {
@@ -830,11 +857,12 @@ var DataGridSpecLines = (function (_super) {
         var leftSide, metaDataCols, rightSide;
         leftSide = [
             new DataGridColumnSpec(1, this.generateLineNameCells),
-            new DataGridColumnSpec(2, this.generateStrainNameCells),
-            new DataGridColumnSpec(3, this.generateCarbonSourceCells),
-            new DataGridColumnSpec(4, this.generateCarbonSourceLabelingCells),
+            new DataGridColumnSpec(2, this.generateDescriptionCells),
+            new DataGridColumnSpec(3, this.generateStrainNameCells),
+            new DataGridColumnSpec(4, this.generateCarbonSourceCells),
+            new DataGridColumnSpec(5, this.generateCarbonSourceLabelingCells),
             // The Carbon Balance cells are populated by a callback, triggered when first displayed
-            new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
+            new DataGridColumnSpec(6, this.generateCarbonBalanceBlankCells)
         ];
         metaDataCols = this.metaDataIDsUsedInLines.map(function (id, index) {
             return new DataGridColumnSpec(6 + index, _this.makeMetaDataCellsGeneratorFunction(id));
@@ -849,6 +877,7 @@ var DataGridSpecLines = (function (_super) {
     DataGridSpecLines.prototype.defineColumnGroupSpec = function () {
         var topSection = [
             new DataGridColumnGroupSpec('Line Name', { 'showInVisibilityList': false }),
+            new DataGridColumnGroupSpec('Description'),
             new DataGridColumnGroupSpec('Strain'),
             new DataGridColumnGroupSpec('Carbon Source(s)'),
             new DataGridColumnGroupSpec('Labeling'),

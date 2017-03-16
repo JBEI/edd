@@ -1091,7 +1091,22 @@ table.formTable tr > td textarea {
     text-overflow: ellipsis;
     width: 40%;
     overflow: hidden;
+}
+
+#studyLinesTable td:nth-child(2) {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    width: 40%;
+    overflow: hidden;
     max-width: 200px;
+    word-wrap: break-word;
+}
+
+#studyLinesTable td:active:nth-child(2) {
+    height:auto;
+    overflow: visible;
+    max-width : initial;
 }
 
 #studiesTable td:first-child {
