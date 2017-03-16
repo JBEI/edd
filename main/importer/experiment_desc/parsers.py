@@ -374,7 +374,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         row_index = 0
         for cols_list in worksheet.iter_rows():
 
-            logger.warning('Examining row %d' % (row_index+1))
+            logger.debug('Examining row %d' % (row_index+1))
 
             # identify columns of interest first by looking for required labels
             if not self.column_layout:
@@ -392,7 +392,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         if not self.column_layout:
             importer.add_error(MISSING_REQUIRED_COLUMN, 'No column header was found matching the '
-                                                      'single required value "Line Name"')
+                                                        'single required value "Line Name"')
             return
 
         column_layout = self.column_layout
@@ -775,12 +775,16 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     elif individual_strain_ids:
                         row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
 
-
         ###################################################
         # line metadata
         ###################################################
         if layout.col_index_to_line_meta_pk:
             for col_index, line_metadata_pk in layout.col_index_to_line_meta_pk.items():
+                # skip values for metadata types we've specifically disabled (with a warning)
+                # earlier in the parsing process
+                if line_metadata_pk in self.unsupported_line_meta_types_by_pk:
+                    continue
+
                 cell_content = self._get_string_cell_content(
                     cols_list,
                     row_num,
