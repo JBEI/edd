@@ -522,16 +522,17 @@ class CombinatorialCreationImporter(object):
 
             self.add_error(DUPLICATE_INPUT_LINE_NAMES, message)
 
-        for protocol, dupe in protocol_to_duplicate_new_assay_names.iteritems():
-            message = dupe
-            row_nums = [str(row_num) for row_num in protocol_to_assay_name_to_input_rows[
-                protocol_pk][dupe]]
-            if row_nums:
-                message = '%(assay_name)s (row %(rows_list)s' % {
-                    'assay_name': dupe,
-                    'rows_list': ', '.join(row_nums),
-                }
-            self.add_error(DUPLICATE_INPUT_ASSAY_NAMES, message)
+        for protocol, duplicates in protocol_to_duplicate_new_assay_names.iteritems():
+            for dupe in duplicates:
+                message = dupe
+                row_nums = [str(row_num) for row_num in
+                            protocol_to_assay_name_to_input_rows[protocol_pk][dupe]]
+                if row_nums:
+                    message = '%(assay_name)s (row %(rows_list)s' % {
+                        'assay_name': dupe,
+                        'rows_list': ', '.join(row_nums),
+                    }
+                self.add_error(DUPLICATE_INPUT_ASSAY_NAMES, message)
 
         if duplicated_new_line_names or protocol_to_duplicate_new_assay_names:
             return all_planned_names
