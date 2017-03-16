@@ -49,7 +49,7 @@ ASSAY_META_CAPITALIZATION_ONLY_DIFFERENCE = ('Found some assay metadata types th
                                              'case. Case-insensitive matching in parsing code will '
                                              'arbitrarily choose one')
 UNSUPPORTED_LINE_METADATA = ('Parsing is not supported for one or more line metadata type(s) '
-                             'in the file. Values in these columns were not be set on your lines')
+                             'in the file. Values in these columns were not set on your lines')
 ROWS_MISSING_REPLICATE_COUNT = 'Rows missing replicate counts (assumed to have no replicates)'
 
 ####################################################################################################
