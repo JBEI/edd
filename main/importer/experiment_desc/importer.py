@@ -528,7 +528,7 @@ class CombinatorialCreationImporter(object):
                 row_nums = [str(row_num) for row_num in
                             protocol_to_assay_name_to_input_rows[protocol_pk][dupe]]
                 if row_nums:
-                    message = '%(assay_name)s (row %(rows_list)s' % {
+                    message = '%(assay_name)s (row %(rows_list)s)' % {
                         'assay_name': dupe,
                         'rows_list': ', '.join(row_nums),
                     }

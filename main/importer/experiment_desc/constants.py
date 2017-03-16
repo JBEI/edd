@@ -29,7 +29,7 @@ INVALID_CELL_FORMAT = 'Cells have invalid format'
 INVALID_REPLICATE_COUNT = 'Invalid replicate count'
 ZERO_REPLICATES = 'Zero replicates are not allowed. If no lines are desired, remove row(s) from ' \
                   'the file.'
-MISSING_REQUIRED_LINE_NAME = 'Missing line name rows'
+MISSING_REQUIRED_LINE_NAME = 'Rows missing required line name'
 EXISTING_LINE_NAMES = 'Existing line names'
 MISSING_REQUIRED_COLUMN = 'Incorrect file format'
 UNMATCHED_ASSAY_COL_HEADERS_KEY = 'Invalid column header(s) (Unmatched assay metadata suffix)'
