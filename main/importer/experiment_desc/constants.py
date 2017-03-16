@@ -96,8 +96,11 @@ SUSPECTED_MATCH_STRAINS = 'Suspected match strain(s)'
 ####################################################################################################
 # Request parameters
 ####################################################################################################
-IGNORE_ICE_RELATED_ERRORS_PARAM = 'ignoreIceRelatedErrors'
-ALLOW_DUPLICATE_NAMES_PARAM = 'allowDuplicateNames'
+# TODO: Restore earlier values after making these POST data instead.
+# IGNORE_ICE_RELATED_ERRORS_PARAM = 'ignoreIceRelatedErrors'
+# ALLOW_DUPLICATE_NAMES_PARAM = 'allowDuplicateNames'
+IGNORE_ICE_RELATED_ERRORS_PARAM = 'X-EDD-ignoreIceRelatedErrors'
+ALLOW_DUPLICATE_NAMES_PARAM = 'X-EDD-allowDuplicateNames'
 
 ####################################################################################################
 # Http error codes used / considered in this package.
