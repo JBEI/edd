@@ -407,7 +407,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             for col_index in unsupported_value_columns:
                 meta_pk = column_layout.get_line_metadata_type(col_index)
                 meta_type = self.line_metadata_types_by_pk[meta_pk]
-                value = '"%(name)s" ("%(col)s")' % {
+                value = '"%(name)s" (col "%(col)s")' % {
                             'name': meta_type.type_name,
                             'col': get_column_letter(col_index+1)}
                 unsupported_values.append(value)
