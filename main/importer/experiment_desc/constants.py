@@ -1,11 +1,16 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
+from collections import OrderedDict
+
 from requests import codes
 
 # error conditions that are detected / handled during Experiment Description upload process.
 # These values must remain unique, and are used both as dictionary keys within the back-end code
 # and for user display in the front end
+# TODO: consider creating an class to encapsulate error title/subtitle/(HTTP status code?)
+# associations implied here and elsewhere in the code.  This approach evolved from the ground up,
+# but might be clarified by a refactor.
 
 ####################################################################################################
 # User data entry errors
@@ -17,27 +22,35 @@ EXISTING_LINE_NAMES = 'Input would duplicate existing line names'
 DUPLICATE_INPUT_ASSAY_NAMES = 'Duplicate assay names in the input'
 EXISTING_ASSAY_NAMES = 'Inputs would duplicate existing assay names'
 
+NON_STRAIN_TITLE = 'Non-strain ICE entry'
 NON_STRAIN_ICE_ENTRY = 'Non-strain ICE entries'
 PART_NUMBER_NOT_FOUND = 'Part number(s) not found in ICE'
 
 
 # Experiment Description file-specific errors
+BAD_FILE_CATEGORY = 'Incorrect file'
 EMPTY_WORKBOOK = 'Empty workbook'
-DUPLICATE_ASSAY_METADATA = 'Duplicate assay metadata columns'
+DUPLICATE_ASSAY_METADATA = 'Several columns specify the same assay metadata'
 DUPLICATE_LINE_METADATA = 'Duplicate line metadata columns'
-INVALID_CELL_FORMAT = 'Cells have invalid format'
+INVALID_CELL_TYPE_TITLE = 'Invalid cell type'
+INVALID_CELL_TYPE = 'Cells have invalid type'
 INVALID_REPLICATE_COUNT = 'Invalid replicate count'
 ZERO_REPLICATES = 'Zero replicates are not allowed. If no lines are desired, remove row(s) from ' \
                   'the file.'
 MISSING_REQUIRED_LINE_NAME = 'Rows missing required line name'
-EXISTING_LINE_NAMES = 'Existing line names'
-MISSING_REQUIRED_COLUMN = 'Incorrect file format'
+MISSING_REQUIRED_COLUMN_TITLE = 'Incorrect file format'
+INVALID_COLUMN_HEADER_TITLE = 'Invalid column headers'
 UNMATCHED_ASSAY_COL_HEADERS_KEY = 'Invalid column header(s) (Unmatched assay metadata suffix)'
 INVALID_COLUMN_HEADER = 'Invalid column header(s)'
+INCORRECT_TIME_FORMAT = 'Incorrect time format'
+UNPARSEABLE_COMBINATORIAL_VALUE = 'Unparseable combinatorial value'
+
+INTERNAL_EDD_ERROR_TITLE = 'Internal EDD error'
 
 
 # either user input error in Experiment Description/ICE part permissions, or an ICE error (known ICE
 # errors exist in ICE 5.2.2 as of 3-1-17)
+SINGLE_PART_ACCESS_ERROR_CATEGORY = 'ICE part access problem'
 FORBIDDEN_PART_KEY = 'Missing ICE read permission for part number(s)'
 
 # Experiment Description file-specific warnings
@@ -48,9 +61,9 @@ LINE_META_CAPITALIZATION_ONLY_DIFFERENCE = ('Found some line metadata types that
 ASSAY_META_CAPITALIZATION_ONLY_DIFFERENCE = ('Found some assay metadata types that differ only by '
                                              'case. Case-insensitive matching in parsing code will '
                                              'arbitrarily choose one')
-UNSUPPORTED_LINE_METADATA = ('Parsing is not supported for one or more line metadata type(s) '
-                             'in the file. Values in these columns were not set on your lines')
-ROWS_MISSING_REPLICATE_COUNT = 'Rows missing replicate counts (assumed to have no replicates)'
+UNSUPPORTED_LINE_METADATA = 'Unsupported line metadata'
+ROWS_MISSING_REPLICATE_COUNT = 'Missing replicate count (assumed 1 line)'
+IGNORED_INPUT_CATEGORY = 'User input ignored'
 
 ####################################################################################################
 # Self/client consistency checks.  Experiment Description code is written defensively to help to
@@ -73,11 +86,14 @@ INVALID_AUTO_NAMING_INPUT = 'Invalid element for automatic naming'
 
 # anticipated systemic (e.g. communication) error or error that isn't otherwise planned for /
 # handled separately (e.g. EDD/ICE configuration errors or ICE bugs)
-GENERIC_ICE_RELATED_ERROR = 'ICE-related error'
+SYSTEMIC_ICE_ERROR_CATEGORY = 'ICE-related error'
+GENERIC_ICE_RELATED_ERROR = ("ICE couldn't be contacted to find strains referenced in your "
+                             "file, and EDD administrators have been notified of the problem.")
 
-# Proactive check for an EDD and/or ICE error detected during earlier testing of
-# maintain_ice_links.py. We can remove this if we go a while without seeing it in production.
-# MF 3/1/17
+# Proactively check for part numbers that don't match EDD's part number pattern. This will help
+# users detect bad data entry when diagnosing other parsing-related errors, and will also help
+# us keep EDD's pattern configuration data up to date with use
+PART_NUM_PATTERN_TITLE = 'Unrecognized part number pattern'
 PART_NUMBER_PATTERN_UNMATCHED_WARNING = ("One or more part numbers didn't match the expected "
                                          "pattern. This probably indicates a data entry error:")
 
@@ -116,58 +132,87 @@ SERVICE_UNAVAILABLE = codes.service_unavailable
 FORBIDDEN = codes.forbidden
 CONFLICT = codes.conflict
 
+####################################################################################################
+# Categorization and display priority order for predicted errors / warnings
+####################################################################################################
 # Define display priority order for all errors defined in this file.  The back-end will provide
 # errors in this order for display in the user interface. Generally, we list user errors first
 # so that even in the case of EDD / ICE errors, users and client code can see / resolve their own
-# errors first.
-ERROR_PRIORITY_ORDER = (
+# errors first. There's also some dependence here on the order in which the back end code executes
+# major steps.
+ERROR_PRIORITY_ORDER = OrderedDict()
 
-    NO_INPUT,
+# Experiment Description file-specific errors
+ERROR_PRIORITY_ORDER[BAD_FILE_CATEGORY] = (
+        # file-wide errors
+        EMPTY_WORKBOOK,
+        UNSUPPORTED_FILE_TYPE,
+        MULTIPLE_WORKSHEETS_FOUND,
 
-    # Experiment Description file-specific errors
-    EMPTY_WORKBOOK,
-    UNSUPPORTED_FILE_TYPE,
-    MULTIPLE_WORKSHEETS_FOUND,
-    MISSING_REQUIRED_COLUMN,
+        # errors in defining column headers
+        MISSING_REQUIRED_COLUMN_TITLE,
+        INVALID_COLUMN_HEADER,
+        UNMATCHED_ASSAY_COL_HEADERS_KEY,  # TODO: specifically mention assay col header suffix
 
-    # errors in defining column headers
-    INVALID_COLUMN_HEADER,
-    UNMATCHED_ASSAY_COL_HEADERS_KEY,
-    DUPLICATE_ASSAY_METADATA,
-    DUPLICATE_LINE_METADATA,
+        DUPLICATE_LINE_METADATA,    # TODO: check/rename these two to append "COLS"
+        DUPLICATE_ASSAY_METADATA,
+)
+INVALID_FILE_VALUE_CATEGORY = 'Invalid cell values'
+ERROR_PRIORITY_ORDER[INVALID_FILE_VALUE_CATEGORY] = (
+    # cell-specific values
     MISSING_REQUIRED_LINE_NAME,
-    INVALID_CELL_FORMAT,
-    INVALID_REPLICATE_COUNT,
-    ZERO_REPLICATES,
-    EXISTING_LINE_NAMES,
+    INVALID_CELL_TYPE,
+    INCORRECT_TIME_FORMAT,
+    UNPARSEABLE_COMBINATORIAL_VALUE,
+)
 
-    # User-created naming overlaps
-    DUPLICATE_INPUT_LINE_NAMES,
-    EXISTING_LINE_NAMES,
-    DUPLICATE_INPUT_ASSAY_NAMES,
-    EXISTING_ASSAY_NAMES,
+# these apply equally to JSON or Excel
+BAD_GENERIC_INPUT_CATEGORY = 'Invalid values'
+ERROR_PRIORITY_ORDER[BAD_GENERIC_INPUT_CATEGORY] = (
+        NO_INPUT,
+        INVALID_REPLICATE_COUNT,
+        ZERO_REPLICATES
+)
 
-    ##################################
-    # User-created ICE errors
-    #################################
+##################################
+# User-created ICE errors
+#################################
+USER_CREATED_ICE_PART_ERRORS = (
     PART_NUMBER_NOT_FOUND,
     NON_STRAIN_ICE_ENTRY,
-    FORBIDDEN_PART_KEY,
+    FORBIDDEN_PART_KEY,)
+ERROR_PRIORITY_ORDER[SINGLE_PART_ACCESS_ERROR_CATEGORY] = USER_CREATED_ICE_PART_ERRORS
 
-    ################################
-    # ICE-related software/configuration/communication errors
-    ################################
-    GENERIC_ICE_RELATED_ERROR,
+################################
+# ICE-related software/configuration/communication errors
+################################
+ERROR_PRIORITY_ORDER[SYSTEMIC_ICE_ERROR_CATEGORY] = (GENERIC_ICE_RELATED_ERROR,)
 
-    # Proactive check for an EDD and/or ICE error detected during earlier testing of
-    # maintain_ice_links.py. We can remove this if we go a while without seeing it in production.
-    # MF 3/1/17
-    PART_NUMBER_PATTERN_UNMATCHED_WARNING,
 
-    ################################
-    # Generic errors... users can't help with these
-    ################################
-    INVALID_AUTO_NAMING_INPUT,  # Combinatorial GUI- or API-specific errors
+ERROR_PRIORITY_ORDER[NON_STRAIN_TITLE] = (  # TODO: rename to NON_STRAIN_PART_CATEGORY
+    NON_STRAIN_ICE_ENTRY
+)
+
+NAMING_OVERLAP_CATEGORY = 'Naming overlap'
+
+# User-created naming overlaps (depend on prior ICE communication since strain names could be used
+# in line/assay naming)
+_NAMING_OVERLAPS = (
+    DUPLICATE_INPUT_LINE_NAMES,
+    EXISTING_LINE_NAMES,  # TODO make var name study-specific
+
+    # TODO: included here for safety, but unlikely at present that these will be created...wait
+    # until we implement/use a combinatorial GUI under EDD-257, then remove if never witnessed.
+    DUPLICATE_INPUT_ASSAY_NAMES,
+    EXISTING_ASSAY_NAMES,
+)
+ERROR_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
+
+################################
+# Generic errors... users can't help with these
+################################
+ERROR_PRIORITY_ORDER[INTERNAL_EDD_ERROR_TITLE] = (
+    INVALID_AUTO_NAMING_INPUT,  # Combinatorial GUI- or other API-client errors
 
     UNPREDICTED_ERROR,
     # Errors caused by outstanding curation work in JBEI's database / resulting lack of constraints
@@ -178,41 +223,25 @@ ERROR_PRIORITY_ORDER = (
     ##################################
     # EDD self/client consistency checks
     ##################################
-
     FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
     INVALID_ASSAY_META_PK,
     INVALID_LINE_META_PK,
     INVALID_PROTOCOL_META_PK,
     PARSE_ERROR,
     UNMATCHED_PART_NUMBER,
-
-
-
 )
 
-WARNING_PRIORITY_ORDER = (
+WARNING_PRIORITY_ORDER = OrderedDict()
+WARNING_PRIORITY_ORDER[IGNORED_INPUT_CATEGORY] = (
     # Experiment Description file-specific warnings
-    LINE_META_CAPITALIZATION_ONLY_DIFFERENCE,
-    ASSAY_META_CAPITALIZATION_ONLY_DIFFERENCE,
     UNSUPPORTED_LINE_METADATA,
     ROWS_MISSING_REPLICATE_COUNT,
-
-    # User-created naming overlaps
-    DUPLICATE_INPUT_LINE_NAMES,
-    EXISTING_LINE_NAMES,
-    DUPLICATE_INPUT_ASSAY_NAMES,
-    EXISTING_ASSAY_NAMES,
-
-    ##################################
-    # User-created ICE errors
-    #################################
-    PART_NUMBER_NOT_FOUND,
-    NON_STRAIN_ICE_ENTRY,
-    FORBIDDEN_PART_KEY,
-
-    ################################
-    # ICE-related software/configuration/communication errors
-    ################################
-    GENERIC_ICE_RELATED_ERROR,
+    LINE_META_CAPITALIZATION_ONLY_DIFFERENCE,
+    ASSAY_META_CAPITALIZATION_ONLY_DIFFERENCE,
 )
+
+WARNING_PRIORITY_ORDER[SINGLE_PART_ACCESS_ERROR_CATEGORY] = USER_CREATED_ICE_PART_ERRORS
+WARNING_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
+WARNING_PRIORITY_ORDER[SYSTEMIC_ICE_ERROR_CATEGORY] = (GENERIC_ICE_RELATED_ERROR,)
+WARNING_PRIORITY_ORDER[INTERNAL_EDD_ERROR_TITLE] = (PART_NUMBER_PATTERN_UNMATCHED_WARNING,)
 

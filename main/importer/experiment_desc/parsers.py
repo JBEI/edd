@@ -4,25 +4,28 @@ from __future__ import unicode_literals
 import json
 import logging
 import re
+from collections import Sequence
 
 from builtins import str
-from collections import Sequence
 from django.conf import settings
-from six import string_types
-
 from openpyxl.utils.cell import get_column_letter
+from six import string_types
 
 from .constants import (
     DUPLICATE_ASSAY_METADATA,
-    INVALID_CELL_FORMAT,
+    INVALID_CELL_TYPE,
     INVALID_REPLICATE_COUNT,
     MISSING_REQUIRED_LINE_NAME,
     PARSE_ERROR,
     PART_NUMBER_PATTERN_UNMATCHED_WARNING,
     ROWS_MISSING_REPLICATE_COUNT,
     INVALID_COLUMN_HEADER,
-    UNMATCHED_ASSAY_COL_HEADERS_KEY, MISSING_REQUIRED_COLUMN, MULTIPLE_WORKSHEETS_FOUND,
-    UNSUPPORTED_LINE_METADATA, EMPTY_WORKBOOK, ZERO_REPLICATES)
+    UNMATCHED_ASSAY_COL_HEADERS_KEY, MULTIPLE_WORKSHEETS_FOUND,
+    UNSUPPORTED_LINE_METADATA, EMPTY_WORKBOOK, ZERO_REPLICATES,
+    INCORRECT_TIME_FORMAT, UNPARSEABLE_COMBINATORIAL_VALUE,
+    INTERNAL_EDD_ERROR_TITLE, BAD_FILE_CATEGORY,
+    PART_NUM_PATTERN_TITLE, IGNORED_INPUT_CATEGORY,
+    INVALID_FILE_VALUE_CATEGORY, BAD_GENERIC_INPUT_CATEGORY)
 from .utilities import AutomatedNamingStrategy, CombinatorialDescriptionInput, NamingStrategy
 
 
@@ -140,7 +143,8 @@ class ColumnLayout:
         # if we see it, log an error -- no clear/automated way for us to resolve which column
         #  has the correct values!
         if self.has_assay_metadata(upper_protocol_name, assay_meta_type.pk):
-            self.importer.add_error(DUPLICATE_ASSAY_METADATA, assay_meta_type.pk)
+            self.importer.add_error(BAD_FILE_CATEGORY, DUPLICATE_ASSAY_METADATA,
+                                    assay_meta_type.pk)
 
         self.register_protocol(protocol)
 
@@ -352,7 +356,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         logger.warning('In parse(). workbook has %d sheets' % len(wb.worksheets))
 
         if len(wb.worksheets) == 0:
-            importer.add_error(EMPTY_WORKBOOK, 'No worksheets were found in the file')
+            importer.add_error(BAD_FILE_CATEGORY, subtitle=EMPTY_WORKBOOK)
             return
 
         # Clear out state from any previous use of this parser instance
@@ -364,7 +368,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         if len(wb.worksheets) > 1:
             sheet_name = wb.get_sheet_names[0]
-            importer.add_warning(MULTIPLE_WORKSHEETS_FOUND,
+            importer.add_warning(IGNORED_INPUT_CATEGORY, MULTIPLE_WORKSHEETS_FOUND,
                                  'All but the first sheet, "%(sheet_name)s", were ignored' % {
                                      'sheet_name': sheet_name,
                                  })
@@ -391,8 +395,9 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             row_index += 1
 
         if not self.column_layout:
-            importer.add_error(MISSING_REQUIRED_COLUMN, 'No column header was found matching the '
-                                                        'single required value "Line Name"')
+            importer.add_error(BAD_FILE_CATEGORY,
+                               subtitle='No column header was found matching the single required '
+                                        'value "Line Name"')
             return
 
         column_layout = self.column_layout
@@ -412,7 +417,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                             'col': get_column_letter(col_index+1)}
                 unsupported_values.append(value)
 
-            importer.add_warning(UNSUPPORTED_LINE_METADATA, ', '.join(unsupported_values))
+            importer.add_warning(IGNORED_INPUT_CATEGORY, UNSUPPORTED_LINE_METADATA,
+                                 ', '.join(unsupported_values))
 
         for combinatorial_input in parsed_row_inputs:
             combinatorial_input.fractional_time_digits = self.max_fractional_time_digits
@@ -491,7 +497,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         'col': get_column_letter(col_index+1),
                     }
                     is_error = self.REQUIRE_COL_HEADER_MATCH
-                    self.importer.add_issue(is_error, INVALID_COLUMN_HEADER, skipped)
+                    self.importer.add_issue(is_error, BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER,
+                                            skipped)
 
         # test whether we've located all the required columns
         found_col_labels = layout.line_name_col is not None
@@ -580,7 +587,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 else:
                     col_letter = get_column_letter(col_index+1)
                     logger.debug("""Column header suffix "%s" didn't match known metadata types""")
-                    self.importer.add_error(UNMATCHED_ASSAY_COL_HEADERS_KEY, col_letter)
+                    self.importer.add_error(BAD_FILE_CATEGORY,
+                                            UNMATCHED_ASSAY_COL_HEADERS_KEY, col_letter)
                     return True
 
     def _parse_line_metadata_header(self, column_layout, upper_content, col_index):
@@ -646,7 +654,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     'col': get_column_letter(layout.line_name_col + 1),
                 }
             )
-            self.importer.add_error(MISSING_REQUIRED_LINE_NAME, row_num)
+            self.importer.add_error(INVALID_FILE_VALUE_CATEGORY, MISSING_REQUIRED_LINE_NAME,
+                                    occurrence_detail=row_num)
 
         ###################################################
         # Line description
@@ -696,17 +705,19 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                             'value': str(cell_content), 'row': row_num,
                             'col': get_column_letter(layout.replicate_count_col + 1),
                         }
-                        self.importer.add_error(ZERO_REPLICATES, cell)
+                        self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, ZERO_REPLICATES, cell)
                 except ValueError:
                     message = '%(value)s (%(row)d%(col)s)' % {
                         'value': str(cell_content),
                         'row': row_num,
                         'col': get_column_letter(layout.replicate_count_col+1),
                     }
-                    self.importer.add_error(INVALID_REPLICATE_COUNT, message)
+                    self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, INVALID_REPLICATE_COUNT,
+                                            occurrence_detail=message)
             else:
                 row_inputs.replicate_count = 1
-                self.importer.add_warning(ROWS_MISSING_REPLICATE_COUNT, row_num)
+                self.importer.add_warning(IGNORED_INPUT_CATEGORY, ROWS_MISSING_REPLICATE_COUNT,
+                                          row_num)
 
         ###################################################
         # Strain part id(s)
@@ -752,7 +763,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         part_number_match = TYPICAL_ICE_PART_NUMBER_PATTERN.match(token)
 
                         if not part_number_match:
-                            self.importer.add_warning(PART_NUMBER_PATTERN_UNMATCHED_WARNING, token)
+                            self.importer.add_warning(PART_NUM_PATTERN_TITLE,
+                                                      PART_NUMBER_PATTERN_UNMATCHED_WARNING, token)
                             logger.warning(
                                 'Expected ICE part number(s) in template file row %(row_num)d, '
                                 'but "%(token)s" did not match the expected pattern. This is '
@@ -799,7 +811,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         row_num,
                         col_index,
                         line_metadata_pk,
-                        'incorrect_format'
+                        INVALID_FILE_VALUE_CATEGORY,
+                        UNPARSEABLE_COMBINATORIAL_VALUE,
                     )
                 else:
                     row_inputs.add_common_line_metadata(line_metadata_pk, cell_content)
@@ -827,8 +840,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 if col_index in layout.combinatorial_col_indices:
                     is_time = assay_metadata_type.pk == self.assay_time_metadata_type_pk
 
-                    error_key = ('incorrect_time_format' if is_time else
-                                 'combinatorial_parse_error')
+                    error_key = (INCORRECT_TIME_FORMAT if is_time else
+                                 UNPARSEABLE_COMBINATORIAL_VALUE)
                     parser = TIME_PARSER if is_time else RAW_STRING_PARSER
 
                     self._parse_combinatorial_input(
@@ -837,6 +850,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         row_num,
                         col_index,
                         assay_metadata_type.pk,
+                        INVALID_FILE_VALUE_CATEGORY,
                         error_key,
                         protocol,
                         parser
@@ -845,14 +859,14 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 else:
                     if row_inputs.has_assay_metadata_type(protocol.pk, assay_metadata_type.pk):
                         # TODO could improve this error content with a more complex data structure
-                        self.importer.add_error(
-                            DUPLICATE_ASSAY_METADATA,
-                            {
-                                'protocol_id': protocol.pk,
-                                'metadata_id': assay_metadata_type.pk,
-                                'column_letter': get_column_letter(col_index+1),
-                            }
-                        )
+                        self.importer.add_error(BAD_FILE_CATEGORY,
+                                                DUPLICATE_ASSAY_METADATA,
+                                                'col %(col_letter)s' % {
+                                                    # 'protocol_id': protocol.pk,
+                                                    # 'metadata_id': assay_metadata_type.pk,
+                                                    'col_letter': get_column_letter(
+                                                        col_index + 1),
+                                                })
                     row_inputs.add_common_assay_metadata(
                         protocol.pk,
                         assay_metadata_type.pk,
@@ -882,11 +896,11 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     'type': actual_type,
                     'value': cell_content,
                 }
-                self.importer.add_error(INVALID_CELL_FORMAT, msg)
+                self.importer.add_error(INVALID_FILE_VALUE_CATEGORY, INVALID_CELL_TYPE, msg)
                 return None
 
     def _parse_combinatorial_input(self, row_inputs, cell_content, row_num, col_index,
-                                   metadata_type_pk, error_key, protocol=None,
+                                   metadata_type_pk, error_category, error_key, protocol=None,
                                    value_parser=RAW_STRING_PARSER):
         """
         Parses the value of a single cell that may / may not have comma-separated combinatorial
@@ -920,17 +934,22 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     row_inputs.add_combinatorial_line_metadata(metadata_type_pk,
                                                                parsed_value)
             except ValueError:
-                col_letter = get_column_letter(col_index+1)
+                cell_num = '%(row_num)d%(col_letter)s' % {
+                    'row_num': row_num,
+                    'col_letter': get_column_letter(col_index+1)}
                 logger.warning(
-                    'ValueError parsing token "%(token)s" from cell content "%(cell)s" in '
-                    'row_num=%(row)d col_letter=%(col)s' % {
+                    'ValueError parsing token "%(token)s" from cell content "%(value)s" in '
+                    '%(cell)s' % {
                         'token': token,
-                        'cell': cell_content,
-                        'row': row_num,
-                        'col': col_letter,
+                        'value': cell_content,
+                        'cell': cell_num,
                     }
                 )
-                self.importer.add_error(error_key, (row_num, col_letter,))
+                bad_value = '%(token)s ((cell_num)s)' % {
+                    'token': token,
+                    'cell_num': cell_num,
+                }
+                self.importer.add_error(error_category, error_key, bad_value)
                 break
 
 
@@ -1034,7 +1053,8 @@ class JsonInputParser(CombinatorialInputParser):
                 naming_strategy.combinatorial_input = combo_input
                 combinatorial_inputs.append(combo_input)
             except RuntimeError as rte:
-                self.add_parse_error(str(rte))
+                logger.exception('Unexpected parse error')
+                self.importer.add_error(INTERNAL_EDD_ERROR_TITLE, PARSE_ERROR, str(rte))
 
         # verify primary key inputs from the JSON are for the expected MetaDataType context,
         # and that they exist, since there's no runtime checking for this at database item
@@ -1066,9 +1086,6 @@ class JsonInputParser(CombinatorialInputParser):
             combo_input.fractional_time_digits = max_decimal_digits
 
         return combinatorial_inputs
-
-    def add_parse_error(self, msg):
-        self.importer.add_error(PARSE_ERROR, msg)
 
 
 def _copy_to_numeric_elts(input_list):

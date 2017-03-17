@@ -3,25 +3,20 @@ from __future__ import unicode_literals
 
 import copy
 import logging
+from collections import defaultdict, OrderedDict, Sequence
 
 from arrow import utcnow
-from builtins import str
-from collections import defaultdict, OrderedDict, Sequence
-from django.conf import settings
 from django.db.models import Q
 from six import string_types
 
+from main.models import Strain, MetadataType, Line, Assay
 from .constants import (
     INVALID_ASSAY_META_PK,
     INVALID_AUTO_NAMING_INPUT,
     INVALID_LINE_META_PK,
     INVALID_PROTOCOL_META_PK,
-    NON_UNIQUE_STRAIN_UUIDS,
-    PARSE_ERROR,
-    SUSPECTED_MATCH_STRAINS,
-    UNMATCHED_PART_NUMBER,
-)
-from main.models import Strain, MetadataType, Line, Assay
+    NON_UNIQUE_STRAIN_UUIDS, SUSPECTED_MATCH_STRAINS,
+    UNMATCHED_PART_NUMBER, INTERNAL_EDD_ERROR_TITLE, ZERO_REPLICATES, BAD_GENERIC_INPUT_CATEGORY)
 
 
 logger = logging.getLogger(__name__)
@@ -244,12 +239,13 @@ class AutomatedNamingStrategy(NamingStrategy):
 
         for value in self.elements:
             if value not in self._valid_items:
-                importer.add_error(INVALID_AUTO_NAMING_INPUT, value)
+                importer.add_error(INTERNAL_EDD_ERROR_TITLE, INVALID_AUTO_NAMING_INPUT, value)
 
         if self.abbreviations:
             for abbreviated_element, replacements_dict in self.abbreviations.iteritems():
                 if abbreviated_element not in self.valid_items:
-                    importer.add_error(INVALID_AUTO_NAMING_INPUT, abbreviated_element)
+                    importer.add_error(INTERNAL_EDD_ERROR_TITLE, INVALID_AUTO_NAMING_INPUT,
+                                       abbreviated_element, '')
 
     def get_line_name(self, strain_pks, line_metadata, replicate_num, line_metadata_types,
                       combinatorial_metadata_types, is_control):
@@ -571,12 +567,9 @@ class CombinatorialDescriptionInput(object):
 
     @staticmethod
     def _verify_pk_keys(input_dict, reference_dict, importer, err_key):
-        for key in input_dict:
-            if key not in reference_dict:
-                importer.add_error(PARSE_ERROR, {'error_type': err_key, 'metadata_id': key})
-
-    def _invalid_meta_pk(self, for_context, pk):
-        raise NotImplementedError()  # TODO:
+        for id in input_dict:
+            if id not in reference_dict:
+                importer.add_error(INTERNAL_EDD_ERROR_TITLE, err_key, id)
 
     def compute_line_and_assay_names(self, study, line_metadata_types=None,
                                      assay_metadata_types=None, strains_by_pk=None):
@@ -698,7 +691,7 @@ class CombinatorialDescriptionInput(object):
 
     def _visit_new_lines_and_assays(self, study, strain_ids, line_metadata_dict, visitor):
         if self.replicate_count == 0:
-            self.importer.add_error(ZERO_REPLICATES, '')
+            self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, ZERO_REPLICATES)
         for replicate_num in range(1, self.replicate_count + 1):
             control_variants = [self.is_control]
             if isinstance(self.is_control, Sequence):
@@ -893,7 +886,8 @@ def find_existing_strains(ice_parts_by_number, importer):
             if len(found_strains_qs) == 1:
                 existing[ice_entry.part_id] = found_strains_qs.get()
             else:
-                importer.add_error(NON_UNIQUE_STRAIN_UUIDS, ice_entry.uuid)
+                importer.add_error(INTERNAL_EDD_ERROR_TITLE, NON_UNIQUE_STRAIN_UUIDS,
+                                   ice_entry.uuid, '')
         # if no EDD strains were found with this UUID, look for candidate strains by URL.
         # Code from here forward is attempted workarounds for EDD-158
         else:
@@ -912,20 +906,17 @@ def find_existing_strains(ice_parts_by_number, importer):
                 registry_url__iregex=url_regex % {'id': str(ice_entry.id)},
             )
             if found_strains_qs:
-                importer.add_error(SUSPECTED_MATCH_STRAINS, {
-                    'ice_entry': ice_entry,
-                    'suspected_matches': list(found_strains_qs),
-                })
+                importer.add_warning(INTERNAL_EDD_ERROR_TITLE, SUSPECTED_MATCH_STRAINS,
+                                     _build_suspected_match_msg(ice_entry, found_strains_qs))
                 continue
             # look for candidate strains by UUID-based URL
             found_strains_qs = Strain.objects.filter(
                 registry_url__iregex=(url_regex % {'id': str(ice_entry.uuid)})
             )
             if found_strains_qs:
-                importer.add_error(SUSPECTED_MATCH_STRAINS, {
-                    'ice_entry': ice_entry,
-                    'suspected_matches': list(found_strains_qs),
-                })
+                importer.add_warning(
+                        INTERNAL_EDD_ERROR_TITLE, SUSPECTED_MATCH_STRAINS,
+                        _build_suspected_match_msg(ice_entry, found_strains_qs))
                 continue
             # if no strains were found by URL, search by name
             empty_or_whitespace_regex = r'$\s*^'
@@ -938,9 +929,14 @@ def find_existing_strains(ice_parts_by_number, importer):
                 name__icontains=ice_entry.name,
             )
             if found_strains_qs:
-                importer.add_error(SUSPECTED_MATCH_STRAINS, {
-                    'ice_entry': ice_entry,
-                    'suspected_matches': list(found_strains_qs),
-                })
+                importer.add_warning(INTERNAL_EDD_ERROR_TITLE, SUSPECTED_MATCH_STRAINS,
+                                     _build_suspected_match_msg(ice_entry, found_strains_qs))
                 continue
     return existing, not_found
+
+
+def _build_suspected_match_msg(ice_entry, found_strains_qs):
+    return '{%(ice_entry)s, suspected matches = (%(suspected_matches)s)}' % {
+        'ice_entry': ice_entry,
+        'suspected_matches': ', '.join(strain.pk for strain in found_strains_qs),
+    }

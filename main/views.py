@@ -29,7 +29,7 @@ from rest_framework.exceptions import MethodNotAllowed
 from main.importer.experiment_desc.constants import (
     INTERNAL_SERVER_ERROR, UNPREDICTED_ERROR,
     ALLOW_DUPLICATE_NAMES_PARAM, IGNORE_ICE_RELATED_ERRORS_PARAM, BAD_REQUEST,
-    UNSUPPORTED_FILE_TYPE)
+    UNSUPPORTED_FILE_TYPE, BAD_FILE_CATEGORY)
 from main.importer.experiment_desc.importer import _build_response_content
 from . import autocomplete, models as edd_models, redis
 from .importer import (
@@ -1279,8 +1279,10 @@ def study_describe_experiment(request, pk=None, slug=None):
             logger.info('Parsing template file "%s"' % file_name)
 
         else:
+            summary = ErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE, file_type)
+            errors = { BAD_FILE_CATEGORY: summary}
             return JsonResponse(
-                    _build_response_content({UNSUPPORTED_FILE_TYPE: file_type}, {}),
+                    _build_response_content(errors, {}),
                     status=BAD_REQUEST)
     else:
         logger.info('Parsing request body as JSON input')

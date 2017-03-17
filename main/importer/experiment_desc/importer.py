@@ -6,7 +6,6 @@ import logging
 import traceback
 from collections import defaultdict, OrderedDict
 from io import BytesIO
-from pprint import pformat
 
 import requests
 from django.conf import settings
@@ -26,7 +25,10 @@ from .constants import (
     PART_NUMBER_NOT_FOUND, BAD_REQUEST, INTERNAL_SERVER_ERROR, OK, FORBIDDEN,
     FORBIDDEN_PART_KEY, GENERIC_ICE_RELATED_ERROR, IGNORE_ICE_RELATED_ERRORS_PARAM,
     ALLOW_DUPLICATE_NAMES_PARAM, NO_INPUT, DUPLICATE_INPUT_LINE_NAMES, DUPLICATE_INPUT_ASSAY_NAMES,
-    ZERO_REPLICATES)
+    ZERO_REPLICATES, EXISTING_LINE_NAMES, EXISTING_ASSAY_NAMES,
+    SYSTEMIC_ICE_ERROR_CATEGORY, NON_STRAIN_TITLE,
+    INTERNAL_EDD_ERROR_TITLE, SINGLE_PART_ACCESS_ERROR_CATEGORY, NAMING_OVERLAP_CATEGORY,
+    ERROR_PRIORITY_ORDER, WARNING_PRIORITY_ORDER, BAD_GENERIC_INPUT_CATEGORY)
 from .parsers import ExperimentDescFileParser, JsonInputParser, _InputFileRow
 from .utilities import (CombinatorialCreationPerformance, find_existing_strains)
 
@@ -111,22 +113,52 @@ def _build_response_content(errors, warnings, val=None):
     if val is None:
         val = {}
     if errors:
-        val[ERRORS_KEY] = _build_detail_string(errors)
+        val[ERRORS_KEY] = _build_prioritized_issue_list(errors, ERROR_PRIORITY_ORDER)
     if warnings:
-        val[WARNINGS_KEY] = _build_detail_string(warnings)
+        val[WARNINGS_KEY] = _build_prioritized_issue_list(warnings, WARNING_PRIORITY_ORDER)
     return val
 
 
-def _build_detail_string(summary_dict):
-    result = {}
-    for summary, details in summary_dict.iteritems():
-        if isinstance(details, list) or isinstance(details, tuple):
-            details_str = ', '.join([str(detail) for detail in details])
-        else:
-            details_str = str(details)
+def _build_prioritized_issue_list(src_dict, priority_reference):
+    result = []
 
-        result[summary] = details_str
+    for category, title_priority_order in priority_reference.iteritems():
+        title_to_summaries = src_dict.get(category, None)
+
+        if not title_to_summaries:
+            continue
+
+        for title in title_priority_order:
+            err_summary = title_to_summaries.get(title, None)
+
+            if not err_summary:
+                continue
+
+            result.append(err_summary.to_json_dict())
+
     return result
+
+
+class ImportErrorSummary(object):
+    """
+    Defines error/warning information captured during an actual or attempted import attempt.
+    Experiment Description file upload (and eventual combinatorial GUI) will be much easier to use
+    if the back end can aggregate some errors and return some or all of them at the same time.
+    """
+    def __init__(self, category_title, summary=''):
+        self.category_title = category_title
+        self.summary = summary
+        self._occurrence_details = []
+
+    def to_json_dict(self):
+        return {
+            'category': self.category_title,
+            'summary': self.summary,
+            'details':  ', '.join(self._occurrence_details) if self._occurrence_details else ''
+        }
+
+    def add_occurrence(self, occurrence_detail):
+        self._occurrence_details.append(str(occurrence_detail))
 
 
 class CombinatorialCreationImporter(object):
@@ -134,8 +166,10 @@ class CombinatorialCreationImporter(object):
     def __init__(self, study, user):
 
         self.performance = CombinatorialCreationPerformance()
-        self.errors = defaultdict(list)
-        self.warnings = defaultdict(list)
+
+        # maps title -> subtitle ->  occurrence details
+        self.errors = defaultdict(lambda: dict())
+        self.warnings = defaultdict(lambda: dict())
         self._input_summary = None
 
         self.exception_interrupted_ice_queries = False
@@ -174,17 +208,27 @@ class CombinatorialCreationImporter(object):
             return self.user.email
         return None
 
-    def add_issue(self, is_error, type, value):
+    def add_issue(self, is_error, title, subtitle, occurrence_detail):
         if is_error:
-            self.add_error(type, value)
+            self.add_error(title, subtitle, occurrence_detail)
         else:
-            self.add_warning(type, value)
+            self.add_warning(title, subtitle, occurrence_detail)
 
-    def add_error(self, error_type, error_value):
-        self.errors[error_type].append(error_value)
+    def add_error(self, category_title, subtitle='', occurrence_detail=None):
+        self._append_summary(self.errors, category_title, subtitle, occurrence_detail)
 
-    def add_warning(self, warning_type, warning_value):
-        self.warnings[warning_type].append(warning_value)
+    def add_warning(self, category_title, subtitle='', occurrence_detail=None):
+        self._append_summary(self.warnings, category_title, subtitle, occurrence_detail)
+
+    @staticmethod
+    def _append_summary(source, category_title, subtitle, occurrence_detail=None):
+        summary = source[category_title].get(subtitle)
+        if not summary:
+            summary = ImportErrorSummary(category_title, subtitle)
+            source[category_title][subtitle] = summary
+
+        if occurrence_detail:
+            summary.add_occurrence(occurrence_detail)
 
     def do_import(self, stream,
                   allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT,
@@ -230,7 +274,7 @@ class CombinatorialCreationImporter(object):
         self.performance.end_input_parse()
 
         if (not line_def_inputs) and (not self.errors):
-            self.add_error(NO_INPUT, '')
+            self.add_error(BAD_GENERIC_INPUT_CATEGORY, NO_INPUT)
 
         # if there were any file parse errors, return helpful output before attempting any
         # database insertions. Note: returning normally causes the transaction to commit, but that
@@ -389,11 +433,11 @@ class CombinatorialCreationImporter(object):
         ###########################################################################################
         created_lines_list = []
         total_assay_count = 0
-        for input_set in combinatorial_inputs:
+        for index, input_set in combinatorial_inputs:
 
             # test for
             if input_set.replicate_count == 0:
-                self.add_error(ZERO_REPLICATES, '')
+                self.add_error(BAD_GENERIC_INPUT_CATEGORY, ZERO_REPLICATES, index)
 
             creation_visitor = input_set.populate_study(
                 study,
@@ -520,7 +564,7 @@ class CombinatorialCreationImporter(object):
                     'rows_list': ', '.join(row_nums),
                 }
 
-            self.add_error(DUPLICATE_INPUT_LINE_NAMES, message)
+            self.add_error(NAMING_OVERLAP_CATEGORY, DUPLICATE_INPUT_LINE_NAMES, message)
 
         for protocol, duplicates in protocol_to_duplicate_new_assay_names.iteritems():
             for dupe in duplicates:
@@ -532,7 +576,7 @@ class CombinatorialCreationImporter(object):
                         'assay_name': dupe,
                         'rows_list': ', '.join(row_nums),
                     }
-                self.add_error(DUPLICATE_INPUT_ASSAY_NAMES, message)
+                self.add_error(NAMING_OVERLAP_CATEGORY, DUPLICATE_INPUT_ASSAY_NAMES, message)
 
         if duplicated_new_line_names or protocol_to_duplicate_new_assay_names:
             return all_planned_names
@@ -543,7 +587,7 @@ class CombinatorialCreationImporter(object):
         existing_lines = Line.objects.filter(study__pk=study.pk, name__in=unique_line_names_list)
 
         for existing in {line.name for line in existing_lines}:
-            self.add_error('existing_line_names', existing)
+            self.add_error(NAMING_OVERLAP_CATEGORY, EXISTING_LINE_NAMES, existing)
 
         # do a series of bulk queries to check for uniqueness of assay names within each protocol
         for protocol_pk, assay_names_list in protocol_to_unique_input_assay_names.iteritems():
@@ -553,7 +597,7 @@ class CombinatorialCreationImporter(object):
                 protocol__pk=protocol_pk
             )
             for existing in {assay.name for assay in existing_assays}:
-                self.add_error('existing_assay_names', existing)
+                self.add_error(NAMING_OVERLAP_CATEGORY, EXISTING_ASSAY_NAMES, existing)
 
         return all_planned_names
 
@@ -571,7 +615,8 @@ class CombinatorialCreationImporter(object):
             # for now, only allow strain creation in EDD -- non-strains are not currently
             # supported. see EDD-239.
             if not isinstance(ice_entry, IceStrain):
-                self.add_error(NON_STRAIN_ICE_ENTRY, ice_entry.part_id)
+                self.add_error(SINGLE_PART_ACCESS_ERROR_CATEGORY, NON_STRAIN_ICE_ENTRY,
+                               ice_entry.part_id)
                 continue
             strain = Strain.objects.create(
                 name=ice_entry.name,
@@ -631,7 +676,8 @@ class CombinatorialCreationImporter(object):
                     return
 
                 # aggregate errors that are helpful to detect on a per-part basis
-                self.add_issue(treat_as_error, FORBIDDEN_PART_KEY, local_ice_part_number)
+                self.add_issue(treat_as_error, SINGLE_PART_ACCESS_ERROR_CATEGORY, FORBIDDEN_PART_KEY,
+                               local_ice_part_number)
 
             if found_entry:
                 part_number_to_part[local_ice_part_number] = found_entry
@@ -648,11 +694,13 @@ class CombinatorialCreationImporter(object):
                             'list_position': list_position, 'numeric_id': found_entry.id,
                             'part_number': found_entry.part_id
                         })
-                    self.add_error(FOUND_PART_NUMBER_DOESNT_MATCH_QUERY, found_entry.part_id)
+                    self.add_error(INTERNAL_EDD_ERROR_TITLE, FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
+                                   found_entry.part_id)
 
             else:
                 # collect the full set of missing strains rather than failing after the first
-                self.add_issue(treat_as_error, PART_NUMBER_NOT_FOUND, local_ice_part_number)
+                self.add_issue(treat_as_error, SINGLE_PART_ACCESS_ERROR_CATEGORY,
+                               PART_NUMBER_NOT_FOUND, local_ice_part_number)
 
     def _handle_systemic_ice_error(self, ignore_ice_related_errors, part_numbers, ice_entries):
         """
@@ -676,14 +724,13 @@ class CombinatorialCreationImporter(object):
         # but also allows them to prevent creating inconsistencies that they'll have to resolve
         # later using more labor-intensive processes (e.g. potentially expensive manual line edits).
         if not ignore_ice_related_errors:
-            self.add_error(GENERIC_ICE_RELATED_ERROR,
-                           "%(base_message)s\n\n You can try again later, or proceed now and omit "
+            self.add_error(SYSTEMIC_ICE_ERROR_CATEGORY, GENERIC_ICE_RELATED_ERROR,
+                           "You can try again later, or proceed now and omit "
                            "strain data from new lines in your study. If you omit strain "
                            "data now, you'll have to manually edit your lines later after the "
                            "problem is fixed.  Depending on the experiment, manually filling in "
                            "the missing strain data later could be more work. \n\n"
-                           "Do you want to proceed without including the strains you used?" % {
-                               'base_message': base_message})
+                           "Do you want to proceed without including the strains you used?")
 
         # If user got feedback re: ICE communication errors and chose to proceed anyway,
         # build a descriptive warning message re: the error, then proceed with line/assay
@@ -707,7 +754,7 @@ class CombinatorialCreationImporter(object):
             else:
                 warn_msg = ('No lines created in this study could be associated with ICE '
                             'strains.')
-            self.add_warning(GENERIC_ICE_RELATED_ERROR, warn_msg)
+            self.add_warning(SYSTEMIC_ICE_ERROR_CATEGORY, GENERIC_ICE_RELATED_ERROR, warn_msg)
 
     def _notify_admins_of_systemic_ice_related_errors(self, ignore_ice_related_errors,
                                                       allow_duplicate_names, unique_part_numbers,
