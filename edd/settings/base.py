@@ -32,6 +32,8 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 # Custom EDD-defined configuration options
 ###################################################################################################
 
+EDD_VERSION_NUMBER = '2.0.3'
+
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
 # help prevent developers from accidentally altering data in production). Any value that starts
 # with the prefix "DEVELOPMENT" or "TEST" will change EDD's background color and print a the value
