@@ -57,10 +57,15 @@
             <div>
                 {{ form.password.label_tag }}
                 {{ form.password }}
+                 <div>
+                    <a class="forgotPassword" href="{% url 'account_reset_password' %}">Forgot password?</a>
+                </div>
             </div>
+
             <button id="id_click" type="submit">Login</button>
             <input type="hidden" name="next" value="{{ next }}"/>
         </fieldset>
+
         {% if socialaccount_providers %}
             <p>
                 {% blocktrans with site.name as site_name %}
