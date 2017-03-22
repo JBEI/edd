@@ -1,4 +1,5 @@
 from django import template
+from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 
 register = template.Library()
@@ -26,3 +27,8 @@ def stylesheet(context):
         # if there is no branding..do not show a logo
         stylesheet_url = ""
     return stylesheet_url
+
+
+@register.simple_tag()
+def edd_version_number():
+    return settings.EDD_VERSION_NUMBER
