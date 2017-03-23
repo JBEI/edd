@@ -670,14 +670,15 @@ class CombinatorialCreationImporter(object):
                 # Note this test only covers the error conditions known to be produced by
                 # ICE, not all the possible HTTP error codes we could handle more explicitly. Also
                 # note that 404 is handled above in get_entry().
-                if http_err.response.status_code != FORBIDDEN:
+                if http_err.response.status_code == FORBIDDEN:
+                    # aggregate errors that are helpful to detect on a per-part basis
+                    self.add_issue(treat_as_error, SINGLE_PART_ACCESS_ERROR_CATEGORY, FORBIDDEN_PART_KEY,
+                                   local_ice_part_number)
+                    continue
+                else:
                     self._handle_systemic_ice_error(ignore_ice_related_errors,
                                                     part_numbers, part_number_to_part)
                     return
-
-                # aggregate errors that are helpful to detect on a per-part basis
-                self.add_issue(treat_as_error, SINGLE_PART_ACCESS_ERROR_CATEGORY, FORBIDDEN_PART_KEY,
-                               local_ice_part_number)
 
             if found_entry:
                 part_number_to_part[local_ice_part_number] = found_entry
