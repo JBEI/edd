@@ -62,8 +62,8 @@ ASSAY_META_CAPITALIZATION_ONLY_DIFFERENCE = ('Found some assay metadata types th
                                              'case. Case-insensitive matching in parsing code will '
                                              'arbitrarily choose one')
 UNSUPPORTED_LINE_METADATA = 'Unsupported line metadata'
-ROWS_MISSING_REPLICATE_COUNT = 'Missing replicate count (assumed 1 line)'
 IGNORED_INPUT_CATEGORY = 'User input ignored'
+ROWS_MISSING_REPLICATE_COUNT = 'Rows missing replicate count (assumed 1 line)'
 
 ####################################################################################################
 # Self/client consistency checks.  Experiment Description code is written defensively to help to

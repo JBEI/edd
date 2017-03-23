@@ -497,8 +497,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         'col': get_column_letter(col_index+1),
                     }
                     is_error = self.REQUIRE_COL_HEADER_MATCH
-                    self.importer.add_issue(is_error, BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER,
-                                            skipped)
+                    self.importer.add_issue(is_error, BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER, skipped)
 
         # test whether we've located all the required columns
         found_col_labels = layout.line_name_col is not None
