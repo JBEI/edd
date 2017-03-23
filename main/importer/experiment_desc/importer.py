@@ -433,7 +433,7 @@ class CombinatorialCreationImporter(object):
         ###########################################################################################
         created_lines_list = []
         total_assay_count = 0
-        for index, input_set in combinatorial_inputs:
+        for index, input_set in enumerate(combinatorial_inputs):
 
             # test for
             if input_set.replicate_count == 0:
