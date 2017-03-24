@@ -34,7 +34,7 @@ PK_OR_TYPICAL_UUID_PATTERN = re.compile(PK_OR_TYPICAL_UUID_REGEX, re.UNICODE)
 # necessary to use part numbers for simplicity in user input, or this pattern to test the
 # format of user input (e.g. in URLs). This pattern was exhaustively
 # tested against existing ICE entries in JBEI's private ICE instance on 3/31/16.
-TYPICAL_JBEI_ICE_PART_NUMBER_REGEX = r'\s*([A-Z]+_[A-Z]?\d{4,6}[A-Z]?)\s*'
+TYPICAL_JBEI_ICE_PART_NUMBER_REGEX = r'^\s*([A-Z]+_[A-Z]?\d{4,6}[A-Z]?)\s*$'
 TYPICAL_JBEI_ICE_PART_NUMBER_PATTERN = re.compile(
     TYPICAL_JBEI_ICE_PART_NUMBER_REGEX, re.IGNORECASE
 )

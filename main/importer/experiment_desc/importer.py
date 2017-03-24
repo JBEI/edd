@@ -122,7 +122,8 @@ def _build_response_content(errors, warnings, val=None):
 def _build_prioritized_issue_list(src_dict, priority_reference):
     result = []
 
-    for category, title_priority_order in priority_reference.iteritems():
+    # loop over defined priority order, including issues in the defined order
+    for category, title_priority_order in priority_reference.items():
         title_to_summaries = src_dict.get(category, None)
 
         if not title_to_summaries:
@@ -134,7 +135,22 @@ def _build_prioritized_issue_list(src_dict, priority_reference):
             if not err_summary:
                 continue
 
+            del title_to_summaries[title]
             result.append(err_summary.to_json_dict())
+
+    # review any items that didn't were missing from the defined order (likely due to code
+    # maintenance. Add them at the top to attract attention, then print a warning log message
+    for category, unprioritized_titles in src_dict.items():
+        for title, err_summary in unprioritized_titles.items():
+            result.insert(0, err_summary.to_json_dict())
+            logger.warning('Including un-prioritized issue (category="%(category)s", '
+                           'title="%(title)s") at the top of the list. This issue '
+                           'should be explicitly-defined in the priority order for user review.'
+                           % {
+                                'category': category,
+                                'title': title,
+                           })
+
 
     return result
 

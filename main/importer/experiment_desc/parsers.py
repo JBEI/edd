@@ -510,6 +510,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # return the columns found in this row if at least the
         # minimum required columns were found
         if found_col_labels:
+            logger.debug('Done with read_column_layout()')
             return layout
 
         return None
@@ -628,11 +629,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 singular_regex = _TYPE_NAME_REGEX % {
                     'type_name': upper_type_name, 'units': meta_type.postfix
                 }
-                logger.info('Testing column header "%(upper_content)s" against regex "%(regex)s"' %
-                            {
-                                'upper_content': upper_content,
-                                'regex': singular_regex,
-                            })
                 result = (meta_type if re.match(singular_regex, upper_content, re.IGNORECASE)
                           else None)
             # otherwise, check whether the column header exactly matches the type name
@@ -805,8 +801,10 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         part_number_match = TYPICAL_ICE_PART_NUMBER_PATTERN.match(token)
 
                         if not part_number_match:
+                            quoted_content = '"%s"' % token
                             self.importer.add_warning(PART_NUM_PATTERN_TITLE,
-                                                      PART_NUMBER_PATTERN_UNMATCHED_WARNING, token)
+                                                      PART_NUMBER_PATTERN_UNMATCHED_WARNING,
+                                                      quoted_content)
                             logger.warning(
                                 'Expected ICE part number(s) in template file row %(row_num)d, '
                                 'but "%(token)s" did not match the expected pattern. This is '
@@ -828,6 +826,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         individual_strain_ids = []
                     elif individual_strain_ids:
                         row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
+                else:
+                    logger.error('No part ID tokens found in "%s"' % cell_content)
 
         ###################################################
         # line metadata
@@ -929,7 +929,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         else:
             actual_type = type(cell_content).__name__
             if convert_to_string:
-                logger.warning('Converted non-string data of type %s to string' % actual_type)
                 return str(cell_content)
             else:
                 msg = '%(row)d%(col)s (value: %(value)s, type: %(type)s)' % {
