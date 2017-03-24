@@ -11,9 +11,10 @@ var ExperimentDescriptionHelp;
     var loadedProtocols = false;
     // Metadata types present in the database that should be omitted from the lists displayed
     // in the help page... they duplicate baked-in line/assay characteristics displayed in a
-    // separate table.
+    // separate table or required in slightly different form by the Experiment Description file
+    // format.
     var omitLineMetadataTypes = ['Line Name', 'Line Description', 'Line Contact',
-        'Line Experimenter'];
+        'Line Experimenter', 'Strain(s)'];
     var omitAssayMetadataTypes = ['Assay Description', 'Assay Experimenter', 'Assay Name'];
     // As soon as the window load signal is sent, call back to the server for the set of reference
     // records that will be used to disambiguate labels in imported data.
@@ -153,29 +154,45 @@ var ExperimentDescriptionHelp;
             });
         }
         else {
-            div.text('No protocols were found.');
+            div.val('No protocols were found.');
         }
     }
     function showMetadataTypes(divSelector, metadataTypes, omitFromDisplay) {
-        var div, list;
+        /* TODO: consider merging with showProtocols() above IF the back-end MetadataType class gets
+           refactored to use the Unit class and to have a description. */
+        var table, head, body, div;
         div = $(divSelector)
             .empty();
         if (metadataTypes) {
-            list = $('<ol>')
+            table = $('<table>')
+                .addClass('figureTable')
                 .addClass('metadataList')
                 .appendTo(div);
+            head = $('<thead>').appendTo(table);
+            $('<th>')
+                .text('Name')
+                .appendTo(head);
+            $('<th>')
+                .text('Units')
+                .appendTo(head);
+            body = $('<tbody>')
+                .appendTo(table);
             metadataTypes.forEach(function (metadataType) {
-                var typeName, omit;
+                var typeName, unitsStr, omit, row;
                 typeName = metadataType['type_name'];
                 // omit items included in the 'primary characteristics' table
                 omit = omitFromDisplay.indexOf(typeName) >= 0;
                 if (omit) {
                     return true;
                 }
-                $('<li>')
-                    .text(metadataType['type_name'])
-                    .appendTo(list);
-                return true; // keep looping
+                row = $('<tr>').appendTo(body);
+                $('<td>')
+                    .text(typeName)
+                    .appendTo(row);
+                unitsStr = metadataType['postfix'];
+                $('<td>')
+                    .text(unitsStr)
+                    .appendTo(row);
             });
         }
         else {

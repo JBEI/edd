@@ -15,9 +15,10 @@ module ExperimentDescriptionHelp {
 
     // Metadata types present in the database that should be omitted from the lists displayed
     // in the help page... they duplicate baked-in line/assay characteristics displayed in a
-    // separate table.
+    // separate table or required in slightly different form by the Experiment Description file
+    // format.
     var omitLineMetadataTypes = ['Line Name', 'Line Description', 'Line Contact',
-        'Line Experimenter'];
+        'Line Experimenter', 'Strain(s)'];
 
     var omitAssayMetadataTypes = ['Assay Description', 'Assay Experimenter', 'Assay Name'];
 
@@ -190,23 +191,41 @@ module ExperimentDescriptionHelp {
                     .appendTo(row);
             });
         } else {
-            div.text('No protocols were found.');
+            div.val('No protocols were found.');
         }
     }
 
     function showMetadataTypes(divSelector:string, metadataTypes:any[],
                                omitFromDisplay:string[]): void {
-        var div:JQuery, list:JQuery;
+        /* TODO: consider merging with showProtocols() above IF the back-end MetadataType class gets
+           refactored to use the Unit class and to have a description. */
+
+        var table:JQuery, head: JQuery, body:JQuery, div:JQuery;
         div = $(divSelector)
                 .empty();
 
         if(metadataTypes) {
-            list = $('<ol>')
+
+            table = $('<table>')
+                .addClass('figureTable')
                 .addClass('metadataList')
                 .appendTo(div);
 
+            head = $('<thead>').appendTo(table);
+
+            $('<th>')
+                .text('Name')
+                .appendTo(head);
+
+            $('<th>')
+                .text('Units')
+                .appendTo(head);
+
+            body = $('<tbody>')
+                .appendTo(table);
+
             metadataTypes.forEach((metadataType: any): boolean => {
-                var typeName:string, omit:boolean;
+                 var typeName:string, unitsStr:string, omit:boolean, row:JQuery;
                 typeName = metadataType['type_name'];
 
                 // omit items included in the 'primary characteristics' table
@@ -215,11 +234,15 @@ module ExperimentDescriptionHelp {
                     return true;
                 }
 
-                $('<li>')
-                    .text(metadataType['type_name'])
-                    .appendTo(list);
+                row = $('<tr>').appendTo(body);
+                $('<td>')
+                    .text(typeName)
+                    .appendTo(row);
 
-                return true;  // keep looping
+                unitsStr = metadataType['postfix'];
+                $('<td>')
+                    .text(unitsStr)
+                    .appendTo(row);
             });
         } else {
             div.val('No metadata types were found.')
