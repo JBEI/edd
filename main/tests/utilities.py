@@ -22,7 +22,7 @@ simple_experiment_def_xlsx = os.path.join(fixtures_dir, 'sample_experiment_descr
 class CombinatorialCreationTests(TestCase):
     """
     Defines automated integration tests for most of the supporting back-end code for experiment
-    definition file upload and combinatorial line creation (processes are very similar/based on the
+    description file upload and combinatorial line creation (processes are very similar/based on the
     same code)
     """
 
@@ -489,7 +489,7 @@ class CombinatorialCreationTests(TestCase):
         A simplified integration test that exercises much of the EDD code responsible for
         combinatorial line creation based on a simplified input (just creating replicates for a
         single line with some metadata using a known strain).  Test inputs in this example
-        roughly correspond to the sample experement definition file attached to EDD-380)
+        roughly correspond to the sample expirement description file attached to EDD-380)
 
         Testing the full code path for EDD's experiment description file support requires having
         a corresponding ICE deployment to use as part of the test, so it's not addressed here.
@@ -539,7 +539,7 @@ class CombinatorialCreationTests(TestCase):
             is_excel_file=False,
         )
 
-    def test_basic_experiment_definition_xlsx(self):
+    def test_basic_experiment_description_xlsx(self):
 
         strain, _ = Strain.objects.get_or_create(name='JW0111')
         study = Study.objects.create(name='Unit Test Study')

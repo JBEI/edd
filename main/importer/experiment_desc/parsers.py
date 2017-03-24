@@ -55,7 +55,9 @@ _TIME_VALUE_REGEX = r'^\s*(\d+(?:\.\d+)?)\s*h\s*$'
 _TIME_VALUE_PATTERN = re.compile(_TIME_VALUE_REGEX, re.IGNORECASE)
 
 # tests whether the input string ends with 's' or '(s)'
-_PLURALIZED_REGEX = r'^%s(?:S|\(S\))$'
+_OPT_UNIT_SUFFIX = r'(?:\s*(?:\(%(units)s\)|%(units)s))?'
+_TYPE_NAME_REGEX = r'^%(type_name)s' + _OPT_UNIT_SUFFIX + '$'
+_PLURALIZED_REGEX = r'^%(type_name)s(?:S|\(S\))' + _OPT_UNIT_SUFFIX + '$'
 
 
 class _AssayMetadataValueParser(object):
@@ -299,7 +301,9 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             for protocol_pk, protocol in protocols_by_pk.iteritems()
         }
 
-        # build dicts that map each metadata type name -> MetaDataType to simplify parsing
+        # build dicts that map each metadata type name -> MetaDataType to simplify parsing.
+        # TODO: revisit these with latest parsing code...may be unnecessary following regex-based
+        # parsing improvements
         self.line_metadata_types_by_name = {
             meta.type_name.upper(): meta
             for pk, meta in line_metadata_types_by_pk.iteritems()
@@ -471,7 +475,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
             # check whether the column label matches custom data defined in the database
             else:
-                upper_content = cell_content.upper()
+                upper_content = cell_content.upper().strip()
 
                 # test whether this column is protocol-prefixed assay metadata
                 assay_meta_type = self._parse_assay_metadata_header(
@@ -492,9 +496,10 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # if we couldn't process this column, track a warning that describes
                 # dropped columns (can be displayed later in the UI)
                 if line_metadata_type is None:
-                    skipped = '%(title)s (%(col)s)' % {
+                    col = 'column %s' % get_column_letter(col_index+1)
+                    skipped = '"%(title)s" (%(column)s)' % {
                         'title': cell_content,
-                        'col': get_column_letter(col_index+1),
+                        'column': col,
                     }
                     is_error = self.REQUIRE_COL_HEADER_MATCH
                     self.importer.add_issue(is_error, BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER, skipped)
@@ -533,12 +538,26 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # loop over assay metadata types, testing for an assay metadata suffix in the
                 # column header
                 ################################################################################
-                for assay_metadata_type in self.assay_metadata_types_by_name.itervalues():
+                for upper_type_name, assay_metadata_type in \
+                    self.assay_metadata_types_by_name.items():
 
-                    # look for an exact match
-                    suffix_meta_type = self.assay_metadata_types_by_name.get(assay_meta_suffix,
-                                                                             None)
+                    # if this type has units, check whether column header matches the type name
+                    # with an optional unit suffix
+                    if assay_metadata_type.postfix:
+                        singular_regex = _TYPE_NAME_REGEX % {
+                            'type_name': upper_type_name,
+                            'units': assay_metadata_type.postfix
+                        }
+                        suffix_meta_type = assay_metadata_type if re.match(
+                                singular_regex, assay_meta_suffix, re.IGNORECASE) else None
+                    # otherwise, check whether the column header exactly matches the type name
+                    # (case-insensitive)
+                    else:
+                        # look for an exact match
+                        suffix_meta_type = (assay_metadata_type
+                                            if assay_meta_suffix == upper_type_name else None)
 
+                    # if we've found the assay metadata type for this column, stop looking
                     if suffix_meta_type is not None:
                         layout = self.column_layout
                         layout.register_assay_meta_column(
@@ -550,10 +569,14 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         )
                         break
 
-                    # if no exact match is found look for a pluralized version of the metadata
+                    # if the column header didn't match the assay metadata type in its
+                    # raw form, look for a pluralized version of the metadata
                     # type name. Pluralization indicates the contents should be treated as a
                     # comma-delimited list of combinatorial metadata values
-                    meta_regex = _PLURALIZED_REGEX % re.escape(assay_metadata_type.type_name)
+                    meta_regex = _PLURALIZED_REGEX % {
+                        'type_name': re.escape(assay_metadata_type.type_name),
+                        'units': re.escape(assay_metadata_type.postfix)
+                    }
                     pluralized_match = re.match(meta_regex, assay_meta_suffix, re.IGNORECASE)
 
                     if pluralized_match:
@@ -594,27 +617,47 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         """
         :return: the line MetadataType if one was found or None otherwise
         """
-
-        line_metadata_types = self.line_metadata_types_by_name
-
-        # test whether the cell content matches the name of a line metadata type
-        line_metadata_type = line_metadata_types.get(upper_content, None)
-        if line_metadata_type is not None:
-            column_layout.set_line_metadata_type(col_index, line_metadata_type)
-            return line_metadata_type
+        result = None
 
         # if we didn't find the singular form of the column header as line metadata, look
         # for a pluralized version that we'll treat as combinatorial line creation input
-        for upper_metadata_type_name, meta_type in line_metadata_types.items():
+        for upper_type_name, meta_type in self.line_metadata_types_by_name.items():
 
-            meta_regex = _PLURALIZED_REGEX % upper_metadata_type_name
+            # check whether column header matches the type name with an optional unit suffix
+            if meta_type.postfix:
+                singular_regex = _TYPE_NAME_REGEX % {
+                    'type_name': upper_type_name, 'units': meta_type.postfix
+                }
+                logger.info('Testing column header "%(upper_content)s" against regex "%(regex)s"' %
+                            {
+                                'upper_content': upper_content,
+                                'regex': singular_regex,
+                            })
+                result = (meta_type if re.match(singular_regex, upper_content, re.IGNORECASE)
+                          else None)
+            # otherwise, check whether the column header exactly matches the type name
+            # (case-insensitive)
+            else:
+                # look for an exact match
+                result = (
+                    meta_type if upper_content == upper_type_name else None)
+
+            if result is not None:
+                column_layout.set_line_metadata_type(col_index, result)
+                return result
+
+            # if we didn't find a singular version of the column header, check for a pluralized
+            # version, which indicates that cell values should be treated as combinatorial input
+            meta_regex = _PLURALIZED_REGEX % {
+                'type_name': re.escape(meta_type.type_name),
+                'units': re.escape(meta_type.postfix)
+            }
             pluralized_match = re.match(meta_regex, upper_content)
 
             if pluralized_match:
-                line_metadata_type = meta_type
-                column_layout.set_line_metadata_type(col_index, line_metadata_type,
-                                                     is_combinatorial=True)
-                return line_metadata_type
+                result = meta_type
+                column_layout.set_line_metadata_type(col_index, result, is_combinatorial=True)
+                return result
 
         return None
 
