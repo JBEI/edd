@@ -10,12 +10,11 @@ import tempfile
 from builtins import str
 from django.conf import settings
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, SuspiciousOperation, ValidationError
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
-from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect
 from django.template import RequestContext
 from django.template.defaulttags import register
@@ -239,6 +238,10 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         )
         return False
 
+    def _check_write_permission(self, request):
+        if not self.object.user_can_write(request.user):
+            raise PermissionDenied(_("You do not have permission to modify this study."))
+
 
 class StudyUpdateView(generic.edit.BaseUpdateView, StudyDetailBaseView):
     """ View used to handle POST to update single Study fields. """
@@ -444,20 +447,40 @@ class StudyLinesView(StudyDetailBaseView):
         return False
 
     def handle_enable(self, request, context, *args, **kwargs):
-        return self.handle_enable_disable(request, 'enable')
+        return self.handle_enable_disable(request, True, **kwargs)
+
+    def handle_delete_line(self, request, context, *args, **kwargs):
+        """ Sends to a view to confirm deletion. """
+        self._check_write_permission(request)
+        return StudyDeleteView.as_view()
 
     def handle_disable(self, request, context, *args, **kwargs):
-        return self.handle_enable_disable(request, 'disable')
+        return self.handle_enable_disable(request, False, **kwargs)
 
-    def handle_enable_disable(self, request, line_action):
-        ids = request.POST.getlist('lineId', [])
-        study = self.get_object()
-        active = line_action == 'enable'
-        count = Line.objects.filter(study=study, id__in=ids).update(active=active)
-        messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
-        return True
+    def handle_enable_disable(self, request, active, **kwargs):
+        self._check_write_permission(request)
+        form = ExportSelectionForm(data=request.POST, user=request.user, exclude_disabled=False)
+        if form.is_valid():
+            print("~~~ %d measurements ~~~" % (form.selection.measurements.count(), ))
+            if not active and form.selection.measurements.count() == 0:
+                # true deletion only if there are zero measurements!
+                count, details = form.selection.lines.delete()
+                count = details[Line._meta.label]
+            else:
+                count = form.selection.lines.update(active=active)
+            messages.success(
+                request,
+                _('%(action)s %(count)d Lines') % {
+                    'action': 'Restored' if active else 'Deleted',
+                    'count': count,
+                }
+            )
+            return True
+        messages.error(request, _('Failed to validate selection.'))
+        return False
 
     def handle_group(self, request, context, *args, **kwargs):
+        self._check_write_permission(request)
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
         if len(ids) > 1:
@@ -465,10 +488,11 @@ class StudyLinesView(StudyDetailBaseView):
             count = Line.objects.filter(study=study, pk__in=ids).update(replicate_id=first)
             messages.success(request, 'Grouped %s Lines' % count)
             return True
-        messages.error(request, 'Must select more than one Line to group.')
+        messages.error(request, _('Must select more than one Line to group.'))
         return False
 
     def handle_line(self, request, context, *args, **kwargs):
+        self._check_write_permission(request)
         ids = [v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '']
         if len(ids) == 0:
             return self.handle_line_new(request, context)
@@ -488,9 +512,9 @@ class StudyLinesView(StudyDetailBaseView):
             return self._get_export_types().get(export_type, ExportView.as_view())
         # but not edit
         elif not can_write:
-            messages.error(request, 'You do not have permission to modify this study.')
+            messages.error(request, _('You do not have permission to modify this study.'))
         else:
-            messages.error(request, 'Unknown line action %s' % (line_action))
+            messages.error(request, _('Unknown line action %s') % (line_action))
         return form_valid
 
     def handle_line_bulk(self, request, ids):
@@ -498,7 +522,6 @@ class StudyLinesView(StudyDetailBaseView):
         total = len(ids)
         saved = 0
         for value in ids:
-            logger.info('\tprocessing line bulk edit for %s', value)
             line = self._get_line(value)
             if line:
                 form = LineForm(request.POST, instance=line, prefix='line', study=study)
@@ -509,11 +532,13 @@ class StudyLinesView(StudyDetailBaseView):
                 else:
                     for error in form.errors.values():
                         messages.warning(request, error)
-                    logger.info('Errors: %s', form.errors)
-        messages.success(request, 'Saved %(saved)s of %(total)s Lines' % {
-            'saved': saved,
-            'total': total,
-            })
+        messages.success(
+            request,
+            _('Saved %(saved)s of %(total)s Lines') % {
+                'saved': saved,
+                'total': total,
+            }
+        )
         return True
 
     def handle_line_edit(self, request, context, pk):
@@ -524,17 +549,27 @@ class StudyLinesView(StudyDetailBaseView):
             context['new_line'] = form
             if form.is_valid():
                 form.save()
-                messages.success(request, "Saved Line '%(name)s'" % {'name': form['name'].value()})
+                messages.success(
+                    request,
+                    _("Saved Line '%(name)s'") % {
+                        'name': form['name'].value(),
+                    }
+                )
                 return True
         else:
-            messages.error(request, 'Failed to load line for editing.')
+            messages.error(request, _('Failed to load line for editing.'))
         return False
 
     def handle_line_new(self, request, context):
         form = LineForm(request.POST, prefix='line', study=self.get_object())
         if form.is_valid():
             form.save()
-            messages.success(request, "Added Line '%(name)s'" % {'name': form['name'].value()})
+            messages.success(
+                request,
+                _("Added Line '%(name)s'") % {
+                    'name': form['name'].value(),
+                }
+            )
             return True
         else:
             context['new_line'] = form
@@ -555,7 +590,8 @@ class StudyLinesView(StudyDetailBaseView):
             'assay': self.handle_assay,
             'clone': self.handle_clone,
             'enable': self.handle_enable,
-            'disable': self.handle_disable,
+            'disable': self.handle_delete_line,
+            'delete_confirm': self.handle_disable,
             'group': self.handle_group,
             'line': self.handle_line,
             'measurement': self.handle_measurement,
@@ -835,6 +871,24 @@ class StudyDetailView(StudyDetailBaseView):
         except Assay.DoesNotExist:
             logger.warning('Failed to load assay,study combo %s,%s' % (assay_id, study.pk))
         return None
+
+
+class StudyDeleteView(StudyLinesView):
+    """ Confirmation view for deleting objects from a Study. """
+    template_name = 'main/study-delete-confirm.html'
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        self._check_write_permission(request)
+        action = request.POST.get('action', None)
+        form = ExportSelectionForm(data=request.POST, user=request.user, exclude_disabled=False)
+        context = self.get_context_data()
+        context['select_form'] = form
+        if "disable" == action:
+            context['typename'] = Line._meta.verbose_name.title()
+            context['item_names'] = [l.name for l in form.selection.lines]
+        # TODO: another action for deletion of studies
+        return self.render_to_response(context)
 
 
 class EDDExportView(generic.TemplateView):
@@ -1143,8 +1197,7 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
-        if not self.object.user_can_write(request.user):
-            return HttpResponseForbidden("You do not have permission to modify this study.")
+        self._check_write_permission(request)
         try:
             perms = json.loads(request.POST.get('data', '[]'))
             # make requested changes as a group, or not at all
@@ -1161,8 +1214,7 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
-        if not self.object.user_can_write(request.user):
-            return HttpResponseForbidden("You do not have permission to modify this study.")
+        self._check_write_permission(request)
         try:
             # make requested changes as a group, or not at all
             with transaction.atomic():
@@ -1173,6 +1225,10 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
             logger.exception('Error deleting study (%s) permissions: %s', self.object, e)
             return HttpResponse(status=500)
         return HttpResponse(status=204)
+
+    def _check_write_permission(self, request):
+        if not self.object.user_can_write(request.user):
+            raise PermissionDenied(_("You do not have permission to modify this study."))
 
     def _handle_permission_update(self, permission_def):
         ptype = permission_def.get('type', None)
@@ -1636,7 +1692,7 @@ def data_carbonsources(request):
 def download(request, file_id):
     model = Attachment.objects.get(pk=file_id)
     if not model.user_can_read(request.user):
-        return HttpResponseForbidden("You do not have access to data associated with this study.")
+        raise PermissionDenied(_("You do not have access to data associated with this study."))
     response = HttpResponse(model.file.read(), content_type=model.mime_type)
     response['Content-Disposition'] = 'attachment; filename="%s"' % model.filename
     return response
@@ -1646,11 +1702,11 @@ def download(request, file_id):
 def delete_file(request, file_id):
     redirect_url = request.GET.get("redirect", None)
     if redirect_url is None:
-        return HttpResponseBadRequest("Missing redirect URL.")
+        raise SuspiciousOperation(_("Missing redirect URL."))
     model = Attachment.objects.get(pk=file_id)
     if not model.user_can_delete(request.user):
-        return HttpResponseForbidden(
-            "You do not have permission to remove files associated with this study.")
+        raise PermissionDenied(_("You do not have permission to remove files associated with "
+                                 "this study."))
     model.delete()
     return redirect(redirect_url)
 

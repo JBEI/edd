@@ -22,34 +22,38 @@ logger = logging.getLogger(__name__)
 class ExportSelectionForm(forms.Form):
     """ Form used for selecting objects to export. """
     studyId = forms.ModelMultipleChoiceField(
-        queryset=Study.objects.filter(active=True),
+        queryset=Study.objects.all(),
         required=False,
         widget=forms.MultipleHiddenInput
     )
     lineId = forms.ModelMultipleChoiceField(
-        queryset=Line.objects.filter(active=True),
+        queryset=Line.objects.all(),
         required=False,
         widget=forms.MultipleHiddenInput
     )
     assayId = forms.ModelMultipleChoiceField(
-        queryset=Assay.objects.filter(active=True),
+        queryset=Assay.objects.all(),
         required=False,
         widget=forms.MultipleHiddenInput
     )
     measurementId = forms.ModelMultipleChoiceField(
-        queryset=Measurement.objects.filter(active=True),
+        queryset=Measurement.objects.all(),
         required=False,
         widget=forms.MultipleHiddenInput
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, user=None, exclude_disabled=True, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
-        self._user = kwargs.pop('user', None)
+        self._user = user
+        self._exclude_disabled = exclude_disabled
         if self._user is None:
             raise ValueError("ExportSelectionForm requires a user parameter")
         self._selection = None
         super(ExportSelectionForm, self).__init__(*args, **kwargs)
+        if exclude_disabled:
+            for fn in ['studyId', 'lineId', 'assayId', 'measurementId']:
+                self.fields[fn].queryset = self.fields[fn].queryset.filter(active=True)
 
     def clean(self):
         data = super(ExportSelectionForm, self).clean()
@@ -58,7 +62,10 @@ class ExportSelectionForm(forms.Form):
         lineId = data.get('lineId', [])
         assayId = data.get('assayId', [])
         measureId = data.get('measurementId', [])
-        self._selection = table.ExportSelection(self._user, studyId, lineId, assayId, measureId)
+        self._selection = table.ExportSelection(
+            self._user, exclude_disabled=self._exclude_disabled,
+            studyId=studyId, lineId=lineId, assayId=assayId, measureId=measureId,
+        )
         return data
 
     def get_selection(self):

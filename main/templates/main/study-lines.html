@@ -71,7 +71,7 @@
         <button id="editButton"
                 class="actionButton {% if not writable or not lines %}off{% endif %}"
                 disabled="true"
-                title="Edit selected lines">
+                title="Edit selected Lines">
             Edit
         </button>
         <button id="cloneButton"
@@ -80,7 +80,7 @@
                 name="action"
                 disabled="true"
                 value="clone"
-                title="Clone selected lines">
+                title="Clone selected Lines">
             Clone
         </button>
         <button id="groupButton"
@@ -89,14 +89,14 @@
                 disabled="true"
                 name="action"
                 value="group"
-                title="Group selected lines as replicates">
+                title="Group selected Lines as replicates">
             Group
         </button>
         <button id="addAssayButton"
                 class="actionButton {% if not writable or not lines %}off{% endif %}"
                 type="button"
                 disabled="true"
-                title="Add an assay to selected lines">
+                title="Add an assay to selected Lines">
             Add Assay
         </button>
         <button id="disableButton"
@@ -105,8 +105,8 @@
                 name="action"
                 value="disable"
                 disabled="true"
-                title="Disable selected lines">
-            Disable
+                title="Delete selected Lines">
+            Delete
         </button>
         <button id="enableButton"
                 class="actionButton off"
@@ -114,8 +114,8 @@
                 name="action"
                 value="enable"
                 disabled="true"
-                title="Re-enable selected lines">
-            Re-Enable
+                title="Restore selected Lines">
+            Restore
         </button>
     </div>
     <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">

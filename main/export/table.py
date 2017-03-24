@@ -79,19 +79,29 @@ class EmptyChoice(ColumnChoice):
 
 class ExportSelection(object):
     """ Object used for selecting objects for export. """
-    def __init__(self, user, studyId=[], lineId=[], assayId=[], measureId=[]):
+    def __init__(self, user, exclude_disabled=True,
+                 studyId=[], lineId=[], assayId=[], measureId=[]):
         # cannot import these at top-level
         from main.models import Assay, CarbonSource, Line, Measurement, Strain, Study
+
+        def Q_active(**kwargs):
+            """ Conditionally returns a QuerySet Q filter if exclude_disabled flag is set. """
+            if exclude_disabled:
+                return Q(**kwargs)
+            return Q()
+
         # check studies linked to incoming IDs for permissions
         matched_study = Study.objects.filter(
-            Q(pk__in=studyId, active=True) |
-            Q(line__in=lineId, line__active=True) |
-            Q(line__assay__in=assayId, line__assay__active=True) |
-            Q(line__assay__measurement__in=measureId, line__assay__measurement__active=True)
+            (Q(pk__in=studyId) & Q_active(active=True)) |
+            (Q(line__in=lineId) & Q_active(line__active=True)) |
+            (Q(line__assay__in=assayId) & Q_active(line__assay__active=True)) |
+            (Q(line__assay__measurement__in=measureId) &
+             Q_active(line__assay__measurement__active=True))
         ).distinct(
         ).prefetch_related(
             'userpermission_set',
             'grouppermission_set',
+            'everyonepermission_set',
         )
         self._allowed_study = [s for s in matched_study if s.user_can_read(user)]
         # load all matching measurements
@@ -100,9 +110,9 @@ class ExportSelection(object):
             Q(assay__line__study__in=self._allowed_study),
             # OR grouping finds measurements under one of passed-in parameters
             Q(assay__line__study__in=studyId) |
-            Q(assay__line__in=lineId, assay__line__active=True) |
-            Q(assay__in=assayId, assay__active=True) |
-            Q(pk__in=measureId, active=True),
+            (Q(assay__line__in=lineId) & Q_active(assay__line__active=True)) |
+            (Q(assay__in=assayId) & Q_active(assay__active=True)) |
+            (Q(pk__in=measureId) & Q_active(active=True)),
         ).order_by(
             'assay__protocol_id'
         ).select_related(
@@ -119,9 +129,9 @@ class ExportSelection(object):
         )
         self._assays = Assay.objects.filter(
             Q(line__study__in=self._allowed_study),
-            Q(line__in=lineId, line__active=True) |
-            Q(pk__in=assayId, active=True) |
-            Q(measurement__in=measureId, measurement__active=True),
+            (Q(line__in=lineId) & Q_active(line__active=True)) |
+            (Q(pk__in=assayId) & Q_active(active=True)) |
+            (Q(measurement__in=measureId) & Q_active(measurement__active=True)),
         ).distinct(
         ).select_related(
             'protocol',
@@ -129,9 +139,9 @@ class ExportSelection(object):
         self._lines = Line.objects.filter(
             Q(study__in=self._allowed_study),
             Q(study__in=studyId) |
-            Q(pk__in=lineId, active=True) |
-            Q(assay__in=assayId, assay__active=True) |
-            Q(assay__measurement__in=measureId, assay__measurement__active=True),
+            (Q(pk__in=lineId) & Q_active(active=True)) |
+            (Q(assay__in=assayId) & Q_active(assay__active=True)) |
+            (Q(assay__measurement__in=measureId) & Q_active(assay__measurement__active=True)),
         ).distinct(
         ).select_related(
             'experimenter__userprofile', 'updated',
