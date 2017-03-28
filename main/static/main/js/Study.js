@@ -1,4 +1,5 @@
 /// <reference path="typescript-declarations.d.ts" />
+/// <reference path="EDDEditableElement.ts" />
 /// <reference path="Utl.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -9,11 +10,6 @@ var __extends = (this && this.__extends) || function (d, b) {
 var StudyBase;
 (function (StudyBase) {
     'use strict';
-    // Called when the page loads.
-    function prepareIt() {
-        new EditableStudyName($('#editable-study-name').get()[0]);
-    }
-    StudyBase.prepareIt = prepareIt;
     // Base class for the non-autocomplete inline editing fields for the Study
     var EditableStudyElement = (function (_super) {
         __extends(EditableStudyElement, _super);
@@ -27,14 +23,12 @@ var StudyBase;
     StudyBase.EditableStudyElement = EditableStudyElement;
     var EditableStudyName = (function (_super) {
         __extends(EditableStudyName, _super);
-        function EditableStudyName() {
-            _super.apply(this, arguments);
+        function EditableStudyName(inputElement) {
+            _super.call(this, inputElement);
+            this.formURL('/study/' + EDDData.currentStudyID + '/rename/');
         }
         EditableStudyName.prototype.canCommit = function (value) {
             return EDDData.currentStudyWritable && (this.getEditedValue() != '');
-        };
-        EditableStudyName.prototype.getFormURL = function () {
-            return '/study/' + EDDData.currentStudyID + '/rename/';
         };
         EditableStudyName.prototype.getValue = function () {
             return EDDData.Studies[EDDData.currentStudyID].name;
@@ -48,6 +42,11 @@ var StudyBase;
         return EditableStudyName;
     }(EditableStudyElement));
     StudyBase.EditableStudyName = EditableStudyName;
+    // Called when the page loads.
+    function prepareIt() {
+        new EditableStudyName($('#editable-study-name').get()[0]);
+    }
+    StudyBase.prepareIt = prepareIt;
 })(StudyBase || (StudyBase = {}));
 ;
 // use JQuery ready event shortcut to call prepareIt when page is ready

@@ -1,7 +1,11 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="Utl.ts" />
+/// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="Dragboxes.ts" />
 /// <reference path="DataGrid.ts" />
+/// <reference path="EDDAutocomplete.ts" />
+/// <reference path="EDDEditableElement.ts" />
+/// <reference path="Study.ts" />
+/// <reference path="Utl.ts" />
 
 declare var EDDData:EDDData;
 
@@ -17,68 +21,11 @@ module StudyOverview {
     var fileUploadProgressBar: Utl.ProgressBar;
 
     // We can have a valid metabolic map but no valid biomass calculation.
-    // If they try to show carbon balance in that case, we'll bring up the UI to 
+    // If they try to show carbon balance in that case, we'll bring up the UI to
     // calculate biomass for the specified metabolic map.
     export var metabolicMapID:any;
     export var metabolicMapName:any;
     export var biomassCalculation:number;
-
-
-    // Called when the page loads.
-    export function prepareIt() {
-
-        this.attachmentIDs = null;
-        this.attachmentsByID = null;
-        this.prevDescriptionEditElement = null;
-
-        this.metabolicMapID = -1;
-        this.metabolicMapName = null;
-        this.biomassCalculation = -1;
-
-        new EditableStudyContact($('#editable-study-contact').get()[0]);
-        new EditableStudyDescription($('#editable-study-description').get()[0]);
-
-        // put the click handler at the document level, then filter to any link inside a .disclose
-        $(document).on('click', '.disclose .discloseLink', (e) => {
-            $(e.target).closest('.disclose').toggleClass('discloseHide');
-            return false;
-        });
-
-        $('#helpExperimentDescription').tooltip({
-            content: function () {
-                return $(this).prop('title');
-            },
-            position: { my: "left-10 center", at: "right center" },
-            show: null,
-            close: function (event, ui:any) {
-                ui.tooltip.hover(
-                function () {
-                    $(this).stop(true).fadeTo(400, 1);
-                },
-                function () {
-                    $(this).fadeOut("400", function () {
-                        $(this).remove();
-                    })
-                });
-            }
-        });
-
-        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
-
-        Utl.FileDropZone.create({
-            elementId: "templateDropZone",
-            fileInitFn: this.fileDropped.bind(this),
-            processRawFn: this.fileRead.bind(this),
-            url: '/study/' + EDDData.currentStudyID + '/define/',
-            processResponseFn: this.fileReturnedFromServer.bind(this),
-            processErrorFn: this.fileErrorReturnedFromServer.bind(this),
-            progressBar: this.fileUploadProgressBar
-        });
-
-        Utl.Tabs.prepareTabs();
-
-        $(window).on('load', preparePermissions);
-    }
 
 
     // This is called upon receiving a response from a file upload operation, and unlike
@@ -305,13 +252,12 @@ module StudyOverview {
 
     export class EditableStudyDescription extends StudyBase.EditableStudyElement {
 
-        constructor(inputElement: HTMLElement) {        
+        minimumRows: number;
+
+        constructor(inputElement: HTMLElement) {
             super(inputElement);
             this.minimumRows = 4;
-        }
-
-        getFormURL(): string {
-            return '/study/' + EDDData.currentStudyID + '/setdescription/';
+            this.formURL('/study/' + EDDData.currentStudyID + '/setdescription/')
         }
 
         getValue():string {
@@ -330,13 +276,14 @@ module StudyOverview {
 
     export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
 
+        constructor(inputElement: HTMLElement) {
+            super(inputElement);
+            this.formURL('/study/' + EDDData.currentStudyID + '/setcontact/');
+        }
+
         // Have to reproduce these here rather than using EditableStudyElement because the inheritance is different
         editAllowed(): boolean { return EDDData.currentStudyWritable; }
         canCommit(value): boolean { return EDDData.currentStudyWritable; }
-
-        getFormURL(): string {
-            return '/study/' + EDDData.currentStudyID + '/setcontact/';
-        }
 
         getValue():string {
             return EDDData.Studies[EDDData.currentStudyID].contact;
@@ -345,6 +292,63 @@ module StudyOverview {
         setValue(value) {
             EDDData.Studies[EDDData.currentStudyID].contact = value;
         }
+    }
+
+
+    // Called when the page loads.
+    export function prepareIt() {
+
+        this.attachmentIDs = null;
+        this.attachmentsByID = null;
+        this.prevDescriptionEditElement = null;
+
+        this.metabolicMapID = -1;
+        this.metabolicMapName = null;
+        this.biomassCalculation = -1;
+
+        new EditableStudyContact($('#editable-study-contact').get()[0]);
+        new EditableStudyDescription($('#editable-study-description').get()[0]);
+
+        // put the click handler at the document level, then filter to any link inside a .disclose
+        $(document).on('click', '.disclose .discloseLink', (e) => {
+            $(e.target).closest('.disclose').toggleClass('discloseHide');
+            return false;
+        });
+
+        $('#helpExperimentDescription').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-10 center", at: "right center" },
+            show: null,
+            close: function (event, ui:any) {
+                ui.tooltip.hover(
+                function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                },
+                function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    })
+                });
+            }
+        });
+
+        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
+
+        Utl.FileDropZone.create({
+            elementId: "templateDropZone",
+            fileInitFn: this.fileDropped.bind(this),
+            processRawFn: this.fileRead.bind(this),
+            url: '/study/' + EDDData.currentStudyID + '/define/',
+            processResponseFn: this.fileReturnedFromServer.bind(this),
+            processErrorFn: this.fileErrorReturnedFromServer.bind(this),
+            progressBar: this.fileUploadProgressBar
+        });
+
+        Utl.Tabs.prepareTabs();
+
+        $(window).on('load', preparePermissions);
     }
 };
 

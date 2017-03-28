@@ -1,7 +1,11 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="Utl.ts" />
+/// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="Dragboxes.ts" />
 /// <reference path="DataGrid.ts" />
+/// <reference path="EDDAutocomplete.ts" />
+/// <reference path="EDDEditableElement.ts" />
+/// <reference path="Study.ts" />
+/// <reference path="Utl.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -15,51 +19,6 @@ var StudyOverview;
     var prevDescriptionEditElement;
     var activeDraggedFile;
     var fileUploadProgressBar;
-    // Called when the page loads.
-    function prepareIt() {
-        this.attachmentIDs = null;
-        this.attachmentsByID = null;
-        this.prevDescriptionEditElement = null;
-        this.metabolicMapID = -1;
-        this.metabolicMapName = null;
-        this.biomassCalculation = -1;
-        new EditableStudyContact($('#editable-study-contact').get()[0]);
-        new EditableStudyDescription($('#editable-study-description').get()[0]);
-        // put the click handler at the document level, then filter to any link inside a .disclose
-        $(document).on('click', '.disclose .discloseLink', function (e) {
-            $(e.target).closest('.disclose').toggleClass('discloseHide');
-            return false;
-        });
-        $('#helpExperimentDescription').tooltip({
-            content: function () {
-                return $(this).prop('title');
-            },
-            position: { my: "left-10 center", at: "right center" },
-            show: null,
-            close: function (event, ui) {
-                ui.tooltip.hover(function () {
-                    $(this).stop(true).fadeTo(400, 1);
-                }, function () {
-                    $(this).fadeOut("400", function () {
-                        $(this).remove();
-                    });
-                });
-            }
-        });
-        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
-        Utl.FileDropZone.create({
-            elementId: "templateDropZone",
-            fileInitFn: this.fileDropped.bind(this),
-            processRawFn: this.fileRead.bind(this),
-            url: '/study/' + EDDData.currentStudyID + '/define/',
-            processResponseFn: this.fileReturnedFromServer.bind(this),
-            processErrorFn: this.fileErrorReturnedFromServer.bind(this),
-            progressBar: this.fileUploadProgressBar
-        });
-        Utl.Tabs.prepareTabs();
-        $(window).on('load', preparePermissions);
-    }
-    StudyOverview.prepareIt = prepareIt;
     // This is called upon receiving a response from a file upload operation, and unlike
     // fileRead(), is passed a processed result from the server as a second argument,
     // rather than the raw contents of the file.
@@ -268,10 +227,8 @@ var StudyOverview;
         function EditableStudyDescription(inputElement) {
             _super.call(this, inputElement);
             this.minimumRows = 4;
+            this.formURL('/study/' + EDDData.currentStudyID + '/setdescription/');
         }
-        EditableStudyDescription.prototype.getFormURL = function () {
-            return '/study/' + EDDData.currentStudyID + '/setdescription/';
-        };
         EditableStudyDescription.prototype.getValue = function () {
             return EDDData.Studies[EDDData.currentStudyID].description;
         };
@@ -286,15 +243,13 @@ var StudyOverview;
     StudyOverview.EditableStudyDescription = EditableStudyDescription;
     var EditableStudyContact = (function (_super) {
         __extends(EditableStudyContact, _super);
-        function EditableStudyContact() {
-            _super.apply(this, arguments);
+        function EditableStudyContact(inputElement) {
+            _super.call(this, inputElement);
+            this.formURL('/study/' + EDDData.currentStudyID + '/setcontact/');
         }
         // Have to reproduce these here rather than using EditableStudyElement because the inheritance is different
         EditableStudyContact.prototype.editAllowed = function () { return EDDData.currentStudyWritable; };
         EditableStudyContact.prototype.canCommit = function (value) { return EDDData.currentStudyWritable; };
-        EditableStudyContact.prototype.getFormURL = function () {
-            return '/study/' + EDDData.currentStudyID + '/setcontact/';
-        };
         EditableStudyContact.prototype.getValue = function () {
             return EDDData.Studies[EDDData.currentStudyID].contact;
         };
@@ -304,6 +259,51 @@ var StudyOverview;
         return EditableStudyContact;
     }(EDDEditable.EditableAutocomplete));
     StudyOverview.EditableStudyContact = EditableStudyContact;
+    // Called when the page loads.
+    function prepareIt() {
+        this.attachmentIDs = null;
+        this.attachmentsByID = null;
+        this.prevDescriptionEditElement = null;
+        this.metabolicMapID = -1;
+        this.metabolicMapName = null;
+        this.biomassCalculation = -1;
+        new EditableStudyContact($('#editable-study-contact').get()[0]);
+        new EditableStudyDescription($('#editable-study-description').get()[0]);
+        // put the click handler at the document level, then filter to any link inside a .disclose
+        $(document).on('click', '.disclose .discloseLink', function (e) {
+            $(e.target).closest('.disclose').toggleClass('discloseHide');
+            return false;
+        });
+        $('#helpExperimentDescription').tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-10 center", at: "right center" },
+            show: null,
+            close: function (event, ui) {
+                ui.tooltip.hover(function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                }, function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    });
+                });
+            }
+        });
+        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
+        Utl.FileDropZone.create({
+            elementId: "templateDropZone",
+            fileInitFn: this.fileDropped.bind(this),
+            processRawFn: this.fileRead.bind(this),
+            url: '/study/' + EDDData.currentStudyID + '/define/',
+            processResponseFn: this.fileReturnedFromServer.bind(this),
+            processErrorFn: this.fileErrorReturnedFromServer.bind(this),
+            progressBar: this.fileUploadProgressBar
+        });
+        Utl.Tabs.prepareTabs();
+        $(window).on('load', preparePermissions);
+    }
+    StudyOverview.prepareIt = prepareIt;
 })(StudyOverview || (StudyOverview = {}));
 ;
 // use JQuery ready event shortcut to call prepareIt when page is ready
