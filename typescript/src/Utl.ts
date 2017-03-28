@@ -52,6 +52,14 @@ module Utl {
 		}
 
 
+		static findCSRFToken(): string {
+			if (jQuery.cookie) {
+				return jQuery.cookie('csrftoken');
+			}
+			return jQuery('input[name=csrfmiddlewaretoken]').val() || '';
+		}
+
+
 		// Helper function to do a little more prep on objects when calling jQuery's Alax handler.
 		// If options contains "data", it is assumed to be a constructed formData object.
 		// If options contains a "rawdata" object, it is assumed to be a standard key-value collection
@@ -73,7 +81,7 @@ module Utl {
 			if (debug) { console.log('Calling ' + url); }
 			var headers = {};
 			if (type == 'POST') {
-				headers["X-CSRFToken"] = jQuery.cookie('csrftoken');
+				headers["X-CSRFToken"] = EDD.findCSRFToken();
 			}
 			$.ajax({
 				xhr: function() {
@@ -258,9 +266,9 @@ module Utl {
 
 		static interpolate(clr1:Color, clr2:Color, t:number) : Color {
 			return Color.rgba(
-				clr1.r + (clr2.r - clr1.r) * t, 
-				clr1.g + (clr2.g - clr1.g) * t, 
-				clr1.b + (clr2.b - clr1.b) * t, 
+				clr1.r + (clr2.r - clr1.r) * t,
+				clr1.g + (clr2.g - clr1.g) * t,
+				clr1.b + (clr2.b - clr1.b) * t,
 				clr1.a + (clr2.a - clr1.a) * t
 			);
 		}
@@ -349,7 +357,7 @@ module Utl {
 		    }
 		}
 
-		
+
 		static convertHashToList(hash:any):any {
 			return Object.keys(hash).map( function(a) {return hash[a];} );
 		}
@@ -670,7 +678,7 @@ module Utl {
 
 			var z = new FileDrop(options.elementId, {});	// filedrop-min.js , http://filedropjs.org
 			this.zone = z;
-			this.csrftoken = jQuery.cookie('csrftoken');
+			this.csrftoken = EDD.findCSRFToken();
 			if (!(typeof options.multiple === "undefined")) {
 				z.multiple(options.multiple);
 			} else {
@@ -860,7 +868,7 @@ module Utl {
 
 		static createLine(x1:number, y1:number, x2:number, y2:number, color?:Color, width?:number):SVGElement {
     		var el = <SVGElement>document.createElementNS(SVG._namespace, 'line');
-			
+
 			el.setAttribute('x1', x1.toString());
 			el.setAttribute('y1', y1.toString());
 			el.setAttribute('x2', x2.toString());
