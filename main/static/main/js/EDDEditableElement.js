@@ -105,11 +105,9 @@ var EDDEditable;
             return '(click to set)';
         };
         EditableElement.prototype.fillFormData = function (fd) {
-            var form = $(this.inputElement).closest('form');
-            var token = form.length ? form.find('[name=csrfmiddlewaretoken]').val() : '';
-            var value = this.getEditedValue();
-            fd.append('csrfmiddlewaretoken', token);
-            fd.append('value', value);
+            // look for a CSRF token anywhere in the page
+            fd.append('csrfmiddlewaretoken', $('input[name=csrfmiddlewaretoken]').val());
+            fd.append('value', this.getEditedValue());
             return fd;
         };
         EditableElement.prototype.formURL = function (url) {

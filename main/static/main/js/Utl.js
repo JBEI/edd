@@ -48,6 +48,12 @@ var Utl;
             }
             return mUnits;
         };
+        EDD.findCSRFToken = function () {
+            if (jQuery.cookie) {
+                return jQuery.cookie('csrftoken');
+            }
+            return jQuery('input[name=csrfmiddlewaretoken]').val() || '';
+        };
         // Helper function to do a little more prep on objects when calling jQuery's Alax handler.
         // If options contains "data", it is assumed to be a constructed formData object.
         // If options contains a "rawdata" object, it is assumed to be a standard key-value collection
@@ -71,7 +77,7 @@ var Utl;
             }
             var headers = {};
             if (type == 'POST') {
-                headers["X-CSRFToken"] = jQuery.cookie('csrftoken');
+                headers["X-CSRFToken"] = EDD.findCSRFToken();
             }
             $.ajax({
                 xhr: function () {
@@ -583,7 +589,7 @@ var Utl;
             window.fd.logging = false;
             var z = new FileDrop(options.elementId, {}); // filedrop-min.js , http://filedropjs.org
             this.zone = z;
-            this.csrftoken = jQuery.cookie('csrftoken');
+            this.csrftoken = EDD.findCSRFToken();
             if (!(typeof options.multiple === "undefined")) {
                 z.multiple(options.multiple);
             }
