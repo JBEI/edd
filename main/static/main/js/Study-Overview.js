@@ -224,8 +224,8 @@ var StudyOverview;
     StudyOverview.onClickedMetabolicMapName = onClickedMetabolicMapName;
     var EditableStudyDescription = (function (_super) {
         __extends(EditableStudyDescription, _super);
-        function EditableStudyDescription(inputElement) {
-            _super.call(this, inputElement);
+        function EditableStudyDescription(inputElement, style) {
+            _super.call(this, inputElement, style);
             this.minimumRows = 4;
             this.formURL('/study/' + EDDData.currentStudyID + '/setdescription/');
         }
@@ -243,8 +243,8 @@ var StudyOverview;
     StudyOverview.EditableStudyDescription = EditableStudyDescription;
     var EditableStudyContact = (function (_super) {
         __extends(EditableStudyContact, _super);
-        function EditableStudyContact(inputElement) {
-            _super.call(this, inputElement);
+        function EditableStudyContact(inputElement, style) {
+            _super.call(this, inputElement, style);
             this.formURL('/study/' + EDDData.currentStudyID + '/setcontact/');
         }
         // Have to reproduce these here rather than using EditableStudyElement because the inheritance is different

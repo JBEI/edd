@@ -434,8 +434,8 @@ var EDDEditable;
     EDDEditable.EditableElement = EditableElement;
     var EditableAutocomplete = (function (_super) {
         __extends(EditableAutocomplete, _super);
-        function EditableAutocomplete(inputElement) {
-            _super.call(this, inputElement);
+        function EditableAutocomplete(inputElement, style) {
+            _super.call(this, inputElement, style);
             this.autoCompleteObject = null;
         }
         EditableAutocomplete.prototype.setUpMainElement = function () {

@@ -13,8 +13,8 @@ var StudyBase;
     // Base class for the non-autocomplete inline editing fields for the Study
     var EditableStudyElement = (function (_super) {
         __extends(EditableStudyElement, _super);
-        function EditableStudyElement() {
-            _super.apply(this, arguments);
+        function EditableStudyElement(inputElement, style) {
+            _super.call(this, inputElement, style);
         }
         EditableStudyElement.prototype.editAllowed = function () { return EDDData.currentStudyWritable; };
         EditableStudyElement.prototype.canCommit = function (value) { return EDDData.currentStudyWritable; };

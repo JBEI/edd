@@ -254,8 +254,8 @@ module StudyOverview {
 
         minimumRows: number;
 
-        constructor(inputElement: HTMLElement) {
-            super(inputElement);
+        constructor(inputElement: HTMLElement, style?: string) {
+            super(inputElement, style);
             this.minimumRows = 4;
             this.formURL('/study/' + EDDData.currentStudyID + '/setdescription/')
         }
@@ -276,8 +276,8 @@ module StudyOverview {
 
     export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
 
-        constructor(inputElement: HTMLElement) {
-            super(inputElement);
+        constructor(inputElement: HTMLElement, style?: string) {
+            super(inputElement, style);
             this.formURL('/study/' + EDDData.currentStudyID + '/setcontact/');
         }
 

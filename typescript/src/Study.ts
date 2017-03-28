@@ -11,6 +11,9 @@ module StudyBase {
 
     // Base class for the non-autocomplete inline editing fields for the Study
     export class EditableStudyElement extends EDDEditable.EditableElement {
+        constructor(inputElement: HTMLElement, style?: string) {
+            super(inputElement, style);
+        }
 
         editAllowed(): boolean { return EDDData.currentStudyWritable; }
         canCommit(value): boolean { return EDDData.currentStudyWritable; }

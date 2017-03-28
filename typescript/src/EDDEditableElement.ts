@@ -548,8 +548,8 @@ module EDDEditable {
         autoCompleteObject:EDDAuto.BaseAuto;
 
 
-        constructor(inputElement: HTMLElement) {
-            super(inputElement);
+        constructor(inputElement: HTMLElement, style?: string) {
+            super(inputElement, style);
             this.autoCompleteObject = null;
         }
 
