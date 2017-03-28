@@ -27,12 +27,6 @@
     {{ block.super }}
 {% endblock head_title %}
 
-{% block body_prefix %}
-    {{ block.super }}
-<form action="" class="noMargins" method="POST">
-    {% csrf_token %}
-{% endblock body_prefix %}
-
 {% block body_title %}
     {{ block.super }}
 {% endblock body_title %}
@@ -205,11 +199,6 @@
 <div id="mainFilterSection" class="filteringSection">
 </div>
 
-{% endblock content %}
-
-{% block body_postfix %}
-</form>
-
 <div id="addMeasurement" class="off" title="Add Measurements To Selected Assays">
     <form action="" method="POST">
         {% csrf_token %}
@@ -226,5 +215,4 @@
     </form>
 </div>
 
-    {{ block.super }}
-{% endblock body_postfix %}
+{% endblock content %}

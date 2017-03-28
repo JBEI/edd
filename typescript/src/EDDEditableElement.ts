@@ -14,12 +14,15 @@ module EDDEditable {
     // pre-existing input elements, we need a way to specify the default value.
     export class EditableElement {
 
+        static _uniqueIndex = 1;
+        static _prevEditableElement:any = null;
+
         parentElement:HTMLElement;
         element:HTMLElement;
         elementJQ:JQuery;
 
-        static _uniqueIndex = 1;
         id:string;
+        private _formURL: string;
 
         inputElement:any;
         editButtonElement:HTMLElement;
@@ -34,8 +37,6 @@ module EDDEditable {
         // so whe can ".off" the event using the reference.
         keyESCHandler: any;
         keyEnterHandler: any;
-
-        static _prevEditableElement:any = null;
 
 
         // This constructor accepts a pre-existing editable element, in the form of
@@ -159,10 +160,14 @@ module EDDEditable {
         }
 
 
-        // Default behavior is to submit to the same place that the enclosing form does.
-        getFormURL(): string {
-            var form = $(this.inputElement).closest('form');
-            return form.length ? form.attr('action') : '';
+        formURL(): string;
+        formURL(url: string): EditableElement;
+        formURL(url?: string): string | EditableElement {
+            if (url === undefined) {
+                return this._formURL || '';
+            }
+            this._formURL = url;
+            return this;
         }
 
 
@@ -427,7 +432,7 @@ module EDDEditable {
             var formData = this.fillFormData(new FormData());
 
             Utl.EDD.callAjax({
-                'url': this.getFormURL(),
+                'url': this.formURL(),
                 'type': 'POST',
                 'cache': false,
                 'debug': debug,

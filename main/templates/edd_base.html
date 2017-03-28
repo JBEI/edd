@@ -39,8 +39,6 @@
                 {% elif request.edd_deployment|slice:":4" == "TEST" %} #fff0f2
                 {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %} #fff6e5
                 {% endif %}">
-{% block body_prefix %}
-{% endblock body_prefix %}
 <div class="mainFlex">
     <div id="content" class="content">
         <div class="topBanner">
@@ -115,7 +113,5 @@
         {% endblock top_help %}
         </span>
     </div>
-{% block body_postfix %}
-{% endblock body_postfix %}
 </body>
 </html>

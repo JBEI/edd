@@ -20,12 +20,6 @@
     {{ block.super }}
 {% endblock head_title %}
 
-{% block body_prefix %}
-    {{ block.super }}
-<form action="" class="noMargins" method="POST">
-    {% csrf_token %}
-{% endblock body_prefix %}
-
 {% block body_title %}
     {{ block.super }}
 {% endblock body_title %}
@@ -128,10 +122,6 @@
         </button>
     </div>
 </div>
-{% endblock content %}
-
-{% block body_postfix %}
-</form>
 
 <div id="editLineModal" title="Add new line"
         class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
@@ -183,6 +173,4 @@
         <button type="submit" name="action" value="line_action">Take Action</button>
     </form>
 </div>
-
-    {{ block.super }}
-{% endblock body_postfix %}
+{% endblock content %}

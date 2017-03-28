@@ -30,17 +30,6 @@
     {{ study.name }} - Experiment Data Depot
 {% endblock head_title %}
 
-{% block body_prefix %}
-    {% comment %}
-    The the 'Lines' and 'data' Study pages declare a form here that starts outside the main
-    flex structure and ecapsulates most of the page, including the title area where the Study name
-    is edited and the bottom bar. The 'Overview' page cannot do this, since its lower sections
-    need their own forms, but it still needs to encapsulate the title, so we set it up
-    differently. This difference is why we can't move the form up into study.html.
-    {% endcomment %}
-    {{ block.super }}
-{% endblock body_prefix %}
-
 {% block body_title %}
 <div class="editable-field inactive editableStudyName" id="editable-study-name">
     {{ study.name }}
@@ -75,7 +64,3 @@
 </div>
 
 {% endblock content %}
-
-{% block body_postfix %}
-    {{ block.super }}
-{% endblock body_postfix %}
