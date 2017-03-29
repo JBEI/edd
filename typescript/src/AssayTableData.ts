@@ -2544,6 +2544,11 @@ module EDDTableImport {
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
 
+            // put the click handler at the document level, then filter to any link inside a .disclose
+            $(document).on('click', '.disclose .discloseLink', (e) => {
+                $(e.target).closest('.disclose').toggleClass('discloseHide');
+                return false;
+            });
             // remove toggle buttons and labels dynamically added for some subsections
             // (easier than leaving them in place)
             $('.' + TypeDisambiguationStep.STEP_4_TOGGLE_SUBSECTION_CLASS).remove();
@@ -2709,12 +2714,17 @@ module EDDTableImport {
                 nColumns:number,
                 nControls:number,
                 nRows:number,
-                parentDiv: JQuery,
+                parentDivDisambiguate: JQuery,
+                parentDivMatched: JQuery,
                 requiredInputText: string,
-                table: HTMLTableElement,
-                tableBody: HTMLTableElement,
+                tableDisambiguate: HTMLTableElement,
+                tableMatched: HTMLTableElement,
+                tableBodyDisambiguate: HTMLTableElement,
+                tableBodyMatched: HTMLTableElement,
                 uniqueAssayNames,
-                totalRowCreationSeconds: number;
+                totalRowCreationSeconds: number,
+                childDivDisambiguate: JQuery,
+                childDivMatched: JQuery;
 
             // gather up inputs from this and previous steps
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
@@ -2726,6 +2736,7 @@ module EDDTableImport {
             });
             this.currentlyVisibleAssayObjSets = [];
             $('#disambiguateAssaysTable').remove();
+            $('#matchedAssaysSection').remove();
             this.assayObjSets = {};
 
             //end early if there's nothing to display in this section
@@ -2734,7 +2745,10 @@ module EDDTableImport {
                 return;
             }
 
-            parentDiv = $('#disambiguateAssaysSection');
+            parentDivDisambiguate = $('#disambiguateAssaysSection');
+            childDivDisambiguate =  $('#disambiguateAssaysSectionBody');
+            parentDivMatched = $('#matchedAssaysSection');
+            childDivMatched = $('#matchedAssaysSectionBody');
 
             if (uniqueAssayNames.length === 0) {
                 $('#masterAssayLineDiv').removeClass('off');
@@ -2742,22 +2756,32 @@ module EDDTableImport {
             }
 
             requiredInputText = 'At least one valid assay / line combination is required.';
-            this.addRequiredInputLabel(parentDiv, requiredInputText);
+            this.addRequiredInputLabel(parentDivDisambiguate, requiredInputText);
 
             if(uniqueAssayNames.length > this.TOGGLE_ALL_THREASHOLD) {
-                this.addToggleAllButton(parentDiv, 'Assays');
+                this.addToggleAllButton(parentDivDisambiguate, 'Assays');
             }
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            // Create the table
+            // Create the two tables
             ////////////////////////////////////////////////////////////////////////////////////////
-            table = <HTMLTableElement>$('<table>')
+            tableDisambiguate = <HTMLTableElement>$('<table>')
                 .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
-                .appendTo(parentDiv.removeClass('off'))
+                .appendTo(childDivDisambiguate)
                 .on('change', 'select', (ev: JQueryInputEventObject): void => {
                     this.userChangedAssayDisam(ev.target);
                 })[0];
-            tableBody = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
+            parentDivDisambiguate.removeClass('off');
+            tableBodyDisambiguate = <HTMLTableElement>$('<tbody>').appendTo(tableDisambiguate)[0];
+
+            tableMatched = <HTMLTableElement>$('<table>')
+                .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
+                .appendTo(childDivDisambiguate)
+                .on('change', 'select', (ev: JQueryInputEventObject): void => {
+                    this.userChangedAssayDisam(ev.target);
+                })[0];
+            parentDivMatched.removeClass('off');
+            tableBodyMatched = <HTMLTableElement>$('<tbody>').appendTo(tableDisambiguate)[0];
 
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create a table row for each unique assay name
@@ -2777,19 +2801,19 @@ module EDDTableImport {
                     aSelect: JQuery,
                 disam = this.assayObjSets[assayName];
                 if (!disam) {
-                    disam = new AssayDisambiguationRow(tableBody, assayName, i);
+                    disam = new AssayDisambiguationRow(tableBodyDisambiguate, assayName, i);
                     nRows++;
                     this.assayObjSets[assayName] = disam;
                 }
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
-                disam.appendTo(tableBody);
+                disam.appendTo(tableBodyDisambiguate);
                 this.currentlyVisibleAssayObjSets.push(disam);
             });
 
             if (uniqueAssayNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
                 var warningText: string;
-                this.addToggleAllButton(parentDiv, 'Assays');
-                this.addRequiredInputLabel(parentDiv, requiredInputText);
+                this.addToggleAllButton(parentDivDisambiguate, 'Assays');
+                this.addRequiredInputLabel(parentDivDisambiguate, requiredInputText);
             }
         }
 
@@ -3617,12 +3641,6 @@ module EDDTableImport {
                     highest = 0.6;
                     selections.lineID = line.id;
                     selections.name = line.n;
-                } else if (highest < 0.5 && currentIndex === i) {
-                    // Again, if all else fails, just choose the Line that matches the current index
-                    // in sorted order, in a loop.
-                    highest = 0.5;
-                    selections.lineID = line.id;
-                    selections.name = line.n;
                 }
                 return true;
             });
@@ -3675,6 +3693,7 @@ module EDDTableImport {
             // efficiency for studies with many lines).
             /////////////////////////////////////////////////////////////////////////////
             this.appendLineAutoselect(cell, defaultSel);
+            //here possibly append to different table based on no match. 
         }
     }
 
