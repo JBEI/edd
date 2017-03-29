@@ -780,7 +780,9 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             individual_strain_ids = []
 
             if cell_content:
-                tokens = cell_content.split(',')
+                # cast to string in case user entered something else (e.g. long)
+                tokens = str(cell_content).split(',')
+
                 if tokens:
 
                     # loop over comma-delimited tokens included in the cell
