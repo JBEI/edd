@@ -1276,7 +1276,7 @@ def study_describe_experiment(request, pk=None, slug=None):
     if has_file_type:
         if is_excel_file:
             file_name = request.META['HTTP_X_FILE_NAME']
-            logger.info('Parsing template file "%s"' % file_name)
+            logger.info('Parsing experiment description file "%s"' % file_name)
 
         else:
             summary = ErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE, file_type)

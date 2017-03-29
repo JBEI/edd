@@ -125,7 +125,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         # make sure everything gets cast to str to comply with Postgres' hstore field
         hstore_compliant_dict = {
             str(pk): str(value)
-            for pk, value in assay_metadata_dict.iteritems() if value
+            for pk, value in assay_metadata_dict.items() if value
         }
 
         assay = Assay.objects.create(

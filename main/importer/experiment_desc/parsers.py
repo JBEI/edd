@@ -502,7 +502,9 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         'column': col,
                     }
                     is_error = self.REQUIRE_COL_HEADER_MATCH
-                    self.importer.add_issue(is_error, BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER, skipped)
+                    logger.warning('Bad column header "%(header)s"' % {'header': skipped})
+                    self.importer.add_issue(is_error, BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER,
+                                            skipped)
 
         # test whether we've located all the required columns
         found_col_labels = layout.line_name_col is not None
@@ -648,12 +650,16 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 'type_name': re.escape(meta_type.type_name),
                 'units': re.escape(meta_type.postfix)
             }
-            pluralized_match = re.match(meta_regex, upper_content)
+            pluralized_match = re.match(meta_regex, upper_content, re.IGNORECASE)
 
             if pluralized_match:
                 result = meta_type
                 column_layout.set_line_metadata_type(col_index, result, is_combinatorial=True)
                 return result
+
+            logger.debug("""Column header "%(header)s" doesn't match line metadata type %(type)s"""
+                         % { 'header': upper_content,
+                             'type': upper_type_name})
 
         return None
 
