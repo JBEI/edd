@@ -22,9 +22,9 @@ the {{ type }} "{{ name }}"
         <form action="" method="POST">
             {% csrf_token %}
             {{ select_form.as_p }}
-            <button class="actionButton" type="submit" name="action"
-                    value="delete_confirm">{% trans "Confirm Delete" %}</button>
-            <a href="{% url 'main:lines' slug=object.slug  %}">{% trans "Cancel" %}</a>
+            <button class="btn btn-danger" type="submit" name="action"
+                    value="{{ confirm_action }}">{% trans "Confirm Delete" %}</button>
+            <a href="{{ cancel_link }}">{% trans "Cancel" %}</a>
         </form>
     </div>
 {% endblock content %}

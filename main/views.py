@@ -200,6 +200,16 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
     """ Study details page, displays line/assay data. """
     template_name = 'main/study-overview.html'
 
+    def get_actions(self, can_write=False):
+        """ Return a dict mapping action names to functions performing the action. """
+        action_lookup = collections.defaultdict(lambda: self.handle_unknown)
+        if can_write:
+            action_lookup.update({
+                'delete_confirm': self.handle_delete_confirm,
+                'study_delete': self.handle_delete,
+            })
+        return action_lookup
+
     def get_context_data(self, **kwargs):
         context = super(StudyDetailBaseView, self).get_context_data(**kwargs)
         instance = self.get_object()
@@ -226,17 +236,73 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
                 if clone.is_valid():
                     clone.save()
                     cloned += 1
-        messages.success(request, 'Cloned %(cloned)s of %(total)s Lines' % {
-            'cloned': cloned,
-            'total': len(ids),
-            })
+        messages.success(
+            request,
+            _('Cloned %(cloned)s of %(total)s Lines') % {
+                'cloned': cloned,
+                'total': len(ids),
+            }
+        )
         return True
 
+    def handle_delete(self, request, context, *args, **kwargs):
+        self._check_write_permission(request)
+        return StudyDeleteView.as_view()
+
+    def handle_delete_confirm(self, request, context, *args, **kwargs):
+        self._check_write_permission(request)
+        instance = self.get_object()
+        form = ExportSelectionForm(data=request.POST, user=request.user)
+        if form.is_valid():
+            if form.selection.measurements.count() == 0:
+                # true deletion only if there are zero measurements!
+                instance.delete()
+            else:
+                instance.active = False
+                instance.save(update_fields=['active'])
+            messages.success(
+                request,
+                _('Deleted Study "%(study)s".') % {
+                    'study': instance.name,
+                }
+            )
+            return HttpResponseRedirect(reverse('main:index'))
+        messages.error(request, _('Failed to validate deletion.'))
+        return False
+
     def handle_unknown(self, request, context, *args, **kwargs):
+        """ Default fallback action handler, displays an error message. """
         messages.error(
-            request, 'Unknown action, or you do not have permission to modify this study.'
+            request,
+            _('Unknown action, or you do not have permission to modify this study.'),
         )
         return False
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        action = request.POST.get('action', None)
+        context = self.get_context_data(object=self.object, action=action, request=request)
+        can_write = self.object.user_can_write(request.user)
+        action_lookup = self.get_actions(can_write=can_write)
+        action_fn = action_lookup.get(action)
+        view_or_valid = action_fn(request, context, *args, **kwargs)
+        if type(view_or_valid) == bool:
+            # boolean means a response to same page, with flag noting whether form was valid
+            return self.post_response(request, context, view_or_valid)
+        elif isinstance(view_or_valid, HttpResponse):
+            # got a response, directly return
+            return view_or_valid
+        else:
+            # otherwise got a view function, call it
+            return view_or_valid(request, *args, **kwargs)
+
+    def post_response(self, request, context, form_valid):
+        if form_valid:
+            study_modified.send(sender=self.__class__, study=self.object)
+            return HttpResponseRedirect(
+                reverse('main:overview', kwargs={'slug': self.object.slug})
+            )
+        return self.render_to_response(context)
 
     def _check_write_permission(self, request):
         if not self.object.user_can_write(request.user):
@@ -298,6 +364,18 @@ class StudyOverviewView(StudyDetailBaseView):
     """
     template_name = 'main/study-overview.html'
 
+    def get_actions(self, can_write=False):
+        action_lookup = super(StudyOverviewView, self).get_actions(can_write=can_write)
+        action_lookup.update({
+            'comment': self.handle_comment,
+        })
+        if can_write:
+            action_lookup.update({
+                'attach': self.handle_attach,
+                'update': self.handle_update,
+            })
+        return action_lookup
+
     def get_context_data(self, **kwargs):
         context = super(StudyOverviewView, self).get_context_data(**kwargs)
         context['showingoverview'] = True
@@ -335,48 +413,29 @@ class StudyOverviewView(StudyDetailBaseView):
             return True
         return False
 
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        action = request.POST.get('action', None)
-        context = self.get_context_data(object=self.object, action=action, request=request)
-        can_write = self.object.user_can_write(request.user)
-        # actions that may not require write permissions
-        action_lookup = {
-            'comment': self.handle_comment,
-        }
-        # actions that require write permissions
-        writable_lookup = {
-            'attach': self.handle_attach,
-            'update': self.handle_update,
-        }
-        if can_write:
-            action_lookup.update(writable_lookup)
-        # find appropriate handler function for the submitted action
-        view_or_valid = action_lookup.get(action, self.handle_unknown)(
-            request, context, *args, **kwargs
-        )
-        if type(view_or_valid) == bool:
-            # boolean means a response to same page, with flag noting whether form was valid
-            return self.post_response(request, context, view_or_valid)
-        elif isinstance(view_or_valid, HttpResponse):
-            # got a response, directly return
-            return view_or_valid
-        else:
-            # otherwise got a view function, call it
-            return view_or_valid(request, *args, **kwargs)
-
-    def post_response(self, request, context, form_valid):
-        if form_valid:
-            study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(
-                reverse('main:overview', kwargs={'slug': self.object.slug})
-            )
-        return self.render_to_response(context)
-
 
 class StudyLinesView(StudyDetailBaseView):
     """ Study details displays line data. """
     template_name = 'main/study-lines.html'
+
+    def get_actions(self, can_write=False):
+        action_lookup = super(StudyLinesView, self).get_actions(can_write=can_write)
+        action_lookup.update({
+            'assay_action': self.handle_assay_action,
+            'line_action': self.handle_line_action,
+        })
+        if can_write:
+            action_lookup.update({
+                'assay': self.handle_assay,
+                'clone': self.handle_clone,
+                'enable': self.handle_enable,
+                'disable': self.handle_delete_line,
+                'disable_confirm': self.handle_disable,
+                'group': self.handle_group,
+                'line': self.handle_line,
+                'measurement': self.handle_measurement,
+            })
+        return action_lookup
 
     def get_context_data(self, **kwargs):
         context = super(StudyLinesView, self).get_context_data(**kwargs)
@@ -461,7 +520,6 @@ class StudyLinesView(StudyDetailBaseView):
         self._check_write_permission(request)
         form = ExportSelectionForm(data=request.POST, user=request.user, exclude_disabled=False)
         if form.is_valid():
-            print("~~~ %d measurements ~~~" % (form.selection.measurements.count(), ))
             if not active and form.selection.measurements.count() == 0:
                 # true deletion only if there are zero measurements!
                 count, details = form.selection.lines.delete()
@@ -575,49 +633,6 @@ class StudyLinesView(StudyDetailBaseView):
             context['new_line'] = form
         return False
 
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        action = request.POST.get('action', None)
-        context = self.get_context_data(object=self.object, action=action, request=request)
-        can_write = self.object.user_can_write(request.user)
-        # actions that may not require write permissions
-        action_lookup = {
-            'assay_action': self.handle_assay_action,
-            'line_action': self.handle_line_action,
-        }
-        # actions that require write permissions
-        writable_lookup = {
-            'assay': self.handle_assay,
-            'clone': self.handle_clone,
-            'enable': self.handle_enable,
-            'disable': self.handle_delete_line,
-            'delete_confirm': self.handle_disable,
-            'group': self.handle_group,
-            'line': self.handle_line,
-            'measurement': self.handle_measurement,
-        }
-        if can_write:
-            action_lookup.update(writable_lookup)
-        # find appropriate handler function for the submitted action
-        view_or_valid = action_lookup.get(action, self.handle_unknown)(
-            request, context, *args, **kwargs
-        )
-        if type(view_or_valid) == bool:
-            # boolean means a response to same page, with flag noting whether form was valid
-            return self.post_response(request, context, view_or_valid)
-        elif isinstance(view_or_valid, HttpResponse):
-            # got a response, directly return
-            return view_or_valid
-        else:
-            # otherwise got a view function, call it
-            return view_or_valid(request, *args, **kwargs)
-
-    def post_response(self, request, context, form_valid):
-        if form_valid:
-            study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(reverse('main:lines', kwargs={'slug': self.object.slug}))
-        return self.render_to_response(context)
-
     def _get_export_types(self):
         return {
             'csv': ExportView.as_view(),
@@ -638,6 +653,19 @@ class StudyLinesView(StudyDetailBaseView):
 class StudyDetailView(StudyDetailBaseView):
     """ Study details page, displays graph/assay data. """
     template_name = 'main/study-data.html'
+
+    def get_actions(self, can_write=False):
+        action_lookup = super(StudyDetailView, self).get_actions(can_write=can_write)
+        action_lookup.update({
+            'assay_action': self.handle_assay_action,
+        })
+        if can_write:
+            action_lookup.update({
+                'assay': self.handle_assay,
+                'clone': self.handle_clone,
+                'measurement': self.handle_measurement,
+            })
+        return action_lookup
 
     def get_context_data(self, **kwargs):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
@@ -827,43 +855,6 @@ class StudyDetailView(StudyDetailBaseView):
             return HttpResponseRedirect(reverse('main:lines', kwargs={'slug': self.object.slug}))
         return super(StudyDetailView, self).get(request, *args, **kwargs)
 
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        action = request.POST.get('action', None)
-        context = self.get_context_data(object=self.object, action=action, request=request)
-        can_write = self.object.user_can_write(request.user)
-        # actions that may not require write permissions
-        action_lookup = {
-            'assay_action': self.handle_assay_action,
-        }
-        # actions that require write permissions
-        writable_lookup = {
-            'assay': self.handle_assay,
-            'clone': self.handle_clone,
-            'measurement': self.handle_measurement,
-        }
-        if can_write:
-            action_lookup.update(writable_lookup)
-        # find appropriate handler function for the submitted action
-        view_or_valid = action_lookup.get(action, self.handle_unknown)(
-            request, context, *args, **kwargs
-        )
-        if type(view_or_valid) == bool:
-            # boolean means a response to same page, with flag noting whether form was valid
-            return self.post_response(request, context, view_or_valid)
-        elif isinstance(view_or_valid, HttpResponse):
-            # got a response, directly return
-            return view_or_valid
-        else:
-            # otherwise got a view function, call it
-            return view_or_valid(request, *args, **kwargs)
-
-    def post_response(self, request, context, form_valid):
-        if form_valid:
-            study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': self.object.slug}))
-        return self.render_to_response(context)
-
     def _get_assay(self, assay_id):
         study = self.get_object()
         try:
@@ -877,18 +868,35 @@ class StudyDeleteView(StudyLinesView):
     """ Confirmation view for deleting objects from a Study. """
     template_name = 'main/study-delete-confirm.html'
 
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self._check_write_permission(request)
-        action = request.POST.get('action', None)
+    def get_actions(self, can_write=False):
+        """ Return a dict mapping action names to functions performing the action. """
+        action_lookup = collections.defaultdict(lambda: self.handle_unknown)
+        if can_write:
+            action_lookup.update({
+                'disable': self.handle_line_delete,
+                'study_delete': self.handle_study_delete,
+            })
+        return action_lookup
+
+    def get_context_data(self, **kwargs):
+        context = super(StudyDeleteView, self).get_context_data(**kwargs)
+        request = kwargs.get('request')
         form = ExportSelectionForm(data=request.POST, user=request.user, exclude_disabled=False)
-        context = self.get_context_data()
         context['select_form'] = form
-        if "disable" == action:
-            context['typename'] = Line._meta.verbose_name.title()
-            context['item_names'] = [l.name for l in form.selection.lines]
-        # TODO: another action for deletion of studies
-        return self.render_to_response(context)
+        context['cancel_link'] = request.path
+        return context
+
+    def handle_line_delete(self, request, context, *args, **kwargs):
+        context['typename'] = _('Line')
+        context['item_names'] = [l.name for l in context['form'].selection.lines]
+        context['confirm_action'] = 'disable_confirm'
+        return True
+
+    def handle_study_delete(self, request, context, *args, **kwargs):
+        context['typename'] = _('Study')
+        context['item_names'] = [self.object.name]
+        context['confirm_action'] = 'delete_confirm'
+        return True
 
 
 class EDDExportView(generic.TemplateView):
