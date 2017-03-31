@@ -2056,7 +2056,7 @@ var EDDTableImport;
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
             //toggle matched assay section
-            $('#matchedAssaysSection').on('click', function (e) {
+            $('#matchedAssaysSection .discloseLink').on('click', function (e) {
                 $(e.target).closest('.disclose').toggleClass('discloseHide');
             });
             // remove toggle buttons and labels dynamically added for some subsections
@@ -2099,7 +2099,7 @@ var EDDTableImport;
         };
         TypeDisambiguationStep.prototype.makeToggleAllButton = function (objectsLabel) {
             return $('<button type="button">')
-                .text('Select All ' + objectsLabel)
+                .text('Select None')
                 .addClass(TypeDisambiguationStep.STEP_4_TOGGLE_SUBSECTION_CLASS)
                 .on('click', this.toggleAllSubsectionItems.bind(this));
         };
@@ -2116,11 +2116,11 @@ var EDDTableImport;
                 }
                 return false;
             });
-            if ($(event.target).text() === 'Select All Assays') {
+            if ($(event.target).text() === 'Select All') {
                 $(event.target).text('Select None');
             }
             else {
-                $(event.target).text('Select All Assays');
+                $(event.target).text('Select All');
             }
             // un/check all checkboxes based on their previous state
             checkboxes.each(function (index, elt) {
@@ -2189,7 +2189,7 @@ var EDDTableImport;
         // reveal the pulldowns for selecting a master Line/Assay, leaving the table empty, and return.
         TypeDisambiguationStep.prototype.remakeAssaySection = function () {
             var _this = this;
-            var avgRowCreationSeconds, maxRowCreationSeconds, masterProtocol, nColumns, nControls, nRows, parentDivMatched, requiredInputText, tableMatched, tableBodyMatched, uniqueAssayNames, totalRowCreationSeconds, childDivMatched;
+            var avgRowCreationSeconds, maxRowCreationSeconds, masterProtocol, nColumns, nControls, nRows, parentDivMatched, parentDivDisambiguate, requiredInputText, tableMatched, tableBodyMatched, uniqueAssayNames, totalRowCreationSeconds, childDivMatched, matched, 
             // gather up inputs from this and previous steps
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
             masterProtocol = this.selectMajorKindStep.masterProtocol;
@@ -2216,8 +2216,8 @@ var EDDTableImport;
                 this.addToggleAllButton(childDivMatched, 'Assays');
             }
             if ($('#disambiguateAssaysSection')) {
-                var test = $('#disambiguateAssaysSection');
-                this.addToggleAllButton(test, 'Assays');
+                var div = $('#disambiguateAssaySection');
+                this.addToggleAllButton(div, 'Assays');
             }
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create the table
@@ -2239,6 +2239,15 @@ var EDDTableImport;
             maxRowCreationSeconds = 0;
             totalRowCreationSeconds = 0;
             uniqueAssayNames.forEach(function (assayName, i) {
+                if (uniqueAssayNames.length - 1 === i) {
+                    if ($('#matchedAssaysSection tr').length === 0) {
+                        $('#matchedAssaysSection').remove();
+                    }
+                    else {
+                        matched = i + 1;
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines');
+                    }
+                }
                 var assayId, disam, row, defaultSelection, cell, aSelect, disam = _this.assayObjSets[assayName];
                 if (!disam) {
                     disam = new AssayDisambiguationRow(tableBodyMatched, assayName, i);
@@ -2630,11 +2639,6 @@ var EDDTableImport;
                 };
                 resolvedSets.push(resolvedSet);
             });
-            if (resolvedSets.length === 0) {
-                this.errorMessages.push(new ImportMessage('All of the measurements and ' +
-                    ' metadata have been excluded from import. Please select some data to' +
-                    ' import.'));
-            }
             // log some debugging output if any data get dropped because of a missing timestamp
             if (droppedDatasetsForMissingTime) {
                 if (parsedSets.length === droppedDatasetsForMissingTime) {
@@ -2663,7 +2667,7 @@ var EDDTableImport;
             var subsection, requiredInputSubsectionSelectors, allRequiredInputs, sectionRequiredInputs;
             // loop over subsections that must have at least one input, making sure that all the
             // visible ones have at least one required input that isn't ignored.
-            requiredInputSubsectionSelectors = ['#matchedAssaysSection', '#disambiguateLinesSection'];
+            requiredInputSubsectionSelectors = ['#matchedAssaysSection', '#disambiguateAssaysSection', '#disambiguateLinesSection'];
             for (var _i = 0, requiredInputSubsectionSelectors_1 = requiredInputSubsectionSelectors; _i < requiredInputSubsectionSelectors_1.length; _i++) {
                 var selector = requiredInputSubsectionSelectors_1[_i];
                 var hasEnabledInputs;
@@ -2991,7 +2995,7 @@ var EDDTableImport;
             else {
                 this.appendLineAutoselect(cell, defaultSel);
             }
-            //here possibly append to different table based on no match. 
+            //here possibly append to different table based on no match.
         };
         return AssayDisambiguationRow;
     }(LineDisambiguationRow));

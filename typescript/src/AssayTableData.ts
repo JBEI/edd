@@ -1222,7 +1222,7 @@ module EDDTableImport {
         parsedSets: RawImportSet[];
         graphSets: GraphingSet[];
         uniqueLineNames: any[];
-        uniqueAssayNames: any[];
+        uniqueAssayNames: any;
         uniqueMeasurementNames: any[];
         uniqueMetadataNames: any[];
         // A flag to indicate whether we have seen any timestamps specified in the import data
@@ -2546,7 +2546,7 @@ module EDDTableImport {
 
 
             //toggle matched assay section
-            $('#matchedAssaysSection').on('click', function(e) {
+            $('#matchedAssaysSection .discloseLink').on('click', function(e) {
                 $(e.target).closest('.disclose').toggleClass('discloseHide');
             });
             // remove toggle buttons and labels dynamically added for some subsections
@@ -2598,7 +2598,7 @@ module EDDTableImport {
 
         makeToggleAllButton(objectsLabel: string): JQuery {
             return $('<button type="button">')
-                .text('Select All ' + objectsLabel)
+                .text('Select None')
                 .addClass(TypeDisambiguationStep.STEP_4_TOGGLE_SUBSECTION_CLASS)
                 .on('click', this.toggleAllSubsectionItems.bind(this))
         }
@@ -2619,10 +2619,10 @@ module EDDTableImport {
                 return false;
             });
 
-            if ($(event.target).text() === 'Select All Assays') {
+            if ($(event.target).text() === 'Select All') {
                 $(event.target).text('Select None')
             } else {
-                $(event.target).text('Select All Assays')
+                $(event.target).text('Select All')
             }
 
 
@@ -2721,12 +2721,14 @@ module EDDTableImport {
                 nControls:number,
                 nRows:number,
                 parentDivMatched: JQuery,
+                parentDivDisambiguate: JQuery,
                 requiredInputText: string,
                 tableMatched: HTMLTableElement,
                 tableBodyMatched: HTMLTableElement,
                 uniqueAssayNames,
                 totalRowCreationSeconds: number,
-                childDivMatched: JQuery;
+                childDivMatched: JQuery,
+                matched: number,
 
             // gather up inputs from this and previous steps
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
@@ -2760,8 +2762,8 @@ module EDDTableImport {
                 this.addToggleAllButton(childDivMatched, 'Assays');
             }
             if ($('#disambiguateAssaysSection')) {
-                var test = $('#disambiguateAssaysSection');
-                this.addToggleAllButton(test, 'Assays')
+                var div = $('#disambiguateAssaySection');
+                this.addToggleAllButton(div, 'Assays')
             }
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -2787,6 +2789,14 @@ module EDDTableImport {
             maxRowCreationSeconds = 0;
             totalRowCreationSeconds = 0;
             uniqueAssayNames.forEach((assayName: string, i: number): void => {
+                if (uniqueAssayNames.length - 1 === i) {
+                    if ($('#matchedAssaysSection tr').length === 0) {
+                        $('#matchedAssaysSection').remove();
+                    } else {
+                        matched = i + 1;
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines')
+                    }
+                }
                 var assayId:string,
                     disam: AssayDisambiguationRow,
                     row: HTMLTableRowElement,
@@ -3282,12 +3292,6 @@ module EDDTableImport {
                 resolvedSets.push(resolvedSet);
             });
 
-            if (resolvedSets.length === 0) {
-                this.errorMessages.push(new ImportMessage('All of the measurements and ' +
-                    ' metadata have been excluded from import. Please select some data to' +
-                    ' import.'));
-            }
-
             // log some debugging output if any data get dropped because of a missing timestamp
             if (droppedDatasetsForMissingTime) {
                 if (parsedSets.length === droppedDatasetsForMissingTime) {
@@ -3319,7 +3323,7 @@ module EDDTableImport {
 
             // loop over subsections that must have at least one input, making sure that all the
             // visible ones have at least one required input that isn't ignored.
-            requiredInputSubsectionSelectors = ['#matchedAssaysSection', '#disambiguateLinesSection'];
+            requiredInputSubsectionSelectors = ['#matchedAssaysSection', '#disambiguateAssaysSection', '#disambiguateLinesSection'];
             for (let selector of requiredInputSubsectionSelectors) {
                 var hasEnabledInputs;
                 subsection = $(selector);
@@ -3691,7 +3695,7 @@ module EDDTableImport {
                this.appendLineAutoselect(cell, defaultSel);
             }
 
-            //here possibly append to different table based on no match. 
+            //here possibly append to different table based on no match.
         }
     }
 
