@@ -205,8 +205,13 @@
             <form method="POST" class="edd-form" action="">
                 {% csrf_token %}
                 <input type="hidden" name="studyId" value="{{ object.id }}" />
+                {% if object.active %}
                 <button type="submit" class="btn btn-danger"
                         name="action" value="study_delete">{% trans "Delete Study" %}</button>
+                {% else %}
+                <button type="submit" class="btn btn-primary"
+                        name="action" value="study_restore">{% trans "Restore Study" %}</button>
+                {% endif %}
             </form>
         </div>
     </div>

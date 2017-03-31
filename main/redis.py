@@ -29,6 +29,11 @@ class LatestViewedStudies(object):
             'user': self._user.username,
         }
 
+    def remove_study(self, study):
+        key = self._key()
+        if study:
+            self._redis.lrem(key, 0, study.pk)
+
     def viewed_study(self, study):
         key = self._key()
         if study:

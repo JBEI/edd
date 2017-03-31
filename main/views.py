@@ -213,6 +213,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             action_lookup.update({
                 'delete_confirm': self.handle_delete_confirm,
                 'study_delete': self.handle_delete,
+                'study_restore': self.handle_restore,
             })
         return action_lookup
 
@@ -258,6 +259,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         self._check_write_permission(request)
         instance = self.get_object()
         form = ExportSelectionForm(data=request.POST, user=request.user)
+        lvs = redis.LatestViewedStudies(self.request.user)
         if form.is_valid():
             if form.selection.measurements.count() == 0:
                 # true deletion only if there are zero measurements!
@@ -265,6 +267,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             else:
                 instance.active = False
                 instance.save(update_fields=['active'])
+            lvs.remove_study(instance)
             messages.success(
                 request,
                 _('Deleted Study "%(study)s".') % {
@@ -274,6 +277,19 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             return HttpResponseRedirect(reverse('main:index'))
         messages.error(request, _('Failed to validate deletion.'))
         return False
+
+    def handle_restore(self, request, context, *args, **kwargs):
+        self._check_write_permission(request)
+        instance = self.get_object()
+        instance.active = True
+        instance.save(update_fields=['active'])
+        messages.success(
+            request,
+            _('Restored Study "%(study)s".') % {
+                'study': instance.name,
+            }
+        )
+        return True
 
     def handle_unknown(self, request, context, *args, **kwargs):
         """ Default fallback action handler, displays an error message. """
