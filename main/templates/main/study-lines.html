@@ -27,150 +27,151 @@
 
 {% block content %}
     {{ block.super }}
-         {% if new_line.errors %}
+    {% if new_line.errors %}
     <div class="alert alert-warning alert-dismissible" style="width:313px" role="alert">
         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
         </button>
-    <p>{{ new_line.errors.as_text  }}</p>
+        <p>{{ new_line.errors.as_text  }}</p>
     </div>
     {%  endif %}
-<div style="margin-left:15px;">
-    Manually add/edit lines below
-    <div style="float:none; margin-left:15px" class="helpBadgeDiv">help
-        <div class="helpContent">
-            <p>
-                A line describes the experimental details of your study by defining the
-                experimental conditions and associated meta data for i.e. a single flask. Some
-                examples that might be defined in a line are strain, carbon source, part id,
-                metabolicmics time, and shaking speed. Users can manually add lines, or download
-                the study template for bulk uploads.
-            </p>
+    <form action="" method="POST">
+    {% csrf_token %}
+    <div style="margin-left:15px;">
+        {% trans 'Manually add/edit lines below' %}
+        <div style="float:none; margin-left:15px" class="helpBadgeDiv">help
+            <div class="helpContent">
+                <p>A line describes the experimental details of your study by defining the
+                    experimental conditions and associated meta data for i.e. a single flask. Some
+                    examples that might be defined in a line are strain, carbon source, part id,
+                    metabolicmics time, and shaking speed. Users can manually add lines, or
+                    download the study template for bulk uploads.</p>
+            </div>
+        </div>
+        <div class="noLines">
+            <h3 style="margin-bottom:12px">This study has no lines. </h3>
+        </div>
+        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+        <table id="studyLinesTable"></table>
+    </div>
+    <div id="actionsBar" class="sectionActions lineFlex">
+        <div id="disabledButtons" class="flex-grow:1;">
+            <button id="addNewLineButton"
+                    class="actionButton primary {% if not writable %}off{% endif %}"
+                    title="Add a new line">
+                New line
+            </button>
+            <span id="linesSelectedCell" style="padding-left:15px;">0 selected</span>
+            <button id="editButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    disabled="true"
+                    title="Edit selected Lines">
+                Edit
+            </button>
+            <button id="cloneButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    type="submit"
+                    name="action"
+                    disabled="true"
+                    value="clone"
+                    title="Clone selected Lines">
+                Clone
+            </button>
+            <button id="groupButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    type="submit"
+                    disabled="true"
+                    name="action"
+                    value="group"
+                    title="Group selected Lines as replicates">
+                Group
+            </button>
+            <button id="addAssayButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    type="button"
+                    disabled="true"
+                    title="Add an assay to selected Lines">
+                Add Assay
+            </button>
+            <button id="disableButton"
+                    class="actionButton {% if not writable or not lines %}off{% endif %}"
+                    type="submit"
+                    name="action"
+                    value="disable"
+                    disabled="true"
+                    title="Delete selected Lines">
+                Delete
+            </button>
+            <button id="enableButton"
+                    class="actionButton off"
+                    type="submit"
+                    name="action"
+                    value="enable"
+                    disabled="true"
+                    title="Restore selected Lines">
+                Restore
+            </button>
+        </div>
+        <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">
+            <button style="margin-right:30px" type="button" id="worklistButton"
+                    class="actionButton primary">
+                Generate Worklist
+            </button>
+            <button type="button" id="exportLineButton" class="actionButton primary">
+                Export Data
+            </button>
         </div>
     </div>
-    <div class="noLines">
-        <h3 style="margin-bottom:12px">This study has no lines. </h3>
-    </div>
-    {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-    <table id="studyLinesTable"></table>
-</div>
-<div id="actionsBar" class="sectionActions lineFlex">
-    <div id="disabledButtons" class="flex-grow:1;">
-        <button id="addNewLineButton"
-                class="actionButton primary {% if not writable %}off{% endif %}"
-                title="Add a new line">
-            New line
-        </button>
-        <span id="linesSelectedCell" style="padding-left:15px;">0 selected</span>
-        <button id="editButton"
-                class="actionButton {% if not writable or not lines %}off{% endif %}"
-                disabled="true"
-                title="Edit selected Lines">
-            Edit
-        </button>
-        <button id="cloneButton"
-                class="actionButton {% if not writable or not lines %}off{% endif %}"
-                type="submit"
-                name="action"
-                disabled="true"
-                value="clone"
-                title="Clone selected Lines">
-            Clone
-        </button>
-        <button id="groupButton"
-                class="actionButton {% if not writable or not lines %}off{% endif %}"
-                type="submit"
-                disabled="true"
-                name="action"
-                value="group"
-                title="Group selected Lines as replicates">
-            Group
-        </button>
-        <button id="addAssayButton"
-                class="actionButton {% if not writable or not lines %}off{% endif %}"
-                type="button"
-                disabled="true"
-                title="Add an assay to selected Lines">
-            Add Assay
-        </button>
-        <button id="disableButton"
-                class="actionButton {% if not writable or not lines %}off{% endif %}"
-                type="submit"
-                name="action"
-                value="disable"
-                disabled="true"
-                title="Delete selected Lines">
-            Delete
-        </button>
-        <button id="enableButton"
-                class="actionButton off"
-                type="submit"
-                name="action"
-                value="enable"
-                disabled="true"
-                title="Restore selected Lines">
-            Restore
-        </button>
-    </div>
-    <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">
-        <button style="margin-right:30px" type="button" id="worklistButton"
-                class="actionButton primary">
-            Generate Worklist
-        </button>
-        <button type="button" id="exportLineButton" class="actionButton primary">
-            Export Data
-        </button>
-    </div>
-</div>
-
-<div id="editLineModal" title="Add new line"
-        class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
-    <form action="" method="POST">
-        {% csrf_token %}
-        {{ new_line.as_p }}
-        <p class="line-edit-meta">
-            <span class="edd-label">
-                <input type="text" class="autocomp autocomp_ltype" size="14"
-                        eddautocompletetype="LineMetadataType" placeholder="Metadata Type" />
-                <input type="hidden" class="line-meta-type" value="" />
-            </span>
-            <input type="text" class="line-meta-value" placeholder="Metadata Value" />
-            <button class="line-meta-add">Add Value</button>
-        </p>
-        <button type="submit" name="action" value="line">Save</button>
     </form>
-</div>
 
-{% if new_assay.is_editing %}
-    {% trans 'Edit Assay' context 'modal title' as add_assay_modal_title %}
-    {% trans 'Edit Assay' context 'button' as add_assay_button %}
-{% else %}
-    {% trans 'Add Assays To Selected Lines' as add_assay_modal_title %}
-    {% trans 'Add Assay' context 'button' as add_assay_button %}
-{% endif %}
-<div id="addAssayModal" class="off" title="{{ add_assay_modal_title}}">
-    <form action="" method="POST">
-        {% csrf_token %}
-        {{ new_assay.as_p }}
-        <button type="submit" name="action" value="assay">{{ add_assay_button }}</button>
-    </form>
-</div>
+    <div id="editLineModal" title="Add new line"
+            class="{% if not new_line.is_editing and not new_line.errors %}off{% endif %}">
+        <form action="" method="POST">
+            {% csrf_token %}
+            {{ new_line.as_p }}
+            <p class="line-edit-meta">
+                <span class="edd-label">
+                    <input type="text" class="autocomp autocomp_ltype" size="14"
+                            eddautocompletetype="LineMetadataType" placeholder="Metadata Type" />
+                    <input type="hidden" class="line-meta-type" value="" />
+                </span>
+                <input type="text" class="line-meta-value" placeholder="Metadata Value" />
+                <button class="line-meta-add">Add Value</button>
+            </p>
+            <button type="submit" name="action" value="line">Save</button>
+        </form>
+    </div>
 
-<div id="exportModal" class="off" title="Export as">
-    <form action="" method="POST" id="exportForm">
-        {% csrf_token %}
-        <input type="radio" id="line_action_export" checked="checked" name="line_action"
-                value="export" hidden="hidden" />
-        <label for="line_action_export">
-            <span>Export Lines</span>
-            <select name="export">
-                <option value="csv">as CSV/etc</option>
-                <option value="sbml">as SBML</option>
-                <option value="worklist">as Worklist</option>
-                <option value="study">to New Study</option>
-            </select>
-        </label>
-        <button type="submit" name="action" value="line_action">Take Action</button>
-    </form>
-</div>
+    {% if new_assay.is_editing %}
+        {% trans 'Edit Assay' context 'modal title' as add_assay_modal_title %}
+        {% trans 'Edit Assay' context 'button' as add_assay_button %}
+    {% else %}
+        {% trans 'Add Assays To Selected Lines' as add_assay_modal_title %}
+        {% trans 'Add Assay' context 'button' as add_assay_button %}
+    {% endif %}
+    <div id="addAssayModal" class="off" title="{{ add_assay_modal_title}}">
+        <form action="" method="POST">
+            {% csrf_token %}
+            {{ new_assay.as_p }}
+            <button type="submit" name="action" value="assay">{{ add_assay_button }}</button>
+        </form>
+    </div>
+
+    <div id="exportModal" class="off" title="Export as">
+        <form action="" method="POST" id="exportForm">
+            {% csrf_token %}
+            <input type="radio" id="line_action_export" checked="checked" name="line_action"
+                    value="export" hidden="hidden" />
+            <label for="line_action_export">
+                <span>Export Lines</span>
+                <select name="export">
+                    <option value="csv">as CSV/etc</option>
+                    <option value="sbml">as SBML</option>
+                    <option value="worklist">as Worklist</option>
+                    <option value="study">to New Study</option>
+                </select>
+            </label>
+            <button type="submit" name="action" value="line_action">Take Action</button>
+        </form>
+    </div>
 {% endblock content %}

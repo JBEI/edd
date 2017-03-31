@@ -185,7 +185,7 @@ class StudyIndexView(generic.edit.CreateView):
         study.active = True     # defaults to True, but being explicit
         study.created = update
         study.updated = update
-        return generic.edit.CreateView.form_valid(self, form)
+        return super(StudyIndexView, self).form_valid(form)
 
     def get_form_kwargs(self):
         kwargs = super(StudyIndexView, self).get_form_kwargs()
@@ -215,10 +215,9 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         instance = self.get_object()
         lvs = redis.LatestViewedStudies(self.request.user)
         lvs.viewed_study(instance)
-        # TODO: Replace 'self.get_object()' with 'instance'?
-        context['writable'] = self.get_object().user_can_write(self.request.user)
-        context['lines'] = self.get_object().line_set.count() > 0
-        context['assays'] = Assay.objects.filter(line__study=self.get_object()).count() > 0
+        context['writable'] = instance.user_can_write(self.request.user)
+        context['lines'] = instance.line_set.filter(active=True).count() > 0
+        context['assays'] = Assay.objects.filter(line__study=instance, active=True).count() > 0
         return context
 
     def handle_clone(self, request, context, *args, **kwargs):
@@ -299,9 +298,6 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
     def post_response(self, request, context, form_valid):
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(
-                reverse('main:overview', kwargs={'slug': self.object.slug})
-            )
         return self.render_to_response(context)
 
     def _check_write_permission(self, request):
@@ -886,9 +882,12 @@ class StudyDeleteView(StudyLinesView):
         context['cancel_link'] = request.path
         return context
 
+    def get_template_names(self):
+        return [StudyDeleteView.template_name]
+
     def handle_line_delete(self, request, context, *args, **kwargs):
         context['typename'] = _('Line')
-        context['item_names'] = [l.name for l in context['form'].selection.lines]
+        context['item_names'] = [l.name for l in context['select_form'].selection.lines]
         context['confirm_action'] = 'disable_confirm'
         return True
 
