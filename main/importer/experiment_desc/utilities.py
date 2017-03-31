@@ -41,7 +41,7 @@ class NamingStrategy(object):
         """
         raise NotImplementedError()  # require subclasses to implement
 
-    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types):
+    def get_assay_name(self, line, protocol_pk, assay_metadata, assay_metadata_types):
         """
         :raises ValueError if some required input isn't available for creating the name (either
             via this method or from other properties)
@@ -323,7 +323,10 @@ class AutomatedNamingStrategy(NamingStrategy):
             return str(abbreviation)
         return str(raw_value)
 
-    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types):
+    def get_assay_name(self, line, protocol_pk, assay_metadata, assay_metadata_types):
+        # TODO: reconsider assay configuration / naming in the GUI when implementing, then
+        # update placeholder implementation here.  Pre-measurement assay creation wasn't under
+        # discussion until after creating the combinatorial UI mockup attached to EDD-257
         logger.info('Assay metadata: %s' % assay_metadata)
         assay_time = assay_metadata.get(self.assay_time_metadata_type_pk, None)
         if not assay_time:

@@ -107,6 +107,38 @@ class ColumnLayout:
     files are designed to be user edited, parsing should be as tolerant as possible.
     """
 
+    class _CombinatorialColumnIterator(object):
+        """
+        A custom iterator class that helps extract the order of combinatorial line / assay 
+        metadata columns from the ColumnLayout for use in automated line/assay naming. This allows
+        advanced authors of Experiment Description files to control the order of naming elements in
+        their lines/assays when they're performing combinatorial creation.
+        """
+        def __init__(self, column_layout, is_line):
+            self.layout = column_layout
+            self.index = 0
+            self.is_line = is_line
+            self.search_map = (column_layout.col_index_to_line_meta_pk if self.is_line
+                               else column_layout.col_index_to_assay_data)
+
+        def __iter__(self):
+            return self
+
+        def next(self):
+            layout = self.layout
+            if not (layout and layout.combinatorial_col_indices):
+                raise StopIteration()
+
+            while self.index < len(layout.combinatorial_col_indices):
+                spreadsheet_col_index = layout.combinatorial_col_indices[self.index]
+                self.index += 1
+
+                if spreadsheet_col_index in self.search_map:
+                    return spreadsheet_col_index
+
+            if self.index >= len(layout.combinatorial_col_indices):
+                raise StopIteration()
+
     def __init__(self, importer):
         self.line_name_col = None
         self.line_description_col = None
@@ -131,12 +163,18 @@ class ColumnLayout:
         :param metadata_pk:
         :return:
         """
-        items = self.col_index_to_assay_data.iteritems()
+        items = self.col_index_to_assay_data.items()
         for col_index, (existing_protocol, existing_assay_meta_type) in items:
             if ((upper_protocol_name == existing_protocol.name.upper()) and
                     (metadata_pk == existing_assay_meta_type.pk)):
                 return True
         return False
+
+    def combinatorial_line_col_order(self):
+        return ColumnLayout._CombinatorialColumnIterator(self, True)
+
+    def combinatorial_assay_col_order(self):
+        return ColumnLayout._CombinatorialColumnIterator(self, False)
 
     def register_assay_meta_column(self, col_index, upper_protocol_name, protocol, assay_meta_type,
                                    is_combinatorial):
@@ -192,37 +230,68 @@ class ColumnLayout:
 class _ExperimentDescNamingStrategy(NamingStrategy):
     """
     A simple line/assay naming strategy assumed in the experiment description file use case,
-    where line names are user-specified and assay names are created automatically by appending
-    the time to the line name. Note that this allows for duplicate assay names within different
+    where line names/assay names are created automatically by from a combination of the base 
+    line name, plus metadata values for any combinatorially-defined columns that are needed to
+    make resulting line/assay names unique. Combinatorial metadata values included in the names are
+    added in the order that columns were specified in the file.
+    Note that this allows for duplicate assay names within different
     protocols, which should be clear in EDD's UI from protocol filtering and unit markings in the
     visualizations.
     """
 
-    def __init__(self, assay_time_metadata_type_pk):
+    def __init__(self, col_layout, assay_time_metadata_type_pk):
         super(_ExperimentDescNamingStrategy, self).__init__()
+        self.col_layout = col_layout
         self.base_line_name = None
         self.assay_time_metadata_type_pk = assay_time_metadata_type_pk
 
     def get_line_name(self, strains, line_metadata, replicate_num, line_metadata_types,
                       combinatorial_metadata_types, is_control):
 
+        # iterate over combinatorial line metadata columns and construct line name in the same order
+        # that name-relevant elements were listed in columns in the input file. We have to include
+        # values for the combinatorial metadata so that line names will be unique
+        layout = self.col_layout
+        name_elts = []
+        included_base_name = False
+        for line_metadata_col in layout.combinatorial_line_col_order():
+
+            # if the base line name hasn't been included yet, and comes before this metadata
+            # element, insert it
+            if (not included_base_name) and (layout.line_name_col < line_metadata_col):
+                included_base_name = True
+                name_elts.append(self.base_line_name)
+
+            line_meta_pk = self.col_layout.get_line_metadata_type(line_metadata_col)
+
+            metadata_value = line_metadata.get(line_meta_pk, None)  # value is optional!
+
+            if not metadata_value:
+                # TODO: add a warning that line names won't be consistent
+                continue
+
+            line_meta_type = line_metadata_types[line_meta_pk]
+            naming_elt = metadata_value
+            if line_meta_type.postfix:
+                naming_elt += line_meta_type.postfix
+            name_elts.append(naming_elt.replace(' ', '_'))
+
+        # if the base line name still isn't added, add it
+        if not included_base_name:
+            name_elts.append(self.base_line_name)
+
         # if making lines combinatorially based on line metadata, insert the combinatorial values
         # into the line name so that line names will be unique
-        combinatorial_suffix = '-'.join([
-            line_metadata[meta_pk].replace(' ', '_')
-            for meta_pk in combinatorial_metadata_types.iterkeys()
-        ])
-        combinatorial_suffix = '-%s' % combinatorial_suffix if combinatorial_suffix else ''
+        name = '-'.join(name_elts)
 
         # if creating more than one replicate, build a suffix to show replicate number so that
-        # line names are unique
+        # line names are unique. Replicate number should always be last in the line name
         replicate_suffix = ''
         if self.combinatorial_input.replicate_count > 1:
             replicate_suffix = '-R%d' % replicate_num
 
-        return '%(base_line_name)s%(combinatorial_suffix)s%(replicate_suffix)s' % {
-            'base_line_name': self.base_line_name,
-            'combinatorial_suffix': combinatorial_suffix,
+        return '%(name)s%(replicate_suffix)s' % {
+            'name': name,
             'replicate_suffix': replicate_suffix,
         }
 
@@ -231,13 +300,54 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
             return '%0.' + ('%d' % self.fractional_time_digits + 'f')
         return '%d'
 
-    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types):
+    def get_assay_name(self, line, protocol_pk, assay_metadata, assay_metadata_types):
+        layout = self.col_layout
+        name_elts = [line.name]
+
+        logger.debug(
+            'Combinatorial assay column order: %s' % ','.join([str(index) for index in
+                    layout.combinatorial_assay_col_order()]))
+
         try:
-            time_hours = assay_metadata.get(self.assay_time_metadata_type_pk)
-            time_str = self._get_time_format_string() % time_hours
-            return '%(line_name)s-%(hours)sh' % {
-                'line_name': line.name, 'hours': time_str,
-            }
+
+            # iterate over combinatorial assay metadata columns and construct assay name in the same
+            # order that name-relevant elements were listed in columns in the input file. We have to
+            # include values for the combinatorial metadata so that assay names will be unique
+            for assay_metadata_col in layout.combinatorial_assay_col_order():
+                col_protocol, assay_meta_type = layout.col_index_to_assay_data[assay_metadata_col]
+
+                # if this column contained metadata for a different protocol, skip it
+                if col_protocol.pk != protocol_pk:
+                    continue
+
+                logger.debug(
+                    'Inspecting combinatorial assay metadata column %(col)s for protocol '
+                    '"%(protocol)s", meta "%(meta_type)s"' % {
+                        'col': get_column_letter(assay_metadata_col + 1),
+                        'protocol': col_protocol.name,
+                        'meta_type': assay_meta_type.type_name})
+
+                metadata_value = assay_metadata.get(assay_meta_type.pk)
+
+                # TODO: some code in this block is essentially a workaround for missing units
+                # in EDD's metadata types.  Can remove this later if they're updated to use
+                # consistent units following EDD-741.
+                name_elt = None
+                if assay_meta_type.pk == self.assay_time_metadata_type_pk:
+                    custom_time_digits = self._get_time_format_string() % metadata_value
+                    name_elt = '%sh' % custom_time_digits
+                else:
+                    name_elt = metadata_value.replace(' ', '_')
+
+                    # add in units if defined...otherwise, multiple numeric values are
+                    # hard/impossible to distinguish from each other
+                    if assay_meta_type.postfix:
+                        name_elt += assay_meta_type.postfix
+                name_elts.append(name_elt)
+
+            logger.debug('Adding assay naming elements: %s' % ', '.join(name_elts))
+            return '-'.join(name_elts)
+
         except KeyError:
             raise ValueError(KeyError)  # raise more generic Exception published in the docstring
 
@@ -251,8 +361,8 @@ class _InputFileRow(CombinatorialDescriptionInput):
     often, is just a degenerate case of combinatorial creation.
     """
 
-    def __init__(self, assay_time_meta_pk, row_number):
-        super(_InputFileRow, self).__init__(_ExperimentDescNamingStrategy(assay_time_meta_pk))
+    def __init__(self, naming_strategy, row_number):
+        super(_InputFileRow, self).__init__(naming_strategy)
         self.row_number = row_number
 
     @property
@@ -262,8 +372,6 @@ class _InputFileRow(CombinatorialDescriptionInput):
     @base_line_name.setter
     def base_line_name(self, name):
         self.naming_strategy.base_line_name = name
-
-
 
 
 class CombinatorialInputParser(object):
@@ -277,7 +385,7 @@ class CombinatorialInputParser(object):
                 assay_time_type = metadata_type
                 break
 
-        self.assay_time_metadata_type_pk = assay_time_type.pk
+        self.assay_time_meta_pk = assay_time_type.pk
 
     def parse(self, input_source, importer):
         raise NotImplementedError()  # require subclasses to implement
@@ -341,6 +449,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # and not print a warning here.
 
         self.column_layout = None
+        self.naming_strategy = None
 
         # true to treat all unmatched column headers as an
         # error. False to ignore unmatch line headers, but to treat those that start with a
@@ -350,7 +459,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # if the metadata type is present in the database, construct a parser for assay time
         # (we need a pk to store it, and the parser
         assay_time_type = self.assay_metadata_types_by_name.get('TIME', None)
-        self.assay_time_metadata_type_pk = assay_time_type.pk if assay_time_type else None
+        self.assay_time_meta_pk = assay_time_type.pk if assay_time_type else None
 
         self.importer = None
 
@@ -416,7 +525,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             for col_index in unsupported_value_columns:
                 meta_pk = column_layout.get_line_metadata_type(col_index)
                 meta_type = self.line_metadata_types_by_pk[meta_pk]
-                value = '"%(name)s" (col "%(col)s")' % {
+                value = '"%(name)s" (column %(col)s)' % {
                             'name': meta_type.type_name,
                             'col': get_column_letter(col_index+1)}
                 unsupported_values.append(value)
@@ -513,6 +622,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # minimum required columns were found
         if found_col_labels:
             logger.debug('Done with read_column_layout()')
+            self.naming_strategy = _ExperimentDescNamingStrategy(layout, self.assay_time_meta_pk)
             return layout
 
         return None
@@ -657,9 +767,9 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 column_layout.set_line_metadata_type(col_index, result, is_combinatorial=True)
                 return result
 
-            logger.debug("""Column header "%(header)s" doesn't match line metadata type %(type)s"""
-                         % { 'header': upper_content,
-                             'type': upper_type_name})
+                logger.debug("""Column header "%(header)s" matches line metadata type %(type)s"""
+                             % { 'header': upper_content,
+                                 'type': upper_type_name})
 
         return None
 
@@ -672,7 +782,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             method which optional columns have been defined, as well as what order the columns are
             in (arbitrary column order is supported).
         """
-        row_inputs = _InputFileRow(self.assay_time_metadata_type_pk, row_num)
+        row_inputs = _InputFileRow(self.naming_strategy, row_num)
         layout = self.column_layout
 
         ###################################################
@@ -888,7 +998,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
                 # if this cell is in a column of for combinatorial input, add it to that list
                 if col_index in layout.combinatorial_col_indices:
-                    is_time = assay_metadata_type.pk == self.assay_time_metadata_type_pk
+                    is_time = assay_metadata_type.pk == self.assay_time_meta_pk
 
                     error_key = (INCORRECT_TIME_FORMAT if is_time else
                                  UNPARSEABLE_COMBINATORIAL_VALUE)
@@ -1064,7 +1174,7 @@ class JsonInputParser(CombinatorialInputParser):
                 naming_strategy = AutomatedNamingStrategy(
                     self.line_metadata_types_by_pk,
                     self.assay_metadata_types_by_pk,
-                    self.assay_time_metadata_type_pk
+                    self.assay_time_meta_pk
                 )
                 elements = _copy_to_numeric_elts(naming_elements['elements'])
                 abbreviations = _copy_to_numeric_keys(naming_elements['abbreviations'])
@@ -1074,7 +1184,7 @@ class JsonInputParser(CombinatorialInputParser):
                 naming_strategy.verify_naming_elts(importer)
             else:
                 base_name = value.pop('base_name')
-                naming_strategy = _ExperimentDescNamingStrategy(self.assay_time_metadata_type_pk)
+                naming_strategy = _ExperimentDescNamingStrategy(self.assay_time_meta_pk)
                 naming_strategy.base_line_name = base_name
 
             try:
@@ -1090,9 +1200,9 @@ class JsonInputParser(CombinatorialInputParser):
                 )
 
                 # inspect JSON input to find the maximum number of decimal digits in the user input
-                if self.assay_time_metadata_type_pk:
+                if self.assay_time_meta_pk:
                     for protocol, assay_metadata in protocol_to_assay_metadata.items():
-                        time_values = assay_metadata.get(self.assay_time_metadata_type_pk, [])
+                        time_values = assay_metadata.get(self.assay_time_meta_pk, [])
                         for time_value in time_values:
                             str_value = str(time_value)
                             if str_value != str((int(float(time_value)))):

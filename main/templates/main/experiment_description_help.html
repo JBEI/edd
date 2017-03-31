@@ -349,7 +349,9 @@ You may define columns in any order, as long as the single required column, “L
     You also don’t have to worry about capitalization or accidental use of leading/trailing
     whitespace in the column headers.  With the exception of line names, you can leave any
     non-header cell blank to omit that metadata for lines/assays created by the corresponding table
-    row.  At the time of writing, there’s no error checking on non-time inputs, so enter your data
+    row.  Note that column order in your fie can affect naming in the resulting lines / assays, but
+    only if you use advanced combinatorial features (see below).
+    At the time of writing, there’s no error checking on non-time inputs, so enter your data
     carefully!
 </p>
 
@@ -359,12 +361,12 @@ You may define columns in any order, as long as the single required column, “L
 <h6>ICE Bulk Export</h6>
 <p>
     If your experiment involves use of a large strain library, or many combinations of experimental
-conditions, you may want to consider how to reduce the amount of data entry required to create lines
+conditions, you may want to consider options for reducing the amount of data entry required to
+create lines
 in your EDD study.  One option is to use ICE’s bulk export feature to create a CSV file as a starting
 point for your EDD Experiment Description file.  EDD’s Experiment Description file purposefully uses
 the same “Part ID” column header as ICE’s export, so all you have to do is remove the other
-    unnecessary
-columns from the ICE export, then add other columns to fully describe your experiment.
+unnecessary columns from the ICE export, then add other columns to fully describe your experiment.
 </p>
 
 <h6>Combinatorial Line Creation</h6>
@@ -374,10 +376,10 @@ headers in an Experiment Description file, then add comma-separated values in th
 EDD generate lines combinatorially.  Figure 6 shows an example file that creates lines combinatorially
 using different media.
 </p>
-<p>Note that when using combinatorial input, EDD will insert the combinatorial values into the
-    line names so that names are unique.  The relative order of metadata columns in your file will
-    dictate the ordering of those values within the resulting line names.  <span class="TODO">TODO:
-    verify or debunk/implement this claim.</span>
+<p>Note that when using combinatorial input, EDD will insert the combinatorial metadata values into
+    the line names so they're unique.  The relative order of combinatorial metadata columns in your
+    file (those that you appended an '(s)' to) will dictate the ordering of those values within
+    the resulting line names.
 </p>
 <table class="figureTable">
     <thead>
