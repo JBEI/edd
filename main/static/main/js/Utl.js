@@ -564,13 +564,13 @@ var Utl;
     // A class wrapping filedrop-min.js (http://filedropjs.org) and providing some additional structure.
     // It's initialized with a single 'options' object:
     // {
-    //	elementId: ID of the element to be set up as a drop zone
-    //	fileInitFn: Called when a file has been dropped, but before any processing has started
-    //	processRawFn: Called when the file content has been read into a local variable, but before any communication with
+    //  elementId: ID of the element to be set up as a drop zone
+    //  fileInitFn: Called when a file has been dropped, but before any processing has started
+    //  processRawFn: Called when the file content has been read into a local variable, but before any communication with
     //                the server.
-    //	url: The URL to upload the file.
-    //	progressBar: A ProgressBar object for tracking the upload progress.
-    //	processResponseFn: Called when the server sends back its results.
+    //  url: The URL to upload the file.
+    //  progressBar: A ProgressBar object for tracking the upload progress.
+    //  processResponseFn: Called when the server sends back its results.
     //  processErrorFn: Called as an alternative to processResponseFn if the server reports an error.
     // }
     // All callbacks are given a FileDropZoneFileContainer object as their first argument.
