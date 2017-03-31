@@ -2052,12 +2052,12 @@ var EDDTableImport;
             $('#masterUnitDiv').addClass('off');
             $('#disambiguateLinesSection').addClass('off');
             $('#disambiguateAssaysSection').addClass('off');
+            $('#matchedAssaysSection').addClass('off');
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
-            // put the click handler at the document level, then filter to any link inside a .disclose
-            $(document).on('click', '.disclose .discloseLink', function (e) {
+            //toggle matched assay section
+            $('#matchedAssaysSection').on('click', function (e) {
                 $(e.target).closest('.disclose').toggleClass('discloseHide');
-                return false;
             });
             // remove toggle buttons and labels dynamically added for some subsections
             // (easier than leaving them in place)
@@ -2116,6 +2116,12 @@ var EDDTableImport;
                 }
                 return false;
             });
+            if ($(event.target).text() === 'Select All Assays') {
+                $(event.target).text('Select None');
+            }
+            else {
+                $(event.target).text('Select All Assays');
+            }
             // un/check all checkboxes based on their previous state
             checkboxes.each(function (index, elt) {
                 var checkbox = $(elt);
@@ -2183,7 +2189,7 @@ var EDDTableImport;
         // reveal the pulldowns for selecting a master Line/Assay, leaving the table empty, and return.
         TypeDisambiguationStep.prototype.remakeAssaySection = function () {
             var _this = this;
-            var avgRowCreationSeconds, maxRowCreationSeconds, masterProtocol, nColumns, nControls, nRows, parentDivDisambiguate, parentDivMatched, requiredInputText, tableDisambiguate, tableMatched, tableBodyDisambiguate, tableBodyMatched, uniqueAssayNames, totalRowCreationSeconds, childDivDisambiguate, childDivMatched;
+            var avgRowCreationSeconds, maxRowCreationSeconds, masterProtocol, nColumns, nControls, nRows, parentDivMatched, requiredInputText, tableMatched, tableBodyMatched, uniqueAssayNames, totalRowCreationSeconds, childDivMatched;
             // gather up inputs from this and previous steps
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
             masterProtocol = this.selectMajorKindStep.masterProtocol;
@@ -2192,16 +2198,12 @@ var EDDTableImport;
                 disam.detach();
             });
             this.currentlyVisibleAssayObjSets = [];
-            $('#disambiguateAssaysTable').remove();
-            $('#matchedAssaysSection').remove();
             this.assayObjSets = {};
             //end early if there's nothing to display in this section
             if ((!this.identifyStructuresStep.requiredInputsProvided()) ||
                 this.identifyStructuresStep.parsedSets.length === 0) {
                 return;
             }
-            parentDivDisambiguate = $('#disambiguateAssaysSection');
-            childDivDisambiguate = $('#disambiguateAssaysSectionBody');
             parentDivMatched = $('#matchedAssaysSection');
             childDivMatched = $('#matchedAssaysSectionBody');
             if (uniqueAssayNames.length === 0) {
@@ -2209,29 +2211,25 @@ var EDDTableImport;
                 return;
             }
             requiredInputText = 'At least one valid assay / line combination is required.';
-            this.addRequiredInputLabel(parentDivDisambiguate, requiredInputText);
+            this.addRequiredInputLabel(childDivMatched, requiredInputText);
             if (uniqueAssayNames.length > this.TOGGLE_ALL_THREASHOLD) {
-                this.addToggleAllButton(parentDivDisambiguate, 'Assays');
+                this.addToggleAllButton(childDivMatched, 'Assays');
+            }
+            if ($('#disambiguateAssaysSection')) {
+                var test = $('#disambiguateAssaysSection');
+                this.addToggleAllButton(test, 'Assays');
             }
             ////////////////////////////////////////////////////////////////////////////////////////
-            // Create the two tables
+            // Create the table
             ////////////////////////////////////////////////////////////////////////////////////////
-            tableDisambiguate = $('<table>')
-                .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
-                .appendTo(childDivDisambiguate)
-                .on('change', 'select', function (ev) {
-                _this.userChangedAssayDisam(ev.target);
-            })[0];
-            parentDivDisambiguate.removeClass('off');
-            tableBodyDisambiguate = $('<tbody>').appendTo(tableDisambiguate)[0];
             tableMatched = $('<table>')
-                .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
-                .appendTo(childDivDisambiguate)
+                .attr({ 'id': 'matchedAssaysTable', 'cellspacing': 0 })
+                .appendTo(childDivMatched)
                 .on('change', 'select', function (ev) {
                 _this.userChangedAssayDisam(ev.target);
             })[0];
             parentDivMatched.removeClass('off');
-            tableBodyMatched = $('<tbody>').appendTo(tableDisambiguate)[0];
+            tableBodyMatched = $('<tbody>').appendTo(tableMatched)[0];
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create a table row for each unique assay name
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -2243,19 +2241,14 @@ var EDDTableImport;
             uniqueAssayNames.forEach(function (assayName, i) {
                 var assayId, disam, row, defaultSelection, cell, aSelect, disam = _this.assayObjSets[assayName];
                 if (!disam) {
-                    disam = new AssayDisambiguationRow(tableBodyDisambiguate, assayName, i);
+                    disam = new AssayDisambiguationRow(tableBodyMatched, assayName, i);
                     nRows++;
                     _this.assayObjSets[assayName] = disam;
                 }
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
-                disam.appendTo(tableBodyDisambiguate);
+                // disam.appendTo(tableBodyMatched);
                 _this.currentlyVisibleAssayObjSets.push(disam);
             });
-            if (uniqueAssayNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
-                var warningText;
-                this.addToggleAllButton(parentDivDisambiguate, 'Assays');
-                this.addRequiredInputLabel(parentDivDisambiguate, requiredInputText);
-            }
         };
         TypeDisambiguationStep.prototype.addRequiredInputLabel = function (parentDiv, text) {
             var adding = [TypeDisambiguationStep.STEP_4_SUBSECTION_REQUIRED_CLASS, 'off', 'missingSingleFormInput'];
@@ -2670,7 +2663,7 @@ var EDDTableImport;
             var subsection, requiredInputSubsectionSelectors, allRequiredInputs, sectionRequiredInputs;
             // loop over subsections that must have at least one input, making sure that all the
             // visible ones have at least one required input that isn't ignored.
-            requiredInputSubsectionSelectors = ['#disambiguateAssaysSection', '#disambiguateLinesSection'];
+            requiredInputSubsectionSelectors = ['#matchedAssaysSection', '#disambiguateLinesSection'];
             for (var _i = 0, requiredInputSubsectionSelectors_1 = requiredInputSubsectionSelectors; _i < requiredInputSubsectionSelectors_1.length; _i++) {
                 var selector = requiredInputSubsectionSelectors_1[_i];
                 var hasEnabledInputs;
@@ -2986,9 +2979,18 @@ var EDDTableImport;
                 .appendTo(cell);
             /////////////////////////////////////////////////////////////////////////////
             // Set up an autocomplete for the line (autocomplete is important for
-            // efficiency for studies with many lines).
+            // efficiency for studies with many lines). Also add rows to disambiguated section
             /////////////////////////////////////////////////////////////////////////////
-            this.appendLineAutoselect(cell, defaultSel);
+            if (!defaultSel.name) {
+                var parentDiv = $('#disambiguateAssaysSection');
+                var table = $('#disambiguateAssaysSection table');
+                $(parentDiv).removeClass('off');
+                this.appendLineAutoselect(cell, defaultSel);
+                $(table).append(this.row);
+            }
+            else {
+                this.appendLineAutoselect(cell, defaultSel);
+            }
             //here possibly append to different table based on no match. 
         };
         return AssayDisambiguationRow;
