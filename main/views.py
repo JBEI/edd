@@ -201,7 +201,13 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
     template_name = 'main/study-overview.html'
 
     def get_actions(self, can_write=False):
-        """ Return a dict mapping action names to functions performing the action. """
+        """ Return a dict mapping action names to functions performing the action. These functions
+            may return one of the following values:
+            1. True: indicates a change was made; triggers a study_modified signal and redirects
+                to a GET request
+            2. False: indicates no change was made; triggers no signal and no redirect
+            3. HttpResponse instance: the explicit response to return
+            4. view function: another view to handle the request """
         action_lookup = collections.defaultdict(lambda: self.handle_unknown)
         if can_write:
             action_lookup.update({
@@ -297,7 +303,10 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
 
     def post_response(self, request, context, form_valid):
         if form_valid:
+            # signal the change
             study_modified.send(sender=self.__class__, study=self.object)
+            # redirect to the same location to avoid re-submitting forms with back/forward
+            return HttpResponseRedirect(request.path)
         return self.render_to_response(context)
 
     def _check_write_permission(self, request):
@@ -388,8 +397,7 @@ class StudyOverviewView(StudyDetailBaseView):
         if form.is_valid():
             form.save()
             return True
-        else:
-            context['new_attach'] = form
+        context['new_attach'] = form
         return False
 
     def handle_comment(self, request, context, *args, **kwargs):
@@ -397,8 +405,7 @@ class StudyOverviewView(StudyDetailBaseView):
         if form.is_valid():
             form.save()
             return True
-        else:
-            context['new_comment'] = form
+        context['new_comment'] = form
         return False
 
     def handle_update(self, request, context, *args, **kwargs):
@@ -407,6 +414,7 @@ class StudyOverviewView(StudyDetailBaseView):
         if form.is_valid():
             self.object = form.save()  # make sure we're updating the view object
             return True
+        context['edit_study'] = form
         return False
 
 
@@ -451,14 +459,17 @@ class StudyLinesView(StudyDetailBaseView):
             ids = request.POST.getlist('lineId', [])
             form = AssayForm(request.POST, lines=ids, prefix='assay')
             if len(ids) == 0:
-                form.add_error(None, ValidationError(
-                    _('Must select at least one line to add Assay'),
-                    code='no-lines-selected'
-                    ))
-        context['new_assay'] = form
+                form.add_error(
+                    None,
+                    ValidationError(
+                        _('Must select at least one line to add Assay'),
+                        code='no-lines-selected',
+                    ),
+                )
         if form.is_valid():
             form.save()
             return True
+        context['new_assay'] = form
         return False
 
     def handle_assay_action(self, request, context, *args, **kwargs):
@@ -480,9 +491,9 @@ class StudyLinesView(StudyDetailBaseView):
         elif assay_action == 'delete':
             form_valid = self.handle_measurement_delete(request)
         elif assay_action == 'edit':
-            return self.handle_measurement_edit(request)
+            form_valid = self.handle_measurement_edit(request)
         elif assay_action == 'update':
-            return self.handle_measurement_update(request, context)
+            form_valid = self.handle_measurement_update(request, context)
         else:
             messages.error(request, 'Unknown assay action %s' % (assay_action))
         return form_valid
@@ -495,10 +506,10 @@ class StudyLinesView(StudyDetailBaseView):
                 _('Must select at least one assay to add Measurement'),
                 code='no-assays-selected'
                 ))
-        context['new_measurement'] = form
         if form.is_valid():
             form.save()
             return True
+        context['new_measurement'] = form
         return False
 
     def handle_enable(self, request, context, *args, **kwargs):
@@ -531,7 +542,9 @@ class StudyLinesView(StudyDetailBaseView):
             )
             return True
         messages.error(request, _('Failed to validate selection.'))
-        return False
+        # forms involved here are built dynamically by Typescript, should redirect instead of
+        #   trying to use normal form errors
+        return HttpResponseRedirect(request.path)
 
     def handle_group(self, request, context, *args, **kwargs):
         self._check_write_permission(request)
@@ -543,7 +556,9 @@ class StudyLinesView(StudyDetailBaseView):
             messages.success(request, 'Grouped %s Lines' % count)
             return True
         messages.error(request, _('Must select more than one Line to group.'))
-        return False
+        # forms involved here are built dynamically by Typescript, should redirect instead of
+        #   trying to use normal form errors
+        return HttpResponseRedirect(request.path)
 
     def handle_line(self, request, context, *args, **kwargs):
         self._check_write_permission(request)
@@ -552,14 +567,11 @@ class StudyLinesView(StudyDetailBaseView):
             return self.handle_line_new(request, context)
         elif len(ids) == 1:
             return self.handle_line_edit(request, context, ids[0])
-        else:
-            return self.handle_line_bulk(request, ids)
-        return False
+        return self.handle_line_bulk(request, ids)
 
     def handle_line_action(self, request, context, *args, **kwargs):
         can_write = self.object.user_can_write(request.user)
         line_action = request.POST.get('line_action', None)
-        form_valid = False
         # allow any who can view to export
         if line_action == 'export':
             export_type = request.POST.get('export', 'csv')
@@ -569,7 +581,9 @@ class StudyLinesView(StudyDetailBaseView):
             messages.error(request, _('You do not have permission to modify this study.'))
         else:
             messages.error(request, _('Unknown line action %s') % (line_action))
-        return form_valid
+        # forms involved here are built dynamically by Typescript, should redirect instead of
+        #   trying to use normal form errors
+        return HttpResponseRedirect(request.path)
 
     def handle_line_bulk(self, request, ids):
         study = self.get_object()
@@ -625,8 +639,7 @@ class StudyLinesView(StudyDetailBaseView):
                 }
             )
             return True
-        else:
-            context['new_line'] = form
+        context['new_line'] = form
         return False
 
     def _get_export_types(self):
@@ -684,10 +697,10 @@ class StudyDetailView(StudyDetailBaseView):
                     _('Must select at least one line to add Assay'),
                     code='no-lines-selected'
                     ))
-        context['new_assay'] = form
         if form.is_valid():
             form.save()
             return True
+        context['new_assay'] = form
         return False
 
     def handle_assay_action(self, request, context, *args, **kwargs):
@@ -709,11 +722,16 @@ class StudyDetailView(StudyDetailBaseView):
         elif assay_action == 'delete':
             form_valid = self.handle_measurement_delete(request)
         elif assay_action == 'edit':
-            return self.handle_measurement_edit(request)
+            form_valid = self.handle_measurement_edit(request)
         elif assay_action == 'update':
-            return self.handle_measurement_update(request, context)
+            form_valid = self.handle_measurement_update(request, context)
         else:
-            messages.error(request, 'Unknown assay action %s' % (assay_action))
+            messages.error(
+                request,
+                _('Unknown assay action %(action)s') % {
+                    'action': assay_action
+                }
+            )
         return form_valid
 
     def handle_assay_mark(self, request):
@@ -728,23 +746,29 @@ class StudyDetailView(StudyDetailBaseView):
             messages.error(request, 'Invalid action specified, doing nothing')
             return True
         count = Assay.objects.filter(pk__in=ids, line__study=study).update(active=active)
-        messages.success(request, 'Updated %(count)s Assays' % {
-            'count': count,
-            })
+        messages.success(
+            request,
+            _('Updated %(count)s Assays') % {
+                'count': count,
+            }
+        )
         return True
 
     def handle_measurement(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('assayId', [])
         form = MeasurementForm(request.POST, assays=ids, prefix='measurement')
         if len(ids) == 0:
-            form.add_error(None, ValidationError(
-                _('Must select at least one assay to add Measurement'),
-                code='no-assays-selected'
-                ))
-        context['new_measurement'] = form
+            form.add_error(
+                None,
+                ValidationError(
+                    _('Must select at least one assay to add Measurement'),
+                    code='no-assays-selected',
+                )
+            )
         if form.is_valid():
             form.save()
             return True
+        context['new_measurement'] = form
         return False
 
     def handle_measurement_delete(self, request):
@@ -817,16 +841,19 @@ class StudyDetailView(StudyDetailBaseView):
             a = m.assay
             l = a.line
             line_dict = lines.setdefault(l.id, {'line': l, 'assays': {}, })
-            assay_dict = line_dict['assays'].setdefault(a.id, {
-                'assay': a,
-                'measures': collections.OrderedDict(),
-                })
+            assay_dict = line_dict['assays'].setdefault(
+                a.id,
+                {
+                    'assay': a,
+                    'measures': collections.OrderedDict(),
+                }
+            )
             aform = MeasurementValueFormSet(
                 request.POST or None,
                 instance=m,
                 prefix=str(m.id),
                 queryset=m.measurementvalue_set.order_by('x'),
-                )
+            )
             if aform.is_valid():
                 aform.save()
             else:
@@ -834,10 +861,10 @@ class StudyDetailView(StudyDetailBaseView):
             assay_dict['measures'][m.id] = {
                 'measure': m,
                 'form': aform,
-                }
+            }
         if not is_valid:
             return self.handle_measurement_edit_response(request, lines, measures)
-        return self.post_response(request, context, True)
+        return True
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -848,7 +875,9 @@ class StudyDetailView(StudyDetailBaseView):
             )
         # redirect to lines page if there are no assays
         if Assay.objects.filter(line__study=self.object).count() == 0:
-            return HttpResponseRedirect(reverse('main:lines', kwargs={'slug': self.object.slug}))
+            return HttpResponseRedirect(
+                reverse('main:lines', kwargs={'slug': self.object.slug})
+            )
         return super(StudyDetailView, self).get(request, *args, **kwargs)
 
     def _get_assay(self, assay_id):
@@ -882,20 +911,17 @@ class StudyDeleteView(StudyLinesView):
         context['cancel_link'] = request.path
         return context
 
-    def get_template_names(self):
-        return [StudyDeleteView.template_name]
-
     def handle_line_delete(self, request, context, *args, **kwargs):
         context['typename'] = _('Line')
         context['item_names'] = [l.name for l in context['select_form'].selection.lines]
         context['confirm_action'] = 'disable_confirm'
-        return True
+        return False
 
     def handle_study_delete(self, request, context, *args, **kwargs):
         context['typename'] = _('Study')
         context['item_names'] = [self.object.name]
         context['confirm_action'] = 'delete_confirm'
-        return True
+        return False
 
 
 class EDDExportView(generic.TemplateView):
