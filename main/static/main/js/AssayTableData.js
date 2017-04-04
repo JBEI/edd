@@ -1764,6 +1764,7 @@ var EDDTableImport;
                             _this.uniqueAssayNames.push(value);
                         }
                         set.assay_name = value;
+                        //assay + protocol + assay
                         return;
                     }
                     else if (pulldown === TypeEnum.Measurement_Types) {
@@ -2214,10 +2215,7 @@ var EDDTableImport;
             this.addRequiredInputLabel(childDivMatched, requiredInputText);
             if (uniqueAssayNames.length > this.TOGGLE_ALL_THREASHOLD) {
                 this.addToggleAllButton(childDivMatched, 'Assays');
-            }
-            if ($('#disambiguateAssaysSection')) {
-                var div = $('#disambiguateAssaySection');
-                this.addToggleAllButton(div, 'Assays');
+                this.addToggleAllButton($('#disambiguateAssaysSection'), 'Assays');
             }
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create the table
@@ -2234,28 +2232,24 @@ var EDDTableImport;
             // Create a table row for each unique assay name
             ////////////////////////////////////////////////////////////////////////////////////////
             nRows = 0;
-            nControls = 4;
-            nColumns = 5;
-            maxRowCreationSeconds = 0;
-            totalRowCreationSeconds = 0;
             uniqueAssayNames.forEach(function (assayName, i) {
                 if (uniqueAssayNames.length - 1 === i) {
-                    if ($('#matchedAssaysSection tr').length === 0) {
-                        $('#matchedAssaysSection').remove();
+                    if ($('#matchedAssaysTable tr').length === 0) {
+                        $('#matchedAssaysSection').hide();
                     }
                     else {
+                        $('#matchedAssaysSection').show();
                         matched = i + 1;
                         $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines');
                     }
                 }
-                var assayId, disam, row, defaultSelection, cell, aSelect, disam = _this.assayObjSets[assayName];
+                var disam, disam = _this.assayObjSets[assayName];
                 if (!disam) {
                     disam = new AssayDisambiguationRow(tableBodyMatched, assayName, i);
                     nRows++;
                     _this.assayObjSets[assayName] = disam;
                 }
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
-                // disam.appendTo(tableBodyMatched);
                 _this.currentlyVisibleAssayObjSets.push(disam);
             });
         };
@@ -2667,7 +2661,7 @@ var EDDTableImport;
             var subsection, requiredInputSubsectionSelectors, allRequiredInputs, sectionRequiredInputs;
             // loop over subsections that must have at least one input, making sure that all the
             // visible ones have at least one required input that isn't ignored.
-            requiredInputSubsectionSelectors = ['#matchedAssaysSection', '#disambiguateAssaysSection', '#disambiguateLinesSection'];
+            requiredInputSubsectionSelectors = ['#disambiguateAssaysSection', '#disambiguateLinesSection'];
             for (var _i = 0, requiredInputSubsectionSelectors_1 = requiredInputSubsectionSelectors; _i < requiredInputSubsectionSelectors_1.length; _i++) {
                 var selector = requiredInputSubsectionSelectors_1[_i];
                 var hasEnabledInputs;
@@ -2864,8 +2858,8 @@ var EDDTableImport;
             var startTime = new Date();
             var selections, highest, assays;
             selections = {
-                lineID: 0,
-                assayID: 0
+                lineID: 'new',
+                assayID: 'named_or_new'
             };
             highest = 0;
             // ATData.existingAssays is type {[index: string]: number[]}
@@ -2979,7 +2973,7 @@ var EDDTableImport;
                     .prop('selected', defaultSel.assayID === id);
             });
             // a span to contain the text label for the Line pulldown, and the pulldown itself
-            cell = $('<span>').text('for Line: ').toggleClass('off', !!defaultSel.assayID)
+            cell = $('<span>').text('for Line: ').toggleClass('off', defaultSel.assayID != 'named_or_new')
                 .appendTo(cell);
             /////////////////////////////////////////////////////////////////////////////
             // Set up an autocomplete for the line (autocomplete is important for
@@ -2995,7 +2989,6 @@ var EDDTableImport;
             else {
                 this.appendLineAutoselect(cell, defaultSel);
             }
-            //here possibly append to different table based on no match.
         };
         return AssayDisambiguationRow;
     }(LineDisambiguationRow));
