@@ -1764,7 +1764,6 @@ var EDDTableImport;
                             _this.uniqueAssayNames.push(value);
                         }
                         set.assay_name = value;
-                        //assay + protocol + assay
                         return;
                     }
                     else if (pulldown === TypeEnum.Measurement_Types) {

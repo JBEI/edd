@@ -2004,7 +2004,7 @@ module EDDTableImport {
                         data: reassembledData
                     };
                     this.parsedSets.push(set);
-                    
+
                     graphSet = {
                         'label': (ln ? ln + ': ' : '') + an + ': ' + mn,
                         'name': mn,
@@ -2179,7 +2179,6 @@ module EDDTableImport {
                             this.uniqueAssayNames.push(value);
                         }
                         set.assay_name = value;
-                        //assay + protocol + assay
                         return;
                     } else if (pulldown === TypeEnum.Measurement_Types) {   // Metabolite Names
                         // If haven't seen value before, increment and store uniqueness index
