@@ -51,18 +51,12 @@
     <h2>All Studies:</h2>
     <table id="studiesTable"></table>
 
+    <div id="addStudyModal" class="off"
+         title="Add New Study">
+        <form action="" class="edd-form" method="POST">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" name="action" value="assay">Add Study</button>
+        </form>
+    </div>
 {% endblock content %}
-
-{% block body_postfix %}
-
-<div id="addStudyModal" class="off"
-     title="Add New Study">
-    <form action="" class="edd-form" method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" name="action" value="assay">Add Study</button>
-    </form>
-</div>
-
-    {{ block.super }}
-{% endblock body_postfix %}
