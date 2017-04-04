@@ -282,7 +282,7 @@ namespace StudyLines {
     }
 
     function includeAllLinesIfEmpty() {
-        if ($('#studyLinesTable').find('input.checkbox:checked').length === 0) {
+        if ($('#studyLinesTable').find('input[name=lineId]:checked').length === 0) {
             //append study id to form
             var study = _.keys(EDDData.Studies)[0];
             $('<input>').attr({
