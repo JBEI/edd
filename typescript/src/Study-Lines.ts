@@ -33,6 +33,7 @@ namespace StudyLines {
     // We use our own flag to ensure we don't get into an infinite event loop,
     // switching back and forth between positions that might trigger resize events.
     export var actionPanelIsInBottomBar;
+    export var actionPanelIsCopied = false;
 
 
     // Called when the page loads.
@@ -401,17 +402,28 @@ namespace StudyLines {
     export function positionActionsBar() {
         // old code was trying to calculate when to move the buttons to the #bottomBar element,
         //    but the calculations were structured in a way to always return the same result.
-        //    just place copies of buttons in the #bottomBar to start.
-        var original: JQuery, copy: JQuery;
-        if (!actionPanelIsInBottomBar) {
+        var original: JQuery, copy: JQuery, viewHeight: number, itemsHeight: number;
+        // first time, copy the buttons
+        if (!actionPanelIsCopied) {
             original = $('#actionsBar');
-            copy = original.clone().appendTo('#bottomBar');
-            original.hide();
-            actionPanelIsInBottomBar = true;
+            copy = original.clone().appendTo('#bottomBar').hide();
             // forward click events on copy to the original button
             copy.on('click', 'button', (e) => {
                 original.find('#' + e.target.id).trigger(e);
             });
+            actionPanelIsCopied = true;
+        }
+        // calculate how big everything is
+        viewHeight = $('#content').height();
+        itemsHeight = 0;
+        $('#content').children().each((i, e) => { itemsHeight += e.scrollHeight; });
+        // switch which set of buttons is visible based on size
+        if (actionPanelIsInBottomBar && itemsHeight < viewHeight) {
+            $('.actionsBar').toggle();
+            actionPanelIsInBottomBar = false;
+        } else if (!actionPanelIsInBottomBar && viewHeight < itemsHeight) {
+            $('.actionsBar').toggle();
+            actionPanelIsInBottomBar = true;
         }
     }
 

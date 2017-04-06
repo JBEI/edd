@@ -1469,8 +1469,19 @@ namespace StudyDataPage {
     }
 
     function toggleActionButtons(showOriginal: boolean) {
-        $('#assaysActionPanel').toggle(showOriginal);
-        $('#copyActionPanel').toggle(!showOriginal);
+        var viewHeight: number, itemsHeight: number;
+        viewHeight = $('#content').height();
+        itemsHeight = 0;
+        $('#content').children().each((i, e) => { itemsHeight += e.scrollHeight; });
+        if (showOriginal && actionPanelIsInBottomBar && itemsHeight < viewHeight) {
+            $('#assaysActionPanel').toggle(showOriginal);
+            $('#copyActionPanel').toggle(!showOriginal);
+            actionPanelIsInBottomBar = false;
+        } else if (!showOriginal && !actionPanelIsInBottomBar && viewHeight < itemsHeight) {
+            $('#assaysActionPanel').toggle(!showOriginal);
+            $('#copyActionPanel').toggle(showOriginal);
+            actionPanelIsInBottomBar = true;
+        }
     }
 
     export function fetchEDDData(success) {

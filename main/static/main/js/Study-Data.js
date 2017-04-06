@@ -1335,8 +1335,20 @@ var StudyDataPage;
         });
     }
     function toggleActionButtons(showOriginal) {
-        $('#assaysActionPanel').toggle(showOriginal);
-        $('#copyActionPanel').toggle(!showOriginal);
+        var viewHeight, itemsHeight;
+        viewHeight = $('#content').height();
+        itemsHeight = 0;
+        $('#content').children().each(function (i, e) { itemsHeight += e.scrollHeight; });
+        if (showOriginal && actionPanelIsInBottomBar && itemsHeight < viewHeight) {
+            $('#assaysActionPanel').toggle(showOriginal);
+            $('#copyActionPanel').toggle(!showOriginal);
+            actionPanelIsInBottomBar = false;
+        }
+        else if (!showOriginal && !actionPanelIsInBottomBar && viewHeight < itemsHeight) {
+            $('#assaysActionPanel').toggle(!showOriginal);
+            $('#copyActionPanel').toggle(showOriginal);
+            actionPanelIsInBottomBar = true;
+        }
     }
     function fetchEDDData(success) {
         $.ajax({

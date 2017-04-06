@@ -21,6 +21,7 @@ var StudyLines;
     var carbonBalanceDisplayIsFresh;
     var cSourceEntries;
     var mTypeEntries;
+    StudyLines.actionPanelIsCopied = false;
     // Called when the page loads.
     function prepareIt() {
         var _this = this;
@@ -341,17 +342,29 @@ var StudyLines;
     function positionActionsBar() {
         // old code was trying to calculate when to move the buttons to the #bottomBar element,
         //    but the calculations were structured in a way to always return the same result.
-        //    just place copies of buttons in the #bottomBar to start.
-        var original, copy;
-        if (!StudyLines.actionPanelIsInBottomBar) {
+        var original, copy, viewHeight, itemsHeight;
+        // first time, copy the buttons
+        if (!StudyLines.actionPanelIsCopied) {
             original = $('#actionsBar');
-            copy = original.clone().appendTo('#bottomBar');
-            original.hide();
-            StudyLines.actionPanelIsInBottomBar = true;
+            copy = original.clone().appendTo('#bottomBar').hide();
             // forward click events on copy to the original button
             copy.on('click', 'button', function (e) {
                 original.find('#' + e.target.id).trigger(e);
             });
+            StudyLines.actionPanelIsCopied = true;
+        }
+        // calculate how big everything is
+        viewHeight = $('#content').height();
+        itemsHeight = 0;
+        $('#content').children().each(function (i, e) { itemsHeight += e.scrollHeight; });
+        // switch which set of buttons is visible based on size
+        if (StudyLines.actionPanelIsInBottomBar && itemsHeight < viewHeight) {
+            $('.actionsBar').toggle();
+            StudyLines.actionPanelIsInBottomBar = false;
+        }
+        else if (!StudyLines.actionPanelIsInBottomBar && viewHeight < itemsHeight) {
+            $('.actionsBar').toggle();
+            StudyLines.actionPanelIsInBottomBar = true;
         }
     }
     StudyLines.positionActionsBar = positionActionsBar;
