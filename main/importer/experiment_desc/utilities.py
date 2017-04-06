@@ -21,7 +21,6 @@ from .constants import (
 
 logger = logging.getLogger(__name__)
 
-
 class NamingStrategy(object):
     """
     The abstract base class for different line/assay naming strategies. Provides a generic
@@ -29,15 +28,20 @@ class NamingStrategy(object):
     combinatorial line creation GUI (EDD-257).
     """
     def __init__(self):
+        self.section_separator = '-'
+        self.multivalue_separator = '_'
+        self.space_replacement = '_'
         self.combinatorial_input = None
         self.fractional_time_digits = 0
         self.require_strains = False
 
-    def get_line_name(self, strains, line_metadata, replicate_num, line_metadata_types,
-                      combinatorial_metadata_types, is_control):
+    def get_line_name(self, line_strain_ids, line_metadata, replicate_num, line_metadata_types,
+                      combinatorial_metadata_types, is_control, strains_by_pk):
         """
+        :param strains_by_pk: 
         :raises ValueError if some required input isn't available for creating the name (either
-            via this method or from other properties)
+            via this method or from other properties). Note that even if required for line name 
+            uniqueness, strain names may be omitted.
         """
         raise NotImplementedError()  # require subclasses to implement
 
@@ -47,6 +51,33 @@ class NamingStrategy(object):
             via this method or from other properties)
         """
         raise NotImplementedError()  # require subclasses to implement
+
+    def names_contain_strains(self):
+        raise NotImplementedError()
+
+    def _build_strains_names_list(self, line_strain_ids, strains_by_pk):
+        """
+        Computes the line name segment for strain names, if needed to make the line name unique
+        :param line_strain_ids: 
+        :param strains_by_pk: 
+        :return: the line name segment for strain names, or an empty string if unneeded or if unable
+        to compute
+        """
+
+        # avoid problems when ICE-related errors prevent some/all strains from being found
+        if not strains_by_pk:
+            return []
+
+        strain_names = []
+        for strain_pk in line_strain_ids:
+            strain = strains_by_pk.get(strain_pk, None)
+
+            # skip single strains that weren't found
+            if not strain:
+                continue
+
+            strain_names.append(strain.name.replace(' ', self.space_replacement))
+        return strain_names
 
 
 class NewLineAndAssayVisitor(object):
@@ -194,7 +225,7 @@ class AutomatedNamingStrategy(NamingStrategy):
     automatically.
     """
 
-    STRAIN_NAME = 'strain_name'
+    STRAIN_NAME = 'strain_name'  # TODO: consider renaming to "part_id" to match use
     REPLICATE = 'replicate'
     # TODO: flesh out other items that are doubly-defined based on database field / metadata
     # conflicts --
@@ -208,21 +239,20 @@ class AutomatedNamingStrategy(NamingStrategy):
 
     def __init__(self, line_metadata_types_by_pk, assay_metadata_types_by_pk,
                  assay_time_metadata_type_pk, naming_elts=None, custom_additions=None,
-                 abbreviations=None, section_separator='-', multivalue_separator='_'):
+                 abbreviations=None, ):
         super(AutomatedNamingStrategy, self).__init__()
         self.elements = naming_elts
         self.abbreviations = abbreviations
         self.line_metadata_types_by_pk = line_metadata_types_by_pk
         self.assay_metadata_types_by_pk = assay_metadata_types_by_pk
         self.assay_time_metadata_type_pk = assay_time_metadata_type_pk
-        self.separator = section_separator
-        self.multivalue_separator = multivalue_separator
-        self.require_strains = True
-        self.strains_by_pk = {}
 
         valid_items = [self.STRAIN_NAME, self.REPLICATE, ]
         valid_items.extend(pk for pk in self.line_metadata_types_by_pk.iterkeys())
         self._valid_items = valid_items
+
+    def names_contain_strains(self):
+        return self.STRAIN_NAME in self.elements
 
     @property
     def valid_items(self, valid_items):
@@ -242,28 +272,23 @@ class AutomatedNamingStrategy(NamingStrategy):
                 importer.add_error(INTERNAL_EDD_ERROR_TITLE, INVALID_AUTO_NAMING_INPUT, value)
 
         if self.abbreviations:
-            for abbreviated_element, replacements_dict in self.abbreviations.iteritems():
+            for abbreviated_element, replacements_dict in self.abbreviations.items():
                 if abbreviated_element not in self.valid_items:
                     importer.add_error(INTERNAL_EDD_ERROR_TITLE, INVALID_AUTO_NAMING_INPUT,
                                        abbreviated_element, '')
 
-    def get_line_name(self, strain_pks, line_metadata, replicate_num, line_metadata_types,
-                      combinatorial_metadata_types, is_control):
+    def get_line_name(self, line_strain_ids, line_metadata, replicate_num, line_metadata_types,
+                      combinatorial_metadata_types, is_control, strains_by_pk):
+        """
+        Constructs a name for the specified line based on the order of naming elements explicitly
+        specified by the client.
+        """
         line_name = None
         for field_id in self.elements:
             append_value = ''
             if self.STRAIN_NAME == field_id:
-                # get names for all the strains using a method that raises ValueError to match
-                # the docstring
                 strain_names = []
-                missing_strains = []
-                for strain_pk in strain_pks:
-                    strain = self.strains_by_pk.get(strain_pk, None)
-                    if not strain:
-                        missing_strains.append(strain_pk)
-                    strain_names.append(strain.name)
-                if missing_strains:
-                    raise ValueError('Unable to locate strain(s): %s' % str(missing_strains))
+                strain_names_list = self.build_strains_names_list(line_strain_ids, strains_by_pk)
                 abbreviated_strains = [
                     self._get_abbrev(self.STRAIN_NAME, strain_name)
                     for strain_name in strain_names
@@ -332,6 +357,9 @@ class AutomatedNamingStrategy(NamingStrategy):
         if not assay_time:
             raise ValueError('No time value was found -- unable to generate an assay name')
         return self.separator.join((line.name, '%sh' % str(assay_time)))
+
+    def names_contain_strains(self):
+        raise NotImplementedError()
 
 
 class CombinatorialDescriptionInput(object):
@@ -625,8 +653,8 @@ class CombinatorialDescriptionInput(object):
         self._assay_metadata_types = assay_metadata_types
 
         # pass cached database values to the naming strategy, if relevant.
-        need_strains_for_naming = self.naming_strategy.require_strains
-        need_strains_for_creation = visitor.require_strains
+        need_strains_for_naming = self.naming_strategy.names_contain_strains
+        need_strains_for_creation = self.naming_strategy.names_contain_strains
         if need_strains_for_naming or need_strains_for_creation:
             if strains_by_pk is None:
                 # determine unique strain pk's and query for the Strains in the database (assumes
@@ -650,9 +678,10 @@ class CombinatorialDescriptionInput(object):
         ###########################################################################################
         try:
             for strain_id_group in self.combinatorial_strain_id_groups:
-                self ._visit_new_lines(study, strain_id_group, line_metadata_types, visitor)
+                self ._visit_new_lines(study, strain_id_group, strains_by_pk, line_metadata_types,
+                                       visitor)
             if not self.combinatorial_strain_id_groups:
-                self._visit_new_lines(study, [], line_metadata_types, visitor)
+                self._visit_new_lines(study, [], strains_by_pk, line_metadata_types, visitor)
 
         ###########################################################################################
         # Clear out local caches of database info
@@ -663,16 +692,16 @@ class CombinatorialDescriptionInput(object):
             if need_strains_for_naming:
                 self.naming_strategy.strains_by_pk = None
 
-    def _visit_new_lines(self, study, strain_ids, line_metadata_dict, visitor):
+    def _visit_new_lines(self, study, line_strain_ids, strains_by_pk, line_metadata_dict, visitor):
             visited_pks = set()
             line_metadata = copy.copy(self.common_line_metadata)
             # outer loop for combinatorial
-            for metadata_pk, values in self.combinatorial_line_metadata.iteritems():
+            for metadata_pk, values in self.combinatorial_line_metadata.items():
                 visited_pks.add(metadata_pk)
                 for value in values:
                     line_metadata[metadata_pk] = value
                     # inner loop for combinatorial
-                    for k, v in self.combinatorial_line_metadata.iteritems():
+                    for k, v in self.combinatorial_line_metadata.items():
                         # skip current metadata if already set in outer loop
                         if k in visited_pks:
                             continue
@@ -680,19 +709,23 @@ class CombinatorialDescriptionInput(object):
                             line_metadata[k] = value
                             self._visit_new_lines_and_assays(
                                 study,
-                                strain_ids,
+                                strains_by_pk,
+                                line_strain_ids,
                                 line_metadata,
                                 visitor
                             )
                     # if only one item in combinatorial, inner loop never visits; do it here
                     if len(self.combinatorial_line_metadata) == 1:
-                        self._visit_new_lines_and_assays(study, strain_ids, line_metadata, visitor)
+                        self._visit_new_lines_and_assays(study, strains_by_pk, line_strain_ids,
+                                                         line_metadata, visitor)
             # if nothing in combinatorial, loops never get to visit; do it here
             if not self.combinatorial_line_metadata:
                 line_metadata = self.common_line_metadata
-                self._visit_new_lines_and_assays(study, strain_ids, line_metadata, visitor)
+                self._visit_new_lines_and_assays(study, strains_by_pk, line_strain_ids,
+                                                 line_metadata, visitor)
 
-    def _visit_new_lines_and_assays(self, study, strain_ids, line_metadata_dict, visitor):
+    def _visit_new_lines_and_assays(self, study, strains_by_pk, line_strain_ids,
+                                    line_metadata_dict, visitor):
         if self.replicate_count == 0:
             self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, ZERO_REPLICATES)
         for replicate_num in range(1, self.replicate_count + 1):
@@ -700,19 +733,18 @@ class CombinatorialDescriptionInput(object):
             if isinstance(self.is_control, Sequence):
                 control_variants = self.is_control
             for is_control in control_variants:
-                line_name = self.naming_strategy.get_line_name(
-                    strain_ids,
-                    line_metadata_dict,
-                    replicate_num,
-                    self._line_metadata_types,
-                    self.combinatorial_line_metadata,
-                    is_control
-                )
+
+                line_name = self.naming_strategy.get_line_name(line_strain_ids, line_metadata_dict,
+                                                               replicate_num,
+                                                               self._line_metadata_types,
+                                                               self.combinatorial_line_metadata,
+                                                               is_control,
+                                                               strains_by_pk)
                 line = visitor.visit_line(
                     line_name,
                     self.description,
                     is_control,
-                    strain_ids,
+                    line_strain_ids,
                     line_metadata_dict,
                     replicate_num
                 )
@@ -876,10 +908,12 @@ def find_existing_strains(ice_parts_by_number, importer):
     """
     # TODO: following EDD-158, consider doing a bulk query here instead of tiptoeing around strain
     # curation issues
-    existing = OrderedDict()  # maps part number -> existing EDD strain
+
+    # maps part number -> existing EDD strain (with part number temporarily cached)
+    existing = OrderedDict()
     not_found = []
 
-    for ice_entry in ice_parts_by_number.itervalues():
+    for ice_entry in ice_parts_by_number.values():
         # search for the strain by registry ID. Note we use search instead of .get() until the
         # database consistently contains/requires ICE UUID's and enforces uniqueness
         # constraints for them (EDD-158).
@@ -887,7 +921,8 @@ def find_existing_strains(ice_parts_by_number, importer):
         # if one or more strains are found with this UUID
         if found_strains_qs:
             if len(found_strains_qs) == 1:
-                existing[ice_entry.part_id] = found_strains_qs.get()
+                edd_strain = found_strains_qs.get()
+                existing[ice_entry.part_id] = edd_strain
             else:
                 importer.add_error(INTERNAL_EDD_ERROR_TITLE, NON_UNIQUE_STRAIN_UUIDS,
                                    ice_entry.uuid, '')

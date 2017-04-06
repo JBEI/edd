@@ -377,9 +377,7 @@ EDD generate lines combinatorially.  Figure 6 shows an example file that creates
 using different media.
 </p>
 <p>Note that when using combinatorial input, EDD will insert the combinatorial metadata values into
-    the line names so they're unique.  The relative order of combinatorial metadata columns in your
-    file (those that you appended an '(s)' to) will dictate the ordering of those values within
-    the resulting line names.
+    the line names so they're unique.
 </p>
 <table class="figureTable">
     <thead>
@@ -478,12 +476,131 @@ EDD_Sample_3_Combinatorial_Media_Values.xlsx
 <td>Minimal</td>
 </tr></tbody></table>
 <div class="caption">Figure 7: Resulting lines table in EDD</div>
+<h6>Line naming for combinatorial creation</h6>
+<p>
+The relative order of combinatorial metadata columns in your file (those that you appended an
+'(s)' to) will dictate the ordering of those values within the resulting line names. Other
+columns that impact the line name are the base line name you've provided in the 'Line name' column,
+and the 'Replicate Count' column, if you used it.  Replicate number will always come last in line
+names, and the 'Line name' and combinatorial values will be included in the order the related
+columns appear in your file. For example consider the following Experiment Description file,
+which has columns defined in a different order than the previous ones:
+</p>
+<table class="figureTable">
+    <thead>
+        <th>Line Description</th>
+        <th>Media(s)</th>
+        <th>Replicate Count</th>
+        <th>Line Name</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Wildtype s. cervisae</td>
+            <td>LB, EZ, Minimal</td>
+            <td>3</td>
+            <td>WT-Control</td>
+        </tr>
+    </tbody>
+</table>
+<p>
+Since it doesn't include values for combinatorial line creation (has no appended "s" or "(s)"),
+the "Line Description" column doesn't affect line names.
+Name-relevant columns are, in order: 'Line Name', 'Media(s)'.  So the order of elements in the
+resulting line names will be:
+    <ol>
+        <li>Media</li>
+        <li>Base line name,</li>
+        <li>Replicate number</li>
+    <ol>
+The lines table displayed in EDD as a result will be:</p>
+<table class="figureTable">
+    <thead>
+        <th>Name</th>
+        <th>Strain</th>
+        <th>Carbon Source(s)</th>
+        <th>Labeling</th>
+        <th>Media</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>LB-WT-Control-R1</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr><tr>
+            <td>LB-WT-Control-R2</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr><tr>
+            <td>LB-WT-Control-R3</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr><tr>
+            <td>EZ-WT-Control-R1</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>EZ</td>
+        </tr><tr>
+            <td>EZ-WT-Control-R2</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>EZ</td>
+        </tr><tr>
+            <td>EZ-WT-Control-R3</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>EZ</td>
+        </tr><tr>
+            <td>Minimal-WT-Control-R1</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>Minimal</td>
+        </tr><tr>
+            <td>Minimal-WT-Control-R2</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>Minimal</td>
+        </tr><tr>
+            <td>Minimal-WT-Control-R3</td>
+            <td>JW0111</td>
+            <td>--</td>
+            <td>--</td>
+            <td>Minimal</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">Figure 8: Resulting lines table in EDD</div>
+<p>
+    Note that combinatorial line creation adds another consideration to the process of creating
+    your lines, but unless you're using the combinatorial creation feature, you can define
+    columns in your file in any order without affecting the resulting line names.</p>
+    <h6>Supported columns for combinatorial creation</h6>
+    <p>Not all columns are supported for combinatorial line creation. Columns defined as
+        line metadata (see the "Line Metadata Types" table below) are supported for combinatorial
+        line creation, except for those that aren't supported for basic input: control, carbon
+        source (s), line experimenter, line contact.  For primary line characteristics defined in
+        the table above, only the 'Part ID(s)' column may have a comma-delimited list of values
+        entered for combinatorial line creation, though a single entry in the  "Replicates"
+        columns will also result in
+        combinatorial creation of lines.</p>
+    <span class="TODO">TODO: add a simpler example with only two combinatorial columns</span>
+<h6>Creating large numbers of lines</h6>
 <p>
 For studies with very large numbers of lines, your browser may time out while lines / assays are
-    being created, giving the appearance that your file upload attempt failed.  If this is the case,
-    try refreshing your study after a few minutes to see whether the attempt succeeded.  This
-    timeout shouldn’t occur often, and future improvements may help to avoid it.  You can also use
-    the bulk line creation script to avoid this problem (see below).
+being created, giving the appearance that your file upload attempt failed.  If this is the case,
+try refreshing your study after a few minutes to see whether the attempt succeeded.  This
+timeout shouldn’t occur often, and future improvements may help to avoid it.  You can also use
+the bulk line creation script to avoid this problem (see below).
 </p>
 <h6>Combinatorial Assay Creation</h6>
 <p>

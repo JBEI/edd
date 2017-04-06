@@ -10,6 +10,9 @@ from openpyxl import load_workbook
 
 from main.importer.experiment_desc import CombinatorialCreationImporter
 from main.importer.experiment_desc.parsers import ExperimentDescFileParser, JsonInputParser
+from main.importer.experiment_desc.utilitilies.AutomatedNamingStrategy import (STRAIN_NAME,
+                                                                               ABBREVIATIONS,
+                                                                               REPLICATE, ELEMENTS)
 from main.models import (
     CarbonSource, MetadataType, Protocol, Strain, Study, User)
 
@@ -92,14 +95,14 @@ class CombinatorialCreationTests(TestCase):
         # working carbon source (via metadata) example
         gui_mockup_example = {  # TODO: replace string literals with constants
             'name_elements': {
-                'elements': [
-                    'strain_name',
+                ELEMENTS: [
+                    STRAIN_NAME,
                     media_meta.pk,
                     carbon_source_meta.pk,
-                    'replicate'
+                    REPLICATE
                 ],
-                'abbreviations': {
-                    'strain_name': {
+                ABBREVIATIONS: {
+                    STRAIN_NAME: {
                         strain1.name: 58,
                         strain2.name: 27,
                     },

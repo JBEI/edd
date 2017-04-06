@@ -174,7 +174,8 @@ class ImportErrorSummary(object):
         }
 
     def add_occurrence(self, occurrence_detail):
-        self._occurrence_details.append(str(occurrence_detail))
+        detail_str = str(occurrence_detail)
+        self._occurrence_details.append(detail_str)
 
 
 class CombinatorialCreationImporter(object):
@@ -344,7 +345,7 @@ class CombinatorialCreationImporter(object):
         # build a list of unique part numbers found in the input file. we'll query ICE to get
         # references to them. Note: ideally we'd do this externally to the @atomic block, but other
         # EDD queries have to precede this one
-        # TODO: restore keeping part numbers in the order found for readability in user messages
+        # TODO: restore keeping part numbers in the order found for readability in user err messages
         unique_part_numbers = set()
         ice_parts_by_number = OrderedDict()
 
@@ -416,8 +417,8 @@ class CombinatorialCreationImporter(object):
                                                            ice_parts_by_number)
 
         ###########################################################################################
-        # Compute line/assay names if needed as output for a dry run, or if needed to proactively
-        # check for duplicates
+        # Compute line/assay names if needed as output for a dry run, or if needed to
+        # proactively check for duplicates
         ###########################################################################################
         # For maintenance: Note that line names may contain strain information that has to be
         # looked up above before the name can be determined
@@ -515,8 +516,8 @@ class CombinatorialCreationImporter(object):
 
         # for Experiment Description files, track which file row created the duplication to help
         # users track it down. This can be hard in a large file.
-        line_name_to_input_rows = defaultdict(list)
-        protocol_to_assay_name_to_input_rows = defaultdict(lambda: defaultdict(list))
+        line_name_to_input_rows = defaultdict(set)
+        protocol_to_assay_name_to_input_rows = defaultdict(lambda: defaultdict(set))
 
         # line name -> protocol -> [assay name], across all combinatorial inputs.
         all_planned_names = defaultdict(lambda: defaultdict(list))
@@ -539,11 +540,10 @@ class CombinatorialCreationImporter(object):
 
                 if line_name in unique_input_line_names:
                     duplicated_new_line_names.add(line_name)
+                    if isinstance(input_set, _InputFileRow):
+                        line_name_to_input_rows[line_name].add(input_set.row_number)
                 else:
                     unique_input_line_names.add(line_name)
-
-                if isinstance(input_set, _InputFileRow):
-                    line_name_to_input_rows[line_name].append(input_set.row_number)
 
                 # defaultdict, so side effect is assignment
                 all_protocol_to_assay_names = all_planned_names[line_name]
@@ -555,7 +555,7 @@ class CombinatorialCreationImporter(object):
                         all_planned_assay_names.append(assay_name)
 
                         if isinstance(input_set, _InputFileRow):
-                            protocol_to_assay_name_to_input_rows[protocol_pk][assay_name].append(
+                            protocol_to_assay_name_to_input_rows[protocol_pk][assay_name].add(
                                     input_set.row_number)
 
                         unique_assay_names = protocol_to_unique_input_assay_names[protocol_pk]
@@ -570,30 +570,47 @@ class CombinatorialCreationImporter(object):
         if allow_duplicate_names:
             return all_planned_names
 
-        # return early if the input isn't self-consistent
-        for dupe in duplicated_new_line_names:
-            message = dupe
-            row_nums = [str(row_num) for row_num in line_name_to_input_rows[dupe]]
-            if row_nums:
-                message = '%(line_name)s (row %(rows_list)s)' % {
-                    'line_name': dupe,
-                    'rows_list': ', '.join(row_nums),
-                }
+        # add error messages for duplicate line names that indicate that the input isn't
+        # self-consistent
+        for duplicate_name in duplicated_new_line_names:
+            message = duplicate_name
+            int_row_nums = line_name_to_input_rows[duplicate_name]
 
+            # e.g. this is an Experiment Description file build a bettor error message
+            if int_row_nums and int_row_nums is not None:
+                sorted_rows = list(int_row_nums)
+                sorted_rows.sort()
+                str_row_nums = [str(row_num) for row_num in sorted_rows]
+                if str_row_nums:
+                    message = '%(line_name)s (row %(rows_list)s)' % {
+                        'line_name': duplicate_name,
+                        'rows_list': ', '.join(str_row_nums),
+                    }
             self.add_error(NAMING_OVERLAP_CATEGORY, DUPLICATE_INPUT_LINE_NAMES, message)
 
-        for protocol, duplicates in protocol_to_duplicate_new_assay_names.iteritems():
-            for dupe in duplicates:
-                message = dupe
+        # aggregate/add error messages for duplicate assay names that indicate that the input isn't
+        # self-consistent. Note that though it isn't all used yet, we purposefully organize the
+        # intermediate data in two ways: one for convenient display in the current UI, the other for
+        # eventual JSON generation for the following one...see comments in EDD-626.
+        duplicate_input_assay_to_cells = defaultdict(set)
+        for protocol_pk, duplicates in protocol_to_duplicate_new_assay_names.iteritems():
+            for duplicate_name in duplicates:
+                message = duplicate_name
                 row_nums = [str(row_num) for row_num in
-                            protocol_to_assay_name_to_input_rows[protocol_pk][dupe]]
+                            protocol_to_assay_name_to_input_rows[protocol_pk][duplicate_name]]
                 if row_nums:
-                    message = '%(assay_name)s (row %(rows_list)s)' % {
-                        'assay_name': dupe,
-                        'rows_list': ', '.join(row_nums),
-                    }
-                self.add_error(NAMING_OVERLAP_CATEGORY, DUPLICATE_INPUT_ASSAY_NAMES, message)
+                    duplicate_input_assay_to_cells[duplicate_name].update(row_nums)  # TODO: cells!
 
+        for assay_name, cells in duplicate_input_assay_to_cells.iteritems():
+            sorted_cells = list(cells)
+            sorted_cells.sort()
+            message = '%(assay_name)s (%(cells_list)s)' % {
+                'assay_name': assay_name,
+                'cells_list': ', '.join(sorted_cells),
+            }
+            self.add_error(NAMING_OVERLAP_CATEGORY, DUPLICATE_INPUT_ASSAY_NAMES, message)
+
+        # return early, avoiding extra DB queries if the input isn't self-consistent
         if duplicated_new_line_names or protocol_to_duplicate_new_assay_names:
             return all_planned_names
 
@@ -605,15 +622,22 @@ class CombinatorialCreationImporter(object):
         for existing in {line.name for line in existing_lines}:
             self.add_error(NAMING_OVERLAP_CATEGORY, EXISTING_LINE_NAMES, existing)
 
-        # do a series of bulk queries to check for uniqueness of assay names within each protocol
+        # do a series of bulk queries to check for uniqueness of assay names within each protocol.
+        # TODO: we can do some additional work to provide better (e.g. cell-number based) feedback,
+        # but this should be a good stopgap.
+        duplicate_existing_assay_names = set()
         for protocol_pk, assay_names_list in protocol_to_unique_input_assay_names.iteritems():
             existing_assays = Assay.objects.filter(
                 name__in=assay_names_list,
                 line__study__pk=study.pk,
                 protocol__pk=protocol_pk
-            )
+            ).distinct()
+
             for existing in {assay.name for assay in existing_assays}:
-                self.add_error(NAMING_OVERLAP_CATEGORY, EXISTING_ASSAY_NAMES, existing)
+                duplicate_existing_assay_names.add(existing)
+
+        for name in duplicate_existing_assay_names:
+            self.add_error(NAMING_OVERLAP_CATEGORY, EXISTING_ASSAY_NAMES, existing)
 
         return all_planned_names
 
@@ -640,6 +664,7 @@ class CombinatorialCreationImporter(object):
                 registry_id=ice_entry.uuid,
                 registry_url=make_entry_url(settings.ICE_URL, ice_entry.id)
             )
+
             edd_strains_by_part_number[ice_entry.part_id] = strain
 
     def _load_ice_entries(self, part_numbers, part_number_to_part,
@@ -673,7 +698,7 @@ class CombinatorialCreationImporter(object):
             try:
                 found_entry = ice.get_entry(local_ice_part_number)
 
-            # catch only HTTPErrors, which are likely to apply only to a single ICE entry.
+            # catch only HTTPErrors, which are likely to apply only to a single request/ICE entry.
             # Note that ConnectionErrors and similar that are more likely to be systemic aren't
             # caught here and will immediately abort the remaining ICE queries.
             except requests.exceptions.HTTPError as http_err:
@@ -688,8 +713,9 @@ class CombinatorialCreationImporter(object):
                 # note that 404 is handled above in get_entry().
                 if http_err.response.status_code == FORBIDDEN:
                     # aggregate errors that are helpful to detect on a per-part basis
-                    self.add_issue(treat_as_error, SINGLE_PART_ACCESS_ERROR_CATEGORY, FORBIDDEN_PART_KEY,
-                                   local_ice_part_number)
+                    if not ignore_ice_related_errors:
+                        self.add_error(SINGLE_PART_ACCESS_ERROR_CATEGORY,
+                                       FORBIDDEN_PART_KEY, local_ice_part_number)
                     continue
                 else:
                     self._handle_systemic_ice_error(ignore_ice_related_errors,
@@ -714,7 +740,7 @@ class CombinatorialCreationImporter(object):
                     self.add_error(INTERNAL_EDD_ERROR_TITLE, FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
                                    found_entry.part_id)
 
-            else:
+            elif not ignore_ice_related_errors:
                 # collect the full set of missing strains rather than failing after the first
                 self.add_issue(treat_as_error, SINGLE_PART_ACCESS_ERROR_CATEGORY,
                                PART_NUMBER_NOT_FOUND, local_ice_part_number)
@@ -768,10 +794,7 @@ class CombinatorialCreationImporter(object):
                                 'base_message': base_message, 'found': found_entries_count,
                                 'total': unique_part_number_count, 'percent': percent_found,
                             })
-            else:
-                warn_msg = ('No lines created in this study could be associated with ICE '
-                            'strains.')
-            self.add_warning(SYSTEMIC_ICE_ERROR_CATEGORY, GENERIC_ICE_RELATED_ERROR, warn_msg)
+                self.add_warning(SYSTEMIC_ICE_ERROR_CATEGORY, GENERIC_ICE_RELATED_ERROR, warn_msg)
 
     def _notify_admins_of_systemic_ice_related_errors(self, ignore_ice_related_errors,
                                                       allow_duplicate_names, unique_part_numbers,

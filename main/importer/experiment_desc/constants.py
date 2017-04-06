@@ -19,7 +19,7 @@ from requests import codes
 NO_INPUT = "No line description data were found in the input"
 DUPLICATE_INPUT_LINE_NAMES = 'Duplicate line names in the input'
 EXISTING_LINE_NAMES = 'Input would duplicate existing line names'
-DUPLICATE_INPUT_ASSAY_NAMES = 'Duplicate assay names in the input'
+DUPLICATE_INPUT_ASSAY_NAMES = 'Duplicate assay names within the input for a single protocol'
 EXISTING_ASSAY_NAMES = 'Inputs would duplicate existing assay names'
 
 NON_STRAIN_TITLE = 'Non-strain ICE entry'
@@ -43,6 +43,8 @@ INVALID_COLUMN_HEADER_TITLE = 'Invalid column headers'
 UNMATCHED_ASSAY_COL_HEADERS_KEY = 'Invalid column header(s) (Unmatched assay metadata suffix)'
 INVALID_COLUMN_HEADER = 'Invalid column header(s)'
 INCORRECT_TIME_FORMAT = 'Incorrect time format'
+# only supported for strains, since some metadata columns purposefully allow comma-delimited entry
+INCONSISTENT_COMBINATORIAL_VALUE = 'Combinatorial value provided for single-valued column'
 UNPARSEABLE_COMBINATORIAL_VALUE = 'Unparseable combinatorial value'
 
 INTERNAL_EDD_ERROR_TITLE = 'Internal EDD error'
@@ -95,7 +97,7 @@ GENERIC_ICE_RELATED_ERROR = ("ICE couldn't be contacted to find strains referenc
 # us keep EDD's pattern configuration data up to date with use
 PART_NUM_PATTERN_TITLE = 'Unrecognized part number pattern'
 PART_NUMBER_PATTERN_UNMATCHED_WARNING = ("One or more part numbers didn't match the expected "
-                                         "pattern. This probably indicates a data entry error:")
+                                         "pattern. This probably indicates a data entry error")
 
 ####################################################################################################
 # Generic errors... likely require admin investigation / determination re: cause
@@ -162,6 +164,7 @@ ERROR_PRIORITY_ORDER[INVALID_FILE_VALUE_CATEGORY] = (
     # cell-specific values
     MISSING_REQUIRED_LINE_NAME,
     INVALID_CELL_TYPE,
+    INCONSISTENT_COMBINATORIAL_VALUE,
     INCORRECT_TIME_FORMAT,
     UNPARSEABLE_COMBINATORIAL_VALUE,
 )

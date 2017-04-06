@@ -11,23 +11,16 @@ from django.conf import settings
 from openpyxl.utils.cell import get_column_letter
 from six import string_types
 
-from .constants import (
-    DUPLICATE_ASSAY_METADATA,
-    INVALID_CELL_TYPE,
-    INVALID_REPLICATE_COUNT,
-    MISSING_REQUIRED_LINE_NAME,
-    PARSE_ERROR,
-    PART_NUMBER_PATTERN_UNMATCHED_WARNING,
-    ROWS_MISSING_REPLICATE_COUNT,
-    INVALID_COLUMN_HEADER,
-    UNMATCHED_ASSAY_COL_HEADERS_KEY, MULTIPLE_WORKSHEETS_FOUND,
-    UNSUPPORTED_LINE_METADATA, EMPTY_WORKBOOK, ZERO_REPLICATES,
-    INCORRECT_TIME_FORMAT, UNPARSEABLE_COMBINATORIAL_VALUE,
-    INTERNAL_EDD_ERROR_TITLE, BAD_FILE_CATEGORY,
-    PART_NUM_PATTERN_TITLE, IGNORED_INPUT_CATEGORY,
-    INVALID_FILE_VALUE_CATEGORY, BAD_GENERIC_INPUT_CATEGORY)
+from .constants import (DUPLICATE_ASSAY_METADATA, INVALID_CELL_TYPE, INVALID_REPLICATE_COUNT,
+                        MISSING_REQUIRED_LINE_NAME, PARSE_ERROR,
+                        PART_NUMBER_PATTERN_UNMATCHED_WARNING, ROWS_MISSING_REPLICATE_COUNT,
+                        INVALID_COLUMN_HEADER, UNMATCHED_ASSAY_COL_HEADERS_KEY,
+                        MULTIPLE_WORKSHEETS_FOUND, UNSUPPORTED_LINE_METADATA, EMPTY_WORKBOOK,
+                        ZERO_REPLICATES, INCORRECT_TIME_FORMAT, UNPARSEABLE_COMBINATORIAL_VALUE,
+                        INTERNAL_EDD_ERROR_TITLE, BAD_FILE_CATEGORY, PART_NUM_PATTERN_TITLE,
+                        IGNORED_INPUT_CATEGORY, INVALID_FILE_VALUE_CATEGORY,
+                        BAD_GENERIC_INPUT_CATEGORY, INCONSISTENT_COMBINATORIAL_VALUE)
 from .utilities import AutomatedNamingStrategy, CombinatorialDescriptionInput, NamingStrategy
-
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +35,21 @@ LINE_DESCRIPTION_COL_REGEX = 'Line\s+Description'
 STRAIN_IDS_COL_LABEL = 'Part\s+ID'
 REPLICATE_COUNT_COL_REGEX = 'Replicate\s+Count'
 
-_LINE_NAME_COL_PATTERN = re.compile(r'\s*%s\s*' % LINE_NAME_COL_LABEL, re.IGNORECASE)
-_LINE_DESCRIPTION_COL_PATTERN = re.compile(r'\s*%s\s*' % LINE_DESCRIPTION_COL_REGEX, re.IGNORECASE)
-_STRAIN_IDS_COL_PATTERN = re.compile(r'\s*%s\s*' % STRAIN_IDS_COL_LABEL, re.IGNORECASE)
-_REPLICATE_COUNT_COL_PATTERN = re.compile(r'\s*%s\s*' % REPLICATE_COUNT_COL_REGEX)
+_LINE_NAME_COL_PATTERN = re.compile(r'^\s*%s\s*$' % LINE_NAME_COL_LABEL, re.IGNORECASE)
+_LINE_DESCRIPTION_COL_PATTERN = re.compile(r'^\s*%s\s*$' % LINE_DESCRIPTION_COL_REGEX,
+                                           re.IGNORECASE)
+_STRAIN_IDS_SINGULAR_COL_PATTERN = re.compile(r'^\s*%s\s*$' % STRAIN_IDS_COL_LABEL, re.IGNORECASE)
+_STRAIN_IDS_PLURAL_COL_PATTERN = re.compile(r'^\s*%s\s*\(s\)$' % STRAIN_IDS_COL_LABEL,
+                                            re.IGNORECASE)
+_REPLICATE_COUNT_COL_PATTERN = re.compile(r'^\s*%s\s*$' % REPLICATE_COUNT_COL_REGEX)
 ###################################################################################################
 
-_STRAIN_GROUPS_REGEX = r'\((:?\s*\d+\s*;?\s*)+\)'
-_STRAIN_GROUPS_PATTERN = re.compile(_STRAIN_GROUPS_REGEX)
+# TODO: initial pass...incorrect, but low priority
+_STRAIN_GROUP_MEMBER_DELIM = ';'
+_STRAIN_GROUP_REGEX = r'^\s*\(((?:\s*[^' + _STRAIN_GROUP_MEMBER_DELIM + '\)\(]+\s*' + \
+                      _STRAIN_GROUP_MEMBER_DELIM + '?\s*)+)\)\s*$'
+logger.info('Strain group regex: %s' % _STRAIN_GROUP_REGEX) # TODO: remove
+_STRAIN_GROUP_PATTERN = re.compile(_STRAIN_GROUP_REGEX)
 
 _TIME_VALUE_REGEX = r'^\s*(\d+(?:\.\d+)?)\s*h\s*$'
 _TIME_VALUE_PATTERN = re.compile(_TIME_VALUE_REGEX, re.IGNORECASE)
@@ -147,7 +147,9 @@ class ColumnLayout:
         self.strain_ids_col = None
         self.col_index_to_line_meta_pk = {}
         self.col_index_to_assay_data = {}  # maps col index -> (Protocol, MetadataType)
-        self.combinatorial_col_indices = []  # indices of all metadata columns for combinatorial
+
+        # indices of all *any* columns for combinatorial creation (both metadata AND strains!)
+        self.combinatorial_col_indices = []
         self.unique_assay_protocols = {}
         self.importer = importer
 
@@ -245,8 +247,15 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
         self.base_line_name = None
         self.assay_time_metadata_type_pk = assay_time_metadata_type_pk
 
-    def get_line_name(self, strains, line_metadata, replicate_num, line_metadata_types,
-                      combinatorial_metadata_types, is_control):
+    def get_line_name(self, line_strain_ids, line_metadata, replicate_num, line_metadata_types,
+                      combinatorial_metadata_types, is_control, strains_by_pk):
+        """
+        Computes the line name, either by using the explicitly-proveded name from the file, OR if 
+        there are combinatorially-defined columns (by appending an 's' or '(s)' to the column 
+        header), by iterating over combinatorial columns in the order defined by the file, 
+        then appending combinatorial metadata values to the line name.  Note that if used, replicate
+        number is always at the end regardless of column order.
+        """
 
         # iterate over combinatorial line metadata columns and construct line name in the same order
         # that name-relevant elements were listed in columns in the input file. We have to include
@@ -254,6 +263,14 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
         layout = self.col_layout
         name_elts = []
         included_base_name = False
+        combinatorial_strains = self.names_contain_strains()
+
+        # build the name segment for strains needed to make this line name unique (if any)
+        strain_names_list = self._build_strains_names_list(line_strain_ids, strains_by_pk)
+        strains_str = self.multivalue_separator.join(strain_names_list) if strain_names_list else ''
+        logger.debug('Strains : %s' % str())
+
+        included_strain_names = False
         for line_metadata_col in layout.combinatorial_line_col_order():
 
             # if the base line name hasn't been included yet, and comes before this metadata
@@ -261,6 +278,12 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
             if (not included_base_name) and (layout.line_name_col < line_metadata_col):
                 included_base_name = True
                 name_elts.append(self.base_line_name)
+
+            if (combinatorial_strains and not included_strain_names) and (
+                        layout.strain_ids_col < line_metadata_col):
+                included_strain_names = True
+                if strains_str:
+                    name_elts.append(strains_str)
 
             line_meta_pk = self.col_layout.get_line_metadata_type(line_metadata_col)
 
@@ -274,26 +297,40 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
             naming_elt = metadata_value
             if line_meta_type.postfix:
                 naming_elt += line_meta_type.postfix
-            name_elts.append(naming_elt.replace(' ', '_'))
+            name_elts.append(naming_elt.replace(' ', self.space_replacement))
 
         # if the base line name still isn't added, add it
         if not included_base_name:
             name_elts.append(self.base_line_name)
+            included_base_name = True
+
+        # if strain id(s) needed for uniqueness, and aren't added, add them
+        if combinatorial_strains and not included_strain_names and strains_str:
+            name_elts.append(strains_str)
+            included_strain_names = True
+
+        logger.debug('Building line name from elements: %s' % str(name_elts))
 
         # if making lines combinatorially based on line metadata, insert the combinatorial values
         # into the line name so that line names will be unique
-        name = '-'.join(name_elts)
+        name = self.section_separator.join(name_elts)
 
         # if creating more than one replicate, build a suffix to show replicate number so that
         # line names are unique. Replicate number should always be last in the line name
         replicate_suffix = ''
         if self.combinatorial_input.replicate_count > 1:
-            replicate_suffix = '-R%d' % replicate_num
+            replicate_suffix = '%(sep)sR%(replicate_num)d' % {
+                'sep': self.section_separator,
+                'replicate_num': replicate_num
+            }
 
         return '%(name)s%(replicate_suffix)s' % {
             'name': name,
             'replicate_suffix': replicate_suffix,
         }
+
+    def names_contain_strains(self):
+        return self.col_layout.strain_ids_col in self.col_layout.combinatorial_col_indices
 
     def _get_time_format_string(self):
         if self.fractional_time_digits:
@@ -337,7 +374,7 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
                     custom_time_digits = self._get_time_format_string() % metadata_value
                     name_elt = '%sh' % custom_time_digits
                 else:
-                    name_elt = metadata_value.replace(' ', '_')
+                    name_elt = metadata_value.replace(' ', self.space_replacement)
 
                     # add in units if defined...otherwise, multiple numeric values are
                     # hard/impossible to distinguish from each other
@@ -346,7 +383,7 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
                 name_elts.append(name_elt)
 
             logger.debug('Adding assay naming elements: %s' % ', '.join(name_elts))
-            return '-'.join(name_elts)
+            return self.section_separator.join(name_elts)
 
         except KeyError:
             raise ValueError(KeyError)  # raise more generic Exception published in the docstring
@@ -577,8 +614,11 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 layout.line_name_col = col_index
             elif _LINE_DESCRIPTION_COL_PATTERN.match(cell_content):
                 layout.line_description_col = col_index
-            elif _STRAIN_IDS_COL_PATTERN.match(cell_content):
+            elif _STRAIN_IDS_SINGULAR_COL_PATTERN.match(cell_content):
                 layout.strain_ids_col = col_index
+            elif _STRAIN_IDS_PLURAL_COL_PATTERN.match(cell_content):
+                layout.strain_ids_col = col_index
+                layout.combinatorial_col_indices.append(col_index)
             elif _REPLICATE_COUNT_COL_PATTERN.match(cell_content):
                 layout.replicate_count_col = col_index
 
@@ -605,7 +645,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # if we couldn't process this column, track a warning that describes
                 # dropped columns (can be displayed later in the UI)
                 if line_metadata_type is None:
-                    col = 'column %s' % get_column_letter(col_index+1)
+                    col = 'col %s' % get_column_letter(col_index+1)
                     skipped = '"%(title)s" (%(column)s)' % {
                         'title': cell_content,
                         'column': col,
@@ -879,73 +919,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # TODO: after some initial testing, consider adding custom group support for Carbon Source
         # similar to that for strains. Since some changes to Carbon Source / Media tracking are
         # needed, we will probably want to defer support for Carbon Sources for now.
-        # TODO: after using the combinatorial strain creation code here for some testing of other
-        # parts of the back end, consider removing it since it will result in creation of lines
-        # with duplicate names
         if layout.strain_ids_col is not None:
-
-            cell_content = cols_list[layout.strain_ids_col].value
-
-            # build a list of strain ids for this input
-            individual_strain_ids = []
-
-            if cell_content:
-                # cast to string in case user entered something else (e.g. long)
-                tokens = str(cell_content).split(',')
-
-                if tokens:
-
-                    # loop over comma-delimited tokens included in the cell
-                    for token in tokens:
-                        token = token.strip()
-
-                        # if this token is a paren-enclosed list of part numbers, it's a
-                        # combinatorial strain creation group rather than single strain to be
-                        # included in the list. That means that each top-level comma-delimited
-                        # entry in the list will result in creation of at least one line
-                        strain_group_match = _STRAIN_GROUPS_PATTERN.match(token)
-
-                        if strain_group_match:
-                            strain_group = (strain_id.strip() for strain_id in strain_group_match
-                                            .group(1).split(';'))
-                            row_inputs.combinatorial_strain_id_groups.append(strain_group)
-                        else:
-                            individual_strain_ids.append(token)
-
-                        # test whether the strain's part number matched the expected pattern.
-                        # we'll allow all input through to the ICE query later in case our pattern
-                        # is dated, but this way we can provide a more helpful prompt for bad
-                        # user input
-                        part_number_match = TYPICAL_ICE_PART_NUMBER_PATTERN.match(token)
-
-                        if not part_number_match:
-                            quoted_content = '"%s"' % token
-                            self.importer.add_warning(PART_NUM_PATTERN_TITLE,
-                                                      PART_NUMBER_PATTERN_UNMATCHED_WARNING,
-                                                      quoted_content)
-                            logger.warning(
-                                'Expected ICE part number(s) in template file row %(row_num)d, '
-                                'but "%(token)s" did not match the expected pattern. This is '
-                                'either bad user input, or indicates that the pattern needs '
-                                'updating.' % {
-                                    'row_num': row_num,
-                                    'token': token
-                                }
-                            )
-
-                    # resolve inconsistent user entries, if present. assumption is that if any
-                    # strain groups were provided, even individual strains listed separately (
-                    # i.e. with no enclosing parens) should be treated as 1-element combinatorial
-                    #  strain groups TODO: need to resolve this at DB interaction time, since row
-                    #  order can dictate results here
-                    if row_inputs.combinatorial_strain_id_groups and individual_strain_ids:
-                        for strain_id in individual_strain_ids:
-                            row_inputs.combinatorial_strain_id_groups.append((strain_id,))
-                        individual_strain_ids = []
-                    elif individual_strain_ids:
-                        row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
-                else:
-                    logger.error('No part ID tokens found in "%s"' % cell_content)
+            self.parse_strains(layout, cols_list, row_num, row_inputs)
 
         ###################################################
         # line metadata
@@ -1034,6 +1009,94 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     )
 
         return row_inputs
+
+    def parse_strains(self, layout, cols_list, row_num, row_inputs):
+        strain_ids_col = layout.strain_ids_col
+        is_combinatorial = strain_ids_col in layout.combinatorial_col_indices
+
+        cell_content = self._get_string_cell_content(cols_list, row_num,
+                                                strain_ids_col, convert_to_string=True)
+
+        # build a list of strain ids for this input
+        individual_strain_ids = []
+
+        if cell_content:
+            # cast to string in case user entered something else (e.g. long)
+            tokens = str(cell_content).split(',')
+
+            # loop over comma-delimited tokens included in the cell
+            for token in tokens:
+                token = token.strip()
+
+                if not token:
+                    continue
+
+                # if this token is a paren-enclosed list of part numbers, it's a
+                # strain group rather than single strain to be
+                # included in the list. That means that each top-level comma-delimited
+                # entry in the list will result in creation of at least one line
+                strain_group_match = _STRAIN_GROUP_PATTERN.match(token)
+
+                if strain_group_match:
+                    strain_group = [strain_id.strip() for strain_id in
+                                    strain_group_match.group(1).split(_STRAIN_GROUP_MEMBER_DELIM)]
+                    if is_combinatorial:
+                        logger.info('Found strain id group %(group)s in cell %(row)d%(col)s' % {
+                            'group': strain_group,
+                            'row': row_num,
+                            'col': get_column_letter(strain_ids_col),
+                        })
+                        row_inputs.combinatorial_strain_id_groups.append(strain_group)
+                    else:
+                        # if we've already seen a strain or strain group in this cell, the content
+                        # is badly formatted, since a non-combinatorial column should only contain
+                        # a single strain or list of strains. As likely as not, this is bad user
+                        # input, so we'll treat it as an error.
+                        if row_inputs.combinatorial_strain_id_groups:
+                            bad_value = '"%(token)s" (%(row)s%(col)s)' % {
+                                'token': cell_content,
+                                'row': row_num,
+                                'col': get_column_letter(strain_ids_col),
+                            }
+                            self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
+                                                    INCONSISTENT_COMBINATORIAL_VALUE, bad_value)
+                        else:
+                            row_inputs.combinatorial_strain_id_groups.append(strain_group)
+                            for strain_id in strain_group:
+                                self._check_part_id_pattern(strain_id)
+                else:
+                    individual_strain_ids.append(token)
+                    self._check_part_id_pattern(token)
+
+            # depending on whether tho column header defines combinatorial input, either submit
+            # comma-delimited strains as a single group (co-culture), or for combinatorial line
+            # creation
+            if is_combinatorial:
+                for strain_id in individual_strain_ids:
+                    row_inputs.combinatorial_strain_id_groups.append([strain_id,])
+
+            elif individual_strain_ids:
+                row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
+            individual_strain_ids = []
+
+    def _check_part_id_pattern(self, part_id, row_num=None):
+        # test whether the strain's part number matched the expected pattern.
+        # we'll allow all input through to the ICE query later in case our pattern
+        # is dated, but this way we can provide a more helpful prompt for bad
+        # user input
+        part_number_match = TYPICAL_ICE_PART_NUMBER_PATTERN.match(part_id)
+
+        if not part_number_match:
+            quoted_content = '"%s"' % part_id
+            self.importer.add_warning(PART_NUM_PATTERN_TITLE, PART_NUMBER_PATTERN_UNMATCHED_WARNING,
+                                      quoted_content)
+            file_row = 'in row %d' % row_num if row_num else ''
+            logger.warning('Expected ICE part number(s)%(row_num)s, '
+                           'but "%(part_id)s" did not match the expected pattern. This is '
+                           'either bad user input, or indicates that the pattern needs '
+                           'updating.' % {
+                               'row_num': file_row, 'part_id': part_id
+                           })
 
     def _get_string_cell_content(self, row, row_num, col_index, convert_to_string=False):
         cell_content = row[col_index].value
