@@ -522,7 +522,12 @@ class LineForm(forms.ModelForm):
         }
         help_texts = {
             'name': _('This field is required'),
-            'description': _('Description of line')
+            'description': _('Description of line'),
+            'control': _(''),
+            'contact': _(''),
+            'experimenter': _(''),
+            'carbon_source': _(''),
+            'strains': _(''),
         }
 
     def __init__(self, *args, **kwargs):

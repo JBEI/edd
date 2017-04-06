@@ -490,8 +490,8 @@ class StudyLinesView(StudyDetailBaseView):
         elif not can_write:
             messages.error(request, 'You do not have permission to modify this study.')
         else:
-            messages.error(request, 'Unknown line action %s' % (line_action))
-        return form_valid
+            messages.error(request, 'Unknown line action %s' % line_action)
+        return form_validw
 
     def handle_line_bulk(self, request, ids):
         study = self.get_object()

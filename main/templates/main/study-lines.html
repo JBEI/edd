@@ -14,6 +14,18 @@
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study-Lines.js' %}"></script>
+    <script>
+         {% if new_line.errors %}
+             var opt = {
+                autoOpen: false,
+                minWidth: 500,
+                title: 'Add New Line'
+            };
+             $(document).ready(function() {
+                  $("#editLineModal").removeClass('off').dialog(opt).dialog( "open" );
+             });
+         {% endif %}
+    </script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -33,14 +45,13 @@
 
 {% block content %}
     {{ block.super }}
-         {% if new_line.errors %}
-    <div class="alert alert-warning alert-dismissible" style="width:313px" role="alert">
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    <p>{{ new_line.errors.as_text  }}</p>
-    </div>
-    {%  endif %}
+
+<div id="tempModal" class="off" title="Export as">
+ <label for="your_name">Your name: </label>
+    <input id="your_name" type="text" name="your_name" value="{{ current_name }}">
+    <input type="submit" value="OK">
+
+</div>
 <div style="margin-left:15px;">
     Manually add/edit lines below
     <div style="float:none; margin-left:15px" class="helpBadgeDiv">help
@@ -135,7 +146,15 @@
 
 <div id="editLineModal" title="Add new line"
         class="{% if not new_line.is_editing and new_line.errors|length == 0 %}off{% endif %}">
-    <form action="" method="POST">
+ {% if new_line.errors %}
+    <div class="alert alert-error alert-dismissible" style="width:313px" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        <p>{{ new_line.errors.as_text  }}</p>
+    </div>
+    {%  endif %}
+    <form id="lineFormm" action="" method="POST">
         {% csrf_token %}
         {{ new_line.as_p }}
         <p class="line-edit-meta">
