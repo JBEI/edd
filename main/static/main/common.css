@@ -508,7 +508,7 @@ div.noLines {
 
 /* alert */
 .alert {
-    width: 40%;
+    width: auto;
     height: auto;
 }
 
@@ -1719,9 +1719,7 @@ div.tooltip2 {
     stroke-dasharray: 20,10,5,5,5,10;
 }
 
-.required {
-    color: grey;
-}
+.required:before { content: '*' }
 
 .form-control-meta {
     display: inline-block;

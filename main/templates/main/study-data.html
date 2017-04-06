@@ -213,16 +213,24 @@
 <div id="addMeasurement" class="off" title="Add Measurements To Selected Assays">
     <form action="" method="POST">
         {% csrf_token %}
+        <div class="modal-body">
         {{ new_measurement.as_p }}
-        <button type="submit" name="action" value="measurement">Add Measurement</button>
+        </div>
+        <div class="modal-footer">
+            <button type="submit" name="action" class="btn btn-primary" value="measurement">Add Measurement</button>
+        </div>
     </form>
 </div>
 
 <div id="assayMain" class="off" title="Edit Assay">
     <form action="" method="POST">
         {% csrf_token %}
+        <div class="modal-body">
         {{ new_assay.as_p }}
-        <button type="submit" name="action" value="assay">Edit Assay</button>
+        </div>
+        <div class="modal-footer">
+            <button type="submit" name="action" class="btn btn-primary" value="assay">Edit Assay</button>
+        </div>
     </form>
 </div>
 
