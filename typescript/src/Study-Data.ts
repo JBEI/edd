@@ -642,7 +642,7 @@ namespace StudyDataPage {
         // a search box and scrollbar.
         // The checkbox, and the table row that encloses the checkbox and label, are saved in
         // a dictionary mapped by the unique value they represent, so they can be re-used if the
-        // filter is rebuilt (i.e. if populateTable is called again.) 
+        // filter is rebuilt (i.e. if populateTable is called again.)
         populateTable():void {
             var fCol = $(this.filterColumnDiv);
 
@@ -1091,7 +1091,7 @@ namespace StudyDataPage {
     // chunk of data from the server.  So, we instantiate it, then it appears in a
     // 'load pending' state until actual measurement values are received from the server.
     export class MeasurementFilterSection extends GenericFilterSection {
-        // Whenever this filter is instantiated, we 
+        // Whenever this filter is instantiated, we
         loadPending: boolean;
 
         configure(title:string, shortLabel:string): void {
@@ -1107,7 +1107,7 @@ namespace StudyDataPage {
 
     // A filter for the names of General Measurements.
     export class GeneralMeasurementFilterSection extends MeasurementFilterSection {
-        // Whenever this filter is instantiated, we 
+        // Whenever this filter is instantiated, we
         loadPending: boolean;
 
         configure(): void {
@@ -1220,6 +1220,8 @@ namespace StudyDataPage {
     // Called when the page loads.
     export function prepareIt() {
 
+        var parent: JQuery = $('#assaysActionPanel');
+
         progressiveFilteringWidget = new ProgressiveFilteringWidget();
         postFilteringAssays = [];
         postFilteringMeasurements = [];
@@ -1275,12 +1277,20 @@ namespace StudyDataPage {
             if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
                 //TODO: create prepare it for no data?
                 $('#dataTableButton').click();
-                $('#exportButton').prop('disabled', true);
-                $('#exportButton').prop('title', 'Import data first');
+                $('.exportButton').prop('disabled', true);
             } else {
-                $('#exportButton').prop('disabled', false);
-                $('#exportButton').prop('title', 'Download data');
+                $('.exportButton').prop('disabled', false);
             }
+        });
+
+        // create a copy of the buttons in the flex layout bottom bar
+        // the original must stay inside form
+        var original: JQuery, copy: JQuery;
+        original = $('#assaysActionPanel');
+        copy = original.clone().appendTo('#bottomBar').attr('id', 'copyActionPanel').hide();
+        // forward click events on copy to the original button
+        copy.on('click', '.actionButton', (e) => {
+            original.find('#' + e.target.id).trigger(e);
         });
 
         var showHideFilterButton = $('#hideFilterSection');
@@ -1288,36 +1298,37 @@ namespace StudyDataPage {
 
         $("#dataTableButton").click(function() {
             viewingMode = 'table';
-            $('#assaysActionPanel').appendTo('#bottomBar');
+            original.hide();
+            copy.show();
             $('#mainFilterSection').appendTo('#bottomBar');
-             makeLabelsBlack(EDDGraphingTools.labels);
+            makeLabelsBlack(EDDGraphingTools.labels);
             $("#tableControlsArea").removeClass('off');
             $("#filterControlsArea").addClass('off');
-            $("#tableActionButtons").removeClass('off');
+            $(".tableActionButtons").removeClass('off');
             barGraphTypeButtonsJQ.addClass('off');
             queueRefreshDataDisplayIfStale();
             //TODO: enable users to export filtered data from graph
-            $('#exportButton').removeClass('off');
+            $('.exportButton').removeClass('off');
         });
 
         //click handler for edit assay measurements
-        $('#editMeasurementButton').click(function(ev) {
+        $('.editMeasurementButton').click(function(ev) {
             ev.preventDefault();
-            $('input[value="edit"]').prop('checked', true);
+            $('input[name="assay_action"][value="edit"]').prop('checked', true);
             $('button[value="assay_action"]').click();
             return false;
         });
 
         //click handler for delete assay measurements
-        $('#deleteButton').click(function(ev) {
+        $('.deleteButton').click(function(ev) {
             ev.preventDefault();
-            $('input[value="delete"]').prop('checked', true);
+            $('input[name="assay_action"][value="delete"]').prop('checked', true);
             $('button[value="assay_action"]').click();
             return false;
         });
 
         //click handler for export assay measurements
-        $('#exportButton').click(function(ev) {
+        $('.exportButton').click(function(ev) {
             ev.preventDefault();
             includeAllLinesIfEmpty();
             $('input[value="export"]').prop('checked', true);
@@ -1326,7 +1337,7 @@ namespace StudyDataPage {
         });
 
         //click handler for disable assay measurements
-        $('#disableButton').click(function(ev) {
+        $('.disableButton').click(function(ev) {
             ev.preventDefault();
             $('input[value="mark"]').prop('checked', true);
             $('select[name="disable"]').val('true');
@@ -1335,7 +1346,7 @@ namespace StudyDataPage {
         });
 
         //click handler for re-enable assay measurements
-        $('#enableButton').click(function(ev) {
+        $('.enableButton').click(function(ev) {
             ev.preventDefault();
             $('input[value="mark"]').prop('checked', true);
             $('select[name="disable"]').val('false');
@@ -1345,16 +1356,12 @@ namespace StudyDataPage {
 
         // This one is active by default
         $("#lineGraphButton").click(function() {
-            //TODO: clean this up
-            $('#exportButton').addClass('off');
-            $('#assaysActionPanel').appendTo('#content');
+            $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+            $('#filterControlsArea').removeClass('off');
             $('#mainFilterSection').appendTo('#content');
+            original.show();
+            copy.hide();
             viewingMode = 'linegraph';
-            $("#tableControlsArea").addClass('off');
-            $("#filterControlsArea").removeClass('off');
-            $("#tableActionButtons").addClass('off');
-            $('#assaysActionPanel').appendTo('#content');
-            $('#mainFilterSection').appendTo('#content');
             barGraphTypeButtonsJQ.addClass('off');
             $('#lineGraph').removeClass('off');
             $('#barGraphByTime').addClass('off');
@@ -1377,28 +1384,17 @@ namespace StudyDataPage {
             $('#graphLoading').removeClass('off');
         });
         $("#barGraphButton").click(function() {
-            //TODO: clean this up
-            viewingMode = 'bargraph';
-            $('#assaysActionPanel').appendTo('#content');
+            $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+            $('#filterControlsArea').removeClass('off');
             $('#mainFilterSection').appendTo('#content');
-            $('#exportButton').addClass('off');
-            $("#tableControlsArea").addClass('off');
-            $("#filterControlsArea").removeClass('off');
-            $("#tableActionButtons").addClass('off');
+            original.show();
+            copy.hide();
+            viewingMode = 'bargraph';
             barGraphTypeButtonsJQ.removeClass('off');
             $('#lineGraph').addClass('off');
-            $('#barGraphByTime').addClass('off');
-            $('#barGraphByLine').addClass('off');
-            $('#barGraphByMeasurement').addClass('off');
-            $('#assaysActionPanel').appendTo('#content');
-            $('#mainFilterSection').appendTo('#content');
-            if (barGraphMode == 'time') {
-                $('#barGraphByTime').removeClass('off');
-            } else if (barGraphMode == 'line') {
-                $('#barGraphByLine').removeClass('off');
-            } else {
-                $('#barGraphByMeasurement').removeClass('off');
-            }
+            $('#barGraphByTime').toggleClass('off', 'time' !== barGraphMode);
+            $('#barGraphByLine').toggleClass('off', 'line' !== barGraphMode);
+            $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== barGraphMode);
             queueRefreshDataDisplayIfStale();
         });
         $("#timeBarGraphButton").click(function() {
@@ -1467,8 +1463,8 @@ namespace StudyDataPage {
             autoOpen: false
         });
 
-        $("#addMeasurementButton").click(function() {
-           $("#addMeasurement").removeClass('off').dialog( "open" );
+        $(".addMeasurementButton").click(function() {
+            $("#addMeasurement").removeClass('off').dialog( "open" );
             return false;
         });
 
@@ -1695,25 +1691,12 @@ namespace StudyDataPage {
             viewingModeIsStale['table'] = false;
             makeLabelsBlack(EDDGraphingTools.labels);
 
-            var h = $('#content').height();            // Height of the viewing region
-
-            // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
-            // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
-            var sh = 0;
-            $('#content').children().get().forEach((e:HTMLElement):void => { sh += e.scrollHeight; });
-
-            if (actionPanelIsInBottomBar) {
-                if (sh < h) {
-                    $('#assaysActionPanel').appendTo('#content');
-                    $('#mainFilterSection').appendTo('#content');
-                    actionPanelIsInBottomBar = false;
-                }
-            } else {
-                if (sh > h) {
-                    $('#assaysActionPanel').appendTo('#bottomBar');
-                    $('#mainFilterSection').appendTo('#bottomBar');
-                    actionPanelIsInBottomBar = true;
-                }
+            if (!actionPanelIsInBottomBar) {
+                // this has no form interaction, we can move it freely
+                $('#mainFilterSection').appendTo('#bottomBar');
+                // this does have to be in a form, so we toggle display
+                $('#assaysActionPanel').hide();
+                $('#copyActionPanel').show();
             }
         } else {
             remakeMainGraphArea();
@@ -1724,7 +1707,8 @@ namespace StudyDataPage {
             }
             if (actionPanelIsInBottomBar) {
                 actionPanelIsInBottomBar = false;
-                $('#assaysActionPanel').appendTo('#content');
+                $('#assaysActionPanel').show();
+                $('#copyActionPanel').hide();
                 $('#mainFilterSection').appendTo('#content');
             }
         }
@@ -1749,11 +1733,7 @@ namespace StudyDataPage {
             nothingSelected = !checkedAssays && !checkedMeasure;
 
             //enable action buttons if something is selected
-            if (!nothingSelected) {
-                $('#editMeasurementButton, #addMeasurementButton, #deleteButton, #disableButton').prop('disabled', false);
-            } else {
-                $('#editMeasurementButton, #addMeasurementButton, #deleteButton, #disableButton').prop('disabled', true);
-            }
+            $('.tableActionButtons').find('button').prop('disabled', nothingSelected);
 
             $('#selectedDiv').toggleClass('off', nothingSelected);
             var selectedStrs = [];
@@ -2139,37 +2119,27 @@ namespace StudyDataPage {
         }
 
         //get type names for x labels
-        typeNames = data.map(function (d:any) {
-                return d.key;
-        });
+        typeNames = data.map((d:any) => d.key);
 
         //sort x values
-        typeNames.sort(function (a, b) {
-                return a - b
-        });
+        typeNames.sort((a, b) => a - b);
 
-        xValues = data.map(function (d:any) {
-            return (d.values);
-        });
+        xValues = data.map((d:any) => d.values);
 
-        yvalueIds = data[0].values[0].values.map(function (d:any) {
-            return d.key;
-        });
+        yvalueIds = data[0].values[0].values.map((d:any) => d.key);
 
         // returns time values
-        xValueLabels = xValues[0].map(function (d:any) {
-            return (d.key);
-        });
+        xValueLabels = xValues[0].map((d:any) => d.key);
 
         //sort time values
-        sortedXvalues = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
+        sortedXvalues = xValueLabels.sort((a, b) => parseFloat(a) - parseFloat(b));
 
         x_name.domain(typeNames);
 
         x_xValue.domain(sortedXvalues).rangeRoundBands([0, x_name.rangeBand()]);
 
         lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
-        
+
         // create x axis
         graphSet.create_x_axis(graphSet, x_name, svg, type);
 
@@ -2179,7 +2149,7 @@ namespace StudyDataPage {
             if (yMin[index] > 0 ) {
                 yMin[index] = 0;
             }
-            //y axis min and max domain 
+            //y axis min and max domain
             y.domain([yMin[index], d3.max(unitMeasurementData[index], function (d:any) {
                 return d3.max(d.values, function (d:any) {
                     return d.y;
