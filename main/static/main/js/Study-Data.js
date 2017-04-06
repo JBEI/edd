@@ -1111,7 +1111,6 @@ var StudyDataPage;
     StudyDataPage.GeneFilterSection = GeneFilterSection;
     // Called when the page loads.
     function prepareIt() {
-        var parent = $('#assaysActionPanel');
         StudyDataPage.progressiveFilteringWidget = new ProgressiveFilteringWidget();
         postFilteringAssays = [];
         postFilteringMeasurements = [];
@@ -1151,6 +1150,7 @@ var StudyDataPage;
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
         Utl.ButtonBar.prepareButtonBars();
+        copyActionButtons();
         // Prepend show/hide filter button for better alignment
         // Note: this will be removed when we implement left side filtering
         //when all ajax requests are finished, determine if there are AssayMeasurements.
@@ -1165,21 +1165,9 @@ var StudyDataPage;
                 $('.exportButton').prop('disabled', false);
             }
         });
-        // create a copy of the buttons in the flex layout bottom bar
-        // the original must stay inside form
-        var original, copy;
-        original = $('#assaysActionPanel');
-        copy = original.clone().appendTo('#bottomBar').attr('id', 'copyActionPanel').hide();
-        // forward click events on copy to the original button
-        copy.on('click', '.actionButton', function (e) {
-            original.find('#' + e.target.id).trigger(e);
-        });
-        var showHideFilterButton = $('#hideFilterSection');
-        $('#assaysActionPanel').prepend(showHideFilterButton);
         $("#dataTableButton").click(function () {
             viewingMode = 'table';
-            original.hide();
-            copy.show();
+            toggleActionButtons(false);
             $('#mainFilterSection').appendTo('#bottomBar');
             makeLabelsBlack(EDDGraphingTools.labels);
             $("#tableControlsArea").removeClass('off');
@@ -1233,8 +1221,7 @@ var StudyDataPage;
             $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
             $('#filterControlsArea').removeClass('off');
             $('#mainFilterSection').appendTo('#content');
-            original.show();
-            copy.hide();
+            toggleActionButtons(true);
             viewingMode = 'linegraph';
             barGraphTypeButtonsJQ.addClass('off');
             $('#lineGraph').removeClass('off');
@@ -1260,8 +1247,7 @@ var StudyDataPage;
             $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
             $('#filterControlsArea').removeClass('off');
             $('#mainFilterSection').appendTo('#content');
-            original.show();
-            copy.hide();
+            toggleActionButtons(true);
             viewingMode = 'bargraph';
             barGraphTypeButtonsJQ.removeClass('off');
             $('#lineGraph').addClass('off');
@@ -1284,16 +1270,15 @@ var StudyDataPage;
             $('#graphLoading').addClass('off');
         });
         //hides/shows filter section.
-        $('#hideFilterSection').click(function (event) {
+        var hideButtons = $('.hideFilterSection');
+        hideButtons.click(function (event) {
+            var self = $(this), old, replace;
             event.preventDefault();
-            if ($('#hideFilterSection').val() === "Hide Filter Section") {
-                $('#hideFilterSection').val("Show Filter Section");
-                $('#mainFilterSection').hide();
-            }
-            else {
-                $('#hideFilterSection').val("Hide Filter Section");
-                $('#mainFilterSection').show();
-            }
+            old = self.text();
+            replace = self.attr('data-off-text');
+            // doing this for all
+            hideButtons.attr('data-off-text', old).text(replace);
+            $('#mainFilterSection').toggle();
             return false;
         });
         // The next few lines wire up event handlers for a pulldownMenu that we use to contain a
@@ -1338,6 +1323,21 @@ var StudyDataPage;
             .on('keydown', filterTableKeyDown.bind(this));
     }
     StudyDataPage.prepareIt = prepareIt;
+    function copyActionButtons() {
+        // create a copy of the buttons in the flex layout bottom bar
+        // the original must stay inside form
+        var original, copy;
+        original = $('#assaysActionPanel');
+        copy = original.clone().appendTo('#bottomBar').attr('id', 'copyActionPanel').hide();
+        // forward click events on copy to the original button
+        copy.on('click', '.actionButton', function (e) {
+            original.find('#' + e.target.id).trigger(e);
+        });
+    }
+    function toggleActionButtons(showOriginal) {
+        $('#assaysActionPanel').toggle(showOriginal);
+        $('#copyActionPanel').toggle(!showOriginal);
+    }
     function fetchEDDData(success) {
         $.ajax({
             'url': 'edddata/',
@@ -1540,6 +1540,7 @@ var StudyDataPage;
                 // this has no form interaction, we can move it freely
                 $('#mainFilterSection').appendTo('#bottomBar');
                 // this does have to be in a form, so we toggle display
+                toggleActionButtons(false);
                 $('#assaysActionPanel').hide();
                 $('#copyActionPanel').show();
             }
@@ -1554,8 +1555,7 @@ var StudyDataPage;
             }
             if (actionPanelIsInBottomBar) {
                 actionPanelIsInBottomBar = false;
-                $('#assaysActionPanel').show();
-                $('#copyActionPanel').hide();
+                toggleActionButtons(true);
                 $('#mainFilterSection').appendTo('#content');
             }
         }
@@ -1566,14 +1566,14 @@ var StudyDataPage;
         // Don't show the selected item count if we're not looking at the table.
         // (Only the visible item count makes sense in that case.)
         if (viewingMode == 'table') {
-            $('#displayedDiv').addClass('off');
+            $('.displayedDiv').addClass('off');
             checkedBoxes = StudyDataPage.assaysDataGrid.getSelectedCheckboxElements();
             checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
             checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
             nothingSelected = !checkedAssays && !checkedMeasure;
             //enable action buttons if something is selected
             $('.tableActionButtons').find('button').prop('disabled', nothingSelected);
-            $('#selectedDiv').toggleClass('off', nothingSelected);
+            $('.selectedDiv').toggleClass('off', nothingSelected);
             var selectedStrs = [];
             if (!nothingSelected) {
                 if (checkedAssays) {
@@ -1583,12 +1583,12 @@ var StudyDataPage;
                     selectedStrs.push((checkedMeasure > 1) ? (checkedMeasure + " Measurements") : "1 Measurement");
                 }
                 var selectedStr = selectedStrs.join(', ');
-                $('#selectedDiv').text(selectedStr + ' selected');
+                $('.selectedDiv').text(selectedStr + ' selected');
             }
         }
         else {
-            $('#selectedDiv').addClass('off');
-            $('#displayedDiv').removeClass('off');
+            $('.selectedDiv').addClass('off');
+            $('.displayedDiv').removeClass('off');
         }
         //if there are assays but no data, show empty assays
         //note: this is to combat the current default setting for showing graph on page load
@@ -1669,7 +1669,7 @@ var StudyDataPage;
             singleAssayObj = EDDGraphingTools.transformSingleLineItem(dataObj);
             dataSets.push(singleAssayObj);
         });
-        $('#displayedDiv').text(dataPointsDisplayed + " measurements displayed");
+        $('.displayedDiv').text(dataPointsDisplayed + " measurements displayed");
         $('#noData').addClass('off');
         remakeMainGraphAreaCalls++;
         uncheckEventHandler(EDDGraphingTools.labels);

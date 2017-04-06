@@ -114,25 +114,23 @@
     <div id="barGraphByTime" class="off"></div>
 </div>
 
+<form action="" method="POST">
+{% csrf_token %}
 {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
 <table id="studyAssaysTable" class="off"></table>
 
 <div id="assaysActionPanel" class="sectionActions assayActions">
+    <button class="hideFilterSection" style="margin: 14px 0px 0px 15px;"
+            data-off-text="{% trans 'Show Filter Section' %}">
+        {% trans 'Hide Filter Section' %}
+    </button>
 
     <div class="{% if not assays %}off{% endif %} assayFlex">
         {# TODO: this gets replaced in Typescript, figure out i18n there #}
-        <div id="displayedDiv" class="assayDisplayed">{% trans '0 displayed' %}</div>
-        <div id="selectedDiv" class="assayDisplayed">{% trans '0 selected' %}</div>
+        <div id="displayedDiv" class="displayedDiv assayDisplayed">{% trans '0 displayed' %}</div>
+        <div id="selectedDiv" class="selectedDiv assayDisplayed">{% trans '0 selected' %}</div>
     </div>
     <div class="off">
-        <input id="assay_action_mark" type="radio" name="assay_action" value="mark"/>
-        <label for="assay_action_mark">
-            <span>{% trans 'Mark as' %}</span>
-            <select name="disable">
-                <option value="true">{% trans 'Disabled' %}</option>
-                <option value="false">{% trans 'Enabled' %}</option>
-            </select>
-        </label>
         <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
         <label for="assay_action_delete">{% trans 'Delete Measurements' %}</label>
         <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
@@ -184,14 +182,9 @@
         </button>
     </div>
 </div>
+</form>
 
-<div>
-    <input id="hideFilterSection" type="button" style="margin: 14px 0px 0px 15px;"
-            value="Hide Filter Section">
-</div>
-
-<div id="mainFilterSection" class="filteringSection">
-</div>
+<div id="mainFilterSection" class="filteringSection"></div>
 
 <div id="addMeasurement" class="off" title="{% trans 'Add Measurements To Selected Assays' %}">
     <form action="" method="POST">

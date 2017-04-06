@@ -733,8 +733,6 @@ class StudyDetailView(StudyDetailBaseView):
         # but not edit
         elif not can_write:
             messages.error(request, 'You do not have permission to modify this study.')
-        elif assay_action == 'mark':
-            form_valid = self.handle_assay_mark(request)
         elif assay_action == 'delete':
             form_valid = self.handle_measurement_delete(request)
         elif assay_action == 'edit':
@@ -749,26 +747,6 @@ class StudyDetailView(StudyDetailBaseView):
                 }
             )
         return form_valid
-
-    def handle_assay_mark(self, request):
-        ids = request.POST.getlist('assayId', [])
-        study = self.get_object()
-        disable = request.POST.get('disable', None)
-        if disable == 'true':
-            active = False
-        elif disable == 'false':
-            active = True
-        else:
-            messages.error(request, 'Invalid action specified, doing nothing')
-            return True
-        count = Assay.objects.filter(pk__in=ids, line__study=study).update(active=active)
-        messages.success(
-            request,
-            _('Updated %(count)s Assays') % {
-                'count': count,
-            }
-        )
-        return True
 
     def handle_measurement(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('assayId', [])
@@ -789,13 +767,34 @@ class StudyDetailView(StudyDetailBaseView):
 
     def handle_measurement_delete(self, request):
         assay_ids = request.POST.getlist('assayId', [])
-        measure_ids = request.POST.getlist('meaurementId', [])
-        # "deleting" by setting active to False
-        Measurement.objects.filter(
-            Q(assay_id__in=assay_ids) | Q(pk__in=measure_ids)
-        ).update(
-            active=False
-        )
+        measure_ids = request.POST.getlist('measurementId', [])
+        # define base querysets first
+        assays = Assay.objects.filter(pk__in=assay_ids)
+        assays_counted = assays.annotate(v_count=Count('measurement__measurementvalue'))
+        measures = Measurement.objects.filter(Q(assay_id__in=assay_ids) | Q(pk__in=measure_ids))
+        measures_counted = measures.annotate(v_count=Count('measurementvalue'))
+        # start counts at zero
+        assay_count = 0
+        measurement_count = 0
+        try:
+            # real deletion for anything without measurement values
+            foo, info = measures_counted.filter(v_count=0).delete()
+            measurement_count += info.get(Measurement._meta.label, 0)
+            foo, info = assays_counted.filter(v_count=0).delete()
+            measurement_count += info.get(Measurement._meta.label, 0)
+            assay_count += info.get(Assay._meta.label, 0)
+            # "deleting" the rest by setting active to False
+            assay_count += assays.update(active=False)
+            measurement_count += measures.update(active=False)
+            messages.success(
+                request,
+                _('Deleted %(assay)d Assays and %(measurement)d Measurements.') % {
+                    'assay': assay_count,
+                    'measurement': measurement_count,
+                }
+            )
+        except Exception as e:
+            logger.exception('Failed to do measurement deletion')
         return True
 
     def handle_measurement_edit(self, request):

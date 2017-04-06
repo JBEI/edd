@@ -1220,8 +1220,6 @@ namespace StudyDataPage {
     // Called when the page loads.
     export function prepareIt() {
 
-        var parent: JQuery = $('#assaysActionPanel');
-
         progressiveFilteringWidget = new ProgressiveFilteringWidget();
         postFilteringAssays = [];
         postFilteringMeasurements = [];
@@ -1268,6 +1266,7 @@ namespace StudyDataPage {
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
         Utl.ButtonBar.prepareButtonBars();
+        copyActionButtons();
         // Prepend show/hide filter button for better alignment
         // Note: this will be removed when we implement left side filtering
 
@@ -1283,23 +1282,9 @@ namespace StudyDataPage {
             }
         });
 
-        // create a copy of the buttons in the flex layout bottom bar
-        // the original must stay inside form
-        var original: JQuery, copy: JQuery;
-        original = $('#assaysActionPanel');
-        copy = original.clone().appendTo('#bottomBar').attr('id', 'copyActionPanel').hide();
-        // forward click events on copy to the original button
-        copy.on('click', '.actionButton', (e) => {
-            original.find('#' + e.target.id).trigger(e);
-        });
-
-        var showHideFilterButton = $('#hideFilterSection');
-        $('#assaysActionPanel').prepend(showHideFilterButton);
-
         $("#dataTableButton").click(function() {
             viewingMode = 'table';
-            original.hide();
-            copy.show();
+            toggleActionButtons(false);
             $('#mainFilterSection').appendTo('#bottomBar');
             makeLabelsBlack(EDDGraphingTools.labels);
             $("#tableControlsArea").removeClass('off');
@@ -1359,8 +1344,7 @@ namespace StudyDataPage {
             $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
             $('#filterControlsArea').removeClass('off');
             $('#mainFilterSection').appendTo('#content');
-            original.show();
-            copy.hide();
+            toggleActionButtons(true);
             viewingMode = 'linegraph';
             barGraphTypeButtonsJQ.addClass('off');
             $('#lineGraph').removeClass('off');
@@ -1387,8 +1371,7 @@ namespace StudyDataPage {
             $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
             $('#filterControlsArea').removeClass('off');
             $('#mainFilterSection').appendTo('#content');
-            original.show();
-            copy.hide();
+            toggleActionButtons(true);
             viewingMode = 'bargraph';
             barGraphTypeButtonsJQ.removeClass('off');
             $('#lineGraph').addClass('off');
@@ -1412,15 +1395,15 @@ namespace StudyDataPage {
         });
 
         //hides/shows filter section.
-        $('#hideFilterSection').click(function(event) {
+        var hideButtons: JQuery = $('.hideFilterSection');
+        hideButtons.click(function(event) {
+            var self: JQuery = $(this), old: string, replace: string;
             event.preventDefault();
-            if ($('#hideFilterSection').val() === "Hide Filter Section") {
-               $('#hideFilterSection').val("Show Filter Section");
-               $('#mainFilterSection').hide();
-            } else {
-               $('#hideFilterSection').val("Hide Filter Section");
-               $('#mainFilterSection').show();
-            }
+            old = self.text();
+            replace = self.attr('data-off-text');
+            // doing this for all
+            hideButtons.attr('data-off-text', old).text(replace);
+            $('#mainFilterSection').toggle();
             return false;
         });
 
@@ -1471,6 +1454,23 @@ namespace StudyDataPage {
         // Callbacks to respond to the filtering section
         $('#mainFilterSection').on('mouseover mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
             .on('keydown', filterTableKeyDown.bind(this));
+    }
+
+    function copyActionButtons() {
+        // create a copy of the buttons in the flex layout bottom bar
+        // the original must stay inside form
+        var original: JQuery, copy: JQuery;
+        original = $('#assaysActionPanel');
+        copy = original.clone().appendTo('#bottomBar').attr('id', 'copyActionPanel').hide();
+        // forward click events on copy to the original button
+        copy.on('click', '.actionButton', (e) => {
+            original.find('#' + e.target.id).trigger(e);
+        });
+    }
+
+    function toggleActionButtons(showOriginal: boolean) {
+        $('#assaysActionPanel').toggle(showOriginal);
+        $('#copyActionPanel').toggle(!showOriginal);
     }
 
     export function fetchEDDData(success) {
@@ -1695,6 +1695,7 @@ namespace StudyDataPage {
                 // this has no form interaction, we can move it freely
                 $('#mainFilterSection').appendTo('#bottomBar');
                 // this does have to be in a form, so we toggle display
+                toggleActionButtons(false);
                 $('#assaysActionPanel').hide();
                 $('#copyActionPanel').show();
             }
@@ -1707,8 +1708,7 @@ namespace StudyDataPage {
             }
             if (actionPanelIsInBottomBar) {
                 actionPanelIsInBottomBar = false;
-                $('#assaysActionPanel').show();
-                $('#copyActionPanel').hide();
+                toggleActionButtons(true);
                 $('#mainFilterSection').appendTo('#content');
             }
         }
@@ -1723,7 +1723,7 @@ namespace StudyDataPage {
         // (Only the visible item count makes sense in that case.)
         if (viewingMode == 'table') {
 
-            $('#displayedDiv').addClass('off');
+            $('.displayedDiv').addClass('off');
 
             checkedBoxes = assaysDataGrid.getSelectedCheckboxElements();
 
@@ -1735,7 +1735,7 @@ namespace StudyDataPage {
             //enable action buttons if something is selected
             $('.tableActionButtons').find('button').prop('disabled', nothingSelected);
 
-            $('#selectedDiv').toggleClass('off', nothingSelected);
+            $('.selectedDiv').toggleClass('off', nothingSelected);
             var selectedStrs = [];
             if (!nothingSelected) {
                 if (checkedAssays) {
@@ -1745,11 +1745,11 @@ namespace StudyDataPage {
                     selectedStrs.push((checkedMeasure > 1) ? (checkedMeasure + " Measurements") : "1 Measurement");
                 }
                 var selectedStr = selectedStrs.join(', ');
-                $('#selectedDiv').text(selectedStr + ' selected');
+                $('.selectedDiv').text(selectedStr + ' selected');
             }
         } else {
-            $('#selectedDiv').addClass('off');
-            $('#displayedDiv').removeClass('off');
+            $('.selectedDiv').addClass('off');
+            $('.displayedDiv').removeClass('off');
         }
         //if there are assays but no data, show empty assays
         //note: this is to combat the current default setting for showing graph on page load
@@ -1844,7 +1844,7 @@ namespace StudyDataPage {
             dataSets.push(singleAssayObj);
         });
 
-        $('#displayedDiv').text(dataPointsDisplayed + " measurements displayed");
+        $('.displayedDiv').text(dataPointsDisplayed + " measurements displayed");
 
         $('#noData').addClass('off');
 
