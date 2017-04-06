@@ -22,6 +22,7 @@
                 title: 'Add New Line'
                 };
              $(document).ready(function() {
+                 $('.errorlist').remove();
                  $("#editLineModal").removeClass('off').dialog(options).dialog( "open" );
              });
          {% endif %}
@@ -150,17 +151,17 @@
     {%  endif %}
     <form id="lineFormm" action="" method="POST">
         {% csrf_token %}
+        <div class="modal-body">
         {{ new_line.as_p }}
-        <p class="line-edit-meta">
+        <div class="line-edit-meta form-group">
             <span class="edd-label">
-                <input type="text" class="autocomp autocomp_ltype" size="14"
-                        eddautocompletetype="LineMetadataType" placeholder="Metadata Type" />
-                <input type="hidden" class="line-meta-type" value="" />
+                <input type="text" class="autocomp autocomp_ltype form-control-meta ui-autocomplete-input" size="14" eddautocompletetype="LineMetadataType" placeholder="Metadata Type" autocomplete="off">
+                <input type="hidden" class="line-meta-type" value="">
             </span>
-            <input type="text" class="line-meta-value" placeholder="Metadata Value" />
-            <button class="line-meta-add">Add Value</button>
-        </p>
-        <button type="submit" name="action" value="line">Save</button>
+            <button class="line-meta-add">Add Field</button>
+         </div>
+        <button type="submit" class="btn btn-default" name="action" value="line">Save</button>
+        </div>
     </form>
 </div>
 
@@ -175,7 +176,6 @@
     <form action="" method="POST">
         {% csrf_token %}
         {{ new_assay.as_p }}
-        <button type="submit" name="action" value="assay">{{ add_assay_button }}</button>
     </form>
 </div>
 

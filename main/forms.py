@@ -127,7 +127,7 @@ class MultiAutocompleteWidget(AutocompleteWidget):
 class UserAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Users """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'User'}, })
+        opt.update({'text_attr': {'class': 'autocomp, form-control', 'eddautocompletetype': 'User'}, })
         super(UserAutocompleteWidget, self).__init__(attrs=attrs, model=User, opt=opt)
 
 
@@ -207,7 +207,7 @@ class RegistryValidator(object):
 class RegistryAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Registry strains """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Registry'}, })
+        opt.update({'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'Registry'}, })
         super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
 
     def decompress(self, value):
@@ -230,7 +230,7 @@ class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompl
 class CarbonSourceAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for carbon sources """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'CarbonSource'}, })
+        opt.update({'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'CarbonSource'}, })
         super(CarbonSourceAutocompleteWidget, self).__init__(
             attrs=attrs, model=CarbonSource, opt=opt)
 
@@ -504,7 +504,7 @@ class LineForm(forms.ModelForm):
             'strains', 'meta_store',
         )
         labels = {
-            'name': _('Line'),
+            'name': _('Line Name'),
             'description': _('Description'),
             'control': _('Is Control?'),
             'contact': _('Contact'),
@@ -513,7 +513,8 @@ class LineForm(forms.ModelForm):
             'strains': _('Strains'),
         }
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 2}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control '}),
             'contact': UserAutocompleteWidget(),
             'experimenter': UserAutocompleteWidget(),
             'carbon_source': MultiCarbonSourceAutocompleteWidget(),
@@ -521,8 +522,8 @@ class LineForm(forms.ModelForm):
             'meta_store': forms.HiddenInput(),
         }
         help_texts = {
-            'name': _('This field is required'),
-            'description': _('Description of line'),
+            'name': _(''),
+            'description': _(''),
             'control': _(''),
             'contact': _(''),
             'experimenter': _(''),
