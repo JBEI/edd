@@ -185,8 +185,7 @@ class ColumnLayout:
         # if we see it, log an error -- no clear/automated way for us to resolve which column
         #  has the correct values!
         if self.has_assay_metadata(upper_protocol_name, assay_meta_type.pk):
-            self.importer.add_error(BAD_FILE_CATEGORY, DUPLICATE_ASSAY_METADATA,
-                                    assay_meta_type.pk)
+            self.importer.add_error(BAD_FILE_CATEGORY, DUPLICATE_ASSAY_METADATA, assay_meta_type.pk)
 
         self.register_protocol(protocol)
 
@@ -584,9 +583,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         :param row: the row to inspect for column headers
         :return: the column layout if required columns were found, or None otherwise
         """
-        logger.debug('in read_column_layout()')  # TODO: remove
-        layout = ColumnLayout(self)
-        # TODO: add support for control column
+        logger.debug('in read_column_layout()')
+        layout = ColumnLayout(self.importer)
 
         ###########################################################################################
         # loop over columns in the current row, looking for labels that identify at least the
@@ -712,14 +710,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
                     # if we've found the assay metadata type for this column, stop looking
                     if suffix_meta_type is not None:
-                        layout = self.column_layout
-                        layout.register_assay_meta_column(
-                            col_index,
-                            upper_protocol_name,
-                            protocol,
-                            suffix_meta_type,
-                            is_combinatorial
-                        )
                         break
 
                     # if the column header didn't match the assay metadata type in its
