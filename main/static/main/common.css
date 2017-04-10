@@ -506,12 +506,6 @@ div.noLines {
     display: none;
 }
 
-/* alert */
-.alert {
-    width: auto;
-    height: auto;
-}
-
 /* Data tables and controls */
 
 table.dataTable {

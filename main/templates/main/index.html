@@ -15,6 +15,7 @@
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/index.js' %}"></script>
     <script>
+    {% if form.errors %}
         var options = {
                 autoOpen: false,
                 minWidth: 600,
@@ -24,6 +25,7 @@
                  $('.errorlist').remove();
                  $("#addStudyModal").removeClass('off').dialog(options).dialog( "open" );
              });
+    {%  endif %}
     </script>
 {% endblock js_css %}
 
