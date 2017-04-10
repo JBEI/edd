@@ -509,7 +509,7 @@ div.noLines {
 /* alert */
 .alert {
     width: 40%;
-    height: 50px;
+    height: auto;
 }
 
 /* Data tables and controls */
