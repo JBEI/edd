@@ -392,8 +392,9 @@ class _InputFileRow(CombinatorialDescriptionInput):
     often, is just a degenerate case of combinatorial creation.
     """
 
-    def __init__(self, naming_strategy, row_number):
-        super(_InputFileRow, self).__init__(naming_strategy)
+    def __init__(self, column_layout, assay_time_meta_pk, row_number):
+        super(_InputFileRow, self).__init__(
+                _ExperimentDescNamingStrategy(column_layout, assay_time_meta_pk))
         self.row_number = row_number
 
     @property
@@ -480,7 +481,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # and not print a warning here.
 
         self.column_layout = None
-        self.naming_strategy = None
 
         # true to treat all unmatched column headers as an
         # error. False to ignore unmatch line headers, but to treat those that start with a
@@ -656,7 +656,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # minimum required columns were found
         if found_col_labels:
             logger.debug('Done with read_column_layout()')
-            self.naming_strategy = _ExperimentDescNamingStrategy(layout, self.assay_time_meta_pk)
             return layout
 
         return None
@@ -808,7 +807,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             method which optional columns have been defined, as well as what order the columns are
             in (arbitrary column order is supported).
         """
-        row_inputs = _InputFileRow(self.naming_strategy, row_num)
+        row_inputs = _InputFileRow(self.column_layout, self.assay_time_meta_pk, row_num)
         layout = self.column_layout
 
         ###################################################
@@ -1006,64 +1005,65 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # build a list of strain ids for this input
         individual_strain_ids = []
 
-        if cell_content:
-            # cast to string in case user entered something else (e.g. long)
-            tokens = str(cell_content).split(',')
+        if not cell_content:
+            return
 
-            # loop over comma-delimited tokens included in the cell
-            for token in tokens:
-                token = token.strip()
+        # cast to string in case user entered something else (e.g. long)
+        tokens = str(cell_content).split(',')
 
-                if not token:
-                    continue
+        # loop over comma-delimited tokens included in the cell
+        for token in tokens:
+            token = token.strip()
 
-                # if this token is a paren-enclosed list of part numbers, it's a
-                # strain group rather than single strain to be
-                # included in the list. That means that each top-level comma-delimited
-                # entry in the list will result in creation of at least one line
-                strain_group_match = _STRAIN_GROUP_PATTERN.match(token)
+            if not token:
+                continue
 
-                if strain_group_match:
-                    strain_group = [strain_id.strip() for strain_id in
-                                    strain_group_match.group(1).split(_STRAIN_GROUP_MEMBER_DELIM)]
-                    if is_combinatorial:
-                        logger.info('Found strain id group %(group)s in cell %(row)d%(col)s' % {
-                            'group': strain_group,
+            # if this token is a paren-enclosed list of part numbers, it's a
+            # strain group rather than single strain to be
+            # included in the list. That means that each top-level comma-delimited
+            # entry in the list will result in creation of at least one line
+            strain_group_match = _STRAIN_GROUP_PATTERN.match(token)
+
+            if strain_group_match:
+                strain_group = [strain_id.strip() for strain_id in
+                                strain_group_match.group(1).split(_STRAIN_GROUP_MEMBER_DELIM)]
+                if is_combinatorial:
+                    logger.info('Found strain id group %(group)s in cell %(row)d%(col)s' % {
+                        'group': strain_group,
+                        'row': row_num,
+                        'col': get_column_letter(strain_ids_col),
+                    })
+                    row_inputs.combinatorial_strain_id_groups.append(strain_group)
+                else:
+                    # if we've already seen a strain or strain group in this cell, the content
+                    # is badly formatted, since a non-combinatorial column should only contain
+                    # a single strain or list of strains. As likely as not, this is bad user
+                    # input, so we'll treat it as an error.
+                    if row_inputs.combinatorial_strain_id_groups:
+                        bad_value = '"%(token)s" (%(row)s%(col)s)' % {
+                            'token': cell_content,
                             'row': row_num,
                             'col': get_column_letter(strain_ids_col),
-                        })
-                        row_inputs.combinatorial_strain_id_groups.append(strain_group)
+                        }
+                        self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
+                                                INCONSISTENT_COMBINATORIAL_VALUE, bad_value)
                     else:
-                        # if we've already seen a strain or strain group in this cell, the content
-                        # is badly formatted, since a non-combinatorial column should only contain
-                        # a single strain or list of strains. As likely as not, this is bad user
-                        # input, so we'll treat it as an error.
-                        if row_inputs.combinatorial_strain_id_groups:
-                            bad_value = '"%(token)s" (%(row)s%(col)s)' % {
-                                'token': cell_content,
-                                'row': row_num,
-                                'col': get_column_letter(strain_ids_col),
-                            }
-                            self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
-                                                    INCONSISTENT_COMBINATORIAL_VALUE, bad_value)
-                        else:
-                            row_inputs.combinatorial_strain_id_groups.append(strain_group)
-                            for strain_id in strain_group:
-                                self._check_part_id_pattern(strain_id)
-                else:
-                    individual_strain_ids.append(token)
-                    self._check_part_id_pattern(token)
+                        row_inputs.combinatorial_strain_id_groups.append(strain_group)
+                        for strain_id in strain_group:
+                            self._check_part_id_pattern(strain_id)
+            else:
+                individual_strain_ids.append(token)
+                self._check_part_id_pattern(token)
 
-            # depending on whether tho column header defines combinatorial input, either submit
-            # comma-delimited strains as a single group (co-culture), or for combinatorial line
-            # creation
-            if is_combinatorial:
-                for strain_id in individual_strain_ids:
-                    row_inputs.combinatorial_strain_id_groups.append([strain_id,])
+        # depending on whether tho column header defines combinatorial input, either submit
+        # comma-delimited strains as a single group (co-culture), or for combinatorial line
+        # creation
+        if is_combinatorial:
+            for strain_id in individual_strain_ids:
+                row_inputs.combinatorial_strain_id_groups.append([strain_id,])
 
-            elif individual_strain_ids:
-                row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
-            individual_strain_ids = []
+        elif individual_strain_ids:
+            row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
 
     def _check_part_id_pattern(self, part_id, row_num=None):
         # test whether the strain's part number matched the expected pattern.

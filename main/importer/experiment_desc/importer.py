@@ -532,7 +532,11 @@ class CombinatorialCreationImporter(object):
         # protocol_to_unique_input_assay_names detects assay name uniqueness across all
         # CombinatorialInputDescriptions for a single protocol.  All_planned_names is the union of
         # all the planned names for each CombinatorialDescriptionInput (regardless of uniqueness).
-        for input_set in combinatorial_inputs:
+        for input_index, input_set in enumerate(combinatorial_inputs):
+            logger.info('Processing combinatorial input %(num)d of %(total)d' % {
+                'num': input_index + 1,
+                'total': len(combinatorial_inputs),
+            })
             names = input_set.compute_line_and_assay_names(study, line_metadata_types,
                                                            assay_metadata_types, strains_by_pk)
             for line_name in names.line_names:

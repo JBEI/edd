@@ -678,9 +678,11 @@ class CombinatorialDescriptionInput(object):
         ###########################################################################################
         try:
             for strain_id_group in self.combinatorial_strain_id_groups:
+                logger.debug('Visiting strain ID group: %s' % str(strain_id_group))
                 self ._visit_new_lines(study, strain_id_group, strains_by_pk, line_metadata_types,
                                        visitor)
             if not self.combinatorial_strain_id_groups:
+                logger.debug('No strain ID groups. Visiting lines')
                 self._visit_new_lines(study, [], strains_by_pk, line_metadata_types, visitor)
 
         ###########################################################################################
@@ -698,15 +700,15 @@ class CombinatorialDescriptionInput(object):
             # outer loop for combinatorial
             for metadata_pk, values in self.combinatorial_line_metadata.items():
                 visited_pks.add(metadata_pk)
-                for value in values:
-                    line_metadata[metadata_pk] = value
+                for value1 in values:
+                    line_metadata[metadata_pk] = value1
                     # inner loop for combinatorial
                     for k, v in self.combinatorial_line_metadata.items():
                         # skip current metadata if already set in outer loop
                         if k in visited_pks:
                             continue
-                        for value in v:
-                            line_metadata[k] = value
+                        for value2 in v:
+                            line_metadata[k] = value2
                             self._visit_new_lines_and_assays(
                                 study,
                                 strains_by_pk,
@@ -714,7 +716,8 @@ class CombinatorialDescriptionInput(object):
                                 line_metadata,
                                 visitor
                             )
-                    # if only one item in combinatorial, inner loop never visits; do it here
+                    # if only making combinatiors of a single metadata type inner loop above never
+                    # visits; do it here
                     if len(self.combinatorial_line_metadata) == 1:
                         self._visit_new_lines_and_assays(study, strains_by_pk, line_strain_ids,
                                                          line_metadata, visitor)
