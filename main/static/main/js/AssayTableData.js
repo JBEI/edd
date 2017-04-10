@@ -2116,11 +2116,11 @@ var EDDTableImport;
                 }
                 return false;
             });
-            if ($(event.target).text() === 'Select All') {
-                $(event.target).text('Select None');
+            if (allSelected) {
+                $(event.target).text('Select All');
             }
             else {
-                $(event.target).text('Select All');
+                $(event.target).text('Select None');
             }
             // un/check all checkboxes based on their previous state
             checkboxes.each(function (index, elt) {
@@ -2232,17 +2232,8 @@ var EDDTableImport;
             ////////////////////////////////////////////////////////////////////////////////////////
             nRows = 0;
             uniqueAssayNames.forEach(function (assayName, i) {
-                if (uniqueAssayNames.length - 1 === i) {
-                    if ($('#matchedAssaysTable tr').length === 0) {
-                        $('#matchedAssaysSection').hide();
-                    }
-                    else {
-                        $('#matchedAssaysSection').show();
-                        matched = i + 1;
-                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines');
-                    }
-                }
-                var disam, disam = _this.assayObjSets[assayName];
+                var disam, matched;
+                disam = _this.assayObjSets[assayName];
                 if (!disam) {
                     disam = new AssayDisambiguationRow(tableBodyMatched, assayName, i);
                     nRows++;
@@ -2251,6 +2242,16 @@ var EDDTableImport;
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
                 _this.currentlyVisibleAssayObjSets.push(disam);
             });
+            if (uniqueAssayNames.length - 1) {
+                matched = $('#matchedAssaysSectionBody tr').length;
+                if (matched === 0) {
+                    $('#matchedAssaysSection').hide();
+                }
+                else {
+                    $('#matchedAssaysSection').show();
+                    $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines');
+                }
+            }
         };
         TypeDisambiguationStep.prototype.addRequiredInputLabel = function (parentDiv, text) {
             var adding = [TypeDisambiguationStep.STEP_4_SUBSECTION_REQUIRED_CLASS, 'off', 'missingSingleFormInput'];

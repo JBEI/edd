@@ -1222,7 +1222,7 @@ module EDDTableImport {
         parsedSets: RawImportSet[];
         graphSets: GraphingSet[];
         uniqueLineNames: any[];
-        uniqueAssayNames: any;
+        uniqueAssayNames: string[];
         uniqueMeasurementNames: any[];
         uniqueMetadataNames: any[];
         // A flag to indicate whether we have seen any timestamps specified in the import data
@@ -2619,10 +2619,10 @@ module EDDTableImport {
                 return false;
             });
 
-            if ($(event.target).text() === 'Select All') {
-                $(event.target).text('Select None')
-            } else {
+            if (allSelected) {
                 $(event.target).text('Select All')
+            } else {
+                $(event.target).text('Select None')
             }
 
 
@@ -2725,7 +2725,7 @@ module EDDTableImport {
                 requiredInputText: string,
                 tableMatched: HTMLTableElement,
                 tableBodyMatched: HTMLTableElement,
-                uniqueAssayNames,
+                uniqueAssayNames: string[],
                 totalRowCreationSeconds: number,
                 childDivMatched: JQuery,
                 matched: number,
@@ -2783,16 +2783,7 @@ module EDDTableImport {
             nRows = 0;
 
             uniqueAssayNames.forEach((assayName: string, i: number): void => {
-                if (uniqueAssayNames.length - 1 === i) {
-                    if ($('#matchedAssaysTable tr').length === 0) {
-                        $('#matchedAssaysSection').hide();
-                    } else {
-                        $('#matchedAssaysSection').show();
-                        matched = i + 1;
-                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines')
-                    }
-                }
-                var disam: AssayDisambiguationRow,
+                var disam: AssayDisambiguationRow, matched:number;
                 disam = this.assayObjSets[assayName];
                 if (!disam) {
                     disam = new AssayDisambiguationRow(tableBodyMatched, assayName, i);
@@ -2802,7 +2793,15 @@ module EDDTableImport {
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
                 this.currentlyVisibleAssayObjSets.push(disam);
             });
-
+            if (uniqueAssayNames.length - 1) {
+                matched = $('#matchedAssaysSectionBody tr').length;
+                    if (matched === 0) {
+                        $('#matchedAssaysSection').hide();
+                    } else {
+                        $('#matchedAssaysSection').show();
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines')
+                    }
+                }
         }
 
 
