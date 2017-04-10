@@ -24,7 +24,7 @@ module.exports = function(config) {
       'main/static/main/js/EDDEditableElement.js',
       'main/static/main/js/Study-Lines.js',
       'main/static/main/js/Study-Data.js',
-      'main/static/main/js/AssayTableData.js',
+      'main/static/main/js/Import.js',
       'main/static/main/js/AssayTableDataGraphing.js',
       'main/static/main/js/EDDEditableElement.js',
       'main/static/main/js/test/*.js',
