@@ -2795,13 +2795,13 @@ module EDDTableImport {
             });
             if (uniqueAssayNames.length - 1) {
                 matched = $('#matchedAssaysSectionBody tr').length;
-                    if (matched === 0) {
-                        $('#matchedAssaysSection').hide();
-                    } else {
-                        $('#matchedAssaysSection').show();
-                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines')
-                    }
+                if (matched === 0) {
+                    $('#matchedAssaysSection').hide();
+                } else {
+                    $('#matchedAssaysSection').show();
+                    $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines')
                 }
+            }
         }
 
 
