@@ -308,25 +308,20 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
             name_elts.append(strains_str)
             included_strain_names = True
 
+        # if creating more than one replicate, build a suffix to show replicate number so that
+        # line names are unique. Replicate number should always be last in the line name
+        if self.combinatorial_input.replicate_count > 1:
+            replicate_suffix = 'R%d' % replicate_num
+            name_elts.append(replicate_suffix)
+
         logger.debug('Building line name from elements: %s' % str(name_elts))
 
         # if making lines combinatorially based on line metadata, insert the combinatorial values
         # into the line name so that line names will be unique
         name = self.section_separator.join(name_elts)
 
-        # if creating more than one replicate, build a suffix to show replicate number so that
-        # line names are unique. Replicate number should always be last in the line name
-        replicate_suffix = ''
-        if self.combinatorial_input.replicate_count > 1:
-            replicate_suffix = '%(sep)sR%(replicate_num)d' % {
-                'sep': self.section_separator,
-                'replicate_num': replicate_num
-            }
-
-        return '%(name)s%(replicate_suffix)s' % {
-            'name': name,
-            'replicate_suffix': replicate_suffix,
-        }
+        logger.debug('Name is %s' % name)
+        return name
 
     def names_contain_strains(self):
         return self.col_layout.strain_ids_col in self.col_layout.combinatorial_col_indices
@@ -648,6 +643,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         'title': cell_content,
                         'column': col,
                     }
+                    logger.warning('Bad column header "%(header)s"' % {'header': skipped})
                     is_error = self.REQUIRE_COL_HEADER_MATCH
                     logger.warning('Bad column header "%(header)s"' % {'header': skipped})
                     self.importer.add_issue(is_error, BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER,
