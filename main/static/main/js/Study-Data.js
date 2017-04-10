@@ -1118,7 +1118,7 @@ var StudyDataPage;
         viewingMode = 'linegraph';
         barGraphMode = 'measurement';
         barGraphTypeButtonsJQ = $('#barGraphTypeButtons');
-        actionPanelIsInBottomBar = true;
+        actionPanelIsInBottomBar = false;
         // Start out with every display mode needing a refresh
         viewingModeIsStale = {
             'linegraph': true,
@@ -1167,8 +1167,7 @@ var StudyDataPage;
         });
         $("#dataTableButton").click(function () {
             viewingMode = 'table';
-            toggleActionButtons(false);
-            $('#mainFilterSection').appendTo('#bottomBar');
+            queueActionPanelRefresh();
             makeLabelsBlack(EDDGraphingTools.labels);
             $("#tableControlsArea").removeClass('off');
             $("#filterControlsArea").addClass('off');
@@ -1220,8 +1219,7 @@ var StudyDataPage;
         $("#lineGraphButton").click(function () {
             $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
             $('#filterControlsArea').removeClass('off');
-            $('#mainFilterSection').appendTo('#content');
-            toggleActionButtons(true);
+            queueActionPanelRefresh();
             viewingMode = 'linegraph';
             barGraphTypeButtonsJQ.addClass('off');
             $('#lineGraph').removeClass('off');
@@ -1246,8 +1244,7 @@ var StudyDataPage;
         $("#barGraphButton").click(function () {
             $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
             $('#filterControlsArea').removeClass('off');
-            $('#mainFilterSection').appendTo('#content');
-            toggleActionButtons(true);
+            queueActionPanelRefresh();
             viewingMode = 'bargraph';
             barGraphTypeButtonsJQ.removeClass('off');
             $('#lineGraph').addClass('off');
@@ -1333,22 +1330,6 @@ var StudyDataPage;
         copy.on('click', '.actionButton', function (e) {
             original.find('#' + e.target.id).trigger(e);
         });
-    }
-    function toggleActionButtons(showOriginal) {
-        var viewHeight, itemsHeight;
-        viewHeight = $('#content').height();
-        itemsHeight = 0;
-        $('#content').children().each(function (i, e) { itemsHeight += e.scrollHeight; });
-        if (showOriginal && actionPanelIsInBottomBar && itemsHeight < viewHeight) {
-            $('#assaysActionPanel').toggle(showOriginal);
-            $('#copyActionPanel').toggle(!showOriginal);
-            actionPanelIsInBottomBar = false;
-        }
-        else if (!showOriginal && !actionPanelIsInBottomBar && viewHeight < itemsHeight) {
-            $('#assaysActionPanel').toggle(!showOriginal);
-            $('#copyActionPanel').toggle(showOriginal);
-            actionPanelIsInBottomBar = true;
-        }
     }
     function fetchEDDData(success) {
         $.ajax({
@@ -1548,14 +1529,6 @@ var StudyDataPage;
             }
             viewingModeIsStale['table'] = false;
             makeLabelsBlack(EDDGraphingTools.labels);
-            if (!actionPanelIsInBottomBar) {
-                // this has no form interaction, we can move it freely
-                $('#mainFilterSection').appendTo('#bottomBar');
-                // this does have to be in a form, so we toggle display
-                toggleActionButtons(false);
-                $('#assaysActionPanel').hide();
-                $('#copyActionPanel').show();
-            }
         }
         else {
             remakeMainGraphArea();
@@ -1565,23 +1538,23 @@ var StudyDataPage;
             else {
                 viewingModeIsStale['linegraph'] = false;
             }
-            if (actionPanelIsInBottomBar) {
-                actionPanelIsInBottomBar = false;
-                toggleActionButtons(true);
-                $('#mainFilterSection').appendTo('#content');
-            }
         }
     }
     function actionPanelRefresh() {
-        var checkedBoxes, checkedAssays, checkedMeasure, nothingSelected;
+        var checkedBoxes, checkedAssays, checkedMeasure, nothingSelected, viewHeight, itemsHeight;
         // Figure out how many assays/checkboxes are selected.
         // Don't show the selected item count if we're not looking at the table.
         // (Only the visible item count makes sense in that case.)
         if (viewingMode == 'table') {
             $('.displayedDiv').addClass('off');
-            checkedBoxes = StudyDataPage.assaysDataGrid.getSelectedCheckboxElements();
-            checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
-            checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
+            if (StudyDataPage.assaysDataGrid) {
+                checkedBoxes = StudyDataPage.assaysDataGrid.getSelectedCheckboxElements();
+            }
+            else {
+                checkedBoxes = [];
+            }
+            checkedAssays = $(checkedBoxes).filter('[name=assayId]').length;
+            checkedMeasure = $(checkedBoxes).filter('[name=measurementId]').length;
             nothingSelected = !checkedAssays && !checkedMeasure;
             //enable action buttons if something is selected
             $('.tableActionButtons').find('button').prop('disabled', nothingSelected);
@@ -1608,6 +1581,23 @@ var StudyDataPage;
             if (!$('#TableShowEAssaysCB').prop('checked')) {
                 $('#TableShowEAssaysCB').click();
             }
+        }
+        // calculate how big everything is
+        viewHeight = $('#content').height();
+        itemsHeight = 0;
+        $('#content').children().each(function (i, e) { itemsHeight += e.scrollHeight; });
+        // switch where controls are visible based on size
+        if (actionPanelIsInBottomBar && itemsHeight < viewHeight) {
+            $('#assaysActionPanel').show();
+            $('#copyActionPanel').hide();
+            $('#mainFilterSection').appendTo('#content');
+            actionPanelIsInBottomBar = false;
+        }
+        else if (!actionPanelIsInBottomBar && viewHeight < itemsHeight) {
+            $('#assaysActionPanel').hide();
+            $('#copyActionPanel').show();
+            $('#mainFilterSection').appendTo('#bottomBar');
+            actionPanelIsInBottomBar = true;
         }
     }
     function remakeMainGraphArea() {
