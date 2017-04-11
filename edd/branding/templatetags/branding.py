@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from django import template
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
+from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.template import Node
 from django.utils.html import format_html
 
@@ -29,8 +30,8 @@ def logo(context):
         site = get_current_site(request)
         logo_url = site.page.branding.logo_file.url
     except:
-        # if there is no branding..do not show a logo
-        logo_url = "/static/main/images/edd_letters.png"
+        # if there is no branding, show default letters
+        logo_url = static("main/images/edd_letters.png")
     return logo_url
 
 
