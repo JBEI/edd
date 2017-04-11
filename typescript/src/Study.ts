@@ -1,4 +1,5 @@
 /// <reference path="typescript-declarations.d.ts" />
+/// <reference path="EDDEditableElement.ts" />
 /// <reference path="Utl.ts" />
 
 
@@ -7,14 +8,12 @@
 module StudyBase {
     'use strict';
 
-    // Called when the page loads.
-    export function prepareIt() {
-        new EditableStudyName($('#editable-study-name').get()[0]);
-    }
-
 
     // Base class for the non-autocomplete inline editing fields for the Study
     export class EditableStudyElement extends EDDEditable.EditableElement {
+        constructor(inputElement: HTMLElement, style?: string) {
+            super(inputElement, style);
+        }
 
         editAllowed(): boolean { return EDDData.currentStudyWritable; }
         canCommit(value): boolean { return EDDData.currentStudyWritable; }
@@ -22,12 +21,13 @@ module StudyBase {
 
 
     export class EditableStudyName extends EditableStudyElement {
-        canCommit(value): boolean {
-            return EDDData.currentStudyWritable && (this.getEditedValue() != '');
+        constructor(inputElement: HTMLElement) {
+            super(inputElement);
+            this.formURL('/study/' + EDDData.currentStudyID + '/rename/');
         }
 
-        getFormURL(): string {
-            return '/study/' + EDDData.currentStudyID + '/rename/';
+        canCommit(value): boolean {
+            return EDDData.currentStudyWritable && (this.getEditedValue() != '');
         }
 
         getValue():string {
@@ -41,6 +41,11 @@ module StudyBase {
         blankLabel(): string {
             return '(Enter a name for your Study)';
         }
+    }
+
+    // Called when the page loads.
+    export function prepareIt() {
+        new EditableStudyName($('#editable-study-name').get()[0]);
     }
 };
 

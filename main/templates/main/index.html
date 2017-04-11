@@ -14,16 +14,23 @@
     <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/index.js' %}"></script>
+    <script>
+    {% if form.errors %}
+        var options = {
+                autoOpen: false,
+                minWidth: 600,
+                title: 'Add New Study'
+                };
+             $(document).ready(function() {
+                 $('.errorlist').remove();
+                 $("#addStudyModal").removeClass('off').dialog(options).dialog( "open" );
+             });
+    {%  endif %}
+    </script>
 {% endblock js_css %}
 
 
 {% block status %}
-    {% if form.errors %}
-    <div class="alert alert-danger alert-dismissible" role="alert">
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <p>{{ form.errors.as_text }}</p>
-    </div>
-    {% endif %}
     {{ block.super }}
 {% endblock status %}
 
@@ -51,18 +58,23 @@
     <h2>All Studies:</h2>
     <table id="studiesTable"></table>
 
+    <div id="addStudyModal" class="off"
+         title="Add New Study">
+        {% if form.errors %}
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <p>{{ form.errors.as_text }}</p>
+        </div>
+        {% endif %}
+        <form action="" class="edd-form" method="POST">
+            {% csrf_token %}
+            <div class="modal-body">
+            {{ form.as_p }}
+            </div>
+            <div class="modal-footer">
+                <button type="submit" name="action" class="btn btn-primary" value="assay">Add Study</button>
+            </div>
+        </form>
+    </div>
+
 {% endblock content %}
-
-{% block body_postfix %}
-
-<div id="addStudyModal" class="off"
-     title="Add New Study">
-    <form action="" class="edd-form" method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" name="action" value="assay">Add Study</button>
-    </form>
-</div>
-
-    {{ block.super }}
-{% endblock body_postfix %}

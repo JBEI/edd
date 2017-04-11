@@ -48,6 +48,12 @@ var Utl;
             }
             return mUnits;
         };
+        EDD.findCSRFToken = function () {
+            if (jQuery.cookie) {
+                return jQuery.cookie('csrftoken');
+            }
+            return jQuery('input[name=csrfmiddlewaretoken]').val() || '';
+        };
         // Helper function to do a little more prep on objects when calling jQuery's Alax handler.
         // If options contains "data", it is assumed to be a constructed formData object.
         // If options contains a "rawdata" object, it is assumed to be a standard key-value collection
@@ -71,7 +77,7 @@ var Utl;
             }
             var headers = {};
             if (type == 'POST') {
-                headers["X-CSRFToken"] = jQuery.cookie('csrftoken');
+                headers["X-CSRFToken"] = EDD.findCSRFToken();
             }
             $.ajax({
                 xhr: function () {
@@ -558,13 +564,13 @@ var Utl;
     // A class wrapping filedrop-min.js (http://filedropjs.org) and providing some additional structure.
     // It's initialized with a single 'options' object:
     // {
-    //	elementId: ID of the element to be set up as a drop zone
-    //	fileInitFn: Called when a file has been dropped, but before any processing has started
-    //	processRawFn: Called when the file content has been read into a local variable, but before any communication with
+    //  elementId: ID of the element to be set up as a drop zone
+    //  fileInitFn: Called when a file has been dropped, but before any processing has started
+    //  processRawFn: Called when the file content has been read into a local variable, but before any communication with
     //                the server.
-    //	url: The URL to upload the file.
-    //	progressBar: A ProgressBar object for tracking the upload progress.
-    //	processResponseFn: Called when the server sends back its results.
+    //  url: The URL to upload the file.
+    //  progressBar: A ProgressBar object for tracking the upload progress.
+    //  processResponseFn: Called when the server sends back its results.
     //  processErrorFn: Called as an alternative to processResponseFn if the server reports an error.
     // }
     // All callbacks are given a FileDropZoneFileContainer object as their first argument.
@@ -583,7 +589,7 @@ var Utl;
             window.fd.logging = false;
             var z = new FileDrop(options.elementId, {}); // filedrop-min.js , http://filedropjs.org
             this.zone = z;
-            this.csrftoken = jQuery.cookie('csrftoken');
+            this.csrftoken = EDD.findCSRFToken();
             if (!(typeof options.multiple === "undefined")) {
                 z.multiple(options.multiple);
             }

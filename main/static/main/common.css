@@ -357,7 +357,9 @@ div.helpBadgeDiv {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
-
+div.helpBadgeDiv.helpLeft {
+    float: left;
+}
 div.helpBadgeDiv:hover {
     background-color:#CECEFF;
 }
@@ -505,11 +507,8 @@ ul.studyTabs {
 div.noLines {
     display: none;
 }
-
-/* alert */
-.alert {
-    width: 40%;
-    height: auto;
+.linesSelectedCell {
+    padding-left: 15px;
 }
 
 /* Data tables and controls */
@@ -983,7 +982,7 @@ div.buttonBar {
     display:flex;
     align-items:center;
     flex-wrap: nowrap;
-    flex-direction: row;    
+    flex-direction: row;
     padding:0px 10px 0px 10px;
     margin:5px 0px 5px 0px;
 }
@@ -1580,7 +1579,7 @@ div.fileDropInfoIcon {
     height:128px;
     background-repeat: no-repeat;
     background-attachment: scroll;
-    background-position: center; 
+    background-position: center;
     background-image: url(images/dropzone-csv-over.png);
 }
 div.fileDropInfoIcon.text {
@@ -1655,7 +1654,7 @@ div.fileDropInfoLog {
 
 .btn-default {
     outline: none;
-    border-color: #fff;
+    border-color: #ccc;
 }
 
 .btn:focus, .btn:active:focus, .btn.active:focus{
@@ -1719,6 +1718,21 @@ div.tooltip2 {
     stroke-dasharray: 20,10,5,5,5,10;
 }
 
+.required:before { content: '*' }
+
+.form-control-meta {
+    display: inline-block;
+    width: 50%;
+    height: 34px;
+    padding: 6px 12px;
+    font-size: 14px;
+    line-height: 1.42857143;
+    color: #555;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-left: 8px;
+}
 
 .tick text{
   font-size: 12px;

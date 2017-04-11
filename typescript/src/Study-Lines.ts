@@ -33,6 +33,7 @@ namespace StudyLines {
     // We use our own flag to ensure we don't get into an infinite event loop,
     // switching back and forth between positions that might trigger resize events.
     export var actionPanelIsInBottomBar;
+    export var actionPanelIsCopied = false;
 
 
     // Called when the page loads.
@@ -87,20 +88,14 @@ namespace StudyLines {
 
         $(window).on('resize', queuePositionActionsBar);
 
-        $('#worklistButton').attr('title', 'select line(s) first');
-        $('#exportLineButton').attr('title', 'select line(s) first');
-
-
         //when all ajax requests are finished, determine if there are AssayMeasurements.
         $(document).ajaxStop(function() {
             // hide export button if there are assays but no assay measurements
             if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
                 $('#exportLineButton').prop('disabled', true);
-                $('#exportLineButton').prop('title', "Import data first");
             }
             else {
                 $('#exportLineButton').prop('disabled', false);
-                $('#exportLineButton').prop('title', 'Download data');
             }
         });
 
@@ -153,8 +148,10 @@ namespace StudyLines {
     // Called by DataGrid after the Lines table is rendered
     export function prepareAfterLinesTable() {
 
+        var parent: JQuery = $('#studyLinesTable').parent();
+
         // Enable add new Line button
-        $('#addNewLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
+        parent.find('.addNewLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
             ev.preventDefault();
             ev.stopPropagation();
             StudyLines.editLines([]);
@@ -162,7 +159,7 @@ namespace StudyLines {
         });
 
         // Enable edit lines button
-        $('#editButton').on('click', (ev:JQueryMouseEventObject):boolean => {
+        parent.find('.editButton').on('click', (ev:JQueryMouseEventObject):boolean => {
             var button = $(ev.target), data = button.data();
             ev.preventDefault();
             StudyLines.editLines(data.ids || []);
@@ -181,12 +178,12 @@ namespace StudyLines {
             }
         });
 
-        $("#addAssayButton").click(function() {
+        parent.find(".addAssayButton").click(function() {
             $("#addAssayModal").removeClass('off').dialog( "open" );
             return false;
         });
 
-        $("#exportLineButton").click(function() {
+        parent.find(".exportLineButton").click(function() {
             $("#exportModal").removeClass('off').dialog( "open" );
             includeAllLinesIfEmpty();
             //add table to form as hidden field.
@@ -196,14 +193,13 @@ namespace StudyLines {
             return false;
         });
 
-        $('#worklistButton').click(function () {
+        parent.find('.worklistButton').click(function () {
             includeAllLinesIfEmpty();
             var table = $('#studyLinesTable').clone();
             $('#exportForm').append(table);
             table.hide();
             $('select[name="export"]').val('worklist');
-            var lineActionButton = $('button[value="line_action"]')[0];
-            $(lineActionButton).click();
+            $('button[value="line_action"]').click();
         });
 
         //when the input value changes, assign a pre or postfix to the metadata if one exists
@@ -282,7 +278,7 @@ namespace StudyLines {
     }
 
     function includeAllLinesIfEmpty() {
-        if ($('#studyLinesTable').find('input.checkbox:checked').length === 0) {
+        if ($('#studyLinesTable').find('input[name=lineId]:checked').length === 0) {
             //append study id to form
             var study = _.keys(EDDData.Studies)[0];
             $('<input>').attr({
@@ -366,30 +362,28 @@ namespace StudyLines {
 
     function linesActionPanelShow() {
         // Figure out how many lines are selected.
-        var checkedBoxes = [], checkedBoxLen;
+        var checkedBoxes = [], checkedBoxLen: number;
         if (this.linesDataGrid) {
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
         if (_.keys(EDDData.Lines).length === 0) {
             $('.lineExplanation').css('display', 'block');
-            $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton, #worklistButton, #exportLineButton").addClass('off');
+            $('.actionsBar').addClass('off');
         } else {
             checkedBoxLen = checkedBoxes.length;
-            $('#linesSelectedCell').empty().text(checkedBoxLen + ' selected');
+            $('.linesSelectedCell').empty().text(checkedBoxLen + ' selected');
             // enable singular/plural changes
-            $('#editButton').data({
+            $('.editButton').data({
                 'count': checkedBoxLen,
                 'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
             });
             if (checkedBoxLen) {
-                $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',false);
-                $('#worklistButton').attr('title', 'Generate a worklist to carry out your experiment');
-                $('#exportLineButton').attr('title', 'Export your lines in a file type of your choosing');
+                $('.disablableButtons > button').prop('disabled', false);
                 if (checkedBoxLen < 2) {
-                    $('#groupButton').prop('disabled', true);
+                    $('.groupButton').prop('disabled', true);
                 }
             } else {
-                $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled',true);
+                $('.disablableButtons > button').prop('disabled', true);
             }
         }
     }
@@ -406,24 +400,30 @@ namespace StudyLines {
 
 
     export function positionActionsBar() {
-
-        var h = $('#content').height();            // Height of the viewing region
-
-        // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
-        // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
-        var sh = 0;
-        $('#content').children().get().forEach((e:HTMLElement):void => { sh += e.scrollHeight; });
-
-        if (actionPanelIsInBottomBar) {
-            if (sh < h) {
-                $('#actionsBar').appendTo('#content');
-                actionPanelIsInBottomBar = false;
-            }
-        } else {
-            if (sh > h) {
-                $('#actionsBar').appendTo('#bottomBar');
-                actionPanelIsInBottomBar = true;
-            }
+        // old code was trying to calculate when to move the buttons to the #bottomBar element,
+        //    but the calculations were structured in a way to always return the same result.
+        var original: JQuery, copy: JQuery, viewHeight: number, itemsHeight: number;
+        // first time, copy the buttons
+        if (!actionPanelIsCopied) {
+            original = $('#actionsBar');
+            copy = original.clone().appendTo('#bottomBar').hide();
+            // forward click events on copy to the original button
+            copy.on('click', 'button', (e) => {
+                original.find('#' + e.target.id).trigger(e);
+            });
+            actionPanelIsCopied = true;
+        }
+        // calculate how big everything is
+        viewHeight = $('#content').height();
+        itemsHeight = 0;
+        $('#content').children().each((i, e) => { itemsHeight += e.scrollHeight; });
+        // switch which set of buttons is visible based on size
+        if (actionPanelIsInBottomBar && itemsHeight < viewHeight) {
+            $('.actionsBar').toggle();
+            actionPanelIsInBottomBar = false;
+        } else if (!actionPanelIsInBottomBar && viewHeight < itemsHeight) {
+            $('.actionsBar').toggle();
+            actionPanelIsInBottomBar = true;
         }
     }
 
@@ -480,7 +480,7 @@ namespace StudyLines {
         type = EDDData.MetaDataTypes[key];
         label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
         // bulk checkbox?
-        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
+        input = $('<input type="text">').attr('id', 'id_' + id).addClass('form-control').val(value).appendTo(row);
         postfixVal = $(refRow).find('.meta-postfix'); //returns array of postfix elems present
         prefixVal = $(refRow).find('.meta-prefix'); //returns array of prefix elems present
         //if there is a meta postfix val, hide it.
@@ -493,7 +493,7 @@ namespace StudyLines {
         if (type.pre) {
             $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
         }
-        $('<span>').addClass('meta-remove').text('Remove').insertAfter(input);
+        $('<span>').addClass('meta-remove').text('Remove').insertAfter(label);
         if (type.postfix) {
             $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
         }
@@ -615,7 +615,7 @@ class DGSelectAllLinesWidget extends DGSelectAllWidget {
         super.clickHandler();
         //update selected text
         var checkedBoxLen = $('#studyLinesTable').find('tbody input[type=checkbox]:checked').length;
-        $('#linesSelectedCell').empty().text(checkedBoxLen + ' selected');
+        $('.linesSelectedCell').empty().text(checkedBoxLen + ' selected');
      }
 }
 
@@ -800,7 +800,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         // map all metadata IDs to HeaderSpec objects
         var metaDataHeaders:DataGridHeaderSpec[] = this.metaDataIDsUsedInLines.map((id, index) => {
             var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridHeaderSpec(7 + index, 'hLinesMeta' + id, {
+            return new DataGridHeaderSpec(6 + index, 'hLinesMeta' + id, {
                 'name': mdType.name,
                 'size': 's',
                 'sortBy': this.makeMetaDataSortFunction(id),
@@ -808,12 +808,12 @@ class DataGridSpecLines extends DataGridSpecBase {
         });
 
         var rightSide = [
-            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesExperimenter', {
+            new DataGridHeaderSpec(6 + metaDataHeaders.length, 'hLinesExperimenter', {
                 'name': 'Experimenter',
                 'size': 's',
                 'sortBy': this.loadExperimenterInitials,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hLinesModified', {
+            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesModified', {
                 'name': 'Last Modified',
                 'size': 's',
                 'sortBy': this.loadLineModification,
@@ -977,11 +977,11 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridColumnSpec(6, this.generateCarbonBalanceBlankCells)
         ];
         metaDataCols = this.metaDataIDsUsedInLines.map((id, index) => {
-            return new DataGridColumnSpec(7 + index, this.makeMetaDataCellsGeneratorFunction(id));
+            return new DataGridColumnSpec(6 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
         rightSide = [
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterInitialsCells),
-            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterInitialsCells),
+            new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells)
         ];
 
         return leftSide.concat(metaDataCols, rightSide);
@@ -1116,10 +1116,10 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
         }
         // If the box is checked, return the set of IDs unfiltered
         if (checked && rowIDs && EDDData.currentStudyWritable) {
-            $("#enableButton").removeClass('off');
+            $(".enableButton").removeClass('off');
             return rowIDs;
         } else {
-            $("#enableButton").addClass('off');
+            $(".enableButton").addClass('off');
         }
 
         var filteredIDs = [];
