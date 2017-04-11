@@ -248,3 +248,25 @@ WARNING_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
 WARNING_PRIORITY_ORDER[SYSTEMIC_ICE_ERROR_CATEGORY] = (GENERIC_ICE_RELATED_ERROR,)
 WARNING_PRIORITY_ORDER[INTERNAL_EDD_ERROR_TITLE] = (PART_NUMBER_PATTERN_UNMATCHED_WARNING,)
 
+####################################################################################################
+# Name elements for AutomatedNamingStrategy (used during JSON input implemented for eventual
+# combinatorial line creation GUI).
+####################################################################################################
+STRAIN_NAME_ELT = 'strain_name'
+REPLICATE_ELT = 'replicate'
+BASE_NAME_ELT = 'base_name'
+ELEMENTS_SECTION = 'elements'
+CUSTOM_ADDITIONS_SECTION = 'custom_additions'
+ABBREVIATIONS_SECTION = 'abbreviations'
+NAME_ELEMENTS_SECTION = 'name_elements'
+COMMON_LINE_METADATA_SECTION = 'common_line_metadata'
+COMBINATORIAL_LINE_METADATA_SECTION = 'combinatorial_line_metadata'
+PROTOCOL_TO_ASSAY_METADATA_SECTION = 'protocol_to_assay_metadata'
+PROTOCOL_TO_COMBINATORIAL_METADATA_SECTION = 'protocol_to_combinatorial_metadata'
+
+# TODO: flesh out other items that are doubly-defined based on database field / metadata
+# conflicts --
+# CARBON_SOURCE = 'carbon_source'
+# EXPERIMENTER = 'experimenter'
+# CONTACT = 'contact'
+

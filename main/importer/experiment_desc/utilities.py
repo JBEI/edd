@@ -10,16 +10,15 @@ from django.db.models import Q
 from six import string_types
 
 from main.models import Strain, MetadataType, Line, Assay
-from .constants import (
-    INVALID_ASSAY_META_PK,
-    INVALID_AUTO_NAMING_INPUT,
-    INVALID_LINE_META_PK,
-    INVALID_PROTOCOL_META_PK,
-    NON_UNIQUE_STRAIN_UUIDS, SUSPECTED_MATCH_STRAINS,
-    UNMATCHED_PART_NUMBER, INTERNAL_EDD_ERROR_TITLE, ZERO_REPLICATES, BAD_GENERIC_INPUT_CATEGORY)
+from .constants import (INVALID_ASSAY_META_PK, INVALID_AUTO_NAMING_INPUT, INVALID_LINE_META_PK,
+                        INVALID_PROTOCOL_META_PK, NON_UNIQUE_STRAIN_UUIDS, SUSPECTED_MATCH_STRAINS,
+                        UNMATCHED_PART_NUMBER, INTERNAL_EDD_ERROR_TITLE, ZERO_REPLICATES,
+                        BAD_GENERIC_INPUT_CATEGORY, STRAIN_NAME_ELT, REPLICATE_ELT,
+                        STRAIN_NAME_ELT, REPLICATE_ELT)
 
 
 logger = logging.getLogger(__name__)
+
 
 class NamingStrategy(object):
     """
@@ -225,18 +224,6 @@ class AutomatedNamingStrategy(NamingStrategy):
     automatically.
     """
 
-    STRAIN_NAME = 'strain_name'  # TODO: consider renaming to "part_id" to match use
-    REPLICATE = 'replicate'
-    # TODO: flesh out other items that are doubly-defined based on database field / metadata
-    # conflicts --
-    # CARBON_SOURCE = 'carbon_source'
-    # EXPERIMENTER = 'experimenter'
-    # CONTACT = 'contact'
-
-    ELEMENTS = 'elements'
-    CUSTOM_ADDITIONS = 'custom_additions'
-    ABBREVIATIONS = 'abbreviations'
-
     def __init__(self, line_metadata_types_by_pk, assay_metadata_types_by_pk,
                  assay_time_metadata_type_pk, naming_elts=None, custom_additions=None,
                  abbreviations=None, ):
@@ -247,12 +234,12 @@ class AutomatedNamingStrategy(NamingStrategy):
         self.assay_metadata_types_by_pk = assay_metadata_types_by_pk
         self.assay_time_metadata_type_pk = assay_time_metadata_type_pk
 
-        valid_items = [self.STRAIN_NAME, self.REPLICATE, ]
+        valid_items = [STRAIN_NAME_ELT, REPLICATE_ELT, ]
         valid_items.extend(pk for pk in self.line_metadata_types_by_pk.iterkeys())
         self._valid_items = valid_items
 
     def names_contain_strains(self):
-        return self.STRAIN_NAME in self.elements
+        return self.STRAIN_NAME_ELT in self.elements
 
     @property
     def valid_items(self, valid_items):
@@ -286,16 +273,15 @@ class AutomatedNamingStrategy(NamingStrategy):
         line_name = None
         for field_id in self.elements:
             append_value = ''
-            if self.STRAIN_NAME == field_id:
-                strain_names = []
-                strain_names_list = self.build_strains_names_list(line_strain_ids, strains_by_pk)
+            if STRAIN_NAME_ELT == field_id:
+                strain_names_list = self._build_strains_names_list(line_strain_ids, strains_by_pk)
                 abbreviated_strains = [
-                    self._get_abbrev(self.STRAIN_NAME, strain_name)
-                    for strain_name in strain_names
+                    self._get_abbrev(STRAIN_NAME_ELT, strain_name)
+                    for strain_name in strain_names_list
                 ]
                 append_value = self.multivalue_separator.join(abbreviated_strains)
 
-            elif self.REPLICATE == field_id:
+            elif REPLICATE_ELT == field_id:
                 # NOTE: passing raw number causes a warning
                 append_value = str(replicate_num)
             else:
@@ -308,7 +294,7 @@ class AutomatedNamingStrategy(NamingStrategy):
             if not line_name:
                 line_name = append_value
             else:
-                line_name = self.separator.join((line_name, append_value))
+                line_name = self.section_separator.join((line_name, append_value))
 
         return line_name
 
@@ -356,7 +342,7 @@ class AutomatedNamingStrategy(NamingStrategy):
         assay_time = assay_metadata.get(self.assay_time_metadata_type_pk, None)
         if not assay_time:
             raise ValueError('No time value was found -- unable to generate an assay name')
-        return self.separator.join((line.name, '%sh' % str(assay_time)))
+        return self.section_separator.join((line.name, '%sh' % str(assay_time)))
 
     def names_contain_strains(self):
         raise NotImplementedError()

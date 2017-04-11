@@ -19,7 +19,11 @@ from .constants import (DUPLICATE_ASSAY_METADATA, INVALID_CELL_TYPE, INVALID_REP
                         ZERO_REPLICATES, INCORRECT_TIME_FORMAT, UNPARSEABLE_COMBINATORIAL_VALUE,
                         INTERNAL_EDD_ERROR_TITLE, BAD_FILE_CATEGORY, PART_NUM_PATTERN_TITLE,
                         IGNORED_INPUT_CATEGORY, INVALID_FILE_VALUE_CATEGORY,
-                        BAD_GENERIC_INPUT_CATEGORY, INCONSISTENT_COMBINATORIAL_VALUE)
+                        BAD_GENERIC_INPUT_CATEGORY, INCONSISTENT_COMBINATORIAL_VALUE,
+                        ELEMENTS_SECTION, ABBREVIATIONS_SECTION, NAME_ELEMENTS_SECTION,
+                        PROTOCOL_TO_COMBINATORIAL_METADATA_SECTION,
+                        PROTOCOL_TO_ASSAY_METADATA_SECTION, COMBINATORIAL_LINE_METADATA_SECTION,
+                        COMMON_LINE_METADATA_SECTION, BASE_NAME_ELT)
 from .utilities import AutomatedNamingStrategy, CombinatorialDescriptionInput, NamingStrategy
 
 logger = logging.getLogger(__name__)
@@ -1209,31 +1213,33 @@ class JsonInputParser(CombinatorialInputParser):
 
             # convert string-based keys required by JSON into their numeric equivalents
             # TODO: consider casting values too
-            common_line_metadata = _copy_to_numeric_keys(value.pop('common_line_metadata', {}))
+            common_line_metadata = _copy_to_numeric_keys(value.pop(COMMON_LINE_METADATA_SECTION,
+                                                                   {}))
             combinatorial_line_metadata = _copy_to_numeric_keys(
-                    value.pop('combinatorial_line_metadata', {}))
+                    value.pop(COMBINATORIAL_LINE_METADATA_SECTION, {}))
             protocol_to_assay_metadata = _copy_to_numeric_keys(
-                    value.pop('protocol_to_assay_metadata', {}))
+                    value.pop(PROTOCOL_TO_ASSAY_METADATA_SECTION, {}))
             protocol_to_combinatorial_metadata = _copy_to_numeric_keys(
-                    value.pop('protocol_to_combinatorial_metadata', {}))
+                    value.pop(PROTOCOL_TO_COMBINATORIAL_METADATA_SECTION, {}))
 
             naming_strategy = None
-            naming_elements = value.pop('name_elements', None)
+            naming_elements = value.pop(NAME_ELEMENTS_SECTION, None)
             if naming_elements:
                 naming_strategy = AutomatedNamingStrategy(
                     self.line_metadata_types_by_pk,
                     self.assay_metadata_types_by_pk,
                     self.assay_time_meta_pk
                 )
-                elements = _copy_to_numeric_elts(naming_elements['elements'])
-                abbreviations = _copy_to_numeric_keys(naming_elements['abbreviations'])
+                elements = _copy_to_numeric_elts(naming_elements[ELEMENTS_SECTION])
+                abbreviations = _copy_to_numeric_keys(naming_elements[ABBREVIATIONS_SECTION])
 
                 naming_strategy.elements = elements
                 naming_strategy.abbreviations = abbreviations
                 naming_strategy.verify_naming_elts(importer)
             else:
-                base_name = value.pop('base_name')
-                naming_strategy = _ExperimentDescNamingStrategy(self.assay_time_meta_pk)
+                base_name = value.pop(BASE_NAME_ELT)
+                naming_strategy = _ExperimentDescNamingStrategy(
+                        ColumnLayout(self), self.assay_time_meta_pk)
                 naming_strategy.base_line_name = base_name
 
             try:

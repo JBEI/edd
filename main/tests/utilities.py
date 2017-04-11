@@ -3,18 +3,16 @@ from __future__ import unicode_literals
 
 import json
 import os
-
 from builtins import str
 from django.test import TestCase
 from openpyxl import load_workbook
 
+from main.importer.experiment_desc.constants import (STRAIN_NAME_ELT, REPLICATE_ELT,
+                                                     ELEMENTS_SECTION, ABBREVIATIONS_SECTION,
+                                                     BASE_NAME_ELT)
 from main.importer.experiment_desc import CombinatorialCreationImporter
 from main.importer.experiment_desc.parsers import ExperimentDescFileParser, JsonInputParser
-from main.importer.experiment_desc.utilitilies.AutomatedNamingStrategy import (STRAIN_NAME,
-                                                                               ABBREVIATIONS,
-                                                                               REPLICATE, ELEMENTS)
-from main.models import (
-    CarbonSource, MetadataType, Protocol, Strain, Study, User)
+from main.models import (CarbonSource, MetadataType, Protocol, Strain, Study, User)
 
 main_dir = os.path.dirname(__file__),
 fixtures_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -31,7 +29,7 @@ class CombinatorialCreationTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.system_user = User.objects.get(username='system')
+        cls.system_user = User.objects.get_or_create(username='system')[0]
         Protocol.objects.get_or_create(name='Proteomics', owned_by=cls.system_user)
         Protocol.objects.get_or_create(name='Metabolomics', owned_by=cls.system_user)
         Protocol.objects.get_or_create(name='Targeted Proteomics', owned_by=cls.system_user)
@@ -95,14 +93,14 @@ class CombinatorialCreationTests(TestCase):
         # working carbon source (via metadata) example
         gui_mockup_example = {  # TODO: replace string literals with constants
             'name_elements': {
-                ELEMENTS: [
-                    STRAIN_NAME,
+                ELEMENTS_SECTION: [
+                    STRAIN_NAME_ELT,
                     media_meta.pk,
                     carbon_source_meta.pk,
-                    REPLICATE
+                    REPLICATE_ELT
                 ],
-                ABBREVIATIONS: {
-                    STRAIN_NAME: {
+                ABBREVIATIONS_SECTION: {
+                    STRAIN_NAME_ELT: {
                         strain1.name: 58,
                         strain2.name: 27,
                     },
@@ -492,7 +490,7 @@ class CombinatorialCreationTests(TestCase):
         A simplified integration test that exercises much of the EDD code responsible for
         combinatorial line creation based on a simplified input (just creating replicates for a
         single line with some metadata using a known strain).  Test inputs in this example
-        roughly correspond to the sample expirement description file attached to EDD-380)
+        roughly correspond to the sample experiment description file attached to EDD-380)
 
         Testing the full code path for EDD's experiment description file support requires having
         a corresponding ICE deployment to use as part of the test, so it's not addressed here.
@@ -511,13 +509,13 @@ class CombinatorialCreationTests(TestCase):
         # define test input
         ###########################################################################################
         test_input = {  # TODO: replace string literals with constants
-            'base_name': '181-aceF',
+            BASE_NAME_ELT: '181-aceF',
             'replicate_count': 3,
             'desc': '181 JW0111 aceF R1',
             'is_control': [False],
             # Note: normal use is to provide part numbers / look them up in ICE. We're skipping
             # that step here
-            'combinatorial_strain_id_groups': [strain.pk],
+            'combinatorial_strain_id_groups': [[strain.pk]],
             # 'combinatorial_line_metadata': {},
             'common_line_metadata': {
                 str(media_meta.pk): 'LB',  # json only supports string keys
