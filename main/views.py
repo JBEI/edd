@@ -596,7 +596,7 @@ class StudyLinesView(StudyDetailBaseView):
         elif not can_write:
             messages.error(request, _('You do not have permission to modify this study.'))
         else:
-            messages.error(request, _('Unknown line action %s') % (line_action))
+            messages.error(request, _('Unknown line action %s') % line_action)
         # forms involved here are built dynamically by Typescript, should redirect instead of
         #   trying to use normal form errors
         return HttpResponseRedirect(request.path)

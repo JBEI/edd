@@ -416,7 +416,7 @@ var StudyLines;
         type = EDDData.MetaDataTypes[key];
         label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
         // bulk checkbox?
-        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
+        input = $('<input type="text">').attr('id', 'id_' + id).addClass('form-control').val(value).appendTo(row);
         postfixVal = $(refRow).find('.meta-postfix'); //returns array of postfix elems present
         prefixVal = $(refRow).find('.meta-prefix'); //returns array of prefix elems present
         //if there is a meta postfix val, hide it.
@@ -426,7 +426,7 @@ var StudyLines;
         if (type.pre) {
             $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
         }
-        $('<span>').addClass('meta-remove').text('Remove').insertAfter(input);
+        $('<span>').addClass('meta-remove').text('Remove').insertAfter(label);
         if (type.postfix) {
             $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
         }

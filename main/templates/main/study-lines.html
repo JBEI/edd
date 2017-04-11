@@ -14,6 +14,19 @@
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study-Lines.js' %}"></script>
+    <script type="text/javascript">
+         {% if new_line.errors %}
+             var options = {
+                autoOpen: false,
+                minWidth: 500,
+                title: 'Add New Line'
+                };
+             $(document).ready(function() {
+                 $('.errorlist').remove();
+                 $("#editLineModal").removeClass('off').dialog(options).dialog( "open" );
+             });
+         {% endif %}
+    </script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -27,14 +40,6 @@
 
 {% block content %}
     {{ block.super }}
-    {% if new_line.errors %}
-    <div class="alert alert-warning alert-dismissible" style="width:313px" role="alert">
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-        <p>{{ new_line.errors.as_text }}</p>
-    </div>
-    {% endif %}
     <form action="" method="POST">
     {% csrf_token %}
     <div>
@@ -143,19 +148,33 @@
 
     <div id="editLineModal" title="{% trans 'Add new line' %}"
             class="{% if not new_line.is_editing and not new_line.errors %}off{% endif %}">
+        {% if new_line.errors %}
+        <div class="alert alert-danger alert-dismissible" style="width:313px" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <p>{{ new_line.errors.as_text  }}</p>
+        </div>
+        {% endif %}
         <form action="" method="POST">
             {% csrf_token %}
+            <div class="modal-body">
             {{ new_line.as_p }}
-            <p class="line-edit-meta">
+            <div class="line-edit-meta form-group">
                 <span class="edd-label">
-                    <input type="text" class="autocomp autocomp_ltype" size="14"
+                    <input type="text" size="14"
+                            autocomplete="off"
+                            class="autocomp autocomp_ltype form-control-meta ui-autocomplete-input"
                             eddautocompletetype="LineMetadataType"
                             placeholder="{% trans 'Metadata Type' %}" />
                     <input type="hidden" class="line-meta-type" value="" />
                 </span>
                 <button class="line-meta-add">{% trans 'Add Field' %}</button>
-            </p>
-            <button type="submit" name="action" value="line">{% trans 'Save' %}</button>
+            </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" name="action" value="line">{% trans 'Save changes' %}</button>
+            </div>
         </form>
     </div>
 
@@ -169,8 +188,12 @@
     <div id="addAssayModal" class="off" title="{{ add_assay_modal_title}}">
         <form action="" method="POST">
             {% csrf_token %}
+            <div class="modal-body">
             {{ new_assay.as_p }}
-            <button type="submit" name="action" value="assay">{{ add_assay_button }}</button>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" name="action" value="assay">{{ add_assay_button }}</button>
+            </div>
         </form>
     </div>
 

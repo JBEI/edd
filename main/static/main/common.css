@@ -511,12 +511,6 @@ div.noLines {
     padding-left: 15px;
 }
 
-/* alert */
-.alert {
-    width: 40%;
-    height: 50px;
-}
-
 /* Data tables and controls */
 
 table.dataTable {
@@ -1660,7 +1654,7 @@ div.fileDropInfoLog {
 
 .btn-default {
     outline: none;
-    border-color: #fff;
+    border-color: #ccc;
 }
 
 .btn:focus, .btn:active:focus, .btn.active:focus{
@@ -1724,6 +1718,21 @@ div.tooltip2 {
     stroke-dasharray: 20,10,5,5,5,10;
 }
 
+.required:before { content: '*' }
+
+.form-control-meta {
+    display: inline-block;
+    width: 50%;
+    height: 34px;
+    padding: 6px 12px;
+    font-size: 14px;
+    line-height: 1.42857143;
+    color: #555;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-left: 8px;
+}
 
 .tick text{
   font-size: 12px;
