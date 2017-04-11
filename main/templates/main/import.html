@@ -19,10 +19,10 @@
     $(document).ready(function() {
       $('.mainFlex').removeClass();
     });
-    var ATData = {}; // this needs to be declared before loading AssayTableData.js!
+    var ATData = {}; // this needs to be declared before loading Import.js!
 
   </script>
-  <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/Import.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
 
 {% endblock js_css %}
@@ -47,7 +47,7 @@
 <!-- Step 1 -->
 <div class="pageSection stepBorder" id="selectMajorKindStep">
   <div class="sectionHead">
-    <span>Step 1 : Specify the type/format of data to import.</span>
+    <span>Step 1 : Choose what type of data to import (view Examples for how to format your data)</span>
     <div class="helpBadgeDiv">Help
       <div class="helpContent">
         <p>In this step, EDD needs to know three things that dictate how it treats your file:</p>
@@ -59,7 +59,8 @@
         </ol>
         <p>In many cases, the file's format implies its content (e.g. Proteomics), but some more
           generic file formats will need additional clarification on the content. Also note that
-          EDD may not support all input file  formats for all measurement types.</p>
+          EDD may not support all input file  formats for all measurement types. Please take a look
+          at the Examples to get a better sense of how to format your data.</p>
         <p>EDD uses the "protocol" provided here to organize data captured using the same
           experimental protocol. Though this entry may not affect what you see on the import
           page, it may dictate how information is grouped within your study.</p>
@@ -80,22 +81,20 @@
           <a class="discloseLink" href="#">Examples</a>
           <div class="discloseBody" id="stdlayoutexample">
             <p>Example 1:</p>
-            <img class="exampleImage"
-                src="{% static 'main/images/data_examples/excel_example-a.png' %}" />
             <p>Here is a sequence of metabolites measured at different times. To import this, you
               would paste it into the Step 2 box. The EDD automatically flips the axes and detects
-              the presence of a time sequence and measurement names, and sets the pulldowns in
-              Step 3 like so:</p>
+              the presence of a time sequence and measurement names.</p>
+            <img class="exampleImage" src="{% static 'main/images/data_examples/excel_example-a.png' %}" />
+              <p>Set the pulldowns in Step 3 like so: </p>
             <img src="{% static 'main/images/data_examples/excel_example-a-settings.png' %}"
                 style="border:none;padding:5px;"/>
-            <p>Then in Step 4, you would select the Line and Assay where the data will be
-              imported.</p>
             <p>Example 2:</p>
-            <img class="exampleImage"
-                src="{% static 'main/images/data_examples/excel_example-b.png' %}" />
             <p>Here is a sequence of measurements for multiple metabolites across different Lines.
               The EDD will recognize the metabolites, but might not recognize the top row as Line
-              names, in which case the pulldowns will start out looking like this:</p>
+              names</p>
+            <img class="exampleImage"
+                src="{% static 'main/images/data_examples/excel_example-b.png' %}" />
+            <p> If this is the case, the pulldowns will look like this:</p>
             <img src="{% static 'main/images/data_examples/excel_example-b-settings.png' %}"
                  style="border:none;padding:5px;">
             <p>If you set the first pulldown to "Assay/Line Names", you can proceed to link the
@@ -112,15 +111,16 @@
           </label>
           <span><a class="discloseLink" href="#">Example</a></span>
           <div class="discloseBody" id="skylinelayoutexample">
-            <p>Use this format for data coming out of Skyline analysis of mass spec data. This
-              currently expects data to come in four columns, with a sample name in the first
-              column, a protein name in the second, and a numeric value for peak area in the
-              fourth.</p>
+            <p>Use this format for data coming out of Skyline analysis of mass spec data. This import
+                expects data to come in four columns, with a sample name in the first
+                column, a protein name in the second (represented by its accession ID found on
+                <a href="http://www.uniprot.org/uniprot/">UniProt</a>
+                ), a peptide in the third column, and a numeric value for peak area in the fourth.
+                Here is an example of a <a href="{% static 'skyline_example.csv' %}">Skyline Data File </a>
+                that has been successfully imported.
+            </p>
             <img class="exampleImage"
                 src="{% static 'main/images/data_examples/skyline_example_a.png' %}" />
-            <p>If the data were produced using a Worklist Export from EDD, select the Worklist used
-              after selecting the Protocol in this step, and EDD will try to interpret the sample
-              name using the format specified in the Worklist.</p>
           </div><!-- .discloseBody -->
         </div><!-- .disclose -->
       </li>
@@ -131,13 +131,13 @@
           <label for="trlayout"><b>Gene transcription</b> data, as a table of RPKM values.</label>
           <span><a class="discloseLink" href="#">Example</a></span>
           <div class="discloseBody" id="trlayoutexample">
-            <img class="exampleImage"
-                src="{% static 'main/images/data_examples/transcription_example.png' %}" />
             <p>In this typical example of gene transcription data, the only two columns that the
               EDD actually cares about are the gene name, and the RPKM value, highlighted in
               green.</p>
             <p>After you paste your document in, you'll need to tell the EDD where to find these
               columns.</p>
+            <img class="exampleImage"
+                src="{% static 'main/images/data_examples/transcription_example.png' %}" />
           </div><!-- .discloseBody -->
         </div><!-- .disclose -->
       </li>
@@ -148,14 +148,15 @@
           <label for="hplclayout">An <b>HPLC</b> instrument data file</label>
           <span><a class="discloseLink" href="#">Example</a></span>
           <div class="discloseBody" id="hplclayoutexample">
-            <img class="exampleImage"
-                src="{% static 'main/images/data_examples/hplc_example.png' %}" />
             <p>Files generated by the HPLC look like this. There is also a similar-looking 96-well
               variant. Drag them into the drop zone.</p>
             <p>When setting up your HPLC run, follow a naming convention for the wells to make your
-              import easier: <tt>Line Name_HPLC@Time_Replicate Name</tt>, where <tt>Time</tt> is in
-              hours, and <tt>Replicate Name</tt> is optional. For example,
-              <tt>Ecol14a_HPLC@12.4</tt>, <tt>30min spin_HPLC@10_a</tt>.</p>
+              import easier: <code>Line Name_HPLC@Time_Replicate Name</code>, where <code>Time</code> is in
+              hours, and <code>Replicate Name</code> is optional. For example,
+              <code>Ecol14a_HPLC@12.4</code>, <code>30min spin_HPLC@10_a</code>.</p>
+              See <a href="{% static 'HPLC_example.txt' %}">HPLC Example File</a>
+              <img class="exampleImage"
+                src="{% static 'main/images/data_examples/hplc_example.png' %}" />
           </div>
         </div>
       </li>
@@ -168,10 +169,30 @@
           </label>
           <span><a class="discloseLink" href="#">Example</a></span>
           <div class="discloseBody" id="prlayoutexample">
-            <img class="exampleImage"
-                src="{% static 'main/images/data_examples/proteomics_example.png' %}" />
-            <p>In this example of proteomics data, the columns represent protein names, and the
-              rows represent Line or Assay names.</p>
+            <p>In this example of proteomics data, the columns represent the accession IDs for the measured proteins
+                found on <a href="http://www.uniprot.org/uniprot/">UniProt</a> and the rows represent the Line or
+                Assay names created from your experiment description file (sp stands for SwisProt, tr stands for
+                accession IDs that have not yet been validated for inclusion).
+            </p>
+            <p>
+                Download the
+                <a href="{% static 'test_proteomics.csv' %}">Proteomics Data File</a>
+                 shown below and the
+                <a href="{% static 'test_proteomics_example_description.xlsx' %}">Experiment Description File</a>
+                that corresponds to the data file. Note - you will be asked for time (in hours) below
+                after uploading file.
+            </p>
+            <img class="exampleImageProteomics"
+                src="{% static 'main/images/data_examples/proteomics_shot.png' %}" />
+            <p>Select "Entire Row is..Assay/Line names" for the first row</p>
+            <img class="exampleImageProteomics"
+                src="{% static 'main/images/data_examples/proteomics_step1.png' %}" />
+            <p>Select "First Column is..Protein Name" for the second row</p>
+            <img class="exampleImageProteomics"
+                src="{% static 'main/images/data_examples/proteomics_step2.png' %}" />
+            <p>Then proceed to step 4</p>
+            <img class="exampleImageProteomics"
+                src="{% static 'main/images/data_examples/proteomics_step3.png' %}" />
           </div>
         </div>
       </li>
@@ -180,17 +201,17 @@
         <div class="disclose discloseHide">
           <input type="radio" name="datalayout" value="mdv" id="mdvlayout" />
           <label for="mdvlayout">
-            A JBEI <b>Mass Distribution Vector</b> document
+            A <b>Flux Analysis</b> document
           </label>
           <span><a class="discloseLink" href="#">Example</a></span>
           <div class="discloseBody" id="mdvlayoutexample">
-            <img class="exampleImage"
-                src="{% static 'main/images/data_examples/excel_example-jbei_mdv.png' %}" />
             <p>The data will be for a single Line.  Multiple Assays will be created automatically
               in the selected Protocol, with each Assay holding the carbon ratio data from a
               different column of the document.</p>
             <p>Make sure you select the whole table, including the headers along the top, when you
               copy your data to the clipboard.</p>
+            <img class="exampleImage"
+                src="{% static 'main/images/data_examples/excel_example-jbei_mdv.png' %}" />
           </div>
         </div>
       </li>
@@ -201,6 +222,11 @@
           <label for="biolectorlayout">
             A <b>Biolector</b> xml data file
           </label>
+          <span><a class="discloseLink" href="#">Example</a></span>
+          <div class="discloseBody" id="mdvlayoutexample">
+            <img class="exampleImage"
+                src="{% static 'main/images/data_examples/biolector_example.png' %}" />
+          </div>
         </div>
       </li>
 
@@ -336,8 +362,7 @@
 <!-- Step 3 -->
 <div class="pageSection stepBorder " id="identifyStructuresStep">
   <div class="sectionHead">
-    <span>Step 3 : Verify the data has been interpreted correctly, and disable any values you do
-      not want.</span>
+    <span>Step 3 : Verify the data has been interpreted correctly</span>
 
     <div class="helpBadgeDiv">Help
       <div class="helpContent">

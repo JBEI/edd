@@ -2,7 +2,7 @@
  * unit tests for AssayTableData.js
  */
 
-describe("AssayTableData.js", function () {
+describe("Import.js", function () {
     var selectMajorKindStep;
     beforeEach(function() {
        jasmine.getJSONFixtures().fixturesPath='base/main/static/main/js/test/';
