@@ -703,19 +703,19 @@ var DataGridSpecLines = (function (_super) {
         // map all metadata IDs to HeaderSpec objects
         var metaDataHeaders = this.metaDataIDsUsedInLines.map(function (id, index) {
             var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridHeaderSpec(6 + index, 'hLinesMeta' + id, {
+            return new DataGridHeaderSpec(7 + index, 'hLinesMeta' + id, {
                 'name': mdType.name,
                 'size': 's',
                 'sortBy': _this.makeMetaDataSortFunction(id),
                 'sortAfter': 0 });
         });
         var rightSide = [
-            new DataGridHeaderSpec(6 + metaDataHeaders.length, 'hLinesExperimenter', {
+            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesExperimenter', {
                 'name': 'Experimenter',
                 'size': 's',
                 'sortBy': this.loadExperimenterInitials,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesModified', {
+            new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hLinesModified', {
                 'name': 'Last Modified',
                 'size': 's',
                 'sortBy': this.loadLineModification,
@@ -865,11 +865,11 @@ var DataGridSpecLines = (function (_super) {
             new DataGridColumnSpec(6, this.generateCarbonBalanceBlankCells)
         ];
         metaDataCols = this.metaDataIDsUsedInLines.map(function (id, index) {
-            return new DataGridColumnSpec(6 + index, _this.makeMetaDataCellsGeneratorFunction(id));
+            return new DataGridColumnSpec(7 + index, _this.makeMetaDataCellsGeneratorFunction(id));
         });
         rightSide = [
-            new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterInitialsCells),
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterInitialsCells),
+            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
         ];
         return leftSide.concat(metaDataCols, rightSide);
     };

@@ -1,0 +1,14 @@
+CONTAINER ID        IMAGE                                    COMMAND                  CREATED             STATUS                   PORTS                                                 NAMES
+1c85821345e2        edd-core:latest                          "/tini -- /usr/loc..."   2 minutes ago       Up 2 minutes (healthy)                                                         edddjango_worker_1
+77c3c67e661f        jrcs/letsencrypt-nginx-proxy-companion   "/bin/bash /app/en..."   2 minutes ago       Up 2 minutes                                                                   letsencrypt
+74d8ba494925        edd-core:latest                          "/tini -- /usr/loc..."   2 minutes ago       Up 2 minutes (healthy)   127.0.0.1:8000->8000/tcp                              edddjango_edd_1
+fb949a21b256        flower:0.9-edd                           "/opt/celery-flowe..."   2 minutes ago       Up 2 minutes (healthy)   5555/tcp                                              edddjango_flower_1
+962a49b01ad9        jwilder/docker-gen                       "/usr/local/bin/do..."   2 minutes ago       Up 2 minutes                                                                   nginx-gen
+12ca95bec740        rabbitmq:3.6-management                  "docker-entrypoint..."   2 minutes ago       Up 2 minutes (healthy)   4369/tcp, 5671-5672/tcp, 15671-15672/tcp, 25672/tcp   edddjango_rabbitmq_1
+29c475934750        exim4:1.0-edd                            "/tini -- /bin/ent..."   2 minutes ago       Up 2 minutes (healthy)   25/tcp                                                edddjango_smtp_1
+f5b6161b6300        solr:5.5-edd                             "/tini -- /usr/loc..."   2 minutes ago       Up 2 minutes (healthy)   8983/tcp                                              edddjango_solr_1
+f97061529b71        postgres:9.6                             "/docker-entrypoin..."   2 minutes ago       Up 2 minutes (healthy)   5432/tcp                                              edddjango_postgres_1
+a9f9dbd2c199        redis:3.2                                "docker-entrypoint..."   2 minutes ago       Up 2 minutes (healthy)   6379/tcp                                              edddjango_redis_1
+210f773f3918        nginx:1.11                               "nginx -g 'daemon ..."   2 minutes ago       Up 2 minutes (healthy)   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp              nginx
+
+jquery-2.1.4.min.js Failed to load resource: the server responded with a status of 404 (Not Found)
