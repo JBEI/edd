@@ -169,11 +169,12 @@
                             placeholder="{% trans 'Metadata Type' %}" />
                     <input type="hidden" class="line-meta-type" value="" />
                 </span>
-                <button class="line-meta-add">{% trans 'Add Field' %}</button>
+                <button class="line-meta-add btn btn-default">{% trans 'Add Field' %}</button>
             </div>
             </div>
             <div class="modal-footer">
-                <button type="submit" name="action" value="line">{% trans 'Save changes' %}</button>
+                <button type="submit" class="btn btn-primary" name="action" value="line">
+                    {% trans 'Save changes' %}</button>
             </div>
         </form>
     </div>
@@ -192,7 +193,8 @@
             {{ new_assay.as_p }}
             </div>
             <div class="modal-footer">
-                <button type="submit" name="action" value="assay">{{ add_assay_button }}</button>
+                <button type="submit" name="action" class="btn btn-primary" value="assay">
+                    {{ add_assay_button }}</button>
             </div>
         </form>
     </div>
