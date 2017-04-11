@@ -2052,13 +2052,8 @@ var EDDTableImport;
             $('#masterUnitDiv').addClass('off');
             $('#disambiguateLinesSection').addClass('off');
             $('#disambiguateAssaysSection').addClass('off');
-            $('#matchedAssaysSection').addClass('off');
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
-            //toggle matched assay section
-            $('#matchedAssaysSection .discloseLink').on('click', function (e) {
-                $(e.target).closest('.disclose').toggleClass('discloseHide');
-            });
             // remove toggle buttons and labels dynamically added for some subsections
             // (easier than leaving them in place)
             $('.' + TypeDisambiguationStep.STEP_4_TOGGLE_SUBSECTION_CLASS).remove();
@@ -2099,7 +2094,7 @@ var EDDTableImport;
         };
         TypeDisambiguationStep.prototype.makeToggleAllButton = function (objectsLabel) {
             return $('<button type="button">')
-                .text('Select None')
+                .text('Select All ' + objectsLabel)
                 .addClass(TypeDisambiguationStep.STEP_4_TOGGLE_SUBSECTION_CLASS)
                 .on('click', this.toggleAllSubsectionItems.bind(this));
         };
@@ -2116,12 +2111,6 @@ var EDDTableImport;
                 }
                 return false;
             });
-            if (allSelected) {
-                $(event.target).text('Select All');
-            }
-            else {
-                $(event.target).text('Select None');
-            }
             // un/check all checkboxes based on their previous state
             checkboxes.each(function (index, elt) {
                 var checkbox = $(elt);
@@ -2189,7 +2178,7 @@ var EDDTableImport;
         // reveal the pulldowns for selecting a master Line/Assay, leaving the table empty, and return.
         TypeDisambiguationStep.prototype.remakeAssaySection = function () {
             var _this = this;
-            var avgRowCreationSeconds, maxRowCreationSeconds, masterProtocol, nColumns, nControls, nRows, parentDivMatched, parentDivDisambiguate, requiredInputText, tableMatched, tableBodyMatched, uniqueAssayNames, totalRowCreationSeconds, childDivMatched, matched, 
+            var avgRowCreationSeconds, maxRowCreationSeconds, masterProtocol, nColumns, nControls, nRows, parentDiv, requiredInputText, table, tableBody, uniqueAssayNames, totalRowCreationSeconds;
             // gather up inputs from this and previous steps
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
             masterProtocol = this.selectMajorKindStep.masterProtocol;
@@ -2198,59 +2187,56 @@ var EDDTableImport;
                 disam.detach();
             });
             this.currentlyVisibleAssayObjSets = [];
+            $('#disambiguateAssaysTable').remove();
             this.assayObjSets = {};
             //end early if there's nothing to display in this section
             if ((!this.identifyStructuresStep.requiredInputsProvided()) ||
                 this.identifyStructuresStep.parsedSets.length === 0) {
                 return;
             }
-            parentDivMatched = $('#matchedAssaysSection');
-            childDivMatched = $('#matchedAssaysSectionBody');
+            parentDiv = $('#disambiguateAssaysSection');
             if (uniqueAssayNames.length === 0) {
                 $('#masterAssayLineDiv').removeClass('off');
                 return;
             }
             requiredInputText = 'At least one valid assay / line combination is required.';
-            this.addRequiredInputLabel(childDivMatched, requiredInputText);
+            this.addRequiredInputLabel(parentDiv, requiredInputText);
             if (uniqueAssayNames.length > this.TOGGLE_ALL_THREASHOLD) {
-                this.addToggleAllButton(childDivMatched, 'Assays');
-                this.addToggleAllButton($('#disambiguateAssaysSection'), 'Assays');
+                this.addToggleAllButton(parentDiv, 'Assays');
             }
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create the table
             ////////////////////////////////////////////////////////////////////////////////////////
-            tableMatched = $('<table>')
-                .attr({ 'id': 'matchedAssaysTable', 'cellspacing': 0 })
-                .appendTo(childDivMatched)
+            table = $('<table>')
+                .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
+                .appendTo(parentDiv.removeClass('off'))
                 .on('change', 'select', function (ev) {
                 _this.userChangedAssayDisam(ev.target);
             })[0];
-            parentDivMatched.removeClass('off');
-            tableBodyMatched = $('<tbody>').appendTo(tableMatched)[0];
+            tableBody = $('<tbody>').appendTo(table)[0];
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create a table row for each unique assay name
             ////////////////////////////////////////////////////////////////////////////////////////
             nRows = 0;
+            nControls = 4;
+            nColumns = 5;
+            maxRowCreationSeconds = 0;
+            totalRowCreationSeconds = 0;
             uniqueAssayNames.forEach(function (assayName, i) {
-                var disam, matched;
-                disam = _this.assayObjSets[assayName];
+                var assayId, disam, row, defaultSelection, cell, aSelect, disam = _this.assayObjSets[assayName];
                 if (!disam) {
-                    disam = new AssayDisambiguationRow(tableBodyMatched, assayName, i);
+                    disam = new AssayDisambiguationRow(tableBody, assayName, i);
                     nRows++;
                     _this.assayObjSets[assayName] = disam;
                 }
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
+                disam.appendTo(tableBody);
                 _this.currentlyVisibleAssayObjSets.push(disam);
             });
-            if (uniqueAssayNames.length - 1) {
-                matched = $('#matchedAssaysSectionBody tr').length;
-                if (matched === 0) {
-                    $('#matchedAssaysSection').hide();
-                }
-                else {
-                    $('#matchedAssaysSection').show();
-                    $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines');
-                }
+            if (uniqueAssayNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
+                var warningText;
+                this.addToggleAllButton(parentDiv, 'Assays');
+                this.addRequiredInputLabel(parentDiv, requiredInputText);
             }
         };
         TypeDisambiguationStep.prototype.addRequiredInputLabel = function (parentDiv, text) {
@@ -2633,6 +2619,11 @@ var EDDTableImport;
                 };
                 resolvedSets.push(resolvedSet);
             });
+            if (resolvedSets.length === 0) {
+                this.errorMessages.push(new ImportMessage('All of the measurements and ' +
+                    ' metadata have been excluded from import. Please select some data to' +
+                    ' import.'));
+            }
             // log some debugging output if any data get dropped because of a missing timestamp
             if (droppedDatasetsForMissingTime) {
                 if (parsedSets.length === droppedDatasetsForMissingTime) {
@@ -2858,8 +2849,8 @@ var EDDTableImport;
             var startTime = new Date();
             var selections, highest, assays;
             selections = {
-                lineID: 'new',
-                assayID: 'named_or_new'
+                lineID: 0,
+                assayID: 0
             };
             highest = 0;
             // ATData.existingAssays is type {[index: string]: number[]}
@@ -2934,6 +2925,13 @@ var EDDTableImport;
                     selections.lineID = line.id;
                     selections.name = line.n;
                 }
+                else if (highest < 0.5 && currentIndex === i) {
+                    // Again, if all else fails, just choose the Line that matches the current index
+                    // in sorted order, in a loop.
+                    highest = 0.5;
+                    selections.lineID = line.id;
+                    selections.name = line.n;
+                }
                 return true;
             });
             return selections;
@@ -2973,22 +2971,13 @@ var EDDTableImport;
                     .prop('selected', defaultSel.assayID === id);
             });
             // a span to contain the text label for the Line pulldown, and the pulldown itself
-            cell = $('<span>').text('for Line: ').toggleClass('off', defaultSel.assayID != 'named_or_new')
+            cell = $('<span>').text('for Line: ').toggleClass('off', !!defaultSel.assayID)
                 .appendTo(cell);
             /////////////////////////////////////////////////////////////////////////////
             // Set up an autocomplete for the line (autocomplete is important for
-            // efficiency for studies with many lines). Also add rows to disambiguated section
+            // efficiency for studies with many lines).
             /////////////////////////////////////////////////////////////////////////////
-            if (!defaultSel.name) {
-                var parentDiv = $('#disambiguateAssaysSection');
-                var table = $('#disambiguateAssaysSection table');
-                $(parentDiv).removeClass('off');
-                this.appendLineAutoselect(cell, defaultSel);
-                $(table).append(this.row);
-            }
-            else {
-                this.appendLineAutoselect(cell, defaultSel);
-            }
+            this.appendLineAutoselect(cell, defaultSel);
         };
         return AssayDisambiguationRow;
     }(LineDisambiguationRow));

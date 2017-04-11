@@ -800,7 +800,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         // map all metadata IDs to HeaderSpec objects
         var metaDataHeaders:DataGridHeaderSpec[] = this.metaDataIDsUsedInLines.map((id, index) => {
             var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridHeaderSpec(7 + index, 'hLinesMeta' + id, {
+            return new DataGridHeaderSpec(6 + index, 'hLinesMeta' + id, {
                 'name': mdType.name,
                 'size': 's',
                 'sortBy': this.makeMetaDataSortFunction(id),
@@ -808,12 +808,12 @@ class DataGridSpecLines extends DataGridSpecBase {
         });
 
         var rightSide = [
-            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesExperimenter', {
+            new DataGridHeaderSpec(6 + metaDataHeaders.length, 'hLinesExperimenter', {
                 'name': 'Experimenter',
                 'size': 's',
                 'sortBy': this.loadExperimenterInitials,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hLinesModified', {
+            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesModified', {
                 'name': 'Last Modified',
                 'size': 's',
                 'sortBy': this.loadLineModification,
@@ -977,11 +977,11 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridColumnSpec(6, this.generateCarbonBalanceBlankCells)
         ];
         metaDataCols = this.metaDataIDsUsedInLines.map((id, index) => {
-            return new DataGridColumnSpec(7 + index, this.makeMetaDataCellsGeneratorFunction(id));
+            return new DataGridColumnSpec(6 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
         rightSide = [
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterInitialsCells),
-            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterInitialsCells),
+            new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells)
         ];
 
         return leftSide.concat(metaDataCols, rightSide);
