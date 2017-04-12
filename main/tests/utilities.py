@@ -3,14 +3,15 @@ from __future__ import unicode_literals
 
 import json
 import os
+
 from builtins import str
 from django.test import TestCase
 from openpyxl import load_workbook
 
+from main.importer.experiment_desc import CombinatorialCreationImporter
 from main.importer.experiment_desc.constants import (STRAIN_NAME_ELT, REPLICATE_ELT,
                                                      ELEMENTS_SECTION, ABBREVIATIONS_SECTION,
                                                      BASE_NAME_ELT)
-from main.importer.experiment_desc import CombinatorialCreationImporter
 from main.importer.experiment_desc.parsers import ExperimentDescFileParser, JsonInputParser
 from main.models import (CarbonSource, MetadataType, Protocol, Strain, Study, User)
 

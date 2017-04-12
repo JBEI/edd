@@ -13,8 +13,7 @@ from main.models import Strain, MetadataType, Line, Assay
 from .constants import (INVALID_ASSAY_META_PK, INVALID_AUTO_NAMING_INPUT, INVALID_LINE_META_PK,
                         INVALID_PROTOCOL_META_PK, NON_UNIQUE_STRAIN_UUIDS, SUSPECTED_MATCH_STRAINS,
                         UNMATCHED_PART_NUMBER, INTERNAL_EDD_ERROR_TITLE, ZERO_REPLICATES,
-                        BAD_GENERIC_INPUT_CATEGORY, STRAIN_NAME_ELT, REPLICATE_ELT,
-                        STRAIN_NAME_ELT, REPLICATE_ELT)
+                        BAD_GENERIC_INPUT_CATEGORY, STRAIN_NAME_ELT, REPLICATE_ELT)
 
 
 logger = logging.getLogger(__name__)

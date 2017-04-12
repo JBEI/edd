@@ -4,7 +4,7 @@ from requests.packages.urllib3 import HTTPResponse
 
 from jbei.rest.clients import IceApi
 from jbei.rest.clients.ice.api import (VERIFY_SSL_DEFAULT, DEFAULT_RESULT_LIMIT, ICE_URL)
-from.constants import FORBIDDEN
+from .constants import FORBIDDEN
 
 logger = logging.getLogger(__name__)
 

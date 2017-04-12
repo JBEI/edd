@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
+
 from jsonschema import Draft4Validator
+
 """
 A work-in-progress attempt to do validation on the complex JSON input for the combinatorial line
 creation GUI. Validating the (potentially complex) input should help to simplify custom code and
