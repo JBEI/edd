@@ -164,13 +164,17 @@ class ImportErrorSummary(object):
     def __init__(self, category_title, summary=''):
         self.category_title = category_title
         self.summary = summary
+        self.corrective_action = ''
+        self.help_reference = ''
         self._occurrence_details = []
 
     def to_json_dict(self):
         return {
             'category': self.category_title,
             'summary': self.summary,
-            'details':  ', '.join(self._occurrence_details) if self._occurrence_details else ''
+            'details':  ', '.join(self._occurrence_details) if self._occurrence_details else '',
+            'connective_action': self.corrective_action,
+            'help_reference': self.help_reference,
         }
 
     def add_occurrence(self, occurrence_detail):
@@ -582,6 +586,7 @@ class CombinatorialCreationImporter(object):
 
             # e.g. this is an Experiment Description file build a bettor error message
             if int_row_nums and int_row_nums is not None:
+                # TODO: consider extracting column number too
                 sorted_rows = list(int_row_nums)
                 sorted_rows.sort()
                 str_row_nums = [str(row_num) for row_num in sorted_rows]
@@ -762,8 +767,6 @@ class CombinatorialCreationImporter(object):
         logger.exception('Error querying ICE for part number(s)')
 
         self.exception_interrupted_ice_queries = True
-        base_message = ("ICE couldn't be contacted to find strains referenced in your "
-                        "file, and EDD administrators have been notified of the problem.")
 
         # If not specifically-requested by the UI, the normal case should be to reject the upload
         # and force the user to acknowledge / override the problem rather than silently working
@@ -772,7 +775,8 @@ class CombinatorialCreationImporter(object):
         # later using more labor-intensive processes (e.g. potentially expensive manual line edits).
         if not ignore_ice_related_errors:
             self.add_error(SYSTEMIC_ICE_ERROR_CATEGORY, GENERIC_ICE_RELATED_ERROR,
-                           "You can try again later, or proceed now and omit "
+                           "EDD administrators have been notified of the problem.  You can try "
+                           "again later, or proceed now and omit "
                            "strain data from new lines in your study. If you omit strain "
                            "data now, you'll have to manually edit your lines later after the "
                            "problem is fixed.  Depending on the experiment, manually filling in "
@@ -782,6 +786,8 @@ class CombinatorialCreationImporter(object):
         # If user got feedback re: ICE communication errors and chose to proceed anyway,
         # build a descriptive warning message re: the error, then proceed with line/assay
         # creation
+        # TODO: add GET parameter to control whether this gets set (e.g. still helpful in
+        # combinatorial GUI, though needs improvement for that case)
         else:
 
             # build a nice warning message that summarizes the state of the study following
@@ -790,13 +796,14 @@ class CombinatorialCreationImporter(object):
             unique_part_number_count = len(part_numbers)
             if found_entries_count:
                 percent_found = 100 * (float(len(ice_entries)) / unique_part_number_count)
-                warn_msg = ("%(base_message)s\n\n Lines were added to your study, but some won't "
+                warn_msg = ("Lines were added to your study, but some won't "
                             "be associated with ICE strains. %(found)d of %(total)d "
                             "unique strains (%(percent)0.2f) were found before the error "
                             "occurred. The rest will need to be added later after the problem is "
-                            "fixed." % {
-                                'base_message': base_message, 'found': found_entries_count,
-                                'total': unique_part_number_count, 'percent': percent_found,
+                            "fixed. EDD administrators have been notified of the problem." % {
+                                'found': found_entries_count,
+                                'total': unique_part_number_count,
+                                'percent': percent_found,
                             })
                 self.add_warning(SYSTEMIC_ICE_ERROR_CATEGORY, GENERIC_ICE_RELATED_ERROR, warn_msg)
 

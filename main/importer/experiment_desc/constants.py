@@ -46,6 +46,9 @@ INCORRECT_TIME_FORMAT = 'Incorrect time format'
 # only supported for strains, since some metadata columns purposefully allow comma-delimited entry
 INCONSISTENT_COMBINATORIAL_VALUE = 'Combinatorial value provided for single-valued column'
 UNPARSEABLE_COMBINATORIAL_VALUE = 'Unparseable combinatorial value'
+DELIMETER_NOT_ALLOWED_VALUE = ("Semicolon character isn't allowed within part numbers. Use commas " 
+                               "to delimit part numbers, except strain group members "
+                               "during combinatorial line creation")
 
 INTERNAL_EDD_ERROR_TITLE = 'Internal EDD error'
 
@@ -90,14 +93,13 @@ INVALID_AUTO_NAMING_INPUT = 'Invalid element for automatic naming'
 # handled separately (e.g. EDD/ICE configuration errors or ICE bugs)
 SYSTEMIC_ICE_ERROR_CATEGORY = 'ICE-related error'
 GENERIC_ICE_RELATED_ERROR = ("ICE couldn't be contacted to find strains referenced in your "
-                             "file, and EDD administrators have been notified of the problem.")
+                             "file")
 
 # Proactively check for part numbers that don't match EDD's part number pattern. This will help
 # users detect bad data entry when diagnosing other parsing-related errors, and will also help
 # us keep EDD's pattern configuration data up to date with use
 PART_NUM_PATTERN_TITLE = 'Unrecognized part number pattern'
-PART_NUMBER_PATTERN_UNMATCHED_WARNING = ("One or more part numbers didn't match the expected "
-                                         "pattern. This probably indicates a data entry error")
+PART_NUMBER_PATTERN_UNMATCHED_WARNING = "Part number(s) didn't match the expected pattern"
 
 ####################################################################################################
 # Generic errors... likely require admin investigation / determination re: cause
@@ -159,7 +161,7 @@ ERROR_PRIORITY_ORDER[BAD_FILE_CATEGORY] = (
         DUPLICATE_LINE_METADATA,    # TODO: check/rename these two to append "COLS"
         DUPLICATE_ASSAY_METADATA,
 )
-INVALID_FILE_VALUE_CATEGORY = 'Invalid cell values'
+INVALID_FILE_VALUE_CATEGORY = 'Invalid Cell Value(s)'
 ERROR_PRIORITY_ORDER[INVALID_FILE_VALUE_CATEGORY] = (
     # cell-specific values
     MISSING_REQUIRED_LINE_NAME,
@@ -167,6 +169,7 @@ ERROR_PRIORITY_ORDER[INVALID_FILE_VALUE_CATEGORY] = (
     INCONSISTENT_COMBINATORIAL_VALUE,
     INCORRECT_TIME_FORMAT,
     UNPARSEABLE_COMBINATORIAL_VALUE,
+    DELIMETER_NOT_ALLOWED_VALUE,
 )
 
 # these apply equally to JSON or Excel

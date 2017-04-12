@@ -23,7 +23,7 @@ from .constants import (DUPLICATE_ASSAY_METADATA, INVALID_CELL_TYPE, INVALID_REP
                         ELEMENTS_SECTION, ABBREVIATIONS_SECTION, NAME_ELEMENTS_SECTION,
                         PROTOCOL_TO_COMBINATORIAL_METADATA_SECTION,
                         PROTOCOL_TO_ASSAY_METADATA_SECTION, COMBINATORIAL_LINE_METADATA_SECTION,
-                        COMMON_LINE_METADATA_SECTION, BASE_NAME_ELT)
+                        COMMON_LINE_METADATA_SECTION, BASE_NAME_ELT, DELIMETER_NOT_ALLOWED_VALUE)
 from .utilities import AutomatedNamingStrategy, CombinatorialDescriptionInput, NamingStrategy
 
 logger = logging.getLogger(__name__)
@@ -621,12 +621,13 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
             # check whether the column label matches custom data defined in the database
             else:
-                upper_content = cell_content.upper().strip()
+                upper_content = cell_content.upper()
 
                 # test whether this column is protocol-prefixed assay metadata
                 assay_meta_type = self._parse_assay_metadata_header(
                     layout,
                     upper_content,
+                    cell_content,
                     col_index
                 )
                 # if we found the type of this column, proceed to the next
@@ -642,7 +643,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # if we couldn't process this column, track a warning that describes
                 # dropped columns (can be displayed later in the UI)
                 if line_metadata_type is None:
-                    col = 'col %s' % get_column_letter(col_index+1)
+                    col = 'column %s' % get_column_letter(col_index+1)
                     skipped = '"%(title)s" (%(column)s)' % {
                         'title': cell_content,
                         'column': col,
@@ -664,7 +665,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         return None
 
-    def _parse_assay_metadata_header(self, layout, upper_content, col_index):
+    def _parse_assay_metadata_header(self, layout, upper_content, original_content, col_index):
         """
         :return: a truthy value if the content should be treated as assay metadata (the
             MetadataType if one was found, or True if it was clearly intended to be one, but was
@@ -679,7 +680,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
                 # pull out the column header suffix following the protocol.
                 # it should match the name of an assay metadata type
-                assay_meta_suffix = upper_content[len(upper_protocol_name):].strip()
+                start_index = len(upper_protocol_name)
+                assay_meta_suffix = upper_content[start_index:].strip()
 
                 suffix_meta_type = None
                 is_combinatorial = False
@@ -749,10 +751,16 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # in the database. This check is especially important for the Time metadata
                 # assumed by the file format.
                 else:
+                    original_case_suffix = original_content[start_index:].strip()
                     col_letter = get_column_letter(col_index+1)
-                    logger.debug("""Column header suffix "%s" didn't match known metadata types""")
-                    self.importer.add_error(BAD_FILE_CATEGORY,
-                                            UNMATCHED_ASSAY_COL_HEADERS_KEY, col_letter)
+                    value = '"%(suffix)s" (column %(col)s)' % {
+                        'suffix': original_case_suffix,
+                        'col': col_letter,
+                    }
+                    logger.debug("""Column header suffix %s didn't match """ 
+                                 """ known metadata types""" % value)
+                    self.importer.add_error(BAD_FILE_CATEGORY, UNMATCHED_ASSAY_COL_HEADERS_KEY,
+                                            value)
                     return True
 
     def _parse_line_metadata_header(self, column_layout, upper_content, col_index):
@@ -1028,36 +1036,41 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             # entry in the list will result in creation of at least one line
             strain_group_match = _STRAIN_GROUP_PATTERN.match(token)
 
+            cell_number = '%(row)s%(col)s' % {
+                'row': row_num,
+                'col': get_column_letter(strain_ids_col+1),
+            }
+            token_description = '"%(token)s" (%(cell_number)s)' % {
+                'token': token, 'cell_number': cell_number,
+            }
+
             if strain_group_match:
                 strain_group = [strain_id.strip() for strain_id in
                                 strain_group_match.group(1).split(_STRAIN_GROUP_MEMBER_DELIM)]
+
                 if is_combinatorial:
-                    logger.info('Found strain id group %(group)s in cell %(row)d%(col)s' % {
-                        'group': strain_group,
-                        'row': row_num,
-                        'col': get_column_letter(strain_ids_col),
-                    })
+                    logger.info('Found strain id group %s' % token_description)
                     row_inputs.combinatorial_strain_id_groups.append(strain_group)
                 else:
-                    # if we've already seen a strain or strain group in this cell, the content
+                    # if the column header indicates non-combinatorial use and cell contains a
+                    # strain group plus other values, the content
                     # is badly formatted, since a non-combinatorial column should only contain
                     # a single strain or list of strains. As likely as not, this is bad user
                     # input, so we'll treat it as an error.
-                    if row_inputs.combinatorial_strain_id_groups:
-                        bad_value = '"%(token)s" (%(row)s%(col)s)' % {
-                            'token': cell_content,
-                            'row': row_num,
-                            'col': get_column_letter(strain_ids_col),
-                        }
+                    if len(tokens) > 1:
                         self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
-                                                INCONSISTENT_COMBINATORIAL_VALUE, bad_value)
+                                                INCONSISTENT_COMBINATORIAL_VALUE, token_description)
                     else:
                         row_inputs.combinatorial_strain_id_groups.append(strain_group)
                         for strain_id in strain_group:
-                            self._check_part_id_pattern(strain_id)
+                            self._check_part_id_pattern(strain_id, cell_number)
             else:
-                individual_strain_ids.append(token)
-                self._check_part_id_pattern(token)
+                if _STRAIN_GROUP_MEMBER_DELIM not in token:
+                    individual_strain_ids.append(token)
+                    self._check_part_id_pattern(token, cell_number)
+                else:
+                    self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
+                                            DELIMETER_NOT_ALLOWED_VALUE, token_description)
 
         # depending on whether tho column header defines combinatorial input, either submit
         # comma-delimited strains as a single group (co-culture), or for combinatorial line
@@ -1069,7 +1082,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         elif individual_strain_ids:
             row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
 
-    def _check_part_id_pattern(self, part_id, row_num=None):
+    def _check_part_id_pattern(self, part_id, input_location=''):
         # test whether the strain's part number matched the expected pattern.
         # we'll allow all input through to the ICE query later in case our pattern
         # is dated, but this way we can provide a more helpful prompt for bad
@@ -1077,16 +1090,18 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         part_number_match = TYPICAL_ICE_PART_NUMBER_PATTERN.match(part_id)
 
         if not part_number_match:
-            quoted_content = '"%s"' % part_id
+            opt_location_str = ' (%s)' % input_location if input_location else ''
+            desc = '"%(part_id)s"%(location_str)s' % {
+                               'part_id': part_id,
+                               'location_str': opt_location_str,
+            }
             self.importer.add_warning(PART_NUM_PATTERN_TITLE, PART_NUMBER_PATTERN_UNMATCHED_WARNING,
-                                      quoted_content)
-            file_row = 'in row %d' % row_num if row_num else ''
-            logger.warning('Expected ICE part number(s)%(row_num)s, '
-                           'but "%(part_id)s" did not match the expected pattern. This is '
+                                      desc)
+
+            logger.warning('Expected ICE part number(s)'
+                           'but %s, did not match the expected pattern. This is '
                            'either bad user input, or indicates that the pattern needs '
-                           'updating.' % {
-                               'row_num': file_row, 'part_id': part_id
-                           })
+                           'updating.' % desc)
 
     def _get_string_cell_content(self, row, row_num, col_index, convert_to_string=False):
         cell_content = row[col_index].value
