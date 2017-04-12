@@ -810,8 +810,8 @@ class CombinatorialCreationImporter(object):
                                                       ice_parts_by_number):
         """
         If configured, builds and sends a time-saving notification email re: ICE communication
-        problems to EDD admins. The email informs admins of problems that should be resolved 
-        without user involvement, and aggregates/captures relevant context that will be hard to 
+        problems to EDD admins. The email informs admins of problems that should be resolved
+        without user involvement, and aggregates/captures relevant context that will be hard to
         remember and extract from log content and complex related code.
         """
 

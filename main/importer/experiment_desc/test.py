@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 class IceTestStub(IceApi):
     """
        A variant of IceAPI that captures important test conditions for Experiment Description ICE
-       queries and allows us to quickly do basic testing without having CI yet / putting more 
-       effort into automated tests. Note: code here is very simple, but actually took a while to 
-       find, since there as so many similarly named classes/options in requests, Django, 
-       etc that aren't well-documented.  This code is worth keeping until replaced with an 
+       queries and allows us to quickly do basic testing without having CI yet / putting more
+       effort into automated tests. Note: code here is very simple, but actually took a while to
+       find, since there as so many similarly named classes/options in requests, Django,
+       etc that aren't well-documented.  This code is worth keeping until replaced with an
        automated test.
     """
 

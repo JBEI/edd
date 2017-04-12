@@ -238,7 +238,7 @@ class AutomatedNamingStrategy(NamingStrategy):
         self._valid_items = valid_items
 
     def names_contain_strains(self):
-        return self.STRAIN_NAME_ELT in self.elements
+        return STRAIN_NAME_ELT in self.elements
 
     @property
     def valid_items(self, valid_items):
@@ -342,9 +342,6 @@ class AutomatedNamingStrategy(NamingStrategy):
         if not assay_time:
             raise ValueError('No time value was found -- unable to generate an assay name')
         return self.section_separator.join((line.name, '%sh' % str(assay_time)))
-
-    def names_contain_strains(self):
-        raise NotImplementedError()
 
 
 class CombinatorialDescriptionInput(object):
