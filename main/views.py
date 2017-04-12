@@ -28,7 +28,7 @@ from rest_framework.exceptions import MethodNotAllowed
 from main.importer.experiment_desc.constants import (INTERNAL_SERVER_ERROR, UNPREDICTED_ERROR,
                                                      BAD_REQUEST, UNSUPPORTED_FILE_TYPE,
                                                      BAD_FILE_CATEGORY)
-from main.importer.experiment_desc.importer import _build_response_content
+from main.importer.experiment_desc.importer import _build_response_content, ImportErrorSummary
 from . import autocomplete, models as edd_models, redis
 from .export.forms import ExportOptionForm, ExportSelectionForm, WorklistForm
 from .export.sbml import SbmlExport
@@ -1069,6 +1069,7 @@ class SbmlView(EDDExportView):
                 return response
         return super(SbmlView, self).render_to_response(context, **kwargs)
 
+
 # /study/<study_id>/measurements/<protocol_id>/
 def study_measurements(request, pk=None, slug=None, protocol=None):
     """ Request measurement data in a study. """
@@ -1376,8 +1377,8 @@ def study_describe_experiment(request, pk=None, slug=None):
             logger.info('Parsing experiment description file "%s"' % file_name)
 
         else:
-            summary = ErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE, file_type)
-            errors = { BAD_FILE_CATEGORY: summary}
+            summary = ImportErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE, file_type)
+            errors = {BAD_FILE_CATEGORY: summary}
             return JsonResponse(
                     _build_response_content(errors, {}),
                     status=BAD_REQUEST)

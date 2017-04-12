@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 class IceTestStub(IceApi):
     """
        A variant of IceAPI that captures important test conditions for Experiment Description ICE
-       queries and allows us to quickly do basic testing without having CI yet / putting more effort
-       into automated tests. Note: code here is very simple, but actually took a while to find,
-       since there as so many similarly named classes/options in requests, Django, etc that aren't
-       well-documented.  This code is worth keeping until replaced with an automated test.
+       queries and allows us to quickly do basic testing without having CI yet / putting more 
+       effort into automated tests. Note: code here is very simple, but actually took a while to 
+       find, since there as so many similarly named classes/options in requests, Django, 
+       etc that aren't well-documented.  This code is worth keeping until replaced with an 
+       automated test.
     """
 
     def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT,
@@ -39,33 +40,33 @@ class IceTestStub(IceApi):
         # All the expected results still hold if it's False, except the response should always be
         #  200 (success)
 
-        ############################################################################################
+        ###########################################################################################
         # Test condition 1:
-        ############################################################################################
+        ###########################################################################################
         # Uncomment this block to test connection errors.
         #
         # Expected results to verify (manually for now):
         #    A) admin email sent (probably via an added log message...not working in DEV ATM)
         #    B) generic user-facing error message about ICE-related problems
         #    C) 500 "internal server error" response (use Chrome's "network" develop tool)
-        ############################################################################################
+        ###########################################################################################
         # raise requests.exceptions.ConnectionError()
 
-        ############################################################################################
+        ###########################################################################################
         # Test condition 2:
-        ############################################################################################
+        ###########################################################################################
         # Uncomment this block to test bad user data entry for part IDs
         #
         # Expected results to verify (manually for now):
         #    A) *NO* admin email sent (probably via an added log message...not working in DEV ATM)
         #    B) User error message lists parts that couldn't be found
         #    C) 404 "not found" response (use Chrome's "network" develop tool)
-        ############################################################################################
+        ###########################################################################################
         # return None
 
-        ############################################################################################
+        ###########################################################################################
         # Test conditions 3-4:
-        ############################################################################################
+        ###########################################################################################
         # uncomment a single status code and the bottom code block in this
         # method to test various supported error responses from ICE.
         #
@@ -82,9 +83,9 @@ class IceTestStub(IceApi):
         # message = 'Internal Server Error'
         # status = INTERNAL_SERVER_ERROR
 
-        ############################################################################################
+        ###########################################################################################
         # Test condition 5:
-        ############################################################################################
+        ###########################################################################################
         # Uncomment a  status code and the bottom code block in this
         # method to test various supported error responses from ICE.
         #
@@ -95,9 +96,9 @@ class IceTestStub(IceApi):
         message = 'Forbidden'
         status = FORBIDDEN
 
-        ############################################################################################
+        ###########################################################################################
         # Supporting error-generation code for test conditions 3-5 above
-        ############################################################################################
+        ###########################################################################################
         from requests import HTTPError
         response = HTTPResponse(status=status)
         error = HTTPError(message, response=response)

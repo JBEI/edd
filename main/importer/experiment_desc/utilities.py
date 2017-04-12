@@ -36,9 +36,9 @@ class NamingStrategy(object):
     def get_line_name(self, line_strain_ids, line_metadata, replicate_num, line_metadata_types,
                       combinatorial_metadata_types, is_control, strains_by_pk):
         """
-        :param strains_by_pk: 
+        :param strains_by_pk:
         :raises ValueError if some required input isn't available for creating the name (either
-            via this method or from other properties). Note that even if required for line name 
+            via this method or from other properties). Note that even if required for line name
             uniqueness, strain names may be omitted.
         """
         raise NotImplementedError()  # require subclasses to implement
@@ -56,10 +56,10 @@ class NamingStrategy(object):
     def _build_strains_names_list(self, line_strain_ids, strains_by_pk):
         """
         Computes the line name segment for strain names, if needed to make the line name unique
-        :param line_strain_ids: 
-        :param strains_by_pk: 
-        :return: the line name segment for strain names, or an empty string if unneeded or if unable
-        to compute
+        :param line_strain_ids:
+        :param strains_by_pk:
+        :return: the line name segment for strain names, or an empty string if unneeded or if
+                 unable to compute
         """
 
         # avoid problems when ICE-related errors prevent some/all strains from being found
