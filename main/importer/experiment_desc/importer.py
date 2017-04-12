@@ -29,7 +29,7 @@ from .constants import (
     SYSTEMIC_ICE_ERROR_CATEGORY, NON_STRAIN_TITLE,
     INTERNAL_EDD_ERROR_TITLE, SINGLE_PART_ACCESS_ERROR_CATEGORY, NAMING_OVERLAP_CATEGORY,
     ERROR_PRIORITY_ORDER, WARNING_PRIORITY_ORDER, BAD_GENERIC_INPUT_CATEGORY)
-from .parsers import ExperimentDescFileParser, JsonInputParser, _InputFileRow
+from .parsers import ExperimentDescFileParser, JsonInputParser, _ExperimentDescriptionFileRow
 from .utilities import (CombinatorialCreationPerformance, find_existing_strains)
 
 
@@ -546,10 +546,11 @@ class CombinatorialCreationImporter(object):
             for line_name in names.line_names:
                 protocol_to_assay_names = names.line_to_protocols_to_assays_list.get(line_name)
 
+                if isinstance(input_set, _ExperimentDescriptionFileRow):
+                    line_name_to_input_rows[line_name].add(input_set.row_number)
+
                 if line_name in unique_input_line_names:
                     duplicated_new_line_names.add(line_name)
-                    if isinstance(input_set, _InputFileRow):
-                        line_name_to_input_rows[line_name].add(input_set.row_number)
                 else:
                     unique_input_line_names.add(line_name)
 
@@ -562,7 +563,7 @@ class CombinatorialCreationImporter(object):
                     for assay_name in assay_names:
                         all_planned_assay_names.append(assay_name)
 
-                        if isinstance(input_set, _InputFileRow):
+                        if isinstance(input_set, _ExperimentDescriptionFileRow):
                             protocol_to_assay_name_to_input_rows[protocol_pk][assay_name].add(
                                     input_set.row_number)
 

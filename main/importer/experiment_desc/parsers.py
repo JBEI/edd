@@ -387,7 +387,7 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
             raise ValueError(KeyError)  # raise more generic Exception published in the docstring
 
 
-class _InputFileRow(CombinatorialDescriptionInput):
+class _ExperimentDescriptionFileRow(CombinatorialDescriptionInput):
     """
     A special case of combinatorial line/assay creations in support of experiment description file
     upload. Each line of the file is itself a combinatorial line/assay creation, at
@@ -397,7 +397,7 @@ class _InputFileRow(CombinatorialDescriptionInput):
     """
 
     def __init__(self, column_layout, assay_time_meta_pk, row_number):
-        super(_InputFileRow, self).__init__(
+        super(_ExperimentDescriptionFileRow, self).__init__(
                 _ExperimentDescNamingStrategy(column_layout, assay_time_meta_pk))
         self.row_number = row_number
 
@@ -819,7 +819,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             method which optional columns have been defined, as well as what order the columns are
             in (arbitrary column order is supported).
         """
-        row_inputs = _InputFileRow(self.column_layout, self.assay_time_meta_pk, row_num)
+        row_inputs = _ExperimentDescriptionFileRow(self.column_layout, self.assay_time_meta_pk, row_num)
         layout = self.column_layout
 
         ###################################################
