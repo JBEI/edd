@@ -127,7 +127,7 @@ class MultiAutocompleteWidget(AutocompleteWidget):
 class UserAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Users """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'User'}, })
+        opt.update({'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'User'}, })
         super(UserAutocompleteWidget, self).__init__(attrs=attrs, model=User, opt=opt)
 
 
@@ -208,7 +208,7 @@ class RegistryValidator(object):
 class RegistryAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Registry strains """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Registry'}, })
+        opt.update({'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'Registry'}, })
         super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
 
     def decompress(self, value):
@@ -231,7 +231,7 @@ class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompl
 class CarbonSourceAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for carbon sources """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'CarbonSource'}, })
+        opt.update({'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'CarbonSource'}, })
         super(CarbonSourceAutocompleteWidget, self).__init__(
             attrs=attrs, model=CarbonSource, opt=opt)
 
@@ -255,7 +255,7 @@ class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
     def __init__(self, attrs=None, opt={}):
         """ Set opt with {'text_attr': {'class': 'autocomp autocomp_XXX'}} to override. """
-        my_opt = {'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'MeasurementType'}, }
+        my_opt = {'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'MeasurementType'}, }
         my_opt.update(**opt)
         super(MeasurementTypeAutocompleteWidget, self).__init__(
             attrs=attrs, model=MeasurementType, opt=my_opt,
@@ -347,9 +347,14 @@ class CreateStudyForm(forms.ModelForm):
             'contact': _('Contact'),
         }
         widgets = {
-            'name': forms.widgets.TextInput(attrs={'size': 50}),
-            'description': forms.widgets.Textarea(attrs={'cols': 49}),
+            'name': forms.widgets.TextInput(attrs={'size': 50, 'class': 'form-control', 'placeholder': '(required)'}),
+            'description': forms.widgets.Textarea(attrs={'cols': 49, 'class': 'form-control'}),
             'contact': UserAutocompleteWidget(),
+        }
+
+        help_texts = {
+            'name': _(''),
+            'description': _(''),
         }
 
     def __init__(self, *args, **kwargs):
@@ -505,7 +510,7 @@ class LineForm(forms.ModelForm):
             'strains', 'meta_store',
         )
         labels = {
-            'name': _('Line'),
+            'name': _('Line Name'),
             'description': _('Description'),
             'control': _('Is Control?'),
             'contact': _('Contact'),
@@ -514,7 +519,8 @@ class LineForm(forms.ModelForm):
             'strains': _('Strains'),
         }
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 2}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '(required)'}),
+            'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control '}),
             'contact': UserAutocompleteWidget(),
             'experimenter': UserAutocompleteWidget(),
             'carbon_source': MultiCarbonSourceAutocompleteWidget(),
@@ -522,8 +528,13 @@ class LineForm(forms.ModelForm):
             'meta_store': forms.HiddenInput(),
         }
         help_texts = {
-            'name': _('This field is required'),
-            'description': _('Description of line')
+            'name': _(''),
+            'description': _(''),
+            'control': _(''),
+            'contact': _(''),
+            'experimenter': _(''),
+            'carbon_source': _(''),
+            'strains': _(''),
         }
 
     def __init__(self, *args, **kwargs):
@@ -633,6 +644,8 @@ class AssayForm(forms.ModelForm):
         )
         help_texts = {
             'name': _('If left blank, a name in form [Line]-[Protocol]-[#] will be generated. '),
+            'description': _(''),
+
         }
         labels = {
             'name': _('Name'),
@@ -641,7 +654,9 @@ class AssayForm(forms.ModelForm):
             'experimenter': _('Experimenter'),
         }
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 2}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'protocol': forms.Select(attrs={'class':'form-control'}),
             'experimenter': UserAutocompleteWidget(),
         }
 
@@ -677,8 +692,8 @@ class MeasurementForm(forms.ModelForm):
         fields = ('measurement_type', 'y_units', 'compartment', )
         help_texts = {
             'measurement_type': _(''),
-            'y_units': _('Select the units used for these measurements'),
-            'compartment': _('(optional) Select if the measurement is inside or outside'
+            'y_units': _('(optional) Select the units used for these measurements'),
+            'compartment': _('Select if the measurement is inside or outside'
                              ' the organism')
         }
         labels = {
@@ -688,6 +703,8 @@ class MeasurementForm(forms.ModelForm):
         }
         widgets = {
             'measurement_type': MeasurementTypeAutocompleteWidget(),
+            'y_units': forms.Select(attrs={'class': 'form-control'}),
+            'compartment': forms.Select(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):

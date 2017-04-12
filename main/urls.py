@@ -3,10 +3,8 @@ from __future__ import unicode_literals
 
 from django.conf.urls import include, url
 from django.contrib.auth.decorators import login_required
-from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import HttpResponse
-from django.views.generic.base import RedirectView
-from edd.branding.views import favicon
+from edd.branding.views import favicon as favicon_view
 
 from main import views
 
@@ -127,10 +125,6 @@ urlpatterns = [
     # Call-out for the favicon, which would normally only be accessible via a URL like:
     #   https://edd.example.org/static/favicon.ico
     # This way, browsers can load the favicon from the standard link.
-    url(
-        r'^favicon\.ico$',
-        favicon,
-        name='favicon'
-    ),
+    url(r'^favicon\.ico$', favicon_view, name='favicon'),
     url(r'^pages/', include('django.contrib.flatpages.urls', namespace='edd-flatpages')),
 ]

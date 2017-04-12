@@ -1,5 +1,6 @@
 {% extends "main/study.html" %}
 {% load staticfiles %}
+{% load i18n %}
 
 {% block js_css %}
     {{ block.super }}
@@ -92,10 +93,11 @@
             Example <span class="dropLink dropImg">__</span>
         </a>)
         <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"
-                title="Drag-and-drop an &lt;a style=&quot;color:blue&quot; href=&quot;
-                    /help/experiment_description/&quot;&gt;Experiment description file&lt;/a&gt;
-                    into this grey box to describe your experiment. Alternatively, you can click
-                    on the link below to manually input your experiment description.">Help</div>
+                title="Drag-and-drop an &lt;a style=&quot;color:blue&quot;
+                    href=&quot;/help/experiment_description/&quot;&gt;Experiment description
+                    file&lt;/a&gt; into this grey box to describe your experiment. Alternatively,
+                    you can click on the link below to manually input your
+                    experiment description.">Help</div>
     </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
@@ -115,8 +117,8 @@
     <div class="pageDivider" for="permissionsSection">
         <span class="discloseLink"> Permissions </span>
     </div>
-     <div class="discloseBody">
-          <div class="sectionContent indent">
+    <div class="discloseBody">
+        <div class="sectionContent indent">
             {% with perms=study.get_combined_permission %}
                 {% if perms %}
                 <table style="width:50%; margin: 10px 0px 24px 37px" cellpadding="0"
@@ -134,9 +136,10 @@
                 </table>
                 {% endif %}
             {% endwith %}
-        <button class="actionButton primary" id="addPermission" >Configure Permissions</button>
-     </div>
- </div>
+            <button class="actionButton primary" id="addPermission">Configure Permissions</button>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <div class="disclose discloseHide">
@@ -192,6 +195,29 @@
     </div>
 </div>
 
+{% if writable %}
+<div class="disclose discloseHide">
+    <div class="pageDivider" for="permissionsSection">
+        <span class="discloseLink">{% trans "Manage Study" %}</span>
+    </div>
+    <div class="discloseBody">
+        <div class="sectionContent indent">
+            <form method="POST" class="edd-form" action="">
+                {% csrf_token %}
+                <input type="hidden" name="studyId" value="{{ object.id }}" />
+                {% if object.active %}
+                <button type="submit" class="btn btn-danger"
+                        name="action" value="study_delete">{% trans "Delete Study" %}</button>
+                {% else %}
+                <button type="submit" class="btn btn-primary"
+                        name="action" value="study_restore">{% trans "Restore Study" %}</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {# add permissions modal #}
 <div class="indent off" title="Configure Permissions" id="permissionsSection">
     <div class="sectionActions">
@@ -238,5 +264,4 @@
         </form>
     </div>
 </div>
-
 {% endblock content %}

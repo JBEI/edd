@@ -11,4 +11,3 @@ def favicon(request):
         favicon = staticfiles_storage.open('favicon.ico')
     with favicon:
         return HttpResponse(favicon.read(), content_type="image/x-icon")
-

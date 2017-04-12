@@ -21,13 +21,29 @@ var EDDAuto;
         }
         return AutoColumn;
     }());
+    /**
+     * Insert these items to display autocomplete messages which are not selectable values.
+     */
+    var NonValueItem = (function () {
+        function NonValueItem(label) {
+            this.label = label;
+            this.value = {};
+        }
+        NonValueItem.NO_RESULT = new NonValueItem('No Results Found');
+        NonValueItem.ERROR = new NonValueItem('Server Error');
+        return NonValueItem;
+    }());
+    EDDAuto.NonValueItem = NonValueItem;
     var BaseAuto = (function () {
-        // Sets up the multicolumn autocomplete behavior for an existing text input.  Must be called
-        // after the $(window).load handler above.
-        // @param opt a dictionary of settings following the AutocompleteOptions interface format.
-        // @param search_options an optional dictionary of data to be sent to the search backend as part
-        // of the autocomplete search request.  To be received on the back-end, additional search
-        // parameters should be captured under an included "search_extra" element.
+        /**
+         * Sets up the multicolumn autocomplete behavior for an existing text input. Must be
+         * called after the $(window).load handler above.
+         * @param opt a dictionary of settings following the AutocompleteOptions interface format.
+         * @param search_options an optional dictionary of data to be sent to the search backend
+         *     as part of the autocomplete search request.  To be received on the back-end,
+         *     additional search parameters should be captured under an included "search_extra"
+         *     element.
+         */
         function BaseAuto(opt, search_options) {
             var id = EDDAuto.BaseAuto._uniqueIndex;
             EDDAuto.BaseAuto._uniqueIndex += 1;
@@ -51,7 +67,6 @@ var EDDAuto;
             }
             this.visibleInput.data('edd', { 'autocompleteobj': this });
             this.hiddenInput.data('edd', { 'autocompleteobj': this });
-            this.prependResults = this.opt.prependResults || [];
             this.display_key = 'name';
             this.value_key = 'id';
             this.search_uri = this.opt.search_uri || "/search/";
@@ -77,18 +92,12 @@ var EDDAuto;
             });
         };
         BaseAuto.prototype.init = function () {
-            var _this = this;
             // this.cacheId might have been set by a constructor in a subclass
             this.cacheId = this.opt['cacheId']
                 || this.cacheId
                 || 'cache_' + (++EDD_auto.cache_counter);
             this.cache = this.opt['cache']
                 || (EDDData[this.cacheId] = EDDData[this.cacheId] || {});
-            this.emptyResult = {};
-            this.emptyResult[this.columns[0].valueField] = this.emptyResult[0] = 'No Results Found';
-            this.columns.slice(1).forEach(function (column, index) {
-                _this.emptyResult[column.valueField] = _this.emptyResult[index] = '';
-            });
             // TODO add flag(s) to handle multiple inputs
             // TODO possibly also use something like https://github.com/xoxco/jQuery-Tags-Input
             this.visibleInput.addClass('autocomp');
@@ -101,7 +110,7 @@ var EDDAuto;
             if (this.opt['name']) {
                 this.hiddenInput.attr('name', this.opt['name']);
             }
-            var __this = this;
+            var self = this;
             // mcautocomplete is not in type definitions for jQuery, hence <any>
             this.visibleInput.mcautocomplete({
                 // These next two options are what this plugin adds to the autocomplete widget.
@@ -112,77 +121,77 @@ var EDDAuto;
                 'select': function (event, ui) {
                     var cacheKey, record, visibleValue, hiddenValue;
                     if (ui.item) {
-                        cacheKey = ui.item[__this.value_key];
-                        record = __this.cache[cacheKey] = __this.cache[cacheKey] || {};
+                        cacheKey = ui.item[self.value_key];
+                        record = self.cache[cacheKey] = self.cache[cacheKey] || {};
                         $.extend(record, ui.item);
-                        visibleValue = record[__this.display_key] || '';
-                        hiddenValue = record[__this.value_key] || '';
+                        visibleValue = record[self.display_key] || '';
+                        hiddenValue = record[self.value_key] || '';
                         // assign value of selected item ID to sibling hidden input
-                        __this.visibleInput.val(visibleValue);
-                        __this.hiddenInput.val(hiddenValue)
+                        self.visibleInput.val(visibleValue);
+                        self.hiddenInput.val(hiddenValue)
                             .trigger('change')
                             .trigger('input');
                     }
                     return false;
                 },
                 'focus': function (event, ui) { event.preventDefault(); },
-                // Always append to the body instead of searching for a ui-front class.
-                // This way a click on the results list does not bubble up into a jQuery modal and
-                // compel it to steal focus.
-                // Losing focus on the click is bad, because directly afterwards the autocomplete's
-                // own click handler is called, which sets the value of the input, forcing the focus
-                // back to the input, triggering a focus event since it wasn't already in focus.
-                // That event in turn triggers our handler attached to 'input.autocomp'
-                // (see the bottom of this file), which attempts to do an initial search and show
-                // a set of results on focus, recreating the results menu, causing an endless loop
-                // where it appears that the results menu never goes away.
-                // We cannot just change the 'input.autocomp' on-focus event to an on-click event,
-                // because that would make it unresponsive to users tabbing over.
-                // We also cannot add some check into the handler that tries to determine if the
-                // results panel is already open (and do nothing if so), because by the time the
-                // input gets focus again (triggering that event), the results panel has already
-                // been destroyed.
+                /* Always append to the body instead of searching for a ui-front class.
+                   This way a click on the results list does not bubble up into a jQuery modal
+                 and compel it to steal focus.
+                   Losing focus on the click is bad, because directly afterwards the
+                 autocomplete's own click handler is called, which sets the value of the input,
+                 forcing the focus back to the input, triggering a focus event since it was not
+                 already in focus. That event in turn triggers our handler attached to
+                 'input.autocomp' (see the bottom of this file), which attempts to do an initial
+                 search and show a set of results on focus. That event recreates the results
+                 menu, causing an endless loop where it appears that the results menu never
+                 goes away.
+                   We cannot just change the 'input.autocomp' on-focus event to an on-click
+                 event, because that would make it unresponsive to users tabbing over.
+                   We also cannot add some check into the handler that tries to determine if the
+                 results panel is already open (and do nothing if so), because by the time the
+                 input gets focus again (triggering that event), the results panel has already
+                 been destroyed. */
                 'appendTo': "body",
                 // The rest of the options are for configuring the ajax webservice call.
                 'minLength': 0,
                 'source': function (request, response) {
                     var result, modelCache, termCachedResults;
-                    modelCache = EDD_auto.request_cache[__this.modelName] = EDD_auto.request_cache[__this.modelName] || {};
+                    modelCache = EDD_auto.request_cache[self.modelName] || {};
+                    EDD_auto.request_cache[self.modelName] = modelCache;
                     termCachedResults = modelCache[request.term];
                     if (termCachedResults) {
-                        // prepend any optional default results
-                        var displayResults = __this.prependResults.concat(termCachedResults);
-                        response(displayResults);
+                        response(termCachedResults);
                         return;
                     }
                     $.ajax({
-                        'url': __this.search_uri,
+                        'url': self.search_uri,
                         'dataType': 'json',
                         'data': $.extend({
-                            'model': __this.modelName,
+                            'model': self.modelName,
                             'term': request.term
-                        }, __this.opt['search_extra']),
-                        // The success event handler will display "No match found" if no items are returned.
+                        }, self.opt['search_extra']),
+                        // The success event handler will display "No Results Found" if no
+                        // items are returned.
                         'success': function (data) {
                             var result;
                             if (!data || !data.rows || data.rows.length === 0) {
-                                result = [__this.emptyResult];
+                                result = [NonValueItem.NO_RESULT];
                             }
                             else {
                                 result = data.rows;
                                 // store returned results in cache
                                 result.forEach(function (item) {
-                                    var cacheKey = item[__this.value_key], cache_record = __this.cache[cacheKey] = __this.cache[cacheKey] || {};
+                                    var cacheKey = item[self.value_key], cache_record = self.cache[cacheKey] || {};
+                                    self.cache[cacheKey] = cache_record;
                                     $.extend(cache_record, item);
                                 });
                             }
                             modelCache[request.term] = result;
-                            // prepend any optional default results
-                            var displayResults = __this.prependResults.concat(result);
-                            response(displayResults);
+                            response(result);
                         },
                         'error': function (jqXHR, status, err) {
-                            response(['Server Error']);
+                            response([NonValueItem.ERROR]);
                         }
                     });
                 },
@@ -193,12 +202,12 @@ var EDDAuto;
                     $(ev.target).removeClass('wait');
                 }
             }).on('blur', function (ev) {
-                var auto = __this.visibleInput;
-                var hiddenInput = __this.hiddenInput;
+                var auto = self.visibleInput;
+                var hiddenInput = self.hiddenInput;
                 var hiddenId = hiddenInput.val();
-                var old = __this.cache[hiddenId] || {};
+                var old = self.cache[hiddenId] || {};
                 var current = auto.val();
-                var blank = __this.opt['emptyCreatesNew'] ? 'new' : '';
+                var blank = self.opt['emptyCreatesNew'] ? 'new' : '';
                 if (current.trim() === '') {
                     // User cleared value in autocomplete, remove value from hidden ID
                     hiddenInput.val(blank)
@@ -206,8 +215,9 @@ var EDDAuto;
                         .trigger('input');
                 }
                 else {
-                    // User modified value in autocomplete without selecting new one, restore previous
-                    auto.val(old[__this.display_key] || blank);
+                    // User modified value in autocomplete without selecting new one
+                    // restore previous value
+                    auto.val(old[self.display_key] || blank);
                 }
             });
         };
@@ -254,25 +264,6 @@ var EDDAuto;
         return Group;
     }(BaseAuto));
     EDDAuto.Group = Group;
-    // .autocomp_reg
-    var Strain = (function (_super) {
-        __extends(Strain, _super);
-        function Strain(opt, search_options) {
-            _super.call(this, opt, search_options);
-            this.modelName = 'Strain';
-            this.columns = EDDAuto.Strain.columns;
-            this.value_key = 'recordId';
-            this.cacheId = 'Strains';
-            this.init();
-        }
-        Strain.columns = [
-            new AutoColumn('Part ID', '100px', 'partId'),
-            new AutoColumn('Name', '150px', 'name'),
-            new AutoColumn('Description', '250px', 'shortDescription')
-        ];
-        return Strain;
-    }(BaseAuto));
-    EDDAuto.Strain = Strain;
     // .autocomp_carbon
     var CarbonSource = (function (_super) {
         __extends(CarbonSource, _super);
@@ -552,7 +543,11 @@ var EDDAuto;
             this.value_key = 'recordId';
             this.init();
         }
-        Registry.columns = [new AutoColumn('Name', '300px', 'name')];
+        Registry.columns = [
+            new AutoColumn('Part ID', '100px', 'partId'),
+            new AutoColumn('Name', '150px', 'name'),
+            new AutoColumn('Description', '250px', 'shortDescription')
+        ];
         return Registry;
     }(BaseAuto));
     EDDAuto.Registry = Registry;
@@ -593,22 +588,27 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
         },
         _appendCell: function (row, column, label) {
             var cell = $('<div></div>');
-            if (column.width) {
+            if (column && column.width) {
                 cell.css('minWidth', column.width);
             }
-            if (column.maxWidth) {
+            if (column && column.maxWidth) {
                 cell.css('maxWidth', column.maxWidth);
             }
             this._valOrNbsp(cell, label);
             row.append(cell);
             return cell;
         },
+        _appendMessage: function (row, label) {
+            var cell = $('<div></div>').appendTo(row);
+            $('<i>').text(label).appendTo(cell);
+            return cell;
+        },
         _renderMenu: function (ul, items) {
             var self = this, thead;
-            if (this.options.showHeader) {
+            if (self.options.showHeader) {
                 var table = $('<li class="ui-widget-header"></div>');
                 // Column headers
-                $.each(this.options.columns, function (index, column) {
+                $.each(self.options.columns, function (index, column) {
                     self._appendCell(table, column, column.name);
                 });
                 ul.append(table);
@@ -620,26 +620,30 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
             $(ul).addClass("edd-autocomplete-list").find("li:odd").addClass("odd");
         },
         _renderItem: function (ul, item) {
-            var t = '', self = this;
-            var result = $('<li>').data('ui-autocomplete-item', item);
-            $.each(this.options.columns, function (index, column) {
-                var value;
-                if (column.valueField) {
-                    if (typeof column.valueField === 'function') {
-                        value = column.valueField.call({}, item, column, index);
+            var t = '', self = this, result = $('<li>').data('ui-autocomplete-item', item);
+            if (item instanceof EDDAuto.NonValueItem) {
+                self._appendMessage(result, item.label);
+            }
+            else {
+                $.each(self.options.columns, function (index, column) {
+                    var value;
+                    if (column.valueField) {
+                        if (typeof column.valueField === 'function') {
+                            value = column.valueField.call({}, item, column, index);
+                        }
+                        else {
+                            value = item[column.valueField];
+                        }
                     }
                     else {
-                        value = item[column.valueField];
+                        value = item[index];
                     }
-                }
-                else {
-                    value = item[index];
-                }
-                if (value instanceof Array) {
-                    value = value[0] || '';
-                }
-                self._appendCell(result, column, value);
-            });
+                    if (value instanceof Array) {
+                        value = value[0] || '';
+                    }
+                    self._appendCell(result, column, value);
+                });
+            }
             result.appendTo(ul);
             return result;
         }

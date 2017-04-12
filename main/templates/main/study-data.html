@@ -27,12 +27,6 @@
     {{ block.super }}
 {% endblock head_title %}
 
-{% block body_prefix %}
-    {{ block.super }}
-<form action="" class="noMargins" method="POST">
-    {% csrf_token %}
-{% endblock body_prefix %}
-
 {% block body_title %}
     {{ block.super }}
 {% endblock body_title %}
@@ -44,53 +38,54 @@
     <span class="active" id="lineGraphButton" for="graphDisplayContainer">
         <img src="{% static 'main/images/study-data-icon-lines.png' %}"
                 style="vertical-align: bottom" width="18" height="18" />
-        Line Graph
+        {% trans 'Line Graph' %}
     </span><span id="barGraphButton" for="graphDisplayContainer">
         <img src="{% static 'main/images/study-data-icon-bars.png' %}"
                 style="vertical-align: bottom" width="18" height="18" />
-        Bar Graphs
+        {% trans 'Bar Graphs' %}
     </span><span id="dataTableButton" for="studyAssaysTable">
         <img src="{% static 'main/images/study-data-icon-chart.png' %}"
                 style="vertical-align: bottom" width="18" height="18" />
-        Table
+        {% trans 'Table' %}
     </span>
     <div class="buttonBar off" id="barGraphTypeButtons">
         <span id="measurementBarGraphButton" class="active" for="barGraphByMeasurement">
-            Measurement
+            {% trans 'Measurement' %}
         </span>
         <span id="lineBarGraphButton" for="barGraphByLine">
-            Line
+            {% trans 'Line' %}
         </span>
         <span id="timeBarGraphButton" for="barGraphByTime">
-            Time
+            {% trans 'Time' %}
         </span>
     </div>
     <div id="filterControlsArea" style="margin:auto 0 auto 15px;">
         <div id="filterControlsMenu" class="pulldownMenu">
-            <div id="filterControlsMenuLabel" class="pulldownMenuLabelOff">View options ▾</div>
+            <div id="filterControlsMenuLabel"
+                    class="pulldownMenuLabelOff">{% trans 'View options' %} ▾</div>
             <div class="pulldownMenuMenuBlock off">
                 <ul>
                     <li>
                         <input id="filteringShowDisabledCheckbox" name="filteringShowDisabled"
                                 type="checkbox" value="1">
                         <label for="filteringShowDisabledCheckbox"
-                                title="Show assays that have been disabled.">
-                            Show Disabled
+                                title="{% trans 'Show assays that have been disabled.' %}">
+                            {% trans 'Show Disabled' %}
                         </label>
                     </li>
                     <li>
                         <input id="filteringShowEmptyCheckbox" name="filteringShowEmpty"
                                 type="checkbox" value="1">
                         <label for="filteringShowEmptyCheckbox"
-                                title="Show assays that don't have any measurements in them.">
-                            Show Empty
+                                title="{% trans 'Show assays that do not have any measurements in them.' %}">
+                            {% trans 'Show Empty' %}
                         </label>
                     </li>
                 </ul>
             </div>
         </div>
     </div>
-    <div id="tableControlsArea" class="off" style="margin:auto 0 auto 0;">
+    <div id="tableControlsArea" class="off" style="margin:auto 0;">
         {# filled out client-side #}
     </div>
 </div>
@@ -105,7 +100,7 @@
         No measurements.
     </div>
     <div id="tooManyPoints" class="off" class="tooManyPoints">
-        Too many points to display!  Please change your filter settings.
+        {% trans 'Too many points to display!  Please change your filter settings.' %}
     </div>
     <div id="graphLoading" class="wait-larger" style="
         opacity:0.7;
@@ -119,112 +114,100 @@
     <div id="barGraphByTime" class="off"></div>
 </div>
 
+<form action="" method="POST">
+{% csrf_token %}
 {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
 <table id="studyAssaysTable" class="off"></table>
 
 <div id="assaysActionPanel" class="sectionActions assayActions">
+    <button class="hideFilterSection" style="margin: 14px 0px 0px 15px;"
+            data-off-text="{% trans 'Show Filter Section' %}">
+        {% trans 'Hide Filter Section' %}
+    </button>
 
     <div class="{% if not assays %}off{% endif %} assayFlex">
-        <div id="displayedDiv" class="assayDisplayed">0 displayed</div>
-        <div id="selectedDiv" class="assayDisplayed">0 selected</div>
+        {# TODO: this gets replaced in Typescript, figure out i18n there #}
+        <div id="displayedDiv" class="displayedDiv assayDisplayed">{% trans '0 displayed' %}</div>
+        <div id="selectedDiv" class="selectedDiv assayDisplayed">{% trans '0 selected' %}</div>
     </div>
     <div class="off">
-        <input id="assay_action_mark" type="radio" name="assay_action" value="mark"/>
-        <label for="assay_action_mark">
-            <span>Mark as</span>
-            <select name="disable">
-                <option value="true">Disabled</option>
-                <option value="false">Enabled</option>
-            </select>
-        </label>
         <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
-        <label for="assay_action_delete">Delete Measurements</label>
+        <label for="assay_action_delete">{% trans 'Delete Measurements' %}</label>
         <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
-        <label for="assay_action_edit">Edit Measurements</label>
+        <label for="assay_action_edit">{% trans 'Edit Measurements' %}</label>
         <input id="assay_action_export" type="radio" name="assay_action" value="export" />
-        <label for="assay_action_export">Export Data</label>
-        <button name="action" type="submit" value="assay_action">Take Action</button>
+        <label for="assay_action_export">{% trans 'Export Data' %}</label>
+        <button name="action" type="submit" value="assay_action">{% trans 'Take Action' %}</button>
         <div class="clear"></div>
     </div>
-    <div id="tableActionButtons" class="off" style="margin:auto 0 auto 0;">
+    <div id="tableActionButtons" class="tableActionButtons off" style="margin:auto 0;">
         <button id="editMeasurementButton"
-                class="actionButton {% if not writable or not assays %}off{% endif %}"
+                class="editMeasurementButton actionButton {% if not writable or not assays %}off{% endif %}"
                 disabled="true"
-                title="Edit selected measurements">
-            Edit Measurements
+                title="{% trans 'Edit selected measurements' %}">
+            {% trans 'Edit Measurements' %}
         </button>
         <button id="addMeasurementButton"
-                class="actionButton {% if not writable or not assays %}off{% endif %}"
+                class="addMeasurementButton actionButton {% if not writable or not assays %}off{% endif %}"
                 type="button"
                 disabled="true"
-                title="Add a measurement to selected assays">
-            Add Measurement
+                title="{% trans 'Add a measurement to selected assays' %}">
+            {% trans 'Add Measurement' %}
         </button>
         <button id="deleteButton"
-                class="actionButton {% if not writable or not assays %}off{% endif %}"
-                type="submit"
-                name="action"
-                disabled="true"
-                title="Delete selected assays and/or measurements">
-            Delete
-        </button>
-        <button id="disableButton"
-                class="actionButton {% if not writable or not assays %}off{% endif %}"
+                class="deleteButton actionButton {% if not writable or not assays %}off{% endif %}"
                 type="submit"
                 name="action"
                 value="disable"
                 disabled="true"
-                title="Disable selected assays and/or measurements">
-            Disable
+                title="{% trans 'Delete selected assays and/or measurements' %}">
+            {% trans 'Delete' %}
         </button>
         <button id="enableButton"
-                class="actionButton off"
+                class="enableButton actionButton off"
                 type="submit"
                 name="action"
                 value="enable"
                 disabled="true"
-                title="Re-enable selected assays and/or measurements">
-            Re-Enable
+                title="{% trans 'Restore selected assays and/or measurements' %}">
+            {% trans 'Restore' %}
         </button>
     </div>
 
 
-    <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}"
-            title="Add New Line">
-        <button type="button" id="exportButton" class="actionButton primary off">
-            Export Data
+    <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
+        <button type="button" id="exportButton" class="exportButton actionButton primary off"
+                title="{% trans 'Export your data in a file type of your choosing' %}">
+            {% trans 'Export Data' %}
         </button>
     </div>
 </div>
-
-<div>
-    <input id="hideFilterSection"type="button" style="margin: 14px 0px 0px 15px;"
-            value="Hide Filter Section">
-</div>
-
-<div id="mainFilterSection" class="filteringSection">
-</div>
-
-{% endblock content %}
-
-{% block body_postfix %}
 </form>
 
-<div id="addMeasurement" class="off" title="Add Measurements To Selected Assays">
+<div id="mainFilterSection" class="filteringSection"></div>
+
+<div id="addMeasurement" class="off" title="{% trans 'Add Measurements To Selected Assays' %}">
     <form action="" method="POST">
         {% csrf_token %}
+        <div class="modal-body">
         {{ new_measurement.as_p }}
-        <button type="submit" name="action" value="measurement">Add Measurement</button>
+        </div>
+        <div class="modal-footer">
+            <button type="submit" name="action" class="btn btn-primary" value="measurement">{% trans 'Add Measurement' %}</button>
+        </div>
     </form>
 </div>
 
 <div id="assayMain" class="off" title="Edit Assay">
     <form action="" method="POST">
         {% csrf_token %}
+        <div class="modal-body">
         {{ new_assay.as_p }}
-        <button type="submit" name="action" value="assay">Edit Assay</button>
+        </div>
+        <div class="modal-footer">
+            <button type="submit" name="action" class="btn btn-primary" value="assay">{% trans 'Edit Assay' %}</button>
+        </div>
     </form>
 </div>
 
-    {{ block.super }}
-{% endblock body_postfix %}
+{% endblock content %}

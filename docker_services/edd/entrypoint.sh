@@ -26,6 +26,15 @@ function service_wait() {
     done
 }
 
+function ping_wait() {
+    # Redis may accept connections but not be ready to serve
+    # This function instead simulates redis-cli PING command and checks for PONG
+    until [ "$(echo 'ping' | nc -w 1 "$1" "$2" | tr -d '[:space:]')" = "+PONG" ]; do
+        output "Waiting for $1 service …"
+        sleep 1
+    done
+}
+
 function print_help() {
     echo "Usage: entrypoint.sh [options] [--] command [arguments]"
     echo "Options:"
@@ -232,7 +241,7 @@ for ((i=0; i<${#WAIT_HOST[@]}; i++)); do
 done
 
 # Wait for redis to become available
-service_wait redis 6379
+ping_wait redis 6379
 
 if [ $INIT_STATIC -eq 1 ]; then
     banner "Collecting static resources …"

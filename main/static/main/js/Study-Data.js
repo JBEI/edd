@@ -497,7 +497,7 @@ var StudyDataPage;
         // a search box and scrollbar.
         // The checkbox, and the table row that encloses the checkbox and label, are saved in
         // a dictionary mapped by the unique value they represent, so they can be re-used if the
-        // filter is rebuilt (i.e. if populateTable is called again.) 
+        // filter is rebuilt (i.e. if populateTable is called again.)
         GenericFilterSection.prototype.populateTable = function () {
             var _this = this;
             var fCol = $(this.filterColumnDiv);
@@ -1118,7 +1118,7 @@ var StudyDataPage;
         viewingMode = 'linegraph';
         barGraphMode = 'measurement';
         barGraphTypeButtonsJQ = $('#barGraphTypeButtons');
-        actionPanelIsInBottomBar = true;
+        actionPanelIsInBottomBar = false;
         // Start out with every display mode needing a refresh
         viewingModeIsStale = {
             'linegraph': true,
@@ -1150,6 +1150,7 @@ var StudyDataPage;
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
         Utl.ButtonBar.prepareButtonBars();
+        copyActionButtons();
         // Prepend show/hide filter button for better alignment
         // Note: this will be removed when we implement left side filtering
         //when all ajax requests are finished, determine if there are AssayMeasurements.
@@ -1158,45 +1159,40 @@ var StudyDataPage;
             if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
                 //TODO: create prepare it for no data?
                 $('#dataTableButton').click();
-                $('#exportButton').prop('disabled', true);
-                $('#exportButton').prop('title', 'Import data first');
+                $('.exportButton').prop('disabled', true);
             }
             else {
-                $('#exportButton').prop('disabled', false);
-                $('#exportButton').prop('title', 'Download data');
+                $('.exportButton').prop('disabled', false);
             }
         });
-        var showHideFilterButton = $('#hideFilterSection');
-        $('#assaysActionPanel').prepend(showHideFilterButton);
         $("#dataTableButton").click(function () {
             viewingMode = 'table';
-            $('#assaysActionPanel').appendTo('#bottomBar');
-            $('#mainFilterSection').appendTo('#bottomBar');
+            queueActionPanelRefresh();
             makeLabelsBlack(EDDGraphingTools.labels);
             $("#tableControlsArea").removeClass('off');
             $("#filterControlsArea").addClass('off');
-            $("#tableActionButtons").removeClass('off');
+            $(".tableActionButtons").removeClass('off');
             barGraphTypeButtonsJQ.addClass('off');
             queueRefreshDataDisplayIfStale();
             //TODO: enable users to export filtered data from graph
-            $('#exportButton').removeClass('off');
+            $('.exportButton').removeClass('off');
         });
         //click handler for edit assay measurements
-        $('#editMeasurementButton').click(function (ev) {
+        $('.editMeasurementButton').click(function (ev) {
             ev.preventDefault();
-            $('input[value="edit"]').prop('checked', true);
+            $('input[name="assay_action"][value="edit"]').prop('checked', true);
             $('button[value="assay_action"]').click();
             return false;
         });
         //click handler for delete assay measurements
-        $('#deleteButton').click(function (ev) {
+        $('.deleteButton').click(function (ev) {
             ev.preventDefault();
-            $('input[value="delete"]').prop('checked', true);
+            $('input[name="assay_action"][value="delete"]').prop('checked', true);
             $('button[value="assay_action"]').click();
             return false;
         });
         //click handler for export assay measurements
-        $('#exportButton').click(function (ev) {
+        $('.exportButton').click(function (ev) {
             ev.preventDefault();
             includeAllLinesIfEmpty();
             $('input[value="export"]').prop('checked', true);
@@ -1204,7 +1200,7 @@ var StudyDataPage;
             return false;
         });
         //click handler for disable assay measurements
-        $('#disableButton').click(function (ev) {
+        $('.disableButton').click(function (ev) {
             ev.preventDefault();
             $('input[value="mark"]').prop('checked', true);
             $('select[name="disable"]').val('true');
@@ -1212,7 +1208,7 @@ var StudyDataPage;
             return false;
         });
         //click handler for re-enable assay measurements
-        $('#enableButton').click(function (ev) {
+        $('.enableButton').click(function (ev) {
             ev.preventDefault();
             $('input[value="mark"]').prop('checked', true);
             $('select[name="disable"]').val('false');
@@ -1221,16 +1217,10 @@ var StudyDataPage;
         });
         // This one is active by default
         $("#lineGraphButton").click(function () {
-            //TODO: clean this up
-            $('#exportButton').addClass('off');
-            $('#assaysActionPanel').appendTo('#content');
-            $('#mainFilterSection').appendTo('#content');
+            $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+            $('#filterControlsArea').removeClass('off');
+            queueActionPanelRefresh();
             viewingMode = 'linegraph';
-            $("#tableControlsArea").addClass('off');
-            $("#filterControlsArea").removeClass('off');
-            $("#tableActionButtons").addClass('off');
-            $('#assaysActionPanel').appendTo('#content');
-            $('#mainFilterSection').appendTo('#content');
             barGraphTypeButtonsJQ.addClass('off');
             $('#lineGraph').removeClass('off');
             $('#barGraphByTime').addClass('off');
@@ -1252,30 +1242,15 @@ var StudyDataPage;
             $('#graphLoading').removeClass('off');
         });
         $("#barGraphButton").click(function () {
-            //TODO: clean this up
+            $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+            $('#filterControlsArea').removeClass('off');
+            queueActionPanelRefresh();
             viewingMode = 'bargraph';
-            $('#assaysActionPanel').appendTo('#content');
-            $('#mainFilterSection').appendTo('#content');
-            $('#exportButton').addClass('off');
-            $("#tableControlsArea").addClass('off');
-            $("#filterControlsArea").removeClass('off');
-            $("#tableActionButtons").addClass('off');
             barGraphTypeButtonsJQ.removeClass('off');
             $('#lineGraph').addClass('off');
-            $('#barGraphByTime').addClass('off');
-            $('#barGraphByLine').addClass('off');
-            $('#barGraphByMeasurement').addClass('off');
-            $('#assaysActionPanel').appendTo('#content');
-            $('#mainFilterSection').appendTo('#content');
-            if (barGraphMode == 'time') {
-                $('#barGraphByTime').removeClass('off');
-            }
-            else if (barGraphMode == 'line') {
-                $('#barGraphByLine').removeClass('off');
-            }
-            else {
-                $('#barGraphByMeasurement').removeClass('off');
-            }
+            $('#barGraphByTime').toggleClass('off', 'time' !== barGraphMode);
+            $('#barGraphByLine').toggleClass('off', 'line' !== barGraphMode);
+            $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== barGraphMode);
             queueRefreshDataDisplayIfStale();
         });
         $("#timeBarGraphButton").click(function () {
@@ -1292,16 +1267,15 @@ var StudyDataPage;
             $('#graphLoading').addClass('off');
         });
         //hides/shows filter section.
-        $('#hideFilterSection').click(function (event) {
+        var hideButtons = $('.hideFilterSection');
+        hideButtons.click(function (event) {
+            var self = $(this), old, replace;
             event.preventDefault();
-            if ($('#hideFilterSection').val() === "Hide Filter Section") {
-                $('#hideFilterSection').val("Show Filter Section");
-                $('#mainFilterSection').hide();
-            }
-            else {
-                $('#hideFilterSection').val("Hide Filter Section");
-                $('#mainFilterSection').show();
-            }
+            old = self.text();
+            replace = self.attr('data-off-text');
+            // doing this for all
+            hideButtons.attr('data-off-text', old).text(replace);
+            $('#mainFilterSection').toggle();
             return false;
         });
         // The next few lines wire up event handlers for a pulldownMenu that we use to contain a
@@ -1337,7 +1311,7 @@ var StudyDataPage;
             minWidth: 500,
             autoOpen: false
         });
-        $("#addMeasurementButton").click(function () {
+        $(".addMeasurementButton").click(function () {
             $("#addMeasurement").removeClass('off').dialog("open");
             return false;
         });
@@ -1346,6 +1320,17 @@ var StudyDataPage;
             .on('keydown', filterTableKeyDown.bind(this));
     }
     StudyDataPage.prepareIt = prepareIt;
+    function copyActionButtons() {
+        // create a copy of the buttons in the flex layout bottom bar
+        // the original must stay inside form
+        var original, copy;
+        original = $('#assaysActionPanel');
+        copy = original.clone().appendTo('#bottomBar').attr('id', 'copyActionPanel').hide();
+        // forward click events on copy to the original button
+        copy.on('click', '.actionButton', function (e) {
+            original.find('#' + e.target.id).trigger(e);
+        });
+    }
     function fetchEDDData(success) {
         $.ajax({
             'url': 'edddata/',
@@ -1544,25 +1529,6 @@ var StudyDataPage;
             }
             viewingModeIsStale['table'] = false;
             makeLabelsBlack(EDDGraphingTools.labels);
-            var h = $('#content').height(); // Height of the viewing region
-            // Height of the entire contents.  Note that we cannot just use scrollHeight on #content,
-            // because the flex layout changes the way scrollHeight is calculated.  (sh will always be >= h)
-            var sh = 0;
-            $('#content').children().get().forEach(function (e) { sh += e.scrollHeight; });
-            if (actionPanelIsInBottomBar) {
-                if (sh < h) {
-                    $('#assaysActionPanel').appendTo('#content');
-                    $('#mainFilterSection').appendTo('#content');
-                    actionPanelIsInBottomBar = false;
-                }
-            }
-            else {
-                if (sh > h) {
-                    $('#assaysActionPanel').appendTo('#bottomBar');
-                    $('#mainFilterSection').appendTo('#bottomBar');
-                    actionPanelIsInBottomBar = true;
-                }
-            }
         }
         else {
             remakeMainGraphArea();
@@ -1572,32 +1538,27 @@ var StudyDataPage;
             else {
                 viewingModeIsStale['linegraph'] = false;
             }
-            if (actionPanelIsInBottomBar) {
-                actionPanelIsInBottomBar = false;
-                $('#assaysActionPanel').appendTo('#content');
-                $('#mainFilterSection').appendTo('#content');
-            }
         }
     }
     function actionPanelRefresh() {
-        var checkedBoxes, checkedAssays, checkedMeasure, nothingSelected;
+        var checkedBoxes, checkedAssays, checkedMeasure, nothingSelected, viewHeight, itemsHeight;
         // Figure out how many assays/checkboxes are selected.
         // Don't show the selected item count if we're not looking at the table.
         // (Only the visible item count makes sense in that case.)
         if (viewingMode == 'table') {
-            $('#displayedDiv').addClass('off');
-            checkedBoxes = StudyDataPage.assaysDataGrid.getSelectedCheckboxElements();
-            checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
-            checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
-            nothingSelected = !checkedAssays && !checkedMeasure;
-            //enable action buttons if something is selected
-            if (!nothingSelected) {
-                $('#editMeasurementButton, #addMeasurementButton, #deleteButton, #disableButton').prop('disabled', false);
+            $('.displayedDiv').addClass('off');
+            if (StudyDataPage.assaysDataGrid) {
+                checkedBoxes = StudyDataPage.assaysDataGrid.getSelectedCheckboxElements();
             }
             else {
-                $('#editMeasurementButton, #addMeasurementButton, #deleteButton, #disableButton').prop('disabled', true);
+                checkedBoxes = [];
             }
-            $('#selectedDiv').toggleClass('off', nothingSelected);
+            checkedAssays = $(checkedBoxes).filter('[name=assayId]').length;
+            checkedMeasure = $(checkedBoxes).filter('[name=measurementId]').length;
+            nothingSelected = !checkedAssays && !checkedMeasure;
+            //enable action buttons if something is selected
+            $('.tableActionButtons').find('button').prop('disabled', nothingSelected);
+            $('.selectedDiv').toggleClass('off', nothingSelected);
             var selectedStrs = [];
             if (!nothingSelected) {
                 if (checkedAssays) {
@@ -1607,12 +1568,12 @@ var StudyDataPage;
                     selectedStrs.push((checkedMeasure > 1) ? (checkedMeasure + " Measurements") : "1 Measurement");
                 }
                 var selectedStr = selectedStrs.join(', ');
-                $('#selectedDiv').text(selectedStr + ' selected');
+                $('.selectedDiv').text(selectedStr + ' selected');
             }
         }
         else {
-            $('#selectedDiv').addClass('off');
-            $('#displayedDiv').removeClass('off');
+            $('.selectedDiv').addClass('off');
+            $('.displayedDiv').removeClass('off');
         }
         //if there are assays but no data, show empty assays
         //note: this is to combat the current default setting for showing graph on page load
@@ -1620,6 +1581,23 @@ var StudyDataPage;
             if (!$('#TableShowEAssaysCB').prop('checked')) {
                 $('#TableShowEAssaysCB').click();
             }
+        }
+        // calculate how big everything is
+        viewHeight = $('#content').height();
+        itemsHeight = 0;
+        $('#content').children().each(function (i, e) { itemsHeight += e.scrollHeight; });
+        // switch where controls are visible based on size
+        if (actionPanelIsInBottomBar && itemsHeight < viewHeight) {
+            $('#assaysActionPanel').show();
+            $('#copyActionPanel').hide();
+            $('#mainFilterSection').appendTo('#content');
+            actionPanelIsInBottomBar = false;
+        }
+        else if (!actionPanelIsInBottomBar && viewHeight < itemsHeight) {
+            $('#assaysActionPanel').hide();
+            $('#copyActionPanel').show();
+            $('#mainFilterSection').appendTo('#bottomBar');
+            actionPanelIsInBottomBar = true;
         }
     }
     function remakeMainGraphArea() {
@@ -1693,7 +1671,7 @@ var StudyDataPage;
             singleAssayObj = EDDGraphingTools.transformSingleLineItem(dataObj);
             dataSets.push(singleAssayObj);
         });
-        $('#displayedDiv').text(dataPointsDisplayed + " measurements displayed");
+        $('.displayedDiv').text(dataPointsDisplayed + " measurements displayed");
         $('#noData').addClass('off');
         remakeMainGraphAreaCalls++;
         uncheckEventHandler(EDDGraphingTools.labels);
@@ -1932,23 +1910,13 @@ var StudyDataPage;
             return svg;
         }
         //get type names for x labels
-        typeNames = data.map(function (d) {
-            return d.key;
-        });
+        typeNames = data.map(function (d) { return d.key; });
         //sort x values
-        typeNames.sort(function (a, b) {
-            return a - b;
-        });
-        xValues = data.map(function (d) {
-            return (d.values);
-        });
-        yvalueIds = data[0].values[0].values.map(function (d) {
-            return d.key;
-        });
+        typeNames.sort(function (a, b) { return a - b; });
+        xValues = data.map(function (d) { return d.values; });
+        yvalueIds = data[0].values[0].values.map(function (d) { return d.key; });
         // returns time values
-        xValueLabels = xValues[0].map(function (d) {
-            return (d.key);
-        });
+        xValueLabels = xValues[0].map(function (d) { return d.key; });
         //sort time values
         sortedXvalues = xValueLabels.sort(function (a, b) { return parseFloat(a) - parseFloat(b); });
         x_name.domain(typeNames);
@@ -1961,7 +1929,7 @@ var StudyDataPage;
             if (yMin[index] > 0) {
                 yMin[index] = 0;
             }
-            //y axis min and max domain 
+            //y axis min and max domain
             y.domain([yMin[index], d3.max(unitMeasurementData[index], function (d) {
                     return d3.max(d.values, function (d) {
                         return d.y;

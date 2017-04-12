@@ -1,81 +1,75 @@
 <!doctype html>
 {% load staticfiles %}
 {% load branding %}
+{% load i18n %}
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>{% block head_title %}Experiment Data Depot{% endblock head_title %}</title>
+    <title>
+        {% block head_title %}
+        {% trans 'Experiment Data Depot' context 'HTML Title' %}
+        {% endblock head_title %}
+    </title>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery-3.1.0.min.js'%}"></script>
     <script type="text/javascript" src="https://support.jbei.org/s/d3a33d14666229eeb44aa891f5cfdb9a-T/en_US2qlmkc/70120/555786f388e7417b872cf1ceee812d89/2.0.8/_/download/batch/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector.js?locale=en-US&amp;collectorId=0c7d3216"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% stylesheet %}" />
-{% block js_css %}
-        {% if user.is_authenticated %}
-        <script type="text/javascript">
-            window.EDDData = window.EDDData || {};
-            EDDData.currentUserID = {{ user.id }};
-            $(document).on('click', '.statusMessage a.close', function (ev) {
-                var link = $(this),
-                    href = link.attr('close-href'),
-                    token = $('.statusMessage [name=csrfmiddlewaretoken]').first().val();
-                ev.preventDefault();
-                if (href) {
-                    $.post(href, {'csrfmiddlewaretoken': token}, function () {
-                        link.parent().fadeOut();
-                    });
-                } else {
+    {% block js_css %}
+    {% if user.is_authenticated %}
+    <script type="text/javascript">
+        window.EDDData = window.EDDData || {};
+        EDDData.currentUserID = {{ user.id }};
+        $(document).on('click', '.statusMessage a.close', function (ev) {
+            var link = $(this),
+                href = link.attr('close-href'),
+                token = $('.statusMessage [name=csrfmiddlewaretoken]').first().val();
+            ev.preventDefault();
+            if (href) {
+                $.post(href, {'csrfmiddlewaretoken': token}, function () {
                     link.parent().fadeOut();
-                }
-            });
-
-        </script>
+                });
+            } else {
+                link.parent().fadeOut();
+            }
+        });
+    </script>
     {% endif %}
-{% endblock js_css%}
+    {% endblock js_css%}
 </head>
-<body style="background-color:
-                {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %} #f4fef4
-                {% elif request.edd_deployment|slice:":4" == "TEST" %} #fff0f2
-                {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %} #fff6e5
-                {% endif %}">
-{% block body_prefix %}
-{% endblock body_prefix %}
+<body style="background-color:{% env_background_color %};">
 <div class="mainFlex">
     <div id="content" class="content">
         <div class="topBanner">
             <div class="siteLogo">
                 <a href="{% url 'main:index' %}">
-                    <img class="eddLogo" src="{% static 'main/images/edd_logo.png' %}" alt="EDD Logo - Home" />
+                    <img class="eddLogo" src="{% static 'main/images/edd_logo.png' %}"
+                            alt="{% trans 'EDD Logo' %}" />
+                    <img class="companyLogo" src="{% logo %}"
+                            alt="{% trans 'Branding Logo' %}" />
                 </a>
-                    <img class="companyLogo" src="{% logo %}" alt="EDD Logo - Home2" />
             </div>
             <div class="pageName">
                 {% block body_title %}
-                Experiment Data Depot
+                {% trans 'Experiment Data Depot' context 'Top of page title' %}
                 {% endblock body_title %}
             </div>
             <div class="userMenu">
                 {% if user.is_authenticated %}
                     <div>
                         <div class="user_welcome">{{ user.first_name }} {{ user.last_name }}</div>
-                        <a href="{% url 'account_logout' %}">Logout</a>
+                        <a href="{% url 'account_logout' %}">{% trans 'Logout' %}</a>
                     </div>
                 {% else %}
                     <div>
-                        <a href="{% url 'account_login' %}">Login</a>
+                        <a href="{% url 'account_login' %}">{% trans 'Login' %}</a>
                     </div>
                 {% endif %}
             </div>
         </div>
         <div class="statusMessage">
-            {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %}
-                <span class="dev">{{ request.edd_deployment}}</span>
-            {% elif request.edd_deployment|slice:":4" == "TEST" %}
-                <span class="test">{{ request.edd_deployment }}</span>
-            {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %}
-                <span class="int">{{ request.edd_deployment }}</span>
-            {% endif %}
+        {% env_label %}
         {% block status %}
             {% if messages %}
                 {% csrf_token %}
@@ -98,24 +92,23 @@
     {% endblock content %}
     </div>
     <div id="bottomBar" class="bottomBar">
-        {% block bottom_bar %}
-        {% endblock bottom_bar %}
     </div>
 </div>
-    <div class="footer-text">
-        <span class="footer-text-app">JBEI Experiment Data Depot</span>
-        <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
-        {% if user.is_staff %}
-                <span><a href="{% url 'admin:index' %}">Administration</a></span>
-            {% endif %}
-     <span><a href="{% url 'edd_utils:index' %}">Utilities</a></span>
-        <span>
-        {% block top_help %}
-            <span><a href="pages/tutorials">Tutorials</a></span>
-        {% endblock top_help %}
-        </span>
-    </div>
-{% block body_postfix %}
-{% endblock body_postfix %}
+<div class="footer-text">
+    {% edd_version_number as version %}
+    <span class="footer-text-app">
+        {% blocktrans trimmed with version=version %}
+        Experiment Data Depot {{ version }}
+        {% endblocktrans %}
+    </span>
+    <span class="footer-text-contact">
+        <a href="mailto:jbei-help@lbl.gov?subject=EDD">{% trans 'Contact' %}</a>
+    </span>
+    {% if user.is_staff %}
+    <span><a href="{% url 'admin:index' %}">{% trans 'Administration' %}</a></span>
+    {% endif %}
+    <span><a href="{% url 'edd_utils:index' %}">{% trans 'Utilities' %}</a></span>
+    <span><a href="/pages/tutorials/">{% trans 'Tutorials' %}</a></span>
+</div>
 </body>
 </html>

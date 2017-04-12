@@ -105,17 +105,17 @@ var EDDEditable;
             return '(click to set)';
         };
         EditableElement.prototype.fillFormData = function (fd) {
-            var form = $(this.inputElement).closest('form');
-            var token = form.length ? form.find('[name=csrfmiddlewaretoken]').val() : '';
-            var value = this.getEditedValue();
-            fd.append('csrfmiddlewaretoken', token);
-            fd.append('value', value);
+            // look for a CSRF token anywhere in the page
+            fd.append('csrfmiddlewaretoken', $('input[name=csrfmiddlewaretoken]').val());
+            fd.append('value', this.getEditedValue());
             return fd;
         };
-        // Default behavior is to submit to the same place that the enclosing form does.
-        EditableElement.prototype.getFormURL = function () {
-            var form = $(this.inputElement).closest('form');
-            return form.length ? form.attr('action') : '';
+        EditableElement.prototype.formURL = function (url) {
+            if (url === undefined) {
+                return this._formURL || '';
+            }
+            this._formURL = url;
+            return this;
         };
         EditableElement.prototype.showValue = function () {
             var e = this.element;
@@ -315,7 +315,7 @@ var EDDEditable;
             // We can't just read the old width out and save it, then re-insert it now, because
             // that may permanently fix the element at a width that it may have only had
             // before because of external layout factors.
-            //this.element.style.width = '';	// (Not doing this for now)
+            //this.element.style.width = '';    // (Not doing this for now)
             // Restore the content.
             this.showValue();
             // Re-add the default editing widgetry
@@ -338,7 +338,7 @@ var EDDEditable;
             var pThis = this;
             var formData = this.fillFormData(new FormData());
             Utl.EDD.callAjax({
-                'url': this.getFormURL(),
+                'url': this.formURL(),
                 'type': 'POST',
                 'cache': false,
                 'debug': debug,
@@ -432,8 +432,8 @@ var EDDEditable;
     EDDEditable.EditableElement = EditableElement;
     var EditableAutocomplete = (function (_super) {
         __extends(EditableAutocomplete, _super);
-        function EditableAutocomplete(inputElement) {
-            _super.call(this, inputElement);
+        function EditableAutocomplete(inputElement, style) {
+            _super.call(this, inputElement, style);
             this.autoCompleteObject = null;
         }
         EditableAutocomplete.prototype.setUpMainElement = function () {
