@@ -2264,7 +2264,7 @@ var DataGridSpecAssays = (function (_super) {
         var assay, line;
         if ((assay = EDDData.Assays[index])) {
             if ((line = EDDData.Lines[assay.lid])) {
-                return line.n.toUpperCase();
+                return line.name.toUpperCase();
             }
         }
         return '';
@@ -2372,6 +2372,15 @@ var DataGridSpecAssays = (function (_super) {
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 'contentString': record.name
+            })
+        ];
+    };
+    DataGridSpecAssays.prototype.generateLineNameCells = function (gridSpec, index) {
+        var record = EDDData.Assays[index], line = EDDData.Lines[record.lid];
+        return [
+            new DataGridDataCell(gridSpec, index, {
+                'rowspan': gridSpec.rowSpanForRecord(index),
+                'contentString': line.name
             })
         ];
     };
@@ -2635,19 +2644,20 @@ var DataGridSpecAssays = (function (_super) {
         var _this = this;
         var leftSide, metaDataCols, rightSide;
         leftSide = [
-            new DataGridColumnSpec(1, this.generateAssayNameCells)
+            new DataGridColumnSpec(1, this.generateAssayNameCells),
+            new DataGridColumnSpec(2, this.generateLineNameCells)
         ];
         metaDataCols = this.metaDataIDsUsedInAssays.map(function (id, index) {
             var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridColumnSpec(2 + index, _this.makeMetaDataCellsGeneratorFunction(id));
+            return new DataGridColumnSpec(3 + index, _this.makeMetaDataCellsGeneratorFunction(id));
         });
         rightSide = [
-            new DataGridColumnSpec(2 + metaDataCols.length, this.generateMeasurementNameCells),
-            new DataGridColumnSpec(3 + metaDataCols.length, this.generateUnitsCells),
-            new DataGridColumnSpec(4 + metaDataCols.length, this.generateCountCells),
-            new DataGridColumnSpec(5 + metaDataCols.length, this.generateMeasuringTimesCells),
-            new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterCells),
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(3 + metaDataCols.length, this.generateMeasurementNameCells),
+            new DataGridColumnSpec(4 + metaDataCols.length, this.generateUnitsCells),
+            new DataGridColumnSpec(5 + metaDataCols.length, this.generateCountCells),
+            new DataGridColumnSpec(6 + metaDataCols.length, this.generateMeasuringTimesCells),
+            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterCells),
+            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
         ];
         return leftSide.concat(metaDataCols, rightSide);
     };

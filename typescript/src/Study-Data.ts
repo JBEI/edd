@@ -2530,7 +2530,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         var assay, line;
         if ((assay = EDDData.Assays[index])) {
             if ((line = EDDData.Lines[assay.lid])) {
-                return line.n.toUpperCase();
+                return line.name.toUpperCase();
             }
         }
         return '';
@@ -2662,6 +2662,16 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 'contentString': record.name
+            })
+        ];
+    }
+
+    generateLineNameCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[] {
+        var record = EDDData.Assays[index], line = EDDData.Lines[record.lid];
+        return [
+            new DataGridDataCell(gridSpec, index, {
+                'rowspan': gridSpec.rowSpanForRecord(index),
+                'contentString': line.name
             })
         ];
     }
@@ -2946,21 +2956,22 @@ class DataGridSpecAssays extends DataGridSpecBase {
             rightSide:DataGridColumnSpec[];
 
         leftSide = [
-            new DataGridColumnSpec(1, this.generateAssayNameCells)
-           ];
+            new DataGridColumnSpec(1, this.generateAssayNameCells),
+            new DataGridColumnSpec(2, this.generateLineNameCells)
+        ];
 
         metaDataCols = this.metaDataIDsUsedInAssays.map((id, index) => {
             var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridColumnSpec(2 + index, this.makeMetaDataCellsGeneratorFunction(id));
+            return new DataGridColumnSpec(3 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
 
         rightSide = [
-            new DataGridColumnSpec(2 + metaDataCols.length, this.generateMeasurementNameCells),
-            new DataGridColumnSpec(3 + metaDataCols.length, this.generateUnitsCells),
-            new DataGridColumnSpec(4 + metaDataCols.length, this.generateCountCells),
-            new DataGridColumnSpec(5 + metaDataCols.length, this.generateMeasuringTimesCells),
-            new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterCells),
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(3 + metaDataCols.length, this.generateMeasurementNameCells),
+            new DataGridColumnSpec(4 + metaDataCols.length, this.generateUnitsCells),
+            new DataGridColumnSpec(5 + metaDataCols.length, this.generateCountCells),
+            new DataGridColumnSpec(6 + metaDataCols.length, this.generateMeasuringTimesCells),
+            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterCells),
+            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
         ];
 
         return leftSide.concat(metaDataCols, rightSide);
