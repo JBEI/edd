@@ -2256,10 +2256,7 @@ var DataGridSpecAssays = (function (_super) {
         // decoration.
         var assay, line, protocolNaming;
         if ((assay = EDDData.Assays[index])) {
-            protocolNaming = EDDData.Protocols[assay.pid].name;
-            if ((line = EDDData.Lines[assay.lid])) {
-                return [line.n, protocolNaming, assay.name].join('-').toUpperCase();
-            }
+            return assay.name.toUpperCase();
         }
         return '';
     };
