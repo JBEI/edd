@@ -279,7 +279,7 @@ def interpret_raw_rna_seq_data(raw_data, study, file_name=None):
         "raw_data": raw_data,
         "table": table,
         "samples": samples,
-        "assays": [{"id": a.id, "name": a.long_name} for a in assays],
+        "assays": [{"id": a.id, "name": a.name} for a in assays],
     }
 
 

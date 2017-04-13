@@ -1075,6 +1075,7 @@ class SbmlView(EDDExportView):
                 return response
         return super(SbmlView, self).render_to_response(context, **kwargs)
 
+
 # /study/<study_id>/measurements/<protocol_id>/
 def study_measurements(request, pk=None, slug=None, protocol=None):
     """ Request measurement data in a study. """
@@ -1505,7 +1506,7 @@ def study_import_rnaseq_edgepro(request, pk=None, slug=None):
     for assay in assays_:
         assay_info.append({
             "id": assay.id,
-            "long_name": assay.long_name,
+            "long_name": assay.name,
             "n_meas": assay.measurement_set.count(),
         })
     return render(
