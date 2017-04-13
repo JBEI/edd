@@ -2371,7 +2371,7 @@ var DataGridSpecAssays = (function (_super) {
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': [line.name, EDDData.Protocols[record.pid].name, record.name].join('-')
+                'contentString': record.name
             })
         ];
     };

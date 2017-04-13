@@ -2640,10 +2640,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
     generateAssayNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-
-
         var record = EDDData.Assays[index], line = EDDData.Lines[record.lid];
-            var sideMenuItems = [
+        var sideMenuItems = [
             '<a class="assay-edit-link" onclick="StudyDataPage.editAssay([' + index + '])">Edit Assay</a>',
             '<a href="/export?assayId=' + index + '">Export Data as CSV</a>'
         ];
@@ -2663,7 +2661,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': [line.name, EDDData.Protocols[record.pid].name, record.name].join('-')
+                'contentString': record.name
             })
         ];
     }
