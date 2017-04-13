@@ -1623,7 +1623,7 @@ var StudyDataPage;
             assay = EDDData.Assays[measure.assay] || {};
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
-            name = [line.name, protocol.name, assay.name].join('-');
+            name = assay.name;
             lineName = line.name;
             var label = $('#' + line['identifier']).next();
             if (_.keys(EDDData.Lines).length > 22) {
