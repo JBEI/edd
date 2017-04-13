@@ -2529,6 +2529,16 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return '';
     }
 
+    private loadLineName(index: any): string {
+        var assay, line;
+        if ((assay = EDDData.Assays[index])) {
+            if ((line = EDDData.Lines[assay.lid])) {
+                return line.n.toUpperCase();
+            }
+        }
+        return '';
+    }
+
     private loadExperimenterInitials(index:any):string {
         // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
         var assay, experimenter;
@@ -2566,24 +2576,29 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 'name': 'Name',
                 'headerRow': 2,
                 'sortBy': this.loadAssayName
+            }),
+            new DataGridHeaderSpec(2, 'hAssayLineName', {
+                'name': 'Line',
+                'headerRow': 2,
+                'sortBy': this.loadLineName
             })
         ];
 
-        this.measuringTimesHeaderSpec = new DataGridHeaderSpec(5 + metaDataHeaders.length,
+        this.measuringTimesHeaderSpec = new DataGridHeaderSpec(6 + metaDataHeaders.length,
                 'hAssaysMTimes', { 'name': 'Measuring Times', 'headerRow': 2 });
 
         var rightSide = [
-            new DataGridHeaderSpec(2 + metaDataHeaders.length,
+            new DataGridHeaderSpec(3 + metaDataHeaders.length,
                     'hAssaysMName',
                     { 'name': 'Measurement', 'headerRow': 2 }),
-            new DataGridHeaderSpec(3 + metaDataHeaders.length,
+            new DataGridHeaderSpec(4 + metaDataHeaders.length,
                     'hAssaysUnits',
                     { 'name': 'Units', 'headerRow': 2 }),
-            new DataGridHeaderSpec(4 + metaDataHeaders.length,
+            new DataGridHeaderSpec(5 + metaDataHeaders.length,
                     'hAssaysCount',
                     { 'name': 'Count', 'headerRow': 2 }),
             this.measuringTimesHeaderSpec,
-            new DataGridHeaderSpec(6 + metaDataHeaders.length,
+            new DataGridHeaderSpec(7 + metaDataHeaders.length,
                     'hAssaysExperimenter',
                     {
                         'name': 'Experimenter',
@@ -2591,7 +2606,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                         'sortBy': this.loadExperimenterInitials,
                         'sortAfter': 1
                     }),
-            new DataGridHeaderSpec(7 + metaDataHeaders.length,
+            new DataGridHeaderSpec(8 + metaDataHeaders.length,
                     'hAssaysModified',
                     {
                         'name': 'Last Modified',

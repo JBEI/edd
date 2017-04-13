@@ -2263,6 +2263,15 @@ var DataGridSpecAssays = (function (_super) {
         }
         return '';
     };
+    DataGridSpecAssays.prototype.loadLineName = function (index) {
+        var assay, line;
+        if ((assay = EDDData.Assays[index])) {
+            if ((line = EDDData.Lines[assay.lid])) {
+                return line.n.toUpperCase();
+            }
+        }
+        return '';
+    };
     DataGridSpecAssays.prototype.loadExperimenterInitials = function (index) {
         // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
         var assay, experimenter;
@@ -2296,21 +2305,26 @@ var DataGridSpecAssays = (function (_super) {
                 'name': 'Name',
                 'headerRow': 2,
                 'sortBy': this.loadAssayName
+            }),
+            new DataGridHeaderSpec(2, 'hAssayLineName', {
+                'name': 'Line',
+                'headerRow': 2,
+                'sortBy': this.loadLineName
             })
         ];
-        this.measuringTimesHeaderSpec = new DataGridHeaderSpec(5 + metaDataHeaders.length, 'hAssaysMTimes', { 'name': 'Measuring Times', 'headerRow': 2 });
+        this.measuringTimesHeaderSpec = new DataGridHeaderSpec(6 + metaDataHeaders.length, 'hAssaysMTimes', { 'name': 'Measuring Times', 'headerRow': 2 });
         var rightSide = [
-            new DataGridHeaderSpec(2 + metaDataHeaders.length, 'hAssaysMName', { 'name': 'Measurement', 'headerRow': 2 }),
-            new DataGridHeaderSpec(3 + metaDataHeaders.length, 'hAssaysUnits', { 'name': 'Units', 'headerRow': 2 }),
-            new DataGridHeaderSpec(4 + metaDataHeaders.length, 'hAssaysCount', { 'name': 'Count', 'headerRow': 2 }),
+            new DataGridHeaderSpec(3 + metaDataHeaders.length, 'hAssaysMName', { 'name': 'Measurement', 'headerRow': 2 }),
+            new DataGridHeaderSpec(4 + metaDataHeaders.length, 'hAssaysUnits', { 'name': 'Units', 'headerRow': 2 }),
+            new DataGridHeaderSpec(5 + metaDataHeaders.length, 'hAssaysCount', { 'name': 'Count', 'headerRow': 2 }),
             this.measuringTimesHeaderSpec,
-            new DataGridHeaderSpec(6 + metaDataHeaders.length, 'hAssaysExperimenter', {
+            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hAssaysExperimenter', {
                 'name': 'Experimenter',
                 'headerRow': 2,
                 'sortBy': this.loadExperimenterInitials,
                 'sortAfter': 1
             }),
-            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hAssaysModified', {
+            new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hAssaysModified', {
                 'name': 'Last Modified',
                 'headerRow': 2,
                 'sortBy': this.loadAssayModification,
