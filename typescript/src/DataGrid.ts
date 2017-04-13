@@ -1404,6 +1404,7 @@ class DataGridDataCell {
             this.sideMenuItems.forEach((item) => {
                 //TODO: clean up
                 if (item.slice(0,1) != ('<')) {
+                    title += item
                 }
                 else if ($(item).attr('class') === "line-edit-link") {
                     $(item).addClass('editLine');

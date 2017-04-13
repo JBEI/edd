@@ -1168,6 +1168,7 @@ var DataGridDataCell = (function () {
             this.sideMenuItems.forEach(function (item) {
                 //TODO: clean up
                 if (item.slice(0, 1) != ('<')) {
+                    title += item;
                 }
                 else if ($(item).attr('class') === "line-edit-link") {
                     $(item).addClass('editLine');
