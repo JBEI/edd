@@ -191,7 +191,7 @@ module ExperimentDescriptionHelp {
                     .appendTo(row);
             });
         } else {
-            div.val('No protocols were found.');
+            div.text('No protocols were found.');
         }
     }
 

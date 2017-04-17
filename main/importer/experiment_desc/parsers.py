@@ -6,6 +6,7 @@ import logging
 import re
 from collections import Sequence
 
+import itertools
 from builtins import str
 from django.conf import settings
 from openpyxl.utils.cell import get_column_letter
@@ -111,38 +112,6 @@ class ColumnLayout:
     files are designed to be user edited, parsing should be as tolerant as possible.
     """
 
-    class _CombinatorialColumnIterator(object):
-        """
-        A custom iterator class that helps extract the order of combinatorial line / assay 
-        metadata columns from the ColumnLayout for use in automated line/assay naming. This allows
-        advanced authors of Experiment Description files to control the order of naming elements in
-        their lines/assays when they're performing combinatorial creation.
-        """
-        def __init__(self, column_layout, is_line):
-            self.layout = column_layout
-            self.index = 0
-            self.is_line = is_line
-            self.search_map = (column_layout.col_index_to_line_meta_pk if self.is_line
-                               else column_layout.col_index_to_assay_data)
-
-        def __iter__(self):
-            return self
-
-        def next(self):
-            layout = self.layout
-            if not (layout and layout.combinatorial_col_indices):
-                raise StopIteration()
-
-            while self.index < len(layout.combinatorial_col_indices):
-                spreadsheet_col_index = layout.combinatorial_col_indices[self.index]
-                self.index += 1
-
-                if spreadsheet_col_index in self.search_map:
-                    return spreadsheet_col_index
-
-            if self.index >= len(layout.combinatorial_col_indices):
-                raise StopIteration()
-
     def __init__(self, importer):
         self.line_name_col = None
         self.line_description_col = None
@@ -169,7 +138,7 @@ class ColumnLayout:
         :param metadata_pk:
         :return:
         """
-        items = self.col_index_to_assay_data.items()
+        items = self.col_index_to_assay_data.iteritems()
         for col_index, (existing_protocol, existing_assay_meta_type) in items:
             if ((upper_protocol_name == existing_protocol.name.upper()) and
                     (metadata_pk == existing_assay_meta_type.pk)):
@@ -177,10 +146,12 @@ class ColumnLayout:
         return False
 
     def combinatorial_line_col_order(self):
-        return ColumnLayout._CombinatorialColumnIterator(self, True)
+        return itertools.ifilter(lambda (x): x in self.col_index_to_line_meta_pk,
+                self.combinatorial_col_indices)
 
     def combinatorial_assay_col_order(self):
-        return ColumnLayout._CombinatorialColumnIterator(self, False)
+        return itertools.ifilter(
+                lambda (x): x in self.col_index_to_assay_data, self.combinatorial_col_indices)
 
     def register_assay_meta_column(self, col_index, upper_protocol_name, protocol, assay_meta_type,
                                    is_combinatorial):
@@ -416,7 +387,7 @@ class CombinatorialInputParser(object):
         # if the metadata type is present in the database, construct a parser for assay time
         # (we need a pk to store it, and the parser
         assay_time_type = None
-        for pk, metadata_type in assay_metadata_types_by_pk.items():
+        for pk, metadata_type in assay_metadata_types_by_pk.iteritems():
             if metadata_type.type_name.upper() == 'TIME':
                 assay_time_type = metadata_type
                 break

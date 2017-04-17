@@ -64,38 +64,6 @@ if there's a traceback): %(errors)s
         %(traceback)s""")
 
 
-# for safety / for now get repeatable reads within this method, even though writes start much later
-# possibility of long-running transactions as a result, but should be infrequent
-@transaction.atomic(savepoint=False)
-def define_study(stream, user, study, is_json,
-                 allow_duplicate_names=_ALLOW_DUPLICATE_NAMES_DEFAULT, dry_run=_DRY_RUN_DEFAULT,
-                 ignore_ice_errors=_IGNORE_ICE_RELATED_ERRORS_DEFAULT):
-    # TODO: relocate to a Celery task and add related user notifications/context-appropriate
-    # error handling following initial testing/deployment.
-    # This function's parameters are structured in a similar form to the Celery task, though
-    # initial testing / UI work should be easier to test with it executing synchronously. Unlikely
-    # that very large inputs will be provided often, so asynchronous processing is desirable
-    # here, but not required for the anticipated majority of use cases.
-
-    """
-    Defines a study from the set of lines / assays provided in the template file parameter. Study
-    lines / assays, and are all created atomically, so any failure prevents  changes from taking
-    hold.  Known sources of error are exhaustively checked and summarized in JSON output,
-    even in the event of failure. Any strains specified in the input file, and not already
-    present in EDD's local cache of ICE strains, will be automatically added iff they can be
-    uniquely identified in ICE. Several caveats are:
-    1) Line names must be unique within the study, or the creation task will be aborted.
-
-    Note that this method performs work very similar to EDD's bulk line creation script,
-    create_lines.py.
-    :return: A JSON summary string if lines/assays were created successfully,
-    raises an Exception otherwise
-    """
-    importer = CombinatorialCreationImporter(study, user)
-    return importer.do_import(stream, is_json, allow_duplicate_names, dry_run,
-                              ignore_ice_related_errors=ignore_ice_errors)
-
-
 def _build_response_content(errors, warnings, val=None):
     """
     Builds a dictionary of response content that summarizes processing performed by the
@@ -122,7 +90,7 @@ def _build_prioritized_issue_list(src_dict, priority_reference):
     result = []
 
     # loop over defined priority order, including issues in the defined order
-    for category, title_priority_order in priority_reference.items():
+    for category, title_priority_order in priority_reference.iteritems():
         title_to_summaries = src_dict.get(category, None)
 
         if not title_to_summaries:
@@ -139,8 +107,8 @@ def _build_prioritized_issue_list(src_dict, priority_reference):
 
     # review any items that didn't were missing from the defined order (likely due to code
     # maintenance. Add them at the top to attract attention, then print a warning log message
-    for category, unprioritized_titles in src_dict.items():
-        for title, err_summary in unprioritized_titles.items():
+    for category, unprioritized_titles in src_dict.iteritems():
+        for title, err_summary in unprioritized_titles.iteritems():
             result.insert(0, err_summary.to_json_dict())
             logger.warning('Including un-prioritized issue (category="%(category)s", '
                            'title="%(title)s") at the top of the list. This issue '
@@ -186,8 +154,8 @@ class CombinatorialCreationImporter(object):
         self.performance = CombinatorialCreationPerformance()
 
         # maps title -> subtitle ->  occurrence details
-        self.errors = defaultdict(lambda: dict())
-        self.warnings = defaultdict(lambda: dict())
+        self.errors = defaultdict(dict)
+        self.warnings = defaultdict(dict)
         self._input_summary = None
 
         self.exception_interrupted_ice_queries = False
@@ -554,7 +522,7 @@ class CombinatorialCreationImporter(object):
                 # defaultdict, so side effect is assignment
                 all_protocol_to_assay_names = all_planned_names[line_name]
 
-                for protocol_pk, assay_names in protocol_to_assay_names.items():
+                for protocol_pk, assay_names in protocol_to_assay_names.iteritems():
                     all_planned_assay_names = all_protocol_to_assay_names[protocol_pk]
 
                     for assay_name in assay_names:
@@ -633,7 +601,7 @@ class CombinatorialCreationImporter(object):
         # TODO: we can do some additional work to provide better (e.g. cell-number based) feedback,
         # but this should be a good stopgap.
         duplicate_existing_assay_names = set()
-        for protocol_pk, assay_names_list in protocol_to_unique_input_assay_names.items():
+        for protocol_pk, assay_names_list in protocol_to_unique_input_assay_names.iteritems():
             existing_assays = Assay.objects.filter(
                 name__in=assay_names_list,
                 line__study__pk=study.pk,

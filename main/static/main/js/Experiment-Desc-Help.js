@@ -154,7 +154,7 @@ var ExperimentDescriptionHelp;
             });
         }
         else {
-            div.val('No protocols were found.');
+            div.text('No protocols were found.');
         }
     }
     function showMetadataTypes(divSelector, metadataTypes, omitFromDisplay) {

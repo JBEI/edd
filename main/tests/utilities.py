@@ -30,7 +30,7 @@ class CombinatorialCreationTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.system_user = User.objects.get_or_create(username='system')[0]
+        cls.system_user = User.objects.get(username='system')
         Protocol.objects.get_or_create(name='Proteomics', owned_by=cls.system_user)
         Protocol.objects.get_or_create(name='Metabolomics', owned_by=cls.system_user)
         Protocol.objects.get_or_create(name='Targeted Proteomics', owned_by=cls.system_user)

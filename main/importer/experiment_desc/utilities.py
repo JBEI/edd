@@ -6,6 +6,7 @@ import logging
 from collections import defaultdict, OrderedDict, Sequence
 
 from arrow import utcnow
+from builtins import str
 from django.db.models import Q
 from six import string_types
 
@@ -898,7 +899,7 @@ def find_existing_strains(ice_parts_by_number, importer):
     existing = OrderedDict()
     not_found = []
 
-    for ice_entry in ice_parts_by_number.values():
+    for ice_entry in ice_parts_by_number.itervalues():
         # search for the strain by registry ID. Note we use search instead of .get() until the
         # database consistently contains/requires ICE UUID's and enforces uniqueness
         # constraints for them (EDD-158).

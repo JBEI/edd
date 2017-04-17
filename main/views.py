@@ -1363,7 +1363,7 @@ def study_describe_experiment(request, pk=None, slug=None):
 
     # parse request parameter input to keep subsequent code relatively format-agnostic
     user = request.user
-    dry_run = 'dryRun' in request.META['QUERY_STRING']
+    dry_run = request.GET.get('dryRun', False)
     allow_duplicate_names = request.GET.get('ALLOWDUPLICATENAMES', False)
     ignore_ice_related_errors = request.GET.get('IGNOREICERELATEDERRORS', False)
 
