@@ -628,10 +628,9 @@ class CombinatorialCreationImporter(object):
         # creation
         for ice_entry in non_existent_edd_strains:
             # for now, only allow strain creation in EDD -- non-strains are not currently
-            # supported. see EDD-239.
+            # supported. see EDD-239. User-facing errors should already have been generated during
+            #  preceding ICE search.
             if not isinstance(ice_entry, IceStrain):
-                self.add_error(SINGLE_PART_ACCESS_ERROR_CATEGORY, NON_STRAIN_ICE_ENTRY,
-                               ice_entry.part_id)
                 continue
             strain = Strain.objects.create(
                 name=ice_entry.name,
@@ -699,6 +698,13 @@ class CombinatorialCreationImporter(object):
 
             if found_entry:
                 part_number_to_part[local_ice_part_number] = found_entry
+
+                # for now, only allow strain creation in EDD -- non-strains are not currently
+                # supported. see EDD-239.
+                if not isinstance(found_entry, IceStrain):
+                    self.add_error(SINGLE_PART_ACCESS_ERROR_CATEGORY, NON_STRAIN_ICE_ENTRY,
+                                   found_entry.part_id)
+
                 # double-check for a coding error that occurred during testing. initial test parts
                 # had "JBX_*" part numbers that matched their numeric ID, but this isn't always the
                 # case!
