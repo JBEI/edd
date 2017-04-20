@@ -330,7 +330,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             raise PermissionDenied(_("You do not have permission to modify this study."))
 
 
-class StudyUpdateView(generic.edit.BaseUpdateView, StudyDetailBaseView):
+class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
     """ View used to handle POST to update single Study fields. """
     update_action = None
 
