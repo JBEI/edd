@@ -117,7 +117,7 @@ var StudyOverview;
             };
             alertError(defaultError);
         }
-        //if there is more than one alert and no dismiss all alert button, add a dismiss all alerts button
+        //add a dismiss all alerts button
         if ($('.alert').length > 8 && !dismissAll.is(":visible")) {
             dismissAll.show();
         }

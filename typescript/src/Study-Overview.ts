@@ -76,30 +76,30 @@ module StudyOverview {
 
 
     export function copyActionButtons() {
-            let original:JQuery, copy:JQuery, originalDismiss:JQuery, copyDismiss:JQuery,
-                originalAcceptWarnings: JQuery, copyAcceptWarnings: JQuery;
-            if (!actionPanelIsCopied) {
-                original = $('#actionWarningBar');
-                copy = original.clone().appendTo('#bottomBar').hide();
-                // forward click events on copy to the original button
-                copy.on('click', 'button', (e) => {
-                    original.find('#' + e.target.id).trigger(e);
-                });
-                originalDismiss = $('#dismissAll').find('.dismissAll');
-                copyDismiss = originalDismiss.clone().appendTo('#bottomBar').hide();
-                // forward click events on copy to the original button
-                copyDismiss.on('click', 'button', (e) => {
-                    originalDismiss.trigger(e);
-                });
-                originalAcceptWarnings = $('#acceptWarnings').find('.acceptWarnings');
-                copyAcceptWarnings = originalAcceptWarnings.clone().appendTo('#bottomBar').hide();
-                // forward click events on copy to the original button
-                copyAcceptWarnings.on('click', 'button', (e) => {
-                    originalAcceptWarnings.trigger(e);
-                });
-                actionPanelIsCopied = true;
-            }
+        let original:JQuery, copy:JQuery, originalDismiss:JQuery, copyDismiss:JQuery,
+            originalAcceptWarnings: JQuery, copyAcceptWarnings: JQuery;
+        if (!actionPanelIsCopied) {
+            original = $('#actionWarningBar');
+            copy = original.clone().appendTo('#bottomBar').hide();
+            // forward click events on copy to the original button
+            copy.on('click', 'button', (e) => {
+                original.find('#' + e.target.id).trigger(e);
+            });
+            originalDismiss = $('#dismissAll').find('.dismissAll');
+            copyDismiss = originalDismiss.clone().appendTo('#bottomBar').hide();
+            // forward click events on copy to the original button
+            copyDismiss.on('click', 'button', (e) => {
+                originalDismiss.trigger(e);
+            });
+            originalAcceptWarnings = $('#acceptWarnings').find('.acceptWarnings');
+            copyAcceptWarnings = originalAcceptWarnings.clone().appendTo('#bottomBar').hide();
+            // forward click events on copy to the original button
+            copyAcceptWarnings.on('click', 'button', (e) => {
+                originalAcceptWarnings.trigger(e);
+            });
+            actionPanelIsCopied = true;
         }
+    }
 
     // This is called upon receiving an errror in a file upload operation, and
     // is passed an unprocessed result from the server as a second argument.
@@ -136,7 +136,7 @@ module StudyOverview {
             };
             alertError(defaultError);
         }
-        //if there is more than one alert and no dismiss all alert button, add a dismiss all alerts button
+        //add a dismiss all alerts button
         if ($('.alert').length > 8 && !dismissAll.is(":visible")) {
             dismissAll.show();
         }
@@ -206,7 +206,7 @@ module StudyOverview {
     function organizeMessages(responses) {
         var obj = {};
         responses.forEach(function (response) {
-             if (response.category === "ICE-related Error") {
+            if (response.category === "ICE-related Error") {
                 // create dismissible error alert
                 alertIceWarning(response);
             } else if (response.summary === "Duplicate assay names in the input" || response.summary === "Duplicate " +
@@ -216,13 +216,13 @@ module StudyOverview {
                 }
             }
             else {
-                 var message = response.summary + ": " + response.details;
+                var message = response.summary + ": " + response.details;
 
-                 if (obj.hasOwnProperty(response.category)) {
-                     obj[response.category].push(message);
-                 } else {
-                     obj[response.category] = [message]
-                 }
+                if (obj.hasOwnProperty(response.category)) {
+                    obj[response.category].push(message);
+                } else {
+                    obj[response.category] = [message]
+                }
              }
         });
         return obj;
