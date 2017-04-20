@@ -1541,7 +1541,7 @@ var StudyDataPage;
         }
     }
     function actionPanelRefresh() {
-        var checkedBoxes, checkedAssays, checkedMeasure, nothingSelected, viewHeight, itemsHeight;
+        var checkedBoxes, checkedAssays, checkedMeasure, nothingSelected, contentScrolling, filterInBottom;
         // Figure out how many assays/checkboxes are selected.
         // Don't show the selected item count if we're not looking at the table.
         // (Only the visible item count makes sense in that case.)
@@ -1582,23 +1582,39 @@ var StudyDataPage;
                 $('#TableShowEAssaysCB').click();
             }
         }
-        // calculate how big everything is
-        viewHeight = $('#content').height();
-        itemsHeight = 0;
-        $('#content').children().each(function (i, e) { itemsHeight += e.scrollHeight; });
-        // switch where controls are visible based on size
-        if (actionPanelIsInBottomBar && itemsHeight < viewHeight) {
+        // move buttons so they are always visible if the page is scrolling
+        contentScrolling = isContentScrolling();
+        if (actionPanelIsInBottomBar && !contentScrolling) {
             $('#assaysActionPanel').show();
             $('#copyActionPanel').hide();
-            $('#mainFilterSection').appendTo('#content');
             actionPanelIsInBottomBar = false;
         }
-        else if (!actionPanelIsInBottomBar && viewHeight < itemsHeight) {
+        else if (!actionPanelIsInBottomBar && contentScrolling) {
             $('#assaysActionPanel').hide();
             $('#copyActionPanel').show();
-            $('#mainFilterSection').appendTo('#bottomBar');
             actionPanelIsInBottomBar = true;
         }
+        // only move the filter section when the page is scrolling in table view
+        if (viewingMode == 'table') {
+            contentScrolling = isContentScrolling();
+            filterInBottom = $('#mainFilterSection').parent().is('#bottomBar');
+            if (filterInBottom && !contentScrolling) {
+                $('#mainFilterSection').appendTo('#content');
+            }
+            else if (!filterInBottom && contentScrolling) {
+                $('#mainFilterSection').appendTo('#bottomBar');
+            }
+        }
+        else {
+            // always put filter section in main content when not in table view
+            $('#mainFilterSection').appendTo('#content');
+        }
+    }
+    function isContentScrolling() {
+        var viewHeight = 0, itemsHeight = 0;
+        viewHeight = $('#content').height();
+        $('#content').children().each(function (i, e) { itemsHeight += e.scrollHeight; });
+        return viewHeight < itemsHeight;
     }
     function remakeMainGraphArea() {
         var dataPointsDisplayed = 0, dataPointsTotal = 0, dataSets = [];
