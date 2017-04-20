@@ -188,7 +188,6 @@ namespace StudyDataPage {
             $.each(this.allFilters, (i, widget) => {
                 if (widget.isFilterUseful()) {
                     widget.addToParent(this.filterTableJQ[0]);
-                    widget.applyBackgroundStyle(dark);
                     dark = !dark;
                 } else {
                     widget.detach();
@@ -629,12 +628,6 @@ namespace StudyDataPage {
 
         detach():void {
             $(this.filterColumnDiv).detach();
-        }
-
-        // Used to apply mild alternate striping to the filters so they stand out a bit from each other
-        applyBackgroundStyle(darker:boolean):void {
-            $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
-            $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
         }
 
         // Runs through the values in uniqueValuesOrder, adding a checkbox and label for each
@@ -2420,7 +2413,7 @@ class DataGridAssays extends DataGrid {
     }
 
     _getClasses():string {
-        return 'dataTable sortable dragboxes hastablecontrols';
+        return 'dataTable sortable dragboxes hastablecontrols table-striped';
     }
 
     getCustomControlsArea():HTMLElement {
