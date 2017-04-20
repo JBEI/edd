@@ -217,7 +217,7 @@ namespace StudyLines {
 
              if (type) {
                  if (type.pre) {
-                    $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+                    $('<span>').addClass('meta-prefix').text(type.pre).insertAfter(input);
                  }
 
                  if (type.postfix) {
@@ -491,11 +491,11 @@ namespace StudyLines {
         (prefixVal).remove();
 
         if (type.pre) {
-            $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+            $('<span>').addClass('meta-prefix').text("(" + type.pre + ") ").insertBefore(label);
         }
         $('<span>').addClass('meta-remove').text('Remove').insertAfter(label);
         if (type.postfix) {
-            $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
+            $('<span>').addClass('meta-postfix').text(" (" + type.postfix + ")").insertAfter(label);
         }
         return row;
 }
@@ -508,19 +508,23 @@ namespace StudyLines {
         // Update the disclose title
         var text = 'Add New Line';
         if (ids.length > 0) {
-            text = 'Edit Line' + (ids.length > 1 ? 's' : '');
+            text = 'Edit Line' + (ids.length > 1 ? 's ' + "(" + ids.length + ")" : '');
         }
 
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false, title: text });
 
         if (ids.length > 1) {
-            form.find('.bulk').prop('checked', false).removeClass('off');
+            //hide line name because this doesn't matter
+            $('#id_line-name').parent().hide();
+            //show bulk notice
+            $('.bulkNoteGroup').removeClass('off');
             form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
                 $(ev.target).siblings('label').find('.bulk').prop('checked', true);
             });
         }
 
         if (ids.length === 1) {
+            $('.bulkNoteGroup').addClass('off');
             fillLineForm(EDDData.Lines[ids[0]]);
         } else {
             // compute used metadata fields on all data.ids, insert metadata rows?
