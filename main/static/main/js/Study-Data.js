@@ -107,7 +107,6 @@ var StudyDataPage;
             $.each(this.allFilters, function (i, widget) {
                 if (widget.isFilterUseful()) {
                     widget.addToParent(_this.filterTableJQ[0]);
-                    widget.applyBackgroundStyle(dark);
                     dark = !dark;
                 }
                 else {
@@ -486,11 +485,6 @@ var StudyDataPage;
         };
         GenericFilterSection.prototype.detach = function () {
             $(this.filterColumnDiv).detach();
-        };
-        // Used to apply mild alternate striping to the filters so they stand out a bit from each other
-        GenericFilterSection.prototype.applyBackgroundStyle = function (darker) {
-            $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
-            $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
         };
         // Runs through the values in uniqueValuesOrder, adding a checkbox and label for each
         // filtering value represented.  If there are more than 15 values, the filter gets
@@ -2182,7 +2176,7 @@ var DataGridAssays = (function (_super) {
         _super.call(this, dataGridSpec);
     }
     DataGridAssays.prototype._getClasses = function () {
-        return 'dataTable sortable dragboxes hastablecontrols';
+        return 'dataTable sortable dragboxes hastablecontrols table-striped';
     };
     DataGridAssays.prototype.getCustomControlsArea = function () {
         return $('#tableControlsArea').get(0);

@@ -604,7 +604,7 @@ class LineResults extends DataGrid {
     }
 
     _getClasses():string {
-        return 'dataTable sortable dragboxes hastablecontrols';
+        return 'dataTable sortable dragboxes hastablecontrols table-striped';
     }
 
 }

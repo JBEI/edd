@@ -525,7 +525,7 @@ var LineResults = (function (_super) {
         _super.call(this, dataGridSpec);
     }
     LineResults.prototype._getClasses = function () {
-        return 'dataTable sortable dragboxes hastablecontrols';
+        return 'dataTable sortable dragboxes hastablecontrols table-striped';
     };
     return LineResults;
 }(DataGrid));

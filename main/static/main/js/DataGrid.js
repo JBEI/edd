@@ -34,7 +34,7 @@ var DataGrid = (function () {
         this._timers = {};
         this._widgetRefreshCooldownTimer = null;
         this._widgetRefreshPending = false;
-        this._classes = 'dataTable sortable dragboxes hastablecontrols table-bordered';
+        this._classes = 'dataTable sortable dragboxes hastablecontrols table-striped table-bordered';
         var tableBody = $(this._tableBody = document.createElement("tbody"));
         // First step: Blow away the old contents of the table
         $(this._table).empty()
@@ -425,12 +425,6 @@ var DataGrid = (function () {
         // But if grouping is enabled and there is at least one group, we add them a few at a time,
         // proceeding through each group.
         if (!this._groupingEnabled || rowGroupSpec.length < 1) {
-            if (this._spec.tableSpec.applyStriping) {
-                filteredSequence.forEach(function (s) {
-                    striping = 1 - striping;
-                    _this._recordElements[s].applyStriping(striping);
-                });
-            }
             filteredSequence.forEach(function (s) {
                 var rows = _this._recordElements[s].getElements();
                 rows.forEach(function (row) {
@@ -439,8 +433,6 @@ var DataGrid = (function () {
             });
         }
         else {
-            var stripeStyles = ['stripeRowA', 'stripeRowB'];
-            var stripeStylesJoin = stripeStyles.join(' ');
             filteredSequence.forEach(function (s) {
                 var rowGroup = rowGroupSpec[_this._spec.getRowGroupMembership(s)];
                 rowGroup.memberRecords.push(_this._recordElements[s]);
@@ -459,10 +451,6 @@ var DataGrid = (function () {
             rowGroupSpec.forEach(function (rowGroup) {
                 striping = 1 - striping;
                 frag.appendChild(rowGroup.replicateGroupTable);
-                if (_this._spec.tableSpec.applyStriping) {
-                    rowGroup.replicateGroupTitleRowJQ
-                        .removeClass(stripeStylesJoin).addClass(stripeStyles[striping]).end();
-                }
             });
             // TODO: This command doesn't make sense - the frag is not in the document yet
             $(frag).insertBefore($(this._tableBody));
@@ -949,10 +937,7 @@ var DataGridRecord = (function () {
         this.recordID = id;
         this.rowElements = [];
         this.dataGridDataRows = [];
-        this.stripeStyles = ['stripeRowA', 'stripeRowB'];
-        this.stripeStylesJoin = this.stripeStyles.join(' ');
         this.createdElements = false;
-        this.recentStripeIndex = null;
     }
     DataGridRecord.prototype.reCreateElementsInPlace = function () {
         // If the elements haven't been created even once, then divert to standard creation and finish.
@@ -979,10 +964,6 @@ var DataGridRecord = (function () {
         // The old cells are still referenced in their colSpec objects before this,
         // but calling generateCells again automatically replaces them.
         this.createElements();
-        // If recentStripeIndex is null, we haven't applied any striping to the previous row, so we skip it here.
-        if (!(this.recentStripeIndex === null)) {
-            this.applyStriping(this.recentStripeIndex);
-        }
         // Drop the new rows into place where the old rows lived.
         if (previousParent) {
             if (nextSibling) {
@@ -1069,15 +1050,6 @@ var DataGridRecord = (function () {
             this.createElements();
         }
         return this.rowElements;
-    };
-    DataGridRecord.prototype.applyStriping = function (stripeIndex) {
-        var _this = this;
-        var rows = this.getDataGridDataRows();
-        this.recentStripeIndex = stripeIndex;
-        rows.forEach(function (row) {
-            var rJQ = row.getElementJQ();
-            rJQ.removeClass(_this.stripeStylesJoin).addClass(_this.stripeStyles[stripeIndex]);
-        });
     };
     return DataGridRecord;
 }());
@@ -1687,11 +1659,10 @@ var DGPagingWidget = (function (_super) {
 var DataGridTableSpec = (function () {
     function DataGridTableSpec(id, opt) {
         this.id = id; // ID is required, initialize sensible defaults for everything else
-        opt = $.extend({ 'name': '', 'defaultSort': 0, 'showHeader': true, 'applyStriping': true }, opt);
+        opt = $.extend({ 'name': '', 'defaultSort': 0, 'showHeader': true }, opt);
         this.name = opt['name'];
         this.defaultSort = opt['defaultSort'];
         this.showHeader = opt['showHeader'];
-        this.applyStriping = opt['applyStriping'];
     }
     return DataGridTableSpec;
 }());
