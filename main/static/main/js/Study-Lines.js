@@ -176,7 +176,7 @@ var StudyLines;
             line.find('.meta-prefix').remove();
             if (type) {
                 if (type.pre) {
-                    $('<span>').addClass('meta-prefix').text(type.pre).insertAfter(input);
+                    $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
                 }
                 if (type.postfix) {
                     $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
@@ -450,9 +450,14 @@ var StudyLines;
                 $(ev.target).siblings('label').find('.bulk').prop('checked', true);
             });
         }
+        else {
+            $('.bulkNoteGroup').addClass('off');
+            $('#id_line-name').parent().show();
+        }
         if (ids.length === 1) {
             $('.bulkNoteGroup').addClass('off');
             fillLineForm(EDDData.Lines[ids[0]]);
+            $('#id_line-name').parent().show();
         }
         else {
             // compute used metadata fields on all data.ids, insert metadata rows?

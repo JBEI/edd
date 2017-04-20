@@ -217,7 +217,7 @@ namespace StudyLines {
 
              if (type) {
                  if (type.pre) {
-                    $('<span>').addClass('meta-prefix').text(type.pre).insertAfter(input);
+                    $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
                  }
 
                  if (type.postfix) {
@@ -521,11 +521,15 @@ namespace StudyLines {
             form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
                 $(ev.target).siblings('label').find('.bulk').prop('checked', true);
             });
+        } else {
+             $('.bulkNoteGroup').addClass('off');
+             $('#id_line-name').parent().show();
         }
 
         if (ids.length === 1) {
             $('.bulkNoteGroup').addClass('off');
             fillLineForm(EDDData.Lines[ids[0]]);
+            $('#id_line-name').parent().show();
         } else {
             // compute used metadata fields on all data.ids, insert metadata rows?
             ids.map((id:number) => EDDData.Lines[id] || {}).forEach((line:LineRecord) => {
