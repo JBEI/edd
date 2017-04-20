@@ -10,9 +10,12 @@ from allauth.exceptions import ImmediateHttpResponse
 from allauth.socialaccount import providers
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django_auth_ldap.backend import LDAPBackend
+from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import redirect
+from django.utils.module_loading import import_string
 from django.utils.translation import ugettext_lazy as _
+from six import string_types
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +23,16 @@ logger = logging.getLogger(__name__)
 
 class EDDAccountAdapter(DefaultAccountAdapter):
     """ Adapter overrides default behavior for username selection and email verification. """
+
+    def is_open_for_signup(self, request):
+        allow_signup = getattr(settings, 'EDD_ALLOW_SIGNUP', None)
+        if isinstance(allow_signup, string_types):
+            allow_signup = import_string(allow_signup)
+        if hasattr(allow_signup, '__call__'):
+            return allow_signup(request)
+        elif isinstance(allow_signup, bool):
+            return allow_signup
+        return super(EDDAccountAdapter, self).is_open_for_signup(request)
 
     def populate_username(self, request, user):
         """ Takes a partial user, and sets the username if missing based on existing fields. """
