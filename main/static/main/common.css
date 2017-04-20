@@ -505,6 +505,10 @@ div.noLines {
     padding-left: 15px;
 }
 
+.bulkNote {
+    color: blue;
+}
+
 /* Data tables and controls */
 
 table.dataTable {
