@@ -662,6 +662,7 @@ module Utl {
         processRawFn: any;
         processResponseFn: any;
         processErrorFn: any;
+        processWarningFn: any;
 
         static fileContainerIndexCounter: number = 0;
 
@@ -688,6 +689,7 @@ module Utl {
             this.processRawFn = options.processRawFn;
             this.processResponseFn = options.processResponseFn;
             this.processErrorFn = options.processErrorFn;
+            this.processWarningFn = options.processWarningFn;
             this.url = options.url;
         }
 
@@ -771,6 +773,7 @@ module Utl {
         }
 
 
+
         uploadFile(fileContainer: FileDropZoneFileContainer) {
 
             var t = this;
@@ -786,10 +789,12 @@ module Utl {
                 if (result.python_error) {
                     // If we were given a function to process the error, use it.
                     if (typeof t.processErrorFn === "function") {
-                        t.processErrorFn(fileContainer, xhr.response);
+                        t.processErrorFn(fileContainer, xhr);
                     } else {
                         alert(result.python_error);
                     }
+                } else if (result.warnings) {
+                    t.processWarningFn(fileContainer, result);
                 } else if (typeof t.processResponseFn === "function") {
                     t.processResponseFn(fileContainer, result);
                 }
@@ -798,9 +803,17 @@ module Utl {
 
             f.event('error', function(e, xhr) {
                 if (typeof t.processErrorFn === "function") {
-                    t.processErrorFn(fileContainer, xhr.response);
+                    t.processErrorFn(fileContainer, xhr, this.url);
                 }
-                fileContainer.allWorkFinished = true;
+                if($('#omitStrains').data('clicked')) {
+                    // var result = jQuery.parseJSON(xhr.responseText);
+                    fileContainer.extraHeaders['ignoreIceRelatedErrors'] = 'true';
+                    // t.callInitFile.call(t, fileContainer);
+                    // t.callProcessRaw.call(t, fileContainer);
+                } else {
+                    fileContainer.allWorkFinished = true;
+                }
+
             });
 
             f.event('xhrSetup', function(xhr) {
@@ -972,4 +985,3 @@ module Utl {
     }
 
 } // end module Utl
-

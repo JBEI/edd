@@ -507,10 +507,29 @@ ul.studyTabs {
 div.noLines {
     display: none;
 }
-.linesSelectedCell {
-    padding-left: 15px;
+
+span.allowError {
+    font-weight:bold;
+    margin-left:2px;
+    margin-right:10px
 }
 
+input.dontAllowError {
+    margin-right:10px;
+    margin-left: 10px;
+}
+
+span.alertSubject {
+    font-weight: bold;
+}
+
+input.yesAlertInput {
+    margin-right:10px
+}
+
+p.alertWarning {
+    margin: 0px;
+}
 /* Data tables and controls */
 
 table.dataTable {
@@ -1424,6 +1443,27 @@ div.errorMessage > a.close {
     float: right;
     margin: 0 5px;
 }
+
+span.alertSubject {
+    font-weight: bold;
+}
+
+.dismissAll {
+    margin-bottom: 10px;
+}
+
+.acceptWarnings {
+    margin: 10px 0px 10px 0px;
+}
+
+input.yesAlertInput {
+    margin-right:10px
+}
+
+p.alertWarning {
+    margin: 0px;
+}
+
 
 .errorlist {
     list-style: none;

@@ -46,7 +46,38 @@
                 <span aria-hidden="true">&times;</span>
             </button>
         </div>
-        <div id="alert_placeholder"></div>
+        <div id="dismissAll">
+            <button class="btn btn-info dismissAll" style="display: none;">Dismiss</button>
+        </div>
+        <div id="acceptWarnings">
+            <button type="button" class="acceptWarnings btn btn-primary" style="display: none;">Acknowledge Warnings</button>
+        </div>
+        <div id="alert_placeholder">
+            <div class="alert alert-danger alert-dismissible" hidden>
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4 class="alertSubject"></h4>
+                <p class="alertWarning"></p>
+            </div>
+            <div class="alert alert-warning alert-dismissible" hidden>
+                <button type="button" class="close" data-dismiss="alert">&times;</button><h4 class="alertSubject"></h4>
+            </div>
+            <div id="actionWarningBar">
+            <div id="duplicateError" role="alert" class="alert alert-warning alert-dismissible " hidden>
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4 class="alertSubject"></h4>
+                <p class="alertWarning"></p>
+                <button type="button" class="btn btn-warning yesAlertInput allowDuplicates" >Allow Duplicates</button>
+                <button type="button" class="btn btn-danger dontAllowError noDuplicates">Cancel</button>
+            </div>
+            <div id="iceError" role="alert" class="alert alert-warning alert-dismissible" hidden>
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4 class="alertSubject"></h4>
+                <p class="alertWarning"></p>
+                <button type="button" class="btn btn-warning yesAlertInput omitStrains">Omit Strains</button>
+                <button type="button" class="btn btn-danger dontAllowError noOmitStrains">Cancel</button>
+            </div>
+            </div>
+        </div>
 
         <table class="formTable" style="width:90%;">
             <tr>
