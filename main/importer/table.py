@@ -136,12 +136,13 @@ class TableImport(object):
             # so we check it.
             protocol = self._init_item_protocol(item)
             line = self._init_item_line(item)
-            if assay_name is None or assay_name.strip() == '':
-                # if we have no name, 'named_or_new' and 'new' are treated the same
-                assay_name = str(line.new_assay_number(protocol))
             if protocol is None or line is None:
                 pass  # already logged errors, move on
             else:
+                if assay_name is None or assay_name.strip() == '':
+                    # if we have no name, 'named_or_new' and 'new' are treated the same
+                    index = line.new_assay_number(protocol)
+                    assay_name = models.Assay.build_name(line, protocol, index)
                 key = (line.id, assay_name)
                 if key in self._line_assay_lookup:
                     assay = self._line_assay_lookup[key]
@@ -405,4 +406,3 @@ class TableImport(object):
 
     def _replace(self):
         return self._data.get('writemode', None) == 'r'
-    
