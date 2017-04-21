@@ -9,7 +9,7 @@ API. The general process followed by this script is:
     narrow and/or interpret search results. Clients would likely need to create additional 
     caches -- this sample focuses just on querying / cacheing the most relevant and 
     easily-cacheable EDD data.
-    
+
 One notable omission in this example is querying for line/assay metadata that define culture 
 conditions.  If the first version is helpful, further examples of those queries can be added.
 
@@ -42,6 +42,7 @@ from jbei.utils import session_login
 
 logger = logging.getLogger(__name__)
 
+
 class SearchParameters:
     """
     Captures hard-coded parameters used to narrow the bounds of EDD searches for this sample 
@@ -71,6 +72,7 @@ class SearchParameters:
 
     def filter_by_units(self):
         return bool(self.unit_name_regexes)
+
 
 class ContextCache:
     """
@@ -215,6 +217,7 @@ def main():
     # TODO: client code would likely do context-specific processing here after extracting relevant
     # data from EDD
 
+
 def query_context(edd, edd_login_details, search_params):
     """
     Queries EDD, and possibly ICE, for contextual data (e.g. unique identifiers) that are 
@@ -256,6 +259,7 @@ def query_context(edd, edd_login_details, search_params):
             return None
 
     return context
+
 
 def query_protocols(edd, search_params, cache):
     """
@@ -330,6 +334,7 @@ def query_units(edd, search_params, cache):
     else:
         do_units_query(edd, cache)
 
+
 def do_units_query(edd, cache, unit_name_regex=None):
     """
     A helper method for performing the units query
@@ -349,6 +354,7 @@ def do_units_query(edd, cache, unit_name_regex=None):
             units_page = edd.search_measurement_units(query_url=units_page.next_page)
         else:
             units_page = None
+
 
 def query_strains_by_part_id(edd, edd_login_details, strain_part_ids, cache):
     """
@@ -468,6 +474,7 @@ def query_strains_by_part_id(edd, edd_login_details, strain_part_ids, cache):
     return query_edd_for_strains(edd, [ice_strain.uuid for ice_strain in
                                        cache.ice_entries_by_part_id.itervalues()], cache)
 
+
 def query_edd_for_strains(edd, strain_unique_ids, cache):
     """
     Queries EDD for strains with the requested unique identifiers (either pk or UUID)
@@ -495,6 +502,7 @@ def query_edd_for_strains(edd, strain_unique_ids, cache):
             'not_found_strain_count': len(cache.missing_edd_strains),
             'total': len(strain_unique_ids),
             'part_ids': ', '.join(cache.missing_edd_strains)})
+
 
 def query_measurement_types(edd, name_regexes, cache):
     """
@@ -525,6 +533,7 @@ def query_measurement_types(edd, name_regexes, cache):
 
         measurement_type = measurement_types_page.results[0]
         cache.add_measurement_type(measurement_type)
+
 
 def query_and_process_study_internals(edd, study, search_params, cache):
     """
@@ -582,6 +591,7 @@ def query_and_process_study_internals(edd, study, search_params, cache):
                                                         query_url=study_assays_page.next_page)
         else:
             study_assays_page = None
+
 
 def query_study_lines_and_strains(edd, study_pk, search_params, cache):
     """
@@ -643,6 +653,7 @@ def query_study_lines_and_strains(edd, study_pk, search_params, cache):
 
     return line_pks
 
+
 def query_and_process_assay_measurements(edd, study_pk, assay_pk, search_params, cache):
     """
     Queries EDD for measurements within the specified assay. 
@@ -663,6 +674,7 @@ def query_and_process_assay_measurements(edd, study_pk, assay_pk, search_params,
     else:
         _query_measurements(edd, assay_pk, measurement_query_kwargs, cache)
 
+
 def _query_measurements(edd, assay_pk, kwargs, cache):
     """
     A helper method that performs the actual query for measurements associated with the specified
@@ -674,7 +686,7 @@ def _query_measurements(edd, assay_pk, kwargs, cache):
 
         for measurement in measurements_page.results:
 
-            if not measurement.measurement_type in cache:
+            if measurement.measurement_type not in cache:
                 measurement_type = edd.get_measurement_type(measurement.measurement_type)
                 cache.add_measurement_type(measurement_type)
 
@@ -682,7 +694,8 @@ def _query_measurements(edd, assay_pk, kwargs, cache):
             # at this point
 
         if measurements_page.next_page and not is_aborted():
-            measurements_page = edd.search_assay_measurements(assay_pk,
+            measurements_page = edd.search_assay_measurements(
+                    assay_pk,
                     query_url=measurements_page.next_page)
         else:
             measurements_page = None
@@ -695,6 +708,7 @@ def is_aborted():
     # http://docs.celeryproject.org/en/latest/reference/celery.contrib.abortable.html ).
     # See EDD-187.
     return False
+
 
 if __name__ == '__main__' or __name__ == 'jbei.edd.rest.scripts.sample_rest_queries':
     result = main()
