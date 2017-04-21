@@ -1,29 +1,29 @@
 """
-A sample Python 2 script that demonstrates several anticipated uses of EDD's work-in-progress REST 
+A sample Python 2 script that demonstrates several anticipated uses of EDD's work-in-progress REST
 API. The general process followed by this script is:
 
-1) Query EDD and/or ICE for contextual data based on parameters used to narrow the bounds of the 
+1) Query EDD and/or ICE for contextual data based on parameters used to narrow the bounds of the
    search.
 2) Query EDD for studies modified after a given time (e.g. the time of the last search)
-3) Drill down into most of the study internals, caching contextual data as needed to help further 
-    narrow and/or interpret search results. Clients would likely need to create additional 
-    caches -- this sample focuses just on querying / cacheing the most relevant and 
+3) Drill down into most of the study internals, caching contextual data as needed to help further
+    narrow and/or interpret search results. Clients would likely need to create additional
+    caches -- this sample focuses just on querying / cacheing the most relevant and
     easily-cacheable EDD data.
 
-One notable omission in this example is querying for line/assay metadata that define culture 
+One notable omission in this example is querying for line/assay metadata that define culture
 conditions.  If the first version is helpful, further examples of those queries can be added.
 
 This initial version should be treated as pseudocode, since it references several API resources
-that haven't been implemented/unit tested yet. As a result of dependence on non-existent code, 
-this example also can't be tested.  For reference, see the draft EDD REST API interface document 
+that haven't been implemented/unit tested yet. As a result of dependence on non-existent code,
+this example also can't be tested.  For reference, see the draft EDD REST API interface document
 created in late 2016, which this example is based on.
- 
-This example also doesn't always carefully consider error handling or logging that should be 
-included in eventual production-level client code. However, code here is derived from initial 
-working (or at least, recently working) examples in EDD'S get_usage_statistics.py, create_lines.py, 
+
+This example also doesn't always carefully consider error handling or logging that should be
+included in eventual production-level client code. However, code here is derived from initial
+working (or at least, recently working) examples in EDD'S get_usage_statistics.py, create_lines.py,
 and maintain_ice_links.py, so should bear a strong resemblance to the final sample code.
 
-The intent is to modify this example during development of EDD's REST API and to develop it into 
+The intent is to modify this example during development of EDD's REST API and to develop it into
 working code.
 """
 
@@ -45,10 +45,10 @@ logger = logging.getLogger(__name__)
 
 class SearchParameters:
     """
-    Captures hard-coded parameters used to narrow the bounds of EDD searches for this sample 
-    program.  
-    
-    Where possible, EDD clients are highly encouraged to filter results for better performance / 
+    Captures hard-coded parameters used to narrow the bounds of EDD searches for this sample
+    program.
+
+    Where possible, EDD clients are highly encouraged to filter results for better performance /
     earlier detection of some common errors.
     """
     def __init__(self):
@@ -76,14 +76,14 @@ class SearchParameters:
 
 class ContextCache:
     """
-    A cache of contextual query results from EDD/ICE that should be static on a short time scale. 
-    
-    These queries should be re-executed with client each program run, but provided the run length 
-    isn't too long, the results can be safely assumed to be static during a single execution. In 
-    this example, they're useful for things like interpreting and/or filtering out only the 
+    A cache of contextual query results from EDD/ICE that should be static on a short time scale.
+
+    These queries should be re-executed with client each program run, but provided the run length
+    isn't too long, the results can be safely assumed to be static during a single execution. In
+    this example, they're useful for things like interpreting and/or filtering out only the
     measurements and strains of interest for a particular client application.
-    
-    Depending on use, it may or may not be appropriate for clients to cache all of this 
+
+    Depending on use, it may or may not be appropriate for clients to cache all of this
     information, but this example should be a good starting point for future work.
     """
     def __init__(self):
@@ -95,7 +95,7 @@ class ContextCache:
         # strains it's aware of.
         self.edd_strains_by_part_id = {}  # empty if not filtering by strain
         self.ice_entries_by_part_id = {}  # empty if not filtering by strain
-        self.edd_strains_by_pk = {} # cache for EDD strains of interest
+        self.edd_strains_by_pk = {}  # cache for EDD strains of interest
 
         # Measurement type lookup tables
         self.measurement_types_by_pk = {}
@@ -109,7 +109,7 @@ class ContextCache:
         # These are most likely due to user error at some stage of the process, but tend to
         # manifest during part lookup in ICE.
 
-        self.missing_part_ids = [] # IDs for parts that ICE informed us are not present
+        self.missing_part_ids = []  # IDs for parts that ICE informed us are not present
 
         # ID's for ICE parts where we encountered permission problems during lookup. This happens!!
         self.ice_permission_error_part_ids = []
@@ -183,7 +183,7 @@ def main():
     # results processed later on.
     ######################################################################################
     search_params = SearchParameters()
-    context_cache  = query_context(edd, edd_login_details, search_params)
+    context_cache = query_context(edd, edd_login_details, search_params)
 
     # return early if context metadata queries failed due to data entry error(s) somewhere
     # in the chain that become visible when querying ICE for part IDs
@@ -220,15 +220,15 @@ def main():
 
 def query_context(edd, edd_login_details, search_params):
     """
-    Queries EDD, and possibly ICE, for contextual data (e.g. unique identifiers) that are 
-    important for filtering and interpreting study results.  
-    
-    Note that because they're user-maintained, contextual data are likely to be different 
-    across EDD / ICE instances. We should take care to consider how often contextual 
-    data are likely to change by comparison with our program run.  Probably safe in many cases 
-    to query once per run to pick up infrequent changes, then assume the data are static during 
+    Queries EDD, and possibly ICE, for contextual data (e.g. unique identifiers) that are
+    important for filtering and interpreting study results.
+
+    Note that because they're user-maintained, contextual data are likely to be different
+    across EDD / ICE instances. We should take care to consider how often contextual
+    data are likely to change by comparison with our program run.  Probably safe in many cases
+    to query once per run to pick up infrequent changes, then assume the data are static during
     execution time.
-    
+
     :param edd: the EddApi instance to use in querying EDD for contextual data
     :param edd_login_details: edd login details to be used for subsequent ICE API access, if needed
     :param search_params: search parameters used to identify contextual data of interest
@@ -263,17 +263,17 @@ def query_context(edd, edd_login_details, search_params):
 
 def query_protocols(edd, search_params, cache):
     """
-    Queries EDD for the sample prep / measurement protocols configured in the system, then caches 
-    them for subsequent use in interpreting study data. If a subset of protocols of interest is 
-    identified, only those will be found within EDD, otherwise all protocols from the instance 
+    Queries EDD for the sample prep / measurement protocols configured in the system, then caches
+    them for subsequent use in interpreting study data. If a subset of protocols of interest is
+    identified, only those will be found within EDD, otherwise all protocols from the instance
     will be cached.
-    
-    Note that this example may be useful for initial location of a subset of protocols of interest 
-    within an EDD instance, but repeated use will be more efficient if clients use protocol 
+
+    Note that this example may be useful for initial location of a subset of protocols of interest
+    within an EDD instance, but repeated use will be more efficient if clients use protocol
     primary key or UUID for lookup on subsequent runs.
-    
-    :param edd: the EddApi instance to use in performing queries. 
-    :param search_params: search parameters for the query. 
+
+    :param edd: the EddApi instance to use in performing queries.
+    :param search_params: search parameters for the query.
     :param cache: a cache to store query results in
     """
 
@@ -311,12 +311,12 @@ def query_protocols(edd, search_params, cache):
 
 def query_units(edd, search_params, cache):
     """
-        Queries EDD for the sample measurement units configured in the system, then 
-        caches them for subsequent use. If a subset of units of interest is identified, only those 
+        Queries EDD for the sample measurement units configured in the system, then
+        caches them for subsequent use. If a subset of units of interest is identified, only those
         will be found within EDD, otherwise all units from the instance will be cached.
 
-        Note that this example may be useful for initial location of a subset of units of 
-        interest within an EDD instance, but repeated use will be more efficient if clients use 
+        Note that this example may be useful for initial location of a subset of units of
+        interest within an EDD instance, but repeated use will be more efficient if clients use
         unit primary key or UUID for lookup on subsequent runs.
 
         :param edd: the EddApi instance to use in performing queries
@@ -326,7 +326,7 @@ def query_units(edd, search_params, cache):
 
     # if filtering by units, only get the units of interest
     if search_params.filter_by_units():
-        for unit_name_regex  in search_params.unit_name_regexes:
+        for unit_name_regex in search_params.unit_name_regexes:
             do_units_query(edd, cache, unit_name_regex=unit_name_regex)
 
     # otherwise, just get all the units known to the system.  To start with, there shouldn't be
@@ -359,14 +359,15 @@ def do_units_query(edd, cache, unit_name_regex=None):
 def query_strains_by_part_id(edd, edd_login_details, strain_part_ids, cache):
     """
     Queries ICE to find parts associated with the requested part IDs, then uses UUID's found in ICE
-    to query EDD for related strain entries.  Note that several distinct error types are 
-    expected to occur during this lookup process as a result of user error during data entry into 
-    ICE/EDD.  Sample error handling code in this method is patterned after the code used by EDD 
-    during the Experiment Description file processing, and accounts for the errors observed to date.
-    
+    to query EDD for related strain entries.  Note that several distinct error types are
+    expected to occur during this lookup process as a result of user error during data entry into
+    ICE/EDD.  Sample error handling code in this method is patterned after the code used by EDD
+    during the Experiment Description file processing, and accounts for the errors observed to
+    date.
+
     :param edd: the EddApi instance to use for EDD queries.
-    :param edd_login_details: user credentials entered during prior EDD login. The same 
-    credentials will be used to log into ICE. Note this assumes LBL affiliate status used to 
+    :param edd_login_details: user credentials entered during prior EDD login. The same
+    credentials will be used to log into ICE. Note this assumes LBL affiliate status used to
     access both systems.
     :param strain_part_ids: locally-unique ICE part IDs for the strains of interest.
     :param cache: a cache to store strain information in
@@ -446,11 +447,12 @@ def query_strains_by_part_id(edd, edd_login_details, strain_part_ids, cache):
         ice_part_err_abort = True
 
     if cache.ice_permission_error_part_ids:
-        logger.error('Permissions error accessing %(err_count)d of %(total)d ICE parts: %(ids)s' % {
-            'err_count': len(cache.ice_permission_error_part_ids),
-            'total': len(strain_part_ids),
-            'ids': ', '.join(cache.ice_permission_error_part_ids),
-        })
+        logger.error('Permissions error accessing %(err_count)d of %(total)d ICE parts: %(ids)s' %
+                     {
+                         'err_count': len(cache.ice_permission_error_part_ids),
+                         'total': len(strain_part_ids),
+                         'ids': ', '.join(cache.ice_permission_error_part_ids),
+                     })
         ice_part_err_abort = True
 
     if cache.non_strain_ice_parts:
@@ -496,12 +498,13 @@ def query_edd_for_strains(edd, strain_unique_ids, cache):
             cache.missing_edd_strains.append((part_id, ice_entry.uuid))
 
     if cache.missing_edd_strains:
-        logger.warning("%(not_found_strain_count)d of %(total)d strains of interest were not "
-                       "found in EDD, and thus can't be included in any uploaded measurements. "
-                       "You may want to look into this: %(part_ids)s" % {
-            'not_found_strain_count': len(cache.missing_edd_strains),
-            'total': len(strain_unique_ids),
-            'part_ids': ', '.join(cache.missing_edd_strains)})
+        logger.warning(
+                "%(not_found_strain_count)d of %(total)d strains of interest were not found in "
+                "EDD, and thus can't be included in any uploaded measurements. You may want to "
+                "look into this: %(part_ids)s" % {
+                    'not_found_strain_count': len(cache.missing_edd_strains),
+                    'total': len(strain_unique_ids),
+                    'part_ids': ', '.join(cache.missing_edd_strains)})
 
 
 def query_measurement_types(edd, name_regexes, cache):
@@ -524,7 +527,7 @@ def query_measurement_types(edd, name_regexes, cache):
 
         if not measurement_types_page:
             raise ValueError('No result returned for measurement type named "%s"' %
-                    name_regex)
+                             name_regex)
 
         if measurement_types_page.total_result_count != 1:
             raise ValueError(
@@ -537,12 +540,12 @@ def query_measurement_types(edd, name_regexes, cache):
 
 def query_and_process_study_internals(edd, study, search_params, cache):
     """
-    Queries EDD for internals of the specified study and leaves a placeholder for client code 
+    Queries EDD for internals of the specified study and leaves a placeholder for client code
     that would be responsible to do processing based on it.
     :param edd: the EddApi instance to use in querying EDD
     :param study: the study whose internals will be accessed
     :param cache: a cache of context data to help in interpreting study results
-    :param search_params: search parameters that may be used to limit the subset of study data 
+    :param search_params: search parameters that may be used to limit the subset of study data
     examined by queries
     """
 
@@ -596,19 +599,18 @@ def query_and_process_study_internals(edd, study, search_params, cache):
 def query_study_lines_and_strains(edd, study_pk, search_params, cache):
     """
     Queries EDD for the lines within a single study.  If configured to filter results by strain,
-    only lines for the requested strains will be processed. Otherwise, strains associated with 
+    only lines for the requested strains will be processed. Otherwise, strains associated with
     each discovered line are cached to simplify future processing.
-    
+
     :param edd: the EddApi instance to use for queries
     :param study_pk: the primary key of the study whose lines should be processed
-    :param search_params: search parameters to limit query results and further downstream 
+    :param search_params: search parameters to limit query results and further downstream
         processing
-    :param cache: the cache to populate with observed strains, if not already done due to strain 
+    :param cache: the cache to populate with observed strains, if not already done due to strain
         filtering
     :return: a list of line primary keys if needed to limit query results to only the lines for
         configured strains of interest. Otherwise, an empty list.
     """
-
 
     # We'll want to either limit our search to lines that include our strains of interest,
     # or else we'll need to look up the strains associated with them so we know how to interpret
@@ -647,7 +649,8 @@ def query_study_lines_and_strains(edd, study_pk, search_params, cache):
 
         # get the next page of line results (if any)
         if lines_page.next_page and not is_aborted():
-            lines_page = edd.search_lines(**line_kwargs, page_number=lines_page.next_page)
+            line_kwargs['page_number'] = lines_page.next_page
+            lines_page = edd.search_lines(**line_kwargs)
         else:
             lines_page = None
 
@@ -656,11 +659,11 @@ def query_study_lines_and_strains(edd, study_pk, search_params, cache):
 
 def query_and_process_assay_measurements(edd, study_pk, assay_pk, search_params, cache):
     """
-    Queries EDD for measurements within the specified assay. 
+    Queries EDD for measurements within the specified assay.
     """
 
     measurement_query_kwargs = {'active': True,
-                                'include_values': True,}
+                                'include_values': True, }
 
     # if configured, filter query results by measurement type
     if search_params.filter_by_measurement_type():
