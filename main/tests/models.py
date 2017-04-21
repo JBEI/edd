@@ -419,7 +419,6 @@ class AssayDataTests(TestCase):
     def test_assay(self):
         assay = Assay.objects.get(description="GC-MS assay 1")
         assay.to_json()
-        self.assertTrue(assay.long_name == "WT1-gc-ms-1")
         new_assay_number = assay.line.new_assay_number("gc-ms")
         self.assertTrue(new_assay_number == 2)
 

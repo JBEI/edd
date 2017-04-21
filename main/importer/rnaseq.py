@@ -85,7 +85,7 @@ class import_rna_seq(object):
                         continue
                 assay_start_id = line.new_assay_number(protocol)
                 assay = line.assay_set.create(
-                    name=str(assay_start_id),
+                    name=Assay.build_name(line, protocol, assay_start_id),
                     description=desc,
                     protocol=protocol,
                     experimenter=user,
@@ -279,7 +279,7 @@ def interpret_raw_rna_seq_data(raw_data, study, file_name=None):
         "raw_data": raw_data,
         "table": table,
         "samples": samples,
-        "assays": [{"id": a.id, "name": a.long_name} for a in assays],
+        "assays": [{"id": a.id, "name": a.name} for a in assays],
     }
 
 

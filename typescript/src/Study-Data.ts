@@ -188,7 +188,6 @@ namespace StudyDataPage {
             $.each(this.allFilters, (i, widget) => {
                 if (widget.isFilterUseful()) {
                     widget.addToParent(this.filterTableJQ[0]);
-                    widget.applyBackgroundStyle(dark);
                     dark = !dark;
                 } else {
                     widget.detach();
@@ -629,12 +628,6 @@ namespace StudyDataPage {
 
         detach():void {
             $(this.filterColumnDiv).detach();
-        }
-
-        // Used to apply mild alternate striping to the filters so they stand out a bit from each other
-        applyBackgroundStyle(darker:boolean):void {
-            $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
-            $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
         }
 
         // Runs through the values in uniqueValuesOrder, adding a checkbox and label for each
@@ -1695,7 +1688,7 @@ namespace StudyDataPage {
 
     function actionPanelRefresh() {
         var checkedBoxes: HTMLInputElement[], checkedAssays: number, checkedMeasure: number,
-            nothingSelected: boolean, viewHeight: number, itemsHeight: number;
+            nothingSelected: boolean, contentScrolling: boolean, filterInBottom: boolean;
         // Figure out how many assays/checkboxes are selected.
 
         // Don't show the selected item count if we're not looking at the table.
@@ -1735,22 +1728,40 @@ namespace StudyDataPage {
                 $('#TableShowEAssaysCB').click();
             }
         }
-        // calculate how big everything is
-        viewHeight = $('#content').height();
-        itemsHeight = 0;
-        $('#content').children().each((i, e) => { itemsHeight += e.scrollHeight; });
-        // switch where controls are visible based on size
-        if (actionPanelIsInBottomBar && itemsHeight < viewHeight) {
+
+        // move buttons so they are always visible if the page is scrolling
+        contentScrolling = isContentScrolling();
+        if (actionPanelIsInBottomBar && !contentScrolling) {
             $('#assaysActionPanel').show();
             $('#copyActionPanel').hide();
-            $('#mainFilterSection').appendTo('#content');
             actionPanelIsInBottomBar = false;
-        } else if (!actionPanelIsInBottomBar && viewHeight < itemsHeight) {
+        } else if (!actionPanelIsInBottomBar && contentScrolling) {
             $('#assaysActionPanel').hide();
             $('#copyActionPanel').show();
-            $('#mainFilterSection').appendTo('#bottomBar');
             actionPanelIsInBottomBar = true;
         }
+
+        // only move the filter section when the page is scrolling in table view
+        if (viewingMode == 'table') {
+            contentScrolling = isContentScrolling();
+            filterInBottom = $('#mainFilterSection').parent().is('#bottomBar');
+            if (filterInBottom && !contentScrolling) {
+                $('#mainFilterSection').appendTo('#content');
+            } else if (!filterInBottom && contentScrolling) {
+                $('#mainFilterSection').appendTo('#bottomBar');
+            }
+        } else {
+            // always put filter section in main content when not in table view
+            $('#mainFilterSection').appendTo('#content');
+        }
+    }
+
+
+    function isContentScrolling(): boolean {
+        var viewHeight: number = 0, itemsHeight: number = 0;
+        viewHeight = $('#content').height();
+        $('#content').children().each((i, e) => { itemsHeight += e.scrollHeight; });
+        return viewHeight < itemsHeight;
     }
 
 
@@ -1788,7 +1799,7 @@ namespace StudyDataPage {
             assay = EDDData.Assays[measure.assay] || {};
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
-            name = [line.name, protocol.name, assay.name].join('-');
+            name = assay.name;
             lineName = line.name;
 
             var label = $('#' + line['identifier']).next();
@@ -2402,7 +2413,7 @@ class DataGridAssays extends DataGrid {
     }
 
     _getClasses():string {
-        return 'dataTable sortable dragboxes hastablecontrols';
+        return 'dataTable sortable dragboxes hastablecontrols table-striped';
     }
 
     getCustomControlsArea():HTMLElement {
@@ -2521,9 +2532,16 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // decoration.
         var assay, line, protocolNaming;
         if ((assay = EDDData.Assays[index])) {
-            protocolNaming = EDDData.Protocols[assay.pid].name;
+            return assay.name.toUpperCase();
+        }
+        return '';
+    }
+
+    private loadLineName(index: any): string {
+        var assay, line;
+        if ((assay = EDDData.Assays[index])) {
             if ((line = EDDData.Lines[assay.lid])) {
-                return [line.n, protocolNaming, assay.name].join('-').toUpperCase();
+                return line.name.toUpperCase();
             }
         }
         return '';
@@ -2566,24 +2584,29 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 'name': 'Name',
                 'headerRow': 2,
                 'sortBy': this.loadAssayName
+            }),
+            new DataGridHeaderSpec(2, 'hAssayLineName', {
+                'name': 'Line',
+                'headerRow': 2,
+                'sortBy': this.loadLineName
             })
         ];
 
-        this.measuringTimesHeaderSpec = new DataGridHeaderSpec(5 + metaDataHeaders.length,
+        this.measuringTimesHeaderSpec = new DataGridHeaderSpec(6 + metaDataHeaders.length,
                 'hAssaysMTimes', { 'name': 'Measuring Times', 'headerRow': 2 });
 
         var rightSide = [
-            new DataGridHeaderSpec(2 + metaDataHeaders.length,
+            new DataGridHeaderSpec(3 + metaDataHeaders.length,
                     'hAssaysMName',
                     { 'name': 'Measurement', 'headerRow': 2 }),
-            new DataGridHeaderSpec(3 + metaDataHeaders.length,
+            new DataGridHeaderSpec(4 + metaDataHeaders.length,
                     'hAssaysUnits',
                     { 'name': 'Units', 'headerRow': 2 }),
-            new DataGridHeaderSpec(4 + metaDataHeaders.length,
+            new DataGridHeaderSpec(5 + metaDataHeaders.length,
                     'hAssaysCount',
                     { 'name': 'Count', 'headerRow': 2 }),
             this.measuringTimesHeaderSpec,
-            new DataGridHeaderSpec(6 + metaDataHeaders.length,
+            new DataGridHeaderSpec(7 + metaDataHeaders.length,
                     'hAssaysExperimenter',
                     {
                         'name': 'Experimenter',
@@ -2591,7 +2614,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                         'sortBy': this.loadExperimenterInitials,
                         'sortAfter': 1
                     }),
-            new DataGridHeaderSpec(7 + metaDataHeaders.length,
+            new DataGridHeaderSpec(8 + metaDataHeaders.length,
                     'hAssaysModified',
                     {
                         'name': 'Last Modified',
@@ -2628,10 +2651,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
     generateAssayNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-
-
         var record = EDDData.Assays[index], line = EDDData.Lines[record.lid];
-            var sideMenuItems = [
+        var sideMenuItems = [
             '<a class="assay-edit-link" onclick="StudyDataPage.editAssay([' + index + '])">Edit Assay</a>',
             '<a href="/export?assayId=' + index + '">Export Data as CSV</a>'
         ];
@@ -2651,7 +2672,17 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': [line.name, EDDData.Protocols[record.pid].name, record.name].join('-')
+                'contentString': record.name
+            })
+        ];
+    }
+
+    generateLineNameCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[] {
+        var record = EDDData.Assays[index], line = EDDData.Lines[record.lid];
+        return [
+            new DataGridDataCell(gridSpec, index, {
+                'rowspan': gridSpec.rowSpanForRecord(index),
+                'contentString': line.name
             })
         ];
     }
@@ -2936,21 +2967,22 @@ class DataGridSpecAssays extends DataGridSpecBase {
             rightSide:DataGridColumnSpec[];
 
         leftSide = [
-            new DataGridColumnSpec(1, this.generateAssayNameCells)
-           ];
+            new DataGridColumnSpec(1, this.generateAssayNameCells),
+            new DataGridColumnSpec(2, this.generateLineNameCells)
+        ];
 
         metaDataCols = this.metaDataIDsUsedInAssays.map((id, index) => {
             var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridColumnSpec(2 + index, this.makeMetaDataCellsGeneratorFunction(id));
+            return new DataGridColumnSpec(3 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
 
         rightSide = [
-            new DataGridColumnSpec(2 + metaDataCols.length, this.generateMeasurementNameCells),
-            new DataGridColumnSpec(3 + metaDataCols.length, this.generateUnitsCells),
-            new DataGridColumnSpec(4 + metaDataCols.length, this.generateCountCells),
-            new DataGridColumnSpec(5 + metaDataCols.length, this.generateMeasuringTimesCells),
-            new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterCells),
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(3 + metaDataCols.length, this.generateMeasurementNameCells),
+            new DataGridColumnSpec(4 + metaDataCols.length, this.generateUnitsCells),
+            new DataGridColumnSpec(5 + metaDataCols.length, this.generateCountCells),
+            new DataGridColumnSpec(6 + metaDataCols.length, this.generateMeasuringTimesCells),
+            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterCells),
+            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
         ];
 
         return leftSide.concat(metaDataCols, rightSide);

@@ -52,12 +52,17 @@ USE_CELERY = True
 # create_lines.py and maintain_ice_links.py
 PUBLISH_REST_API = False
 
+# False disables signup. A callable object will get called with a request object. A string type
+#   will attempt to look up and instantiate an object to use/call.
+EDD_ALLOW_SIGNUP = True
+
 # True disables all study creation by non-superusers. Used to disable writes to the public EDD
 # until the "web of EDD's" can be implemented.
 EDD_ONLY_SUPERUSER_CREATE = False
 
 # Uncomment to give read permission to new studies to a list of user groups by default
 # EDD_DEFAULT_STUDY_READ_GROUPS = ['GROUP NAME']
+
 
 ###################################################################################################
 # You can override the default logging configuration

@@ -1688,23 +1688,14 @@ class Line(EDDObject):
         return ",".join([cs.labeling for cs in self.carbon_source.all()])
 
     def new_assay_number(self, protocol):
-        """ Given a Protocol name, fetch all matching child Assays, attempt to convert their names
-            into integers, and return the next highest integer for creating a new assay.  (This
-            will result in duplication of names for Assays of different protocols under the same
-            Line, but the frontend displays Assay.long_name, which should be unique.) """
+        """
+        Given a Protocol name, fetch all matching child Assays, and return one greater than the
+        count of existing assays.
+        """
         if isinstance(protocol, string_types):  # assume Protocol.name
             protocol = Protocol.objects.get(name=protocol)
         assays = self.assay_set.filter(protocol=protocol)
-        existing_assay_numbers = []
-        for assay in assays:
-            try:
-                existing_assay_numbers.append(int(assay.name))
-            except ValueError:
-                pass
-        assay_start_id = 1
-        if len(existing_assay_numbers) > 0:
-            assay_start_id = max(existing_assay_numbers) + 1
-        return assay_start_id
+        return assays.count() + 1
 
     def user_can_read(self, user):
         return self.study.user_can_read(user)
@@ -2251,9 +2242,13 @@ class Assay(EDDObject):
     def __str__(self):
         return self.name
 
-    @property
-    def long_name(self):
-        return "%s-%s-%s" % (self.line.name, self.protocol.name, self.name)
+    @classmethod
+    def build_name(cls, line, protocol, index):
+        return '%(line)s-%(protocol)s-%(index)s' % {
+            'line': line.name,
+            'protocol': protocol.name,
+            'index': str(index),
+        }
 
     def to_json(self, depth=0):
         json_dict = super(Assay, self).to_json(depth)

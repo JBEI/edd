@@ -324,7 +324,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             raise PermissionDenied(_("You do not have permission to modify this study."))
 
 
-class StudyUpdateView(generic.edit.BaseUpdateView, StudyDetailBaseView):
+class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
     """ View used to handle POST to update single Study fields. """
     update_action = None
 
@@ -1510,7 +1510,7 @@ def study_import_rnaseq_edgepro(request, pk=None, slug=None):
     for assay in assays_:
         assay_info.append({
             "id": assay.id,
-            "long_name": assay.long_name,
+            "long_name": assay.name,
             "n_meas": assay.measurement_set.count(),
         })
     return render(

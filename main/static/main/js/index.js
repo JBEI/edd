@@ -31,6 +31,23 @@ var IndexPage;
         // Instantiate a table specification for the Studies table
         this.studiesDataGridSpec = new DataGridSpecStudies();
         this.studiesDataGridSpec.init();
+        //prepare tooltip for matched searches
+        $(this.studiesDataGridSpec.tableElement).tooltip({
+            content: function () {
+                return $(this).prop('title');
+            },
+            position: { my: "left-10 center", at: "right center" },
+            show: null,
+            close: function (event, ui) {
+                ui.tooltip.hover(function () {
+                    $(this).stop(true).fadeTo(400, 1);
+                }, function () {
+                    $(this).fadeOut("400", function () {
+                        $(this).remove();
+                    });
+                });
+            }
+        });
         // Instantiate the table itself with the spec
         this.studiesDataGrid = new DataGrid(this.studiesDataGridSpec);
         this.studiesDataGridSpec.requestPageOfData(function (success) {
@@ -94,7 +111,7 @@ var DataGridSpecStudies = (function (_super) {
         if (match) {
             sideMenuItems = match.getFields().map(function (field) {
                 var matches = match.getMatches(field, '<span class="search_match">', '</span>', 10);
-                return 'Matched on ' + field + ': ' + matches.join(', ');
+                return 'Matched on ' + field + ': ' + matches.join(', ') + " ";
             });
         }
         return [
