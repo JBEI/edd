@@ -662,8 +662,8 @@ class CombinatorialCreationImporter(object):
 
         list_position = 0
 
-        # treat inability to locate an individual part as an error if globally configured to ignore
-        # missing strains, or if specifically requested for on this attempt
+        # treat inability to locate an individual part as an error unless specifically
+        # requested to ignore on this attempt
         treat_as_error = not ignore_ice_related_errors
 
         for local_ice_part_number in part_numbers:
@@ -721,10 +721,10 @@ class CombinatorialCreationImporter(object):
                     self.add_error(INTERNAL_EDD_ERROR_TITLE, FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
                                    found_entry.part_id)
 
-            elif not ignore_ice_related_errors:
+            elif treat_as_error:
                 # collect the full set of missing strains rather than failing after the first
-                self.add_issue(treat_as_error, SINGLE_PART_ACCESS_ERROR_CATEGORY,
-                               PART_NUMBER_NOT_FOUND, local_ice_part_number)
+                self.add_error(SINGLE_PART_ACCESS_ERROR_CATEGORY, PART_NUMBER_NOT_FOUND,
+                               local_ice_part_number)
 
     def _handle_systemic_ice_error(self, ignore_ice_related_errors, part_numbers, ice_entries):
         """
