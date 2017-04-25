@@ -424,11 +424,11 @@ var StudyLines;
         //if there is a meta prefix val, hide it.
         (prefixVal).remove();
         if (type.pre) {
-            $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+            $('<span>').addClass('meta-prefix').text("(" + type.pre + ") ").insertBefore(label);
         }
         $('<span>').addClass('meta-remove').text('Remove').insertAfter(label);
         if (type.postfix) {
-            $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
+            $('<span>').addClass('meta-postfix').text(" (" + type.postfix + ")").insertAfter(label);
         }
         return row;
     }
@@ -438,17 +438,26 @@ var StudyLines;
         // Update the disclose title
         var text = 'Add New Line';
         if (ids.length > 0) {
-            text = 'Edit Line' + (ids.length > 1 ? 's' : '');
+            text = 'Edit Line' + (ids.length > 1 ? 's ' + "(" + ids.length + ")" : '');
         }
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false, title: text });
         if (ids.length > 1) {
-            form.find('.bulk').prop('checked', false).removeClass('off');
+            //hide line name because this doesn't matter
+            $('#id_line-name').parent().hide();
+            //show bulk notice
+            $('.bulkNoteGroup').removeClass('off');
             form.on('change.bulk', ':input', function (ev) {
                 $(ev.target).siblings('label').find('.bulk').prop('checked', true);
             });
         }
+        else {
+            $('.bulkNoteGroup').addClass('off');
+            $('#id_line-name').parent().show();
+        }
         if (ids.length === 1) {
+            $('.bulkNoteGroup').addClass('off');
             fillLineForm(EDDData.Lines[ids[0]]);
+            $('#id_line-name').parent().show();
         }
         else {
             // compute used metadata fields on all data.ids, insert metadata rows?
@@ -525,7 +534,7 @@ var LineResults = (function (_super) {
         _super.call(this, dataGridSpec);
     }
     LineResults.prototype._getClasses = function () {
-        return 'dataTable sortable dragboxes hastablecontrols';
+        return 'dataTable sortable dragboxes hastablecontrols table-striped';
     };
     return LineResults;
 }(DataGrid));
