@@ -225,8 +225,9 @@ server {
     {{ if $vhostStatic }}
     location @upstream_proxy {
       proxy_pass_header     Server;
-      proxy_connect_timeout 20;
-      proxy_read_timeout    20;
+      # set permissive timeouts for synchronous requests (e.g. Experiment Description, can time out querying ICE)
+      proxy_connect_timeout 60;
+      proxy_read_timeout    60;
       proxy_pass            {{ trim $proto }}://{{ trim $upstream_name }};
       proxy_redirect        {{ trim $proto }}://{{ trim $upstream_name }}   https://$host;
     }

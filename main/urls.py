@@ -32,7 +32,7 @@ study_url_patterns = [
     ),
     url(r'^map/$', login_required(views.study_map)),
     url(r'^permissions/$', login_required(views.StudyPermissionJSONView.as_view())),
-    url(r'^define/$', login_required(views.study_describe_experiment)),
+    url(r'^describe/$', login_required(views.study_describe_experiment)),
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^import/',
