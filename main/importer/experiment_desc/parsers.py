@@ -53,7 +53,7 @@ _REPLICATE_COUNT_COL_PATTERN = re.compile(r'^\s*%s\s*$' % REPLICATE_COUNT_COL_RE
 _STRAIN_GROUP_MEMBER_DELIM = ';'
 _STRAIN_GROUP_REGEX = r'^\s*\(((?:\s*[^' + _STRAIN_GROUP_MEMBER_DELIM + '\)\(]+\s*' + \
                       _STRAIN_GROUP_MEMBER_DELIM + '?\s*)+)\)\s*$'
-logger.info('Strain group regex: %s' % _STRAIN_GROUP_REGEX) # TODO: remove
+logger.info('Strain group regex: %s' % _STRAIN_GROUP_REGEX)  # TODO: remove
 _STRAIN_GROUP_PATTERN = re.compile(_STRAIN_GROUP_REGEX)
 
 _TIME_VALUE_REGEX = r'^\s*(\d+(?:\.\d+)?)\s*h\s*$'
@@ -146,12 +146,16 @@ class ColumnLayout:
         return False
 
     def combinatorial_line_col_order(self):
-        return itertools.ifilter(lambda (x): x in self.col_index_to_line_meta_pk,
-                self.combinatorial_col_indices)
+        return itertools.ifilter(
+                lambda x: x in self.col_index_to_line_meta_pk,
+                self.combinatorial_col_indices
+        )
 
     def combinatorial_assay_col_order(self):
         return itertools.ifilter(
-                lambda (x): x in self.col_index_to_assay_data, self.combinatorial_col_indices)
+                lambda x: x in self.col_index_to_assay_data,
+                self.combinatorial_col_indices
+        )
 
     def register_assay_meta_column(self, col_index, upper_protocol_name, protocol, assay_meta_type,
                                    is_combinatorial):
@@ -160,7 +164,8 @@ class ColumnLayout:
         # if we see it, log an error -- no clear/automated way for us to resolve which column
         #  has the correct values!
         if self.has_assay_metadata(upper_protocol_name, assay_meta_type.pk):
-            self.importer.add_error(BAD_FILE_CATEGORY, DUPLICATE_ASSAY_METADATA, assay_meta_type.pk)
+            self.importer.add_error(BAD_FILE_CATEGORY, DUPLICATE_ASSAY_METADATA,
+                                    assay_meta_type.pk)
 
         self.register_protocol(protocol)
 
@@ -227,13 +232,13 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
         Computes the line name, either by using the explicitly-proveded name from the file, OR if 
         there are combinatorially-defined columns (by appending an 's' or '(s)' to the column 
         header), by iterating over combinatorial columns in the order defined by the file, 
-        then appending combinatorial metadata values to the line name.  Note that if used, replicate
-        number is always at the end regardless of column order.
+        then appending combinatorial metadata values to the line name.  Note that if used, 
+        replicate number is always at the end regardless of column order.
         """
 
-        # iterate over combinatorial line metadata columns and construct line name in the same order
-        # that name-relevant elements were listed in columns in the input file. We have to include
-        # values for the combinatorial metadata so that line names will be unique
+        # iterate over combinatorial line metadata columns and construct line name in the same
+        # order that name-relevant elements were listed in columns in the input file. We have to
+        # include values for the combinatorial metadata so that line names will be unique
         layout = self.col_layout
         name_elts = []
         included_base_name = False
@@ -241,7 +246,8 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
 
         # build the name segment for strains needed to make this line name unique (if any)
         strain_names_list = self._build_strains_names_list(line_strain_ids, strains_by_pk)
-        strains_str = self.multivalue_separator.join(strain_names_list) if strain_names_list else ''
+        strains_str = (self.multivalue_separator.join(strain_names_list) if strain_names_list
+                       else '')
         logger.debug('Strains : %s' % str())
 
         included_strain_names = False
@@ -311,14 +317,15 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
         name_elts = [line.name]
 
         logger.debug(
-            'Combinatorial assay column order: %s' % ','.join([str(index) for index in
-                    layout.combinatorial_assay_col_order()]))
+            'Combinatorial assay column order: %s' % ','.join(
+                    [str(index) for index in layout.combinatorial_assay_col_order()]))
 
         try:
 
-            # iterate over combinatorial assay metadata columns and construct assay name in the same
-            # order that name-relevant elements were listed in columns in the input file. We have to
-            # include values for the combinatorial metadata so that assay names will be unique
+            # iterate over combinatorial assay metadata columns and construct assay name in the
+            # same order that name-relevant elements were listed in columns in the input file.
+            # We have to include values for the combinatorial metadata so that assay names will
+            # be unique
             for assay_metadata_col in layout.combinatorial_assay_col_order():
                 col_protocol, assay_meta_type = layout.col_index_to_assay_data[assay_metadata_col]
 
@@ -662,7 +669,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # column header
                 ################################################################################
                 for upper_type_name, assay_metadata_type in \
-                    self.assay_metadata_types_by_name.items():
+                        self.assay_metadata_types_by_name.items():
 
                     # if this type has units, check whether column header matches the type name
                     # with an optional unit suffix
@@ -773,11 +780,11 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             if pluralized_match:
                 result = meta_type
                 column_layout.set_line_metadata_type(col_index, result, is_combinatorial=True)
+                logger.debug(
+                    """Column header "%(header)s" matches line metadata type %(type)s""" % {
+                        'header': upper_content, 'type': upper_type_name
+                    })
                 return result
-
-                logger.debug("""Column header "%(header)s" matches line metadata type %(type)s"""
-                             % { 'header': upper_content,
-                                 'type': upper_type_name})
 
         return None
 
@@ -786,11 +793,9 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         Reads a single spreadsheet row to find line creation inputs. The row is read even if errors
         occur, logging errors in the 'errors' parameter so that multiple user input errors can be
         detected and communicated during a single pass of editing the file.
-        :param layout: the column header layout read from the beginning of the file. Informs this
-            method which optional columns have been defined, as well as what order the columns are
-            in (arbitrary column order is supported).
         """
-        row_inputs = _ExperimentDescriptionFileRow(self.column_layout, self.assay_time_meta_pk, row_num)
+        row_inputs = _ExperimentDescriptionFileRow(self.column_layout, self.assay_time_meta_pk,
+                                                   row_num)
         layout = self.column_layout
 
         ###################################################
@@ -982,8 +987,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         strain_ids_col = layout.strain_ids_col
         is_combinatorial = strain_ids_col in layout.combinatorial_col_indices
 
-        cell_content = self._get_string_cell_content(cols_list, row_num,
-                                                strain_ids_col, convert_to_string=True)
+        cell_content = self._get_string_cell_content(cols_list, row_num, strain_ids_col,
+                                                     convert_to_string=True)
 
         # build a list of strain ids for this input
         individual_strain_ids = []
@@ -1030,7 +1035,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     # input, so we'll treat it as an error.
                     if len(tokens) > 1:
                         self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
-                                                INCONSISTENT_COMBINATORIAL_VALUE, token_description)
+                                                INCONSISTENT_COMBINATORIAL_VALUE,
+                                                token_description)
                     else:
                         row_inputs.combinatorial_strain_id_groups.append(strain_group)
                         for strain_id in strain_group:
@@ -1048,7 +1054,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # creation
         if is_combinatorial:
             for strain_id in individual_strain_ids:
-                row_inputs.combinatorial_strain_id_groups.append([strain_id,])
+                row_inputs.combinatorial_strain_id_groups.append([strain_id, ])
 
         elif individual_strain_ids:
             row_inputs.combinatorial_strain_id_groups.append(individual_strain_ids)
@@ -1066,7 +1072,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                                'part_id': part_id,
                                'location_str': opt_location_str,
             }
-            self.importer.add_warning(PART_NUM_PATTERN_TITLE, PART_NUMBER_PATTERN_UNMATCHED_WARNING,
+            self.importer.add_warning(PART_NUM_PATTERN_TITLE,
+                                      PART_NUMBER_PATTERN_UNMATCHED_WARNING,
                                       desc)
 
             logger.warning('Expected ICE part number(s)'
