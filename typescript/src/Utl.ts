@@ -803,17 +803,9 @@ module Utl {
 
             f.event('error', function(e, xhr) {
                 if (typeof t.processErrorFn === "function") {
-                    t.processErrorFn(fileContainer, xhr, this.url);
+                    t.processErrorFn(fileContainer, xhr);
                 }
-                if($('#omitStrains').data('clicked')) {
-                    // var result = jQuery.parseJSON(xhr.responseText);
-                    fileContainer.extraHeaders['ignoreIceRelatedErrors'] = 'true';
-                    // t.callInitFile.call(t, fileContainer);
-                    // t.callProcessRaw.call(t, fileContainer);
-                } else {
-                    fileContainer.allWorkFinished = true;
-                }
-
+                fileContainer.allWorkFinished = true;
             });
 
             f.event('xhrSetup', function(xhr) {

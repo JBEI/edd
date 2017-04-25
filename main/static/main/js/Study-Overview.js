@@ -86,7 +86,7 @@ var StudyOverview;
     StudyOverview.copyActionButtons = copyActionButtons;
     // This is called upon receiving an errror in a file upload operation, and
     // is passed an unprocessed result from the server as a second argument.
-    function fileErrorReturnedFromServer(fileContainer, xhr, url) {
+    function fileErrorReturnedFromServer(fileContainer, xhr) {
         copyActionButtons();
         var parent = $('#alert_placeholder'), dismissAll = $('#dismissAll').find('.dismissAll'), linesPathName, currentPath;
         currentPath = window.location.pathname;

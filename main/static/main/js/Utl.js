@@ -706,15 +706,9 @@ var Utl;
             });
             f.event('error', function (e, xhr) {
                 if (typeof t.processErrorFn === "function") {
-                    t.processErrorFn(fileContainer, xhr, this.url);
+                    t.processErrorFn(fileContainer, xhr);
                 }
-                if ($('#omitStrains').data('clicked')) {
-                    // var result = jQuery.parseJSON(xhr.responseText);
-                    fileContainer.extraHeaders['ignoreIceRelatedErrors'] = 'true';
-                }
-                else {
-                    fileContainer.allWorkFinished = true;
-                }
+                fileContainer.allWorkFinished = true;
             });
             f.event('xhrSetup', function (xhr) {
                 // This ensures that the CSRF middleware in Django doesn't reject our HTTP request.

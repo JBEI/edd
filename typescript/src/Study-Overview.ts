@@ -103,7 +103,7 @@ module StudyOverview {
 
     // This is called upon receiving an errror in a file upload operation, and
     // is passed an unprocessed result from the server as a second argument.
-    export function fileErrorReturnedFromServer(fileContainer, xhr, url): void {
+    export function fileErrorReturnedFromServer(fileContainer, xhr): void {
 
         copyActionButtons();
 
