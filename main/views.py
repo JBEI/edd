@@ -27,7 +27,10 @@ from rest_framework.exceptions import MethodNotAllowed
 
 from main.importer.experiment_desc.constants import (INTERNAL_SERVER_ERROR, UNPREDICTED_ERROR,
                                                      BAD_REQUEST, UNSUPPORTED_FILE_TYPE,
-                                                     BAD_FILE_CATEGORY)
+                                                     BAD_FILE_CATEGORY,
+                                                     ALLOW_DUPLICATE_NAMES_PARAM,
+                                                     IGNORE_ICE_RELATED_ERRORS_PARAM,
+                                                     DRY_RUN_PARAM)
 from main.importer.experiment_desc.importer import _build_response_content, ImportErrorSummary
 from . import autocomplete, models as edd_models, redis
 from .export.forms import ExportOptionForm, ExportSelectionForm, WorklistForm
@@ -1363,9 +1366,9 @@ def study_describe_experiment(request, pk=None, slug=None):
 
     # parse request parameter input to keep subsequent code relatively format-agnostic
     user = request.user
-    dry_run = request.GET.get('dryRun', False)
-    allow_duplicate_names = request.GET.get('ALLOWDUPLICATENAMES', False)
-    ignore_ice_related_errors = request.GET.get('IGNOREICERELATEDERRORS', False)
+    dry_run = request.GET.get(DRY_RUN_PARAM, False)
+    allow_duplicate_names = request.GET.get(ALLOW_DUPLICATE_NAMES_PARAM, False)
+    ignore_ice_related_errors = request.GET.get(IGNORE_ICE_RELATED_ERRORS_PARAM, False)
 
     # detect the input format
     has_file_type = FILE_TYPE_HEADER in request.META

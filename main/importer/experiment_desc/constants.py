@@ -12,9 +12,9 @@ from requests import codes
 # associations implied here and elsewhere in the code.  This approach evolved from the ground up,
 # but might be clarified by a refactor.
 
-####################################################################################################
+###################################################################################################
 # User data entry errors
-####################################################################################################
+###################################################################################################
 # generic errors (apply regardless of input format)
 NO_INPUT = "No line description data were found in the input"
 DUPLICATE_INPUT_LINE_NAMES = 'Duplicate line names in the input'
@@ -35,8 +35,8 @@ DUPLICATE_LINE_METADATA = 'Duplicate line metadata columns'
 INVALID_CELL_TYPE_TITLE = 'Invalid cell type'
 INVALID_CELL_TYPE = 'Cells have invalid type'
 INVALID_REPLICATE_COUNT = 'Invalid replicate count'
-ZERO_REPLICATES = 'Zero replicates are not allowed. If no lines are desired, remove row(s) from ' \
-                  'the file.'
+ZERO_REPLICATES = ('Zero replicates are not allowed. If no lines are desired, remove row(s) from '
+                   'the file.')
 MISSING_REQUIRED_LINE_NAME = 'Rows missing required line name'
 MISSING_REQUIRED_COLUMN_TITLE = 'Incorrect file format'
 INVALID_COLUMN_HEADER_TITLE = 'Invalid column headers'
@@ -46,15 +46,15 @@ INCORRECT_TIME_FORMAT = 'Incorrect time format'
 # only supported for strains, since some metadata columns purposefully allow comma-delimited entry
 INCONSISTENT_COMBINATORIAL_VALUE = 'Combinatorial value provided for single-valued column'
 UNPARSEABLE_COMBINATORIAL_VALUE = 'Unparseable combinatorial value'
-DELIMETER_NOT_ALLOWED_VALUE = ("Semicolon character isn't allowed within part numbers. Use commas " 
-                               "to delimit part numbers, except strain group members "
+DELIMETER_NOT_ALLOWED_VALUE = ("Semicolon character isn't allowed within part numbers. Use commas"
+                               " to delimit part numbers, except strain group members "
                                "during combinatorial line creation")
 
 INTERNAL_EDD_ERROR_TITLE = 'Internal EDD error'
 
 
-# either user input error in Experiment Description/ICE part permissions, or an ICE error (known ICE
-# errors exist in ICE 5.2.2 as of 3-1-17)
+# either user input error in Experiment Description/ICE part permissions, or an ICE error (known
+# ICE errors exist in ICE 5.2.2 as of 3-1-17)
 SINGLE_PART_ACCESS_ERROR_CATEGORY = 'ICE part access problem'
 FORBIDDEN_PART_KEY = 'Missing ICE read permission for part number(s)'
 
@@ -64,17 +64,17 @@ LINE_META_CAPITALIZATION_ONLY_DIFFERENCE = ('Found some line metadata types that
                                             'case. Case-insensitive matching in parsing code will '
                                             'arbitrarily choose one')
 ASSAY_META_CAPITALIZATION_ONLY_DIFFERENCE = ('Found some assay metadata types that differ only by '
-                                             'case. Case-insensitive matching in parsing code will '
-                                             'arbitrarily choose one')
+                                             'case. Case-insensitive matching in parsing code will'
+                                             ' arbitrarily choose one')
 UNSUPPORTED_LINE_METADATA = 'Unsupported line metadata'
 IGNORED_INPUT_CATEGORY = 'User input ignored'
 ROWS_MISSING_REPLICATE_COUNT = 'Rows missing replicate count (assumed only 1 line)'
 
-####################################################################################################
+###################################################################################################
 # Self/client consistency checks.  Experiment Description code is written defensively to help to
 # detect coding errors in EDD's eventual Experiment Description GUI, an API client,
 # or in development / maintenance of complex Experiment Description back-end code)
-####################################################################################################
+###################################################################################################
 FOUND_PART_NUMBER_DOESNT_MATCH_QUERY = 'Found part number does not match query'
 INVALID_ASSAY_META_PK = 'Invalid assay metadata pks'
 INVALID_LINE_META_PK = 'Invalid line metadata pks'
@@ -85,9 +85,9 @@ UNMATCHED_PART_NUMBER = 'Unmatched part number(s). This indicates a coding error
 # Combinatorial GUI or API - specific errors
 INVALID_AUTO_NAMING_INPUT = 'Invalid element for automatic naming'
 
-####################################################################################################
+###################################################################################################
 # ICE-related errors
-####################################################################################################
+###################################################################################################
 
 # anticipated systemic (e.g. communication) error or error that isn't otherwise planned for /
 # handled separately (e.g. EDD/ICE configuration errors or ICE bugs)
@@ -101,9 +101,9 @@ GENERIC_ICE_RELATED_ERROR = ("ICE couldn't be contacted to find strains referenc
 PART_NUM_PATTERN_TITLE = 'Unrecognized part number pattern'
 PART_NUMBER_PATTERN_UNMATCHED_WARNING = "Part number(s) didn't match the expected pattern"
 
-####################################################################################################
+###################################################################################################
 # Generic errors... likely require admin investigation / determination re: cause
-####################################################################################################
+###################################################################################################
 
 UNPREDICTED_ERROR = 'An unpredicted error occurred'
 UNSUPPORTED_FILE_TYPE = 'Unsupported file type'  # TODO RESOLVE WITH incorrect file format
@@ -113,18 +113,16 @@ UNSUPPORTED_FILE_TYPE = 'Unsupported file type'  # TODO RESOLVE WITH incorrect f
 NON_UNIQUE_STRAIN_UUIDS = 'Non-unique strain uuids'
 SUSPECTED_MATCH_STRAINS = 'Suspected match strain(s)'
 
-####################################################################################################
+###################################################################################################
 # Request parameters
-####################################################################################################
-# TODO: Restore earlier values after making these POST data instead.
-# IGNORE_ICE_RELATED_ERRORS_PARAM = 'ignoreIceRelatedErrors'
-# ALLOW_DUPLICATE_NAMES_PARAM = 'allowDuplicateNames'
-IGNORE_ICE_RELATED_ERRORS_PARAM = 'HTTP_X_EDD_IGNOREICERELATEDERRORS'
-ALLOW_DUPLICATE_NAMES_PARAM = 'HTTP_X_EDD_ALLOWDUPLICATENAMES'
+###################################################################################################
+IGNORE_ICE_RELATED_ERRORS_PARAM = 'IGNORE_ICE_RELATED_ERRORS'
+ALLOW_DUPLICATE_NAMES_PARAM = 'ALLOW_DUPLICATE_NAMES'
+DRY_RUN_PARAM = 'DRY_RUN'
 
-####################################################################################################
+###################################################################################################
 # Http error codes used / considered in this package.
-####################################################################################################
+###################################################################################################
 OK = codes.ok
 INTERNAL_SERVER_ERROR = codes.internal_server_error
 BAD_REQUEST = codes.bad_request
@@ -136,9 +134,9 @@ SERVICE_UNAVAILABLE = codes.service_unavailable
 FORBIDDEN = codes.forbidden
 CONFLICT = codes.conflict
 
-####################################################################################################
+###################################################################################################
 # Categorization and display priority order for predicted errors / warnings
-####################################################################################################
+###################################################################################################
 # Define display priority order for all errors defined in this file.  The back-end will provide
 # errors in this order for display in the user interface. Generally, we list user errors first
 # so that even in the case of EDD / ICE errors, users and client code can see / resolve their own
@@ -251,10 +249,10 @@ WARNING_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
 WARNING_PRIORITY_ORDER[SYSTEMIC_ICE_ERROR_CATEGORY] = (GENERIC_ICE_RELATED_ERROR,)
 WARNING_PRIORITY_ORDER[INTERNAL_EDD_ERROR_TITLE] = (PART_NUMBER_PATTERN_UNMATCHED_WARNING,)
 
-####################################################################################################
+###################################################################################################
 # Name elements for AutomatedNamingStrategy (used during JSON input implemented for eventual
 # combinatorial line creation GUI).
-####################################################################################################
+###################################################################################################
 STRAIN_NAME_ELT = 'strain_name'
 REPLICATE_ELT = 'replicate'
 BASE_NAME_ELT = 'base_name'
@@ -272,4 +270,3 @@ PROTOCOL_TO_COMBINATORIAL_METADATA_SECTION = 'protocol_to_combinatorial_metadata
 # CARBON_SOURCE = 'carbon_source'
 # EXPERIMENTER = 'experimenter'
 # CONTACT = 'contact'
-
