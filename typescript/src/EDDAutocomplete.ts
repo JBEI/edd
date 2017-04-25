@@ -118,6 +118,8 @@ module EDDAuto {
         cache:any;
         search_uri:string;
 
+        delete_last: boolean = false;
+
         static _uniqueIndex = 1;
 
         static initPreexisting(context?: Element|JQuery) {
@@ -185,7 +187,14 @@ module EDDAuto {
             this.columns = [ new AutoColumn('Name', '300px', 'name') ];
         }
 
+        clear() {
+            var blank = this.opt['emptyCreatesNew'] ? 'new' : '';
+            this.hiddenInput.val(blank).trigger('change').trigger('input');
+        }
+
         init() {
+            var self: BaseAuto = this;
+
             // this.cacheId might have been set by a constructor in a subclass
             this.cacheId = this.opt['cacheId']
                 || this.cacheId
@@ -206,7 +215,6 @@ module EDDAuto {
                 this.hiddenInput.attr('name', this.opt['name']);
             }
 
-            var self:BaseAuto = this;
             // mcautocomplete is not in type definitions for jQuery, hence <any>
             (<any>this.visibleInput).mcautocomplete({
                 // These next two options are what this plugin adds to the autocomplete widget.
@@ -217,16 +225,9 @@ module EDDAuto {
                 'select': function (event, ui) {
                     var cacheKey, record, visibleValue, hiddenValue;
                     if (ui.item) {
-                        cacheKey = ui.item[self.value_key];
-                        record = self.cache[cacheKey] = self.cache[cacheKey] || {};
-                        $.extend(record, ui.item);
-                        visibleValue = record[self.display_key] || '';
-                        hiddenValue = record[self.value_key] || '';
-                        // assign value of selected item ID to sibling hidden input
-
-                        self.visibleInput.val(visibleValue);
-
-                        self.hiddenInput.val(hiddenValue)
+                        record = self.loadRecord(ui.item);
+                        self.visibleInput.val(self.loadDisplayValue(record));
+                        self.hiddenInput.val(self.loadHiddenValue(record))
                             .trigger('change')
                             .trigger('input');
                     }
@@ -300,27 +301,42 @@ module EDDAuto {
                     $(ev.target).removeClass('wait');
                 }
             }).on('blur', function (ev) {
-                var auto = self.visibleInput;
-                var hiddenInput = self.hiddenInput;
-                var hiddenId = hiddenInput.val();
-                var old = self.cache[hiddenId] || {};
-                var current = auto.val();
-                var blank = self.opt['emptyCreatesNew'] ? 'new' : '';
-
-                if (current.trim() === '') {
+                if (self.delete_last) {
                     // User cleared value in autocomplete, remove value from hidden ID
-                    hiddenInput.val(blank)
-                        .trigger('change')
-                        .trigger('input');
+                    self.clear();
                 } else {
                     // User modified value in autocomplete without selecting new one
                     // restore previous value
-                    auto.val(old[self.display_key] || blank);
+                    self.undo();
                 }
+                self.delete_last = false;
+            }).on('keydown', function (ev: JQueryKeyEventObject) {
+                // if the keydown ends up clearing the visible input, set flag
+                self.delete_last = self.visibleInput.val().trim() === '';
             });
         };
 
-        val() {
+        loadDisplayValue(record: any): any {
+            return record[this.display_key] || '';
+        }
+
+        loadHiddenValue(record: any): any {
+            return record[this.value_key] || '';
+        }
+
+        loadRecord(item: any): any {
+            var cacheKey = item[this.value_key],
+                record = (this.cache[cacheKey] = this.cache[cacheKey] || {});
+            $.extend(record, item);
+            return record;
+        }
+
+        undo(): void {
+            var old = this.cache[this.hiddenInput.val()] || {};
+            this.visibleInput.val(this.loadDisplayValue(old));
+        }
+
+        val(): any {
             return this.hiddenInput.val();
         }
     }
@@ -342,6 +358,13 @@ module EDDAuto {
             this.display_key = 'fullname';
             this.cacheId = 'Users';
             this.init();
+        }
+
+        loadDisplayValue(record:any): any {
+            var value = super.loadDisplayValue(record);
+            if (value.trim() === '') {
+                return record['email'];
+            }
         }
     }
 
@@ -804,7 +827,6 @@ EDD_auto.initial_search = function initial_search(auto: EDDAuto.BaseAuto, term: 
 /***********************************************************************/
 
 $( window ).on("load", function() { // Shortcutting this to .load confuses jQuery
-    var setup_info;
     EDDAuto.BaseAuto.initPreexisting();
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus
