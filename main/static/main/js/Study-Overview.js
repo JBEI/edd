@@ -105,7 +105,7 @@ var StudyOverview;
                 generateMessages('error', obj.errors, newErrorAlert);
             }
             if (obj.warnings) {
-                generateMessages('error', obj.warnings, newWarningAlert);
+                generateMessages('warnings', obj.warnings, newWarningAlert);
             }
         }
         catch (e) {
@@ -181,7 +181,7 @@ var StudyOverview;
     function organizeMessages(responses) {
         var obj = {};
         responses.forEach(function (response) {
-            if (response.category === "ICE-related Error") {
+            if (response.category === "ICE-related error") {
                 // create dismissible error alert
                 alertIceWarning(response);
             }

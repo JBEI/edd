@@ -125,7 +125,7 @@ module StudyOverview {
                 generateMessages('error', obj.errors, newErrorAlert)
             }
             if (obj.warnings) {
-                generateMessages('error', obj.warnings, newWarningAlert)
+                generateMessages('warnings', obj.warnings, newWarningAlert)
             }
         } catch (e) {
             //if there is no backend error message or error (html response), show this
@@ -206,7 +206,7 @@ module StudyOverview {
     function organizeMessages(responses) {
         var obj = {};
         responses.forEach(function (response) {
-            if (response.category === "ICE-related Error") {
+            if (response.category === "ICE-related error") {
                 // create dismissible error alert
                 alertIceWarning(response);
             } else if (response.summary === "Duplicate assay names in the input" || response.summary === "Duplicate " +
