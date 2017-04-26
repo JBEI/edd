@@ -34,8 +34,8 @@ module StudyOverview {
     // rather than the raw contents of the file.
     export function fileReturnedFromServer(fileContainer, result): void {
 
-        var currentPath = window.location.pathname;
-        var linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
+        let currentPath = window.location.pathname;
+        let linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
         $('<p>', {
             text: 'Success! ' + result['lines_created'] + ' lines added!',
             style: 'margin:auto'
@@ -47,13 +47,14 @@ module StudyOverview {
     export function fileWarningReturnedFromServer(fileContainer, result): void {
         let currentPath = window.location.pathname;
         let newWarningAlert = $('.alert-warning').eq(0).clone();
+        let linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
 
         copyActionButtons();
 
         $('#acceptWarnings').find('.acceptWarnings').on('click',(ev:JQueryMouseEventObject):boolean => {
             ev.preventDefault();
             ev.stopPropagation();
-            window.location.reload();
+            successfulRedirect(linesPathName);
             return false;
         });
 

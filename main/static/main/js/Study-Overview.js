@@ -36,11 +36,12 @@ var StudyOverview;
     function fileWarningReturnedFromServer(fileContainer, result) {
         var currentPath = window.location.pathname;
         var newWarningAlert = $('.alert-warning').eq(0).clone();
+        var linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
         copyActionButtons();
         $('#acceptWarnings').find('.acceptWarnings').on('click', function (ev) {
             ev.preventDefault();
             ev.stopPropagation();
-            window.location.reload();
+            successfulRedirect(linesPathName);
             return false;
         });
         $('<p>', {
