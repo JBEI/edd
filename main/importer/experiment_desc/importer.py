@@ -758,7 +758,7 @@ class CombinatorialCreationImporter(object):
 
     def _handle_systemic_ice_error(self, ignore_ice_related_errors, part_numbers, ice_entries):
         """
-        Handles a systemic ICE communication error according to the
+        Handles a systemic ICE communication error according to request parameters set by the UI
         """
         logger.exception('Error querying ICE for part number(s)')
 
@@ -843,9 +843,6 @@ class CombinatorialCreationImporter(object):
         errors_list = json.dumps(_build_prioritized_issue_list(self.errors, ERROR_PRIORITY_ORDER))
         warnings_list = json.dumps(_build_prioritized_issue_list(self.warnings,
                                                                  WARNING_PRIORITY_ORDER))
-
-        print(pformat(errors_list, indent=_ADMIN_EMAIL_INDENT))
-        pprint(errors_list, indent=_ADMIN_EMAIL_INDENT)
 
         message = (ice_related_err_email_format % {
                         'study_pk': self.study.pk,
