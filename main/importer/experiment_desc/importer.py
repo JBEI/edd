@@ -1,11 +1,13 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
+import copy
 import json
 import logging
 import traceback
 from collections import defaultdict, OrderedDict
 from io import BytesIO
+from pprint import pformat, pprint
 
 import requests
 from django.conf import settings
@@ -25,9 +27,9 @@ from .constants import (FOUND_PART_NUMBER_DOESNT_MATCH_QUERY, NON_STRAIN_ICE_ENT
                         IGNORE_ICE_RELATED_ERRORS_PARAM, ALLOW_DUPLICATE_NAMES_PARAM, NO_INPUT,
                         DUPLICATE_INPUT_LINE_NAMES, DUPLICATE_INPUT_ASSAY_NAMES, ZERO_REPLICATES,
                         EXISTING_LINE_NAMES, EXISTING_ASSAY_NAMES, SYSTEMIC_ICE_ERROR_CATEGORY,
-                        INTERNAL_EDD_ERROR_TITLE, SINGLE_PART_ACCESS_ERROR_CATEGORY,
+                        INTERNAL_EDD_ERROR_CATEGORY, SINGLE_PART_ACCESS_ERROR_CATEGORY,
                         NAMING_OVERLAP_CATEGORY, ERROR_PRIORITY_ORDER, WARNING_PRIORITY_ORDER,
-                        BAD_GENERIC_INPUT_CATEGORY)
+                        BAD_GENERIC_INPUT_CATEGORY, DRY_RUN_PARAM)
 from .parsers import ExperimentDescFileParser, JsonInputParser, _ExperimentDescriptionFileRow
 from .utilities import (CombinatorialCreationPerformance, find_existing_strains)
 
@@ -41,16 +43,28 @@ _IGNORE_ICE_RELATED_ERRORS_DEFAULT = False
 _ALLOW_DUPLICATE_NAMES_DEFAULT = False
 _DRY_RUN_DEFAULT = False
 
+_STUDY_PK_OVERVIEW_NAME = 'main:edd-pk:overview'
+_ADMIN_EMAIL_TRACEBACK_DELIMITER = '\n\t\t'
 _ADMIN_EMAIL_INDENT = 3
-admin_email_format = ("""\
+
+traceback_suffix = ("""The contents of the most-recent full traceback was:
+
+        %(traceback)s
+""")
+
+base_email_format = ("""\
 One or more error(s) occurred when attempting to add Experiment Description data for EDD study \
 %(study_pk)d "%(study_name)s":
 
     Study URL: %(study_url)s
-    Username: %(ice_username)s
+    Username: %(username)s
     Relevant request parameters:
+        %(dry_run_param)s: %(dry_run_val)s
         %(ignore_ice_errors_param)s: %(ignore_ice_errors_val)s
         %(allow_duplicate_names_param)s: %(allow_duplicate_names_val)s
+""")
+
+ice_related_err_email_format = (base_email_format + """\
     Unique part numbers (%(unique_part_number_count)d): %(unique_part_numbers)s
     Parts not found in ICE (%(not_found_part_count)d or %(not_found_percent)0.2f%%): \
 %(parts_not_found)s
@@ -59,9 +73,7 @@ if there's a traceback): %(errors)s
     Warnings detected during Experiment Description processing: %(warnings)s
     User input source: %(user_input_source)s
 
-    The contents of the most-recent full traceback was:
-
-        %(traceback)s""")
+    %(traceback_suffix)s""")
 
 
 def _build_response_content(errors, warnings, val=None):
@@ -89,9 +101,11 @@ def _build_response_content(errors, warnings, val=None):
 def _build_prioritized_issue_list(src_dict, priority_reference):
     result = []
 
+    unprioritized_src = copy.deepcopy(src_dict)
+
     # loop over defined priority order, including issues in the defined order
     for category, title_priority_order in priority_reference.iteritems():
-        title_to_summaries = src_dict.get(category, None)
+        title_to_summaries = unprioritized_src.get(category, None)
 
         if not title_to_summaries:
             continue
@@ -107,7 +121,7 @@ def _build_prioritized_issue_list(src_dict, priority_reference):
 
     # review any items that didn't were missing from the defined order (likely due to code
     # maintenance. Add them at the top to attract attention, then print a warning log message
-    for category, unprioritized_titles in src_dict.iteritems():
+    for category, unprioritized_titles in unprioritized_src.iteritems():
         for title, err_summary in unprioritized_titles.iteritems():
             result.insert(0, err_summary.to_json_dict())
             logger.warning('Including un-prioritized issue (category="%(category)s", '
@@ -205,6 +219,20 @@ class CombinatorialCreationImporter(object):
 
     def add_warning(self, category_title, subtitle='', occurrence_detail=None):
         self._append_summary(self.warnings, category_title, subtitle, occurrence_detail)
+
+    def has_error(self, subtitle):
+        for category_title, errors_by_subtitle in self.errors.iteritems():
+            if subtitle in errors_by_subtitle:
+                return True
+
+        return False
+
+    def has_warning(self, subtitle):
+        for category_title, warnings_by_subtitle in self.warnings.iteritems():
+            if subtitle in warnings_by_subtitle:
+                return True
+
+        return False
 
     @staticmethod
     def _append_summary(source, category_title, subtitle, occurrence_detail=None):
@@ -346,15 +374,17 @@ class CombinatorialCreationImporter(object):
         if self.errors:
             self._notify_admins_of_systemic_ice_related_errors(ignore_ice_related_errors,
                                                                allow_duplicate_names,
+                                                               dry_run,
                                                                unique_part_numbers,
                                                                ice_parts_by_number)
 
-            status_code = (BAD_REQUEST if PART_NUMBER_NOT_FOUND in self.errors
+            status_code = (BAD_REQUEST if self.has_error(PART_NUMBER_NOT_FOUND)
                            else INTERNAL_SERVER_ERROR)
             return status_code, _build_response_content(self.errors, self.warnings)
         elif GENERIC_ICE_RELATED_ERROR in self.warnings:
             self._notify_admins_of_systemic_ice_related_errors(ignore_ice_related_errors,
                                                                allow_duplicate_names,
+                                                               dry_run,
                                                                unique_part_numbers,
                                                                ice_parts_by_number)
 
@@ -718,7 +748,7 @@ class CombinatorialCreationImporter(object):
                             'list_position': list_position, 'numeric_id': found_entry.id,
                             'part_number': found_entry.part_id
                         })
-                    self.add_error(INTERNAL_EDD_ERROR_TITLE, FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
+                    self.add_error(INTERNAL_EDD_ERROR_CATEGORY, FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
                                    found_entry.part_id)
 
             elif treat_as_error:
@@ -728,13 +758,7 @@ class CombinatorialCreationImporter(object):
 
     def _handle_systemic_ice_error(self, ignore_ice_related_errors, part_numbers, ice_entries):
         """
-        Builds a helpful user-space error / warning message, then caches it
-        :param err:
-        :param ignore_ice_related_errors:
-        :param part_number_count:
-        :param ice_entries:
-        :param ice_username:
-        :return:
+        Handles a systemic ICE communication error according to the
         """
         logger.exception('Error querying ICE for part number(s)')
 
@@ -780,7 +804,8 @@ class CombinatorialCreationImporter(object):
                 self.add_warning(SYSTEMIC_ICE_ERROR_CATEGORY, GENERIC_ICE_RELATED_ERROR, warn_msg)
 
     def _notify_admins_of_systemic_ice_related_errors(self, ignore_ice_related_errors,
-                                                      allow_duplicate_names, unique_part_numbers,
+                                                      allow_duplicate_names,
+                                                      dry_run, unique_part_numbers,
                                                       ice_parts_by_number):
         """
         If configured, builds and sends a time-saving notification email re: ICE communication
@@ -789,22 +814,24 @@ class CombinatorialCreationImporter(object):
         remember and extract from log content and complex related code.
         """
 
+        # return early if no notificatian-worthy errors have occurred
+        if ((not self.has_error(GENERIC_ICE_RELATED_ERROR)) and not
+            (self.has_warning(GENERIC_ICE_RELATED_ERROR))):
+            return
+
+        logger.info('Notifying system administrators of a systemic error communicating with ICE')
+
         # even though users may be able to work around the error, email EDD admins since they
         # should look into / resolve systemic ICE communication errors without user
         # intervention. Since communication via the Internet is involved, possible that the
         # errors during a workaround are different than during the first attempt. We'll clearly
         # mark that case in the email subject, but still send the email.
-
-        if (GENERIC_ICE_RELATED_ERROR not in self.errors and GENERIC_ICE_RELATED_ERROR not in
-                self.warnings):
-            return
-
         subject = 'ICE-related error during Experiment Description%s' % (
                    ': (User Ignored)' if ignore_ice_related_errors else '')
 
         # build traceback string to include in the email
         formatted_lines = traceback.format_exc().splitlines()
-        traceback_str = '\n'.join(formatted_lines)
+        traceback_str = _ADMIN_EMAIL_TRACEBACK_DELIMITER.join(formatted_lines)
 
         part_numbers_not_found = [part_number for part_number in unique_part_numbers if
                                   part_number not in ice_parts_by_number]
@@ -813,16 +840,25 @@ class CombinatorialCreationImporter(object):
         not_found_part_percent = 100 * ((float(not_found_part_count) / desired_part_count)
                                         if desired_part_count else 0)
 
-        message = (admin_email_format % {
+        errors_list = json.dumps(_build_prioritized_issue_list(self.errors, ERROR_PRIORITY_ORDER))
+        warnings_list = json.dumps(_build_prioritized_issue_list(self.warnings,
+                                                                 WARNING_PRIORITY_ORDER))
+
+        print(pformat(errors_list, indent=_ADMIN_EMAIL_INDENT))
+        pprint(errors_list, indent=_ADMIN_EMAIL_INDENT)
+
+        message = (ice_related_err_email_format % {
                         'study_pk': self.study.pk,
                         'study_name': self.study.name,
                         'study_url': reverse('main:edd-pk:overview',
                                              kwargs={'pk': self.study.pk}),
-                        'ice_username': self._ice_username,
+                        'username': self._ice_username,
                         'ignore_ice_errors_param': IGNORE_ICE_RELATED_ERRORS_PARAM,
                         'ignore_ice_errors_val': str(ignore_ice_related_errors),
                         'allow_duplicate_names_param': ALLOW_DUPLICATE_NAMES_PARAM,
                         'allow_duplicate_names_val': allow_duplicate_names,
+                        'dry_run_param': DRY_RUN_PARAM,
+                        'dry_run_val': dry_run,
 
                         'unique_part_number_count': desired_part_count,
                         'unique_part_numbers': ', '.join(unique_part_numbers),
@@ -831,10 +867,34 @@ class CombinatorialCreationImporter(object):
                         'not_found_percent': not_found_part_percent,
                         'parts_not_found': ', '.join(part_numbers_not_found),
 
-                        'errors': json.dumps(self.errors, indent=_ADMIN_EMAIL_INDENT),
-                        'warnings': json.dumps(self.warnings, indent=_ADMIN_EMAIL_INDENT),
+                        'errors': pformat(errors_list, indent=_ADMIN_EMAIL_INDENT),
+                        'warnings': pformat(warnings_list, indent=_ADMIN_EMAIL_INDENT),
                         'user_input_source': str(self._input_summary),
-                        'traceback': traceback_str,
-                        })
+                        'traceback_suffix': (traceback_suffix % {'traceback': traceback_str}),
+        })
 
         mail_admins(subject=subject, message=message, fail_silently=True)
+
+    def send_unexpected_err_email(self, dry_run, ignore_ice_related_errors, allow_duplicate_names):
+        """
+        Creates and sends a context-specific error email with helpful information 
+        regarding unexpected errors encountered during Experiment Description processing.
+        """
+        # build traceback string to include in a bare-bones admin notification email
+        formatted_lines = traceback.format_exc().splitlines()
+        traceback_str = _ADMIN_EMAIL_TRACEBACK_DELIMITER.join(formatted_lines)
+
+        subject = 'Unexpected Error during Experiment Description processing'
+        message = base_email_format % {
+            'study_pk': self.study.pk,
+            'study_name': self.study.name,
+            'study_url': reverse(_STUDY_PK_OVERVIEW_NAME, kwargs={'pk': self.study.pk}),
+            'username': self.user.username,
+            'dry_run_param': DRY_RUN_PARAM,
+            'dry_run_val': dry_run,
+            'ignore_ice_errors_param': IGNORE_ICE_RELATED_ERRORS_PARAM,
+            'ignore_ice_errors_val': ignore_ice_related_errors,
+            'allow_duplicate_names_param': ALLOW_DUPLICATE_NAMES_PARAM,
+            'allow_duplicate_names_val': allow_duplicate_names,
+        } + (traceback_suffix % {'traceback': traceback_str})
+        mail_admins(subject, message, fail_silently=True)

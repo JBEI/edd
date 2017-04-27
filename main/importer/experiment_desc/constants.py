@@ -50,7 +50,7 @@ DELIMETER_NOT_ALLOWED_VALUE = ("Semicolon character isn't allowed within part nu
                                " to delimit part numbers, except strain group members "
                                "during combinatorial line creation")
 
-INTERNAL_EDD_ERROR_TITLE = 'Internal EDD error'
+INTERNAL_EDD_ERROR_CATEGORY = 'Internal EDD error'
 
 
 # either user input error in Experiment Description/ICE part permissions, or an ICE error (known
@@ -105,7 +105,7 @@ PART_NUMBER_PATTERN_UNMATCHED_WARNING = "Part number(s) didn't match the expecte
 # Generic errors... likely require admin investigation / determination re: cause
 ###################################################################################################
 
-UNPREDICTED_ERROR = 'An unpredicted error occurred'
+UNPREDICTED_ERROR = 'An unpredicted error occurred, and administrators have been notified'
 UNSUPPORTED_FILE_TYPE = 'Unsupported file type'  # TODO RESOLVE WITH incorrect file format
 
 # Errors caused by outstanding curation work in JBEI's database / resulting lack of constraints in
@@ -215,7 +215,7 @@ ERROR_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
 ################################
 # Generic errors... users can't help with these
 ################################
-ERROR_PRIORITY_ORDER[INTERNAL_EDD_ERROR_TITLE] = (
+ERROR_PRIORITY_ORDER[INTERNAL_EDD_ERROR_CATEGORY] = (
     INVALID_AUTO_NAMING_INPUT,  # Combinatorial GUI- or other API-client errors
 
     UNPREDICTED_ERROR,
@@ -247,7 +247,7 @@ WARNING_PRIORITY_ORDER[IGNORED_INPUT_CATEGORY] = (
 WARNING_PRIORITY_ORDER[SINGLE_PART_ACCESS_ERROR_CATEGORY] = USER_CREATED_ICE_PART_ERRORS
 WARNING_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
 WARNING_PRIORITY_ORDER[SYSTEMIC_ICE_ERROR_CATEGORY] = (GENERIC_ICE_RELATED_ERROR,)
-WARNING_PRIORITY_ORDER[INTERNAL_EDD_ERROR_TITLE] = (PART_NUMBER_PATTERN_UNMATCHED_WARNING,)
+WARNING_PRIORITY_ORDER[INTERNAL_EDD_ERROR_CATEGORY] = (PART_NUMBER_PATTERN_UNMATCHED_WARNING,)
 
 ###################################################################################################
 # Name elements for AutomatedNamingStrategy (used during JSON input implemented for eventual

@@ -13,7 +13,7 @@ from six import string_types
 from main.models import Strain, MetadataType, Line, Assay
 from .constants import (INVALID_ASSAY_META_PK, INVALID_AUTO_NAMING_INPUT, INVALID_LINE_META_PK,
                         INVALID_PROTOCOL_META_PK, NON_UNIQUE_STRAIN_UUIDS, SUSPECTED_MATCH_STRAINS,
-                        UNMATCHED_PART_NUMBER, INTERNAL_EDD_ERROR_TITLE, ZERO_REPLICATES,
+                        UNMATCHED_PART_NUMBER, INTERNAL_EDD_ERROR_CATEGORY, ZERO_REPLICATES,
                         BAD_GENERIC_INPUT_CATEGORY, STRAIN_NAME_ELT, REPLICATE_ELT)
 
 
@@ -256,12 +256,12 @@ class AutomatedNamingStrategy(NamingStrategy):
 
         for value in self.elements:
             if value not in self._valid_items:
-                importer.add_error(INTERNAL_EDD_ERROR_TITLE, INVALID_AUTO_NAMING_INPUT, value)
+                importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, INVALID_AUTO_NAMING_INPUT, value)
 
         if self.abbreviations:
             for abbreviated_element, replacements_dict in self.abbreviations.items():
                 if abbreviated_element not in self.valid_items:
-                    importer.add_error(INTERNAL_EDD_ERROR_TITLE, INVALID_AUTO_NAMING_INPUT,
+                    importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, INVALID_AUTO_NAMING_INPUT,
                                        abbreviated_element, '')
 
     def get_line_name(self, line_strain_ids, line_metadata, replicate_num, line_metadata_types,
@@ -583,7 +583,7 @@ class CombinatorialDescriptionInput(object):
     def _verify_pk_keys(input_dict, reference_dict, importer, err_key):
         for id in input_dict:
             if id not in reference_dict:
-                importer.add_error(INTERNAL_EDD_ERROR_TITLE, err_key, id)
+                importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, err_key, id)
 
     def compute_line_and_assay_names(self, study, line_metadata_types=None,
                                      assay_metadata_types=None, strains_by_pk=None):
@@ -910,7 +910,7 @@ def find_existing_strains(ice_parts_by_number, importer):
                 edd_strain = found_strains_qs.get()
                 existing[ice_entry.part_id] = edd_strain
             else:
-                importer.add_error(INTERNAL_EDD_ERROR_TITLE, NON_UNIQUE_STRAIN_UUIDS,
+                importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, NON_UNIQUE_STRAIN_UUIDS,
                                    ice_entry.uuid, '')
         # if no EDD strains were found with this UUID, look for candidate strains by URL.
         # Code from here forward is attempted workarounds for EDD-158
@@ -930,7 +930,7 @@ def find_existing_strains(ice_parts_by_number, importer):
                 registry_url__iregex=url_regex % {'id': str(ice_entry.id)},
             )
             if found_strains_qs:
-                importer.add_warning(INTERNAL_EDD_ERROR_TITLE, SUSPECTED_MATCH_STRAINS,
+                importer.add_warning(INTERNAL_EDD_ERROR_CATEGORY, SUSPECTED_MATCH_STRAINS,
                                      _build_suspected_match_msg(ice_entry, found_strains_qs))
                 continue
             # look for candidate strains by UUID-based URL
@@ -939,7 +939,7 @@ def find_existing_strains(ice_parts_by_number, importer):
             )
             if found_strains_qs:
                 importer.add_warning(
-                        INTERNAL_EDD_ERROR_TITLE, SUSPECTED_MATCH_STRAINS,
+                        INTERNAL_EDD_ERROR_CATEGORY, SUSPECTED_MATCH_STRAINS,
                         _build_suspected_match_msg(ice_entry, found_strains_qs))
                 continue
             # if no strains were found by URL, search by name
@@ -953,7 +953,7 @@ def find_existing_strains(ice_parts_by_number, importer):
                 name__icontains=ice_entry.name,
             )
             if found_strains_qs:
-                importer.add_warning(INTERNAL_EDD_ERROR_TITLE, SUSPECTED_MATCH_STRAINS,
+                importer.add_warning(INTERNAL_EDD_ERROR_CATEGORY, SUSPECTED_MATCH_STRAINS,
                                      _build_suspected_match_msg(ice_entry, found_strains_qs))
                 continue
     return existing, not_found
