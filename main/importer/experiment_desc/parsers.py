@@ -18,7 +18,7 @@ from .constants import (DUPLICATE_ASSAY_METADATA, INVALID_CELL_TYPE, INVALID_REP
                         INVALID_COLUMN_HEADER, UNMATCHED_ASSAY_COL_HEADERS_KEY,
                         MULTIPLE_WORKSHEETS_FOUND, UNSUPPORTED_LINE_METADATA, EMPTY_WORKBOOK,
                         ZERO_REPLICATES, INCORRECT_TIME_FORMAT, UNPARSEABLE_COMBINATORIAL_VALUE,
-                        INTERNAL_EDD_ERROR_TITLE, BAD_FILE_CATEGORY, PART_NUM_PATTERN_TITLE,
+                        INTERNAL_EDD_ERROR_CATEGORY, BAD_FILE_CATEGORY, PART_NUM_PATTERN_TITLE,
                         IGNORED_INPUT_CATEGORY, INVALID_FILE_VALUE_CATEGORY,
                         BAD_GENERIC_INPUT_CATEGORY, INCONSISTENT_COMBINATORIAL_VALUE,
                         ELEMENTS_SECTION, ABBREVIATIONS_SECTION, NAME_ELEMENTS_SECTION,
@@ -1261,7 +1261,7 @@ class JsonInputParser(CombinatorialInputParser):
                 combinatorial_inputs.append(combo_input)
             except RuntimeError as rte:
                 logger.exception('Unexpected parse error')
-                self.importer.add_error(INTERNAL_EDD_ERROR_TITLE, PARSE_ERROR, str(rte))
+                self.importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, PARSE_ERROR, str(rte))
 
         # verify primary key inputs from the JSON are for the expected MetaDataType context,
         # and that they exist, since there's no runtime checking for this at database item

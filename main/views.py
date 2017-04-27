@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import tempfile
+import traceback
 
 from builtins import str
 from django.conf import settings
@@ -30,7 +31,7 @@ from main.importer.experiment_desc.constants import (INTERNAL_SERVER_ERROR, UNPR
                                                      BAD_FILE_CATEGORY,
                                                      ALLOW_DUPLICATE_NAMES_PARAM,
                                                      IGNORE_ICE_RELATED_ERRORS_PARAM,
-                                                     DRY_RUN_PARAM)
+                                                     DRY_RUN_PARAM, INTERNAL_EDD_ERROR_CATEGORY)
 from main.importer.experiment_desc.importer import _build_response_content, ImportErrorSummary
 from . import autocomplete, models as edd_models, redis
 from .export.forms import ExportOptionForm, ExportSelectionForm, WorklistForm
@@ -1373,6 +1374,7 @@ def study_describe_experiment(request, pk=None, slug=None):
     # detect the input format
     has_file_type = FILE_TYPE_HEADER in request.META
     file_type = request.META.get(FILE_TYPE_HEADER, '')
+    file_name = None
     is_excel_file = 'XLSX' == file_type.upper()
     if has_file_type:
         if is_excel_file:
@@ -1380,8 +1382,9 @@ def study_describe_experiment(request, pk=None, slug=None):
             logger.info('Parsing experiment description file "%s"' % file_name)
 
         else:
-            summary = ImportErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE, file_type)
-            errors = {BAD_FILE_CATEGORY: summary}
+            summary = ImportErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE)
+            summary.add_occurrence(file_type)
+            errors = {BAD_FILE_CATEGORY: {UNSUPPORTED_FILE_TYPE: summary}}
             return JsonResponse(
                     _build_response_content(errors, {}),
                     status=BAD_REQUEST)
@@ -1395,13 +1398,20 @@ def study_describe_experiment(request, pk=None, slug=None):
             status_code, reply_content = (
                 importer.do_import(request, allow_duplicate_names,
                                    dry_run, ignore_ice_related_errors, excel_filename=file_name))
+        logger.debug('Reply content: %s' % json.dumps(reply_content))
         return JsonResponse(reply_content, status=status_code)
 
     except RuntimeError as e:
         # log the exception, but return a response to the GUI/client anyway to help it remain
         # responsive
+        importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, UNPREDICTED_ERROR, str(e))
+
         logger.exception('Unpredicted exception occurred during experiment description processing')
-        importer.errors[UNPREDICTED_ERROR].append(str(e))
+
+        importer.send_unexpected_err_email(dry_run,
+                                           ignore_ice_related_errors,
+                                           allow_duplicate_names)
+
         return JsonResponse(
             _build_response_content(importer.errors, importer.warnings),
             status=INTERNAL_SERVER_ERROR
