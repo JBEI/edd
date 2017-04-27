@@ -64,7 +64,7 @@ module StudyOverview {
         }).appendTo('#linesAdded');
         //display success message
         $('#linesAdded').show();
-        generateMessages('warnings', result.warnings, newWarningAlert);
+        generateMessages('warnings', result.warnings);
         generateAcceptWarning();
     }
 
@@ -110,7 +110,7 @@ module StudyOverview {
 
         let parent: JQuery = $('#alert_placeholder'), dismissAll: JQuery = $('#dismissAll').find('.dismissAll'),
             linesPathName: string, currentPath: string;
-        currentPath = window.location.pathname
+        currentPath = window.location.pathname;
         linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
         // reset the drop zone here
         //parse xhr.response
@@ -120,13 +120,11 @@ module StudyOverview {
                 generate504Error();
             }
             obj = JSON.parse(xhr.response);
-            let newWarningAlert = $('.alert-warning').eq(0).clone();
-            let newErrorAlert = $('.alert-danger').eq(0).clone();
             if (obj.errors) {
-                generateMessages('error', obj.errors, newErrorAlert)
+                generateMessages('error', obj.errors)
             }
             if (obj.warnings) {
-                generateMessages('warnings', obj.warnings, newWarningAlert)
+                generateMessages('warnings', obj.warnings)
             }
         } catch (e) {
             //if there is no backend error message or error (html response), show this
@@ -184,16 +182,22 @@ module StudyOverview {
         });
     }
 
-    function generateMessages(type, response, div) {
+    function generateMessages(type, response) {
         var responseMessages = organizeMessages(response);
         for (var key in responseMessages) {
+            let div;
+            if (type === 'error') {
+                div = $('.alert-danger').eq(0).clone();
+            } else {
+                div = $('.alert-warning').eq(0).clone();
+            }
             alertMessage(key, responseMessages[key], div, type)
         }
     }
 
 
     function generateAcceptWarning(): void {
-        var warningAlerts: JQuery, acceptWarningButton: JQuery, acceptWarningDiv: JQuery;
+        var warningAlerts: JQuery, acceptWarningDiv: JQuery;
         warningAlerts = $('.alert-warning:visible');
         acceptWarningDiv = $('#acceptWarnings').find('.acceptWarnings');
         if (warningAlerts.length === 1) {
