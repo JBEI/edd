@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
+
 from jsonschema import Draft4Validator
+
 """
 A work-in-progress attempt to do validation on the complex JSON input for the combinatorial line
 creation GUI. Validating the (potentially complex) input should help to simplify custom code and
@@ -16,19 +18,20 @@ Also worth noting that a supporing Python 3.2 library seems to have gotten pulle
 requirements by jsonschema (which claims to support Python 2 and 3).  Consider untangling all this
 later...for now, just don't import/use this code.
 
-Early testing of this version was done against the following requirements (purposefully omitted from
-EDD's requirements.txt for now):
+Early testing of this version was done against the following requirements (purposefully omitted 
+from EDD's requirements.txt for now):
 
 jsonschema==2.5.1
 functools32==3.2.3.post2
 """
 
+
 class JsonSchemaValidator(object):
     def validate(self, input, errors):
-        # TODO: continue testing this in support of the combinatorial line creation GUI. This schema
-        # allows automated tests to work, but doesn't include many of the items drafted below that
-        # should also be tested/included.  Suspected culprit ATM is that jsonschema library doesn't
-        # support the spec as advertised.
+        # TODO: continue testing this in support of the combinatorial line creation GUI. This
+        # schema allows automated tests to work, but doesn't include many of the items drafted
+        # below that should also be tested/included.  Suspected culprit ATM is that jsonschema
+        # library doesn't support the spec as advertised.
         schema = {
             "$schema": "http://json-schema.org/draft-04/schema#",
             'id': 'http://www.jbei.org/schemas/informatics/edd/combinatorial_definition.json',
@@ -97,7 +100,7 @@ class JsonSchemaValidator(object):
                     }
                 }, 'protocol_to_assay_metadata': {
                     "$ref": "#/definitions/protocol_to_assay_metadata_map"
-                }, # 'protocol_to_combinatorial_metadata': {
+                },  # 'protocol_to_combinatorial_metadata': {
                 #     "$ref": "#/definitions/protocol_to_assay_metadata_map"
                 # },
                 'contact': {

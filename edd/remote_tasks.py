@@ -222,6 +222,7 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         study = line.study
         ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email),
                      verify_ssl_cert=settings.VERIFY_ICE_CERT)
+        ice.timeout = settings.ICE_REQUEST_TIMEOUT
         ice.write_enabled = True
         ice.link_entry_to_study(str(workaround_strain_entry_id), study.pk, study_url, study.name,
                                 logger=logger, old_study_name=old_study_name)
@@ -341,6 +342,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
         # remove the study link from ICE
         ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email),
                      verify_ssl_cert=settings.VERIFY_ICE_CERT)
+        ice.timeout = settings.ICE_REQUEST_TIMEOUT
         ice.write_enabled = True
         removed = ice.unlink_entry_from_study(strain_registry_id, study_pk, study_url,
                                               logger)

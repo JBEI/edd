@@ -3,25 +3,18 @@ from __future__ import unicode_literals
 
 import copy
 import logging
+from collections import defaultdict, OrderedDict, Sequence
 
 from arrow import utcnow
 from builtins import str
-from collections import defaultdict, OrderedDict, Sequence
-from django.conf import settings
 from django.db.models import Q
 from six import string_types
 
-from .constants import (
-    INVALID_ASSAY_META_PK,
-    INVALID_AUTO_NAMING_INPUT,
-    INVALID_LINE_META_PK,
-    INVALID_PROTOCOL_META_PK,
-    NON_UNIQUE_STRAIN_UUIDS,
-    PARSE_ERROR,
-    SUSPECTED_MATCH_STRAINS,
-    UNMATCHED_PART_NUMBER,
-)
 from main.models import Strain, MetadataType, Line, Assay
+from .constants import (INVALID_ASSAY_META_PK, INVALID_AUTO_NAMING_INPUT, INVALID_LINE_META_PK,
+                        INVALID_PROTOCOL_META_PK, NON_UNIQUE_STRAIN_UUIDS, SUSPECTED_MATCH_STRAINS,
+                        UNMATCHED_PART_NUMBER, INTERNAL_EDD_ERROR_CATEGORY, ZERO_REPLICATES,
+                        BAD_GENERIC_INPUT_CATEGORY, STRAIN_NAME_ELT, REPLICATE_ELT)
 
 
 logger = logging.getLogger(__name__)
@@ -34,24 +27,56 @@ class NamingStrategy(object):
     combinatorial line creation GUI (EDD-257).
     """
     def __init__(self):
+        self.section_separator = '-'
+        self.multivalue_separator = '_'
+        self.space_replacement = '_'
         self.combinatorial_input = None
         self.fractional_time_digits = 0
         self.require_strains = False
 
-    def get_line_name(self, strains, line_metadata, replicate_num, line_metadata_types,
-                      combinatorial_metadata_types, is_control):
+    def get_line_name(self, line_strain_ids, line_metadata, replicate_num, line_metadata_types,
+                      combinatorial_metadata_types, is_control, strains_by_pk):
+        """
+        :param strains_by_pk:
+        :raises ValueError if some required input isn't available for creating the name (either
+            via this method or from other properties). Note that even if required for line name
+            uniqueness, strain names may be omitted.
+        """
+        raise NotImplementedError()  # require subclasses to implement
+
+    def get_assay_name(self, line, protocol_pk, assay_metadata, assay_metadata_types):
         """
         :raises ValueError if some required input isn't available for creating the name (either
             via this method or from other properties)
         """
         raise NotImplementedError()  # require subclasses to implement
 
-    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types):
+    def names_contain_strains(self):
+        raise NotImplementedError()
+
+    def _build_strains_names_list(self, line_strain_ids, strains_by_pk):
         """
-        :raises ValueError if some required input isn't available for creating the name (either
-            via this method or from other properties)
+        Computes the line name segment for strain names, if needed to make the line name unique
+        :param line_strain_ids:
+        :param strains_by_pk:
+        :return: the line name segment for strain names, or an empty string if unneeded or if
+                 unable to compute
         """
-        raise NotImplementedError()  # require subclasses to implement
+
+        # avoid problems when ICE-related errors prevent some/all strains from being found
+        if not strains_by_pk:
+            return []
+
+        strain_names = []
+        for strain_pk in line_strain_ids:
+            strain = strains_by_pk.get(strain_pk, None)
+
+            # skip single strains that weren't found
+            if not strain:
+                continue
+
+            strain_names.append(strain.name.replace(' ', self.space_replacement))
+        return strain_names
 
 
 class NewLineAndAssayVisitor(object):
@@ -130,7 +155,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         # make sure everything gets cast to str to comply with Postgres' hstore field
         hstore_compliant_dict = {
             str(pk): str(value)
-            for pk, value in assay_metadata_dict.iteritems() if value
+            for pk, value in assay_metadata_dict.items() if value
         }
 
         assay = Assay.objects.create(
@@ -199,35 +224,22 @@ class AutomatedNamingStrategy(NamingStrategy):
     automatically.
     """
 
-    STRAIN_NAME = 'strain_name'
-    REPLICATE = 'replicate'
-    # TODO: flesh out other items that are doubly-defined based on database field / metadata
-    # conflicts --
-    # CARBON_SOURCE = 'carbon_source'
-    # EXPERIMENTER = 'experimenter'
-    # CONTACT = 'contact'
-
-    ELEMENTS = 'elements'
-    CUSTOM_ADDITIONS = 'custom_additions'
-    ABBREVIATIONS = 'abbreviations'
-
     def __init__(self, line_metadata_types_by_pk, assay_metadata_types_by_pk,
                  assay_time_metadata_type_pk, naming_elts=None, custom_additions=None,
-                 abbreviations=None, section_separator='-', multivalue_separator='_'):
+                 abbreviations=None, ):
         super(AutomatedNamingStrategy, self).__init__()
         self.elements = naming_elts
         self.abbreviations = abbreviations
         self.line_metadata_types_by_pk = line_metadata_types_by_pk
         self.assay_metadata_types_by_pk = assay_metadata_types_by_pk
         self.assay_time_metadata_type_pk = assay_time_metadata_type_pk
-        self.separator = section_separator
-        self.multivalue_separator = multivalue_separator
-        self.require_strains = True
-        self.strains_by_pk = {}
 
-        valid_items = [self.STRAIN_NAME, self.REPLICATE, ]
+        valid_items = [STRAIN_NAME_ELT, REPLICATE_ELT, ]
         valid_items.extend(pk for pk in self.line_metadata_types_by_pk.iterkeys())
         self._valid_items = valid_items
+
+    def names_contain_strains(self):
+        return STRAIN_NAME_ELT in self.elements
 
     @property
     def valid_items(self, valid_items):
@@ -244,37 +256,32 @@ class AutomatedNamingStrategy(NamingStrategy):
 
         for value in self.elements:
             if value not in self._valid_items:
-                importer.add_error(INVALID_AUTO_NAMING_INPUT, value)
+                importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, INVALID_AUTO_NAMING_INPUT, value)
 
         if self.abbreviations:
-            for abbreviated_element, replacements_dict in self.abbreviations.iteritems():
+            for abbreviated_element, replacements_dict in self.abbreviations.items():
                 if abbreviated_element not in self.valid_items:
-                    importer.add_error(INVALID_AUTO_NAMING_INPUT, abbreviated_element)
+                    importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, INVALID_AUTO_NAMING_INPUT,
+                                       abbreviated_element, '')
 
-    def get_line_name(self, strain_pks, line_metadata, replicate_num, line_metadata_types,
-                      combinatorial_metadata_types, is_control):
+    def get_line_name(self, line_strain_ids, line_metadata, replicate_num, line_metadata_types,
+                      combinatorial_metadata_types, is_control, strains_by_pk):
+        """
+        Constructs a name for the specified line based on the order of naming elements explicitly
+        specified by the client.
+        """
         line_name = None
         for field_id in self.elements:
             append_value = ''
-            if self.STRAIN_NAME == field_id:
-                # get names for all the strains using a method that raises ValueError to match
-                # the docstring
-                strain_names = []
-                missing_strains = []
-                for strain_pk in strain_pks:
-                    strain = self.strains_by_pk.get(strain_pk, None)
-                    if not strain:
-                        missing_strains.append(strain_pk)
-                    strain_names.append(strain.name)
-                if missing_strains:
-                    raise ValueError('Unable to locate strain(s): %s' % str(missing_strains))
+            if STRAIN_NAME_ELT == field_id:
+                strain_names_list = self._build_strains_names_list(line_strain_ids, strains_by_pk)
                 abbreviated_strains = [
-                    self._get_abbrev(self.STRAIN_NAME, strain_name)
-                    for strain_name in strain_names
+                    self._get_abbrev(STRAIN_NAME_ELT, strain_name)
+                    for strain_name in strain_names_list
                 ]
                 append_value = self.multivalue_separator.join(abbreviated_strains)
 
-            elif self.REPLICATE == field_id:
+            elif REPLICATE_ELT == field_id:
                 # NOTE: passing raw number causes a warning
                 append_value = str(replicate_num)
             else:
@@ -287,7 +294,7 @@ class AutomatedNamingStrategy(NamingStrategy):
             if not line_name:
                 line_name = append_value
             else:
-                line_name = self.separator.join((line_name, append_value))
+                line_name = self.section_separator.join((line_name, append_value))
 
         return line_name
 
@@ -327,12 +334,15 @@ class AutomatedNamingStrategy(NamingStrategy):
             return str(abbreviation)
         return str(raw_value)
 
-    def get_assay_name(self, line, protocol, assay_metadata, assay_metadata_types):
+    def get_assay_name(self, line, protocol_pk, assay_metadata, assay_metadata_types):
+        # TODO: reconsider assay configuration / naming in the GUI when implementing, then
+        # update placeholder implementation here.  Pre-measurement assay creation wasn't under
+        # discussion until after creating the combinatorial UI mockup attached to EDD-257
         logger.info('Assay metadata: %s' % assay_metadata)
         assay_time = assay_metadata.get(self.assay_time_metadata_type_pk, None)
         if not assay_time:
             raise ValueError('No time value was found -- unable to generate an assay name')
-        return self.separator.join((line.name, '%sh' % str(assay_time)))
+        return self.section_separator.join((line.name, '%sh' % str(assay_time)))
 
 
 class CombinatorialDescriptionInput(object):
@@ -443,8 +453,7 @@ class CombinatorialDescriptionInput(object):
                 # should already have resulted in error/warning messages
                 # during the preceding ICE queries, and we don't need to track two errors for
                 # the same problem.
-                elif ice_parts_by_number.get(part_number, False):
-
+                elif part_number in ice_parts_by_number:
                     self.add_error(UNMATCHED_PART_NUMBER, part_number)
 
     def get_unique_strain_ids(self, unique_strain_ids):
@@ -572,12 +581,9 @@ class CombinatorialDescriptionInput(object):
 
     @staticmethod
     def _verify_pk_keys(input_dict, reference_dict, importer, err_key):
-        for key in input_dict:
-            if key not in reference_dict:
-                importer.add_error(PARSE_ERROR, {'error_type': err_key, 'metadata_id': key})
-
-    def _invalid_meta_pk(self, for_context, pk):
-        raise NotImplementedError()  # TODO:
+        for id in input_dict:
+            if id not in reference_dict:
+                importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, err_key, id)
 
     def compute_line_and_assay_names(self, study, line_metadata_types=None,
                                      assay_metadata_types=None, strains_by_pk=None):
@@ -630,8 +636,8 @@ class CombinatorialDescriptionInput(object):
         self._assay_metadata_types = assay_metadata_types
 
         # pass cached database values to the naming strategy, if relevant.
-        need_strains_for_naming = self.naming_strategy.require_strains
-        need_strains_for_creation = visitor.require_strains
+        need_strains_for_naming = self.naming_strategy.names_contain_strains
+        need_strains_for_creation = self.naming_strategy.names_contain_strains
         if need_strains_for_naming or need_strains_for_creation:
             if strains_by_pk is None:
                 # determine unique strain pk's and query for the Strains in the database (assumes
@@ -655,9 +661,12 @@ class CombinatorialDescriptionInput(object):
         ###########################################################################################
         try:
             for strain_id_group in self.combinatorial_strain_id_groups:
-                self ._visit_new_lines(study, strain_id_group, line_metadata_types, visitor)
+                logger.debug('Visiting strain ID group: %s' % str(strain_id_group))
+                self ._visit_new_lines(study, strain_id_group, strains_by_pk, line_metadata_types,
+                                       visitor)
             if not self.combinatorial_strain_id_groups:
-                self._visit_new_lines(study, [], line_metadata_types, visitor)
+                logger.debug('No strain ID groups. Visiting lines')
+                self._visit_new_lines(study, [], strains_by_pk, line_metadata_types, visitor)
 
         ###########################################################################################
         # Clear out local caches of database info
@@ -668,54 +677,60 @@ class CombinatorialDescriptionInput(object):
             if need_strains_for_naming:
                 self.naming_strategy.strains_by_pk = None
 
-    def _visit_new_lines(self, study, strain_ids, line_metadata_dict, visitor):
+    def _visit_new_lines(self, study, line_strain_ids, strains_by_pk, line_metadata_dict, visitor):
             visited_pks = set()
             line_metadata = copy.copy(self.common_line_metadata)
             # outer loop for combinatorial
-            for metadata_pk, values in self.combinatorial_line_metadata.iteritems():
+            for metadata_pk, values in self.combinatorial_line_metadata.items():
                 visited_pks.add(metadata_pk)
-                for value in values:
-                    line_metadata[metadata_pk] = value
+                for value1 in values:
+                    line_metadata[metadata_pk] = value1
                     # inner loop for combinatorial
-                    for k, v in self.combinatorial_line_metadata.iteritems():
+                    for k, v in self.combinatorial_line_metadata.items():
                         # skip current metadata if already set in outer loop
                         if k in visited_pks:
                             continue
-                        for value in v:
-                            line_metadata[k] = value
+                        for value2 in v:
+                            line_metadata[k] = value2
                             self._visit_new_lines_and_assays(
                                 study,
-                                strain_ids,
+                                strains_by_pk,
+                                line_strain_ids,
                                 line_metadata,
                                 visitor
                             )
-                    # if only one item in combinatorial, inner loop never visits; do it here
+                    # if only making combinatiors of a single metadata type inner loop above never
+                    # visits; do it here
                     if len(self.combinatorial_line_metadata) == 1:
-                        self._visit_new_lines_and_assays(study, strain_ids, line_metadata, visitor)
+                        self._visit_new_lines_and_assays(study, strains_by_pk, line_strain_ids,
+                                                         line_metadata, visitor)
             # if nothing in combinatorial, loops never get to visit; do it here
             if not self.combinatorial_line_metadata:
                 line_metadata = self.common_line_metadata
-                self._visit_new_lines_and_assays(study, strain_ids, line_metadata, visitor)
+                self._visit_new_lines_and_assays(study, strains_by_pk, line_strain_ids,
+                                                 line_metadata, visitor)
 
-    def _visit_new_lines_and_assays(self, study, strain_ids, line_metadata_dict, visitor):
+    def _visit_new_lines_and_assays(self, study, strains_by_pk, line_strain_ids,
+                                    line_metadata_dict, visitor):
+        if self.replicate_count == 0:
+            self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, ZERO_REPLICATES)
         for replicate_num in range(1, self.replicate_count + 1):
             control_variants = [self.is_control]
             if isinstance(self.is_control, Sequence):
                 control_variants = self.is_control
             for is_control in control_variants:
-                line_name = self.naming_strategy.get_line_name(
-                    strain_ids,
-                    line_metadata_dict,
-                    replicate_num,
-                    self._line_metadata_types,
-                    self.combinatorial_line_metadata,
-                    is_control
-                )
+
+                line_name = self.naming_strategy.get_line_name(line_strain_ids, line_metadata_dict,
+                                                               replicate_num,
+                                                               self._line_metadata_types,
+                                                               self.combinatorial_line_metadata,
+                                                               is_control,
+                                                               strains_by_pk)
                 line = visitor.visit_line(
                     line_name,
                     self.description,
                     is_control,
-                    strain_ids,
+                    line_strain_ids,
                     line_metadata_dict,
                     replicate_num
                 )
@@ -879,7 +894,9 @@ def find_existing_strains(ice_parts_by_number, importer):
     """
     # TODO: following EDD-158, consider doing a bulk query here instead of tiptoeing around strain
     # curation issues
-    existing = OrderedDict()  # maps part number -> existing EDD strain
+
+    # maps part number -> existing EDD strain (with part number temporarily cached)
+    existing = OrderedDict()
     not_found = []
 
     for ice_entry in ice_parts_by_number.itervalues():
@@ -890,9 +907,11 @@ def find_existing_strains(ice_parts_by_number, importer):
         # if one or more strains are found with this UUID
         if found_strains_qs:
             if len(found_strains_qs) == 1:
-                existing[ice_entry.part_id] = found_strains_qs.get()
+                edd_strain = found_strains_qs.get()
+                existing[ice_entry.part_id] = edd_strain
             else:
-                importer.add_error(NON_UNIQUE_STRAIN_UUIDS, ice_entry.uuid)
+                importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, NON_UNIQUE_STRAIN_UUIDS,
+                                   ice_entry.uuid, '')
         # if no EDD strains were found with this UUID, look for candidate strains by URL.
         # Code from here forward is attempted workarounds for EDD-158
         else:
@@ -911,20 +930,17 @@ def find_existing_strains(ice_parts_by_number, importer):
                 registry_url__iregex=url_regex % {'id': str(ice_entry.id)},
             )
             if found_strains_qs:
-                importer.add_error(SUSPECTED_MATCH_STRAINS, {
-                    'ice_entry': ice_entry,
-                    'suspected_matches': list(found_strains_qs),
-                })
+                importer.add_warning(INTERNAL_EDD_ERROR_CATEGORY, SUSPECTED_MATCH_STRAINS,
+                                     _build_suspected_match_msg(ice_entry, found_strains_qs))
                 continue
             # look for candidate strains by UUID-based URL
             found_strains_qs = Strain.objects.filter(
                 registry_url__iregex=(url_regex % {'id': str(ice_entry.uuid)})
             )
             if found_strains_qs:
-                importer.add_error(SUSPECTED_MATCH_STRAINS, {
-                    'ice_entry': ice_entry,
-                    'suspected_matches': list(found_strains_qs),
-                })
+                importer.add_warning(
+                        INTERNAL_EDD_ERROR_CATEGORY, SUSPECTED_MATCH_STRAINS,
+                        _build_suspected_match_msg(ice_entry, found_strains_qs))
                 continue
             # if no strains were found by URL, search by name
             empty_or_whitespace_regex = r'$\s*^'
@@ -937,9 +953,14 @@ def find_existing_strains(ice_parts_by_number, importer):
                 name__icontains=ice_entry.name,
             )
             if found_strains_qs:
-                importer.add_error(SUSPECTED_MATCH_STRAINS, {
-                    'ice_entry': ice_entry,
-                    'suspected_matches': list(found_strains_qs),
-                })
+                importer.add_warning(INTERNAL_EDD_ERROR_CATEGORY, SUSPECTED_MATCH_STRAINS,
+                                     _build_suspected_match_msg(ice_entry, found_strains_qs))
                 continue
     return existing, not_found
+
+
+def _build_suspected_match_msg(ice_entry, found_strains_qs):
+    return '{%(ice_entry)s, suspected matches = (%(suspected_matches)s)}' % {
+        'ice_entry': ice_entry,
+        'suspected_matches': ', '.join(strain.pk for strain in found_strains_qs),
+    }

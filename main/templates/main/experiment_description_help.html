@@ -4,6 +4,7 @@
 {% block js_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'main/help.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'main/experiment_description_help.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/Experiment-Desc-Help.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/EDDRest.js' %}"></script>
 {% endblock js_css %}
@@ -15,21 +16,41 @@
 {% block body_title %}
     {{ block.super }} &mdash; Experiment Description File
 {% endblock body_title %}
-
 {% block content %}
-<h2><span class="TODO">DRAFT</span></h2><p class="TODO">
-    This document is a work-in-progress draft.  It should be helpful as-is, but expect an
-    updated version soon based on review that's already underway.
-</p>
+<div class="sectionContent">
+<div class="contents_menu disclose discloseHide">
+    <span><a href="#" class="discloseLink">Contents</a></span>
+    <div class="discloseBody">
+        <ol>
+            <li><a href="#experiment_description">What's An Experiment Description File</a></li>
+            <li>
+                <ol>
+                    <li><a href="#basics">Basics</a></li>
+                    <li><a href="#column_options">Column Options</a></li>
+                    <li><a href="#housekeeping">File Format Housekeeping</a></li>
+                </ol>
+            </li>
+            <li><a href="#advanced">Advanced Use</a>
+                <ol>
+                    <li><a href="#bulk">Bulk Line Creation</a></li>
+                    <li><a href="#combinatorial_line">Combinatorial Line Creation</a></li>
+                    <li><a href="assay_creation">Assay Creation</a></li>
+                    <li><a href="#combinatorial_assay">Combinatorial Assay Creation</a></li>
+                </ol>
+            </li>
+        </ol>
+    </div>
+</div>
+</div>
+<a name="experiment_description"></a>
     <h1>What's an Experiment Description file?</h1>
 <p>
 An experiment description file is a simple Excel file that allows you to quickly enter the
 experimental conditions for your study.  EDD needs to know what the experimental conditions are for
-measurements you're importing, preferably before you import the data into EDD, or even measure it in
-    the lab <span class="TODO">(see here for why)</span>. An experiment description file is
-    normally the most efficient way to input that information.</p>
-    <p>
-
+measurements you're importing, preferably before you import the data into EDD, and sometimes before
+even measuring it in the lab. An experiment description file is normally the most efficient way
+to input that information.</p>
+<p>
 Before getting into the details of all the options available in the file, consider downloading the
 sample file.  If the sample file makes sense to you out-of-the-box, run with it!  If this is your
 first time using EDD, and you aren’t familiar with the concepts, the first thing to do is to learn
@@ -70,10 +91,8 @@ about lines.</p>
 
 <img src=""/>
 <div class="caption">Figure 1: EDD terms corresponding to parts of a sample laboratory experiment</div>
-<h3>Experiment description file format</h3>
-<p>
-<span class="TODO">TODO: re/verify examples here once ICE exception is resolved that prevents
-communication with non-production instances.</span></p>
+<a name="basics"></a>
+<h3>Experiment description basics</h3>
 <p>An experiment description file is an efficient way for you to add lines to your study with a minimum
 of data entry.  In the simplest case, each row of the file represents experimental conditions for a
 single line of enquiry in your study.  For example, consider the following single-row experiment
@@ -97,7 +116,9 @@ description file:</p>
 </table>
 <div class="caption">
     Figure 2: Simple experiment description file
-    EDD_Sample_1_Single_line.xlsx
+    <a href="{% static 'experiment_description/Figure_2_Simple_Experiment_Description.xlsx' %}">
+    <span class="dropLink dropImg">__</span>
+    </a>
 </div>
 <p>
     Dropping this file into EDD creates a single line, visible in the study’s “Lines” section in
@@ -114,7 +135,7 @@ description file:</p>
     <tbody>
         <tr>
             <td>WT-Control</td>
-            <td>JW0111</td>
+            <td>BY4742</td>
             <td>--</td>
             <td>--</td>
             <td>LB</td>
@@ -158,8 +179,9 @@ description file:</p>
     </tbody>
 </table>
 <div class="caption">
-    <span class="figureTitle">Figure 4: Creating multiple lines and replicates</span>
-    EDD_Sample_2_Multiple_Lines_And_Replicates.xlsx
+<span class="figureTitle">Figure 4: Creating
+    <a href="{% static 'experiment_description/Figure_4_Multiple_Lines_And_Replicates.xlsx' %}">
+        multiple lines and replicates<span class="dropLink dropImg">__</span></a></span>
 </div>
 <p>
     Each row of the Experiment Description file in Figure 4 is a set of values that define distinct
@@ -179,21 +201,21 @@ line names unique within the study.
     <tbody>
         <tr>
             <td>WT-Control-R1</td>
-            <td>JW0111</td>
+            <td>BY4742</td>
             <td>--</td>
             <td>--</td>
             <td>LB</td>
         </tr>
         <tr>
             <td>WT-Control-R2</td>
-            <td>JW0111</td>
+            <td>BY4742</td>
             <td>--</td>
             <td>--</td>
             <td>LB</td>
         </tr>
         <tr>
             <td>WT-Control-R3</td>
-            <td>JW0111</td>
+            <td>BY4742</td>
             <td>--</td>
             <td>--</td>
             <td>LB</td>
@@ -222,7 +244,7 @@ line names unique within the study.
     </tbody>
 </table>
 <div class="caption">Figure 5: Resulting lines table in EDD</div>
-
+<a name="column_options"></a>
 <h4>Column Options</h4>
 <p>Column headers in the Experiment Description file describe characteristics you'll assign to the
 lines, and maybe assays, in your study.  You can create an Experiment Description file with minimal
@@ -334,56 +356,95 @@ In addition to the line characteristics built into EDD, you may also use Experim
     <a class="discloseLink" href="#">Line Metadata Types</a>
     <div id='lineMetadataTypes' class="discloseBody"></div>
 </div>
+<div class = "disclose discloseHide">
+    <a class="discloseLink" href="#">Protocols in this EDD instance</a>
+    <div id='protocols' class="discloseBody"></div>
+</div>
 <div class="disclose discloseHide">
     <a class="discloseLink" href="#">Assay Metadata Types</a>
     <div id='assayMetadataTypes' class="discloseBody"></div>
 </div>
 
-<b>Unsupported values</b>: the following line characteristics aren’t supported in the initial version
+<b>Unsupported columns</b>: the following line characteristics aren’t supported as column headers
+in the initial version
 of the Experiment Description file (pending resolution of <a href="https://support.jbei
 .org/browse/EDD-438">EDD-438</a>): control, carbon source (s), line experimenter, line contact.
-
+You can add these data after creating lines using EDD's <a href="#bulk_editing">bulk line editing
+feature.</a>
+<a name="housekeeping"></a>
 <h4>File Format Housekeeping</h4>
 <p>
 You may define columns in any order, as long as the single required column, “Line Name”, is present.
-    You also don’t have to worry about capitalization or accidental use of leading/trailing
-    whitespace in the column headers.  With the exception of line names, you can leave any
-    non-header cell blank to omit that metadata for lines/assays created by the corresponding table
-    row.  At the time of writing, there’s no error checking on non-time inputs, so enter your data
-    carefully!
+You also don’t have to worry about capitalization or accidental use of leading/trailing
+whitespace in the column headers.  With the exception of line names, you can leave any
+non-header cell blank to omit that metadata for lines/assays created by the corresponding table
+row.  Note that column order in your file <em>can affect naming</em> in the resulting lines
+/ assays, but
+only if you use advanced combinatorial features (see below).
+At the time of writing, there’s no error checking on non-time inputs, so enter your data
+carefully!
 </p>
-
-<h4>Advanced Use</h4>
-<h5>Bulk Line Creation</h5>
-
-<h6>ICE Bulk Export</h6>
+<a name="advanced"></a>
+<h3>Advanced Use</h3>
+<a name="bulk"></a>
+<h4>Bulk Line Creation</h4>
+If your experiment involves use of a large strain library, or many combinations of experimental
+conditions, you may want to consider options for reducing the amount of data entry required to
+create lines in your EDD study.  See subsections below for several options.
+<h5>ICE Bulk Export</h5>
 <p>
-    If your experiment involves use of a large strain library, or many combinations of experimental
-conditions, you may want to consider how to reduce the amount of data entry required to create lines
-in your EDD study.  One option is to use ICE’s bulk export feature to create a CSV file as a starting
+  One option is to use ICE’s bulk export feature to create a CSV file as a starting
 point for your EDD Experiment Description file.  EDD’s Experiment Description file purposefully uses
 the same “Part ID” column header as ICE’s export, so all you have to do is remove the other
-    unnecessary
-columns from the ICE export, then add other columns to fully describe your experiment.
+unnecessary columns from the ICE export, then add other columns to fully describe your experiment.
 </p>
-
-<h6>Combinatorial Line Creation</h6>
+<h5>Combinatorial Line Creation</h5>
+If you need to create a large number of lines to represent your experiment, Experiment
+Description files have advanced options that allow you to significantly cut down on the amount
+of repetitive data entry required. See <a href="#combinatorial_line">Combinatorial Line
+Creation</a> and <a href="#combinatorial_assay">Combinatorial Assay Creation</a> below.
+<a name="bulk_editing"></a>
+<h5>Bulk line editing</h5>
+An option available to you as a suppliment to Experiment Description files is bulk line editing.
+After creating lines in your study, you can select multiple lines to edit shared characteristics
+to be applied to all of them simultaneously. From the Experiment Description section of a study that
+has existing lines, check the boxes to the left of the lines you want to edit, then hit the edit
+button to bulk edit them.
+<h5>Creating large numbers of lines</h5>
 <p>
-    To reduce the need for repetitive data entry, you can append “s” or “(s)” to the end of most column
-headers in an Experiment Description file, then add comma-separated values in that column to have
-EDD generate lines combinatorially.  Figure 6 shows an example file that creates lines combinatorially
-using different media.
+For studies with very large numbers of lines, your browser may time out during upload of an
+Experiment Description file while lines / assays are
+being created, giving the appearance that your file upload attempt failed.  If this is the case,
+try refreshing your study after a few minutes to see whether the attempt succeeded.  This
+timeout shouldn’t occur often, and future improvements may help to avoid it.  You can also use
+the bulk line creation script to avoid this problem (see below).
 </p>
-<p>Note that when using combinatorial input, EDD will insert the combinatorial values into the
-    line names so that names are unique.  The relative order of metadata columns in your file will
-    dictate the ordering of those values within the resulting line names.  <span class="TODO">TODO:
-    verify or debunk/implement this claim.</span>
+<h5>Bulk Creation Script</h5>
+<p>
+EDD ships with a command line based bulk line creation script that follows a similar format and
+usage pattern to Experiment Description files.  This script is largely superceded by the
+Experiment Description file feature, but is also an option for avoiding browser timeouts for
+creation of large numbers of lines.   See documentation for the bulk line creation script in
+EDD’s <a href="https://github.com/JBEI/edd/tree/master/jbei">Github repo</a>.
+</p>
+<a name="combinatorial_line"></a>
+<h4>Combinatorial Line Creation</h4>
+<p>
+To reduce the need for repetitive data entry in your Experiment Description file, you can append
+“<span class="combinatorial">s</span>” or “<span class="combinatorial">(s)</span>” to the end of
+most column headers, then add comma-separated values in that column to have
+EDD generate lines combinatorially. Note that when your file contains combinatorial input, EDD will
+insert the values from combinatorial columns into the resulting line names so they're unique (see
+examples below).
+</p>
+<p>
+Figure 6 shows an example file that creates lines combinatorially using different media.
 </p>
 <table class="figureTable">
     <thead>
         <th>Line Name</th>
         <th>Line Description</th>
-        <th>Media</th>
+        <th>Media<span class="combinatorial">(s)</span></th>
         <th>Part ID</th>
         <th>Replicate Count</th>
     </thead>
@@ -398,15 +459,20 @@ using different media.
     </tbody>
 </table>
 <div class="caption">
-Figure 6: Using combinatorial input for media
-EDD_Sample_3_Combinatorial_Media_Values.xlsx
+Figure 6: <a href="{% static 'experiment_description/Figure_6_Combinatorial_Media_Values.xlsx' %}">
+Combinatorial input for media<span class="dropLink dropImg">__</span></a>
 </div>
 <p>
-    Rather than requiring values from 4 of the columns to be entered repetitively for each line,
-    inserting media values combinatorially in this example allowed each unique value to be entered
-    only once.  Figure 7 shows the resulting lines table in EDD.  Note that both entries for the
-    “Media” column and replicate numbers have been automatically inserted into the line names to
-    keep them unique.
+The first difference to notice about this file is that "<span class="combinatorial">(s)</span>"
+has been appended to the line metadata column "Media" to inform EDD that values in that column
+are combinatorial.  As a result of the altered column label, comma-separated values each result
+in the creation of a new line, resulting in many fewer rows in the file than lines it will create
+in the study.
+Rather than requiring values from the four non-media columns to be entered repetitively for each
+row, inserting media values combinatorially in this example allows each unique value for the other
+columns to be entered into the file once.  Figure 7 shows the resulting lines table in EDD.  Note
+that both entries for the “Media<span class="combinatorial">(s)</span>” column and replicate
+ numbers have been automatically inserted into the line names to keep them unique.
 </p>
 <table class="figureTable">
     <thead>
@@ -419,83 +485,204 @@ EDD_Sample_3_Combinatorial_Media_Values.xlsx
     <tbody>
 <tr>
 <td>WT-Control-LB-R1</td>
-<td>JW0111</td>
+<td>BY4742</td>
 <td>--</td>
 <td>--</td>
 <td>LB</td>
 </tr>
 <tr>
 <td>WT-Control-LB-R2</td>
-<td>JW0111</td>
+<td>BY4742</td>
 <td>--</td>
 <td>--</td>
 <td>LB</td>
 </tr>
 <tr>
 <td>WT-Control-LB-R3</td>
-<td>JW0111</td>
+<td>BY4742</td>
 <td>--</td>
 <td>--</td>
 <td>LB</td>
     </tr>
 <tr>
 <td>WT-Control-EZ-R1</td>
-<td>JW0111</td>
+<td>BY4742</td>
 <td>--</td>
 <td>--</td>
 <td>EZ</td>
     </tr><tr>
 <td>WT-Control-EZ-R2</td>
-<td>JW0111</td>
+<td>BY4742</td>
 <td>--</td>
 <td>--</td>
 <td>EZ</td>
     </tr><tr>
 <td>WT-Control-EZ-R3</td>
-<td>JW0111</td>
+<td>BY4742</td>
 <td>--</td>
 <td>--</td>
 <td>EZ</td>
     </tr><tr>
 <td>WT-Control-Minimal-R1</td>
-<td>JW0111</td>
+<td>BY4742</td>
 <td>--</td>
 <td>--</td>
 <td>Minimal</td>
     </tr><tr>
 <td>WT-Control-Minimal-R2</td>
-<td>JW0111</td>
+<td>BY4742</td>
 <td>--</td>
 <td>--</td>
 <td>Minimal</td>
     </tr><tr>
 <td>WT-Control-Minimal-R3</td>
-<td>JW0111</td>
+<td>BY4742</td>
 <td>--</td>
 <td>--</td>
 <td>Minimal</td>
 </tr></tbody></table>
 <div class="caption">Figure 7: Resulting lines table in EDD</div>
+Figures 6 & 7 show a simplistic combinatorial line creation, but this feature becomes
+significantly more powerful when you start to use multiple combinatorial columns together in the
+same file.
+<h5>Line naming during combinatorial creation</h5>
 <p>
-For studies with very large numbers of lines, your browser may time out while lines / assays are
-    being created, giving the appearance that your file upload attempt failed.  If this is the case,
-    try refreshing your study after a few minutes to see whether the attempt succeeded.  This
-    timeout shouldn’t occur often, and future improvements may help to avoid it.  You can also use
-    the bulk line creation script to avoid this problem (see below).
+The relative order of combinatorial metadata columns in your file (those that you appended
+"<span class="combinatorial">(s)</span>" to) will dictate the ordering of those metadata values
+within combinatorially-created line names. Other
+columns that impact the line name are the base line name you've provided in the 'Line name' column,
+and the 'Replicate Count' column, if you used it.  The 'Line name' and combinatorial values
+will be included in line names the order the related
+columns appear in your file.  Replicate number will always come last in line
+names . For example consider the following Experiment Description file,
+which has columns defined in a different order than the previous ones:
 </p>
-<h6>Combinatorial Assay Creation</h6>
+<table class="figureTable">
+    <thead>
+        <th>Line Description</th>
+        <th>Media<span class="combinatorial">(s)</span></th>
+        <th><span class="combinatorial">Replicate Count</span></th>
+        <th>Line Name</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Wildtype s. cervisae</td>
+            <td>LB, EZ, Minimal</td>
+            <td>3</td>
+            <td>WT-Control</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">Figure 8: Controlling line <a href="{%
+        static 'experiment_description/Figure_8_Combinatorial_Naming_Order.xlsx' %}">
+    naming using combinatorial column order <span class="dropLink dropImg">__</span></a></div>
 <p>
-You can also use experiment description files to combinatorially create assays associated with the
-    lines in your study.  Chances are good that you don’t need to create assays or to know what
-    assays are, but see below if you're an advanced user or if you've been asked to create some
-    assays.
+Since the "Line Description" column doesn't include values for combinatorial line creation (has no appended
+"<span class="combinatorial">s</span>" or "<span class="combinatorial">(s)</span>"),
+doesn't affect line names. Name-relevant columns are, in order: 'Line Name', 'Media
+<span class="combinatorial">(s)</span>'.  The order of elements in the resulting line names will be:
+    <ol>
+        <li>Media</li>
+        <li>Base line name,</li>
+        <li>Replicate number</li>
+    <ol>
+The lines table displayed in EDD as a result will be:</p>
+<table class="figureTable">
+    <thead>
+        <th>Name</th>
+        <th>Carbon Source(s)</th>
+        <th>Labeling</th>
+        <th>Media</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>LB-WT-Control-R1</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr><tr>
+            <td>LB-WT-Control-R2</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr><tr>
+            <td>LB-WT-Control-R3</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr><tr>
+            <td>EZ-WT-Control-R1</td>
+            <td>--</td>
+            <td>--</td>
+            <td>EZ</td>
+        </tr><tr>
+            <td>EZ-WT-Control-R2</td>
+            <td>--</td>
+            <td>--</td>
+            <td>EZ</td>
+        </tr><tr>
+            <td>EZ-WT-Control-R3</td>
+            <td>--</td>
+            <td>--</td>
+            <td>EZ</td>
+        </tr><tr>
+            <td>Minimal-WT-Control-R1</td>
+            <td>--</td>
+            <td>--</td>
+            <td>Minimal</td>
+        </tr><tr>
+            <td>Minimal-WT-Control-R2</td>
+            <td>--</td>
+            <td>--</td>
+            <td>Minimal</td>
+        </tr><tr>
+            <td>Minimal-WT-Control-R3</td>
+            <td>--</td>
+            <td>--</td>
+            <td>Minimal</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">Figure 9: Resulting lines table in EDD</div>
+<p>
+    Note that combinatorial line creation adds another consideration to the process of creating
+    your lines, but unless you're using the combinatorial creation feature, you can define
+    columns in your file in any order without affecting the resulting line names.</p>
+    <h6>Supported columns for combinatorial creation</h6>
+    <p>Not all columns are supported for combinatorial line creation. Columns defined as
+        line metadata (see the "Line Metadata Types" table below) are supported for combinatorial
+        line creation, except for those that aren't supported for basic input: control, carbon
+        source (s), line experimenter, line contact.  For primary line characteristics defined in
+        the table above, only the 'Part ID(s)' column may have a comma-delimited list of values
+        entered for combinatorial line creation, though a single entry in the  "Replicates"
+        columns will also result in
+        combinatorial creation of lines.</p>
+<h5>Special case: strain groups</h5>
+<p>
+    EDD also supports combinatorially creating lines that contain multiple strains.  To specify
+    multiple
+    strains to be used together as a group, separate part numbers with a semicolon and enclose
+    the group with parenthesis, For example, an Experiment Description file with the following
+    Part ID(s) column would create two lines, each one with two strains in co-culture: (JBx_123;
+    JBx_456), (JBx_789, JBx_012).
 </p>
+<a name="assay_creation"></a>
+        <h4>Assay Creation</h4> In addition to creating lines as in examples above, you can also
+    use Experiment Description files to create assays associated with the lines in your study
+    . Recall that an assay is the application of a specific experimental protocol to a line (see
+    Figure 1 above). Most users won't need to create assays using Experiment Description files,
+    since EDD's data import process creates assays during the import process.  The purpose of
+    creating assays using Experiment Description files is to use EDD to help in configuring
+    instrumentation.  For supported workflows, EDD has a capability to export a worklist file
+    useful for configuring the instruments, and for simplifying the import process for resulting
+    measurement data. When using supported instrumentation, it can be significantly less work
+    overall to describe your experiment in EDD first before running parts of the experiment.
     <div class = "disclose discloseHide">
     <h7><a class="discloseLink" href="#">What's an Assay?</a></h7>
     <div class="discloseBody"><p>
         An "assay" is the application of a specific protocol (e.g. proteomics) to a line.  In the
         simple case, you can often think of an assay as the result of loading your sample into
-        the experimental measurement platform.  Any of the following lab examples would result in
+        an instrument.  Any of the following lab examples would result in
         creation of an assay in EDD:
     </p>
     <ol>
@@ -503,59 +690,103 @@ You can also use experiment description files to combinatorially create assays a
         <li>Performing proteomics measurements on a sample</li>
     </ol>
     <p>
-       Many assays will only be performed once during the course of an experiment, and will be said
-        to occur at a fixed point in time. In many cases.  However, automated platforms such as
-        the BioHector [sic] may perform multiple assays on the same sample over time. An assay
-        can contain one or more measurements.   <span class="TODO">TODO: verify claim here regarding
-        assay time</span>
+       Many assays will only be performed once during the course of an experiment, and relate to
+        a single instant in time. While some assays are associated with a fixed point in time,
+        while others will cover a span of time.  For example, automated platforms such as
+        the BioHector [sic] may perform assays on a sample that span a long time period. As such, an
+        assay can contain one or many measurements.
     </p></div>
+<p>
+    To create an assay using your Experiment Description file, you’ll need to assign at least one
+    metadata value to the assay. To provide assay metadata in your Experiment Description file,
+    add one or more column headers
+    that start with a protocol name and end with the name of the assay metadata you want to insert.
+    For example, a common use case will be to set times for proteomics experiments. See <a
+    href="#column_options">Column Options</a> above for a list of protocols in this EDD instance.
+    The following example file creates a single line and one associated assay:
+
+    <table class="figureTable">
+    <thead>
+        <th>Line Name</th>
+        <th>Line Description</th>
+        <th>Media</th>
+        <th>Part ID</th>
+        <th>Targeted Proteomics Time</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>WT-Control</td>
+            <td>Wildtype s. cervisae</td>
+            <td>LB</td>
+            <td>JBx_042441</td>
+            <td>6h</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">
+    Figure 10: Simple <a href="{% static 'experiment_description/Figure_10_Assay_Creation.xlsx' %}">
+    assay creation<span class="dropLink dropImg">__</span>
+    </a>
 </div>
-<p>
-    In addition to creating lines, you can also use an Experiment Description file to create assays
-    associated with them.  To create an assay using this method, you’ll need to assign at least one
-    metadata value to the assay.  Recall that an assay is the application of a specific experimental
-    protocol to a line (see Figure 1 above).
-</p>
-<p>
-    To provide assay metadata in your Experiment Description file, add one or more column headers
-    that start with a protocol name and end with the name of the assay metadata you want to insert..
-    For example, the sample file has column “Targeted Proteomics Time(s)”.  Breaking this header
-    down into its parts:
+The “Targeted Proteomics Time” column is responsible for creating an assay. Breaking this header down into its parts:
 </p>
 <table class="figureTable" id="lineNamePartsTable">
     <tr><td>“Targeted Proteomics”:</td><td>the protocol</td></tr>
     <tr><td>“ “</td><td>a space separator</td></tr>
     <tr><td>“Time”</td><td>the name of the assay metadata</td></tr>
-    <tr><td>“(s)”</td><td>denotes that cell contents are comma-delimited combinatorial
-        values</td></tr>
 </table>
-<div class = "disclose discloseHide">
-    <a class="discloseLink" href="#">Protocols in this EDD instance</a>
-    <div id='protocols' class="discloseBody"></div>
-</div>
-
-<h6>Special case: assay times</h6>
-    <p>To clarify units for time, assay times must be entered with a trailing “h”. For example “12h”
-        indicates that an assay was performed at 12 hours.  Precision of your data entry for time
-        dictates the number of digits of time inserted into the related assay names.  Assay names
-        will be created using number of maximum number of digits after the decimal point of any time
-        value in your file.
-</p>
-<h6>Special case: strain groups</h6>
-<span class="TODO">TODO: update following testing of this feature: line names should change</span>
 <p>
-    EDD has limited support for creating lines that contain multiple strains (i.e. for
-    experimenting with consortia).  To specify multiple strains to be used together as a group,
-    enclose part number groups in parenthesis, separate them with commas, and delimit individual
-    part ids within each group with a semicolon.  For example, (JBx_123;JBx_456), (JBX_789).
+Dropping this file into EDD creates a single line, visible in the study’s “Lines” section in
+nearly identical form to the input file:
 </p>
-<h6>Bulk Creation Script</h6>
+<table class="figureTable">
+    <thead>
+        <th>Name</th>
+        <th>Strain</th>
+        <th>Carbon Source(s)</th>
+        <th>Labeling</th>
+        <th>Media</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>WT-Control</td>
+            <td>BY4742</td>
+            <td>--</td>
+            <td>--</td>
+            <td>LB</td>
+        </tr>
+    </tbody>
+</table>
+<div class="caption">Figure 11: Resulting line</div>
+It <em>also</em> makes the study's "Data" section visible, which indicates that an assay has
+been created.  The single assay that's created, "181-aceF", has the same
+name as the associated line.  Note that the time entered via the Experiment Description file isn't
+visible, but is stored in EDD.  The Data table's "Measuring Times" column only displays times for
+measurements, but remains blank since there's no associated data (only time meta-data).
+<h5>Special case: assay times</h5>
+<p>To clarify units for time, assay times must be entered with a trailing “h”. For example “12h”
+indicates that an assay was performed at 12 hours.  Precision of your data entry for time
+dictates the number of digits of time inserted into the related assay names.  Assay names
+will be created using number of maximum number of digits after the decimal point of any time
+value in your file. This special-case processing may be removed following implementation
+of <a href="https://support.jbei.org/browse/EDD-741">EDD-741</a>.
+</p>
+<a name="combinatorial_assay"></a>
+<h4>Combinatorial Assay Creation</h4>
 <p>
-    EDD ships with a command line based bulk line creation script that follows a similar format and
-    usage pattern to the experiment description file.  This script is largely superceded by the
-    experiment description file feature, but is also an option for avoiding browser timeouts for
-    creation of large numbers of lines.   See documentation for the bulk line creation script in
-    EDD’s <a href="https://github.com/JBEI/edd/tree/master/jbei">Github repo</a>.
+You can also use experiment description files to combinatorially create assays associated with the
+lines in your study.  See the <a href="#combinatorial_line">Combinatorial Line
+Creation</a> section above for a detailed summary of
+how  combinatorial creation works. It's essentially the same for lines and assays: you append
+an "(s)" to the column header, then enter comma-delimited values that each get applied to a
+single line/assay. A notable exception is that assay-related columns in Experiment Description files
+will start with a protocol name and end with assay metadata.  Using the example file from  Figure
+10 above, you could add "(s)" to the last column, then enter values for combinatorial assay
+creation.
 </p>
+<p>Combinatorial assay naming</p>
+Assays created via Experiment Description files are named identically to the lines they
+relate to. This allows assay names to remain unique within each protocol, though assays may have
+the identical names across different protocols.
 
 {% endblock content %}

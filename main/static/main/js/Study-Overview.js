@@ -18,6 +18,7 @@ var StudyOverview;
     var attachmentsByID;
     var prevDescriptionEditElement;
     var activeDraggedFile;
+    var actionPanelIsCopied = false;
     var fileUploadProgressBar;
     // This is called upon receiving a response from a file upload operation, and unlike
     // fileRead(), is passed a processed result from the server as a second argument,
@@ -25,39 +26,234 @@ var StudyOverview;
     function fileReturnedFromServer(fileContainer, result) {
         var currentPath = window.location.pathname;
         var linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
-        //display success message
         $('<p>', {
             text: 'Success! ' + result['lines_created'] + ' lines added!',
             style: 'margin:auto'
         }).appendTo('#linesAdded');
+        successfulRedirect(linesPathName);
+    }
+    StudyOverview.fileReturnedFromServer = fileReturnedFromServer;
+    function fileWarningReturnedFromServer(fileContainer, result) {
+        var currentPath = window.location.pathname;
+        var newWarningAlert = $('.alert-warning').eq(0).clone();
+        var linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
+        copyActionButtons();
+        $('#acceptWarnings').find('.acceptWarnings').on('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            successfulRedirect(linesPathName);
+            return false;
+        });
+        $('<p>', {
+            text: 'Success! ' + result['lines_created'] + ' lines added!',
+            style: 'margin:auto'
+        }).appendTo('#linesAdded');
+        //display success message
         $('#linesAdded').show();
+        generateMessages('warnings', result.warnings);
+        generateAcceptWarning();
+    }
+    StudyOverview.fileWarningReturnedFromServer = fileWarningReturnedFromServer;
+    function successfulRedirect(linesPathName) {
         //redirect to lines page
         setTimeout(function () {
             window.location.pathname = linesPathName;
         }, 1000);
     }
-    StudyOverview.fileReturnedFromServer = fileReturnedFromServer;
+    function copyActionButtons() {
+        var original, copy, originalDismiss, copyDismiss, originalAcceptWarnings, copyAcceptWarnings;
+        if (!actionPanelIsCopied) {
+            original = $('#actionWarningBar');
+            copy = original.clone().appendTo('#bottomBar').hide();
+            // forward click events on copy to the original button
+            copy.on('click', 'button', function (e) {
+                original.find('#' + e.target.id).trigger(e);
+            });
+            originalDismiss = $('#dismissAll').find('.dismissAll');
+            copyDismiss = originalDismiss.clone().appendTo('#bottomBar').hide();
+            // forward click events on copy to the original button
+            copyDismiss.on('click', 'button', function (e) {
+                originalDismiss.trigger(e);
+            });
+            originalAcceptWarnings = $('#acceptWarnings').find('.acceptWarnings');
+            copyAcceptWarnings = originalAcceptWarnings.clone().appendTo('#bottomBar').hide();
+            // forward click events on copy to the original button
+            copyAcceptWarnings.on('click', 'button', function (e) {
+                originalAcceptWarnings.trigger(e);
+            });
+            actionPanelIsCopied = true;
+        }
+    }
+    StudyOverview.copyActionButtons = copyActionButtons;
     // This is called upon receiving an errror in a file upload operation, and
     // is passed an unprocessed result from the server as a second argument.
-    function fileErrorReturnedFromServer(fileContainer, response) {
+    function fileErrorReturnedFromServer(fileContainer, xhr) {
+        copyActionButtons();
+        var parent = $('#alert_placeholder'), dismissAll = $('#dismissAll').find('.dismissAll'), linesPathName, currentPath;
+        currentPath = window.location.pathname;
+        linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
         // reset the drop zone here
-        clearDropZone();
         //parse xhr.response
-        var r = response.split('"'); //error response. split on "".
-        var errorMessage = "Error uploading! " + r[3];
-        // and create dismissible error alert
-        alertError(errorMessage);
+        var obj, error, id;
+        try {
+            if (xhr.status === 504) {
+                generate504Error();
+            }
+            obj = JSON.parse(xhr.response);
+            if (obj.errors) {
+                generateMessages('error', obj.errors);
+            }
+            if (obj.warnings) {
+                generateMessages('warnings', obj.warnings);
+            }
+        }
+        catch (e) {
+            //if there is no backend error message or error (html response), show this
+            var defaultError = {
+                category: "",
+                summary: "There was an error",
+                details: "EDD administrators have been notified. Please try again later."
+            };
+            alertError(defaultError);
+        }
+        //add a dismiss all alerts button
+        if ($('.alert').length > 8 && !dismissAll.is(":visible")) {
+            dismissAll.show();
+        }
+        //set up click handler events
+        parent.find('.omitStrains').on('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var f = fileContainer.file;
+            f.sendTo(currentPath.split('overview')[0] + 'describe/?IGNORE_ICE_RELATED_ERRORS=true');
+            $('#iceError').hide();
+            return false;
+        });
+        parent.find('.allowDuplicates').on('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var f = fileContainer.file;
+            f.sendTo(currentPath.split('overview')[0] + 'describe/?ALLOW_DUPLICATE_NAMES=true');
+            $('#duplicateError').hide();
+            return false;
+        });
+        $('.noDuplicates, .noOmitStrains').on('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            window.location.reload();
+            return false;
+        });
+        //dismiss all alerts
+        dismissAll.on('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            parent.find('.close').click();
+            window.location.reload();
+            return false;
+        });
+        $('#acceptWarnings').find('.acceptWarnings').on('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            successfulRedirect(linesPathName);
+            return false;
+        });
     }
     StudyOverview.fileErrorReturnedFromServer = fileErrorReturnedFromServer;
-    function alertError(message) {
-        $('#alert_placeholder').append('<div class="alert alert-danger alert-dismissible"><button type="button" ' +
-            'class="close" data-dismiss="alert">&times;</button>' + message + '</div>');
-        alertTimeout(5000);
+    function generateMessages(type, response) {
+        var responseMessages = organizeMessages(response);
+        for (var key in responseMessages) {
+            var div = void 0;
+            if (type === 'error') {
+                div = $('.alert-danger').eq(0).clone();
+            }
+            else {
+                div = $('.alert-warning').eq(0).clone();
+            }
+            alertMessage(key, responseMessages[key], div, type);
+        }
     }
-    function alertTimeout(wait) {
-        setTimeout(function () {
-            $('#alert_placeholder').children('.alert:first-child').remove();
-        }, wait);
+    function generateAcceptWarning() {
+        var warningAlerts, acceptWarningDiv;
+        warningAlerts = $('.alert-warning:visible');
+        acceptWarningDiv = $('#acceptWarnings').find('.acceptWarnings');
+        if (warningAlerts.length === 1) {
+            $(warningAlerts).append(acceptWarningDiv);
+        }
+        else {
+            $('#alert_placeholder').prepend(acceptWarningDiv);
+        }
+        acceptWarningDiv.show();
+    }
+    function organizeMessages(responses) {
+        var obj = {};
+        responses.forEach(function (response) {
+            if (response.category === "ICE-related error") {
+                // create dismissible error alert
+                alertIceWarning(response);
+            }
+            else if (response.summary === "Duplicate assay names in the input" || response.summary === "Duplicate " +
+                "line names in the input") {
+                if ($('#duplicateError').length === 1) {
+                    alertDuplicateError(response);
+                }
+            }
+            else {
+                var message = response.summary + ": " + response.details;
+                if (obj.hasOwnProperty(response.category)) {
+                    obj[response.category].push(message);
+                }
+                else {
+                    obj[response.category] = [message];
+                }
+            }
+        });
+        return obj;
+    }
+    function generate504Error() {
+        var response = {
+            category: "",
+            summary: "EDD timed out",
+            details: "Please reload page and reupload file or try again later"
+        };
+        alertError(response);
+    }
+    function alertIceWarning(response) {
+        var iceError = $('#iceError');
+        response.category = "Warning! " + response.category;
+        createAlertMessage(iceError, response);
+    }
+    function alertDuplicateError(response) {
+        var duplicateElem = $('#duplicateError');
+        createAlertMessage(duplicateElem, response);
+    }
+    function alertError(response) {
+        var newErrorAlert = $('.alert-danger').eq(0).clone();
+        createAlertMessage(newErrorAlert, response);
+        clearDropZone();
+    }
+    function createAlertMessage(alertClone, response) {
+        $(alertClone).children('h4').text(response.category);
+        $(alertClone).children('p').text(response.summary + ": " + response.details);
+        $('#alert_placeholder').append(alertClone);
+        $(alertClone).show();
+    }
+    function alertMessage(subject, messages, newAlert, type) {
+        if (type === "warnings") {
+            $(newAlert).children('h4').text("Warning! " + subject);
+        }
+        else {
+            $(newAlert).children('h4').text("Error! " + subject);
+            clearDropZone();
+        }
+        messages.forEach(function (m) {
+            var summary = $('<p>', {
+                text: m,
+                class: 'alertWarning',
+            });
+            $(newAlert).append(summary);
+        });
+        $('#alert_placeholder').append(newAlert);
+        $(newAlert).show();
     }
     function clearDropZone() {
         $('#templateDropZone').removeClass('off');
@@ -67,9 +263,9 @@ var StudyOverview;
     }
     // Here, we take a look at the type of the dropped file and decide whether to
     // send it to the server, or process it locally.
-    // We inform the FileDropZone of our decision by setting flags in the fileContiner object,
+    // We inform the FileDropZone of our decision by setting flags in the fileContainer object,
     // which will be inspected when this function returns.
-    function fileDropped(fileContainer) {
+    function fileDropped(fileContainer, iceError) {
         this.haveInputData = true;
         //processingFileCallback();
         var ft = fileContainer.fileType;
@@ -80,7 +276,7 @@ var StudyOverview;
         }
         // HPLC reports need to be sent for server-side processing
         if (!fileContainer.skipProcessRaw || !fileContainer.skipUpload) {
-            this.showFileDropped(fileContainer);
+            this.showFileDropped(fileContainer, iceError);
         }
     }
     StudyOverview.fileDropped = fileDropped;
@@ -248,8 +444,12 @@ var StudyOverview;
             this.formURL('/study/' + EDDData.currentStudyID + '/setcontact/');
         }
         // Have to reproduce these here rather than using EditableStudyElement because the inheritance is different
-        EditableStudyContact.prototype.editAllowed = function () { return EDDData.currentStudyWritable; };
-        EditableStudyContact.prototype.canCommit = function (value) { return EDDData.currentStudyWritable; };
+        EditableStudyContact.prototype.editAllowed = function () {
+            return EDDData.currentStudyWritable;
+        };
+        EditableStudyContact.prototype.canCommit = function (value) {
+            return EDDData.currentStudyWritable;
+        };
         EditableStudyContact.prototype.getValue = function () {
             return EDDData.Studies[EDDData.currentStudyID].contact;
         };
@@ -295,9 +495,10 @@ var StudyOverview;
             elementId: "templateDropZone",
             fileInitFn: this.fileDropped.bind(this),
             processRawFn: this.fileRead.bind(this),
-            url: '/study/' + EDDData.currentStudyID + '/define/',
+            url: '/study/' + EDDData.currentStudyID + '/describe/',
             processResponseFn: this.fileReturnedFromServer.bind(this),
             processErrorFn: this.fileErrorReturnedFromServer.bind(this),
+            processWarningFn: this.fileWarningReturnedFromServer.bind(this),
             progressBar: this.fileUploadProgressBar
         });
         Utl.Tabs.prepareTabs();
@@ -305,6 +506,5 @@ var StudyOverview;
     }
     StudyOverview.prepareIt = prepareIt;
 })(StudyOverview || (StudyOverview = {}));
-;
 // use JQuery ready event shortcut to call prepareIt when page is ready
 $(function () { return StudyOverview.prepareIt(); });
