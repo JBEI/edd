@@ -64,8 +64,8 @@ var StudyLines;
         $(window).on('resize', queuePositionActionsBar);
         //when all ajax requests are finished, determine if there are AssayMeasurements.
         $(document).ajaxStop(function () {
-            // hide export button if there are assays but no assay measurements
-            if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
+            // hide export button if there are no assays
+            if (_.keys(EDDData.Assays).length === 0) {
                 $('#exportLineButton').prop('disabled', true);
             }
             else {
