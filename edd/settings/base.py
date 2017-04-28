@@ -69,8 +69,12 @@ TYPICAL_ICE_PART_NUMBER_PATTERN = re.compile(TYPICAL_JBEI_ICE_PART_NUMBER_REGEX,
 # testing ICE communication from offsite...for example, `manage.py test_ice_communication` observed
 # failing DNS lookup from offsite if directed to registry.jbei.org, but fails SSL verification if
 # directed to registry.jbei.lbl.gov.
-# WARNING: Use in any context other than local testing can expose user credentials to a third party!
+# WARNING: Use in any context other than local testing can expose user credentials to a
+# third party!
 VERIFY_ICE_CERT = True
+
+# specify the name of the JSON serializer in use
+EDD_SERIALIZE_NAME = 'edd-json'
 
 ##############################
 # Solr/Haystack Configuration
