@@ -412,7 +412,7 @@ class CombinatorialCreationImporter(object):
         # to create Line entries in EDD's database
         ###########################################################################################
         for input_set in combinatorial_inputs:
-            input_set.replace_strain_part_numbers_with_pks(edd_strains_by_part_number,
+            input_set.replace_strain_part_numbers_with_pks(self, edd_strains_by_part_number,
                                                            ice_parts_by_number)
 
         ###########################################################################################
@@ -748,7 +748,8 @@ class CombinatorialCreationImporter(object):
                             'list_position': list_position, 'numeric_id': found_entry.id,
                             'part_number': found_entry.part_id
                         })
-                    self.add_error(INTERNAL_EDD_ERROR_CATEGORY, FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
+                    self.add_error(INTERNAL_EDD_ERROR_CATEGORY,
+                                   FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
                                    found_entry.part_id)
 
             elif treat_as_error:
@@ -816,7 +817,7 @@ class CombinatorialCreationImporter(object):
 
         # return early if no notificatian-worthy errors have occurred
         if ((not self.has_error(GENERIC_ICE_RELATED_ERROR)) and not
-            (self.has_warning(GENERIC_ICE_RELATED_ERROR))):
+                self.has_warning(GENERIC_ICE_RELATED_ERROR)):
             return
 
         logger.info('Notifying system administrators of a systemic error communicating with ICE')

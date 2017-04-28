@@ -412,8 +412,11 @@ class CombinatorialCreationTests(TestCase):
         # if ICE part numbers were provided by the test, use them to find the corresponding EDD
         # strains
         if strains_by_part_number:
+            ice_parts_by_number = {}  # TODO: short-circuiting consistency check in this code block
             for input_item in combinatorial_inputs:
-                input_item.replace_strain_part_numbers_with_pks(strains_by_part_number, importer)
+                input_item.replace_strain_part_numbers_with_pks(importer,
+                                                                strains_by_part_number,
+                                                                ice_parts_by_number)
 
         self.assertEqual(
             len(combinatorial_inputs),

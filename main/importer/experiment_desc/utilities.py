@@ -426,7 +426,8 @@ class CombinatorialDescriptionInput(object):
     def fractional_time_digits(self, count):
         self.naming_strategy.fractional_time_digits = count
 
-    def replace_strain_part_numbers_with_pks(self, edd_strains_by_part_number, ice_parts_by_number,
+    def replace_strain_part_numbers_with_pks(self, importer, edd_strains_by_part_number,
+                                             ice_parts_by_number,
                                              ignore_integer_values=False):
         """
         Replaces part-number-based strain entries with pk-based entries and converts any
@@ -454,14 +455,17 @@ class CombinatorialDescriptionInput(object):
                 # during the preceding ICE queries, and we don't need to track two errors for
                 # the same problem.
                 elif part_number in ice_parts_by_number:
-                    self.add_error(UNMATCHED_PART_NUMBER, part_number)
+                    importer.add_error(UNMATCHED_PART_NUMBER, part_number)
 
-    def get_unique_strain_ids(self, unique_strain_ids):
+    def get_unique_strain_ids(self, unique_strain_ids=()):
         """
-        Gets a list of unique strain identifiers for this CombinatorialDescriptionInput. Note that
-        the type of identifier in use depends on client code.
+        Gets a list of unique strain identifiers for this CombinatorialDescriptionInput, 
+        adding in any unique values in the parameter. Note that the type of identifier in use (
+        e.g. pk, part id, uuid) depends on client code.
+        :param unique_strain_ids: a list of input identifiers that will be merged with unique 
+        identifiers from this CominatorialDescriptionInput
 
-        :return: a list of unique strain identifiers
+        :return: a new iterable of unique strain identifiers
         """
         unique_strain_ids = set(unique_strain_ids)
         for strain_id_group in self.combinatorial_strain_id_groups:
@@ -609,6 +613,9 @@ class CombinatorialDescriptionInput(object):
         method, strain identifiers in this instance have been matched to local numeric primary keys
         and that all error checking has already been completed. This method strictly performs
         database I/O that's expected to succeed.
+        :param strains_by_pk: a dict of previously-resolved EDD strains that that should include
+        those needed to create lines/assays referenced by this CombinatorialDescriptionInput. If
+        none are provided, the ones needed will be queried, but not returned.
         """
         visitor = LineAndAssayCreationVisitor(study.pk, strains_by_pk, self.replicate_count)
         self._visit_study(study, visitor, line_metadata_types, assay_metadata_types, strains_by_pk)
