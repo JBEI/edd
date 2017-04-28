@@ -2418,6 +2418,10 @@ module EDDTableImport {
             reDoStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
             $(reDoStepOnChange.join(',')).on('input', this.changedAnyMasterPulldown.bind(this));
 
+            //toggle matched assay section
+            $('#matchedAssaysSection .discloseLink').on('click', function(e) {
+                $(e.target).closest('.disclose').toggleClass('discloseHide');
+            });
 
             masterInputSelectors = ['#masterTimestamp'].concat(reDoStepOnChange);
             $('#masterTimestamp').on('input', this.queueReparseThisStep.bind(this));
@@ -2544,11 +2548,6 @@ module EDDTableImport {
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
 
-
-            //toggle matched assay section
-            $('#matchedAssaysSection .discloseLink').on('click', function(e) {
-                $(e.target).closest('.disclose').toggleClass('discloseHide');
-            });
             // remove toggle buttons and labels dynamically added for some subsections
             // (easier than leaving them in place)
             $('.' + TypeDisambiguationStep.STEP_4_TOGGLE_SUBSECTION_CLASS).remove();
