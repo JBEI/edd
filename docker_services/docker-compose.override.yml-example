@@ -122,11 +122,11 @@ services:
       # NOTE: IP addresses not accepted for VIRTUAL_HOST. For local testing, create an entry in
       # /etc/hosts, e.g. 192.168.99.100 local-development, then add the host name you chose to
       # ALLOWED_HOSTS in your local.py
-      #VIRTUAL_HOST: edd.example.net
+      VIRTUAL_HOST: "localhost,edd.lvh.me"
       # If doing local-only testing, no certificates are generated, and nginx will not listen on
       #   port 443; set the HTTPS_METHOD to "noredirect" to access via port 80 without automatic
       #   redirect to 443
-      #HTTPS_METHOD: "noredirect"
+      HTTPS_METHOD: "noredirect"
       #LETSENCRYPT_HOST: edd.example.net
       #LETSENCRYPT_EMAIL: "aliddell@example.net"
       # The below line directs to use staging Let's Encrypt server. It is commented out by

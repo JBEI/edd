@@ -11,8 +11,8 @@ by the U. S. Department of Energy (DOE), Office of Science, Office of Biological
 Research, through contract DE-AC02-05CH11231 between LBL and DOE.
 
 The source code of EDD is published on [GitHub][9]. Pull requests should adhere to the
-[Contributing Guidelines][10], and bug reports or feature requests should be directed to the GitHub
-project.
+[Contributing Guidelines][10], and bug reports or feature requests should be directed to the
+GitHub project.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -24,10 +24,14 @@ simple as copying the `docker_services` directory of the code repository and run
     . init-config
     docker-compose up -d
 
-Without additional configuration, the launched copy of EDD will be using default options, so some
-functions (e.g. TLS support, external authentication, referencing an ICE deployment) won't work.
-See [Deployment][5] for more detailed instructions for installing Docker and configuring EDD for
-your deployment environment.
+You can then access the EDD through a browser with [http://edd.lvh.me][13], a domain that maps all
+requests to the localhost IPv4 address of `127.0.0.1`. Using this domain allows for your browser
+to be directed to the correct service, and looks nicer than an IP address.
+
+Without additional configuration, the launched copy of EDD will be using default options. It will
+only be available on your local computer, and some functions (e.g. TLS support, external
+authentication, referencing an ICE deployment) will not work. See [Deployment][5] for more detailed
+instructions for installing Docker and configuring EDD for your deployment environment.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -36,8 +40,8 @@ your deployment environment.
 For a more detailed reference for EDD's low-level configuration options, see [Configuration][4].
 Instructions on administering an EDD instance can be found in the [Administration][11] document,
 and steps to deploy a new instance are in the [Deployment][5] document. Getting a development
-environment set up to modify or contribute to EDD is outlined in the [Developer Setup][12]
-document.
+environment set up to modify or contribute to EDD is outlined in the
+[Developer Setup][12] document.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -53,3 +57,4 @@ document.
 [10]:   Contributing.md
 [11]:   docs/Administration.md
 [12]:   docs/Developer_Setup.md
+[13]:   http://edd.lvh.me
