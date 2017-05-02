@@ -1,14 +1,14 @@
 # coding: utf-8
 from __future__ import absolute_import, unicode_literals
 
-import logging
-
 from celery import shared_task
+from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db.models import F
 from django.http import QueryDict
 from django.utils.translation import ugettext as _
+from requests.exceptions import RequestException
 
 from . import models
 from .importer.table import TableImport
@@ -18,7 +18,7 @@ from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
 
 
-logger = logging.getLogger(__name__)
+logger = get_task_logger(__name__)
 
 
 def build_study_url(slug):
@@ -62,26 +62,43 @@ def import_table_task(study_id, user_id, data_path):
     )
 
 
-@shared_task
-def link_ice_entry_to_study(user_token, strain, study):
+def delay_calculation(task):
+    # delay is default + 2**n seconds
+    return task.default_retry_delay + (2 ** (task.request.retries + 1))
+
+
+@shared_task(bind=True)
+def link_ice_entry_to_study(self, user_token, strain, study):
     # check that strain and study are still linked
     query = models.Strain.objects.filter(pk=strain, line__study__pk=study)
     if query.exists():
-        ice = create_ice_connection(user_token)
-        record = query.annotate(
-            study_slug=F('line__study__slug'),
-            study_name=F('line__study__name'),
-        ).distinct().get()
-        url = build_study_url(record.study_slug)
-        ice.link_entry_to_study(record.registry_id, study, url, record.study_name)
+        try:
+            ice = create_ice_connection(user_token)
+            record = query.annotate(
+                study_slug=F('line__study__slug'),
+                study_name=F('line__study__name'),
+            ).distinct().get()
+            url = build_study_url(record.study_slug)
+            ice.link_entry_to_study(record.registry_id, study, url, record.study_name)
+        except RequestException as e:
+            # Retry when there are errors communicating with ICE
+            raise self.retry(exc=e, countdown=delay_calculation(self), max_retries=10)
+        except Exception as e:
+            raise e
 
 
-@shared_task
-def unlink_ice_entry_from_study(user_token, strain, study):
+@shared_task(bind=True)
+def unlink_ice_entry_from_study(self, user_token, strain, study):
     query = models.Strain.objects.filter(pk=strain, line__study__pk=study)
     if not query.exists():
-        ice = create_ice_connection(user_token)
-        record = models.Strain.objects.get(pk=strain)
-        study_obj = models.Study.objects.get(pk=study)
-        url = build_study_url(study_obj.slug)
-        ice.unlink_entry_from_study(record.registry_id, study, url)
+        try:
+            ice = create_ice_connection(user_token)
+            record = models.Strain.objects.get(pk=strain)
+            study_obj = models.Study.objects.get(pk=study)
+            url = build_study_url(study_obj.slug)
+            ice.unlink_entry_from_study(record.registry_id, study, url)
+        except RequestException as e:
+            # Retry when there are errors communicating with ICE
+            raise self.retry(exc=e, countdown=delay_calculation(self), max_retries=10)
+        except Exception as e:
+            raise e
