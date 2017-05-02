@@ -2795,15 +2795,21 @@ module EDDTableImport {
 
             if (uniqueAssayNames.length - 1) {
                 let matched:number = $('#matchedAssaysSectionBody tr').length;
-                let matchedAssays:number = $('#matchedAssaysSectionBody tr option:selected')
+                let matchedLines:number = $('#matchedAssaysSectionBody tr option:selected')
                                             .text().split('Create New Assay').length - 1;
-                let matchedLines:number = matched - matchedAssays;
+                let matchedAssays:number = matched - matchedLines;
                 if (matched === 0) {
                     $('#matchedAssaysSection').hide();
                 } else {
                     $('#matchedAssaysSection').show();
-                    $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedLines + ' Lines and ' +
+                    if (matchedLines === 0) {
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched '+ matchedAssays + ' Assays')
+                    } else if (matchedAssays === 0) {
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched '+ matchedLines + ' Lines')
+                    } else {
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched '+ matchedLines + ' Lines and ' +
                                                                             matchedAssays + ' Assays')
+                    }
                 }
             }
         }

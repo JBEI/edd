@@ -2244,16 +2244,24 @@ var EDDTableImport;
             });
             if (uniqueAssayNames.length - 1) {
                 var matched_1 = $('#matchedAssaysSectionBody tr').length;
-                var matchedAssays = $('#matchedAssaysSectionBody tr option:selected')
+                var matchedLines = $('#matchedAssaysSectionBody tr option:selected')
                     .text().split('Create New Assay').length - 1;
-                var matchedLines = matched_1 - matchedAssays;
+                var matchedAssays = matched_1 - matchedLines;
                 if (matched_1 === 0) {
                     $('#matchedAssaysSection').hide();
                 }
                 else {
                     $('#matchedAssaysSection').show();
-                    $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedLines + ' Lines and ' +
-                        matchedAssays + ' Assays');
+                    if (matchedLines === 0) {
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedAssays + ' Assays');
+                    }
+                    else if (matchedAssays === 0) {
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedLines + ' Lines');
+                    }
+                    else {
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedLines + ' Lines and ' +
+                            matchedAssays + ' Assays');
+                    }
                 }
             }
         };
