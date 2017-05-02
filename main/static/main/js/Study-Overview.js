@@ -30,6 +30,7 @@ var StudyOverview;
             text: 'Success! ' + result['lines_created'] + ' lines added!',
             style: 'margin:auto'
         }).appendTo('#linesAdded');
+        $('#linesAdded').show();
         successfulRedirect(linesPathName);
     }
     StudyOverview.fileReturnedFromServer = fileReturnedFromServer;

@@ -41,6 +41,8 @@ module StudyOverview {
             style: 'margin:auto'
         }).appendTo('#linesAdded');
 
+        $('#linesAdded').show();
+        
         successfulRedirect(linesPathName)
     }
 
