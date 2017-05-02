@@ -113,12 +113,12 @@ following steps in the EDD checkout directory to configure EDD and launch it for
 
     * Activate changes with `source ~/.bashrc`
 
-* __From `./docker_services/` run `. init-config`__
+* __From `./docker_services/` run `. init-config --project edd`__
   This script will:
     * Test your git configuration
     * Copy sample configuration files
     * Generate random passwords for use in autoconfiguring EDD's Docker services
-    * Prompt to create a virtualenv to hold custom environment
+    * Create a virtualenv named `edd`
 
 * __Configure `secrets.env`__
 
@@ -156,7 +156,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
   See "Running EDD" below for a list of helpful commands. If you skipped the previous step, this
   command will take significantly longer the first time you run it, since Docker has to initially
   build / configure the EDD services before they can run.
-  
+
 
 * __Install and configure a supporting [ICE][7] deployment__
 
