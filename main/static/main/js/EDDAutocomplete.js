@@ -256,6 +256,9 @@ var EDDAuto;
             if (value.trim() === '') {
                 return record['email'];
             }
+            else {
+                return value;
+            }
         };
         User.columns = [
             new AutoColumn('User', '150px', 'fullname'),
