@@ -364,6 +364,8 @@ module EDDAuto {
             var value = super.loadDisplayValue(record);
             if (value.trim() === '') {
                 return record['email'];
+            } else {
+                return value
             }
         }
     }
