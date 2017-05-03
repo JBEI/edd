@@ -34,11 +34,11 @@ from builtins import str
 import arrow
 from requests import HTTPError, codes
 
-import settings
 from jbei.rest.auth import EddSessionAuth, IceSessionAuth
 from jbei.rest.clients import EddApi, IceApi
 from jbei.rest.clients.ice import Strain as IceStrain
 from jbei.utils import session_login
+from . import settings
 
 logger = logging.getLogger(__name__)
 
