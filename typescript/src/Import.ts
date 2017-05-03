@@ -2782,7 +2782,7 @@ module EDDTableImport {
             nRows = 0;
 
             uniqueAssayNames.forEach((assayName: string, i: number): void => {
-                var disam: AssayDisambiguationRow
+                var disam: AssayDisambiguationRow;
                 disam = this.assayObjSets[assayName];
                 if (!disam) {
                     disam = new AssayDisambiguationRow(tableBodyMatched, assayName, i);
