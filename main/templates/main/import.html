@@ -575,14 +575,14 @@
         </div>
     </div>
     <div class="sectionContent off" id="disambiguateAssaysSection">
-        <h3 class="noMatch"> Assays with no experiment descriptions</h3>
+        <h3 class="noMatch"> Unmatched Assays </h3>
         <div class="alert alert-warning alert-dismissible" role="alert">
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
             </button>
-            <div>Warning! The assays below will go in a single experiment description line.
-            Please create experiment details for each assay here:<a href="{% url 'main:lines' slug=study.slug %}">
-            Add Experiment Descriptions</a></div>
+            <div>Warning! The following assays weren't matched. Any new assays you create will be assigned
+                to a single new line. You can add new lines <a href="{% url 'main:lines' slug=study.slug %}">
+                here</a>.</div>
         </div>
         <table id="disambiguateAssaysTable" cellspacing="0">
             <tbody></tbody>
