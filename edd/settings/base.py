@@ -32,7 +32,7 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 # Custom EDD-defined configuration options
 ###################################################################################################
 
-EDD_VERSION_NUMBER = '2.0.3'
+EDD_VERSION_NUMBER = '2.0.4'
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
 # help prevent developers from accidentally altering data in production). Any value that starts
