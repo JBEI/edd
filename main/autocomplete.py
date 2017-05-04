@@ -176,10 +176,7 @@ def search_strain(request):
     ice = IceApi(auth=auth, verify_ssl_cert=settings.VERIFY_ICE_CERT)
     ice.timeout = settings.ICE_REQUEST_TIMEOUT
     term = request.GET.get('term', '')
-    found = ice.search_entries(term, suppress_errors=True)
-    results = []
-    if found is not None:  # None == there were errors searching
-        results = [match.entry.to_json_dict() for match in found.results]
+    results = ice.search(term)
     return JsonResponse({
         'rows': results,
     })
