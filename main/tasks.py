@@ -7,8 +7,12 @@ from celery import shared_task
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db.models import F
+from django.http import QueryDict
+from django.utils.translation import ugettext as _
 
 from . import models
+from .importer.table import TableImport
+from .redis import ScratchStorage
 from .utilities import get_absolute_url
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
@@ -28,6 +32,34 @@ def create_ice_connection(user_token):
     ice.timeout = settings.ICE_REQUEST_TIMEOUT
     ice.write_enabled = True
     return ice
+
+
+@shared_task
+def import_table_task(study_id, user_id, data_path):
+    try:
+        storage = ScratchStorage()
+        study = models.Study.objects.get(pk=study_id)
+        user = models.User.objects.get(pk=user_id)
+        data = storage.load(data_path)
+        importer = TableImport(study, user)
+        # data stored as urlencoded string, convert back to QueryDict
+        (added, updated) = importer.import_data(QueryDict(data))
+        storage.delete(data_path)
+    except Exception as e:
+        logger.exception('Failure in import_task: %s', e)
+        raise RuntimeError(
+            _('Failed import to %(study)s, EDD encountered this problem: %(problem)s') % {
+                'problem': e,
+                'study': study.name,
+            }
+        )
+    return _(
+        'Finished import to %(study)s: %(added)d added, %(updated)d updated measurements.' % {
+            'added': added,
+            'study': study.name,
+            'updated': updated,
+        }
+    )
 
 
 @shared_task

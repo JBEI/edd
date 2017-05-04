@@ -6,7 +6,6 @@ import json
 import logging
 import re
 import tempfile
-import traceback
 
 from builtins import str
 from django.conf import settings
@@ -43,12 +42,12 @@ from .importer import (import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_
                        interpret_raw_rna_seq_data, )
 from .importer.experiment_desc import CombinatorialCreationImporter
 from .importer.parser import find_parser
-from .importer.table import import_task
 from .models import (Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue,
                      Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
                      StudyPermission, Update, )
 from .signals import study_modified
 from .solr import StudySearch
+from .tasks import import_table_task
 from .utilities import (JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement,
                         get_edddata_misc, get_edddata_strains, get_edddata_study,
                         get_edddata_users, )
@@ -1299,19 +1298,17 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
             manager.update_or_create(**kwargs)
 
 
-# /study/<study_id>/import
-# FIXME should have trailing slash?
+# /study/<study_id>/import/
 @ensure_csrf_cookie
 def study_import_table(request, pk=None, slug=None):
-    """ View for importing tabular data (replaces AssayTableData.cgi).
+    """
+    View for importing tabular data (replaces AssayTableData.cgi).
     :raises: Exception if an error occurrs during the import attempt
     """
     study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
-    lines = study.line_set.all()
-    assays = study.line_set.count()
-    user = study.user_can_write(request.user)
+    user_can_write = study.user_can_write(request.user)
 
-    # FIXME filter protocols?
+    # FIXME protocol display on import page should be an autocomplete
     protocols = Protocol.objects.order_by('name')
 
     if request.method == "POST":
@@ -1321,7 +1318,10 @@ def study_import_table(request, pk=None, slug=None):
                 for key in sorted(request.POST)
             ]))
         try:
-            result = import_task.delay(study.pk, request.user.pk, request.POST)
+            storage = redis.ScratchStorage()
+            # save POST to scratch space as urlencoded string
+            key = storage.save(request.POST.urlencode())
+            result = import_table_task.delay(study.pk, request.user.pk, key)
             # save task ID for notification later
             request.user.profile.tasks.create(uuid=result.id)
             messages.add_message(
@@ -1344,10 +1344,7 @@ def study_import_table(request, pk=None, slug=None):
         context={
             "study": study,
             "protocols": protocols,
-            "showingimport": True,
-            "lines": lines,
-            "assays": assays,
-            "writable": user
+            "writable": user_can_write,
         },
     )
 
