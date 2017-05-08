@@ -845,7 +845,7 @@ def template_sync_species(instance):
         if species not in exist_species:
             MetaboliteSpecies.objects.get_or_create(sbml_template=instance, species=species)
         else:
-            exist_species.remove(species)
+            exist_species.discard(species)
     reactions = map(lambda r: (r.getId(), r.getListOfReactants()), model.getListOfReactions())
     for reaction, reactants in reactions:
         if len(reactants) == 1 and reaction not in exist_exchange:
@@ -855,7 +855,7 @@ def template_sync_species(instance):
                 reactant_name=reactants[0].getSpecies()
             )
         else:
-            exist_exchange.remove(reaction)
+            exist_exchange.discard(reaction)
     # removing any records in the database not in the template document
     species_qs.filter(species__in=exist_species).delete()
     exchange_qs.filter(exchange_name__in=exist_exchange).delete()
