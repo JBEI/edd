@@ -382,7 +382,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study, removed_strains)
     :param removed_strains: iterable of Django models for Strains to be unlinked
     """
     logger.debug('Start %s()', _post_commit_unlink_ice_entry_from_study.__name__)
-    for index, strain in enumerate(removed_strains):
+    for strain in removed_strains:
         if not _is_strain_linkable(strain.registry_url, strain.registry_id):
             logger.warning(
                 "Strain with id %d is no longer linked to study id %d, but EDD does not have "
@@ -391,9 +391,9 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study, removed_strains)
             continue
         try:
             unlink_ice_entry_from_study.delay(user_email, strain.pk, study.pk)
-        except Exception as e:
-            strain_pks = [strain.pk for strain in removed_strains]
-            _handle_ice_post_commit_error(e, 'remove', study.pk, strain_pks, index)
+        except Exception:
+            logger.error('Failed to submit task unlink_ice_entry_from_study(%d, %d)',
+                         strain.pk, study.pk)
 
 
 def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
@@ -407,7 +407,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     :param linked_strains: iterable of Django models for Strains to be unlinked
     """
     logger.debug('Start %s()', _post_commit_link_ice_entry_to_study.__name__)
-    for index, strain in enumerate(linked_strains):
+    for strain in linked_strains:
         if not _is_strain_linkable(strain.registry_url, strain.registry_id):
             logger.warning(
                 "Strain with id %d is linked to study id %d, but EDD does not have "
@@ -416,27 +416,9 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
             continue
         try:
             link_ice_entry_to_study.delay(user_email, strain.pk, study.pk)
-        except Exception as e:
-            strain_pks = [strain.pk for strain in linked_strains]
-            _handle_ice_post_commit_error(e, 'add/update', study.pk, strain_pks, index)
-
-
-def _handle_ice_post_commit_error(err, operation, study_pk, strains_to_update, index):
-    """
-    Handles exceptions from post-commit functions used to communicate with ICE. Note that although
-    Django typically automatically handles uncaught exceptions by emailing admins, it doesn't seem
-    to be handling them in the case of post-commit functions/lambda's (see EDD-178)
-    :param err:
-    :return:
-    """
-    error_msg = ("Error submitting Celery jobs to %(operation)s ICE strain link(s) for study "
-                 "%(study_pk)d. Strains to update: %(strains)s (index=%(index)d)" % {
-                        'operation': operation,
-                        'study_pk': study_pk,
-                        'strains': str(strains_to_update),
-                        'index': index, })
-
-    _handle_post_commit_function_error(error_msg)
+        except Exception:
+            logger.error('Failed to submit task link_ice_entry_to_study(%d, %d)',
+                         strain.pk, study.pk)
 
 
 def _handle_post_commit_function_error(err_msg, re_raise_error=None):
