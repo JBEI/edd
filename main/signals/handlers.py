@@ -297,7 +297,6 @@ def handle_line_pre_delete(sender, instance, **kwargs):
     line = instance
     with transaction.atomic():
         instance.pre_delete_study = line.study
-        instance.pre_delete_study_timestamp = line.study.created.mod_time
         instance.pre_delete_strains = Strain.objects.filter(line__id=line.pk)
 
         # force query evaluation now instead of when we read the result
@@ -326,7 +325,6 @@ def handle_line_post_delete(sender, instance, **kwargs):
     # any more
     study = line.pre_delete_study
     study_pk = study.pk
-    study_creation_datetime = line.pre_delete_study_timestamp
 
     # build a list of strains that are no longer associated with this study due to deletion of
     # the line.
@@ -369,17 +367,19 @@ def handle_line_post_delete(sender, instance, **kwargs):
     # initial DB query
     # will indicate an inconsistent database state. This happened repeatably during testing.
     partial = functools.partial(_post_commit_unlink_ice_entry_from_study, user_email, study,
-                                study_creation_datetime, removed_strains)
+                                removed_strains)
     connection.on_commit(partial)
 
 
-def _post_commit_unlink_ice_entry_from_study(user_email, study, study_creation_datetime,
-                                             removed_strains):
+def _post_commit_unlink_ice_entry_from_study(user_email, study, removed_strains):
     """
-    Helper method to do the final work in scheduling a Celery task or ICE REST API call to remove
-    a link from ICE AFTER the database transaction that implements the EDD portion of the linking
-    has committed. This method is only strictly necessary to help us work around the
-    django-commit-hooks limitation that a no-arg method be passed to the post-commit hook.
+    Helper method to schedule removal of a link from ICE. This method is only strictly necessary
+    to help us work around the django-commit-hooks limitation that a no-arg method be passed to
+    the post-commit hook.
+
+    :param user_email: the email used as user ID on ICE
+    :param study: the Django model for Study to be unlinked
+    :param removed_strains: iterable of Django models for Strains to be unlinked
     """
     logger.debug('Start %s()', _post_commit_unlink_ice_entry_from_study.__name__)
     for index, strain in enumerate(removed_strains):
@@ -398,11 +398,13 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study, study_creation_d
 
 def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     """
-    Helper method to do the final work in scheduling a Celery task or ICE REST API call to add a
-    link from ICE AFTER the database transaction that implements the EDD portion of the linking
-    has committed. This method is only strictly necessary to help us work around the
-    django-commit-hooks limitation that a no-arg method be passed to the post-commit hook.
-    :param linked_strains cached strain information
+    Helper method to schedule addition of a link to ICE. This method is only strictly necessary to
+    help us work around the django-commit-hooks limitation that a no-arg method be passed to the
+    post-commit hook.
+
+    :param user_email: the email used as user ID on ICE
+    :param study: the Django model for Study to be unlinked
+    :param linked_strains: iterable of Django models for Strains to be unlinked
     """
     logger.debug('Start %s()', _post_commit_link_ice_entry_to_study.__name__)
     for index, strain in enumerate(linked_strains):
