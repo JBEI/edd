@@ -1,6 +1,10 @@
 # coding: utf-8
 from __future__ import absolute_import, unicode_literals
 
+"""
+Module contains tasks to be executed asynchronously by Celery worker nodes.
+"""
+
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from django.conf import settings
