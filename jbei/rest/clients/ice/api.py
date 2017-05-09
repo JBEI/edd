@@ -934,7 +934,8 @@ class IceApi(RestApiClient):
 
     def search(self, search_terms):
         """
-        Simple ICE search. Give a search term, get a list of entry dicts.
+        Simple ICE search. Give a search term, get a list of entry dicts. Advanced searches should
+        make use of the search_entries method to get Python objects.
         """
         logger.info('Searching for ICE entries using search terms "%s"' % search_terms)
         url = '%s/rest/search' % self.base_url
