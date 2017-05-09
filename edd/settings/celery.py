@@ -23,6 +23,7 @@ CELERY_RESULT_SERIALIZER = EDD_SERIALIZE_NAME
 CELERY_TASK_DEFAULT_EXCHANGE = 'edd'
 CELERY_TASK_DEFAULT_QUEUE = 'edd'
 CELERY_TASK_DEFAULT_ROUTING_KEY = 'edd'
+CELERY_TASK_PUBLISH_RETRY = False
 
 
 ###################################################################################################

@@ -391,7 +391,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study, removed_strains)
             continue
         try:
             unlink_ice_entry_from_study.delay(user_email, strain.pk, study.pk)
-        except Exception:
+        except unlink_ice_entry_from_study.OperationalError:
             logger.error('Failed to submit task unlink_ice_entry_from_study(%d, %d)',
                          strain.pk, study.pk)
 
@@ -416,7 +416,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
             continue
         try:
             link_ice_entry_to_study.delay(user_email, strain.pk, study.pk)
-        except Exception:
+        except link_ice_entry_to_study.OperationalError:
             logger.error('Failed to submit task link_ice_entry_to_study(%d, %d)',
                          strain.pk, study.pk)
 
@@ -606,7 +606,7 @@ def handle_line_strain_post_remove(line, pk_set):
             partial = functools.partial(
                 _post_commit_unlink_ice_entry_from_study,  # callback
                 # args below
-                user_email, study, study.created.mod_time, remove_on_commit,
+                user_email, study, remove_on_commit,
             )
             connection.on_commit(partial)
     except ChangeFromFixture:
