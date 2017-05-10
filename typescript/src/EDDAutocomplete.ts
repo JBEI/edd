@@ -618,6 +618,7 @@ module EDDAuto {
             this.modelName = 'MetaboliteExchange';
             this.columns = EDDAuto.MetaboliteExchange.columns;
             this.cacheId = 'Exchange';
+            this.display_key = 'exchange';
             this.opt['search_extra'] = { 'template': $(this.visibleInput).data('template') };
             this.init();
         }
