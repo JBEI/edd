@@ -8,6 +8,7 @@
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study-Overview.js' %}"></script>
+    <script type="text/javascript" src="{% static 'bower_components/tinymce/tinymce.min.js' %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -84,7 +85,7 @@
                 <td style="width:260px;">
                     {{ edit_study.description.errors }}
                     <div class="editable-field inactive" id="editable-study-description">
-                        {% firstof study.description "<i>(Click to add description)</i>"|safe %}
+                        {% firstof study.description|safe "<i>(Click to add description)</i>"|safe %}
                         {{ edit_study.description }}
                     </div>
                 </td>
