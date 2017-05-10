@@ -932,6 +932,19 @@ class IceApi(RestApiClient):
             query_dict = parse_qs(urlparse(query_url).params)
         return query_dict
 
+    def search(self, search_terms):
+        """
+        Simple ICE search. Give a search term, get a list of entry dicts. Advanced searches should
+        make use of the search_entries method to get Python objects.
+        """
+        logger.info('Searching for ICE entries using search terms "%s"' % search_terms)
+        url = '%s/rest/search' % self.base_url
+        query_json = json.dumps({'queryString': search_terms})
+        response = self.session.post(url, data=query_json, headers=_JSON_CONTENT_TYPE_HEADER)
+        response.raise_for_status()
+        results = json.loads(response.content)
+        return [record['entryInfo'] for record in results['results']]
+
     # TODO: doesn't support field filters yet, though ICE's API does
     def search_entries(self, search_terms=None, entry_types=None, blast_program=None,
                        blast_sequence=None, search_web=False, sort_field=None,

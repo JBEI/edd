@@ -565,6 +565,7 @@ var EDDAuto;
         }
         Registry.columns = [
             new AutoColumn('Part ID', '100px', 'partId'),
+            new AutoColumn('Type', '100px', 'type'),
             new AutoColumn('Name', '150px', 'name'),
             new AutoColumn('Description', '250px', 'shortDescription')
         ];
