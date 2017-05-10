@@ -10,8 +10,8 @@ configuration options for the server.
 
 ## docker-gen configuration template <a name="#docker-gen"/>
 
-EDD uses the [official nginx container][1], and a container running [docker-gen][2] handles writing
-a config file based on the `nginx.tmpl` file in this directory. That file uses the
+EDD uses the [official nginx container][1], and a container running [docker-gen][2] handles
+writing a config file based on the `nginx.tmpl` file in this directory. That file uses the
 [Go template processor][3] to create an nginx configuration file to be imported by the default
 nginx configuration. To use a different template, either patch/replace the `nginx.tmpl` file, or
 change the `entrypoint` of the `nginx-gen` service to point to a different file.
@@ -20,6 +20,14 @@ The included template will find all containers with a `VIRTUAL_HOST` environment
 `upstream` and `server` blocks to proxy incoming requests for those domains to the appropriate
 container. If the container also has a `VIRTUAL_STATIC` environment, nginx will attempt to serve
 static files mounted to `/usr/share/nginx/html/` before proxying to the container.
+
+Any extra configuration for the `server` block of an nginx virtual host can be set by adding files
+for each domain inside the `vhost.d` directory inside the nginx service directory, or modifying
+the `default` file; the virtual host domain file will take precedence. For example, the `default`
+file contains configuration to set the maximum request size to 10 megabytes, and file named
+`internal-edd.companyname.com` is added to configure the maximum request size to 250 megabytes.
+With these settings, requests coming to `edd.companyname.com` will be limited to 10 megabyte
+requests, while requests coming to `internal-edd.companyname.com` can go up to 250 megabytes.
 
 ## Let's Encrypt proxy companion <a name="#letsencrypt"/>
 

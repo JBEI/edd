@@ -236,7 +236,7 @@ services:
       - proxynet
     volumes:
       - /etc/nginx/conf.d
-      - /etc/nginx/vhost.d
+      - ./nginx/vhost.d:/etc/nginx/vhost.d
       - /usr/share/nginx/html
       - tlsdata:/etc/nginx/certs:ro
       - attachdata:/usr/share/nginx/html/uploads:ro
