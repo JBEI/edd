@@ -7,6 +7,7 @@ def favicon(request):
     try:
         site = get_current_site(request)
         favicon = site.page.branding.favicon_file
+        favicon.open()  # must explicitly open ImageField objects
     except:
         favicon = staticfiles_storage.open('favicon.ico')
     with favicon:
