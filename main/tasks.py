@@ -26,11 +26,17 @@ logger = get_task_logger(__name__)
 
 
 def build_study_url(slug):
+    """
+    Constructs a full URL (e.g. https://example.com/edd/s/my-study/) for a study from a slug.
+    """
     path = reverse('main:overview', kwargs={'slug': slug})
     return get_absolute_url(path)
 
 
 def create_ice_connection(user_token):
+    """
+    Creates an instance of the ICE API using common settings.
+    """
     auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=user_token)
     ice = IceApi(auth=auth, verify_ssl_cert=settings.VERIFY_ICE_CERT)
     ice.timeout = settings.ICE_REQUEST_TIMEOUT
@@ -38,8 +44,26 @@ def create_ice_connection(user_token):
     return ice
 
 
+def delay_calculation(task):
+    """
+    Calculates a delay for a task using exponential backoff.
+    """
+    # delay is default + 2**n seconds
+    return task.default_retry_delay + (2 ** (task.request.retries + 1))
+
+
 @shared_task
 def import_table_task(study_id, user_id, data_path):
+    """
+    Task runs the code for importing a table of data.
+
+    :param study_id: the primary key of the target study
+    :param user_id: the primary key of the user running the import
+    :param data_path: the key returned from main.redis.ScratchStorage.save() used to access the
+        import data
+    :returns: a message to display via the TaskNotification middleware
+    :throws RuntimeError: on any errors occuring while running the import
+    """
     try:
         storage = ScratchStorage()
         study = models.Study.objects.get(pk=study_id)
@@ -50,7 +74,7 @@ def import_table_task(study_id, user_id, data_path):
         (added, updated) = importer.import_data(QueryDict(data))
         storage.delete(data_path)
     except Exception as e:
-        logger.exception('Failure in import_task: %s', e)
+        logger.exception('Failure in import_table_task: %s', e)
         raise RuntimeError(
             _('Failed import to %(study)s, EDD encountered this problem: %(problem)s') % {
                 'problem': e,
@@ -66,13 +90,16 @@ def import_table_task(study_id, user_id, data_path):
     )
 
 
-def delay_calculation(task):
-    # delay is default + 2**n seconds
-    return task.default_retry_delay + (2 ** (task.request.retries + 1))
-
-
 @shared_task(bind=True)
 def link_ice_entry_to_study(self, user_token, strain, study):
+    """
+    Task runs the code to register a link between an ICE entry and an EDD study.
+
+    :param user_token: the token used to identify a user to ICE
+    :param strain: the primary key of the EDD main.models.Strain in the link
+    :param study: the primary key of the EDD main.models.Study in the link
+    :throws Exception: for any errors other than communication errors to ICE instance
+    """
     # check that strain and study are still linked
     query = models.Strain.objects.filter(pk=strain, line__study__pk=study)
     if query.exists():
@@ -93,6 +120,14 @@ def link_ice_entry_to_study(self, user_token, strain, study):
 
 @shared_task(bind=True)
 def unlink_ice_entry_from_study(self, user_token, strain, study):
+    """
+    Task runs the code to de-register a link between an ICE entry and an EDD study.
+
+    :param user_token: the token used to identify a user to ICE
+    :param strain: the primary key of the EDD main.models.Strain in the former link
+    :param study: the primary key of the EDD main.models.Study in the former link
+    :throws Exception: for any errors other than communication errors to ICE instance
+    """
     query = models.Strain.objects.filter(pk=strain, line__study__pk=study)
     if not query.exists():
         try:
