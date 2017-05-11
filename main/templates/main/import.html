@@ -234,7 +234,7 @@
   </div>
 
   <div class="sectionContent stepSeparator">
-    <table class="formTable" style="margin-left:1em;">
+    <table style="margin-left:1em;">
       <tr>
         <td rowspan="2" style="vertical-align:middle;">
           <label for="masterProtocol">
@@ -451,7 +451,7 @@
     <div class="sectionContent off" id="masterTimestampDiv">
 
       <h3>Time for all measurements</h3>
-      <table>
+      <table class="table">
         <tr>
           <td style="vertical-align:middle;">
             <input type="text" size="6" name="masterTimestamp" id="masterTimestamp" value="" />
@@ -470,7 +470,7 @@
     <div class="sectionContent off" id="masterLineDiv">
 
       <h3>Line for all data</h3>
-      <table>
+      <table class="table">
         <tr>
           <td>
             <label for="masterLine">
@@ -490,7 +490,7 @@
     <div class="sectionContent off" id="masterAssayLineDiv">
 
       <h3>Assay for all data</h3>
-      <table>
+      <table class="table">
         <tr>
           <td>
             <label for="masterAssay">
@@ -548,7 +548,7 @@
 
     <div class="sectionContent off" id="masterUnitDiv">
       <h3>Units for all data</h3>
-      <table>
+      <table class="table">
         <tr>
           <td>
             <label for="masterUnits">
@@ -584,7 +584,7 @@
                 to a single new line. You can add new lines <a href="{% url 'main:lines' slug=study.slug %}">
                 here</a>.</div>
         </div>
-        <table id="disambiguateAssaysTable" cellspacing="0">
+        <table class="table" id="disambiguateAssaysTable" cellspacing="0">
             <tbody></tbody>
         </table>
     </div>

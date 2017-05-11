@@ -15,6 +15,21 @@ img.exampleImage {
 	box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
 }
 
+
+.form-control-import {
+    display: inline-block;
+    width: auto;
+    height: 34px;
+    padding: 6px 12px;
+    font-size: 12px;
+    line-height: 1.42857143;
+    color: #555;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-left: 8px;
+}
+
 img.exampleImageProteomics {
 	width: 98%;
 	border: none;

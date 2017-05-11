@@ -184,7 +184,7 @@ module EDDTableImport {
         if (EDDTableImport.selectMajorKindStep.interpretationMode == 'mdv') {
             // A default set of pulldown settings for this mode
             EDDTableImport.identifyStructuresStep.pulldownSettings = [
-                TypeEnum.Assay_Line_Names,
+                TypeEnum.Line_Names,
                 TypeEnum.Measurement_Type
             ];
         }
@@ -1176,7 +1176,7 @@ module EDDTableImport {
     export class TypeEnum {
         static Gene_Names = 10;
         static RPKM_Values = 11;
-        static Assay_Line_Names = 1;
+        static Line_Names = 1;
         static Protein_Name = 12;
         static Measurement_Types = 2; // plural!!
         static Timestamp = 3;
@@ -1390,7 +1390,7 @@ module EDDTableImport {
             }
             // Take care of some braindead guesses
             if (label.match(/assay/i) || label.match(/line/i)) {
-                return TypeEnum.Assay_Line_Names;
+                return TypeEnum.Line_Names;
             }
             if (mode == 'pr') {
                 if (label.match(/protein/i)) {
@@ -1478,7 +1478,7 @@ module EDDTableImport {
                 pulldownOptions = [
                     [ IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
-                            ['Assay/Line Names', TypeEnum.Assay_Line_Names],
+                            ['Line Names', TypeEnum.Line_Names],
                         ]
                     ],
                     ['First Column Is...', [
@@ -1490,7 +1490,7 @@ module EDDTableImport {
                 pulldownOptions = [
                     [ IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
-                            ['Assay/Line Names', TypeEnum.Assay_Line_Names],
+                            ['Line Names', TypeEnum.Line_Names],
                             ['Measurement Types', TypeEnum.Measurement_Types]
                         ]
                     ],
@@ -1657,7 +1657,7 @@ module EDDTableImport {
                 var pulldown: number, hlLabel: boolean, hlRow: boolean;
                 pulldown = this.pulldownSettings[index] || 0;
                 hlLabel = hlRow = false;
-                if (pulldown === TypeEnum.Assay_Line_Names || pulldown === TypeEnum.Measurement_Types) {
+                if (pulldown === TypeEnum.Line_Names || pulldown === TypeEnum.Measurement_Types) {
                     hlRow = true;
                 } else if (pulldown === TypeEnum.Timestamp ||
                     pulldown === TypeEnum.Metadata_Name ||
@@ -1782,8 +1782,8 @@ module EDDTableImport {
                                 this.pulldownObjects[i].selectedIndex = 0;
                                 this.pulldownSettings[i] = 0;
                             } else if (c === TypeEnum.Measurement_Types) { // Can't allow "Measurement Types" setting either
-                                this.pulldownObjects[i].selectedIndex = TypeEnum.Assay_Line_Names;
-                                this.pulldownSettings[i] = TypeEnum.Assay_Line_Names;
+                                this.pulldownObjects[i].selectedIndex = TypeEnum.Line_Names;
+                                this.pulldownSettings[i] = TypeEnum.Line_Names;
                             }
                         } else if ((value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name) && c === TypeEnum.Measurement_Type) {
                             this.pulldownObjects[i].selectedIndex = 0;
@@ -2031,7 +2031,7 @@ module EDDTableImport {
                     singleCompatibleCount++; // Single Measurement Name or Single Protein Name
                 } else if (pulldown === TypeEnum.Metadata_Name || pulldown === TypeEnum.Timestamp) {
                     singleNotCompatibleCount++;
-                } else if (pulldown === TypeEnum.Assay_Line_Names && earliestName === null) {
+                } else if (pulldown === TypeEnum.Line_Names && earliestName === null) {
                     earliestName = y;
                 }
             });
@@ -2172,7 +2172,7 @@ module EDDTableImport {
                         // Now that we've dealt with timestamps, we proceed on to other data types.
                         // All the other data types do not accept a blank value, so we weed them out now.
                         return;
-                    } else if (pulldown === TypeEnum.Assay_Line_Names) {
+                    } else if (pulldown === TypeEnum.Line_Names) {
                         // If haven't seen value before, increment and store uniqueness index
                         if (!seenAssayNames[value]) {
                             seenAssayNames[value] = true;
@@ -2683,6 +2683,10 @@ module EDDTableImport {
                 .on('change', 'select', (ev: JQueryInputEventObject): void => {
                     this.userChangedLineDisam(ev.target);
                 })[0];
+            let header = $('<thead>').appendTo(table);
+            let headerCell = $('<th>').text('Line Imported').appendTo(header);
+                headerCell = $('<th>').text('Line').appendTo(header);
+                headerCell = $('<th>').text('Assays').appendTo(header);
             body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
             uniqueLineNames.forEach((name: string, i: number): void => {
                 var disam: LineDisambiguationRow,
@@ -3375,17 +3379,15 @@ module EDDTableImport {
         ignoreCheckbox:JQuery;
         visibleIndex:number;
 
-
         constructor(body:HTMLTableElement, name, i) {
             this.visibleIndex = i;
-
             // First make a table row, and save a reference to it
             this.row = body.insertRow();
             this.rowElementJQ = $(this.row);
             this.addIgnoreCheckbox();
 
             // Next, add a table cell with the string we are disambiguating
-            $('<div>').text(name).appendTo(this.row.insertCell());
+            $('<p>').text(name).appendTo(this.row.insertCell());
 
             this.build(body, name, i);
         }
@@ -3654,31 +3656,10 @@ module EDDTableImport {
             // Set up a combo box for selecting the assay
             /////////////////////////////////////////////////////////////////////////////
             cell = $(this.row.insertCell()).css('text-align', 'left');
-            aSelect = $('<select>').appendTo(cell)
-                .data({ 'setByUser': false })
-                .attr('name', 'disamAssay' + i)
-                .attr('id', 'disamAssay' + i)
-                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
-                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            this.selectAssayJQElement = aSelect;
-            $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
-                .prop('selected', !defaultSel.assayID);
-
-            // add options to the assay combo box
-            (ATData.existingAssays[EDDTableImport.selectMajorKindStep.masterProtocol] || []).forEach((id: number): void => {
-                var assay: AssayRecord, line: LineRecord, protocol: any;
-                assay = EDDData.Assays[id];
-                line = EDDData.Lines[assay.lid];
-                protocol = EDDData.Protocols[assay.pid];
-                $('<option>').text([line.name, protocol.name, assay.name].join('-'))
-                    .appendTo(aSelect).val(id.toString())
-                    .prop('selected', defaultSel.assayID === id);
-            });
-
 
             // a span to contain the text label for the Line pulldown, and the pulldown itself
-            cell = $('<span>').text('for Line: ').toggleClass('off', defaultSel.assayID != 'named_or_new')
-                .appendTo(cell);
+            cell = $('<span>').appendTo(cell);
+
 
             /////////////////////////////////////////////////////////////////////////////
             // Set up an autocomplete for the line (autocomplete is important for
@@ -3693,6 +3674,24 @@ module EDDTableImport {
             } else {
                this.appendLineAutoselect(cell, defaultSel);
             }
+
+            aSelect = $('<select>').appendTo(cell)
+                .data({ 'setByUser': false })
+                .attr('name', 'disamAssay' + i)
+                .attr('id', 'disamAssay' + i)
+                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            this.selectAssayJQElement = aSelect;
+            //add Create New Assay option
+            $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
+                .prop('selected', !defaultSel.assayID);
+
+            //preselect matching assay
+            let assay = EDDData.Assays[defaultSel.assayID];
+            $('<option>').text(assay.name)
+                    .appendTo(aSelect).val(defaultSel.assayID.toString())
+                    .prop('selected', defaultSel.assayID === defaultSel.assayID);
+
         }
     }
 
