@@ -9,31 +9,34 @@ BOLD="\033[1m"
 RESET="\033[0m"
 SEPARATOR="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-GETOPT=`which getopt`
-GIT=`which git`
+GETOPT="$(which getopt)"
+GIT="$(which git)"
+VENV="$(which virtualenvwrapper.sh)"
 
 function check_brew() {
-    if [ ! -x `which brew` ]; then
+    if [ ! -x "$(which brew)" ]; then
         # Install brew if missing
 
         /usr/bin/ruby -e \
             "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
         if [ ! $? -eq 0 ]; then
-            exit 1
+            return 1
         fi
     fi
 }
 
 function check_gnu_getopt() {
-    opt=`getopt -o 'a' -- -a`
+    opt="$(getopt -o 'a' -- -a)"
     if [ "$opt" == " -a --" ]; then
         # GNU getopt is in use
-        GETOPT=`which getopt`
+        GETOPT="$(which getopt)"
     elif [ "$(uname)" == "Darwin" ]; then
         check_brew
-        echo "Updating Homebrew"
-        brew update
-        brew install gnu-getopt
+        if ! brew --prefix gnu-getopt > /dev/null 2>&1; then
+            echo "Updating Homebrew"
+            brew update
+            brew install gnu-getopt
+        fi
         GETOPT="$(brew --prefix gnu-getopt)/bin/getopt"
     else
         (>&2 echo "GNU getopt not installed, ignoring script arguments")
@@ -42,22 +45,56 @@ function check_gnu_getopt() {
 
 function print_help() {
     echo "Usage: . init-config [options]"
+    echo "Options:"
+    echo "    -h, --help"
+    echo "        Print this help message."
+    echo
+    echo "    -d domain, --domain domain"
+    echo "        Sets the domain to use in automated Let's Encrypt service."
+    echo "    -m mail, --mail mail"
+    echo "        Sets the default administrator email for EDD; uses git user.email if omitted."
+    echo "    -p project, --project project"
+    echo "        Sets the Docker Compose project name in EDD virtualenv; uses edd if omitted."
+    echo "    -u user, --user user"
+    echo "        Sets the default administrator name for EDD; uses git user.name if omitted."
+    echo "    --noinput"
+    echo "        Runs the initialization without any input prompts for omitted information."
+    echo "    --nonginx"
+    echo "        Builds a Docker Compose configuration without the nginx webserver container(s)."
+    echo
+    echo "    --split-nginx"
+    echo "        Generates configuration to use a split Compose file for running Nginx. This will"
+    echo "        create a Docker virtual network to connect containers in both Compose files, and"
+    echo "        Docker virtual volumes to share data between containers. Implies --nonginx; see"
+    echo "        also: --split-media, --split-network, --split-static"
+    echo "    --split-media name"
+    echo "        Specifies the Docker volume name used for the EDD media directory. If omitted,"
+    echo "        a generated volume name will be used. Must be used with --split-nginx"
+    echo "    --split-network name"
+    echo "        Specifies the Docker network name used to link the EDD containers with an nginx"
+    echo "        proxy. If omitted, a generated network name will be used. Must be used "
+    echo "        with --split-nginx"
+    echo "    --split-static name"
+    echo "        Specifies the Docker volume name used for the EDD static directory. If omitted,"
+    echo "        a generated volume name will be used. Must be used with --split-nginx"
 }
 
 EDD_EMAIL=
 EDD_USER=
-PROJECT=
+PROJECT=edd
 if [ ! $# -eq 0 ]; then
     check_gnu_getopt
     short='p:u:m:d:'
-    long='help,project:,user:,mail:,noinput,domain:'
-    params=`$GETOPT -o "$short" -l "$long" --name "$0" -- "$@"`
+    long='help,project:,user:,mail:,noinput,domain:,nonginx'
+    long="${long},split-nginx,split-media:,split-network:,split-static:"
+    params="$($GETOPT -o "$short" -l "$long" --name "$0" -- "$@")"
     eval set -- "$params"
     while [ ! $# -eq 0 ]; do
         case "$1" in
             --help)
                 print_help
-                exit 0
+                shift
+                return 0 2>/dev/null || exit 0
                 ;;
             --project | -p)
                 PROJECT="$2"
@@ -71,12 +108,33 @@ if [ ! $# -eq 0 ]; then
                 EDD_EMAIL="$2"
                 shift 2
                 ;;
+            --domain | -d)
+                DOMAIN="$2"
+                shift 2
+                ;;
             --noinput)
                 shift
                 NOINPUT=1
                 ;;
-            --domain | -d)
-                DOMAIN="$2"
+            --nonginx)
+                shift
+                NONGINX=1
+                ;;
+            --split-nginx)
+                shift
+                NONGINX=1
+                DOSPLIT=1
+                ;;
+            --split-media)
+                MEDIA_NAME="$2"
+                shift 2
+                ;;
+            --split-network)
+                NETWORK_NAME="$2"
+                shift 2
+                ;;
+            --split-static)
+                STATIC_NAME="$2"
                 shift 2
                 ;;
             *)
@@ -92,26 +150,21 @@ if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
         EDD_USER=$("$GIT" config --get user.name)
     fi
     if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
-        if [ $NOINPUT -eq 1 ]; then
-            echo "${SEPARATOR}"
-            echo "Could not detect git user. Please re-run this script with your name and email,"
-            echo "or after configuring your git install with commands like these:"
-            echo ""
-            echo -e "\t${BOLD}git config --global user.name 'Alice Liddell'${RESET}"
-            echo -e "\t${BOLD}git config --global user.email 'aliddell@example.net'${RESET}"
-            echo ""
-            exit 1
-        else
-            echo "TODO: interactive prompt for user name and email"
-            exit 1
-        fi
+        echo "${SEPARATOR}"
+        echo "Could not detect git user. Please re-run this script with your name and email,"
+        echo "or after configuring your git install with commands like these:"
+        echo ""
+        echo -e "\t${BOLD}git config --global user.name 'Alice Liddell'${RESET}"
+        echo -e "\t${BOLD}git config --global user.email 'aliddell@example.net'${RESET}"
+        echo ""
+        return 1 2>/dev/null || exit 1
     fi
 fi
 
 if [ ! -f "$DIR/secrets.env" ]; then
     WRITE_SECRETS=y
 elif [ "$NOINPUT" != "1" ]; then
-    read -n 1 -p "Found existing secrets.env. Overwrite? (y/N): " WRITE_SECRETS
+    read -r -n 1 -p "Found existing secrets.env. Overwrite? (y/N): " WRITE_SECRETS
     echo
 fi
 
@@ -121,13 +174,13 @@ if [ "$WRITE_SECRETS" == "y" ]; then
     cp "$DIR/secrets.env-example" "$DIR/secrets.env"
     # replacing the secret{n} values
     while [ $COUNTER -lt 5 ]; do
-        EDD_SECRET=`echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32`
+        EDD_SECRET="$(echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32)"
         # in-place edit, save backup to .bak file
         sed -i.bak -e "s/secret${COUNTER}/${EDD_SECRET}/" "$DIR/secrets.env"
         let COUNTER=COUNTER+1
     done
     # replace Django secret
-    EDD_SECRET=`echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32`
+    EDD_SECRET="$(echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32)"
     # in-place edit, save backup to .bak file
     sed -i.bak -e "s/put some random secret text here/${EDD_SECRET}/" "$DIR/secrets.env"
     # remove backup file
@@ -137,7 +190,7 @@ fi
 if [ ! -f "$DIR/docker-compose.override.yml" ]; then
     WRITE_OVERRIDE=y
 elif [ "$NOINPUT" != "1" ]; then
-    read -n 1 -p "Found existing docker-compose.override.yml. Overwrite? (y/N): " WRITE_OVERRIDE
+    read -r -n 1 -p "Found existing docker-compose.override.yml. Overwrite? (y/N): " WRITE_OVERRIDE
     echo
 fi
 
@@ -161,17 +214,23 @@ if [ "$WRITE_OVERRIDE" == "y" ]; then
     cp "$DIR/docker-compose.override.yml-example" "$DIR/docker-compose.override.yml"
     sed -i.bak -e "${REPLACEMENT}" "$DIR/docker-compose.override.yml"
     rm "$DIR/docker-compose.override.yml.bak"
+    if [ "$NONGINX" == "1" ]; then
+        # comment out section in in override
+        awk '/# START LET/,/# END LET/ { sub(/^/, "#"); }{ print }' \
+            "$DIR/docker-compose.override.yml" > "$DIR/docker-compose.replace.yml" \
+            && mv "$DIR/docker-compose.replace.yml" "$DIR/docker-compose.override.yml"
+    fi
 fi
 
-if [ ! -x "$(which virtualenvwrapper.sh)" ]; then
-    (>&2 echo "virtualenvwrapper is not installed. Cannot use projects for this edd install.")
+if [ "$VENV" == "" ] || [ ! -x "$VENV" ]; then
+    (>&2 echo "virtualenvwrapper is not installed. Cannot create a project for this edd install.")
 elif [ ! -z "$PROJECT" ]; then
     MAKE_VIRTUALENV=y
 elif [ "$NOINPUT" != "1" ]; then
-    read -n 1 -p "Create a project name for this install? (y/N): " MAKE_VIRTUALENV
+    read -r -n 1 -p "Create a project name for this install? (y/N): " MAKE_VIRTUALENV
     echo
     if [ "$MAKE_VIRTUALENV" == "y" ]; then
-        read -p "Project name: [edd] " PROJECT
+        read -r -p "Project name: [edd] " PROJECT
         if [ -z "$PROJECT" ]; then
             PROJECT=edd
         fi
@@ -179,18 +238,80 @@ elif [ "$NOINPUT" != "1" ]; then
 fi
 
 if [ "$MAKE_VIRTUALENV" == "y" ]; then
-    source "$(which virtualenvwrapper.sh)"
-    while lsvirtualenv -b | grep -qe "^${PROJECT}$"; do
-        read -p "A virtualenv named '${PROJECT}' exists, choose another project name: " TEMP
+    source "$VENV"
+    while lsvirtualenv -b | grep -qe "^${PROJECT}$" && [ "$NOINPUT" != "1" ]; do
+        read -r -p "A virtualenv named '${PROJECT}' exists, choose another project name: " TEMP
         if [ ! -z "$TEMP" ]; then
             PROJECT="$TEMP"
         fi
     done
-    mkvirtualenv -a "$DIR" --no-pip --no-setuptools "$PROJECT"
-    echo "export COMPOSE_PROJECT_NAME=$PROJECT" >> $WORKON_HOME/$PROJECT/bin/postactivate
-    echo "unset COMPOSE_PROJECT_NAME" >> $WORKON_HOME/$PROJECT/bin/predeactivate
-    # mkvirtualenv will activate the virtualenv before content is added to postactivate
-    workon $PROJECT
+    if ! lsvirtualenv -b | grep -qe "^${PROJECT}$"; then
+        mkvirtualenv -a "$DIR" --no-pip --no-setuptools "$PROJECT"
+        echo "export COMPOSE_PROJECT_NAME=$PROJECT" >> "$WORKON_HOME/$PROJECT/bin/postactivate"
+        echo "unset COMPOSE_PROJECT_NAME" >> "$WORKON_HOME/$PROJECT/bin/predeactivate"
+        # mkvirtualenv will activate the virtualenv before content is added to postactivate
+        workon "$PROJECT"
+    else
+        echo "A virtualenv for project '${PROJECT}' already exists; skipping creation ..."
+    fi
+fi
+
+if [ "$DOSPLIT" == "1" ]; then
+    POSTFIX="$(date -u "+%Y%m%d%H%M")"
+    # Create the virtual network
+    if [ -z "$NETWORK_NAME" ]; then
+        NETWORK_NAME="eddnet_${POSTFIX}"
+    fi
+    NETWORK_ID="$(docker network ls -qf "name=${NETWORK_NAME}")"
+    if [ -z "$NETWORK_ID" ]; then
+        NETWORK_ID="$(docker network create "${NETWORK_NAME}")"
+    fi
+    # Create the volumes
+    if [ -z "$MEDIA_NAME" ]; then
+        MEDIA_NAME="eddmedia_${POSTFIX}"
+    fi
+    MEDIA_ID="$(docker volume ls -qf "name=${MEDIA_NAME}")"
+    if [ -z "$MEDIA_ID" ]; then
+        MEDIA_ID="$(docker volume create "${MEDIA_NAME}")"
+    fi
+    if [ -z "$STATIC_NAME" ]; then
+        STATIC_NAME="eddstatic_${POSTFIX}"
+    fi
+    STATIC_ID="$(docker volume ls -qf "name=${STATIC_NAME}")"
+    if [ -z "$STATIC_ID" ]; then
+        STATIC_ID="$(docker volume create "${STATIC_NAME}")"
+    fi
+    # Build replacement commands
+    NETWORK_SEARCH='^([[:space:]]*)proxynet: {}'
+    NETWORK_SUB='\1proxynet:\'$'\n''\1\1external:\'$'\n''\1\1\1name: '"$NETWORK_NAME"
+    MEDIA_SEARCH='^([[:space:]]*)attachdata: {}'
+    MEDIA_SUB='\1attachdata:\'$'\n''\1\1external:\'$'\n''\1\1\1name: '"$MEDIA_NAME"
+    STATIC_SEARCH='^([[:space:]]*)staticdata: {}'
+    STATIC_SUB='\1staticdata:\'$'\n''\1\1external:\'$'\n''\1\1\1name: '"$STATIC_NAME"
+    REPLACEMENT="s/${NETWORK_SEARCH}/${NETWORK_SUB}/;"
+    REPLACEMENT="${REPLACEMENT}s/VIRTUAL_NETWORK: \"\"/VIRTUAL_NETWORK: ${NETWORK_NAME}/;"
+    REPLACEMENT="${REPLACEMENT}s/${MEDIA_SEARCH}/${MEDIA_SUB}/;"
+    REPLACEMENT="${REPLACEMENT}s/${STATIC_SEARCH}/${STATIC_SUB}/;"
+    # Replace sections in docker-compose.override.yml
+    sed -i.bak -E -e "${REPLACEMENT}" "${DIR}/docker-compose.override.yml"
+    rm "${DIR}/docker-compose.override.yml.bak"
+    # Write nginx/docker-compose.override.yml; de-indented because of HEREDOC use
+cat <<EOF > "${DIR}/nginx/docker-compose.override.yml"
+---
+version: '2.1'
+networks:
+  proxynet:
+    external:
+      name: ${NETWORK_NAME}
+volumes:
+  attachdata:
+    external:
+      name: ${MEDIA_NAME}
+  staticdata:
+    external:
+      name: ${STATIC_NAME}
+EOF
+
 fi
 
 COMPLETE="true"

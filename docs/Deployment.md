@@ -26,14 +26,15 @@ to the `docker_services` directory of the deployment. Using this option will all
 similar to the following:
 
     . init-config --project edd
-    docker-compose up -d
+    ./start-edd.sh
     # use EDD for some time
-    docker-compose down
+    ./stop-edd.sh
     deactivate
     # do other terminal work
     # ... two weeks later ...
     workon edd
-    docker-compose up -d
+    # terminal is now in the docker_services directory
+    ./start-edd.sh
     # use EDD for some time
 
 ## Building EDD
@@ -212,8 +213,8 @@ with `docker-compose exec edd entrypoint.sh --help`.
 
 ## Starting EDD
 
-Once configured, EDD is launched with a simple command, `docker-compose up -d`. To stop EDD, run
-`docker-compose down`.
+Once configured, EDD is launched with a simple command, `./start-edd.sh`. To stop EDD, run
+`./stop-edd.sh`.
 
 ---------------------------------------------------------------------------------------------------
 

@@ -22,11 +22,19 @@
 
 version: '2.1'
 
+networks:
+  # Include this network if using the nginx/docker-gen/letsencrypt containers
+  proxynet: {}
+
 volumes:
 
-  # Override existing volume definitions by adding an entry with the same name here. The
-  #   staticdata definition here adds nothing more to the base configuration.
+  # Override existing volume definitions by adding an entry with the same name here. If using a
+  #   setup with nginx launched with all the other containers, the entries for attachdata and
+  #   staticdata will remain empty and have no effect. If using the split nginx configuration,
+  #   the entries for both will point to the Docker Volume definitions from the init-config script
+  attachdata: {}
   staticdata: {}
+
   # While the solrdata definition here instructs compose to use the volume named my_volume
   #   in place of the default PROJECTNAME_solrdata volume created by Compose. To use
   #   the my_volume volume, you *must* create it yourself using a command like:
@@ -34,6 +42,9 @@ volumes:
   #solrdata:
   #  external:
   #    name: my_volume
+
+  # The tlsdata definition here is used by the nginx and letsencrypt services later in file
+  tlsdata: {}
 
   # Add new volume definition(s) by creating new name(s).
   #mycustomdata: {}
@@ -63,6 +74,21 @@ services:
   #  ports:
   #    - '5555:5555'
 
+  # Override settings for the initialization container.
+  init:
+    environment:
+      # The following is not strictly necessary, just here so there is not an empty dictionary
+      #   if all other keys under 'environment' are commented out.
+      EDD_CONTAINER: "init"
+
+      # The below options will set the default administrative user when using the stock local
+      #   settings file. The values will be replaced in this example after running the
+      #   init-config.sh script. To set multiple administrative users, or change any other
+      #   local settings, see the command in the appserver container definition with [LOCAL].
+      #EDD_USER: "Alice Liddell"
+      #EDD_EMAIL: "aliddell@example.net"
+
+
   # Override settings for EDD container(s).
   edd:
 
@@ -89,6 +115,7 @@ services:
     # Override the default environment
     environment:
       # The following is not strictly necessary, just here so there is not an empty dictionary
+      #   if all other keys under 'environment' are commented out.
       EDD_CONTAINER: "edd"
 
       # Set the deployment environment flag. Supported values are:
@@ -102,10 +129,8 @@ services:
       #   during the testing process.
       #EDD_DEPLOYMENT_ENVIRONMENT: "TEST"
 
-      # The below options will set the default administrative user when using the stock local
-      #   settings file. The values will be replaced in this example after running the
-      #   init-config.sh script. To set multiple administrative users, or change any other
-      #   local settings, see the command in the appserver container definition with [LOCAL].
+      # The edd container has its own environment; there could be a different administrative
+      #   user for the worker processes than the main web processes.
       #EDD_USER: "Alice Liddell"
       #EDD_EMAIL: "aliddell@example.net"
 
@@ -124,6 +149,9 @@ services:
       # /etc/hosts, e.g. 192.168.99.100 local-development, then add the host name you chose to
       # ALLOWED_HOSTS in your local.py
       VIRTUAL_HOST: "localhost,edd.lvh.me"
+      VIRTUAL_NETWORK: "edd_proxynet"
+      VIRTUAL_PORT: "8000"
+      VIRTUAL_STATIC: "true"
       # If doing local-only testing, no certificates are generated, and nginx will not listen on
       #   port 443; set the HTTPS_METHOD to "noredirect" to access via port 80 without automatic
       #   redirect to 443
@@ -135,6 +163,10 @@ services:
       #   Troubleshooting against the production Let's Encrypt server is likely to hit rate
       #   limits; see <https://letsencrypt.org/docs/staging-environment/>.
       #LETSENCRYPT_TEST: "TRUE"
+
+    # Add in the 'proxynet' network if using the nginx/docker-gen/letsencrypt containers
+    networks:
+      - proxynet
 
     # The following ports definition publishes (reading backwards) port 8000 of the container
     #   on port 8000 of the Docker host using the interface (loopback) with IP 127.0.0.1.
@@ -166,20 +198,124 @@ services:
     #volumes:
     #  - /full/path/to/source:/code
 
-  # Override settings for the nginx webserver and proxy
+  # To expose the Solr admin interface, uncomment the solr section below
+  # solr:
+  #   environment:
+  #     VIRTUAL_HOST: "solr.lvh.me"
+  #     VIRTUAL_NETWORK: "edd_proxynet"
+  #     VIRTUAL_PORT: "8983"
+  #   networks:
+  #     - proxynet
+
+  # To expose the Flower admin interface, uncomment the flower section below
+  # flower:
+  #   environment:
+  #     VIRTUAL_HOST: "flower.lvh.me"
+  #     VIRTUAL_NETWORK: "edd_proxynet"
+  #     VIRTUAL_PORT: "5555"
+  #   networks:
+  #     -proxynet
+
+  # To expose the RabbitMQ management interface, uncomment the rabbitmq section below
+  # rabbitmq:
+  #   environment:
+  #     VIRTUAL_HOST: "rabbitmq.lvh.me"
+  #     VIRTUAL_NETWORK: "edd_proxynet"
+  #     VIRTUAL_PORT: "15672"
+  #   networks:
+  #     - proxynet
+
+  # The section below, until the comment reading "END LET'S ENCRYPT CONFIGS" contains a set of
+  #   container configurations that automate using Let's Encrypt for TLS certificates for an
+  #   nginx webserver fronting EDD. This is provided for convenience in development and evaluation
+  #   of EDD. We recommend production deployments to replace this with the webserver/proxy used
+  #   by other applications in your organization. More details about the configs below can be
+  #   found in the $EDD_INSTALL/docker_services/nginx/README.md
+  # START LET'S ENCRYPT CONFIGS
   nginx:
-
-    # Uncomment the below volume to mount a folder containing TLS certificates/keys for copying.
-    #   The container expects the following files:
-    #     * certificate.key = the private key for the certificate
-    #     * certificate.chained.crt = the certificate for the domain + intermediate certificates
-    #     * trustchain.crt = the intermediate certificates in the trust chain to the CA
-    #     * dhparam.pem = PEM-format file containing parameters to use in Diffie-Hellman exchange
-    #   The final :ro specifier ensures that the path is mounted read-only.
-    #volumes:
-    #  - /path/to/certs:/var/edd/ssl:ro
-
-    # Make the http/https ports available on the Docker host loopback interface
+    image: nginx:1.11
+    # using container_name means there will only ever be one nginx container!
+    container_name: nginx
+    restart: always
+    networks:
+      - proxynet
+    # The below volume settings are for use with Let's Encrypt; to use alternate TLS certificates,
+    #   comment out the below volumes block and follow the instructions immediately following.
+    volumes:
+      - /etc/nginx/conf.d
+      - /etc/nginx/vhost.d
+      - /usr/share/nginx/html
+      - tlsdata:/etc/nginx/certs:ro
+      - attachdata:/usr/share/nginx/html/uploads:ro
+      - staticdata:/usr/share/nginx/html/static:ro
+      - ./nginx/healthcheck.sh:/bin/healthcheck.sh
+    healthcheck:
+      test: ['CMD', '/bin/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+    # Below are some options for exposing HTTP/HTTPS ports from nginx to outside the container
     ports:
+      # Make the http/https ports available on the Docker host IPv4 loopback interface
       - '127.0.0.1:80:80'
       - '127.0.0.1:443:443'
+      # Make the http/https ports available on ALL Docker host IPv4 interfaces
+      #- '0.0.0.0:80:80'
+      #- '0.0.0.0:443:443'
+      # Make the http/https ports available on a private IP like 10.20.17.100
+      #- '10.20.17.100:80:80'
+      #- '10.20.17.100:443:443'
+  nginx-gen:
+    image: jwilder/docker-gen
+    # using container_name means there will only ever be one nginx-gen container!
+    container_name: nginx-gen
+    entrypoint:
+      - '/usr/local/bin/docker-gen'
+      - '-watch'
+      - '-notify-sighup'
+      - 'nginx'
+      - '/etc/docker-gen/templates/nginx.tmpl'
+      - '/etc/nginx/conf.d/default.conf'
+    networks:
+      - proxynet
+    volumes_from:
+      - nginx
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./nginx/nginx.tmpl:/etc/docker-gen/templates/nginx.tmpl:ro
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+  letsencrypt:
+    # TODO: this should probably get forked;
+    #   - the project is not maintained
+    #   - has hard dependency on another project (kuba/simp_le) that is not maintained
+    #   - same dependency is referencing an older branch that has tests marked as failing
+    #   - entire combination has stopped working as Let's Encrypt APIs updated
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: letsencrypt
+    depends_on:
+      - nginx
+      - edd
+    networks:
+      - proxynet
+    volumes_from:
+      - nginx
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - tlsdata:/etc/nginx/certs:rw
+    environment:
+      NGINX_DOCKER_GEN_CONTAINER: nginx-gen
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+  # END LET'S ENCRYPT CONFIGS

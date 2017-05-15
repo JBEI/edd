@@ -36,7 +36,7 @@ EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.0.6')
 # help prevent developers from accidentally altering data in production). Any value that starts
 # with the prefix "DEVELOPMENT" or "TEST" will change EDD's background color and print a the value
 # of this variable at the top of each page.
-EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT',  default='PRODUCTION')
+EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT', default='PRODUCTION')
 
 # override to allow arbitrary text instead of requiring protein ID's to fit the pattern of Uniprot
 # accession id's (though at present validity isn't confirmed, only format).
@@ -75,15 +75,6 @@ EDD_MAIN_SOLR = {
     'default': env.search_url(default='solr://solr:8983/solr/'),
 }
 
-
-###################################################################################################
-# Configure Django email variables
-# Note: Some of these are also referenced by Celery and custom Celery-related code
-###################################################################################################
-ADMINS = MANAGERS = (
-    ('William', 'wcmorrell@lbl.gov'),
-    ('Mark', 'mark.forrer@lbl.gov'),
-)
 
 # most of these just explicitly set the Django defaults, but since it affects Django, Celery, and
 # custom Celery support code, we enforce them here for consistency

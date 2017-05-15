@@ -20,12 +20,6 @@ MANAGERS = ADMINS = (
 ALLOWED_HOSTS = ['*', ]
 # Set the IPs where the Django debug toolbar will be available; use localhost IPv4 and IPv6
 INTERNAL_IPS = ['127.0.0.1', '::1', ]
-# Also add the 'external' IP for the nginx service proxying the appserver
-try:
-    import socket
-    INTERNAL_IPS.append(socket.gethostbyname('nginx'))
-except:
-    pass
 # Add login providers
 # INSTALLED_APPS = INSTALLED_APPS + (
 #     'allauth.socialaccount.providers.github',

@@ -86,6 +86,8 @@ function print_help() {
     echo "    init-only [port]"
     echo "        Container will only perform selected init tasks. The service will begin"
     echo "        listening on the specified port after init, default to port 24051."
+    echo "    init-exit"
+    echo "        Container will only perform selected init tasks, then exit."
     echo "    test"
     echo "        Execute the EDD unit tests."
     echo "    worker"
@@ -353,6 +355,9 @@ case "$COMMAND" in
         mkdir -p /tmp/edd-wait
         cd /tmp/edd-wait
         exec python -m SimpleHTTPServer ${1:-24051}
+        ;;
+    init-exit)
+        output "Init finished"
         ;;
     test)
         banner "Running tests"
