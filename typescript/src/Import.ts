@@ -2770,6 +2770,9 @@ module EDDTableImport {
             // Create the table
             ////////////////////////////////////////////////////////////////////////////////////////
 
+            //if there's already a table, remove it
+            if ($('#matchedAssaysTable')) { $('#matchedAssaysTable').remove()}
+
             tableMatched = <HTMLTableElement>$('<table>')
                 .attr({ 'id': 'matchedAssaysTable', 'cellspacing': 0 })
                 .appendTo(childDivMatched)
@@ -2777,6 +2780,15 @@ module EDDTableImport {
                     this.userChangedAssayDisam(ev.target);
                 })[0];
             parentDivMatched.removeClass('off');
+            let thead = $('<thead>');
+            let tr = $('<tr>');
+            $(tableMatched).append(thead);
+            $(thead).append(tr);
+            $(tr).append('<th></th>');
+            $(tr).append('<th>Input Name</th>');
+            $(tr).append('<th>Line Name</th>');
+            $(tr).append('<th>Assay Name</th>');
+
             tableBodyMatched = <HTMLTableElement>$('<tbody>').appendTo(tableMatched)[0];
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -2798,20 +2810,20 @@ module EDDTableImport {
             });
 
             if (uniqueAssayNames.length - 1) {
-                let matched:number = $('#matchedAssaysSectionBody tr').length;
+                let matched:number = $('#matchedAssaysSectionBody tr').length -1;
                 let matchedLines:number = $('#matchedAssaysSectionBody tr option:selected')
-                                            .text().split('Create New Assay').length - 1;
+                                            .text().split('Create New Assay').length -1;
                 let matchedAssays:number = matched - matchedLines;
                 if (matched === 0) {
                     $('#matchedAssaysSection').hide();
                 } else {
                     $('#matchedAssaysSection').show();
                     if (matchedLines === 0) {
-                        $('#matchedAssaysSection').find('.discloseLink').text('Matched '+ matchedAssays + ' Assays')
+                        $('#matchedAssaysSection').find('.discloseLink').text(' Matched '+ matchedAssays + ' Assays')
                     } else if (matchedAssays === 0) {
-                        $('#matchedAssaysSection').find('.discloseLink').text('Matched '+ matchedLines + ' Lines')
+                        $('#matchedAssaysSection').find('.discloseLink').text(' Matched '+ matchedLines + ' Lines')
                     } else {
-                        $('#matchedAssaysSection').find('.discloseLink').text('Matched '+ matchedLines + ' Lines and ' +
+                        $('#matchedAssaysSection').find('.discloseLink').text(' Matched '+ matchedLines + ' Lines and ' +
                                                                             matchedAssays + ' Assays')
                     }
                 }
@@ -2905,10 +2917,6 @@ module EDDTableImport {
                     disam = new MeasurementDisambiguationRow(body, name, i);
                     this.measurementObjSets[name] = disam;
                 }
-                // TODO sizing should be handled in CSS
-                disam.compAuto.visibleInput.data('visibleIndex', i);
-                disam.typeAuto.visibleInput.data('visibleIndex', i);
-                disam.unitsAuto.visibleInput.data('visibleIndex', i);
 
                 // If we're in MDV mode, the units pulldowns are irrelevant. Toggling
                 // the hidden unit input controls whether it's treated as required.
@@ -3387,7 +3395,7 @@ module EDDTableImport {
             this.addIgnoreCheckbox();
 
             // Next, add a table cell with the string we are disambiguating
-            $('<p>').text(name).appendTo(this.row.insertCell());
+            $('<div>').text(name).appendTo(this.row.insertCell());
 
             this.build(body, name, i);
         }
@@ -3559,7 +3567,7 @@ module EDDTableImport {
             // create a hidden form field to store the selected value
             this.lineAuto.hiddenInput.attr('id', 'disamLine' + this.visibleIndex)
                 .attr('name', 'disamLine' + this.visibleIndex)
-                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS)
         }
 
 
@@ -3657,9 +3665,8 @@ module EDDTableImport {
             /////////////////////////////////////////////////////////////////////////////
             cell = $(this.row.insertCell()).css('text-align', 'left');
 
-            // a span to contain the text label for the Line pulldown, and the pulldown itself
-            cell = $('<span>').appendTo(cell);
-
+            // a table column to contain the text label for the Line pulldown, and the pulldown itself
+            cell = $('<td>').appendTo(cell);
 
             /////////////////////////////////////////////////////////////////////////////
             // Set up an autocomplete for the line (autocomplete is important for
@@ -3667,7 +3674,7 @@ module EDDTableImport {
             /////////////////////////////////////////////////////////////////////////////
             if (!defaultSel.name) {
                 var parentDiv = $('#disambiguateAssaysSection');
-                var table = $('#disambiguateAssaysSection table')
+                var table = $('#disambiguateAssaysSection table');
                 $(parentDiv).removeClass('off');
                 this.appendLineAutoselect(cell, defaultSel);
                 $(table).append(this.row);
@@ -3675,7 +3682,9 @@ module EDDTableImport {
                this.appendLineAutoselect(cell, defaultSel);
             }
 
-            aSelect = $('<select>').appendTo(cell)
+            let anotherCell = $(this.row.insertCell()).css('text-align', 'left');
+            anotherCell = $('<td>').appendTo(anotherCell);
+            aSelect = $('<select>').appendTo(anotherCell)
                 .data({ 'setByUser': false })
                 .attr('name', 'disamAssay' + i)
                 .attr('id', 'disamAssay' + i)
@@ -3686,12 +3695,13 @@ module EDDTableImport {
             $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
                 .prop('selected', !defaultSel.assayID);
 
-            //preselect matching assay
+            //preselect matching assay if it exists
             let assay = EDDData.Assays[defaultSel.assayID];
-            $('<option>').text(assay.name)
+            if (assay && defaultSel.lineID != 'new') {
+                $('<option>').text(assay.name)
                     .appendTo(aSelect).val(defaultSel.assayID.toString())
                     .prop('selected', defaultSel.assayID === defaultSel.assayID);
-
+            }
         }
     }
 

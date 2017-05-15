@@ -2223,6 +2223,10 @@ var EDDTableImport;
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create the table
             ////////////////////////////////////////////////////////////////////////////////////////
+            //if there's already a table, remove it
+            if ($('#matchedAssaysTable')) {
+                $('#matchedAssaysTable').remove();
+            }
             tableMatched = $('<table>')
                 .attr({ 'id': 'matchedAssaysTable', 'cellspacing': 0 })
                 .appendTo(childDivMatched)
@@ -2230,6 +2234,14 @@ var EDDTableImport;
                 _this.userChangedAssayDisam(ev.target);
             })[0];
             parentDivMatched.removeClass('off');
+            var thead = $('<thead>');
+            var tr = $('<tr>');
+            $(tableMatched).append(thead);
+            $(thead).append(tr);
+            $(tr).append('<th></th>');
+            $(tr).append('<th>Input Name</th>');
+            $(tr).append('<th>Line Name</th>');
+            $(tr).append('<th>Assay Name</th>');
             tableBodyMatched = $('<tbody>').appendTo(tableMatched)[0];
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create a table row for each unique assay name
@@ -2247,7 +2259,7 @@ var EDDTableImport;
                 _this.currentlyVisibleAssayObjSets.push(disam);
             });
             if (uniqueAssayNames.length - 1) {
-                var matched_1 = $('#matchedAssaysSectionBody tr').length;
+                var matched_1 = $('#matchedAssaysSectionBody tr').length - 1;
                 var matchedLines = $('#matchedAssaysSectionBody tr option:selected')
                     .text().split('Create New Assay').length - 1;
                 var matchedAssays = matched_1 - matchedLines;
@@ -2257,13 +2269,13 @@ var EDDTableImport;
                 else {
                     $('#matchedAssaysSection').show();
                     if (matchedLines === 0) {
-                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedAssays + ' Assays');
+                        $('#matchedAssaysSection').find('.discloseLink').text(' Matched ' + matchedAssays + ' Assays');
                     }
                     else if (matchedAssays === 0) {
-                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedLines + ' Lines');
+                        $('#matchedAssaysSection').find('.discloseLink').text(' Matched ' + matchedLines + ' Lines');
                     }
                     else {
-                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedLines + ' Lines and ' +
+                        $('#matchedAssaysSection').find('.discloseLink').text(' Matched ' + matchedLines + ' Lines and ' +
                             matchedAssays + ' Assays');
                     }
                 }
@@ -2336,10 +2348,6 @@ var EDDTableImport;
                     disam = new MeasurementDisambiguationRow(body, name, i);
                     _this.measurementObjSets[name] = disam;
                 }
-                // TODO sizing should be handled in CSS
-                disam.compAuto.visibleInput.data('visibleIndex', i);
-                disam.typeAuto.visibleInput.data('visibleIndex', i);
-                disam.unitsAuto.visibleInput.data('visibleIndex', i);
                 // If we're in MDV mode, the units pulldowns are irrelevant. Toggling
                 // the hidden unit input controls whether it's treated as required.
                 isMdv = mode === 'mdv';
@@ -2732,7 +2740,7 @@ var EDDTableImport;
             this.rowElementJQ = $(this.row);
             this.addIgnoreCheckbox();
             // Next, add a table cell with the string we are disambiguating
-            $('<p>').text(name).appendTo(this.row.insertCell());
+            $('<div>').text(name).appendTo(this.row.insertCell());
             this.build(body, name, i);
         }
         // Empty base implementation for children to override
@@ -2969,8 +2977,8 @@ var EDDTableImport;
             // Set up a combo box for selecting the assay
             /////////////////////////////////////////////////////////////////////////////
             cell = $(this.row.insertCell()).css('text-align', 'left');
-            // a span to contain the text label for the Line pulldown, and the pulldown itself
-            cell = $('<span>').appendTo(cell);
+            // a table column to contain the text label for the Line pulldown, and the pulldown itself
+            cell = $('<td>').appendTo(cell);
             /////////////////////////////////////////////////////////////////////////////
             // Set up an autocomplete for the line (autocomplete is important for
             // efficiency for studies with many lines). Also add rows to disambiguated section
@@ -2985,7 +2993,9 @@ var EDDTableImport;
             else {
                 this.appendLineAutoselect(cell, defaultSel);
             }
-            aSelect = $('<select>').appendTo(cell)
+            var anotherCell = $(this.row.insertCell()).css('text-align', 'left');
+            anotherCell = $('<td>').appendTo(anotherCell);
+            aSelect = $('<select>').appendTo(anotherCell)
                 .data({ 'setByUser': false })
                 .attr('name', 'disamAssay' + i)
                 .attr('id', 'disamAssay' + i)
@@ -2995,11 +3005,13 @@ var EDDTableImport;
             //add Create New Assay option
             $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
                 .prop('selected', !defaultSel.assayID);
-            //preselect matching assay
+            //preselect matching assay if it exists
             var assay = EDDData.Assays[defaultSel.assayID];
-            $('<option>').text(assay.name)
-                .appendTo(aSelect).val(defaultSel.assayID.toString())
-                .prop('selected', defaultSel.assayID === defaultSel.assayID);
+            if (assay && defaultSel.lineID != 'new') {
+                $('<option>').text(assay.name)
+                    .appendTo(aSelect).val(defaultSel.assayID.toString())
+                    .prop('selected', defaultSel.assayID === defaultSel.assayID);
+            }
         };
         return AssayDisambiguationRow;
     }(LineDisambiguationRow));
