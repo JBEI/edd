@@ -55,11 +55,12 @@
         {% endif %}
     </ui>
     {% if writable %}
-        <button style="{% if showingimport %}display:none;{% endif %}float:right;"
+        <a style="color:white;" href="{% url 'main:table-import' slug=study.slug %}">
+            <button style="{% if showingimport %}display:none;{% endif %}float:right;"
                 type="button" class="actionButton primary larger">
-            <a style="color:white;"
-                    href="{% url 'main:table-import' slug=study.slug %}">Import Data</a>
-        </button>
+                Import Data
+            </button>
+        </a>
     {% endif %}
 </div>
 
