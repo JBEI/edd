@@ -185,7 +185,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
     * OS X:
         * Install node; this is already included in the Brewfile
         * Install the grunt command line: `npm install -g grunt-cli`
-        * Install node pa`ckages to the local folder: `npm install`
+        * Install node packages to the local folder: `npm install`
         * Install bower: `brew install bower`
         * cd to /main/static/ and run: `brew install` to install bower dependencies
     * Debian:
