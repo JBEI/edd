@@ -3567,7 +3567,7 @@ module EDDTableImport {
             // create a hidden form field to store the selected value
             this.lineAuto.hiddenInput.attr('id', 'disamLine' + this.visibleIndex)
                 .attr('name', 'disamLine' + this.visibleIndex)
-                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS)
+                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
         }
 
 
