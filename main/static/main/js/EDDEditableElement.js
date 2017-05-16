@@ -396,10 +396,12 @@ var EDDEditable;
                 tinymce.remove();
                 var value = this.inputElement.value;
                 this.cancelEditing();
-                value = $(value);
-                //remove basic text because it might have html elements in it
-                $(this.element).text('');
-                $(this.element).append(value);
+                if (value) {
+                    value = $(value);
+                    //remove basic text because it might have html elements in it
+                    $(this.element).text('');
+                    $(this.element).append(value);
+                }
             }
             else {
                 this.cancelEditing();
