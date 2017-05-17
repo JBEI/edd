@@ -187,7 +187,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
         * Install the grunt command line: `npm install -g grunt-cli`
         * Install node packages to the local folder: `npm install`
         * Install bower: `brew install bower`
-        * cd to /main/static/ and run: `brew install` to install bower dependencies
+        * cd to /main/static/ and run: `bower install` to install bower dependencies
     * Debian:
         * `sudo apt-get install node`
         * This will install nodejs. It may be convenient for you to link this to ‘node’
