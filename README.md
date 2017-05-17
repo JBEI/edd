@@ -24,9 +24,11 @@ simple as copying the `docker_services` directory of the code repository and run
     . init-config
     docker-compose up -d
 
-You can then access the EDD through a browser with [http://edd.lvh.me][13], a domain that maps all
-requests to the localhost IPv4 address of `127.0.0.1`. Using this domain allows for your browser
-to be directed to the correct service, and looks nicer than an IP address.
+The first time EDD runs, it must complete some setup tasks before the UI is available. You may
+monitor progress with `docker-compose logs -f`, or simply wait a few minutes. You can then access
+the EDD through a browser with [http://edd.lvh.me][13], a domain that maps all requests to the
+localhost IPv4 address of `127.0.0.1`. Using this domain allows for your browser to be directed to
+the correct service, and looks nicer than an IP address.
 
 Without additional configuration, the launched copy of EDD will be using default options. It will
 only be available on your local computer, and some functions (e.g. TLS support, external
