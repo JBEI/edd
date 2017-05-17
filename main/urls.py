@@ -126,5 +126,4 @@ urlpatterns = [
     #   https://edd.example.org/static/favicon.ico
     # This way, browsers can load the favicon from the standard link.
     url(r'^favicon\.ico$', favicon_view, name='favicon'),
-    url(r'^pages/', include('django.contrib.flatpages.urls', namespace='edd-flatpages')),
 ]

@@ -108,7 +108,7 @@
     <span><a href="{% url 'admin:index' %}">{% trans 'Administration' %}</a></span>
     {% endif %}
     <span><a href="{% url 'edd_utils:index' %}">{% trans 'Utilities' %}</a></span>
-    <span><a href="/pages/tutorials/">{% trans 'Tutorials' %}</a></span>
+    <span><a href="{% url 'flatpage' url='tutorials' %}">{% trans 'Tutorials' %}</a></span>
 </div>
 </body>
 </html>
