@@ -3681,27 +3681,29 @@ module EDDTableImport {
             } else {
                this.appendLineAutoselect(cell, defaultSel);
             }
-
-            let anotherCell = $(this.row.insertCell()).css('text-align', 'left');
-            anotherCell = $('<td>').appendTo(anotherCell);
-            aSelect = $('<select>').appendTo(anotherCell)
+            //create another column
+            let td = $(this.row.insertCell()).css('text-align', 'left');
+            td = $('<td>').appendTo(td);
+            aSelect = $('<select>').appendTo(td)
                 .data({ 'setByUser': false })
                 .attr('name', 'disamAssay' + i)
                 .attr('id', 'disamAssay' + i)
                 .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
                 .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
             this.selectAssayJQElement = aSelect;
-            //add Create New Assay option
             $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
                 .prop('selected', !defaultSel.assayID);
 
-            //preselect matching assay if it exists
-            let assay = EDDData.Assays[defaultSel.assayID];
-            if (assay && defaultSel.lineID != 'new') {
-                $('<option>').text(assay.name)
+            // add options to the assay combo box
+            (ATData.existingAssays[EDDTableImport.selectMajorKindStep.masterProtocol] || []).forEach((id: any): void => {
+                var assay: AssayRecord, line: LineRecord, protocol: any;
+                assay = EDDData.Assays[id];
+                if (assay.id === defaultSel.assayID && defaultSel.lineID != 'new') {
+                     $('<option>').text(assay.name)
                     .appendTo(aSelect).val(defaultSel.assayID.toString())
                     .prop('selected', defaultSel.assayID === defaultSel.assayID);
-            }
+                }
+            });
         }
     }
 
