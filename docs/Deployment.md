@@ -5,13 +5,6 @@
 Have [Docker][1] and [Docker Compose][2] installed on the target host. Also have the contents of
 the `docker_services` directory of the EDD codebase copied to the target host.
 
-## Building EDD
-
-Before starting a deployment, it is necessary to "build" the images used to create the various
-Docker containers. This can be accomplished either by pulling already-built images from a Docker
-Registry, or running the `docker-compose build` command to create images from the
-included `Dockerfile`s.
-
 ## Initial configuration
 
 There are many configuration options that can be set before launching EDD. The `init-config`
@@ -22,68 +15,107 @@ script handles creating two files based on included example files:
   * __`docker-compose.override.yml`__: Overrides the default configuration used to launch the
     Docker containers. Non-secret environment, and other launch options will be put into this file.
 
-More information and examples can be found in the example files, and copied into the files created
-by the `init-config` script.
+More information and example configuration options can be found in the example files, and copied
+into the files created automatically by the `init-config` script.
 
 The `init-config` script can also optionally take a `--project NAME` argument, and will attempt
 to create a virtualenv with `virtualenvwrapper`, and set the `COMPOSE_PROJECT_NAME` environment
 when the virtualenv is activated. This is useful to have the Docker containers started by Compose
 have a prefix other than `dockerservices`. It will also allow `workon NAME` to take you directly
-to the `docker_services` directory of the deployment.
+to the `docker_services` directory of the deployment. Using this option will allow for a workflow
+similar to the following:
 
-## TLS configuration
+    . init-config --project edd
+    docker-compose up -d
+    # use EDD for some time
+    docker-compose down
+    deactivate
+    # do other terminal work
+    # ... two weeks later ...
+    workon edd
+    docker-compose up -d
+    # use EDD for some time
 
-The included Nginx image will look for TLS-related files mounted to `/var/edd/ssl/` in the nginx
-service container on each startup. If it finds the files named below, it copies those files to a
-data volume for use in future launches.
+## Building EDD
 
-  * `dhparam.pem`: A parameter key for generating Diffie-Hellman ephemeral keys. Used by the
-    `ssl_dhparam` configuration in Nginx ([documentation][3]).
-  * `certificate.chained.crt`: The server certificate, plus any intermediate certificates used to
-    sign the server certificate between the trusted root certificate. Used by the `ssl_certificate`
-    configuration in Nginx ([documentation][4]).
-  * `certificate.key`: The private key corresponding to the server certificate. Used by the
-    `ssl_certificate_key` configuration in Nginx ([documentation][5]).
-  * `trustchain.crt`: The trustchain between the server certificate and the trusted root
-    certificate for use in OSCP stapling. The contents of this file will be the same intermediate
-    certificates included in `certificate.chained.crt`. Used by the `ssl_trusted_certificate`
-    configuration in Nginx ([documentation][6]).
+Before starting a deployment, the Docker images used by the various EDD services must be present
+on the host computer. This is accomplished either by pulling already-built images from a Docker
+Registry, or running the `docker-compose build` command to create images from the
+included `Dockerfile`s.
+
+## TLS and domain configuration
+
+EDD includes a set of Docker containers to auto-configure an [Nginx][3] webserver with TLS
+encryption via certificates generated with the [Let's Encrypt][4] service. By setting some
+environment in the `edd` service container, EDD will generate a configuration file for Nginx to
+proxy HTTP requests and secure connections with TLS.
+
+To proxy requests to a container, set the environment variables `VIRTUAL_HOST`, `VIRTUAL_NETWORK`,
+and `VIRTUAL_PORT` on that container. The values of these variables are the DNS hostname, the
+Docker virtual network name, and the IP network port exposed on the container, respectively. These
+values are set automatically for the central EDD service by the `init-config` script, but only for
+local connections. To use your own domain, append your domain to the comma-separated list in
+`VIRTUAL_HOST` in the `docker-compose.override.yml`.
+
+Adding TLS encryption requires setting a few more variables: `LETSENCRYPT_HOST` and
+`LETSENCRYPT_EMAIL`. These are used as parameters to the scripts using the Let's Encrypt APIs. The
+included Docker containers handle taking these values, performing the handshake with Let's Encrypt,
+installing the certificates in Nginx configuration, and refreshing the certificates before they
+expire.
 
 If alternate TLS configuration -- or any other Nginx configuration -- is desired, replace the
-default `nginx` service image with one containing options for your alternate configuration.
+default `nginx` service image with one containing options for your alternate configuration, or
+re-write the `nginx.tmpl` template.
 
-## Other [configuration][6] as desired
+## Linking to an ICE server
 
-* __Default__
+The purpose of EDD is to store actionable datasets in synthetic biology engineering. An important
+piece of information in understanding this data is the genetic sequences of engineered organisms.
+The EDD uses another piece of JBEI software, the Inventory of Composable Elements, or ICE, to keep
+track of this information. Any functionality on EDD that deals with linking to strains will not
+work unless the EDD server is connected to an ICE server.
 
-  For example, by default, EDD will launch with an empty database, so you may want to use
-  environment variables to load an existing database.
-    * If you're starting from a blank database, use the web interface to configure EDD for your
-      institution.
-    * If you haven't loaded EDD from an existing database, you'll need to create an administrator
-      account from the command line that you can then use to create measurement types, units, and
-      other user accounts to get the system going.
-        1. Create an administrator account:
-          `docker-compose exec edd python /code/manage.py createsuperuser`
-        2. Configure EDD using the web interface
-           If you need to add any custom metadata types, units, etc. not provided by the default
-           installation, use the "Administration" link at top right to add to or remove EDD's
-           defaults. It is recommended that you leave defaults in place for consistency with
-           collaborators' EDD deployments.
-           
-* __Manually set the hostname in EDD's database.__
-      EDD needs the hostname users will use to access it, which may not be the same as the one
-      available to EDD via the host operating system. This value will be used most often to create
-      experiment links in ICE, so an incorrect value will cause users to see bad experiment links
-      to EDD when viewing ICE parts.
-      Use the "Administration" link at top right, then scroll down to the "Sites" heading and
-      click the "Sites" link under it. Change the value from `edd.example.org`, to your hostname.
+To link to an ICE server, EDD uses a Base64-encoded key. Create a key using a command like this:
 
-* __Manually set your logo, favicon icon and stylesheets__
-      Use the same "Administration" link at top right, then scroll down to the "Branding" heading and
-      click the "Brandings" link under it. Upload your files here. After uploading your files, scroll down to Pages.
-      Click on the magnifying glass and select your hostname. Then save. You will now see your branding in Brandings.
-      Select the branding you just created and choose the Action "Use this branding". Then click "Go".
+    openssl rand -base64 64 | tr -d '\n' > hmac.key
+
+This will create a file named `hmac.key`. Copy the contents of this file and add it to the line
+setting `ICE_HMAC_KEY` in your `secrets.env`. Then, copy this file to your ICE server, and place it
+in a file named `edd` in the `rest-auth` directory of the ICE home directory.
+
+## Creating an EDD administrator account
+
+Several parts of EDD's configuration is contained within the running application's database,
+instead of loaded from files at startup. A login account to the EDD application, with access to
+the administration interface, is the easiest way to edit this configuration. To create an
+administrator account, run this command from the `docker_services` directory, after EDD has
+finished startup:
+
+    docker-compose exec edd /code/manage.py createsuperuser
+
+The command will prompt for a username, email address, and password. Logging in with the username
+and password combination will send a confirmation email to the provided address. Once the email
+is validated, the account is active and an "Administration" link to the EDD will appear on every
+page, which will load the administration interface when clicked.
+
+## Customization of EDD
+
+Inside the administration interface, a few items should be modified prior to serious use of the
+application.
+
+1. Set the site name and domain in __Sites__. The default confirmation email will use `example.com`
+   as the name of the EDD site, because that is the default value set in the Sites admin. Click
+   through to __Sites__, and then through to __example.com__ to edit the name and domain to match
+   your deployment.
+2. Set __Brandings__ to use. This admin section sets the logo, favicon, and custom stylesheets
+   used in EDD. Click through to __Add Branding__ to upload these custom files and associate them
+   with the default site set in the previous step.
+3. Create __Flat pages__. These are simple text pages to display in EDD. Here is where you can
+   add pages containing information like Privacy Policies, Terms of Service, etc.
+4. Add __Social applications__. This section is where you can configure logins using OAuth from
+   other services, such as Google, LinkedIn, etc. This will also require changes to `local.py` to
+   add the Django apps for each login provider. See the [django-allauth documentation][5] for more
+   details.
 
 ## Custom Python configuration
 
@@ -100,7 +132,6 @@ The following configuration options are specific to EDD and may be overridden in
   * `VERIFY_ICE_CERT`
   * `EDD_MAIN_SOLR`
   * `EDD_LATEST_CACHE`
-  * `USE_CELERY`
   * `EDD_ONLY_SUPERUSER_CREATE`
   * `EDD_ICE_FAIL_MODE`
 
@@ -188,7 +219,6 @@ Once configured, EDD is launched with a simple command, `docker-compose up -d`. 
 
 [1]:    https://docker.io/
 [2]:    https://docs.docker.com/compose/overview/
-[3]:    http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_dhparam
-[4]:    http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_certificate
-[5]:    http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_certificate_key
-[6]:    http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_trusted_certificate
+[3]:    https://nginx.org/en/docs/
+[4]:    https://letsencrypt.org/about/
+[5]:    http://django-allauth.readthedocs.org/en/latest/index.html
