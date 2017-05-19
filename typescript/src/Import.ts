@@ -2785,7 +2785,7 @@ module EDDTableImport {
             $(tableMatched).append(thead);
             $(thead).append(tr);
             $(tr).append('<th></th>');
-            $(tr).append('<th>Input Name</th>');
+            $(tr).append('<th>User Input</th>');
             $(tr).append('<th>Line Name</th>');
             $(tr).append('<th>Assay Name</th>');
 

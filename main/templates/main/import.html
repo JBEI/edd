@@ -575,15 +575,7 @@
         </div>
     </div>
     <div class="sectionContent off" id="disambiguateAssaysSection">
-        <h3 class="noMatch"> Unmatched Assays </h3>
-        <div class="alert alert-warning alert-dismissible" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-            </button>
-            <div>Warning! The following labels were not matched to a line or assay. Any new assays you create will be assigned
-                to a single new line. You can add new lines <a href="{% url 'main:lines' slug=study.slug %}">
-                here</a>.</div>
-        </div>
+        <h3 class="noMatch"> Unmatched Inputs </h3>
         <table id="disambiguateAssaysTable" cellspacing="0">
             <thead>
               <th></th>
