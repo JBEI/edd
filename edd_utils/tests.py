@@ -111,7 +111,7 @@ class SkylineTests (TestCase):
 # BIOLECTOR IMPORT
 class BiolectorTests(TestCase):
     def test_simple(self):
-        filename = "edd_utils/parsers/biolector/biolector_test_file.xml"
+        filename = "/code/edd_utils/parsers/biolector/biolector_test_file.xml"
         file = open(filename, 'U')
         results = biolector.getRawImportRecordsAsJSON(file, 0)
         self.assertEqual(len(results), 48)
