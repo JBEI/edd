@@ -1075,7 +1075,7 @@ class IceApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-    def unlink_entry_from_study(self, ice_entry_id, study_id, study_url, logger):
+    def unlink_entry_from_study(self, ice_entry_id, study_id, study_url, logger=logger):
         """
         Contacts ICE to find and remove all the links from the specified ICE part to the
         specified EDD study. In practical use, there will probably only ever be one per
@@ -1137,7 +1137,7 @@ class IceApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-    def link_entry_to_study(self, ice_entry_id, study_id, study_url, study_name, logger,
+    def link_entry_to_study(self, ice_entry_id, study_id, study_url, study_name, logger=logger,
                             old_study_name=None, old_study_url=None):
         """
         Communicates with ICE to link an ICE entry to an EDD study, or if a link to this URL
@@ -1267,7 +1267,7 @@ def parse_query_url(query_url):
 def extract_int_parameter(dictionary, key):
     param = dictionary.get(key, None)
     try:
-        if isinstance(list, param) and len(param):
+        if isinstance(param, list) and len(param):
             param = param[0]
         if param:
             return int(param)

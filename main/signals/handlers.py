@@ -15,29 +15,19 @@ from django.db import connection, transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
 from django.dispatch import receiver
 
-from jbei.rest.auth import HmacAuth
-from jbei.rest.clients.ice import parse_entry_id
 from . import study_modified, user_modified
 from .. import models as edd_models
 from ..models import (
     Line, MetaboliteExchange, MetaboliteSpecies, SBMLTemplate, Strain, Study, Update,
 )
 from ..solr import StudySearch, UserSearch
+from ..tasks import link_ice_entry_to_study, unlink_ice_entry_from_study
 from ..utilities import get_absolute_url
 
 
 solr_study_index = StudySearch()
 solr_users_index = UserSearch()
 logger = logging.getLogger(__name__)
-
-if settings.USE_CELERY:
-    from edd.remote_tasks import link_ice_entry_to_study, unlink_ice_entry_from_study
-else:
-    from jbei.rest.clients.ice import IceApi
-
-###################################################################################################
-# Define custom signals
-###################################################################################################
 
 
 @receiver(post_save, sender=Study, dispatch_uid="main.signals.handlers.study_saved")
@@ -50,11 +40,6 @@ def study_saved(sender, instance, created, raw, using, **kwargs):
 def user_saved(sender, instance, created, raw, using, **kwargs):
     if not raw and using == 'default':
         user_modified.send(sender=sender, user=instance)
-
-
-###################################################################################################
-# Maintain study SOLR index based on changes to the study or related user/group permissions
-###################################################################################################
 
 
 @receiver(post_delete, sender=edd_models.UserPermission,
@@ -135,6 +120,7 @@ class PrimaryKeyCache(namedtuple('PrimaryKeyCache', ['id'])):
     Defines a cache for objects to-be-deleted so their primary keys can be available in
     post-commit hooks
     """
+    pass
 
 
 @receiver(pre_delete, sender=Study, dispatch_uid="main.signals.handlers.study_pre_delete")
@@ -163,9 +149,6 @@ def _post_commit_unindex_study(study_pk):
         _handle_post_commit_function_error('Error updating Solr index for study %d' % study_pk)
 
 
-###################################################################################################
-# Index user
-###################################################################################################
 @receiver(user_modified)
 def index_user(sender, user, **kwargs):
     # package up work to be performed when the database change commits
@@ -215,8 +198,6 @@ def _post_commit_unindex_user(user_pk_cache):
         _handle_post_commit_function_error(
             'Error updating Solr index for user %d' % user_pk_cache.id
         )
-
-###################################################################################################
 
 
 def log_update_warning_msg(study_id):
@@ -316,7 +297,6 @@ def handle_line_pre_delete(sender, instance, **kwargs):
     line = instance
     with transaction.atomic():
         instance.pre_delete_study = line.study
-        instance.pre_delete_study_timestamp = line.study.created.mod_time
         instance.pre_delete_strains = Strain.objects.filter(line__id=line.pk)
 
         # force query evaluation now instead of when we read the result
@@ -345,7 +325,6 @@ def handle_line_post_delete(sender, instance, **kwargs):
     # any more
     study = line.pre_delete_study
     study_pk = study.pk
-    study_creation_datetime = line.pre_delete_study_timestamp
 
     # build a list of strains that are no longer associated with this study due to deletion of
     # the line.
@@ -388,156 +367,58 @@ def handle_line_post_delete(sender, instance, **kwargs):
     # initial DB query
     # will indicate an inconsistent database state. This happened repeatably during testing.
     partial = functools.partial(_post_commit_unlink_ice_entry_from_study, user_email, study,
-                                study_creation_datetime, removed_strains)
+                                removed_strains)
     connection.on_commit(partial)
 
 
-def _post_commit_unlink_ice_entry_from_study(user_email, study, study_creation_datetime,
-                                             removed_strains):
+def _post_commit_unlink_ice_entry_from_study(user_email, study, removed_strains):
     """
-    Helper method to do the final work in scheduling a Celery task or ICE REST API call to remove
-    a link from ICE AFTER the database transaction that implements the EDD portion of the linking
-    has committed. This method is only strictly necessary to help us work around the
-    django-commit-hooks limitation that a no-arg method be passed to the post-commit hook.
+    Helper method to schedule removal of a link from ICE. This method is only strictly necessary
+    to help us work around the django-commit-hooks limitation that a no-arg method be passed to
+    the post-commit hook.
+
+    :param user_email: the email used as user ID on ICE
+    :param study: the Django model for Study to be unlinked
+    :param removed_strains: iterable of Django models for Strains to be unlinked
     """
-    logger.info('Start %s()', _post_commit_unlink_ice_entry_from_study.__name__)
-
-    ice = None
-    if not settings.USE_CELERY:
-        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email),
-                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
-        ice.timeout = settings.ICE_REQUEST_TIMEOUT
-
-    study_url = get_abs_study_url(study)
-    index = 0
-
-    try:
-        # loop over strain data cached prior to line deletion. note that the strains themselves
-        # may have been deleted at this point, so safest to use cached data instead
-        # Note: even though only a single line was deleted, possible it links to multiple strains
-        change_count = 0
-        for strain in removed_strains:
-
-            # print a warning and skip any strains that didn't include enough data for a link to
-            # ICE
-            if not _is_linkable(strain):
-                logger.warning(
-                    "Strain with id %d is no longer linked to study id %d, but EDD's "
-                    "database entry for this strain doesn't have enough data to remove the "
-                    "corresponding study link from ICE. It's possible (though unlikely) that the "
-                    "EDD strain has been modified since an ICE link was created for it.",
-                    strain.pk, study.pk
-                )
-                index += 1
-                continue
-
-            # as a workaround for SYNBIO-1207, prefer the ICE id extracted from the URL,
-            # which is much more likely to be the locally-unique numeric ID visible from the ICE
-            # UI. Not certain  what recent EDD changes have done to new strain creation, but at
-            # least some pre-existing strains  will work better with this method
-            # TODO: after removing the workaround, use, ice_strain_id =
-            # strain.registry_id.__str__(), or if using Python 3,
-            # maybe strain.registry_id.to_python(). Note that the JSON lib has no  built-in support
-            # for UUIDs
-            workaround_strain_id = parse_entry_id(strain.registry_url)
-
-            if settings.USE_CELERY:
-                async_result = unlink_ice_entry_from_study.delay(user_email, study.pk, study_url,
-                                                                 strain.registry_url,
-                                                                 workaround_strain_id)
-                track_celery_task_submission(async_result)
-            else:
-                ice.write_enabled = True
-                ice.unlink_entry_from_study(workaround_strain_id, study.pk, study_url, logger)
-            change_count += 1
-            index += 1
-
-        if settings.USE_CELERY:
-            logger.info("Submitted %d jobs to Celery", change_count)
-        else:
-            logger.info("Updated %d links via direct HTTP requests", change_count)
-
-    # if an error occurs, print a helpful log message, then re-raise it so Django will email
-    # administrators
-    except Exception as err:
-        strain_pks = [strain.pk for strain in removed_strains]
-        _handle_ice_post_commit_error(err, 'remove', study.pk, strain_pks, index)
+    logger.debug('Start %s()', _post_commit_unlink_ice_entry_from_study.__name__)
+    for strain in removed_strains:
+        if not _is_strain_linkable(strain.registry_url, strain.registry_id):
+            logger.warning(
+                "Strain with id %d is no longer linked to study id %d, but EDD does not have "
+                "enough information to update ICE.", strain.pk, study.pk
+            )
+            continue
+        try:
+            unlink_ice_entry_from_study.delay(user_email, strain.pk, study.pk)
+        except unlink_ice_entry_from_study.OperationalError:
+            logger.error('Failed to submit task unlink_ice_entry_from_study(%d, %d)',
+                         strain.pk, study.pk)
 
 
 def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     """
-    Helper method to do the final work in scheduling a Celery task or ICE REST API call to add a
-    link from ICE AFTER the database transaction that implements the EDD portion of the linking
-    has committed. This method is only strictly necessary to help us work around the
-    django-commit-hooks limitation that a no-arg method be passed to the post-commit hook.
-    :param linked_strains cached strain information
+    Helper method to schedule addition of a link to ICE. This method is only strictly necessary to
+    help us work around the django-commit-hooks limitation that a no-arg method be passed to the
+    post-commit hook.
+
+    :param user_email: the email used as user ID on ICE
+    :param study: the Django model for Study to be unlinked
+    :param linked_strains: iterable of Django models for Strains to be unlinked
     """
-    ice = None
-    if not settings.USE_CELERY:
-        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email),
-                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
-        ice.timeout = settings.ICE_REQUEST_TIMEOUT
-
-    index = 0
-
-    try:
-        study_url = get_abs_study_url(study)
-
-        # loop over strains and perform / schedule work needed
-        for strain in linked_strains:
-            # If Celery is configured, use it to perform the communication with ICE,
-            # along with retries/failure notifications, etc.
-            if settings.USE_CELERY:
-                async_result = link_ice_entry_to_study.delay(user_email, strain.pk, study.pk,
-                                                             study_url)
-                track_celery_task_submission(async_result)
-            # Otherwise, communicate with ICE synchronously during signal processing
-            else:
-                logger.warning(
-                    "Celery configuration not found. Attempting to push study links directly "
-                    "(retries, admin notifications not supported)"
-                )
-                #  as a workaround for SYNBIO-1207, prefer the ICE id extracted from the URL,
-                # which is much more likely to be the locally-unique numeric ID visible from the
-                # ICE UI. Not certain what recent EDD changes have done to new strain creation,
-                # but at least some pre-existing strains will work better with this method.
-                # TODO: after removing the workaround, use, ice_strain_id =
-                # strain.registry_id.__str__(), or if using Python 3,
-                # maybe strain.registry_id.to_python()
-                workaround_strain_id = parse_entry_id(strain.registry_url)
-                ice.write_enabled = True
-                ice.link_entry_to_study(workaround_strain_id, study.pk, study_url, study.name,
-                                        logger)
-
-            index += 1
-
-    # if an error occurs, print a helpful log message, then re-raise it so Django will email
-    # administrators
-    except Exception as err:
-        linked_strain_pks = [strain.pk for strain in linked_strains]
-        _handle_ice_post_commit_error(err, 'add/update', study.pk, linked_strain_pks, index)
-
-
-def _handle_ice_post_commit_error(err, operation, study_pk, strains_to_update, index):
-    """
-    Handles exceptions from post-commit functions used to communicate with ICE. Note that although
-    Django typically automatically handles uncaught exceptions by emailing admins, it doesn't seem
-    to be handling them in the case of post-commit functions/lambda's (see EDD-178)
-    :param err:
-    :return:
-    """
-    error_msg = None
-    if settings.USE_CELERY:
-        error_msg = ("Error submitting Celery jobs to %(operation)s ICE strain link(s) for study "
-                     "%(study_pk)d. Strains to update: %(strains)s (index=%(index)d)" % {
-                        'operation': operation,
-                        'study_pk': study_pk,
-                        'strains': str(strains_to_update),
-                        'index': index, })
-    else:
-        error_msg = "Error updating ICE links via direct HTTP request (index=%d)" % index
-
-    _handle_post_commit_function_error(error_msg)
+    logger.debug('Start %s()', _post_commit_link_ice_entry_to_study.__name__)
+    for strain in linked_strains:
+        if not _is_strain_linkable(strain.registry_url, strain.registry_id):
+            logger.warning(
+                "Strain with id %d is linked to study id %d, but EDD does not have "
+                "enough information to update ICE.", strain.pk, study.pk
+            )
+            continue
+        try:
+            link_ice_entry_to_study.delay(user_email, strain.pk, study.pk)
+        except link_ice_entry_to_study.OperationalError:
+            logger.error('Failed to submit task link_ice_entry_to_study(%d, %d)',
+                         strain.pk, study.pk)
 
 
 def _handle_post_commit_function_error(err_msg, re_raise_error=None):
@@ -652,15 +533,9 @@ def handle_line_strain_post_add(line, pk_set):
         exp_add_count = len(pk_set)
         linkable_count = len(add_on_commit_strains)
 
-        if settings.USE_CELERY:
-            logger.info("Done scheduling post-commit work to submit jobs to Celery: will "
-                        "submit ICE link creation task for each %d of %d added strains.",
-                        linkable_count, exp_add_count)
-        else:
-            logger.info(
-                "Done scheduling post-commit work for direct HTTP request(s) to ICE: "
-                "requested a job to sequentially create links for %d of %d added "
-                "strains via direct HTTP request(s).", linkable_count, exp_add_count)
+        logger.info("Done scheduling post-commit work to submit jobs to Celery: will "
+                    "submit ICE link creation task for each %d of %d added strains.",
+                    linkable_count, exp_add_count)
     except ChangeFromFixture:
         logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
@@ -731,7 +606,7 @@ def handle_line_strain_post_remove(line, pk_set):
             partial = functools.partial(
                 _post_commit_unlink_ice_entry_from_study,  # callback
                 # args below
-                user_email, study, study.created.mod_time, remove_on_commit,
+                user_email, study, remove_on_commit,
             )
             connection.on_commit(partial)
     except ChangeFromFixture:
@@ -797,28 +672,6 @@ def get_abs_study_url(study):
     # Note: urlreverse is an alias for reverse() to avoid conflict with named parameter
     study_relative_url = urlreverse('main:detail', kwargs={'slug': study.slug})
     return get_absolute_url(study_relative_url)
-
-
-def track_celery_task_submission(async_result):
-    """
-    A placeholder method for tracking Celery task submission (see SYNBIO-1204.). An unlikely,
-    but reproducible failure mode observed during initial testing was that for a few seconds
-    following RabbitMQ being stopped while Celery runs, tasks submitted during that window will
-    be perpetually in the "Pending" state. Even once Rabbit is restarted, the tasks will remain
-    in that state without ever generating a client-side exception or any other failure
-    notification. To improve EDD's ability to these detect errors, we should implement some
-    tracking here to catch such cases. For example, we might keep a list of submitted Celery
-    tasks that we periodically scan on a background thread and generate warning emails if any old
-    tasks are unexpectedly in the "Pending" state.
-
-    TODO: confirm that no database entry is created for tasks in this scenario either. It's been a
-    long time since this test was performed.
-    :param async_result:
-    """
-    logger.warning(
-        "TODO: track status of tasks submitted to the Celery library, but maybe not yet "
-        "communicated to the server (SYNBIO-1204)"
-    )
 
 
 @receiver(post_save, sender=SBMLTemplate)
