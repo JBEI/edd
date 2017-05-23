@@ -10,10 +10,8 @@ https://docs.djangoproject.com/en/dev/ref/settings/
 """
 
 import environ
-import re
 
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
-from jbei.utils import TYPICAL_JBEI_ICE_PART_NUMBER_REGEX
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 
@@ -58,19 +56,17 @@ ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
 ICE_URL = 'https://registry-test.jbei.org/'
 ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
 
-# ICE part number pattern used to verify user input formatting where part numbers are absolutely
-# necessary. EDD always uses UUID's to reference ICE parts except where usability absolutely
-# requires part number input (and then only as a workaround pending future UI improvements).
-# TODO: reexamine uses / reconsider removing this when implementing EDD-258.
-TYPICAL_ICE_PART_NUMBER_PATTERN = re.compile(TYPICAL_JBEI_ICE_PART_NUMBER_REGEX, re.IGNORECASE)
-
 # Be very careful in changing this value!! Useful to avoid heachaches in *LOCAL* testing against a
 # non-TLS ICE deployment. Also barring another solution, useful as a temporary/risky workaround for
 # testing ICE communication from offsite...for example, `manage.py test_ice_communication` observed
 # failing DNS lookup from offsite if directed to registry.jbei.org, but fails SSL verification if
 # directed to registry.jbei.lbl.gov.
-# WARNING: Use in any context other than local testing can expose user credentials to a third party!
+# WARNING: Use in any context other than local testing can expose user credentials to a
+# third party!
 VERIFY_ICE_CERT = True
+
+# specify the name of the JSON serializer in use
+EDD_SERIALIZE_NAME = 'edd-json'
 
 ##############################
 # Solr/Haystack Configuration

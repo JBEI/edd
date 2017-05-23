@@ -10,6 +10,8 @@ import json
 from datetime import datetime
 from dateutil import parser
 from decimal import Decimal
+from django.conf import settings
+from kombu.serialization import register
 from uuid import UUID
 
 
@@ -62,3 +64,13 @@ class JSONDecoder(json.JSONDecoder):
     @staticmethod
     def loads(text):
         return json.loads(text, cls=JSONDecoder)
+
+
+# register serializers for JSON that handle UUIDs and datetime objects
+register(
+    name=getattr(settings, 'EDD_SERIALIZE_NAME', 'edd-json'),
+    encoder=JSONEncoder.dumps,
+    decoder=JSONDecoder.loads,
+    content_type='application/x-edd-json',
+    content_encoding='UTF-8',
+)
