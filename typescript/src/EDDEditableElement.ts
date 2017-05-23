@@ -291,7 +291,8 @@ module EDDEditable {
             $(this.inputElement).show();
             if (this.element.id === 'editable-study-description') {
                 tinymce.init({
-                    selector: '#editable-study-description textarea'
+                    selector: '#editable-study-description textarea',
+                    plugins: "link"
                   });
             }
 
