@@ -183,26 +183,29 @@ following steps in the EDD checkout directory to configure EDD and launch it for
   debug toolbar in the sample `local.py` file
 * The EDD makes use of Node.js and grunt for builds; it would be a good idea to:
     * OS X:
-        * Install node; this is already included in the Brewfile
+        * Install `node` and `bower`; these are already included in the Brewfile
         * Install the grunt command line: `npm install -g grunt-cli`
         * Install node packages to the local folder: `npm install`
-    * Debian:
-        * `sudo apt-get install node`
+    * Debian (as `root` user):
+        * `apt-get install nodejs`
         * This will install nodejs. It may be convenient for you to link this to ‘node’
           on the command line, but there is sometimes already a program
           ’/usr/sbin/ax25-node’ linked to node.
           This is the “Amateur Packet Radio Node program” and is probably not useful to you.
           (https://packages.debian.org/sid/ax25-node)
           Check on this link with `ls -al /usr/sbin/n*` and `rm /usr/sbin/node` if necessary, then
-          `sudo ln -s /usr/bin/nodejs /usr/bin/node`
-        * `sudo apt-get install npm`
-        * `sudo npm install -g grunt-cli`
-        * `sudo npm install grunt`
+          `ln -s /usr/bin/nodejs /usr/bin/node`
+        * `apt-get install npm`
+        * `npm install -g bower grunt-cli`
+        * `npm install grunt`
 * EDD uses [TypeScript][4] for its client-side interface
     * Dependencies are listed in `packages.json` and may be installed with `npm install`
     * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base
       directory. It will rebuild the TypeScript and automatically run Django's `collectstatic`
       command to update the Javascript files in use by your instance.
+* EDD uses [Bower][9] to install some JavaScript library dependencies.
+	* Dependencies are listed in `bower.json` inside `./main/static` and may be installed with
+      `bower install`.
 
 #### Additional Build Process Setup
 
@@ -298,3 +301,4 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
 [6]:    docs/Configuration.md
 [7]:    https://github.com/JBEI/ice
 [8]:    https://docs.docker.com/compose/overview/
+[9]:	https://bower.io/

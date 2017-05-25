@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls import include, url, static
 from django.contrib import admin
+from django.contrib.flatpages import views
 
 
 admin.autodiscover()
@@ -18,6 +19,7 @@ urlpatterns = [
     url(r'^messages/', include('messages_extends.urls')),
     url(r'^utilities/', include('edd_utils.urls', namespace='edd_utils')),
     url(r'^profile/', include('edd.profile.urls', namespace='profile')),
+    url(r'^pages/(?P<url>.*)/', views.flatpage, name='flatpage'),
 ] + static.static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.PUBLISH_REST_API:

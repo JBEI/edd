@@ -364,6 +364,8 @@ module EDDAuto {
             var value = super.loadDisplayValue(record);
             if (value.trim() === '') {
                 return record['email'];
+            } else {
+                return value
             }
         }
     }
@@ -616,6 +618,7 @@ module EDDAuto {
             this.modelName = 'MetaboliteExchange';
             this.columns = EDDAuto.MetaboliteExchange.columns;
             this.cacheId = 'Exchange';
+            this.display_key = 'exchange';
             this.opt['search_extra'] = { 'template': $(this.visibleInput).data('template') };
             this.init();
         }
@@ -667,6 +670,7 @@ module EDDAuto {
     export class Registry extends BaseAuto {
         static columns = [
             new AutoColumn('Part ID', '100px', 'partId'),
+            new AutoColumn('Type', '100px', 'type'),
             new AutoColumn('Name', '150px', 'name'),
             new AutoColumn('Description', '250px', 'shortDescription')
         ];

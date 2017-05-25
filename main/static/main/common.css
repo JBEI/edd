@@ -1272,7 +1272,6 @@ div.editable-field {
     cursor: text;
     position: relative;
     vertical-align: top;
-    word-break: break-all;
 }
 div.editable-field.inactive {
     padding-right: 27px;

@@ -256,6 +256,9 @@ var EDDAuto;
             if (value.trim() === '') {
                 return record['email'];
             }
+            else {
+                return value;
+            }
         };
         User.columns = [
             new AutoColumn('User', '150px', 'fullname'),
@@ -498,6 +501,7 @@ var EDDAuto;
             this.modelName = 'MetaboliteExchange';
             this.columns = EDDAuto.MetaboliteExchange.columns;
             this.cacheId = 'Exchange';
+            this.display_key = 'exchange';
             this.opt['search_extra'] = { 'template': $(this.visibleInput).data('template') };
             this.init();
         }
@@ -562,6 +566,7 @@ var EDDAuto;
         }
         Registry.columns = [
             new AutoColumn('Part ID', '100px', 'partId'),
+            new AutoColumn('Type', '100px', 'type'),
             new AutoColumn('Name', '150px', 'name'),
             new AutoColumn('Description', '250px', 'shortDescription')
         ];

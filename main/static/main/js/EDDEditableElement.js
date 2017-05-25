@@ -215,6 +215,13 @@ var EDDEditable;
             this.setupInputElement();
             this.clearElementForEditing();
             this.element.appendChild(this.inputElement);
+            $(this.inputElement).show();
+            if (this.element.id === 'editable-study-description') {
+                tinymce.init({
+                    selector: '#editable-study-description textarea',
+                    plugins: "link"
+                });
+            }
             // Remember what we're editing in case they cancel or move to another element
             EditableElement._prevEditableElement = this;
             // Set focus to the new input element ASAP after the click handler.
@@ -334,6 +341,7 @@ var EDDEditable;
         // Subclass this if your need a different submit behavior after the UI is set up.
         EditableElement.prototype.commit = function () {
             var debug = false;
+            tinymce.triggerSave();
             var value = this.getEditedValue();
             var pThis = this;
             var formData = this.fillFormData(new FormData());
@@ -345,13 +353,20 @@ var EDDEditable;
                 'data': formData,
                 'success': function (response) {
                     if (response.type == "Success") {
-                        pThis.setValue(value);
-                        pThis.onSuccess(value);
+                        if (response.message.split(' ')[1] === "[u'description']" && value.length > 0) {
+                            value = $.parseHTML(value);
+                            pThis.cancelEditing();
+                            $(pThis.element).text("");
+                            $(pThis.element).append(value);
+                        }
+                        else {
+                            pThis.setValue(value);
+                            pThis.cancelEditing();
+                        }
                     }
                     else {
                         alert("Error: " + response.message);
                     }
-                    pThis.cancelEditing();
                 },
                 'error': function (jqXHR, textStatus, errorThrown) {
                     if (debug) {
@@ -378,7 +393,20 @@ var EDDEditable;
             return false;
         };
         EditableElement.prototype.clickToCancelHandler = function () {
-            this.cancelEditing();
+            if ($(this.element).attr('id') === 'editable-study-description') {
+                tinymce.remove();
+                var value = this.inputElement.value;
+                this.cancelEditing();
+                if (value) {
+                    value = $(value);
+                    //remove basic text because it might have html elements in it
+                    $(this.element).text('');
+                    $(this.element).append(value);
+                }
+            }
+            else {
+                this.cancelEditing();
+            }
             // Stop handling the mouse click
             return false;
         };

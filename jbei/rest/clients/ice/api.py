@@ -932,6 +932,19 @@ class IceApi(RestApiClient):
             query_dict = parse_qs(urlparse(query_url).params)
         return query_dict
 
+    def search(self, search_terms):
+        """
+        Simple ICE search. Give a search term, get a list of entry dicts. Advanced searches should
+        make use of the search_entries method to get Python objects.
+        """
+        logger.info('Searching for ICE entries using search terms "%s"' % search_terms)
+        url = '%s/rest/search' % self.base_url
+        query_json = json.dumps({'queryString': search_terms})
+        response = self.session.post(url, data=query_json, headers=_JSON_CONTENT_TYPE_HEADER)
+        response.raise_for_status()
+        results = json.loads(response.content)
+        return [record['entryInfo'] for record in results['results']]
+
     # TODO: doesn't support field filters yet, though ICE's API does
     def search_entries(self, search_terms=None, entry_types=None, blast_program=None,
                        blast_sequence=None, search_web=False, sort_field=None,
@@ -1062,7 +1075,7 @@ class IceApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-    def unlink_entry_from_study(self, ice_entry_id, study_id, study_url, logger):
+    def unlink_entry_from_study(self, ice_entry_id, study_id, study_url, logger=logger):
         """
         Contacts ICE to find and remove all the links from the specified ICE part to the
         specified EDD study. In practical use, there will probably only ever be one per
@@ -1124,7 +1137,7 @@ class IceApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-    def link_entry_to_study(self, ice_entry_id, study_id, study_url, study_name, logger,
+    def link_entry_to_study(self, ice_entry_id, study_id, study_url, study_name, logger=logger,
                             old_study_name=None, old_study_url=None):
         """
         Communicates with ICE to link an ICE entry to an EDD study, or if a link to this URL
@@ -1254,7 +1267,7 @@ def parse_query_url(query_url):
 def extract_int_parameter(dictionary, key):
     param = dictionary.get(key, None)
     try:
-        if isinstance(list, param) and len(param):
+        if isinstance(param, list) and len(param):
             param = param[0]
         if param:
             return int(param)

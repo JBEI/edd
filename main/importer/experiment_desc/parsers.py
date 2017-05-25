@@ -1,14 +1,13 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
+import itertools
 import json
 import logging
 import re
-from collections import Sequence
 
-import itertools
 from builtins import str
-from django.conf import settings
+from collections import Sequence
 from openpyxl.utils.cell import get_column_letter
 from six import string_types
 
@@ -26,10 +25,11 @@ from .constants import (DUPLICATE_ASSAY_METADATA, INVALID_CELL_TYPE, INVALID_REP
                         PROTOCOL_TO_ASSAY_METADATA_SECTION, COMBINATORIAL_LINE_METADATA_SECTION,
                         COMMON_LINE_METADATA_SECTION, BASE_NAME_ELT, DELIMETER_NOT_ALLOWED_VALUE)
 from .utilities import AutomatedNamingStrategy, CombinatorialDescriptionInput, NamingStrategy
+from jbei.utils import TYPICAL_JBEI_ICE_PART_NUMBER_REGEX
 
 logger = logging.getLogger(__name__)
 
-TYPICAL_ICE_PART_NUMBER_PATTERN = settings.TYPICAL_ICE_PART_NUMBER_PATTERN
+TYPICAL_ICE_PART_NUMBER_PATTERN = re.compile(TYPICAL_JBEI_ICE_PART_NUMBER_REGEX, re.IGNORECASE)
 
 ###################################################################################################
 # Column header patterns for the experiment description file.
@@ -53,7 +53,6 @@ _REPLICATE_COUNT_COL_PATTERN = re.compile(r'^\s*%s\s*$' % REPLICATE_COUNT_COL_RE
 _STRAIN_GROUP_MEMBER_DELIM = ';'
 _STRAIN_GROUP_REGEX = r'^\s*\(((?:\s*[^' + _STRAIN_GROUP_MEMBER_DELIM + '\)\(]+\s*' + \
                       _STRAIN_GROUP_MEMBER_DELIM + '?\s*)+)\)\s*$'
-logger.info('Strain group regex: %s' % _STRAIN_GROUP_REGEX)  # TODO: remove
 _STRAIN_GROUP_PATTERN = re.compile(_STRAIN_GROUP_REGEX)
 
 _TIME_VALUE_REGEX = r'^\s*(\d+(?:\.\d+)?)\s*h\s*$'
@@ -211,7 +210,7 @@ class ColumnLayout:
 class _ExperimentDescNamingStrategy(NamingStrategy):
     """
     A simple line/assay naming strategy assumed in the experiment description file use case,
-    where line names/assay names are created automatically by from a combination of the base 
+    where line names/assay names are created automatically by from a combination of the base
     line name, plus metadata values for any combinatorially-defined columns that are needed to
     make resulting line/assay names unique. Combinatorial metadata values included in the names are
     added in the order that columns were specified in the file.
@@ -229,10 +228,10 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
     def get_line_name(self, line_strain_ids, line_metadata, replicate_num, line_metadata_types,
                       combinatorial_metadata_types, is_control, strains_by_pk):
         """
-        Computes the line name, either by using the explicitly-proveded name from the file, OR if 
-        there are combinatorially-defined columns (by appending an 's' or '(s)' to the column 
-        header), by iterating over combinatorial columns in the order defined by the file, 
-        then appending combinatorial metadata values to the line name.  Note that if used, 
+        Computes the line name, either by using the explicitly-proveded name from the file, OR if
+        there are combinatorially-defined columns (by appending an 's' or '(s)' to the column
+        header), by iterating over combinatorial columns in the order defined by the file,
+        then appending combinatorial metadata values to the line name.  Note that if used,
         replicate number is always at the end regardless of column order.
         """
 
@@ -735,7 +734,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         'suffix': original_case_suffix,
                         'col': col_letter,
                     }
-                    logger.debug("""Column header suffix %s didn't match """ 
+                    logger.debug("""Column header suffix %s didn't match """
                                  """ known metadata types""" % value)
                     self.importer.add_error(BAD_FILE_CATEGORY, UNMATCHED_ASSAY_COL_HEADERS_KEY,
                                             value)

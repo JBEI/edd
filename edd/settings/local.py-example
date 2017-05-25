@@ -46,8 +46,6 @@ if DEBUG:  # noqa
         'JQUERY_URL': '/static/main/js/lib/jquery/jquery-3.1.0.min.js',
     }
 
-USE_CELERY = True
-
 # disable the initial new REST API by default since it's insecure. Only needed to support
 # create_lines.py and maintain_ice_links.py
 PUBLISH_REST_API = False

@@ -2232,7 +2232,7 @@ var EDDTableImport;
             ////////////////////////////////////////////////////////////////////////////////////////
             nRows = 0;
             uniqueAssayNames.forEach(function (assayName, i) {
-                var disam, matched;
+                var disam;
                 disam = _this.assayObjSets[assayName];
                 if (!disam) {
                     disam = new AssayDisambiguationRow(tableBodyMatched, assayName, i);
@@ -2243,13 +2243,25 @@ var EDDTableImport;
                 _this.currentlyVisibleAssayObjSets.push(disam);
             });
             if (uniqueAssayNames.length - 1) {
-                matched = $('#matchedAssaysSectionBody tr').length;
-                if (matched === 0) {
+                var matched_1 = $('#matchedAssaysSectionBody tr').length;
+                var matchedLines = $('#matchedAssaysSectionBody tr option:selected')
+                    .text().split('Create New Assay').length - 1;
+                var matchedAssays = matched_1 - matchedLines;
+                if (matched_1 === 0) {
                     $('#matchedAssaysSection').hide();
                 }
                 else {
                     $('#matchedAssaysSection').show();
-                    $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matched + ' Lines');
+                    if (matchedLines === 0) {
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedAssays + ' Assays');
+                    }
+                    else if (matchedAssays === 0) {
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedLines + ' Lines');
+                    }
+                    else {
+                        $('#matchedAssaysSection').find('.discloseLink').text('Matched ' + matchedLines + ' Lines and ' +
+                            matchedAssays + ' Assays');
+                    }
                 }
             }
         };

@@ -975,6 +975,64 @@
     }
   },
   {
+    "model": "main.protocol",
+    "pk": 3,
+    "fields": {
+      "owned_by": 1,
+      "variant_of": null,
+      "default_units": null,
+      "categorization": "HPLC",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "main.protocol",
+    "pk": 4,
+    "fields": {
+      "owned_by": 1,
+      "variant_of": null,
+      "default_units": null,
+      "categorization": "OD",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "main.eddobject",
+    "pk": 3,
+    "fields": {
+      "meta_store": "{}",
+      "name": "HPLC",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "3070a92d-9c9b-43ae-aafb-727f7fb46eca",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "main.eddobject",
+    "pk": 4,
+    "fields": {
+      "meta_store": "{}",
+      "name": "OD600",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "29811326-4c2a-400c-acaa-c947ae353390",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
     "model": "main.datasource",
     "pk": 1,
     "fields": {
@@ -138268,6 +138326,16 @@
       "type_name": "O2",
       "type_source": 1,
       "uuid": "42edf094-b6d3-48c9-a455-02ed27712445"
+    }
+  },
+  {
+    "model": "main.measurementtype",
+    "pk": 6630,
+    "fields": {
+      "short_name": "od",
+      "type_group": "_",
+      "type_name": "Optical Density",
+      "uuid": "d7510207-5beb-4d56-a54d-76afedcf14d0"
     }
   }
 ]
