@@ -53,7 +53,6 @@ _REPLICATE_COUNT_COL_PATTERN = re.compile(r'^\s*%s\s*$' % REPLICATE_COUNT_COL_RE
 _STRAIN_GROUP_MEMBER_DELIM = ';'
 _STRAIN_GROUP_REGEX = r'^\s*\(((?:\s*[^' + _STRAIN_GROUP_MEMBER_DELIM + '\)\(]+\s*' + \
                       _STRAIN_GROUP_MEMBER_DELIM + '?\s*)+)\)\s*$'
-logger.info('Strain group regex: %s' % _STRAIN_GROUP_REGEX)  # TODO: remove
 _STRAIN_GROUP_PATTERN = re.compile(_STRAIN_GROUP_REGEX)
 
 _TIME_VALUE_REGEX = r'^\s*(\d+(?:\.\d+)?)\s*h\s*$'

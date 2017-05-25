@@ -1,0 +1,14 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block head_title %}
+    EDD - {{ flatpage.title }}
+{% endblock head_title %}
+
+{% block body_title %}
+    {{ flatpage.title }}
+{% endblock body_title %}
+
+{% block content %}
+    {{ flatpage.content }}
+{% endblock content %}

@@ -189,6 +189,8 @@ if [ "$MAKE_VIRTUALENV" == "y" ]; then
     mkvirtualenv -a "$DIR" --no-pip --no-setuptools "$PROJECT"
     echo "export COMPOSE_PROJECT_NAME=$PROJECT" >> $WORKON_HOME/$PROJECT/bin/postactivate
     echo "unset COMPOSE_PROJECT_NAME" >> $WORKON_HOME/$PROJECT/bin/predeactivate
+    # mkvirtualenv will activate the virtualenv before content is added to postactivate
+    workon $PROJECT
 fi
 
 COMPLETE="true"
