@@ -107,7 +107,7 @@ class SkylineTests (TestCase):
 # BIOLECTOR IMPORT
 class BiolectorTests(TestCase):
     def test_simple(self):
-        filename = "edd_utils/parsers/biolector/biolector_test_file.xml"
+        filename = "/code/edd_utils/parsers/biolector/biolector_test_file.xml"
         file = open(filename, 'U')
         results = biolector.getRawImportRecordsAsJSON(file, 0)
         self.assertEqual(len(results), 48)
@@ -171,17 +171,6 @@ class ExcelTests(TestCase):
         os.remove("tst1.xlsx")
 
     def test_error_handling(self):
-        # now screw with the format
-        t2 = get_table()
-        t2[7][0] = "Extra"
-        make_simple(t2, "tst2.xlsx")
-        try:
-            result = import_xlsx_tables("tst2.xlsx")
-        except ValueError:
-            pass
-        else:
-            assert False
-        os.remove("tst2.xlsx")
         t3 = get_table()
         t3[7][1] = None
         make_simple(t3, "tst3.xlsx")
@@ -193,16 +182,12 @@ class ExcelTests(TestCase):
                     'values': [
                         ['abcd1', 'line1', 1, 5.5, 6.5],
                         ['abcd2', 'line1', 2, 4, 7.3],
+                        [None, 'line2', 1, 3.5, 8.8],
+                        ['abcd4', 'line2', 2, 2, 9.6],
                     ]
                 }, ],
             ],
         })
-        try:
-            import_xlsx_table("tst3.xlsx", followed_by_blank_row=True)
-        except ValueError:
-            pass
-        else:
-            assert False
         # ask for missing worksheet
         try:
             import_xlsx_table("tst3.xlsx", worksheet_name="foo")

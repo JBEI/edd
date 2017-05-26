@@ -41,7 +41,6 @@ def import_xlsx_tables(
         column_search_text=None,
         worksheet_id=None,
         worksheet_name=None,
-        followed_by_blank_row=False,
         enforce_non_blank_cells=False,
         expect_numeric_data=False):
     """
@@ -60,8 +59,6 @@ def import_xlsx_tables(
         sensitive)
     :param worksheet_id: index of worksheet to extract from
     :param worksheet_name: name of worksheet to extract from
-    :param followed_by_blank_row: require that a valid table be followed by an
-        empty row if the end of the document has not already been reached
     :param enforce_non_blank_cells: treat rows containing blank internal cells
         as the end of a possible table
     :param expect_numeric_data: indicates that tables should contain numeric
@@ -92,7 +89,6 @@ def import_xlsx_tables(
                     worksheet=ws_,
                     column_labels=column_labels,
                     column_search_text=column_search_text,
-                    followed_by_blank_row=followed_by_blank_row,
                     enforce_non_blank_cells=enforce_non_blank_cells,
                     expect_numeric_data=expect_numeric_data))
         except ValueError as e:
@@ -129,7 +125,6 @@ def _find_table_of_values(
         column_labels=None,
         column_search_text=None,
         expect_numeric_data=False,
-        followed_by_blank_row=False,
         minimum_number_of_data_rows=2,
         maximum_number_of_tables=sys.maxint,
         enforce_non_blank_cells=False):
@@ -228,7 +223,7 @@ def _find_table_of_values(
                         contiguous_rows.append(nb_row)
                     else:
                         break
-          
+
                 # If we only found one row, it might be a headerless run of values.
                 # But if it doesn't contain anything that looks numeric, forget it.
                 if len(contiguous_rows) < 2:
