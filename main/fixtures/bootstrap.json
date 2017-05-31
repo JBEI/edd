@@ -900,6 +900,19 @@
   },
   {
     "fields": {
+      "categorization": "LCMS",
+      "default_units": null,
+      "owned_by": 1,
+      "updates": [
+        1
+      ],
+      "variant_of": null
+    },
+    "model": "main.protocol",
+    "pk": 5
+  },
+  {
+    "fields": {
       "active": true,
       "created": 1,
       "description": "",
@@ -945,6 +958,22 @@
     },
     "model": "main.eddobject",
     "pk": 3
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "",
+      "meta_store": "{}",
+      "name": "GC-MS",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "b4a8d315-92d3-4225-a30d-b4df13d4220e"
+    },
+    "model": "main.eddobject",
+    "pk": 5
   },
   {
     "fields": {
