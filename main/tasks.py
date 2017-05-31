@@ -43,12 +43,15 @@ def create_ice_connection(user_token):
     verify = getattr(settings, 'VERIFY_ICE_CERT', False)
     timeout = getattr(settings, 'ICE_REQUEST_TIMEOUT', None)
     if key_id and url:
-        auth = HmacAuth(key_id=key_id, username=user_token)
-        ice = IceApi(auth=auth, base_url=url, verify_ssl_cert=verify)
-        if timeout:
-            ice.timeout = timeout
-        ice.write_enabled = True
-        return ice
+        try:
+            auth = HmacAuth(key_id=key_id, username=user_token)
+            ice = IceApi(auth=auth, base_url=url, verify_ssl_cert=verify)
+            if timeout:
+                ice.timeout = timeout
+            ice.write_enabled = True
+            return ice
+        except Exception as e:
+            logger.error('Failed to create connection: %s', e)
     return None
 
 
