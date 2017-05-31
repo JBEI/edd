@@ -37,11 +37,19 @@ def create_ice_connection(user_token):
     """
     Creates an instance of the ICE API using common settings.
     """
-    auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=user_token)
-    ice = IceApi(auth=auth, verify_ssl_cert=settings.VERIFY_ICE_CERT)
-    ice.timeout = settings.ICE_REQUEST_TIMEOUT
-    ice.write_enabled = True
-    return ice
+    # Use getattr to load settings without raising AttributeError
+    key_id = getattr(settings, 'ICE_KEY_ID', None)
+    url = getattr(settings, 'ICE_URL', None)
+    verify = getattr(settings, 'VERIFY_ICE_CERT', False)
+    timeout = getattr(settings, 'ICE_REQUEST_TIMEOUT', None)
+    if key_id and url:
+        auth = HmacAuth(key_id=key_id, base_url=url, username=user_token)
+        ice = IceApi(auth=auth, verify_ssl_cert=verify)
+        if timeout:
+            ice.timeout = timeout
+        ice.write_enabled = True
+        return ice
+    return None
 
 
 def delay_calculation(task):
