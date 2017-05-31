@@ -2581,7 +2581,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
         var leftSide:DataGridHeaderSpec[] = [
             new DataGridHeaderSpec(1, 'hAssaysName', {
-                'name': 'Name',
+                'name': 'Assay Name',
                 'headerRow': 2,
                 'sortBy': this.loadAssayName
             }),

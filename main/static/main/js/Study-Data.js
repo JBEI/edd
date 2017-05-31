@@ -2309,7 +2309,7 @@ var DataGridSpecAssays = (function (_super) {
         this.graphAreaHeaderSpec = new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hAssaysGraph', { 'colspan': 7 + metaDataHeaders.length });
         var leftSide = [
             new DataGridHeaderSpec(1, 'hAssaysName', {
-                'name': 'Name',
+                'name': 'Assay Name',
                 'headerRow': 2,
                 'sortBy': this.loadAssayName
             }),
