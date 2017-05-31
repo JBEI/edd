@@ -575,13 +575,19 @@
         </div>
     </div>
     <div class="sectionContent off" id="disambiguateAssaysSection">
+        <div class="alert alert-warning alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+            </button>
+            <div>Warning! The following inputs were not matched to an experiment description line and will not be imported.
+                First add new lines <a href="{% url 'main:lines' slug=study.slug %}" and then upload data.>
+                here</a>.</div>
+        </div>
         <h3 class="noMatch"> Unmatched Inputs </h3>
         <table id="disambiguateAssaysTable" cellspacing="0">
             <thead>
               <th></th>
               <th>Input Name</th>
-              <th>Line Name</th>
-              <th>Assay Name</th>
             </thead>
             <tbody></tbody>
         </table>

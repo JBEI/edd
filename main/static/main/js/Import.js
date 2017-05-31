@@ -2218,7 +2218,6 @@ var EDDTableImport;
             this.addRequiredInputLabel(childDivMatched, requiredInputText);
             if (uniqueAssayNames.length > this.TOGGLE_ALL_THREASHOLD) {
                 this.addToggleAllButton(childDivMatched, 'Assays');
-                this.addToggleAllButton($('#disambiguateAssaysSection'), 'Assays');
             }
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create the table
@@ -2255,8 +2254,10 @@ var EDDTableImport;
                     nRows++;
                     _this.assayObjSets[assayName] = disam;
                 }
-                disam.selectAssayJQElement.data({ 'visibleIndex': i });
-                _this.currentlyVisibleAssayObjSets.push(disam);
+                if (disam.selectAssayJQElement) {
+                    disam.selectAssayJQElement.data({ 'visibleIndex': i });
+                    _this.currentlyVisibleAssayObjSets.push(disam);
+                }
             });
             if (uniqueAssayNames.length - 1) {
                 var matched_1 = $('#matchedAssaysSectionBody tr').length - 1;
@@ -2572,6 +2573,10 @@ var EDDTableImport;
                         assayDisam = _this.assayObjSets[set.assay_name];
                         if (assayDisam) {
                             assaySelect = assayDisam.selectAssayJQElement;
+                            // if there is no assaySeelct, skip.
+                            if (!assaySelect) {
+                                return;
+                            }
                             // if we've disabled import for this assay, skip adding this
                             // measurement to the list
                             if (assaySelect.is(':disabled')) {
@@ -2682,36 +2687,12 @@ var EDDTableImport;
             return this.errorMessages;
         };
         TypeDisambiguationStep.prototype.requiredInputsProvided = function () {
-            var subsection, requiredInputSubsectionSelectors, allRequiredInputs, sectionRequiredInputs;
-            // loop over subsections that must have at least one input, making sure that all the
-            // visible ones have at least one required input that isn't ignored.
-            requiredInputSubsectionSelectors = ['#disambiguateAssaysSection', '#disambiguateLinesSection'];
-            for (var _i = 0, requiredInputSubsectionSelectors_1 = requiredInputSubsectionSelectors; _i < requiredInputSubsectionSelectors_1.length; _i++) {
-                var selector = requiredInputSubsectionSelectors_1[_i];
-                var hasEnabledInputs;
-                subsection = $(selector);
-                if (subsection.hasClass('off')) {
-                    continue;
-                }
-                sectionRequiredInputs = subsection.find('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS).toArray();
-                for (var _a = 0, sectionRequiredInputs_1 = sectionRequiredInputs; _a < sectionRequiredInputs_1.length; _a++) {
-                    var input_id = sectionRequiredInputs_1[_a];
-                    var input = $(input_id);
-                    if ((!input.val()) && !(input.prop('disabled') || input.hasClass('off'))) {
-                        return false;
-                    }
-                }
-                hasEnabledInputs = sectionRequiredInputs.length !== 0;
-                subsection.find('.' + TypeDisambiguationStep.STEP_4_SUBSECTION_REQUIRED_CLASS).toggleClass('off', hasEnabledInputs);
-                if (!hasEnabledInputs) {
-                    return false;
-                }
-            }
+            var subsection, requiredInputSubsectionSelectors;
             // test that all required inputs currently visible / enabled on the form have a valid
             // value. Note: this check is very similar to, but distinct from, the one above.
             var allRequiredInputs = $('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            for (var _b = 0, _c = allRequiredInputs.toArray(); _b < _c.length; _b++) {
-                var input_id = _c[_b];
+            for (var _i = 0, _a = allRequiredInputs.toArray(); _i < _a.length; _i++) {
+                var input_id = _a[_i];
                 var input = $(input_id);
                 // if the input has no value, but wasn't hidden from the display by the 'off'
                 // class, it's missing required data. Note that the "hidden" check below
@@ -2974,12 +2955,6 @@ var EDDTableImport;
             var defaultSel, cell, aSelect;
             defaultSel = LineDisambiguationRow.disambiguateAnAssayOrLine(name, i);
             /////////////////////////////////////////////////////////////////////////////
-            // Set up a combo box for selecting the assay
-            /////////////////////////////////////////////////////////////////////////////
-            cell = $(this.row.insertCell()).css('text-align', 'left');
-            // a table column to contain the text label for the Line pulldown, and the pulldown itself
-            cell = $('<td>').appendTo(cell);
-            /////////////////////////////////////////////////////////////////////////////
             // Set up an autocomplete for the line (autocomplete is important for
             // efficiency for studies with many lines). Also add rows to disambiguated section
             /////////////////////////////////////////////////////////////////////////////
@@ -2987,34 +2962,40 @@ var EDDTableImport;
                 var parentDiv = $('#disambiguateAssaysSection');
                 var table = $('#disambiguateAssaysSection table');
                 $(parentDiv).removeClass('off');
-                this.appendLineAutoselect(cell, defaultSel);
+                $(this.row).find('input[type=checkbox]').prop('checked', false);
                 $(table).append(this.row);
             }
             else {
+                /////////////////////////////////////////////////////////////////////////////
+                // Set up a combo box for selecting the assay
+                /////////////////////////////////////////////////////////////////////////////
+                cell = $(this.row.insertCell()).css('text-align', 'left');
+                // a table column to contain the text label for the Line pulldown, and the pulldown itself
+                cell = $('<td>').appendTo(cell);
                 this.appendLineAutoselect(cell, defaultSel);
+                //create another column
+                var td = $(this.row.insertCell()).css('text-align', 'left');
+                td = $('<td>').appendTo(td);
+                aSelect = $('<select>').appendTo(td)
+                    .data({ 'setByUser': false })
+                    .attr('name', 'disamAssay' + i)
+                    .attr('id', 'disamAssay' + i)
+                    .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                    .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+                this.selectAssayJQElement = aSelect;
+                $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
+                    .prop('selected', !defaultSel.assayID);
+                // add options to the assay combo box
+                (ATData.existingAssays[EDDTableImport.selectMajorKindStep.masterProtocol] || []).forEach(function (id) {
+                    var assay, line, protocol;
+                    assay = EDDData.Assays[id];
+                    if (assay.id === defaultSel.assayID && defaultSel.lineID != 'new') {
+                        $('<option>').text(assay.name)
+                            .appendTo(aSelect).val(defaultSel.assayID.toString())
+                            .prop('selected', defaultSel.assayID === defaultSel.assayID);
+                    }
+                });
             }
-            //create another column
-            var td = $(this.row.insertCell()).css('text-align', 'left');
-            td = $('<td>').appendTo(td);
-            aSelect = $('<select>').appendTo(td)
-                .data({ 'setByUser': false })
-                .attr('name', 'disamAssay' + i)
-                .attr('id', 'disamAssay' + i)
-                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
-                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            this.selectAssayJQElement = aSelect;
-            $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
-                .prop('selected', !defaultSel.assayID);
-            // add options to the assay combo box
-            (ATData.existingAssays[EDDTableImport.selectMajorKindStep.masterProtocol] || []).forEach(function (id) {
-                var assay, line, protocol;
-                assay = EDDData.Assays[id];
-                if (assay.id === defaultSel.assayID && defaultSel.lineID != 'new') {
-                    $('<option>').text(assay.name)
-                        .appendTo(aSelect).val(defaultSel.assayID.toString())
-                        .prop('selected', defaultSel.assayID === defaultSel.assayID);
-                }
-            });
         };
         return AssayDisambiguationRow;
     }(LineDisambiguationRow));
