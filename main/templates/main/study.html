@@ -50,14 +50,14 @@
         {% endif %}
         {% if assays %}
             <li class="{% if showingdata %}active{% endif %}">
-            <a href="{% url 'main:detail' slug=study.slug %}"/">Data</a>
+            <a href="{% url 'main:detail' slug=study.slug %}">Data</a>
             </li>
         {% endif %}
     </ui>
     {% if writable %}
         <a style="color:white;" href="{% url 'main:table-import' slug=study.slug %}">
             <button style="{% if showingimport %}display:none;{% endif %}float:right;"
-                type="button" class="actionButton primary larger">
+                type="button" class="{% if not lines %}off{% endif %} actionButton primary larger">
                 Import Data
             </button>
         </a>
