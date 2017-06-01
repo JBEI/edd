@@ -835,7 +835,7 @@ class SBMLUtilTests(TestCase):
 
 class ExportTests(TestCase):
     """ Test export of assay measurement data, either as simple tables or SBML. """
-    fixtures = ['export_data_1', ]
+    # fixtures = ['export_data_1', ]
 
     def test_data_export(self):
         # TODO tests using main.forms.ExportSelectionForm, main.forms.ExportOptionForm, and
@@ -858,7 +858,7 @@ class ExportTests(TestCase):
 
 class UtilityTests(TestCase):
     # TODO: regenerate export_data_1 fixture to be compatible with bootstrap fixture
-    fixtures = ['export_data_1', ]
+    # fixtures = ['export_data_1', ]
 
     def test_get_edddata(self):
         # users = get_edddata_users()

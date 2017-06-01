@@ -24,7 +24,7 @@ def load_bootstrap_fixture(apps, schema_editor):
     # monkey-patch
     python._get_model = _get_model
     # load bootstrap fixture
-    call_command('loaddata', 'bootstrap.json', applabel='main')
+    call_command('loaddata', 'bootstrap.json', app_label='main')
     # revert monkey-patch
     python._get_model = backup
 
