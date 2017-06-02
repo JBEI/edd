@@ -12,5 +12,6 @@ from .forms import *  # noqa
 from .handlers import *  # noqa
 from .models import *  # noqa
 from .solr import *  # noqa
+from .tutorials import *  # noqa
 from .utilities import *  # noqa
 from .views import *  # noqa
