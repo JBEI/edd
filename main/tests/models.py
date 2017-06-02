@@ -499,7 +499,6 @@ class ImportTests(TestCase):
             name="L1", description="Line 1", experimenter=user1, contact=user1)
         study1.line_set.create(
             name="L2", description="Line 2", experimenter=user1, contact=user1)
-        Protocol.objects.create(name="GC-MS", owned_by=user1)
         Protocol.objects.create(name="Transcriptomics", owned_by=user1)
 
     def get_form(self):
