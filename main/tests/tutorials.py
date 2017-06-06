@@ -10,12 +10,13 @@ import factory
 import json
 
 from django.core.urlresolvers import reverse
+from django.http import QueryDict
 from django.test import Client, TestCase
 from io import BytesIO
 from mock import MagicMock, patch
 from requests import codes
 
-from .. import models
+from .. import models, tasks
 
 
 class StudyFactory(factory.django.DjangoModelFactory):
@@ -32,12 +33,16 @@ class UserFactory(factory.django.DjangoModelFactory):
 
 
 def _load_test_file(name):
+    "Opens test files saved in the `files` directory."
     cwd = environ.Path(__file__) - 1
     filepath = cwd('files', name)
     return open(filepath, 'rb')
 
 
 class ExperimentDescriptionTests(TestCase):
+    """
+    Sets of tests to exercise the Experiment Description view.
+    """
 
     def setUp(self):
         super(ExperimentDescriptionTests, self).setUp()
@@ -134,6 +139,10 @@ class ExperimentDescriptionTests(TestCase):
 
 
 class ImportDataTests(TestCase):
+    """
+    Sets of tests to exercise Import Data views.
+    """
+
     fixtures = ['main/tutorial_fba']
 
     def setUp(self):
@@ -144,54 +153,109 @@ class ImportDataTests(TestCase):
         self.fake_browser = Client()
         self.fake_browser.force_login(self.user)
 
-    def _run_import_view(self):
-        # TODO open the ImportData_*.post file, load into QueryDict, pass through data kwarg
-        response = self.fake_browser.post(
-            reverse('main:table-import', kwargs=self.target_kwargs),
-            data={},
-        )
+    def _assay_count(self):
+        return models.Assay.objects.filter(line__study=self.target_study).count()
+
+    def _measurement_count(self):
+        return models.Measurement.objects.filter(assay__line__study=self.target_study).count()
+
+    def _value_count(self):
+        return models.MeasurementValue.objects.filter(
+            measurement__assay__line__study=self.target_study
+        ).count()
+
+    def _run_import_view(self, postfile):
+        with _load_test_file(postfile) as poststring:
+            POST = QueryDict(poststring.read())
+        # mocking redis and celery task, to only test the view itself
+        with patch('main.views.redis.ScratchStorage') as MockStorage:
+            with patch('main.views.import_table_task.delay') as mock_task:
+                storage = MockStorage.return_value
+                storage.save.return_value = 'randomkey'
+                result = MagicMock()
+                result.id = '00000000-0000-0000-0000-000000000001'
+                mock_task.return_value = result
+                # fake the request
+                response = self.fake_browser.post(
+                    reverse('main:table-import', kwargs=self.target_kwargs),
+                    data=POST,
+                )
+                # assert calls to redis and celery
+                storage.save.assert_called()
+                mock_task.assert_called_with(self.target_study.pk, self.user.pk, 'randomkey')
         return response
 
-    def test_hplc_import_parse(self):
-        name = 'ImportData_FBA_HPLC.xlsx'
-        with _load_test_file(name) as fp:
+    def _run_parse_view(self, filename, filetype, mode):
+        with _load_test_file(filename) as fp:
             response = self.fake_browser.post(
                 reverse('main:import_parse'),
                 data=fp.read(),
                 content_type='application/octet-stream',
-                HTTP_X_EDD_FILE_TYPE='xlsx',
-                HTTP_X_EDD_IMPORT_MODE='std',
-                HTTP_X_FILE_NAME=name,
+                HTTP_X_EDD_FILE_TYPE=filetype,
+                HTTP_X_EDD_IMPORT_MODE=mode,
+                HTTP_X_FILE_NAME=filename,
             )
         self.assertEqual(response.status_code, codes.ok)
-        with _load_test_file('ImportData_FBA_HPLC.json') as fp:
+        with _load_test_file(filename + '.json') as fp:
             target = json.load(fp)
         # check that objects are the same when re-serialized with sorted keys
         self.assertEqual(
             json.dumps(target, sort_keys=True),
             json.dumps(response.json(), sort_keys=True),
         )
+        return response
+
+    def _run_task(self, filename):
+        storage_key = 'randomkey'
+        with _load_test_file(filename + '.post') as post:
+            data = post.read()
+        # mocking redis, so test provides the data instead of real redis
+        with patch('main.tasks.ScratchStorage') as MockStorage:
+            storage = MockStorage.return_value
+            storage.load.return_value = data
+            tasks.import_table_task(self.target_study.pk, self.user.pk, storage_key)
+            # assertions
+            storage.load.assert_called_with(storage_key)
+            storage.delete.assert_called_with(storage_key)
+
+    def test_hplc_import_parse(self):
+        name = 'ImportData_FBA_HPLC.xlsx'
+        response = self._run_parse_view(name, 'xlsx', 'std')
+        self.assertEqual(response.status_code, codes.ok)
 
     def test_hplc_import_task(self):
-        pass
+        self._run_task('ImportData_FBA_HPLC.xlsx')
+        self.assertEqual(self._assay_count(), 2)
+        self.assertEqual(self._measurement_count(), 4)
+        self.assertEqual(self._value_count(), 28)
 
     def test_hplc_import_view(self):
-        with patch('main.views.redis.ScratchStorage') as MockStorage:
-            with patch('main.views.import_table_task.delay') as mock_task:
-                storage = MockStorage.return_value
-                storage.save.return_value = 'randomkey'
-                result = MagicMock()
-                result.id = '00000000-aafa-420e-a582-575753b24feb'
-                mock_task.return_value = result
-                self._run_import_view()
-                storage.save.assert_called()
-                mock_task.assert_called_with(self.target_study.pk, self.user.pk, 'randomkey')
+        response = self._run_import_view('ImportData_FBA_HPLC.xlsx.post')
+        self.assertEqual(self._assay_count(), 0)  # view does not change assays
+        self.assertRedirects(
+            response,
+            reverse('main:detail', kwargs=self.target_kwargs),
+            # because no assays exist yet, there is another redirect to the lines view
+            target_status_code=codes.found,
+        )
 
     def test_od_import_parse(self):
-        pass
+        name = 'ImportData_FBA_OD.xlsx'
+        response = self._run_parse_view(name, 'xlsx', 'std')
+        self.assertEqual(response.status_code, codes.ok)
 
     def test_od_import_task(self):
-        pass
+        self._run_task('ImportData_FBA_OD.xlsx')
+        self.assertEqual(self._assay_count(), 2)
+        self.assertEqual(self._measurement_count(), 2)
+        self.assertEqual(self._value_count(), 14)
 
     def test_od_import_view(self):
-        pass
+        response = self._run_import_view('ImportData_FBA_OD.xlsx.post')
+        self.assertEqual(self._assay_count(), 0)  # view does not change assays
+        self.assertRedirects(
+            response,
+            reverse('main:detail', kwargs=self.target_kwargs),
+            # because no assays exist yet, there is another redirect to the lines view
+            target_status_code=codes.found,
+        )
