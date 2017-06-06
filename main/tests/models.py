@@ -278,13 +278,6 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
         else:
             raise Exception("Should have caught a ValueError here...")
 
-    def test_line_json(self):
-        line1 = Line.objects.get(name="Line 1")
-        md = MetadataType.objects.get(type_name="Media")
-        line1.metadata_add(md, 'M9')
-        json_dict = line1.to_json()
-        self.assertTrue(json_dict['meta'] == {"%s" % md.pk: "M9"})
-
     def test_line_form(self):
         line1 = Line.objects.select_related('study').get(name="Line 1")
         self.assertFalse(line1.control)
@@ -306,9 +299,6 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
         self.assertTrue(strain1.n_studies == 2)
         self.assertTrue(strain2.n_lines == 1)
         self.assertTrue(strain2.n_studies == 1)
-        json_dict = strain1.to_json()
-        self.assertTrue(json_dict['registry_url'] == "http://registry.jbei.org/strain/666")
-        self.assertTrue(json_dict['description'] == "JBEI strain 1")
         line1 = Line.objects.get(name="Line 1")
         line2 = Line.objects.get(name="Line 2")
         line3 = Line.objects.get(name="Line 3")
@@ -327,8 +317,6 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
         self.assertTrue(cs1.n_studies == 2)
         self.assertTrue(cs2.n_lines == 1)
         self.assertTrue(cs2.n_studies == 1)
-        json_dict = cs1.to_json()
-        self.assertTrue(json_dict['labeling'] == "100% unlabeled")
         self.assertTrue(line1.carbon_source_labeling == "100% unlabeled")
         self.assertTrue(line1.carbon_source_name == "Carbon source 1")
         self.assertTrue(

@@ -135,30 +135,6 @@
   },
   {
     "fields": {
-      "eddobject": 7,
-      "update": 2
-    },
-    "model": "main.eddobject_updates",
-    "pk": 6
-  },
-  {
-    "fields": {
-      "eddobject": 8,
-      "update": 3
-    },
-    "model": "main.eddobject_updates",
-    "pk": 7
-  },
-  {
-    "fields": {
-      "eddobject": 9,
-      "update": 3
-    },
-    "model": "main.eddobject_updates",
-    "pk": 8
-  },
-  {
-    "fields": {
       "permission_type": "W",
       "study": 7,
       "user": 2
