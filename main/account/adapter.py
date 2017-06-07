@@ -24,6 +24,13 @@ logger = logging.getLogger(__name__)
 class EDDAccountAdapter(DefaultAccountAdapter):
     """ Adapter overrides default behavior for username selection and email verification. """
 
+    def get_email_confirmation_url(self, request, emailconfirmation):
+        # This is super hacky but whatevs
+        url = super(EDDAccountAdapter, self).get_email_confirmation_url(request, emailconfirmation)
+        if settings.DEFAULT_HTTP_PROTOCOL == 'http':
+            url = url.replace('https://', 'http://', 1)
+        return url
+
     def is_open_for_signup(self, request):
         allow_signup = getattr(settings, 'EDD_ALLOW_SIGNUP', None)
         if isinstance(allow_signup, string_types):
