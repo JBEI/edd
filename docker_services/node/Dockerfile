@@ -3,7 +3,8 @@
 FROM node
 
 COPY package.json /node/
-RUN npm install -g bower grunt-cli
+RUN npm install -g bower grunt-cli \
+    && npm install
 
 WORKDIR /node
 
