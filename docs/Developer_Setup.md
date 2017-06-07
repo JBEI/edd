@@ -204,7 +204,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
       directory. It will rebuild the TypeScript and automatically run Django's `collectstatic`
       command to update the Javascript files in use by your instance.
 * EDD uses [Bower][9] to install some JavaScript library dependencies.
-	* Dependencies are listed in `bower.json` inside `./main/static` and may be installed with
+	* Dependencies are listed in `bower.json` and may be installed with
       `bower install`.
 
 #### Additional Build Process Setup

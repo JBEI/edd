@@ -2,10 +2,14 @@
 #FROM digitallyseamless/nodejs-bower-grunt
 FROM node
 
+MAINTAINER Traci Lopez "tlopez@lbl.gov"
+
 COPY package.json /node/
-RUN npm install -g bower grunt-cli \
-    && npm install
 
 WORKDIR /node
+
+RUN npm install -g bower grunt-cli \
+    && npm install  \
+    && bower install --allow-root
 
 CMD ["bash"]
