@@ -1,0 +1,650 @@
+[
+  {
+    "fields": {
+      "mod_by": 1,
+      "mod_time": "2017-06-06T00:14:00.000Z",
+      "origin": "127.0.0.1; ",
+      "path": ""
+    },
+    "model": "main.update",
+    "pk": 4
+  },
+  {
+    "fields": {
+      "mod_by": 1,
+      "mod_time": "2017-06-06T00:15:00.000Z",
+      "origin": "127.0.0.1; ",
+      "path": ""
+    },
+    "model": "main.update",
+    "pk": 5
+  },
+  {
+    "fields": {
+      "experimenter": 2,
+      "line": 8,
+      "protocol": 3,
+      "updates": [
+        4
+      ]
+    },
+    "model": "main.assay",
+    "pk": 100
+  },
+  {
+    "fields": {
+      "active": true,
+      "assay": 100,
+      "compartment": "0",
+      "experimenter": 2,
+      "measurement_format": "0",
+      "measurement_type": 1,
+      "meta_store": "{}",
+      "update_ref": 4,
+      "x_units": 2,
+      "y_units": 1
+    },
+    "model": "main.measurement",
+    "pk": 200
+  },
+  {
+    "fields": {
+      "measurement": 200,
+      "updated": 4,
+      "x": "[\"17.00000\"]",
+      "y": "[\"4.31000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 541
+  },
+  {
+    "fields": {
+      "measurement": 200,
+      "updated": 4,
+      "x": "[\"15.00000\"]",
+      "y": "[\"3.98000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 540
+  },
+  {
+    "fields": {
+      "measurement": 200,
+      "updated": 4,
+      "x": "[\"13.00000\"]",
+      "y": "[\"3.58000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 539
+  },
+  {
+    "fields": {
+      "measurement": 200,
+      "updated": 4,
+      "x": "[\"11.00000\"]",
+      "y": "[\"2.96000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 538
+  },
+  {
+    "fields": {
+      "measurement": 200,
+      "updated": 4,
+      "x": "[\"9.50000\"]",
+      "y": "[\"2.62000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 537
+  },
+  {
+    "fields": {
+      "measurement": 200,
+      "updated": 4,
+      "x": "[\"7.50000\"]",
+      "y": "[\"1.49000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 536
+  },
+  {
+    "fields": {
+      "measurement": 200,
+      "updated": 4,
+      "x": "[\"0.00000\"]",
+      "y": "[\"0.10000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 535
+  },
+  {
+    "fields": {
+      "experimenter": 2,
+      "line": 8,
+      "protocol": 2,
+      "updates": [
+        5
+      ]
+    },
+    "model": "main.assay",
+    "pk": 101
+  },
+  {
+    "fields": {
+      "active": true,
+      "assay": 101,
+      "compartment": "2",
+      "experimenter": 2,
+      "measurement_format": "0",
+      "measurement_type": 2,
+      "meta_store": "{}",
+      "update_ref": 5,
+      "x_units": 2,
+      "y_units": 3
+    },
+    "model": "main.measurement",
+    "pk": 201
+  },
+  {
+    "fields": {
+      "measurement": 201,
+      "updated": 5,
+      "x": "[\"17.00000\"]",
+      "y": "[\"1.56000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 527
+  },
+  {
+    "fields": {
+      "measurement": 201,
+      "updated": 5,
+      "x": "[\"15.00000\"]",
+      "y": "[\"1.53000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 526
+  },
+  {
+    "fields": {
+      "measurement": 201,
+      "updated": 5,
+      "x": "[\"13.00000\"]",
+      "y": "[\"1.39000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 525
+  },
+  {
+    "fields": {
+      "measurement": 201,
+      "updated": 5,
+      "x": "[\"11.00000\"]",
+      "y": "[\"1.10000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 524
+  },
+  {
+    "fields": {
+      "measurement": 201,
+      "updated": 5,
+      "x": "[\"9.50000\"]",
+      "y": "[\"0.97000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 523
+  },
+  {
+    "fields": {
+      "measurement": 201,
+      "updated": 5,
+      "x": "[\"7.50000\"]",
+      "y": "[\"0.59000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 522
+  },
+  {
+    "fields": {
+      "measurement": 201,
+      "updated": 5,
+      "x": "[\"0.00000\"]",
+      "y": "[\"0.06000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 521
+  },
+  {
+    "fields": {
+      "active": true,
+      "assay": 101,
+      "compartment": "2",
+      "experimenter": 2,
+      "measurement_format": "0",
+      "measurement_type": 4,
+      "meta_store": "{}",
+      "update_ref": 5,
+      "x_units": 2,
+      "y_units": 3
+    },
+    "model": "main.measurement",
+    "pk": 202
+  },
+  {
+    "fields": {
+      "measurement": 202,
+      "updated": 4,
+      "x": "[\"17.00000\"]",
+      "y": "[\"0.00000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 520
+  },
+  {
+    "fields": {
+      "measurement": 202,
+      "updated": 4,
+      "x": "[\"15.00000\"]",
+      "y": "[\"1.19000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 519
+  },
+  {
+    "fields": {
+      "measurement": 202,
+      "updated": 4,
+      "x": "[\"13.00000\"]",
+      "y": "[\"4.09000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 518
+  },
+  {
+    "fields": {
+      "measurement": 202,
+      "updated": 4,
+      "x": "[\"11.00000\"]",
+      "y": "[\"7.87000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 517
+  },
+  {
+    "fields": {
+      "measurement": 202,
+      "updated": 4,
+      "x": "[\"9.50000\"]",
+      "y": "[\"11.17000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 516
+  },
+  {
+    "fields": {
+      "measurement": 202,
+      "updated": 4,
+      "x": "[\"7.50000\"]",
+      "y": "[\"14.01000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 515
+  },
+  {
+    "fields": {
+      "measurement": 202,
+      "updated": 4,
+      "x": "[\"0.00000\"]",
+      "y": "[\"16.98000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 514
+  },
+  {
+    "fields": {
+      "experimenter": 2,
+      "line": 9,
+      "protocol": 3,
+      "updates": [
+        4
+      ]
+    },
+    "model": "main.assay",
+    "pk": 102
+  },
+  {
+    "fields": {
+      "active": true,
+      "assay": 102,
+      "compartment": "0",
+      "experimenter": 2,
+      "measurement_format": "0",
+      "measurement_type": 1,
+      "meta_store": "{}",
+      "update_ref": 4,
+      "x_units": 2,
+      "y_units": 1
+    },
+    "model": "main.measurement",
+    "pk": 203
+  },
+  {
+    "fields": {
+      "measurement": 203,
+      "updated": 5,
+      "x": "[\"17.00000\"]",
+      "y": "[\"6.51000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 534
+  },
+  {
+    "fields": {
+      "measurement": 203,
+      "updated": 5,
+      "x": "[\"15.00000\"]",
+      "y": "[\"6.41000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 533
+  },
+  {
+    "fields": {
+      "measurement": 203,
+      "updated": 5,
+      "x": "[\"13.00000\"]",
+      "y": "[\"5.69000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 532
+  },
+  {
+    "fields": {
+      "measurement": 203,
+      "updated": 5,
+      "x": "[\"11.00000\"]",
+      "y": "[\"3.95000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 531
+  },
+  {
+    "fields": {
+      "measurement": 203,
+      "updated": 5,
+      "x": "[\"9.50000\"]",
+      "y": "[\"2.72000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 530
+  },
+  {
+    "fields": {
+      "measurement": 203,
+      "updated": 5,
+      "x": "[\"7.50000\"]",
+      "y": "[\"1.49000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 529
+  },
+  {
+    "fields": {
+      "measurement": 203,
+      "updated": 5,
+      "x": "[\"0.00000\"]",
+      "y": "[\"0.10000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 528
+  },
+  {
+    "fields": {
+      "experimenter": 2,
+      "line": 9,
+      "protocol": 2,
+      "updates": [
+        5
+      ]
+    },
+    "model": "main.assay",
+    "pk": 103
+  },
+  {
+    "fields": {
+      "active": true,
+      "assay": 103,
+      "compartment": "2",
+      "experimenter": 2,
+      "measurement_format": "0",
+      "measurement_type": 2,
+      "meta_store": "{}",
+      "update_ref": 5,
+      "x_units": 2,
+      "y_units": 3
+    },
+    "model": "main.measurement",
+    "pk": 204
+  },
+  {
+    "fields": {
+      "measurement": 204,
+      "updated": 5,
+      "x": "[\"17.00000\"]",
+      "y": "[\"0.56000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 513
+  },
+  {
+    "fields": {
+      "measurement": 204,
+      "updated": 5,
+      "x": "[\"15.00000\"]",
+      "y": "[\"0.89000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 512
+  },
+  {
+    "fields": {
+      "measurement": 204,
+      "updated": 5,
+      "x": "[\"13.00000\"]",
+      "y": "[\"0.92000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 511
+  },
+  {
+    "fields": {
+      "measurement": 204,
+      "updated": 5,
+      "x": "[\"11.00000\"]",
+      "y": "[\"0.68000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 510
+  },
+  {
+    "fields": {
+      "measurement": 204,
+      "updated": 5,
+      "x": "[\"9.50000\"]",
+      "y": "[\"0.59000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 509
+  },
+  {
+    "fields": {
+      "measurement": 204,
+      "updated": 5,
+      "x": "[\"7.50000\"]",
+      "y": "[\"0.33000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 508
+  },
+  {
+    "fields": {
+      "measurement": 204,
+      "updated": 5,
+      "x": "[\"0.00000\"]",
+      "y": "[\"0.00000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 507
+  },
+  {
+    "fields": {
+      "active": true,
+      "assay": 103,
+      "compartment": "2",
+      "experimenter": 2,
+      "measurement_format": "0",
+      "measurement_type": 4,
+      "meta_store": "{}",
+      "update_ref": 5,
+      "x_units": 2,
+      "y_units": 3
+    },
+    "model": "main.measurement",
+    "pk": 205
+  },
+  {
+    "fields": {
+      "measurement": 205,
+      "updated": 5,
+      "x": "[\"17.00000\"]",
+      "y": "[\"0.00000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 506
+  },
+  {
+    "fields": {
+      "measurement": 205,
+      "updated": 5,
+      "x": "[\"15.00000\"]",
+      "y": "[\"0.30000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 505
+  },
+  {
+    "fields": {
+      "measurement": 205,
+      "updated": 5,
+      "x": "[\"13.00000\"]",
+      "y": "[\"2.84000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 504
+  },
+  {
+    "fields": {
+      "measurement": 205,
+      "updated": 5,
+      "x": "[\"11.00000\"]",
+      "y": "[\"7.98000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 503
+  },
+  {
+    "fields": {
+      "measurement": 205,
+      "updated": 5,
+      "x": "[\"9.50000\"]",
+      "y": "[\"10.44000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 502
+  },
+  {
+    "fields": {
+      "measurement": 205,
+      "updated": 5,
+      "x": "[\"7.50000\"]",
+      "y": "[\"15.48000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 501
+  },
+  {
+    "fields": {
+      "measurement": 205,
+      "updated": 5,
+      "x": "[\"0.00000\"]",
+      "y": "[\"22.22000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 500
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 4,
+      "description": null,
+      "meta_store": "{}",
+      "name": "BW1",
+      "updated": 4,
+      "updates": [
+        4
+      ],
+      "uuid": "d401c739-42a7-4d92-9366-dd2a9cbc8e91"
+    },
+    "model": "main.eddobject",
+    "pk": 102
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 5,
+      "description": null,
+      "meta_store": "{}",
+      "name": "BW1",
+      "updated": 5,
+      "updates": [
+        5
+      ],
+      "uuid": "8fc9e54c-b170-49e6-a654-302a39fc8bc7"
+    },
+    "model": "main.eddobject",
+    "pk": 103
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 4,
+      "description": null,
+      "meta_store": "{}",
+      "name": "arcA",
+      "updated": 4,
+      "updates": [
+        4
+      ],
+      "uuid": "726e2f0c-a2ef-4d2b-a700-2f20e0806f96"
+    },
+    "model": "main.eddobject",
+    "pk": 100
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 5,
+      "description": null,
+      "meta_store": "{}",
+      "name": "arcA",
+      "updated": 5,
+      "updates": [
+        5
+      ],
+      "uuid": "4bbdf4e9-4767-4bc5-9b6c-d01faae80155"
+    },
+    "model": "main.eddobject",
+    "pk": 101
+  }
+]

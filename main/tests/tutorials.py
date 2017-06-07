@@ -259,3 +259,27 @@ class ImportDataTests(TestCase):
             # because no assays exist yet, there is another redirect to the lines view
             target_status_code=codes.found,
         )
+
+
+class ExportDataTests(TestCase):
+    """
+    Sets of tests to exercise the SBML and Table export views.
+    """
+
+    fixtures = ['main/tutorial_fba', 'main/tutorial_fba_loaded']
+
+    def setUp(self):
+        super(ExportDataTests, self).setUp()
+        self.user = models.User.objects.get(pk=2)
+        self.target_study = models.Study.objects.get(pk=7)
+        self.target_kwargs = {'slug': self.target_study.slug}
+        self.fake_browser = Client()
+        self.fake_browser.force_login(self.user)
+
+    def test_step1_export(self):
+        response = self.fake_browser.get(
+            reverse('main:sbml'),
+            data={'lineId': 8},
+        )
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(len(response.context['sbml_warnings']), 6)
