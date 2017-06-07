@@ -277,9 +277,32 @@ class ExportDataTests(TestCase):
         self.fake_browser.force_login(self.user)
 
     def test_step1_export(self):
+        "First step loads the SBML export page, and has some warnings."
         response = self.fake_browser.get(
             reverse('main:sbml'),
             data={'lineId': 8},
         )
         self.assertEqual(response.status_code, codes.ok)
-        self.assertEqual(len(response.context['sbml_warnings']), 6)
+        self.assertEqual(len(response.context['sbml_warnings']), 5)
+
+    def test_step2_export(self):
+        "Second step selects an SBML Template."
+        with _load_test_file('ExportData_FBA_step2.post') as fp:
+            POST = QueryDict(fp.read())
+        response = self.fake_browser.post(
+            reverse('main:sbml'),
+            data=POST,
+        )
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(len(response.context['sbml_warnings']), 4)
+
+    def test_step3_export(self):
+        "Third step maps metabolites to species/reactions, and selects an export timepoint."
+        with _load_test_file('ExportData_FBA_step3.post') as fp:
+            POST = QueryDict(fp.read())
+        response = self.fake_browser.post(
+            reverse('main:sbml'),
+            data=POST,
+        )
+        self.assertEqual(response.status_code, codes.ok)
+        # TODO figure out how to test content of chunked responses

@@ -1083,7 +1083,7 @@
   },
   {
     "fields": {
-      "short_name": "od",
+      "short_name": "OD",
       "type_group": "_",
       "type_name": "Optical Density",
       "uuid": "d7510207-5beb-4d56-a54d-76afedcf14d0"
