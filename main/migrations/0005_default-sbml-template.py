@@ -47,6 +47,9 @@ def add_template(apps, schema_editor):
         )
         sbml_file.save()
         template.sbml_file = sbml_file
+        # can these be calculated from the model?
+        template.biomass_calculation = 8.78066
+        template.biomass_exchange_name = 'R_Ec_biomass_iJO1366_core_53p95M'
         template.save()
     # template_sync_species requires the real SBMLTemplate object
     template = RealSBMLTemplate.objects.get(pk=template.pk)
