@@ -9,7 +9,6 @@ COPY package.json /node/
 WORKDIR /node
 
 RUN npm install -g bower grunt-cli \
-    && npm install  \
-    && bower install --allow-root
+    && npm install
 
 CMD ["bash"]
