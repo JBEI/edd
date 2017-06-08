@@ -35,6 +35,10 @@ only be available on your local computer, and some functions (e.g. TLS support, 
 authentication, referencing an ICE deployment) will not work. See [Deployment][5] for more detailed
 instructions for installing Docker and configuring EDD for your deployment environment.
 
+You may test the edd installation by following the [Public EDD tutorials][14]. If you have not
+deployed ICE with your EDD installation, eliminate the part ID numbers in the example files in
+order to complete the tutorial. 
+
 ---------------------------------------------------------------------------------------------------
 
 ## More Resources <a name="#More_Resources"/>
@@ -60,3 +64,4 @@ environment set up to modify or contribute to EDD is outlined in the
 [11]:   docs/Administration.md
 [12]:   docs/Developer_Setup.md
 [13]:   http://edd.lvh.me
+[14]:   https://public-edd.jbei.org/pages/tutorials/

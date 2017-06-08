@@ -46,6 +46,9 @@ if DEBUG:  # noqa
         'JQUERY_URL': '/static/main/js/lib/jquery/jquery-3.1.0.min.js',
     }
 
+if env('HTTPS_METHOD', default=None) == 'noredirect':  # noqa
+    DEFAULT_HTTP_PROTOCOL = 'http'
+
 # disable the initial new REST API by default since it's insecure. Only needed to support
 # create_lines.py and maintain_ice_links.py
 PUBLISH_REST_API = False
