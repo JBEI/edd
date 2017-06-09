@@ -290,10 +290,12 @@ module EDDEditable {
             this.element.appendChild(this.inputElement);
             $(this.inputElement).show();
             if (this.element.id === 'editable-study-description') {
-                tinymce.init({
-                    selector: '#editable-study-description textarea',
-                    plugins: "link"
+                if (typeof tinymce !== 'undefined') {
+                    tinymce.init({
+                        selector: '#editable-study-description textarea',
+                        plugins: "link"
                   });
+                }
             }
 
 
@@ -433,7 +435,9 @@ module EDDEditable {
         // Subclass this if your need a different submit behavior after the UI is set up.
         commit() {
             var debug = false;
-            tinymce.triggerSave();
+            if (typeof tinymce !== 'undefined') {
+                tinymce.triggerSave();
+            }
             var value = this.getEditedValue();
             var pThis = this;
             var formData = this.fillFormData(new FormData());
@@ -491,7 +495,9 @@ module EDDEditable {
 
         clickToCancelHandler():boolean {
             if ($(this.element).attr('id') === 'editable-study-description') {
-                tinymce.remove();
+                if (typeof tinymce !== 'undefined') {
+                    tinymce.remove();
+                }
                 let value:any = this.inputElement.value;
                 this.cancelEditing();
                 if (value) {

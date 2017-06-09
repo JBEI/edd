@@ -217,10 +217,12 @@ var EDDEditable;
             this.element.appendChild(this.inputElement);
             $(this.inputElement).show();
             if (this.element.id === 'editable-study-description') {
-                tinymce.init({
-                    selector: '#editable-study-description textarea',
-                    plugins: "link"
-                });
+                if (typeof tinymce !== 'undefined') {
+                    tinymce.init({
+                        selector: '#editable-study-description textarea',
+                        plugins: "link"
+                    });
+                }
             }
             // Remember what we're editing in case they cancel or move to another element
             EditableElement._prevEditableElement = this;
@@ -341,7 +343,9 @@ var EDDEditable;
         // Subclass this if your need a different submit behavior after the UI is set up.
         EditableElement.prototype.commit = function () {
             var debug = false;
-            tinymce.triggerSave();
+            if (typeof tinymce !== 'undefined') {
+                tinymce.triggerSave();
+            }
             var value = this.getEditedValue();
             var pThis = this;
             var formData = this.fillFormData(new FormData());
@@ -394,7 +398,9 @@ var EDDEditable;
         };
         EditableElement.prototype.clickToCancelHandler = function () {
             if ($(this.element).attr('id') === 'editable-study-description') {
-                tinymce.remove();
+                if (typeof tinymce !== 'undefined') {
+                    tinymce.remove();
+                }
                 var value = this.inputElement.value;
                 this.cancelEditing();
                 if (value) {
