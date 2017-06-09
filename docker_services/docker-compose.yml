@@ -12,7 +12,7 @@ volumes:
   tlsdata: {}
 services:
   postgres:
-    image: postgres:9.6
+    image: library/postgres:9.6
     restart: always
     networks:
       - backnet
@@ -33,7 +33,7 @@ services:
       - '5432'
     env_file: secrets.env
   redis:
-    image: redis:3.2
+    image: library/redis:3.2
     restart: always
     networks:
       - backnet
@@ -55,7 +55,7 @@ services:
     command: redis-server --appendonly yes
   solr:
     build: ./solr/
-    image: solr:5.5-edd
+    image: jbei/solr:5.5-edd
     restart: always
     networks:
       - backnet
@@ -74,7 +74,7 @@ services:
     expose:
       - '8983'
   rabbitmq:
-    image: rabbitmq:3.6-management
+    image: library/rabbitmq:3.6-management
     restart: always
     hostname: rabbitmq
     env_file: secrets.env
@@ -102,7 +102,7 @@ services:
         max-file: '5'
   flower:
     build: ./flower/
-    image: flower:0.9-edd
+    image: jbei/flower:0.9-edd
     restart: always
     env_file: secrets.env
     environment:
@@ -131,7 +131,7 @@ services:
         max-file: '5'
   smtp:
     build: ./smtp/
-    image: exim4:1.0-edd
+    image: jbei/exim4:1.0-edd
     restart: always
     networks:
       - backnet
@@ -149,7 +149,7 @@ services:
         max-file: '5'
   edd:
     build: ./edd/
-    image: edd-core:latest
+    image: jbei/edd-core:latest
     restart: always
     command: ['application']
     env_file: secrets.env
@@ -191,7 +191,7 @@ services:
         max-file: '5'
   worker:
     build: ./edd/
-    image: edd-core:latest
+    image: jbei/edd-core:latest
     env_file: secrets.env
     environment:
       C_FORCE_ROOT: "true"
@@ -228,7 +228,7 @@ services:
         max-size: 1m
         max-file: '5'
   nginx:
-    image: nginx:1.11
+    image: library/nginx:1.11
     # using container_name means there will only ever be one nginx container!
     container_name: nginx
     restart: always
