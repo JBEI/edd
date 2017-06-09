@@ -15,13 +15,13 @@ module.exports = function(config) {
     // list of files / patterns to load in the browser
     files: [
       'main/static/main/js/lib/d3/d3.min.js',
+      'main/static/main/js/lib/filedrop-min.js',
       'main/static/main/js/lib/jquery/jquery.js',
       'main/static/main/js/lib/jquery-ui/jquery-ui.min.js',
-      'bower_components/jasmine-jquery/lib/jasmine-jquery.js',
+      'main/static/main/js/lib/jasmine/jasmine-jquery.js',
       'main/static/main/js/EDDGraphingTools.js',
       'main/static/main/js/Utl.js',
       'main/static/main/js/DataGrid.js',
-      'main/static/main/js/EDDEditableElement.js',
       'main/static/main/js/Study-Lines.js',
       'main/static/main/js/Study-Data.js',
       'main/static/main/js/Import.js',
@@ -49,9 +49,8 @@ module.exports = function(config) {
     // enable / disable watching file and executing tests whenever any file changes
     autoWatch: true,
 
-
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['PhantomJS']
+
   })
 };
