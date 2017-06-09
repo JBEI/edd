@@ -18,14 +18,26 @@ GitHub project.
 
 ## Getting Started <a name="#Getting_Started"/>
 
+The EDD is packaged as a collection of [Docker][2] container images. With the [Docker Compose][3]
+tool, all the components of EDD are configured to work together, and requires no other installation
+of dependencies. Docker has installers available for several operating systems [here][15]. The
+Docker for Mac installer includes both Docker and Docker Compose; the installers for Linux
+environments currently only include Docker, and Docker Compose must be [installed separately][16]. 
+EDD does not test with, or support, Docker for Windows at this time. Docker versions should be
+v.1.13.0 or greater, or v.17.03 or greater for Docker Community Edition. Docker Compose should be
+v.1.11.2 or greater.
+
 With [Docker][2] and [Docker Compose][3] installed, launching the entire EDD software stack is as
-simple as copying the `docker_services` directory of the code repository and running:
+simple as copying the `docker_services` directory of the code repository and running the following
+commands from a terminal in that directory:
 
     . init-config
+    docker-compose pull
     docker-compose up -d
 
 The first time EDD runs, it must complete some setup tasks before the UI is available. You may
-monitor progress with `docker-compose logs -f`, or simply wait a few minutes. You can then access
+monitor progress with `docker-compose logs -f` and wait for `Starting production appserver` to
+appear (you can quit viewing logs with Ctrl+c), or simply wait a few minutes. You can then access
 the EDD through a browser with [http://edd.lvh.me][13], a domain that maps all requests to the
 localhost IPv4 address of `127.0.0.1`. Using this domain allows for your browser to be directed to
 the correct service, and looks nicer than an IP address.
@@ -37,7 +49,10 @@ instructions for installing Docker and configuring EDD for your deployment envir
 
 You may test the edd installation by following the [Public EDD tutorials][14]. If you have not
 deployed ICE with your EDD installation, eliminate the part ID numbers in the example files in
-order to complete the tutorial. 
+order to complete the tutorial. Creating an account without configuring EDD will send an email from
+`webmaster@localhost`, which may get caught by spam filters; be sure to check there if the
+confirmation message does not appear within a few minutes. Once the email is confirmed, the user
+name for logging in is the part of your email before the `@` sign.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -65,3 +80,5 @@ environment set up to modify or contribute to EDD is outlined in the
 [12]:   docs/Developer_Setup.md
 [13]:   http://edd.lvh.me
 [14]:   https://public-edd.jbei.org/pages/tutorials/
+[15]:   https://www.docker.com/community-edition#/download
+[16]:   https://docs.docker.com/compose/install/
