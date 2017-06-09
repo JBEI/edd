@@ -801,7 +801,12 @@ EDD_auto.initial_search = function initial_search(auto: EDDAuto.BaseAuto, term: 
         autoInput.mcautocomplete('option', 'response', oldResponse);
         oldResponse.call({}, ev, ui);
         ui.content.every(function (item) {
-            var val = item[auto.display_key], valLower = val.toLowerCase();
+            var val: string, valLower: string;
+            if (item instanceof EDDAuto.NonValueItem) {
+                return;
+            }
+            val = item[auto.display_key];
+            valLower = val.toLowerCase();
             if (val === term) {
                 best = item;
                 return false;  // do not need to continue
