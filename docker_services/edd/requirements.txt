@@ -8,7 +8,7 @@ billiard==3.5.0.2
 celery==4.0.2
 cffi==1.10.0
 chardet==3.0.2
-cryptography==1.8.1
+cryptography==1.9
 Django==1.9.13
 django-allauth==0.32.0
 django-auth-ldap==1.2.11
