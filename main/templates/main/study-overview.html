@@ -146,7 +146,7 @@
 {% if writable %}
 <div class="disclose discloseHide">
     <div class="pageDivider" for="permissionsSection">
-        <span class="discloseLink"> Permissions </span>
+        <span class="discloseLink">{% trans " Permissions" %}</span>
     </div>
     <div class="discloseBody">
         <div class="sectionContent indent">
@@ -229,8 +229,9 @@
 {% if writable %}
 <div class="disclose discloseHide">
     <div class="pageDivider" for="permissionsSection">
-        <span class="discloseLink">{% trans "Manage Study" %}</span>
+        <span class="discloseLink">{% trans " Manage Study" %}</span>
     </div>
+
     <div class="discloseBody">
         <div class="sectionContent indent">
             <form method="POST" class="edd-form" action="">

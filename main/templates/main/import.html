@@ -234,7 +234,7 @@
   </div>
 
   <div class="sectionContent stepSeparator">
-    <table class="formTable" style="margin-left:1em;">
+    <table style="margin-left:1em;">
       <tr>
         <td rowspan="2" style="vertical-align:middle;">
           <label for="masterProtocol">
@@ -247,7 +247,7 @@
             </select>
           </label>
         </td>
-        <td>
+        <td class="mergeOrReplace">
           <input type="radio" name="writemode" value="m" id="writemodem" checked="checked" />
         </td>
         <td>
@@ -257,7 +257,7 @@
         </td>
       </tr>
       <tr>
-        <td>
+        <td class="mergeOrReplace">
           <input type="radio" name="writemode" value="r" id="writemoder" />
         </td>
         <td>
@@ -451,7 +451,7 @@
     <div class="sectionContent off" id="masterTimestampDiv">
 
       <h3>Time for all measurements</h3>
-      <table>
+      <table class="table">
         <tr>
           <td style="vertical-align:middle;">
             <input type="text" size="6" name="masterTimestamp" id="masterTimestamp" value="" />
@@ -470,7 +470,7 @@
     <div class="sectionContent off" id="masterLineDiv">
 
       <h3>Line for all data</h3>
-      <table>
+      <table class="table">
         <tr>
           <td>
             <label for="masterLine">
@@ -490,7 +490,7 @@
     <div class="sectionContent off" id="masterAssayLineDiv">
 
       <h3>Assay for all data</h3>
-      <table>
+      <table class="table">
         <tr>
           <td>
             <label for="masterAssay">
@@ -525,17 +525,17 @@
         <tbody>
           <tr>
             <td>
-              <input class="autocomp" type="text" size="20" name="masterMComp" id="masterMComp"
+              <input class="autocomp form-control" type="text" size="20" name="masterMComp" id="masterMComp"
                   eddautocompletetype="MeasurementCompartment"
                   value="" style="margin-right: 2px;">
               <input type="hidden" id="masterMCompValue" name="masterMCompValue">
             </td><td>
-              <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
+              <input class="autocomp form-control" type="text" size="45" name="masterMType" id="masterMType"
                   eddautocompletetype="GenericOrMetabolite"
                   value="" style="margin-right: 2px;">
               <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
             </td><td>
-              <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
+              <input class="autocomp form-control" type="text" size="15" name="masterMUnits" id="masterMUnits"
                   eddautocompletetype="MeasurementUnit"
                   value="">
               <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
@@ -548,7 +548,7 @@
 
     <div class="sectionContent off" id="masterUnitDiv">
       <h3>Units for all data</h3>
-      <table>
+      <table class="table">
         <tr>
           <td>
             <label for="masterUnits">
@@ -575,16 +575,20 @@
         </div>
     </div>
     <div class="sectionContent off" id="disambiguateAssaysSection">
-        <h3 class="noMatch"> Unmatched Assays </h3>
         <div class="alert alert-warning alert-dismissible" role="alert">
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
             </button>
-            <div>Warning! The following assays weren't matched. Any new assays you create will be assigned
-                to a single new line. You can add new lines <a href="{% url 'main:lines' slug=study.slug %}">
+            <div>Warning! The following inputs were not matched to an experiment description line and will not be imported.
+                First add new lines <a href="{% url 'main:lines' slug=study.slug %}" and then upload data.>
                 here</a>.</div>
         </div>
+        <h3 class="noMatch"> Unmatched Inputs </h3>
         <table id="disambiguateAssaysTable" cellspacing="0">
+            <thead>
+              <th></th>
+              <th>Input Name</th>
+            </thead>
             <tbody></tbody>
         </table>
     </div>

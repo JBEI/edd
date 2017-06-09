@@ -2190,7 +2190,6 @@ var DataGridSpecAssays = (function (_super) {
         _super.call(this);
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
-        this.graphAreaHeaderSpec = null;
     }
     DataGridSpecAssays.prototype.init = function () {
         this.findMaximumXValueInData();
@@ -2306,10 +2305,10 @@ var DataGridSpecAssays = (function (_super) {
                 'sortAfter': 1
             });
         });
-        this.graphAreaHeaderSpec = new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hAssaysGraph', { 'colspan': 7 + metaDataHeaders.length });
+        // The left section of the table has Assay Name and Line (Name)
         var leftSide = [
             new DataGridHeaderSpec(1, 'hAssaysName', {
-                'name': 'Name',
+                'name': 'Assay Name',
                 'headerRow': 2,
                 'sortBy': this.loadAssayName
             }),
@@ -2319,19 +2318,33 @@ var DataGridSpecAssays = (function (_super) {
                 'sortBy': this.loadLineName
             })
         ];
-        this.measuringTimesHeaderSpec = new DataGridHeaderSpec(6 + metaDataHeaders.length, 'hAssaysMTimes', { 'name': 'Measuring Times', 'headerRow': 2 });
+        // Offsets for the right side of the table depends on size of the preceding sections
+        var rightOffset = leftSide.length + metaDataHeaders.length;
         var rightSide = [
-            new DataGridHeaderSpec(3 + metaDataHeaders.length, 'hAssaysMName', { 'name': 'Measurement', 'headerRow': 2 }),
-            new DataGridHeaderSpec(4 + metaDataHeaders.length, 'hAssaysUnits', { 'name': 'Units', 'headerRow': 2 }),
-            new DataGridHeaderSpec(5 + metaDataHeaders.length, 'hAssaysCount', { 'name': 'Count', 'headerRow': 2 }),
-            this.measuringTimesHeaderSpec,
-            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hAssaysExperimenter', {
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysMName', {
+                'name': 'Measurement',
+                'headerRow': 2
+            }),
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysUnits', {
+                'name': 'Units',
+                'headerRow': 2
+            }),
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysCount', {
+                'name': 'Count',
+                'headerRow': 2
+            }),
+            // The measurement times are referenced elsewhere, so are saved to the object
+            this.measuringTimesHeaderSpec = new DataGridHeaderSpec(++rightOffset, 'hAssaysCount', {
+                'name': 'Measuring Times',
+                'headerRow': 2
+            }),
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysExperimenter', {
                 'name': 'Experimenter',
                 'headerRow': 2,
                 'sortBy': this.loadExperimenterInitials,
                 'sortAfter': 1
             }),
-            new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hAssaysModified', {
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysModified', {
                 'name': 'Last Modified',
                 'headerRow': 2,
                 'sortBy': this.loadAssayModification,
@@ -2652,29 +2665,29 @@ var DataGridSpecAssays = (function (_super) {
     // Specification for each of the data columns that will make up the body of the table
     DataGridSpecAssays.prototype.defineColumnSpec = function () {
         var _this = this;
-        var leftSide, metaDataCols, rightSide;
+        var leftSide, metaDataCols, rightSide, counter = 0;
         leftSide = [
-            new DataGridColumnSpec(1, this.generateAssayNameCells),
-            new DataGridColumnSpec(2, this.generateLineNameCells)
+            new DataGridColumnSpec(++counter, this.generateAssayNameCells),
+            new DataGridColumnSpec(++counter, this.generateLineNameCells)
         ];
-        metaDataCols = this.metaDataIDsUsedInAssays.map(function (id, index) {
-            var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridColumnSpec(3 + index, _this.makeMetaDataCellsGeneratorFunction(id));
+        metaDataCols = this.metaDataIDsUsedInAssays.map(function (id) {
+            return new DataGridColumnSpec(++counter, _this.makeMetaDataCellsGeneratorFunction(id));
         });
         rightSide = [
-            new DataGridColumnSpec(3 + metaDataCols.length, this.generateMeasurementNameCells),
-            new DataGridColumnSpec(4 + metaDataCols.length, this.generateUnitsCells),
-            new DataGridColumnSpec(5 + metaDataCols.length, this.generateCountCells),
-            new DataGridColumnSpec(6 + metaDataCols.length, this.generateMeasuringTimesCells),
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterCells),
-            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(++counter, this.generateMeasurementNameCells),
+            new DataGridColumnSpec(++counter, this.generateUnitsCells),
+            new DataGridColumnSpec(++counter, this.generateCountCells),
+            new DataGridColumnSpec(++counter, this.generateMeasuringTimesCells),
+            new DataGridColumnSpec(++counter, this.generateExperimenterCells),
+            new DataGridColumnSpec(++counter, this.generateModificationDateCells)
         ];
         return leftSide.concat(metaDataCols, rightSide);
     };
     // Specification for each of the groups that the headers and data columns are organized into
     DataGridSpecAssays.prototype.defineColumnGroupSpec = function () {
         var topSection = [
-            new DataGridColumnGroupSpec('Name', { 'showInVisibilityList': false })
+            new DataGridColumnGroupSpec('Name', { 'showInVisibilityList': false }),
+            new DataGridColumnGroupSpec('Line', { 'showInVisibilityList': false })
         ];
         var metaDataColGroups;
         metaDataColGroups = this.metaDataIDsUsedInAssays.map(function (id, index) {

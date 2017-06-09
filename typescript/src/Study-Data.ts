@@ -2437,7 +2437,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
     maximumXValueInData:number;
 
     measuringTimesHeaderSpec:DataGridHeaderSpec;
-    graphAreaHeaderSpec:DataGridHeaderSpec;
 
     graphObject:any;
 
@@ -2445,7 +2444,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         super();
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
-        this.graphAreaHeaderSpec = null;
     }
 
     init() {
@@ -2576,12 +2574,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
             });
         });
 
-         this.graphAreaHeaderSpec = new DataGridHeaderSpec(8 + metaDataHeaders.length,
-                'hAssaysGraph', { 'colspan': 7 + metaDataHeaders.length });
-
+        // The left section of the table has Assay Name and Line (Name)
         var leftSide:DataGridHeaderSpec[] = [
             new DataGridHeaderSpec(1, 'hAssaysName', {
-                'name': 'Name',
+                'name': 'Assay Name',
                 'headerRow': 2,
                 'sortBy': this.loadAssayName
             }),
@@ -2592,36 +2588,42 @@ class DataGridSpecAssays extends DataGridSpecBase {
             })
         ];
 
-        this.measuringTimesHeaderSpec = new DataGridHeaderSpec(6 + metaDataHeaders.length,
-                'hAssaysMTimes', { 'name': 'Measuring Times', 'headerRow': 2 });
-
+        // Offsets for the right side of the table depends on size of the preceding sections
+        var rightOffset = leftSide.length + metaDataHeaders.length;
         var rightSide = [
-            new DataGridHeaderSpec(3 + metaDataHeaders.length,
-                    'hAssaysMName',
-                    { 'name': 'Measurement', 'headerRow': 2 }),
-            new DataGridHeaderSpec(4 + metaDataHeaders.length,
-                    'hAssaysUnits',
-                    { 'name': 'Units', 'headerRow': 2 }),
-            new DataGridHeaderSpec(5 + metaDataHeaders.length,
-                    'hAssaysCount',
-                    { 'name': 'Count', 'headerRow': 2 }),
-            this.measuringTimesHeaderSpec,
-            new DataGridHeaderSpec(7 + metaDataHeaders.length,
-                    'hAssaysExperimenter',
-                    {
-                        'name': 'Experimenter',
-                        'headerRow': 2,
-                        'sortBy': this.loadExperimenterInitials,
-                        'sortAfter': 1
-                    }),
-            new DataGridHeaderSpec(8 + metaDataHeaders.length,
-                    'hAssaysModified',
-                    {
-                        'name': 'Last Modified',
-                        'headerRow': 2,
-                        'sortBy': this.loadAssayModification,
-                        'sortAfter': 1
-                    })
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysMName', {
+                'name': 'Measurement',
+                'headerRow': 2
+            }),
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysUnits', {
+                'name': 'Units',
+                'headerRow': 2
+            }),
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysCount', {
+                'name': 'Count',
+                'headerRow': 2
+            }),
+            // The measurement times are referenced elsewhere, so are saved to the object
+            this.measuringTimesHeaderSpec = new DataGridHeaderSpec(
+                ++rightOffset,
+                'hAssaysCount',
+                {
+                    'name': 'Measuring Times',
+                    'headerRow': 2
+                }
+            ),
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysExperimenter', {
+                'name': 'Experimenter',
+                'headerRow': 2,
+                'sortBy': this.loadExperimenterInitials,
+                'sortAfter': 1
+            }),
+            new DataGridHeaderSpec(++rightOffset, 'hAssaysModified', {
+                'name': 'Last Modified',
+                'headerRow': 2,
+                'sortBy': this.loadAssayModification,
+                'sortAfter': 1
+            })
         ];
 
         return leftSide.concat(metaDataHeaders, rightSide);
@@ -2964,25 +2966,25 @@ class DataGridSpecAssays extends DataGridSpecBase {
     defineColumnSpec():DataGridColumnSpec[] {
         var leftSide:DataGridColumnSpec[],
             metaDataCols:DataGridColumnSpec[],
-            rightSide:DataGridColumnSpec[];
+            rightSide:DataGridColumnSpec[],
+            counter:number = 0;
 
         leftSide = [
-            new DataGridColumnSpec(1, this.generateAssayNameCells),
-            new DataGridColumnSpec(2, this.generateLineNameCells)
+            new DataGridColumnSpec(++counter, this.generateAssayNameCells),
+            new DataGridColumnSpec(++counter, this.generateLineNameCells)
         ];
 
-        metaDataCols = this.metaDataIDsUsedInAssays.map((id, index) => {
-            var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridColumnSpec(3 + index, this.makeMetaDataCellsGeneratorFunction(id));
+        metaDataCols = this.metaDataIDsUsedInAssays.map((id) => {
+            return new DataGridColumnSpec(++counter, this.makeMetaDataCellsGeneratorFunction(id));
         });
 
         rightSide = [
-            new DataGridColumnSpec(3 + metaDataCols.length, this.generateMeasurementNameCells),
-            new DataGridColumnSpec(4 + metaDataCols.length, this.generateUnitsCells),
-            new DataGridColumnSpec(5 + metaDataCols.length, this.generateCountCells),
-            new DataGridColumnSpec(6 + metaDataCols.length, this.generateMeasuringTimesCells),
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterCells),
-            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(++counter, this.generateMeasurementNameCells),
+            new DataGridColumnSpec(++counter, this.generateUnitsCells),
+            new DataGridColumnSpec(++counter, this.generateCountCells),
+            new DataGridColumnSpec(++counter, this.generateMeasuringTimesCells),
+            new DataGridColumnSpec(++counter, this.generateExperimenterCells),
+            new DataGridColumnSpec(++counter, this.generateModificationDateCells)
         ];
 
         return leftSide.concat(metaDataCols, rightSide);
@@ -2991,7 +2993,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // Specification for each of the groups that the headers and data columns are organized into
     defineColumnGroupSpec():DataGridColumnGroupSpec[] {
         var topSection:DataGridColumnGroupSpec[] = [
-            new DataGridColumnGroupSpec('Name', { 'showInVisibilityList': false })
+            new DataGridColumnGroupSpec('Name', { 'showInVisibilityList': false }),
+            new DataGridColumnGroupSpec('Line', { 'showInVisibilityList': false })
         ];
 
         var metaDataColGroups:DataGridColumnGroupSpec[];

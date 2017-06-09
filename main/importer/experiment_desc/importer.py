@@ -4,23 +4,26 @@ from __future__ import unicode_literals
 import copy
 import json
 import logging
-import traceback
-from collections import defaultdict, OrderedDict
-from io import BytesIO
-from pprint import pformat, pprint
-
 import requests
+import traceback
+
+from collections import defaultdict, OrderedDict
 from django.conf import settings
 from django.core.mail import mail_admins
 from django.core.urlresolvers import reverse
 from django.db import transaction
+from django.utils.translation import ugettext as _
+from io import BytesIO
 from openpyxl import load_workbook
+from pprint import pformat
 
-from jbei.rest.auth import HmacAuth
-from jbei.rest.clients import IceApi
 from jbei.rest.clients.ice.api import Strain as IceStrain
 from jbei.rest.clients.ice.utils import make_entry_url
 from main.models import Protocol, MetadataType, Strain, Assay, Line
+from main.tasks import create_ice_connection
+# avoiding loading a ton of names to the module by only loading the namespace to constants
+from . import constants
+# TODO: refactor to no longer import each of these individually
 from .constants import (FOUND_PART_NUMBER_DOESNT_MATCH_QUERY, NON_STRAIN_ICE_ENTRY,
                         PART_NUMBER_NOT_FOUND, BAD_REQUEST, INTERNAL_SERVER_ERROR, OK, FORBIDDEN,
                         FORBIDDEN_PART_KEY, GENERIC_ICE_RELATED_ERROR,
@@ -685,10 +688,28 @@ class CombinatorialCreationImporter(object):
             will be removed for those that aren't found in ICE.
         """
 
+        # return early if there are no parts to query
+        if not part_numbers:
+            return
+
         # get an ICE connection to look up strain UUID's from part number user input
-        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=self._ice_username),
-                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
-        ice.timeout = settings.ICE_REQUEST_TIMEOUT
+        ice = create_ice_connection(self._ice_username)
+        # avoid throwing errors if failed to build connection
+        if ice is None:
+            if ignore_ice_related_errors:
+                return
+            details = _(
+                "Your file contains %(count)d unique ICE part IDs, but EDD is not configured to "
+                "connect to an ICE instance. You may proceed with using the uploaded file, but "
+                "strain data will be omitted from your study, and you will have to individually "
+                "add strain links to the created lines later."
+            )
+            self.add_error(
+                category_title=constants.SYSTEMIC_ICE_ERROR_CATEGORY,
+                subtitle=constants.ICE_NOT_CONFIGURED,
+                occurrence_detail=details % {'count': len(part_numbers)}
+            )
+            return
 
         list_position = 0
 
@@ -875,7 +896,7 @@ class CombinatorialCreationImporter(object):
 
     def send_unexpected_err_email(self, dry_run, ignore_ice_related_errors, allow_duplicate_names):
         """
-        Creates and sends a context-specific error email with helpful information 
+        Creates and sends a context-specific error email with helpful information
         regarding unexpected errors encountered during Experiment Description processing.
         """
         # build traceback string to include in a bare-bones admin notification email

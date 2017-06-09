@@ -67,6 +67,7 @@ ASSAY_META_CAPITALIZATION_ONLY_DIFFERENCE = ('Found some assay metadata types th
                                              'case. Case-insensitive matching in parsing code will'
                                              ' arbitrarily choose one')
 UNSUPPORTED_LINE_METADATA = 'Unsupported line metadata'
+ICE_NOT_CONFIGURED = 'ICE connection not configured'
 IGNORED_INPUT_CATEGORY = 'User input ignored'
 ROWS_MISSING_REPLICATE_COUNT = 'Rows missing replicate count (assumed only 1 line)'
 
@@ -190,7 +191,8 @@ ERROR_PRIORITY_ORDER[SINGLE_PART_ACCESS_ERROR_CATEGORY] = USER_CREATED_ICE_PART_
 ################################
 # ICE-related software/configuration/communication errors
 ################################
-ERROR_PRIORITY_ORDER[SYSTEMIC_ICE_ERROR_CATEGORY] = (GENERIC_ICE_RELATED_ERROR,)
+ERROR_PRIORITY_ORDER[SYSTEMIC_ICE_ERROR_CATEGORY] = (ICE_NOT_CONFIGURED,
+                                                     GENERIC_ICE_RELATED_ERROR,)
 
 
 ERROR_PRIORITY_ORDER[NON_STRAIN_TITLE] = (  # TODO: rename to NON_STRAIN_PART_CATEGORY
