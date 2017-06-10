@@ -236,8 +236,7 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
   defines the list of services as top-level entries under the 'services' line.
 
   For quick reference, the provided services are:
-    * __edd__: runs initial startup tasks and prepares the other services
-    * __appserver__: runs the EDD web application
+    * __edd__: runs initial startup tasks and prepares the other services, and runs the EDD webapp
     * __worker__: long-running and background tasks are run here with Celery
     * __postgres__: provides EDD's database
     * __redis__: provides the cache back-end for EDD
@@ -255,7 +254,7 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
       `docker-compose` or the `COMPOSE_PROJECT_NAME` environment variable;
     * the "service" name;
     * a counter value, to distinguish multiple containers scaled beyond the first;
-  As an example, the container named `edd_appserver_1` is the first instance of the `appserver`
+  As an example, the container named `edd_worker_1` is the first instance of the `worker`
   service in the `edd` project. You can also use `docker ps` from anywhere on the host to get a
   similar listing, though it will include all containers running on your host, not just those
   defined by EDD.

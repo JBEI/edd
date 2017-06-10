@@ -45,7 +45,7 @@ As a Django application, EDD loads its configuration with Python code. The setti
 designed to load in default values, while allowing for overrides with a `local.py` settings file.
 An example of this file can be found at `edd/settings/local.py-example`. Custom settings are
 loaded with a `volume` definition and the `--local PATH` option to the `command` in each of the
-`edd`, `appserver`, and `worker` services. An example of how to load a custom `local.py` file is
+`edd` and `worker` services. An example of how to load a custom `local.py` file is
 included in the `docker-compose.override.yml-example` file (search for the text `[LOCAL]`).
 
 Most of the available configuration parameters are defined by Django in its [documentation][3], or

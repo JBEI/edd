@@ -7,7 +7,7 @@ examples for common development tasks. Directions assume that Docker containers 
 running in the development environment.
 
 * __Run automated tests__
-    * Python tests: `docker-compose exec appserver python manage.py test`
+    * Python tests: `docker-compose exec edd python manage.py test`
     * Javascript Tests <a name="Javascript Tests"/>
         * run `grunt test` to test javascript files.
         * run `grunt screenshots` to test graphs
