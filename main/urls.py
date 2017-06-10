@@ -32,7 +32,7 @@ study_url_patterns = [
     ),
     url(r'^map/$', login_required(views.study_map)),
     url(r'^permissions/$', login_required(views.StudyPermissionJSONView.as_view())),
-    url(r'^describe/$', login_required(views.study_describe_experiment)),
+    url(r'^describe/$', login_required(views.study_describe_experiment), name='describe'),
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^import/',
@@ -98,7 +98,11 @@ urlpatterns = [
     # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
     url(r'^file/download/(?P<file_id>\d+)/$', login_required(views.download)),
     # url(r'^file/delete/(?P<file_id>\d+)/$', login_required(views.delete_file)),
-    url(r'^utilities/parsefile/$', login_required(views.utilities_parse_import_file)),
+    url(
+        r'^utilities/parsefile/$',
+        login_required(views.utilities_parse_import_file),
+        name='import_parse'
+    ),
     url(r'^data/carbonsources/$', login_required(views.data_carbonsources)),
     url(r'^data/measurements/$', login_required(views.data_measurements)),
     url(r'^data/metadata/$', login_required(views.data_metadata)),

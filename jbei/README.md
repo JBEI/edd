@@ -44,7 +44,7 @@ documented there.
 Depending on what's already installed / in use on your computer, you'll want to consider
 following directions the sections below. If you're a software developer and have already configured
 Docker for EDD development, you can skip this section and just run scripts from inside EDD's 
-`appserver` container.  Directions below are for configuring a new Python 2 environment with only
+`edd` container.  Directions below are for configuring a new Python 2 environment with only
 the minimal dependencies for scripts that interact with, but aren't an integral part of, EDD.
 
 1. Install XCode: <a name="XCode"/>

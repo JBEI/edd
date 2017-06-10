@@ -49,5 +49,7 @@ COPY entrypoint.sh /usr/local/bin
 # Copy in EDD python code
 RUN git clone --depth 1 -b master https://github.com/JBEI/edd.git /usr/local/edd
 
+WORKDIR /code
+
 ENTRYPOINT ["/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["--help"]

@@ -2,7 +2,7 @@
 
 This Dockerfile builds an image to run the [Exim][1] SMTP server and message transfer agent (MTA).
 It launches an exim daemon under [tini][2] with very basic configuration, and runs a healthcheck
-to verify the daemon will accept messages originating from the `appserver` service of [EDD][3].
+to verify the daemon will accept messages originating from the `edd` service of [EDD][3].
 
 ---------------------------------------------------------------------------------------------------
 

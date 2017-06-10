@@ -1,0 +1,145 @@
+[
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "",
+      "first_name": "",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "user000"
+    },
+    "model": "auth.user",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "mod_by": 1,
+      "mod_time": "2017-06-06T00:13:38.709Z",
+      "origin": "localhost",
+      "path": null
+    },
+    "model": "main.update",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "mod_by": 2,
+      "mod_time": "2017-06-06T00:13:39.925Z",
+      "origin": "127.0.0.1; ",
+      "path": "/s/intuitive-transitional-focus-group/describe/"
+    },
+    "model": "main.update",
+    "pk": 3
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 2,
+      "description": "Veniam commodi omnis delectus dolorum adipisci tempore similique. Molestias sed veniam est officia architecto. Culpa pariatur vero magnam. Consequuntur delectus placeat molestias.",
+      "meta_store": "{}",
+      "name": "User-centric dynamic neural-net",
+      "updated": 2,
+      "updates": [
+        2
+      ],
+      "uuid": "09a3d2e1-f9d9-4a15-8031-205b58cf48a0"
+    },
+    "model": "main.eddobject",
+    "pk": 7
+  },
+  {
+    "fields": {
+      "contact": null,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "protocols": [],
+      "slug": "user-centric-dynamic-neural-net",
+      "updates": [
+        2
+      ]
+    },
+    "model": "main.study",
+    "pk": 7
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "KEIO wild type",
+      "meta_store": "{\"11\": \"200\", \"10\": \"50\", \"19\": \"M9\", \"18\": \"30\", \"1\": \"1\", \"2\": \"0.1\"}",
+      "name": "BW1",
+      "updated": 3,
+      "updates": [
+        3
+      ],
+      "uuid": "09faa44f-0a5d-4029-8644-79ec02391cf8"
+    },
+    "model": "main.eddobject",
+    "pk": 8
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 7,
+      "updates": [
+        3
+      ]
+    },
+    "model": "main.line",
+    "pk": 8
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "arcA ko",
+      "meta_store": "{\"11\": \"200\", \"10\": \"50\", \"19\": \"M9\", \"18\": \"30\", \"1\": \"1\", \"2\": \"0.1\"}",
+      "name": "arcA",
+      "updated": 3,
+      "updates": [
+        3
+      ],
+      "uuid": "6fe8d002-d627-4261-9a87-6b92504dd10b"
+    },
+    "model": "main.eddobject",
+    "pk": 9
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 7,
+      "updates": [
+        3
+      ]
+    },
+    "model": "main.line",
+    "pk": 9
+  },
+  {
+    "fields": {
+      "permission_type": "W",
+      "study": 7,
+      "user": 2
+    },
+    "model": "main.userpermission",
+    "pk": 1
+  }
+]
