@@ -163,8 +163,8 @@ if [ "$WRITE_OVERRIDE" == "y" ]; then
     rm "$DIR/docker-compose.override.yml.bak"
 fi
 
-if [ ! -x `which virtualenvwrapper.sh` ]; then
-    (>&2 echo "virtualenvwrapper is not installed. Cannot create a project for this edd install.")
+if [ ! -x "$(which virtualenvwrapper.sh)" ]; then
+    (>&2 echo "virtualenvwrapper is not installed. Cannot use projects for this edd install.")
 elif [ ! -z "$PROJECT" ]; then
     MAKE_VIRTUALENV=y
 elif [ "$NOINPUT" != "1" ]; then
@@ -179,7 +179,7 @@ elif [ "$NOINPUT" != "1" ]; then
 fi
 
 if [ "$MAKE_VIRTUALENV" == "y" ]; then
-    source `which virtualenvwrapper.sh`
+    source "$(which virtualenvwrapper.sh)"
     while lsvirtualenv -b | grep -qe "^${PROJECT}$"; do
         read -p "A virtualenv named '${PROJECT}' exists, choose another project name: " TEMP
         if [ ! -z "$TEMP" ]; then
