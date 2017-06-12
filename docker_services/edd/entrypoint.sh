@@ -218,7 +218,12 @@ output "EDD_DEPLOYMENT_ENVIRONMENT:" \
 # Look for code mounted at /code and symlink to /usr/local/edd if none found
 if [ ! -x /code/manage.py ]; then
     output "Running with container copy of code …"
+    # first get rid of auto-created /code directory
+    cd / && rmdir /code
+    # then link the container copy of code to /code
     ln -s /usr/local/edd /code
+    # and go back into /code
+    cd /code
     if [ ! -z "$LOCAL_PY" ]; then
         cp "$LOCAL_PY" /code/edd/settings/local.py
     fi
