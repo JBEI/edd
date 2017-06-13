@@ -384,7 +384,11 @@ class TableImport(object):
                     'name': measurement_name,
                 })
         elif mode in (MODE_PROTEOMICS, MODE_SKYLINE):
-            protein = models.ProteinIdentifier.load_or_create(measurement_name, self._datasource)
+            protein = models.ProteinIdentifier.load_or_create(
+                measurement_name,
+                self._datasource,
+                self._user.email,
+            )
             found_type = MType(compartment, protein.pk, units_id)
         return found_type
 
