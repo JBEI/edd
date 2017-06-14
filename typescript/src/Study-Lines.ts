@@ -4,6 +4,7 @@
 /// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
+/// <reference path="File-drop.ts" />
 
 declare var EDDData:EDDData;
 namespace StudyLines {
@@ -34,6 +35,7 @@ namespace StudyLines {
     // switching back and forth between positions that might trigger resize events.
     export var actionPanelIsInBottomBar;
     export var actionPanelIsCopied = false;
+    export var fileUploadProgressBar: Utl.ProgressBar;
 
 
     // Called when the page loads.
@@ -60,6 +62,23 @@ namespace StudyLines {
 
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
+
+        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
+        var fileDropZoneHelper = new Help.FileDropZoneHelpers({
+           page: 'overview',
+           haveInputData: false,
+        });
+
+        Utl.FileDropZone.create({
+            elementId: "addToLinesDropZone",
+            fileInitFn: fileDropZoneHelper.fileDropped.bind(fileDropZoneHelper),
+            processRawFn: fileDropZoneHelper.fileRead.bind(fileDropZoneHelper),
+            url: '/study/' + EDDData.currentStudyID + '/describe/',
+            processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
+            processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
+            processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
+            progressBar: this.fileUploadProgressBar
+        });
 
         $('#studyLinesTable').tooltip({
             content: function () {

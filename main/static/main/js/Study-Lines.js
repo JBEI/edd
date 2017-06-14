@@ -4,6 +4,7 @@
 /// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
+/// <reference path="File-drop.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -40,6 +41,21 @@ var StudyLines;
         StudyLines.actionPanelIsInBottomBar = false;
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
+        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
+        var fileDropZoneHelper = new Help.FileDropZoneHelpers({
+            page: 'overview',
+            haveInputData: false,
+        });
+        Utl.FileDropZone.create({
+            elementId: "addToLinesDropZone",
+            fileInitFn: fileDropZoneHelper.fileDropped.bind(fileDropZoneHelper),
+            processRawFn: fileDropZoneHelper.fileRead.bind(fileDropZoneHelper),
+            url: '/study/' + EDDData.currentStudyID + '/describe/',
+            processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
+            processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
+            processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
+            progressBar: this.fileUploadProgressBar
+        });
         $('#studyLinesTable').tooltip({
             content: function () {
                 return $(this).prop('title');
