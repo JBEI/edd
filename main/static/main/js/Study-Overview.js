@@ -192,7 +192,7 @@ var StudyOverview;
         });
         this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
         var fileDropZoneHelper = new Help.FileDropZoneHelpers({
-            page: 'overview',
+            pageRedirect: 'experiment-description',
             haveInputData: false,
         });
         Utl.FileDropZone.create({

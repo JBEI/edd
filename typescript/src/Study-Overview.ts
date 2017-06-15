@@ -26,7 +26,7 @@ module StudyOverview {
     export var metabolicMapID: any;
     export var metabolicMapName: any;
     export var biomassCalculation: number;
-    
+
     function preparePermissions() {
         var user: EDDAuto.User, group: EDDAuto.Group;
         user = new EDDAuto.User({
@@ -227,7 +227,7 @@ module StudyOverview {
 
         this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
         var fileDropZoneHelper = new Help.FileDropZoneHelpers({
-           page: 'overview',
+           pageRedirect: 'experiment-description',
            haveInputData: false,
         });
 

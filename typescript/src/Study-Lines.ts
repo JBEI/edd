@@ -65,7 +65,7 @@ namespace StudyLines {
 
         this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
         var fileDropZoneHelper = new Help.FileDropZoneHelpers({
-           page: 'overview',
+           pageRedirect: '',
            haveInputData: false,
         });
 
