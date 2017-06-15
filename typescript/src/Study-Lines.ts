@@ -80,6 +80,20 @@ namespace StudyLines {
             progressBar: this.fileUploadProgressBar
         });
 
+        $('#studyLinesTable').on('dragover', function(e:any) {
+            e.stopPropagation();
+            e.preventDefault();
+            $(".linesDropZone").removeClass('off');
+        });
+        $(document).on('dragEnd dragend drop mouseleave mouseup mousedown', function(e:any) {
+            e.stopPropagation();
+            e.preventDefault();
+            $(".linesDropZone").addClass('off');
+            return false;
+        });
+
+
+
         $('#studyLinesTable').tooltip({
             content: function () {
                 return $(this).prop('title');

@@ -56,6 +56,17 @@ var StudyLines;
             processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
             progressBar: this.fileUploadProgressBar
         });
+        $('#studyLinesTable').on('dragover', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            $(".linesDropZone").removeClass('off');
+        });
+        $(document).on('dragEnd dragend drop mouseleave mouseup mousedown', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            $(".linesDropZone").addClass('off');
+            return false;
+        });
         $('#studyLinesTable').tooltip({
             content: function () {
                 return $(this).prop('title');

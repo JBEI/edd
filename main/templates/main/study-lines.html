@@ -96,12 +96,13 @@
             </div>
             </div>
         </div>
-   <div class="overviewDropZone">
-        <div class="fd-zone excel" id="addToLinesDropZone">
+   <div class="linesDropZone off">
+        <div class="fd-zone excel linesZone" id="addToLinesDropZone">
             <div></div>
         </div>
         <div class="fileDropInfoArea off" id="fileDropInfoArea">
             <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
+            <p>Drop your file here</p>
             <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
             <div class="fileDropInfoSending" id="fileDropInfoSending">
                 <span id="fileUploadMessage">Sending To Server...</span>
@@ -110,8 +111,10 @@
             <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
         </div>
     </div>
-        {% trans 'Manually add/edit lines below' %}
-        <div class="helpBadgeDiv">
+        <img src="{% static 'main/images/upload-file.png' %}"
+             alt="Drag and drop files below">
+        <span>{% trans 'Drag and drop new experimental files in the table' %}</span>
+        <div class="helpBadgeDiv helpBadgeLines">
             {% trans 'help' %}
             <div class="helpContent">
                 <p>
