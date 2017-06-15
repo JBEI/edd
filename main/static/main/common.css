@@ -1666,6 +1666,7 @@ div.linesDropZone {
     position:absolute;
     opacity:0.8;
     width:100%;
+    height:80%;
 }
 
 div.fileDropInfoSending {

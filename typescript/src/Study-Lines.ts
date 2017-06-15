@@ -181,8 +181,9 @@ namespace StudyLines {
     // Called by DataGrid after the Lines table is rendered
     export function prepareAfterLinesTable() {
 
-        var parent: JQuery = $('#studyLinesTable').parent();
-
+        var parent: JQuery = $('#studyLinesTable').parent(), helpBadge:JQuery, input: JQuery;
+            input = $('.tableControl').last();
+            helpBadge = $('.helpBadgeDiv');
         // Enable add new Line button
         parent.find('.addNewLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
             ev.preventDefault();
@@ -198,6 +199,8 @@ namespace StudyLines {
             StudyLines.editLines(data.ids || []);
             return false;
         });
+
+        $(helpBadge).insertAfter(input);
 
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });

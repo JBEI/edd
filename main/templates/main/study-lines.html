@@ -113,8 +113,13 @@
     </div>
         <img src="{% static 'main/images/upload-file.png' %}"
              alt="Drag and drop files below">
-        <span>{% trans 'Drag and drop new experimental files in the table' %}</span>
-        <div class="helpBadgeDiv helpBadgeLines">
+        <span>{% trans 'Drag and drop experiment description files below' %}</span>
+        <div class="noLines">
+            <h3 style="margin-bottom:12px">{% trans 'This study has no lines.' %}</h3>
+        </div>
+        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+        <table id="studyLinesTable">
+             <div class="helpBadgeDiv helpBadgeLines">
             {% trans 'help' %}
             <div class="helpContent">
                 <p>
@@ -128,11 +133,7 @@
                 </p>
             </div>
         </div>
-        <div class="noLines">
-            <h3 style="margin-bottom:12px">{% trans 'This study has no lines.' %}</h3>
-        </div>
-        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-        <table id="studyLinesTable"></table>
+        </table>
         <div id="actionsBar" class="actionsBar sectionActions lineFlex">
             <div>
             <button id="addNewLineButton"
