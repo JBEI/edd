@@ -4,7 +4,7 @@
 /// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
-/// <reference path="File-drop.ts" />
+/// <reference path="FileDropZone.ts" />
 
 declare var EDDData:EDDData;
 namespace StudyLines {
@@ -64,7 +64,7 @@ namespace StudyLines {
         positionActionsBarTimer = null;
 
         this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
-        var fileDropZoneHelper = new Help.FileDropZoneHelpers({
+        var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
            pageRedirect: '',
            haveInputData: false,
         });

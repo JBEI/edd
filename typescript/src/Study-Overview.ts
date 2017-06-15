@@ -6,7 +6,7 @@
 /// <reference path="EDDEditableElement.ts" />
 /// <reference path="Study.ts" />
 /// <reference path="Utl.ts" />
-/// <reference path="File-drop.ts" />
+/// <reference path="FileDropZone.ts" />
 
 declare var EDDData:EDDData;
 
@@ -226,7 +226,7 @@ module StudyOverview {
         });
 
         this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
-        var fileDropZoneHelper = new Help.FileDropZoneHelpers({
+        var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
            pageRedirect: 'experiment-description',
            haveInputData: false,
         });
