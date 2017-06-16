@@ -2024,23 +2024,19 @@ class ProteinIdentifier(MeasurementType):
         })
 
     @classmethod
-    def load_or_create(cls, measurement_name, datasource):
+    def load_or_create(cls, measurement_name, datasource, user_token):
         # extract Uniprot accession data from the measurement name, if present
         accession_match = cls.accession_pattern.match(measurement_name)
-        uniprot_id = accession_match.group(1) if accession_match else None
 
-        # search for proteins matching the name. we're fairly permissive during lookup to account
-        # for some small percentage of protein names that don't follow the Uniprot pattern, as well
-        # as legacy proteins in EDD's database
-        name_match_criteria = Q(type_name=measurement_name)
+        proteins = ProteinIdentifier.objects.none()
+        if accession_match:
+            uniprot_id = accession_match.group(1)
+            proteins = ProteinIdentifier.objects.filter(short_name=uniprot_id)
+        else:
+            proteins = ProteinIdentifier.objects.filter(short_name=measurement_name)
 
-        if getattr(settings, 'ALLOW_PERMISSIVE_PROTEIN_MATCHING', False):
-            name_match_criteria = name_match_criteria | Q(short_name=measurement_name)
-            if uniprot_id:
-                name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
         # force query to LIMIT 2
-        proteins = ProteinIdentifier.objects.filter(name_match_criteria)[:2]
-
+        proteins = proteins[:2]
         if len(proteins) > 1:
             # fail if protein couldn't be uniquely matched
             raise ValidationError(
@@ -2053,7 +2049,17 @@ class ProteinIdentifier(MeasurementType):
             # enforce ProteinIdentifier naming conventions for new ProteinIdentifiers,
             # if configured. this isn't as good as looking them up in Uniprot, but should
             # help as a stopgap to curate our protein entries
-            if settings.REQUIRE_UNIPROT_ACCESSION_IDS and not accession_match:
+            link = ProteinStrainLink()
+            if accession_match:
+                # TODO: try external lookup to validate accession ID?
+                type_name = accession_match.group(2)
+                type_name = measurement_name if type_name is None else type_name
+                accession_id = measurement_name
+            elif link.check_ice(user_token, measurement_name):
+                type_name = link.strain.name
+                uniprot_id = measurement_name
+                accession_id = measurement_name
+            elif getattr(settings, 'REQUIRE_UNIPROT_ACCESSION_IDS', True):
                 raise ValidationError(
                     _u('Protein name "%(type_name)s" is not a valid UniProt accession id.') % {
                         'type_name': measurement_name,
@@ -2064,21 +2070,15 @@ class ProteinIdentifier(MeasurementType):
             })
             if datasource.pk is None:
                 datasource.save()
-            # create the new protein id
-            if accession_match:
-                type_name = accession_match.group(2)
-                type_name = measurement_name if type_name is None else type_name
-                accession_id = measurement_name
-            else:
-                type_name = measurement_name
-                accession_id = uniprot_id
-            # FIXME: this blindly creates a new type; should try external lookups first?
             p = ProteinIdentifier.objects.create(
                 type_name=type_name,
                 short_name=uniprot_id,
                 accession_id=accession_id,
                 type_source=datasource,
             )
+            if link.strain:
+                link.protein = p
+                link.save()
             return p
         return proteins[0]
 
@@ -2104,6 +2104,38 @@ class ProteinIdentifier(MeasurementType):
         # force PROTEINID group
         self.type_group = MeasurementType.Group.PROTEINID
         super(ProteinIdentifier, self).save(*args, **kwargs)
+
+
+@python_2_unicode_compatible
+class ProteinStrainLink(models.Model):
+    """ Defines a link between a ProteinIdentifier and a Strain. """
+    class Meta:
+        db_table = 'protein_strain'
+    protein = models.OneToOneField(
+        ProteinIdentifier,
+        related_name='strainlink',
+    )
+    strain = models.OneToOneField(
+        Strain,
+        related_name='proteinlink',
+    )
+
+    def check_ice(self, user_token, name):
+        from .tasks import create_ice_connection
+        ice = create_ice_connection(user_token)
+        part = ice.get_entry(name, suppress_errors=True)
+        if part:
+            default = dict(
+                name=part.name,
+                description=part.short_description,
+                registry_url=''.join((ice.base_url, '/entry/', str(part.id))),
+            )
+            self.strain, x = Strain.objects.get_or_create(registry_id=part.uuid, defaults=default)
+            return True
+        return False
+
+    def __str__(self):
+        return self.strain.name
 
 
 @python_2_unicode_compatible
