@@ -8,6 +8,7 @@ import warnings
 
 from celery import shared_task
 from collections import namedtuple
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils.translation import ugettext as _
@@ -29,7 +30,7 @@ MODE_TRANSCRIPTOMICS = 'tr'
 @shared_task
 def import_task(study_id, user_id, data):
     study = models.Study.objects.get(pk=study_id)
-    user = models.User.objects.get(pk=user_id)
+    user = get_user_model().objects.get(pk=user_id)
     try:
         importer = TableImport(study, user)
         (added, updated) = importer.import_data(data)

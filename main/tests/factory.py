@@ -7,6 +7,8 @@ Factory classes used to generate objects under test.
 
 import factory
 
+from django.contrib.auth import get_user_model
+
 from .. import models
 
 
@@ -19,5 +21,5 @@ class StudyFactory(factory.django.DjangoModelFactory):
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = models.User
+        model = get_user_model()
     username = factory.Sequence(lambda n: 'user%03d' % n)  # username is unique

@@ -6,6 +6,7 @@ import logging
 import requests
 
 from django.conf import settings as django_settings
+from django.contrib.auth import get_user_model
 from django.db.models import Count, F, Prefetch
 from itertools import ifilter, islice
 from six import string_types
@@ -365,7 +366,7 @@ class UserSearch(SolrSearch):
 
     @staticmethod
     def get_queryset():
-        return models.User.objects.select_related(
+        return get_user_model().objects.select_related(
             'userprofile',
         ).prefetch_related(
             'userprofile__institutions',

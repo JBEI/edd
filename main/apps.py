@@ -10,5 +10,6 @@ class EDDConfig(AppConfig):
     name = "main"
     def ready(self):
         from .models import patch_user_model
-        from .signals import handlers
+        # before loading anything else, add our patches to the User object
         patch_user_model()
+        from .signals import *  # noqa

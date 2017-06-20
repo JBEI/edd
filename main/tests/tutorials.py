@@ -8,6 +8,7 @@ Tests used to validate the tutorial screencast functionality.
 import environ
 import json
 
+from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from django.test import Client, TestCase
@@ -134,7 +135,7 @@ class ImportDataTests(TestCase):
 
     def setUp(self):
         super(ImportDataTests, self).setUp()
-        self.user = models.User.objects.get(pk=2)
+        self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=7)
         self.target_kwargs = {'slug': self.target_study.slug}
         self.fake_browser = Client()
@@ -257,7 +258,7 @@ class ExportDataTests(TestCase):
 
     def setUp(self):
         super(ExportDataTests, self).setUp()
-        self.user = models.User.objects.get(pk=2)
+        self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=7)
         self.target_kwargs = {'slug': self.target_study.slug}
         self.fake_browser = Client()
