@@ -1110,6 +1110,11 @@ table.formTable tr > td textarea {
     overflow: hidden;
 }
 
+
+#studyLinesTable {
+    cursor: copy;
+}
+
 #studyLinesTable td:nth-child(2) {
     white-space: nowrap;
     text-overflow: ellipsis;
