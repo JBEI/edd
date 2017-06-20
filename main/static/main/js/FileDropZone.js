@@ -2,7 +2,6 @@
 /// <reference path="Utl.ts" />
 var FileDropZone;
 (function (FileDropZone) {
-    // import actionPanelIsCopied = StudyLines.actionPanelIsCopied;
     var FileDropZoneHelpers = (function () {
         function FileDropZoneHelpers(options) {
             this.haveInputData = options.haveInputData;

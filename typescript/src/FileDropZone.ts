@@ -3,8 +3,7 @@
 
 
 module FileDropZone {
-    
-    // import actionPanelIsCopied = StudyLines.actionPanelIsCopied;
+
     export class FileDropZoneHelpers {
         
         haveInputData:boolean;

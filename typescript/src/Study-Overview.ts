@@ -20,9 +20,9 @@ module StudyOverview {
 
     var fileUploadProgressBar: Utl.ProgressBar;
     //
-    // // We can have a valid metabolic map but no valid biomass calculation.
-    // // If they try to show carbon balance in that case, we'll bring up the UI to
-    // // calculate biomass for the specified metabolic map.
+    // We can have a valid metabolic map but no valid biomass calculation.
+    // If they try to show carbon balance in that case, we'll bring up the UI to
+    // calculate biomass for the specified metabolic map.
     export var metabolicMapID: any;
     export var metabolicMapName: any;
     export var biomassCalculation: number;
@@ -62,8 +62,6 @@ module StudyOverview {
                         'csrfmiddlewaretoken': $('form#permissions').find('[name=csrfmiddlewaretoken]').val()
                     },
                     'success': (): void => {
-                        var permissionTarget;
-                        console.log(['Set permission: ', JSON.stringify(perm)].join(''));
                         //reset permission options
                         $('form#permissions').find('.autocomp_search').siblings('select').val('N');
                         //reset input

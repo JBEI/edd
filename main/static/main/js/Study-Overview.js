@@ -6,7 +6,7 @@
 /// <reference path="EDDEditableElement.ts" />
 /// <reference path="Study.ts" />
 /// <reference path="Utl.ts" />
-/// <reference path="File-drop.ts" />
+/// <reference path="FileDropZone.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -52,8 +52,6 @@ var StudyOverview;
                     'csrfmiddlewaretoken': $('form#permissions').find('[name=csrfmiddlewaretoken]').val()
                 },
                 'success': function () {
-                    var permissionTarget;
-                    console.log(['Set permission: ', JSON.stringify(perm)].join(''));
                     //reset permission options
                     $('form#permissions').find('.autocomp_search').siblings('select').val('N');
                     //reset input
@@ -191,7 +189,7 @@ var StudyOverview;
             }
         });
         this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
-        var fileDropZoneHelper = new Help.FileDropZoneHelpers({
+        var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
             pageRedirect: 'experiment-description',
             haveInputData: false,
         });

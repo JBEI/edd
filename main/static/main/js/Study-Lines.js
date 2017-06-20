@@ -4,7 +4,7 @@
 /// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
-/// <reference path="File-drop.ts" />
+/// <reference path="FileDropZone.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -42,7 +42,7 @@ var StudyLines;
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
         this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
-        var fileDropZoneHelper = new Help.FileDropZoneHelpers({
+        var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
             pageRedirect: '',
             haveInputData: false,
         });
