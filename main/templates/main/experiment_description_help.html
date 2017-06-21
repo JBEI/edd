@@ -4,8 +4,7 @@
 {% block js_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'main/help.css' %}" />
-    <script type="text/javascript" src="{% static 'main/js/Experiment-Desc-Help.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDRest.js' %}"></script>
+    <script type="text/javascript" src="{% static 'dist/ExperimentDescHelp.js' %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -115,7 +114,7 @@ description file:</p>
 </table>
 <div class="caption">
     Figure 2: Simple experiment description file
-    <a href="{% static 'experiment_description/Figure_2_Simple_Experiment_Description.xlsx' %}">
+    <a href="{% static 'main/example/Figure_2_Simple_Experiment_Description.xlsx' %}">
     <span class="dropLink dropImg">__</span>
     </a>
 </div>
@@ -179,7 +178,7 @@ description file:</p>
 </table>
 <div class="caption">
 <span class="figureTitle">Figure 4: Creating
-    <a href="{% static 'experiment_description/Figure_4_Multiple_Lines_And_Replicates.xlsx' %}">
+    <a href="{% static 'main/example/Figure_4_Multiple_Lines_And_Replicates.xlsx' %}">
         multiple lines and replicates<span class="dropLink dropImg">__</span></a></span>
 </div>
 <p>
@@ -458,7 +457,7 @@ Figure 6 shows an example file that creates lines combinatorially using differen
     </tbody>
 </table>
 <div class="caption">
-Figure 6: <a href="{% static 'experiment_description/Figure_6_Combinatorial_Media_Values.xlsx' %}">
+Figure 6: <a href="{% static 'main/example/Figure_6_Combinatorial_Media_Values.xlsx' %}">
 Combinatorial input for media<span class="dropLink dropImg">__</span></a>
 </div>
 <p>
@@ -573,7 +572,7 @@ which has columns defined in a different order than the previous ones:
     </tbody>
 </table>
 <div class="caption">Figure 8: Controlling line <a href="{%
-        static 'experiment_description/Figure_8_Combinatorial_Naming_Order.xlsx' %}">
+        static 'main/example/Figure_8_Combinatorial_Naming_Order.xlsx' %}">
     naming using combinatorial column order <span class="dropLink dropImg">__</span></a></div>
 <p>
 Since the "Line Description" column doesn't include values for combinatorial line creation (has no appended
@@ -723,7 +722,7 @@ The lines table displayed in EDD as a result will be:</p>
     </tbody>
 </table>
 <div class="caption">
-    Figure 10: Simple <a href="{% static 'experiment_description/Figure_10_Assay_Creation.xlsx' %}">
+    Figure 10: Simple <a href="{% static 'main/example/Figure_10_Assay_Creation.xlsx' %}">
     assay creation<span class="dropLink dropImg">__</span>
     </a>
 </div>

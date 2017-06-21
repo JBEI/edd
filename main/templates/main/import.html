@@ -4,26 +4,16 @@
 {% block js_css %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
-  <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/EDDGraphingTools.js' %}"></script>
-  <script type="text/javascript"
-      src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
-  <script type="text/javascript"
-      src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
   <script type="text/javascript">
 
-  //remove mian flex layout. work around til garret fixes main flex layout.
+  //remove main flex layout. work around til garret fixes main flex layout.
     $(document).ready(function() {
       $('.mainFlex').removeClass();
     });
     var ATData = {}; // this needs to be declared before loading Import.js!
 
   </script>
-  <script type="text/javascript" src="{% static 'main/js/Import.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
+  <script type="text/javascript" src="{% static 'dist/Import.js' %}"></script>
 
 {% endblock js_css %}
 
@@ -111,12 +101,12 @@
           </label>
           <span><a class="discloseLink" href="#">Example</a></span>
           <div class="discloseBody" id="skylinelayoutexample">
-            <p>Use this format for data coming out of Skyline analysis of mass spec data. This import
-                expects data to come in four columns, with a sample name in the first
+            <p>Use this format for data coming out of Skyline analysis of mass spec data. This
+                import expects data to come in four columns, with a sample name in the first
                 column, a protein name in the second (represented by its accession ID found on
-                <a href="http://www.uniprot.org/uniprot/">UniProt</a>
-                ), a peptide in the third column, and a numeric value for peak area in the fourth.
-                Here is an example of a <a href="{% static 'skyline_example.csv' %}">Skyline Data File </a>
+                <a href="http://www.uniprot.org/uniprot/">UniProt</a>), a peptide in the third
+                column, and a numeric value for peak area in the fourth. Here is an example of a
+                <a href="{% static 'main/example/skyline_example.csv' %}">Skyline Data File</a>
                 that has been successfully imported.
             </p>
             <img class="exampleImage"
@@ -154,7 +144,7 @@
               import easier: <code>Line Name_HPLC@Time_Replicate Name</code>, where <code>Time</code> is in
               hours, and <code>Replicate Name</code> is optional. For example,
               <code>Ecol14a_HPLC@12.4</code>, <code>30min spin_HPLC@10_a</code>.</p>
-              See <a href="{% static 'HPLC_example.txt' %}">HPLC Example File</a>
+              See <a href="{% static 'main/example/HPLC_example.txt' %}">HPLC Example File</a>
               <img class="exampleImage"
                 src="{% static 'main/images/data_examples/hplc_example.png' %}" />
           </div>
@@ -176,9 +166,9 @@
             </p>
             <p>
                 Download the
-                <a href="{% static 'test_proteomics.csv' %}">Proteomics Data File</a>
+                <a href="{% static 'main/example/test_proteomics.csv' %}">Proteomics Data File</a>
                  shown below and the
-                <a href="{% static 'test_proteomics_example_description.xlsx' %}">Experiment Description File</a>
+                <a href="{% static 'main/example/test_proteomics_example_description.xlsx' %}">Experiment Description File</a>
                 that corresponds to the data file. Note - you will be asked for time (in hours) below
                 after uploading file.
             </p>
@@ -304,23 +294,23 @@
     </div>
       <span id="prSampleFile" hidden>
           Or upload edited
-            <a href="{% static 'test_proteomics.csv' %}">Example File</a>
+            <a href="{% static 'main/example/test_proteomics.csv' %}">Example File</a>
         </span>
       <span id="gcmsSampleFile">
           Or upload edited
-            <a href="{% static 'GC-MS_example.xlsx' %}">Example File</a>
+            <a href="{% static 'main/example/GC-MS_example.xlsx' %}">Example File</a>
         </span>
       <span id="biolectorFile" hidden>
           Or upload edited
-            <a href="{% static 'Biolector.xml' %}">Example File</a>
+            <a href="{% static 'main/example/Biolector.xml' %}">Example File</a>
         </span>
       <span id="skylineSample" hidden>
           Or upload edited
-            <a href="{% static 'skyline_example.csv' %}">Example File</a>
+            <a href="{% static 'main/example/skyline_example.csv' %}">Example File</a>
         </span>
       <span id="hplcExample" hidden>
           Or upload edited
-            <a href="{% static 'HPLC_example.txt' %}">Example File</a>
+            <a href="{% static 'main/example/HPLC_example.txt' %}">Example File</a>
         </span>
     <div class="resetButtonDiv" id="resetstep2">Reset</div>
 

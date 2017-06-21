@@ -4,13 +4,7 @@
 
 {% block js_css %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Study-Overview.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/FileDropZone.js' %}"></script>
-{#  this script is commented out until we have docker automically install bower dependencies  #}
-{#    <script type="text/javascript" src="{% static 'bower_components/tinymce/tinymce.min.js' %}"></script>#}
+    <script type="text/javascript" src="{% static 'dist/StudyOverview.js' %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -123,7 +117,7 @@
     <div class="fd-zone excel" id="templateDropZone">
         <div></div>
         Upload an Experiment Description file (
-        <a href="{% static 'experiment_description/sample_experiment_description.xlsx' %}">
+        <a href="{% static 'main/example/sample_experiment_description.xlsx' %}">
             Example <span class="dropLink dropImg">__</span>
         </a>)
         <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"

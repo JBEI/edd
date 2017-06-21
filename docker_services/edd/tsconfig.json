@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    /* Basic Options */
+    "target": "es5",
+    "module": "commonjs",
+    "lib": [
+      "dom",
+      "es5",
+      "scripthost",
+      "es2015.iterable"
+    ],
+    "declaration": true,
+    "sourceMap": true,
+    "rootDir": "./edd/typescript/",
+
+    /* Strict Type-Checking Options */
+    "noImplicitAny": false,
+
+    /* Module Resolution Options */
+    "moduleResolution": "node",
+    "baseUrl": ".",
+
+    /* Experimental */
+    "pretty": true  // colorizes compiler outputs
+  },
+  "include": [
+    "./edd/typescript/**/*"
+  ]
+}

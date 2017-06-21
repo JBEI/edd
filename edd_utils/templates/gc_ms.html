@@ -3,11 +3,11 @@
 
 {% block js_css %}
 {{ block.super }}
-<link rel="stylesheet" media="screen" href="{% static 'edd_utils/css/lib/handsontable.full.min.css' %}"/>
+<link rel="stylesheet" media="screen" href="{% static 'lib/handsontable.full.min.css' %}"/>
 <script src="{% static 'edd_utils/js/lib/dropzone.js' %}"></script>
-<script src="{% static 'edd_utils/js/lib/handsontable.full.min.js' %}"></script>
-<script src="{% static 'edd_utils/js/lib/d3.v3.min.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
+<script src="{% static 'lib/handsontable.full.min.js' %}"></script>
+<script src="{% static 'lib/d3.min.js' %}"></script>
+<script type="text/javascript" src="{% static 'lib/jquery.cookie.js' %}"></script>
 <script src="{% static 'edd_utils/js/workbench.js' %}"></script>
 <script>
 $(document).ready(function () {

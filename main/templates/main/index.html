@@ -4,16 +4,12 @@
 {% block js_css %}
     {{ block.super }}
     <!-- jQuery-UI needed for EDDAutocomplete -->
-    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}"/>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'lib/bootstrap/js/bootstrap.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'lib/bootstrap/css/bootstrap.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'lib/jquery-ui/jquery-ui.min.css' %}"/>
+    <script type="text/javascript" src="{% static 'lib/jquery-ui/jquery-ui.min.js' %}"></script>
     <!-- -->
-    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/index.js' %}"></script>
+    <script type="text/javascript" src="{% static 'dist/index.js' %}"></script>
     <script>
     {% if form.errors %}
         var options = {

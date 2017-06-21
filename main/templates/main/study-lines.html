@@ -5,30 +5,20 @@
 
 {% block js_css %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Study-Lines.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/FileDropZone.js' %}"></script>
+    <script type="text/javascript" src="{% static 'dist/StudyLines.js' %}"></script>
+    {% if new_line.errors %}
     <script type="text/javascript">
-         {% if new_line.errors %}
-             var options = {
-                autoOpen: false,
-                minWidth: 500,
-                title: 'Add New Line'
-                };
-             $(document).ready(function() {
-                 $('.errorlist').remove();
-                 $("#editLineModal").removeClass('off').dialog(options).dialog( "open" );
-             });
-         {% endif %}
+        var options = {
+            autoOpen: false,
+            minWidth: 500,
+            title: 'Add New Line'
+        };
+        $(document).ready(function() {
+            $('.errorlist').remove();
+            $("#editLineModal").removeClass('off').dialog(options).dialog("open");
+        });
     </script>
+    {% endif %}
 {% endblock js_css %}
 
 {% block head_title %}
@@ -146,8 +136,8 @@
         <div id="actionsBar" class="actionsBar sectionActions lineFlex">
             <div>
             <button id="addNewLineButton"
-                    class="addNewLineButton actionButton primary {% if not writable %}off{% endif %}"
-                    title="{% trans 'Add a new line' %}">
+                    class="addNewLineButton actionButton primary {% if not writable %}
+                    off{% endif %}">
                 {% trans 'New line' %}
             </button>
             <span class="linesSelectedCell">
@@ -161,8 +151,7 @@
             <span class="disablableButtons">
                 <button id="editButton"
                         class="editButton actionButton {% if not writable or not lines %}off{% endif %}"
-                        disabled="true"
-                        title="{% trans 'Edit selected Lines' %}">
+                        disabled="true">
                     {% trans 'Edit' %}
                 </button>
                 <button id="cloneButton"
@@ -170,8 +159,7 @@
                         type="submit"
                         name="action"
                         disabled="true"
-                        value="clone"
-                        title="{% trans 'Clone selected Lines' %}">
+                        value="clone">
                     {% trans 'Clone' %}
                 </button>
                 <button id="groupButton"
@@ -179,15 +167,13 @@
                         type="submit"
                         disabled="true"
                         name="action"
-                        value="group"
-                        title="{% trans 'Group selected Lines as replicates' %}">
+                        value="group">
                     {% trans 'Group' %}
                 </button>
                 <button id="addAssayButton"
                         class="addAssayButton actionButton {% if not writable or not lines %}off{% endif %}"
                         type="button"
-                        disabled="true"
-                        title="{% trans 'Add an assay to selected Lines' %}">
+                        disabled="true">
                     {% trans 'Add Assay' %}
                 </button>
                 <button id="disableButton"
@@ -195,8 +181,7 @@
                         type="submit"
                         name="action"
                         value="disable"
-                        disabled="true"
-                        title="{% trans 'Delete selected Lines' %}">
+                        disabled="true">
                     {% trans 'Delete' %}
                 </button>
                 <button id="enableButton"
@@ -204,21 +189,18 @@
                         type="submit"
                         name="action"
                         value="enable"
-                        disabled="true"
-                        title="{% trans 'Restore selected Lines' %}">
+                        disabled="true">
                     {% trans 'Restore' %}
                 </button>
             </span>
             </div>
             <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">
                 <button style="margin-right:30px" type="button" id="worklistButton"
-                        class="worklistButton actionButton primary"
-                        title="{% trans 'Generate a worklist to carry out your experiment' %}">
+                        class="worklistButton actionButton primary">
                     {% trans 'Generate Worklist' %}
                 </button>
                 <button type="button" id="exportLineButton"
-                        class="exportLineButton actionButton primary"
-                        title="{% trans 'Export your lines in a file type of your choosing' %}">
+                        class="exportLineButton actionButton primary">
                     {% trans 'Export Data' %}
                 </button>
             </div>

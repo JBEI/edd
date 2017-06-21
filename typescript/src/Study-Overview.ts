@@ -1,15 +1,11 @@
-/// <reference path="typescript-declarations.d.ts" />
-/// <reference path="BiomassCalculationUI.ts" />
-/// <reference path="Dragboxes.ts" />
-/// <reference path="DataGrid.ts" />
-/// <reference path="EDDAutocomplete.ts" />
-/// <reference path="EDDEditableElement.ts" />
-/// <reference path="Study.ts" />
-/// <reference path="Utl.ts" />
-/// <reference path="FileDropZone.ts" />
-
 declare var EDDData:EDDData;
-
+import { Utl } from "../modules/Utl"
+import { EDDEditable } from "../modules/EDDEditableElement"
+import { FileDropZone } from "../modules/FileDropZone"
+import { StudyMetabolicMapChooser } from "../modules/BiomassCalculationUI"
+import { MetabolicMapChooserResult } from "../modules/BiomassCalculationUI"
+import { StudyBase } from "../modules/Study"
+import { EDDAuto } from "../modules/EDDAutocomplete"
 
 module StudyOverview {
     'use strict';
@@ -49,7 +45,7 @@ module StudyOverview {
 
         $('form#permissions')
             .on('submit', (ev: JQueryEventObject): boolean => {
-                var perm: any = {}, klass: string, auto: JQuery;
+                var perm: any = {}, klass: any, auto: JQuery;
                 auto = $('form#permissions').find('[name=class]:checked');
                 klass = auto.val();
                 perm.type = $(auto).siblings('select').val();
@@ -197,12 +193,6 @@ module StudyOverview {
 
         new EditableStudyContact($('#editable-study-contact').get()[0]);
         new EditableStudyDescription($('#editable-study-description').get()[0]);
-
-        // put the click handler at the document level, then filter to any link inside a .disclose
-        $(document).on('click', '.disclose .discloseLink', (e) => {
-            $(e.target).closest('.disclose').toggleClass('discloseHide');
-            return false;
-        });
 
         $('#helpExperimentDescription').tooltip({
             content: function () {

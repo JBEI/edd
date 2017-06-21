@@ -1,4 +1,6 @@
-/// <reference path="EDDRest.ts" />
+/// <reference path="../modules/EDDRest.ts" />
+
+import * as $ from "jquery";
 
 // This module contains code for dynamically loading lists of metadata types into the help page
 // for Experiment Description files.
@@ -38,7 +40,7 @@ module ExperimentDescriptionHelp {
         return false;
     }
 
-    function loadAllLineMetadataTypes():void {
+    function loadAllLineMetadataTypes(): void {
         EddRest.loadMetadataTypes(
             {
                 'success': lineMetaSuccessHandler,
@@ -62,7 +64,7 @@ module ExperimentDescriptionHelp {
             });
     }
 
-    function loadAllProtocols():void {
+    function loadAllProtocols(): void {
         EddRest.loadProtocols(
             {
                 'success': protocolsSuccessHandler,
@@ -87,12 +89,12 @@ module ExperimentDescriptionHelp {
         )
     }
 
-    function measurementUnitsSuccessHandler(measurementUnitsLoaded:any[]): void {
+    function measurementUnitsSuccessHandler(measurementUnitsLoaded: any[]): void {
 
         // cache measurement units as a dictionary of pk -> value so we can easily look them up
         measurementUnits = {};
-        measurementUnitsLoaded.forEach((measurementUnit:any) => {
-            var pk:number = measurementUnit['pk'];
+        measurementUnitsLoaded.forEach((measurementUnit: any) => {
+            var pk: number = measurementUnit['pk'];
             measurementUnits[pk] = measurementUnit;
         });
 
@@ -101,7 +103,7 @@ module ExperimentDescriptionHelp {
         showProtocols();
     }
 
-    function protocolsSuccessHandler(protocolsLoaded:any[]): void {
+    function protocolsSuccessHandler(protocolsLoaded: any[]): void {
         // store in case related measurement units query hasn't returned
         protocols = protocolsLoaded;
         loadedProtocols = true;
@@ -111,157 +113,122 @@ module ExperimentDescriptionHelp {
         showProtocols();
     }
 
-    function showWaitMessage(divSelector:string) {
+    function showWaitMessage(divSelector: string) {
         var div;
         div = $(divSelector);
-            div.empty();
-            $('<span>')
-                .text('Loading data from server...please wait.')
-                .addClass('wait')
-                .appendTo(div);
+        div.empty();
+        $('<span>')
+            .text('Loading data from server...please wait.')
+            .addClass('wait')
+            .appendTo(div);
     }
 
-    function lineMetaSuccessHandler(metadataTypes:any[]) {
+    function lineMetaSuccessHandler(metadataTypes: any[]) {
         showMetadataTypes(LINE_DIV_SELECTOR, metadataTypes, omitLineMetadataTypes);
     }
 
-    function assayMetaSuccessHandler(metadataTypes:any[]) {
+    function assayMetaSuccessHandler(metadataTypes: any[]) {
         showMetadataTypes(ASSAY_DIV_SELECTOR, metadataTypes, omitAssayMetadataTypes);
     }
 
     function showProtocols() {
-        var div:JQuery, table:JQuery, head, body, row;
+        var div: JQuery, table: JQuery, head, body, row;
 
         // if protocols haven't been loaded yet (e.g. this function is called when measurement units
         // query returns first), just wait until they are...otherwise, we can't distinguish between
         // the "no protocols" case and the "protocols haven't loaded yet" case.
-        if(!loadedProtocols) {
+        if (!loadedProtocols) {
             return;
         }
 
-        div = $('#protocols')
-            .empty();
+        div = $('#protocols').empty();
 
-        if(protocols.length > 0) {
+        if (protocols.length > 0) {
             table = $('<table>')
                 .addClass('figureTable')
                 .appendTo(div);
 
             head = $('<thead>').appendTo(table);
 
-            $('<th>')
-                .text('Name')
-                .appendTo(head);
+            $('<th>').text('Name').appendTo(head);
+            $('<th>').text('Description').appendTo(head);
+            $('<th>').text('Default Units').appendTo(head);
 
-            $('<th>')
-                .text('Description')
-                .appendTo(head);
-
-            $('<th>')
-                .text('Default Units')
-                .appendTo(head);
-
-            body = $('<tbody>')
-                .appendTo(table);
+            body = $('<tbody>').appendTo(table);
 
             protocols.forEach((protocol: any): void => {
-                var unitsObj:any, unitsPk:number, unitsStr: string;
+                var unitsObj: any, unitsPk: number, unitsStr: string;
 
                 row = $('<tr>').appendTo(body);
-                $('<td>')
-                    .text(protocol['name'])
-                    .appendTo(row);
-                $('<td>')
-                    .text(protocol['description'])
-                    .appendTo(row);
-
-
+                $('<td>').text(protocol['name']).appendTo(row);
+                $('<td>').text(protocol['description']).appendTo(row);
                 unitsPk = protocol['default_units'];
-
                 unitsStr = 'None';
                 if (unitsPk) {
-
                     // if the related query has returned, look up the name of the related default units
                     unitsStr = (!$.isEmptyObject(measurementUnits))
-                                    ? measurementUnits[unitsPk].unit_name
-                                    : String(unitsPk);
+                        ? measurementUnits[unitsPk].unit_name
+                        : String(unitsPk);
                 }
-                $('<td>')
-                    .text(unitsStr)
-                    .appendTo(row);
+                $('<td>').text(unitsStr).appendTo(row);
             });
         } else {
             div.text('No protocols were found.');
         }
     }
 
-    function showMetadataTypes(divSelector:string, metadataTypes:any[],
-                               omitFromDisplay:string[]): void {
+    function showMetadataTypes(divSelector: string, metadataTypes: any[],
+        omitFromDisplay: string[]): void {
         /* TODO: consider merging with showProtocols() above IF the back-end MetadataType class gets
            refactored to use the Unit class and to have a description. */
 
-        var table:JQuery, head: JQuery, body:JQuery, div:JQuery;
-        div = $(divSelector)
-                .empty();
+        var table: JQuery, head: JQuery, body: JQuery, div: JQuery;
+        div = $(divSelector).empty();
 
-        if(metadataTypes) {
-
-            table = $('<table>')
-                .addClass('figureTable')
-                .addClass('metadataList')
-                .appendTo(div);
+        if (metadataTypes) {
+            table = $('<table>').addClass('figureTable metadataList').appendTo(div);
 
             head = $('<thead>').appendTo(table);
 
-            $('<th>')
-                .text('Name')
-                .appendTo(head);
+            $('<th>').text('Name').appendTo(head);
+            $('<th>').text('Units').appendTo(head);
 
-            $('<th>')
-                .text('Units')
-                .appendTo(head);
-
-            body = $('<tbody>')
-                .appendTo(table);
+            body = $('<tbody>').appendTo(table);
 
             metadataTypes.forEach((metadataType: any): boolean => {
-                 var typeName:string, unitsStr:string, omit:boolean, row:JQuery;
+                var typeName: string, unitsStr: string, omit: boolean, row: JQuery;
                 typeName = metadataType['type_name'];
 
                 // omit items included in the 'primary characteristics' table
                 omit = omitFromDisplay.indexOf(typeName) >= 0;
-                if(omit) {
+                if (omit) {
                     return true;
                 }
 
                 row = $('<tr>').appendTo(body);
-                $('<td>')
-                    .text(typeName)
-                    .appendTo(row);
+                $('<td>').text(typeName).appendTo(row);
 
                 unitsStr = metadataType['postfix'];
-                $('<td>')
-                    .text(unitsStr)
-                    .appendTo(row);
+                $('<td>').text(unitsStr).appendTo(row);
             });
         } else {
             div.val('No metadata types were found.')
         }
     }
 
-    function lineErrorHandler(jqXHR, textStatus:string, errorThrown:string): void {
+    function lineErrorHandler(jqXHR, textStatus: string, errorThrown: string): void {
         showLoadFailed(this.LINE_DIV_SELECTOR);
     }
 
-    function assayErrorHandler(jqXHR, textStatus:string, errorThrown:string): void {
+    function assayErrorHandler(jqXHR, textStatus: string, errorThrown: string): void {
         showLoadFailed(this.ASSAY_DIV_SELECTOR);
     }
 
-    function measurementUnitsErrorHandler(jqXHR, textStatus:string, errorThrown:string): void {
+    function measurementUnitsErrorHandler(jqXHR, textStatus: string, errorThrown: string): void {
         console.error('Error loading measurement units: ', textStatus, ' ', errorThrown);
     }
 
-    function showLoadFailed(divSelector:string): void {
+    function showLoadFailed(divSelector: string): void {
         var div: JQuery, span;
         div = $(divSelector);
         div.empty();
@@ -269,7 +236,7 @@ module ExperimentDescriptionHelp {
         span = $("<span>").text('Unable to load data.').addClass('errorMessage').appendTo(div);
 
         $('<a>').text(' Retry').on('click', () => {
-            switch(divSelector) {
+            switch (divSelector) {
                 case LINE_DIV_SELECTOR:
                     loadAllLineMetadataTypes();
                     break;

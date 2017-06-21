@@ -35,18 +35,6 @@ logger = logging.getLogger(__name__)
 
 class AutocompleteWidget(forms.widgets.MultiWidget):
     """ Custom widget for a paired autocomplete and hidden ID field. """
-    class Media:
-        js = (
-            'main/js/lib/jquery/jquery.js',
-            'main/js/lib/jquery-ui/jquery-ui.min.js',
-            'main/js/EDDAutocomplete.js',
-            )
-        css = {
-            'all': (
-                'main/js/lib/jquery-ui/jquery-ui.min.css',
-                'main/widgets.css',
-            ),
-        }
 
     def __init__(self, attrs=None, model=User, opt={}):
         _widgets = (
@@ -127,7 +115,12 @@ class MultiAutocompleteWidget(AutocompleteWidget):
 class UserAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Users """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'User'}, })
+        opt.update({
+            'text_attr': {
+                'class': 'autocomp form-control',
+                'eddautocompletetype': 'User'
+            },
+        })
         super(UserAutocompleteWidget, self).__init__(attrs=attrs, model=User, opt=opt)
 
 
@@ -208,7 +201,12 @@ class RegistryValidator(object):
 class RegistryAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Registry strains """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'Registry'}, })
+        opt.update({
+            'text_attr': {
+                'class': 'autocomp form-control',
+                'eddautocompletetype': 'Registry'
+            },
+        })
         super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
 
     def decompress(self, value):
@@ -231,7 +229,12 @@ class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompl
 class CarbonSourceAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for carbon sources """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'CarbonSource'}, })
+        opt.update({
+            'text_attr': {
+                'class': 'autocomp form-control',
+                'eddautocompletetype': 'CarbonSource'
+            },
+        })
         super(CarbonSourceAutocompleteWidget, self).__init__(
             attrs=attrs, model=CarbonSource, opt=opt)
 
@@ -255,7 +258,12 @@ class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
     def __init__(self, attrs=None, opt={}):
         """ Set opt with {'text_attr': {'class': 'autocomp autocomp_XXX'}} to override. """
-        my_opt = {'text_attr': {'class': 'autocomp form-control', 'eddautocompletetype': 'MeasurementType'}, }
+        my_opt = {
+            'text_attr': {
+                'class': 'autocomp form-control',
+                'eddautocompletetype': 'MeasurementType'
+            },
+        }
         my_opt.update(**opt)
         super(MeasurementTypeAutocompleteWidget, self).__init__(
             attrs=attrs, model=MeasurementType, opt=my_opt,
@@ -347,7 +355,11 @@ class CreateStudyForm(forms.ModelForm):
             'contact': _('Contact'),
         }
         widgets = {
-            'name': forms.widgets.TextInput(attrs={'size': 50, 'class': 'form-control', 'placeholder': '(required)'}),
+            'name': forms.widgets.TextInput(attrs={
+                'size': 50,
+                'class': 'form-control',
+                'placeholder': '(required)'
+            }),
             'description': forms.widgets.Textarea(attrs={'cols': 49, 'class': 'form-control'}),
             'contact': UserAutocompleteWidget(),
         }
@@ -396,17 +408,18 @@ class CreateStudyForm(forms.ModelForm):
                 found_groups = len(default_groups)
                 if requested_groups != found_groups:
                     logger.error(
-                            'Setting only %(found)d of %(requested)d default read permissions for '
-                            'study %(study)d. Check %(setting_name)s and update this study.' % {
-                                'found': found_groups,
-                                'requested': requested_groups,
-                                'study': s.id,
-                                'setting_name': _SETTING_NAME, })
+                        'Setting only %(found)d of %(requested)d default read permissions for '
+                        'study %(study)d. Check %(setting_name)s and update this study.' % {
+                            'found': found_groups,
+                            'requested': requested_groups,
+                            'study': s.id,
+                            'setting_name': _SETTING_NAME, })
 
                 for group in default_groups:
-                    s.grouppermission_set.update_or_create(group_id=group.pk,
-                                                           defaults={'permission_type':
-                                                                     StudyPermission.READ})
+                    s.grouppermission_set.update_or_create(
+                        group_id=group.pk,
+                        defaults={'permission_type': StudyPermission.READ}
+                    )
 
             # create copies of passed in Line IDs
             self.save_lines(s)
@@ -421,7 +434,6 @@ class CreateStudyForm(forms.ModelForm):
             line.study_id = study.id
             line.uuid = None
             to_add.append(line)
-        # https://docs.djangoproject.com/en/1.9/ref/models/relations/#django.db.models.fields.related.RelatedManager.add
         study.line_set.add(*to_add, bulk=False)
 
 
@@ -656,7 +668,7 @@ class AssayForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'protocol': forms.Select(attrs={'class':'form-control'}),
+            'protocol': forms.Select(attrs={'class': 'form-control'}),
             'experimenter': UserAutocompleteWidget(),
         }
 

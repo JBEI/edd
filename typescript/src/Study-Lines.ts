@@ -1,13 +1,20 @@
-/// <reference path="typescript-declarations.d.ts" />
-/// <reference path="Utl.ts" />
-/// <reference path="Dragboxes.ts" />
-/// <reference path="BiomassCalculationUI.ts" />
-/// <reference path="CarbonSummation.ts" />
-/// <reference path="DataGrid.ts" />
-/// <reference path="FileDropZone.ts" />
+declare var require: any;
+declare var EDDData:EDDData;  // sticking this here as IDE isn't following references
 
-declare var EDDData:EDDData;
-namespace StudyLines {
+
+import {DataGrid, DataGridSpecBase, DataGridDataCell, DataGridColumnSpec,
+        DataGridTableSpec, DataGridHeaderWidget, DataGridColumnGroupSpec,
+        DataGridHeaderSpec, DGSelectAllWidget, DataGridOptionWidget, DGSearchWidget
+        } from "../modules/DataGrid"
+import { Utl } from "../modules/Utl"
+import { FileDropZone } from "../modules/FileDropZone"
+import { StudyMetabolicMapChooser, MetabolicMapChooserResult, FullStudyBiomassUI,
+        FullStudyBiomassUIResultsCallback } from "../modules/BiomassCalculationUI"
+import { CarbonBalance } from "../modules/StudyCarbonBalance"
+import { StudyBase } from "../modules/Study"
+import * as _ from "underscore"
+
+module StudyLines {
     'use strict';
 
     var linesActionPanelRefreshTimer:any;
@@ -85,10 +92,12 @@ namespace StudyLines {
             e.preventDefault();
             $(".linesDropZone").removeClass('off');
         });
-
         $('#content').on('dragend, dragleave, mouseleave', function(e:any) {
            $(".linesDropZone").addClass('off');
         });
+
+        //set up editable study name
+        new StudyBase.EditableStudyName($('#editable-study-name').get()[0]);
 
         $('#content').tooltip({
             content: function () {
@@ -107,12 +116,6 @@ namespace StudyLines {
                     })
                 });
             }
-        });
-
-        // put the click handler at the document level, then filter to any link inside a .disclose
-        $(document).on('click', '.disclose .discloseLink', (e) => {
-            $(e.target).closest('.disclose').toggleClass('discloseHide');
-            return false;
         });
 
         $(window).on('resize', queuePositionActionsBar);
@@ -261,8 +264,8 @@ namespace StudyLines {
         $('#editLineModal').on('change', '.line-meta', (ev) => {
             // watch for changes to metadata values, and serialize to the meta_store field
             var form = $(ev.target).closest('form'),
-                metaIn = form.find('[name=line-meta_store]'),
-                meta = JSON.parse(metaIn.val() || '{}');
+                metaIn:any = form.find('[name=line-meta_store]'),
+                meta:number | string = JSON.parse(metaIn.val() || '{}');
             form.find('.line-meta > :input').each((i, input) => {
                 if ($(input).val() || $(input).siblings('label').find('input').prop('checked')) {
                     var key = $(input).attr('id').match(/-(\d+)$/)[1];
@@ -286,8 +289,8 @@ namespace StudyLines {
             // remove metadata row and insert null value for the metadata key
             var form = $(ev.target).closest('form'),
                 metaRow = $(ev.target).closest('.line-meta'),
-                metaIn = form.find('[name=line-meta_store]'),
-                meta = JSON.parse(metaIn.val() || '{}'),
+                metaIn:any = form.find('[name=line-meta_store]'),
+                meta:any = JSON.parse(metaIn.val() || '{}'),
                 key = metaRow.attr('id').match(/-(\d+)$/)[1];
             meta[key] = null;
             metaIn.val(JSON.stringify(meta));
@@ -461,7 +464,7 @@ namespace StudyLines {
         }
     }
 
-    function clearLineForm() {
+    export function clearLineForm() {
         var form = $('#editLineModal');
         form.find('.line-meta').remove();
         form.find('[name^=line-]').not(':checkbox, :radio').val('');
@@ -473,7 +476,7 @@ namespace StudyLines {
         return form;
     }
 
-    function fillLineForm(record) {
+    export function fillLineForm(record) {
         var metaRow, experimenter, contact;
         var form = $('#editLineModal');
         experimenter = EDDData.Users[record.experimenter];
@@ -508,7 +511,7 @@ namespace StudyLines {
         form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
     }
 
-    function insertLineMetadataRow(refRow, key, value) {
+    export function insertLineMetadataRow(refRow, key, value) {
         var row, type, label, input, postfixVal, prefixVal, id = 'line-meta-' + key, checkbox;
         row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
         type = EDDData.MetaDataTypes[key];
@@ -714,9 +717,8 @@ class DataGridSpecLines extends DataGridSpecBase {
         });
         this.groupIDsToGroupNames = {};
         // For each group ID, just use parent replicate name
-        $.each(rowGroups, (group, lines) => {
-            if (EDDData.Lines[group] === undefined || EDDData.Lines[group].name === undefined ) {
-                this.groupIDsToGroupNames[group] = null;
+        $.each(rowGroups, (group:any, lines) => {
+            if (typeof(EDDData.Lines[group]) === undefined || typeof(EDDData.Lines[group].name) === undefined ) {
             } else {
                 this.groupIDsToGroupNames[group] = EDDData.Lines[group].name;
             }
@@ -729,7 +731,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         // Now that they're sorted by name, create a hash for quickly resolving IDs to indexes in
         // the sorted array
         this.groupIDsToGroupIndexes = {};
-        $.each(this.groupIDsInOrder, (index, group) => this.groupIDsToGroupIndexes[group] = index);
+        $.each(this.groupIDsInOrder, (index, group) => { this.groupIDsToGroupIndexes[group] = index });
     }
 
     // Specification for the table as a whole
@@ -888,12 +890,19 @@ class DataGridSpecLines extends DataGridSpecBase {
 
     generateLineNameCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line = EDDData.Lines[index];
+        //move registration outsisde of funciton..just filter on class and attr with id. and
+        // pull out attr and
+        $(document).on('click', '.line-edit-link', function(e) {
+            var index:number = parseInt($(this).attr('dataIndex'), 10);
+            StudyLines.editLines([index]);
+        });
         return [
             new DataGridDataCell(gridSpec, index, {
                 'checkboxName': 'lineId',
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
                 'sideMenuItems': [
-                    '<a href="#" class="line-edit-link" onclick="StudyLines.editLines([' + index + '])">Edit Line</a>',
+                    '<a href="#" dataIndex="' + index + '" id="lineEditLink' + index + '" class="line-edit-link">Edit' +
+                    ' Line </a>',
                     '<a href="/export?lineId=' + index + '">Export Data as CSV/Excel</a>',
                     '<a href="/sbml?lineId=' + index + '">Export Data as SBML</a>'
                 ],
@@ -1144,8 +1153,8 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
 
     createElements(uniqueID:any):void {
         var cbID:string = this.dataGridSpec.tableSpec.id+'ShowDLinesCB'+uniqueID;
-        var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
-        $(cb).click( (e) => this.dataGridOwnerObject.clickedOptionWidget(e) );
+        var cb:any = this._createCheckbox(cbID, cbID, '1');
+        $(cb).click( (e:any) => this.dataGridOwnerObject.clickedOptionWidget(e) );
         if (this.isEnabledByDefault()) {
             cb.setAttribute('checked', 'checked');
         }
@@ -1182,7 +1191,7 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
 
     initialFormatRowElementsForID(dataRowObjects:any, rowID:string):any {
         if (!EDDData.Lines[rowID].active) {
-            $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
+            $.each(dataRowObjects, (x, row) => { $(row.getElement()).addClass('disabledRecord') });
         }
     }
 }

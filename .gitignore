@@ -21,6 +21,7 @@ docker-compose.override.yml
 /log
 # and ignore the "development" static folder
 /static
+/main/static/lib
 
 # ignore typescript generated files in mounted code folders
 main/static/main/js

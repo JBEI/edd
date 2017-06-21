@@ -1,12 +1,8 @@
-{% extends "edd_base.html" %}
+{% extends "study.html" %}
 {% load staticfiles %}
 
 {% block js_css %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDEditableElement.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Study-Create.js' %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -20,9 +16,9 @@
 {% block content %}
 
 <form action="{% url 'main:create_study' %}"  class="edd-form" method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Add Study</button>
-    </form>
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Add Study</button>
+</form>
 
 {% endblock content %}

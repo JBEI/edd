@@ -3,14 +3,6 @@
 
 {% block js_css %}
     {{ block.super }}
-    <link rel="stylesheet" type="text/css"
-            href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
-    <script type="text/javascript"
-            src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <script type="text/javascript"
-            src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
-    <link rel="stylesheet" type="text/css"
-            href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
     <script type="text/javascript">
 
         EDDData.currentStudyID = {{ study.id }};
@@ -19,11 +11,7 @@
         EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
 
     </script>
-    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDEditableElement.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Study.js' %}"></script>
+
 {% endblock js_css %}
 
 {% block head_title %}

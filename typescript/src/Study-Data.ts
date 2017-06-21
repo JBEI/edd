@@ -1,14 +1,23 @@
-/// <reference path="typescript-declarations.d.ts" />
-/// <reference path="Utl.ts" />
-/// <reference path="Dragboxes.ts" />
-/// <reference path="DataGrid.ts" />
-/// <reference path="EDDGraphingTools.ts" />
-/// <reference path="../typings/d3/d3.d.ts"/>
+import { DataGrid } from "../modules/DataGrid"
+import { DataGridSpecBase } from "../modules/DataGrid"
+import { DataGridDataCell } from "../modules/DataGrid"
+import { DataGridColumnSpec } from "../modules/DataGrid"
+import { DataGridTableSpec } from "../modules/DataGrid"
+import { DataGridHeaderWidget } from "../modules/DataGrid"
+import { DataGridColumnGroupSpec } from "../modules/DataGrid"
+import { DataGridHeaderSpec } from "../modules/DataGrid"
+import { DataGridOptionWidget } from "../modules/DataGrid"
+import { DataGridLoadingCell } from "../modules/DataGrid"
+import { DGSelectAllWidget } from "../modules/DataGrid"
+import { Utl } from "../modules/Utl"
+import { Dragboxes } from "../modules/Dragboxes"
+import { EDDGraphingTools } from "../modules/EDDGraphingTools"
+import { StudyBase } from "../modules/Study"
+import * as d3 from "d3"
+import * as _ from "underscore"
 
 
-declare var EDDData:EDDData;
-
-namespace StudyDataPage {
+export namespace StudyDataPage {
     'use strict';
 
     var viewingMode: 'linegraph'|'bargraph'|'table';
@@ -19,7 +28,7 @@ namespace StudyDataPage {
     export var progressiveFilteringWidget: ProgressiveFilteringWidget;
     var postFilteringAssays:any[];
     var postFilteringMeasurements:any[];
-
+    var eddGraphing: EDDGraphingTools;
     var actionPanelRefreshTimer:any;
     var actionPanelIsInBottomBar:boolean;
     var refresDataDisplayIfStaleTimer:any;
@@ -563,7 +572,7 @@ namespace StudyDataPage {
 
             this.clearIcons.on('click', (ev) => {
                 // Changing the checked status will automatically trigger a refresh event
-                $.each(this.checkboxes || {}, (id: number, checkbox: JQuery) => {
+                $.each(this.checkboxes || {}, (id: string, checkbox: JQuery) => {
                     checkbox.prop('checked', false);
                 });
                 return false;
@@ -720,7 +729,7 @@ namespace StudyDataPage {
         anyFilterSettingsChangedSinceLastInquiry():boolean {
             var changed:boolean = false,
                 currentCheckboxState: ValueToString = {},
-                v: string = $(this.searchBox).val();
+                v: any = $(this.searchBox).val();
             this.anyCheckboxesChecked = false;
 
             this.uniqueValuesOrder.forEach((uniqueId: number): void => {
@@ -1260,7 +1269,7 @@ namespace StudyDataPage {
 
     // Called when the page loads.
     export function prepareIt() {
-
+        eddGraphing = new EDDGraphingTools();
         progressiveFilteringWidget = new ProgressiveFilteringWidget();
         postFilteringAssays = [];
         postFilteringMeasurements = [];
@@ -1303,6 +1312,9 @@ namespace StudyDataPage {
                 });
             }
         });
+
+        //set up editable study name
+        new StudyBase.EditableStudyName($('#editable-study-name').get()[0]);
         // This only adds code that turns the other buttons off when a button is made active,
         // and does the same to elements named in the 'for' attributes of each button.
         // We still need to add our own responders to actually do stuff.
@@ -1554,8 +1566,7 @@ namespace StudyDataPage {
 
     function onSuccess(data) {
         EDDData = $.extend(EDDData || {}, data);
-
-        colorObj = EDDGraphingTools.renderColor(EDDData.Lines);
+        colorObj = eddGraphing.renderColor(EDDData.Lines);
 
         progressiveFilteringWidget.prepareFilteringSection();
 
@@ -1727,7 +1738,6 @@ namespace StudyDataPage {
         // then all the viewing modes are stale, no matter what.
         // So we mark them all.
         if (progressiveFilteringWidget.checkRedrawRequired(force)) {
-
             viewingModeIsStale['linegraph'] = true;
             viewingModeIsStale['bargraph-time'] = true;
             viewingModeIsStale['bargraph-line'] = true;
@@ -1736,8 +1746,7 @@ namespace StudyDataPage {
             // Pull out a fresh set of filtered measurements and assays
             var filterResults = progressiveFilteringWidget.buildFilteredMeasurements();
             postFilteringMeasurements = filterResults['filteredMeasurements'];
-            postFilteringAssays = filterResults['filteredAssays'];
-
+            postFilteringAssays = filterResults['filteredAssays']
         // If the filtering widget hasn't changed and the current mode doesn't claim to be stale, we're done.
         } else if (viewingMode == 'bargraph') {
             // Special case to handle the extra sub-modes of the bar graph
@@ -1757,7 +1766,7 @@ namespace StudyDataPage {
                 assaysDataGrid.triggerDataReset();
             }
             viewingModeIsStale['table'] = false;
-            makeLabelsBlack(EDDGraphingTools.labels);
+            makeLabelsBlack(eddGraphing.labels);
         } else {
             remakeMainGraphArea();
             if (viewingMode == 'bargraph') {
@@ -1891,23 +1900,23 @@ namespace StudyDataPage {
             }
 
             if (remakeMainGraphAreaCalls < 1) {
-                EDDGraphingTools.labels.push(label);
+                eddGraphing.labels.push(label);
                 color = colorObj[assay.lid];
                 // update label color to line color
                 $(label).css('color', color);
             } else if ($('#' + line['identifier']).prop('checked')) {
                 // unchecked labels black
-                makeLabelsBlack(EDDGraphingTools.labels);
+                makeLabelsBlack(eddGraphing.labels);
                 // update label color to line color
                 if (color === null || color === undefined) {
                     color = colorObj[assay.lid]
                 }
                 $(label).css('color', color);
             } else {
-                var count = noCheckedBoxes(EDDGraphingTools.labels);
+                var count = noCheckedBoxes(eddGraphing.labels);
                 if (count === 0) {
-                    EDDGraphingTools.nextColor = null;
-                    addColor(EDDGraphingTools.labels, assay.lid)
+                    eddGraphing.nextColor = null;
+                    addColor(eddGraphing.labels, assay.lid)
                 } else {
                     //update label color to black
                     $(label).css('color', 'black');
@@ -1924,7 +1933,7 @@ namespace StudyDataPage {
                 'color': color,
                 'lineName': lineName
             };
-            singleAssayObj = EDDGraphingTools.transformSingleLineItem(dataObj);
+            singleAssayObj = eddGraphing.transformSingleLineItem(dataObj);
             dataSets.push(singleAssayObj);
         });
 
@@ -1933,18 +1942,18 @@ namespace StudyDataPage {
         $('#noData').addClass('off');
 
         remakeMainGraphAreaCalls++;
-        uncheckEventHandler(EDDGraphingTools.labels);
+        uncheckEventHandler(eddGraphing.labels);
 
-        var barAssayObj  = EDDGraphingTools.concatAssays(dataSets);
+        var barAssayObj  = eddGraphing.concatAssays(dataSets);
 
         //data for graphs
         var graphSet = {
-            barAssayObj: EDDGraphingTools.concatAssays(dataSets),
-            create_x_axis: EDDGraphingTools.createXAxis,
-            create_right_y_axis: EDDGraphingTools.createRightYAxis,
-            create_y_axis: EDDGraphingTools.createLeftYAxis,
-            x_axis: EDDGraphingTools.make_x_axis,
-            y_axis: EDDGraphingTools.make_right_y_axis,
+            barAssayObj: eddGraphing.concatAssays(dataSets),
+            create_x_axis: eddGraphing.createXAxis,
+            create_right_y_axis: eddGraphing.createRightYAxis,
+            create_y_axis: eddGraphing.createLeftYAxis,
+            x_axis: eddGraphing.make_x_axis,
+            y_axis: eddGraphing.make_right_y_axis,
             individualData: dataSets,
             assayMeasurements: barAssayObj,
             width: 750,
@@ -1953,19 +1962,19 @@ namespace StudyDataPage {
 
         if (viewingMode == 'linegraph') {
             $('#lineGraph').empty().removeClass('off');
-            var s = EDDGraphingTools.createSvg($('#lineGraph').get(0));
-            EDDGraphingTools.createMultiLineGraph(graphSet, s);
+            var s = eddGraphing.createSvg($('#lineGraph').get(0));
+            eddGraphing.createMultiLineGraph(graphSet, s);
         } else if (barGraphMode == 'time') {
             $('#barGraphByTime').empty().removeClass('off');
-            var s = EDDGraphingTools.createSvg($('#barGraphByTime').get(0));
+            var s = eddGraphing.createSvg($('#barGraphByTime').get(0));
             createGroupedBarGraph(graphSet, s);
         } else if (barGraphMode == 'line') {
             $('#barGraphByLine').empty().removeClass('off');
-            var s = EDDGraphingTools.createSvg($('#barGraphByLine').get(0));
+            var s = eddGraphing.createSvg($('#barGraphByLine').get(0));
             createGroupedBarGraph(graphSet, s);
         } else if (barGraphMode == 'measurement') {
             $('#barGraphByMeasurement').empty().removeClass('off');
-            var s = EDDGraphingTools.createSvg($('#barGraphByMeasurement').get(0));
+            var s = eddGraphing.createSvg($('#barGraphByMeasurement').get(0));
             createGroupedBarGraph(graphSet, s);
         }
     }
@@ -2095,7 +2104,7 @@ namespace StudyDataPage {
                 'time': 'x',
                 'measurement': 'measurement'
             },
-            numUnits = EDDGraphingTools.howManyUnits(assayMeasurements),
+            numUnits = eddGraphing.howManyUnits(assayMeasurements),
             yRange = [],
             unitMeasurementData = [],
             yMin = [],
@@ -2112,8 +2121,8 @@ namespace StudyDataPage {
                 .entries(assayMeasurements);
 
             var timeMeasurements = _.clone(assayMeasurements);
-            var nestedByTime = EDDGraphingTools.findAllTime(entries);
-            var howManyToInsertObj = EDDGraphingTools.findMaxTimeDifference(nestedByTime);
+            var nestedByTime = eddGraphing.findAllTime(entries);
+            var howManyToInsertObj = eddGraphing.findMaxTimeDifference(nestedByTime);
             var max = Math.max.apply(null, _.values(howManyToInsertObj));
             if (max > 400) {
                 $(typeID[type]).prepend("<p class='noData'>Too many missing data fields. Please filter</p>");
@@ -2121,20 +2130,19 @@ namespace StudyDataPage {
             } else {
                 $('.noData').remove();
             }
-            EDDGraphingTools.insertFakeValues(entries, howManyToInsertObj, timeMeasurements);
+            eddGraphing.insertFakeValues(entries, howManyToInsertObj, timeMeasurements);
         }
         //x axis scale for type
-        x_name = d3.scale.ordinal()
-            .rangeRoundBands([0, graphSet.width], 0.1);
+        x_name = d3.scaleBand().rangeRound([0, graphSet.width]).padding(0.1);
 
         //x axis scale for x values
-        x_xValue = d3.scale.ordinal();
+        x_xValue = d3.scaleOrdinal();
 
         //x axis scale for line id to differentiate multiple lines associated with the same name/type
-        lineID = d3.scale.ordinal();
+        lineID = d3.scaleOrdinal();
 
         // y axis range scale
-        y = d3.scale.linear()
+        y = d3.scaleLinear()
             .range([graphSet.height, 0]);
 
         div = d3.select("body").append("div")
@@ -2159,7 +2167,7 @@ namespace StudyDataPage {
         }
 
         for (var i = 0; i < numUnits; i++) {
-            yRange.push(d3.scale.linear().rangeRound([graphSet.height, 0]));
+            yRange.push(d3.scaleLinear().rangeRound([graphSet.height, 0]));
             unitMeasurementData.push(d3.nest()
                 .key(function (d:any) {
                     return d.y;
@@ -2174,29 +2182,21 @@ namespace StudyDataPage {
 
         if (type === 'x') {
             // nest data by type (ie measurement) and by x value
-            nested = (<any>d3).nest(type)
-                .key(function (d:any) {
-                    return d[type];
-                })
-                .key(function (d:any) {
-                    return parseFloat(d.x);
-                })
+            nested = d3.nest()
+                .key((d: any): string => d[type])
+                .key((d: any): string => d.x)
                 .entries(timeMeasurements);
         } else {
             // nest data by type (ie measurement) and by x value
-            nested = (<any>d3).nest(type)
-                    .key(function (d:any) {
-                        return d[type];
-                    })
-                    .key(function (d:any) {
-                        return parseFloat(d.x);
-                    })
-                    .entries(assayMeasurements);
+            nested = d3.nest()
+                .key((d: any): string => d[type])
+                .key((d: any): string => d.x)
+                .entries(assayMeasurements);
         }
 
 
         //insert y value to distinguish between lines
-        data = EDDGraphingTools.getXYValues(nested);
+        data = eddGraphing.getXYValues(nested);
 
         if (data.length === 0) {
             return svg
@@ -2220,9 +2220,9 @@ namespace StudyDataPage {
 
         x_name.domain(typeNames);
 
-        x_xValue.domain(sortedXvalues).rangeRoundBands([0, x_name.rangeBand()]);
+        x_xValue.domain(sortedXvalues).range([0, x_name.bandwidth()]);
 
-        lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
+        lineID.domain(yvalueIds).range([0, x_xValue.bandwidth()]);
 
         // create x axis
         graphSet.create_x_axis(graphSet, x_name, svg, type);
@@ -2253,8 +2253,8 @@ namespace StudyDataPage {
 
             // //hide values if there are different time points
             if (type != 'x') {
-                var nestedByTime = EDDGraphingTools.findAllTime(data);
-                var howManyToInsertObj = EDDGraphingTools.findMaxTimeDifference(nestedByTime);
+                var nestedByTime = eddGraphing.findAllTime(data);
+                var howManyToInsertObj = eddGraphing.findMaxTimeDifference(nestedByTime);
                 var max = Math.max.apply(null, _.values(howManyToInsertObj));
                 var graphSvg = $(typeID[type])[0];
 
@@ -2263,7 +2263,7 @@ namespace StudyDataPage {
                     var arects = d3.selectAll(typeID[type] +  ' rect')[0];
                     svgWidth(graphSvg, arects);
                      //get word length
-                    wordLength = EDDGraphingTools.getSum(typeNames);
+                    wordLength = eddGraphing.getSum(typeNames);
                     d3.selectAll(typeID[type] + ' .x.axis text').remove();
                     return svg;
                 } else {
@@ -2308,7 +2308,7 @@ namespace StudyDataPage {
                 .enter()
                 .append("text")
                 .attr("x", function () {
-                    return x_xValue.rangeBand() / 2;
+                    return x_xValue.bandwidth() / 2;
                 })
                 .attr('y', function () {
                     return graphSet.height + 27;
@@ -2342,7 +2342,7 @@ namespace StudyDataPage {
                 })
                 .enter().append("rect")
                 .attr("class", "rect")
-                .attr("width", lineID.rangeBand())
+                .attr("width", lineID.bandwidth())
                 .attr("y", function (d:any) {
                     return y(d.y);
                 })
@@ -2373,7 +2373,7 @@ namespace StudyDataPage {
                         .style("opacity", 0);
                 });
             //get word length
-            wordLength = EDDGraphingTools.getSum(typeNames);
+            wordLength = eddGraphing.getSum(typeNames);
 
             if (wordLength > 90 && type != 'x') {
                d3.selectAll(typeID[type] + ' .x.axis text').remove()
@@ -2421,20 +2421,20 @@ namespace StudyDataPage {
         if($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls === 1) {
             color = line['color'];
             line['doNotChange'] = true;
-            EDDGraphingTools.colorQueue(color);
+            eddGraphing.colorQueue(color);
         }
         if ($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls >= 1) {
             if (line['doNotChange']) {
                color = line['color'];
             } else {
-                color = EDDGraphingTools.nextColor;
+                color = eddGraphing.nextColor;
                 line['doNotChange'] = true;
                 line['color'] = color;
                 //text label next to checkbox
                 var label = $('#' + line['identifier']).next();
                 //update label color to line color
                 $(label).css('color', color);
-                EDDGraphingTools.colorQueue(color);
+                eddGraphing.colorQueue(color);
             }
         } else if ($('#' + line['identifier']).prop('checked') === false && remakeMainGraphAreaCalls > 1 ){
             color = colorObj[assay];
@@ -2734,8 +2734,12 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     generateAssayNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
         var record = EDDData.Assays[index], line = EDDData.Lines[record.lid];
+        $(document).on('click', '.assay-edit-link', function(e) {
+            let index:number = parseInt($(this).attr('dataIndex'), 10);
+            StudyDataPage.editAssay(index);
+        });
         var sideMenuItems = [
-            '<a class="assay-edit-link" onclick="StudyDataPage.editAssay([' + index + '])">Edit Assay</a>',
+            '<a class="assay-edit-link" dataIndex="' + index + '">Edit Assay</a>',
             '<a href="/export?assayId=' + index + '">Export Data as CSV</a>'
         ];
 
@@ -3217,7 +3221,7 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
     initialFormatRowElementsForID(dataRowObjects:any, rowID:string):any {
         var assay = EDDData.Assays[rowID];
         if (!assay.active) {
-            $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
+            $.each(dataRowObjects, (x, row) => { $(row.getElement()).addClass('disabledRecord') });
         }
     }
 }
@@ -3272,7 +3276,7 @@ class DGEmptyAssaysWidget extends DataGridOptionWidget {
     initialFormatRowElementsForID(dataRowObjects:any, rowID:string):any {
         var assay = EDDData.Assays[rowID];
         if (!assay.count) {
-            $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('emptyRecord'));
+            $.each(dataRowObjects, (x, row) => { $(row.getElement()).addClass('emptyRecord') });
         }
     }
 }

@@ -1667,7 +1667,7 @@ div.linesDropZone {
     text-align:center;
     color:gray;
     padding-bottom:16px;
-    z-index:1000;
+    z-index:100;
     position:absolute;
     opacity:0.8;
     width:100%;

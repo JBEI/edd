@@ -1,16 +1,43 @@
-/// <reference path="typescript-declarations.d.ts" />
-/// <reference path="DataGrid.ts" />
-/// <reference path="Utl.ts" />
+/// <reference path="../typings/jquery/jquery.mcautocomplete.d.ts" />
 
-declare var EDDData:EDDData;  // sticking this here as IDE isn't following references
+import { EDDAuto } from "../modules/EDDAutocomplete"
+import {DataGrid, DataGridSpecBase, DataGridDataCell, DGPageDataSource, DataGridColumnSpec,
+        DataGridTableSpec, DataGridHeaderWidget, DataGridColumnGroupSpec, DataGridSort,
+        DataGridHeaderSpec, DGPagingWidget, DataGridOptionWidget, DGSearchWidget,
+        DataGridDataRow } from "../modules/DataGrid"
+import { Utl } from "../modules/Utl"
+
+
+declare function require(name: string): any;  // avoiding warnings for require calls below
+
+// as of JQuery UI 1.12, need to require each dependency individually
+require('jquery-ui/themes/base/core.css');
+require('jquery-ui/themes/base/menu.css');
+require('jquery-ui/themes/base/button.css');
+require('jquery-ui/themes/base/draggable.css');
+require('jquery-ui/themes/base/resizable.css');
+require('jquery-ui/themes/base/dialog.css');
+require('jquery-ui/themes/base/theme.css');
+require('jquery-ui/ui/widgets/button');
+require('jquery-ui/ui/widgets/draggable');
+require('jquery-ui/ui/widgets/resizable');
+require('jquery-ui/ui/widgets/dialog');
+require('jquery-ui/ui/widgets/tooltip');
+
 
 module IndexPage {
 
-	var studiesDataGridSpec:DataGridSpecStudies = null;
-	var studiesDataGrid:DataGrid = null;
-
 	// Called when the page loads.
 	export function prepareIt() {
+
+
+        EDDAuto.BaseAuto.initPreexisting();
+        // this makes the autocomplete work like a dropdown box
+        // fires off a search as soon as the element gains focus
+        $(document).on('focus', '.autocomp', function (ev) {
+            $(ev.target).addClass('autocomp_search').mcautocomplete('search');
+        });
+
         $('.disclose').find('.discloseLink').on('click', disclose);
 
         $("#addStudyModal").dialog({ minWidth: 600, autoOpen: false });
@@ -59,8 +86,7 @@ module IndexPage {
             if (success) this.studiesDataGrid.triggerDataReset();
         });
 	}
-};
-
+}
 
 // The spec object that will be passed to DataGrid to create the Studies table
 class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
@@ -83,7 +109,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 	// Specification for the headers along the top of the table
 	defineHeaderSpec():DataGridHeaderSpec[] {
         // capture here, as the `this` variable below will point to global object, not this object
-        var self:DataGridSpecStudies = this;
 		return [
             new DataGridHeaderSpec(1, 'hStudyName', {
                 'name': 'Study Name',
@@ -186,7 +211,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 	// Specification for each of the columns that will make up the body of the table
 	defineColumnSpec():DataGridColumnSpec[] {
         // capture here, as the `this` variable below will point to global object, not this object
-        var self:DataGridSpecStudies = this;
 		return [
             new DataGridColumnSpec(1, this.generateStudyNameCells),
             this.descriptionCol = new DataGridColumnSpec(2, this.generateDescriptionCells),
@@ -498,7 +522,7 @@ class ResultMatcher {
 // It's a search field that offers options for additional data types, querying the server for results.
 class DGStudiesSearchWidget extends DGSearchWidget {
 
-    private _spec:DataGridSpecStudies;
+    private _spec:any;
 
 	searchDisclosureElement:HTMLElement;
 
