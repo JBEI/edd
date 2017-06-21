@@ -16,9 +16,9 @@ RUN npm run build
 FROM buildpack-deps:stretch
 
 MAINTAINER William Morrell "WCMorrell@lbl.gov"
+WORKDIR /code
 
-ENV PYTHONUNBUFFERED 1
-ENV LANG C.UTF-8
+ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
 
 # include Debian packages required to build pip packages
 RUN apt-get clean && apt-get update \
