@@ -1110,11 +1110,6 @@ table.formTable tr > td textarea {
     overflow: hidden;
 }
 
-
-#studyLinesTable {
-    cursor: copy;
-}
-
 #studyLinesTable td:nth-child(2) {
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -1659,6 +1654,7 @@ div.linesZone {
     opacity:0.8;
     width:100%;
     height:100%;
+    position:absolute;
 }
 
 div.linesDropZone {

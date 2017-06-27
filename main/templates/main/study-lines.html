@@ -113,13 +113,18 @@
     </div>
         <img src="{% static 'main/images/upload-file.png' %}"
              alt="Drag and drop files below">
-        <span>{% trans 'Drag and drop experiment description files below' %}</span>
+        <span>{% trans 'Drag and drop an experiment description file below to add more lines' %} (
+        </span>
+        <a href="{% static 'experiment_description/sample_experiment_description.xlsx' %}">
+            Example File <span class="dropLink dropImg"></span>
+        </a>)
+        </div>
         <div class="noLines">
             <h3 style="margin-bottom:12px">{% trans 'This study has no lines.' %}</h3>
         </div>
         {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
         <table id="studyLinesTable">
-             <div class="helpBadgeDiv helpBadgeLines">
+             <div class="helpBadgeDiv helpBadgeLines move">
             {% trans 'help' %}
             <div class="helpContent">
                 <p>

@@ -80,7 +80,7 @@ namespace StudyLines {
             progressBar: this.fileUploadProgressBar
         });
 
-        $('#studyLinesTable').on('dragover', function(e:any) {
+        $('#content').on('dragover', function(e:any) {
             e.stopPropagation();
             e.preventDefault();
             $(".linesDropZone").removeClass('off');

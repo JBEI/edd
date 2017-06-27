@@ -56,7 +56,7 @@ var StudyLines;
             processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
             progressBar: this.fileUploadProgressBar
         });
-        $('#studyLinesTable').on('dragover', function (e) {
+        $('#content').on('dragover', function (e) {
             e.stopPropagation();
             e.preventDefault();
             $(".linesDropZone").removeClass('off');
