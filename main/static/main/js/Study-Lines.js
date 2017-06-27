@@ -67,7 +67,7 @@ var StudyLines;
             $(".linesDropZone").addClass('off');
             return false;
         });
-        $('#studyLinesTable').tooltip({
+        $('#content').tooltip({
             content: function () {
                 return $(this).prop('title');
             },
@@ -149,7 +149,7 @@ var StudyLines;
         var _this = this;
         var parent = $('#studyLinesTable').parent(), helpBadge, input;
         input = $('.tableControl').last();
-        helpBadge = $('.helpBadgeDiv');
+        helpBadge = $('.move');
         // Enable add new Line button
         parent.find('.addNewLineButton').on('click', function (ev) {
             ev.preventDefault();
