@@ -94,7 +94,7 @@ namespace StudyLines {
 
 
 
-        $('#studyLinesTable').tooltip({
+        $('#content').tooltip({
             content: function () {
                 return $(this).prop('title');
             },
@@ -183,7 +183,7 @@ namespace StudyLines {
 
         var parent: JQuery = $('#studyLinesTable').parent(), helpBadge:JQuery, input: JQuery;
             input = $('.tableControl').last();
-            helpBadge = $('.helpBadgeDiv');
+            helpBadge = $('.move');
         // Enable add new Line button
         parent.find('.addNewLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
             ev.preventDefault();
