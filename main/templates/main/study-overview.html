@@ -8,6 +8,7 @@
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study-Overview.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/FileDropZone.js' %}"></script>
 {#  this script is commented out until we have docker automically install bower dependencies  #}
 {#    <script type="text/javascript" src="{% static 'bower_components/tinymce/tinymce.min.js' %}"></script>#}
 {% endblock js_css %}
@@ -130,8 +131,8 @@
                     href=&quot;/help/experiment_description/&quot;&gt;Experiment description
                     file&lt;/a&gt; into this grey box to describe your experiment. Alternatively,
                     you can click on the link below to manually input your
-                    experiment description.">Help</div>
-    </div>
+                    experiment description.">help</div>
+        </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
         <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>

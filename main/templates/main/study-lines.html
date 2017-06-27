@@ -5,6 +5,7 @@
 
 {% block js_css %}
     {{ block.super }}
+    <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
@@ -14,6 +15,7 @@
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study-Lines.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/FileDropZone.js' %}"></script>
     <script type="text/javascript">
          {% if new_line.errors %}
              var options = {
@@ -42,9 +44,91 @@
     {{ block.super }}
     <form action="" method="POST">
     {% csrf_token %}
-    <div>
-        {% trans 'Manually add/edit lines below' %}
-        <div class="helpBadgeDiv">
+    <div style="flex-grow:1">
+        {% if edit_study.errors %}
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <p>{{ edit_study.name.errors.as_text }}</p>
+        </div>
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <p>{{ edit_study.non_field_errors.as_text }}</p>
+        </div>
+        {% endif %}
+        <div id="linesAdded" class="alert alert-success alert-dismissible" role="alert" hidden>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div id="dismissAll">
+            <button class="btn btn-info dismissAll" style="display: none;">Dismiss</button>
+        </div>
+        <div id="acceptWarnings">
+            <button type="button" class="acceptWarnings btn btn-primary" style="display: none;">Acknowledge Warnings</button>
+        </div>
+        <div id="alert_placeholder">
+            <div class="alert alert-danger alert-dismissible" hidden>
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4 class="alertSubject"></h4>
+                <p class="alertWarning"></p>
+            </div>
+            <div class="alert alert-warning alert-dismissible" hidden>
+                <button type="button" class="close" data-dismiss="alert">&times;</button><h4 class="alertSubject"></h4>
+            </div>
+            <div id="actionWarningBar">
+            <div id="duplicateError" role="alert" class="alert alert-warning alert-dismissible " hidden>
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4 class="alertSubject"></h4>
+                <p class="alertWarning"></p>
+                <button type="button" class="btn btn-warning yesAlertInput allowDuplicates" >Allow Duplicates</button>
+                <button type="button" class="btn btn-danger dontAllowError noDuplicates">Cancel</button>
+            </div>
+            <div id="iceError" role="alert" class="alert alert-warning alert-dismissible" hidden>
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4 class="alertSubject"></h4>
+                <p class="alertWarning"></p>
+                <button type="button" class="btn btn-warning yesAlertInput omitStrains">Omit Strains</button>
+                <button type="button" class="btn btn-danger dontAllowError noOmitStrains">Cancel</button>
+            </div>
+            </div>
+        </div>
+   <div class="linesDropZone off">
+        <div class="fd-zone excel linesZone" id="addToLinesDropZone">
+            <div></div>
+        </div>
+        <div class="fileDropInfoArea off" id="fileDropInfoArea">
+            <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
+            <p>Drop your file here</p>
+            <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
+            <div class="fileDropInfoSending" id="fileDropInfoSending">
+                <span id="fileUploadMessage">Sending To Server...</span>
+                <progress id="fileUploadProgressBar" />
+            </div>
+            <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
+        </div>
+    </div>
+        <img src="{% static 'main/images/upload-file.png' %}"
+             alt="Drag and drop files below">
+        <span>{% trans 'Drag and drop an experiment description file below to add more lines' %} (
+        </span>
+        <a href="{% static 'experiment_description/sample_experiment_description.xlsx' %}">
+            Example File <span class="dropLink dropImg"></span>
+        </a>)
+        <div style="float:none" class="helpBadgeDiv helpBadgeLines"
+                title="&lt;a style=&quot;color:blue&quot;
+                    href=&quot;/help/experiment_description/&quot;&gt;What's an Experiment
+                    description file?&lt;/a&gt;">{% trans 'help' %}</div>
+        </div>
+        <div class="noLines">
+            <h3 style="margin-bottom:12px">{% trans 'This study has no lines.' %}</h3>
+        </div>
+        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+        <table id="studyLinesTable">
+             <div class="helpBadgeDiv helpBadgeLines move">
             {% trans 'help' %}
             <div class="helpContent">
                 <p>
@@ -58,11 +142,7 @@
                 </p>
             </div>
         </div>
-        <div class="noLines">
-            <h3 style="margin-bottom:12px">{% trans 'This study has no lines.' %}</h3>
-        </div>
-        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-        <table id="studyLinesTable"></table>
+        </table>
         <div id="actionsBar" class="actionsBar sectionActions lineFlex">
             <div>
             <button id="addNewLineButton"

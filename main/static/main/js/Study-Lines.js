@@ -4,6 +4,7 @@
 /// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
+/// <reference path="FileDropZone.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -40,7 +41,33 @@ var StudyLines;
         StudyLines.actionPanelIsInBottomBar = false;
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
-        $('#studyLinesTable').tooltip({
+        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
+        var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
+            pageRedirect: '',
+            haveInputData: false,
+        });
+        Utl.FileDropZone.create({
+            elementId: "addToLinesDropZone",
+            fileInitFn: fileDropZoneHelper.fileDropped.bind(fileDropZoneHelper),
+            processRawFn: fileDropZoneHelper.fileRead.bind(fileDropZoneHelper),
+            url: '/study/' + EDDData.currentStudyID + '/describe/',
+            processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
+            processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
+            processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
+            progressBar: this.fileUploadProgressBar
+        });
+        $('#content').on('dragover', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            $(".linesDropZone").removeClass('off');
+        });
+        $(document).on('dragEnd dragend drop mouseleave mouseup mousedown', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            $(".linesDropZone").addClass('off');
+            return false;
+        });
+        $('#content').tooltip({
             content: function () {
                 return $(this).prop('title');
             },
@@ -120,7 +147,9 @@ var StudyLines;
     // Called by DataGrid after the Lines table is rendered
     function prepareAfterLinesTable() {
         var _this = this;
-        var parent = $('#studyLinesTable').parent();
+        var parent = $('#studyLinesTable').parent(), helpBadge, input;
+        input = $('.tableControl').last();
+        helpBadge = $('.move');
         // Enable add new Line button
         parent.find('.addNewLineButton').on('click', function (ev) {
             ev.preventDefault();
@@ -135,6 +164,7 @@ var StudyLines;
             StudyLines.editLines(data.ids || []);
             return false;
         });
+        $(helpBadge).insertAfter(input);
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
         $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });

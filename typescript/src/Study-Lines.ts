@@ -4,6 +4,7 @@
 /// <reference path="BiomassCalculationUI.ts" />
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
+/// <reference path="FileDropZone.ts" />
 
 declare var EDDData:EDDData;
 namespace StudyLines {
@@ -34,6 +35,7 @@ namespace StudyLines {
     // switching back and forth between positions that might trigger resize events.
     export var actionPanelIsInBottomBar;
     export var actionPanelIsCopied = false;
+    export var fileUploadProgressBar: Utl.ProgressBar;
 
 
     // Called when the page loads.
@@ -61,7 +63,38 @@ namespace StudyLines {
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
 
-        $('#studyLinesTable').tooltip({
+        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
+        var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
+           pageRedirect: '',
+           haveInputData: false,
+        });
+
+        Utl.FileDropZone.create({
+            elementId: "addToLinesDropZone",
+            fileInitFn: fileDropZoneHelper.fileDropped.bind(fileDropZoneHelper),
+            processRawFn: fileDropZoneHelper.fileRead.bind(fileDropZoneHelper),
+            url: '/study/' + EDDData.currentStudyID + '/describe/',
+            processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
+            processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
+            processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
+            progressBar: this.fileUploadProgressBar
+        });
+
+        $('#content').on('dragover', function(e:any) {
+            e.stopPropagation();
+            e.preventDefault();
+            $(".linesDropZone").removeClass('off');
+        });
+        $(document).on('dragEnd dragend drop mouseleave mouseup mousedown', function(e:any) {
+            e.stopPropagation();
+            e.preventDefault();
+            $(".linesDropZone").addClass('off');
+            return false;
+        });
+
+
+
+        $('#content').tooltip({
             content: function () {
                 return $(this).prop('title');
             },
@@ -148,8 +181,9 @@ namespace StudyLines {
     // Called by DataGrid after the Lines table is rendered
     export function prepareAfterLinesTable() {
 
-        var parent: JQuery = $('#studyLinesTable').parent();
-
+        var parent: JQuery = $('#studyLinesTable').parent(), helpBadge:JQuery, input: JQuery;
+            input = $('.tableControl').last();
+            helpBadge = $('.move');
         // Enable add new Line button
         parent.find('.addNewLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
             ev.preventDefault();
@@ -165,6 +199,8 @@ namespace StudyLines {
             StudyLines.editLines(data.ids || []);
             return false;
         });
+
+        $(helpBadge).insertAfter(input);
 
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
