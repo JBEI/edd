@@ -1599,10 +1599,6 @@ var StudyDataPage;
                 $('#mainFilterSection').appendTo('#bottomBar');
             }
         }
-        else {
-            // always put filter section in main content when not in table view
-            $('#mainFilterSection').appendTo('#content');
-        }
     }
     function isContentScrolling() {
         var viewHeight = 0, itemsHeight = 0;
