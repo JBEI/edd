@@ -2022,5 +2022,19 @@ div.tooltip2 {
     margin-left: 10px;
 }
 
+#graphDisplayContainer > #noData {
+    height: 300px;
+    width: 100%;
+    padding:auto;
+    text-align: center;
+    vertical-align: middle;
+}
+
+#graphDisplayContainer > #graphLoading {
+    opacity:0.7;
+    height: 300px;
+    width: 100%;
+    padding:auto;
+}
 
 /* End of common styles */

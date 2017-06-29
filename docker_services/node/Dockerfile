@@ -4,9 +4,9 @@ FROM node
 
 MAINTAINER Traci Lopez "tlopez@lbl.gov"
 
-COPY package.json /node/
+COPY package.json /
 
-WORKDIR /node
+WORKDIR /
 
 RUN npm install -g webpack \
     && npm install

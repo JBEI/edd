@@ -8,23 +8,24 @@ const ExtractTextPlugin = require('extract-text-webpack-plugin');
 
 module.exports = {
   entry: {
-    ExperimentDescHelp: "./edd/typescript/src/Experiment-Desc-Help.ts",
-    Export: "./edd/typescript/src/Export.ts",
-    Import: "./edd/typescript/src/Import.ts",
-    index: "./edd/typescript/src/index.ts",
-    RNASeq: "./edd/typescript/src/RNASeq.ts",
-    StudyData: "./edd/typescript/src/Study-Data.ts",
-    StudyLines: "./edd/typescript/src/Study-Lines.ts",
-    StudyOverview: "./edd/typescript/src/Study-Overview.ts"
+    ExperimentDescHelp: "./code/typescript/src/Experiment-Desc-Help.ts",
+    Export: "./code/typescript/src/Export.ts",
+    Import: "./code/typescript/src/Import.ts",
+    index: "./code/typescript/src/index.ts",
+    RNASeq: "./code/typescript/src/RNASeq.ts",
+    StudyData: "./code/typescript/src/Study-Data.ts",
+    StudyLines: "./code/typescript/src/Study-Lines.ts",
+    StudyOverview: "./code/typescript/src/Study-Overview.ts"
   },
   output: {
-    path: path.resolve(__dirname, './edd/main/static/dist'),
-    filename: '[name].js'
+    path: path.resolve(__dirname, './code/main/static/dist'),
+    filename: '[name].js',
+    publicPath: '/static/dist/'
   },
   resolve: {
     modules: [
       "node_modules",
-      path.resolve(__dirname, "edd/typescript/modules")
+      path.resolve(__dirname, "code/typescript/modules")
     ],
     extensions: ['.js', '.json', '.jsx', '.css', '.ts', '.vue'],
     alias: {

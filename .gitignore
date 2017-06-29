@@ -25,6 +25,9 @@ docker-compose.override.yml
 
 # ignore typescript generated files in mounted code folders
 main/static/main/js
+main/static/dist
+typescript/modules/*.d.ts
+typescript/src/*.d.ts
 
 # these no longer should get generated, but older clones may have these files still
 secrets.cfg

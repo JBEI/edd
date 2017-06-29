@@ -11,7 +11,7 @@
     ],
     "declaration": true,
     "sourceMap": true,
-    "rootDir": "./edd/typescript/",
+    "rootDir": "./code/typescript/",
 
     /* Strict Type-Checking Options */
     "noImplicitAny": false,
@@ -24,6 +24,9 @@
     "pretty": true  // colorizes compiler outputs
   },
   "include": [
-    "./edd/typescript/**/*"
+    "./code/typescript/**/*"
+  ],
+  "exclude": [
+    "./code/node_modules"
   ]
 }

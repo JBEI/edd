@@ -53,16 +53,20 @@
             <div class="pulldownMenuMenuBlock off">
                 <ul>
                     <li>
-                        <input id="filteringShowDisabledCheckbox" name="filteringShowDisabled"
-                                type="checkbox" value="1">
+                        <input id="filteringShowDisabledCheckbox"
+                                name="filteringShowDisabled"
+                                type="checkbox"
+                                value="1">
                         <label for="filteringShowDisabledCheckbox"
                                 title="{% trans 'Show assays that have been disabled.' %}">
                             {% trans 'Show Disabled' %}
                         </label>
                     </li>
                     <li>
-                        <input id="filteringShowEmptyCheckbox" name="filteringShowEmpty"
-                                type="checkbox" value="1">
+                        <input id="filteringShowEmptyCheckbox"
+                                name="filteringShowEmpty"
+                                type="checkbox"
+                                value="1">
                         <label for="filteringShowEmptyCheckbox"
                                 title="{% trans 'Show assays that do not have any measurements in them.' %}">
                             {% trans 'Show Empty' %}
@@ -78,23 +82,11 @@
 </div>
 
 <div id="graphDisplayContainer">
-    <div id="noData" class="off" style="
-        height: 300px;
-        width: 100%;
-        padding:auto;
-        text-align: center;
-        vertical-align: middle;">
-        No measurements.
-    </div>
+    <div id="noData" class="off">{% trans 'No measurements.' %}</div>
     <div id="tooManyPoints" class="off" class="tooManyPoints">
         {% trans 'Too many points to display!  Please change your filter settings.' %}
     </div>
-    <div id="graphLoading" class="wait-larger" style="
-        opacity:0.7;
-        height: 300px;
-        width: 100%;
-        padding:auto;">
-    </div>
+    <div id="graphLoading" class="wait-larger"></div>
     <div id="lineGraph" class="off"></div>
     <div id="barGraphByMeasurement" class="off"></div>
     <div id="barGraphByLine" class="off"></div>

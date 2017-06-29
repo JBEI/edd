@@ -74,21 +74,6 @@ services:
   #  ports:
   #    - '5555:5555'
 
-  # Override settings for the initialization container.
-  init:
-    environment:
-      # The following is not strictly necessary, just here so there is not an empty dictionary
-      #   if all other keys under 'environment' are commented out.
-      EDD_CONTAINER: "init"
-
-      # The below options will set the default administrative user when using the stock local
-      #   settings file. The values will be replaced in this example after running the
-      #   init-config.sh script. To set multiple administrative users, or change any other
-      #   local settings, see the command in the appserver container definition with [LOCAL].
-      #EDD_USER: "Alice Liddell"
-      #EDD_EMAIL: "aliddell@example.net"
-
-
   # Override settings for EDD container(s).
   edd:
 

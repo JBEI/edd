@@ -54,7 +54,6 @@ function print_help() {
     echo "        Forces pulling Docker images from the system configured Docker Registry."
     echo "    --default"
     echo "        Uses default image resolution behavior; overrides previously listed flags."
-    echo
 }
 
 # Follow links until at the true script location
@@ -112,18 +111,5 @@ if [ "$MODE" = "build" ]; then
 elif [ "$MODE" = "pull" ]; then
     docker-compose pull
 fi
-# Start up the containers needed for initial setup
-docker-compose up -d init
-
-# Run the grunt tasks + bower install
-docker run --rm -it \
-    --volumes-from "$(docker-compose ps -q init | head -1)" \
-    -v "${SELFDIR}/edd/run-grunt.sh:/run-grunt.sh" \
-    jbei/edd-node:1.0.0 \
-    "/run-grunt.sh"
-
-# Use entrypoint to do only static files initialization
-docker-compose exec init /usr/local/bin/entrypoint.sh -As --quiet init-exit
-
-# Start up everything else
+# Start up the containers
 docker-compose up -d

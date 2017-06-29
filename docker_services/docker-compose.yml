@@ -143,37 +143,11 @@ services:
       options:
         max-size: 1m
         max-file: '5'
-  init:
-    build: ./edd/
-    image: jbei/edd-core:latest
-    container_name: edd-init
-    command: ['init-only']
-    env_file: secrets.env
-    environment:
-      EDD_DEBUG: "false"
-      SEARCH_URL: "solr://solr:8983/solr/"
-    links:
-      - postgres
-      - rabbitmq
-      - redis
-      - smtp
-      - solr
-    networks:
-      - backnet
-    volumes:
-      - /usr/local/edd
-      - attachdata:/var/www/uploads
-      - staticdata:/var/www/static
-    logging:
-      driver: 'json-file'
-      options:
-        max-size: 1m
-        max-file: '5'
   edd:
     build: ./edd/
     image: jbei/edd-core:latest
     restart: always
-    command: [-A, application]
+    command: ['application']
     env_file: secrets.env
     environment:
       EDD_DEBUG: "false"
