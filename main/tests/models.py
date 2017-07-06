@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 import arrow
-import factory
 import warnings
 
 from django.contrib.auth import get_user_model
@@ -24,6 +23,7 @@ from ..solr import StudySearch
 from ..utilities import (
     extract_id_list, extract_id_list_as_form_keys, get_selected_lines,
 )
+from . import factory
 
 
 User = get_user_model()
@@ -36,12 +36,6 @@ User = get_user_model()
 #   concerned. Tests should be run with:
 #       python manage.py test --settings test_settings main
 #   Otherwise, tests will pollute the search index with several entries for testing data.
-
-
-class UserFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = User
-    username = factory.Sequence(lambda n: 'user%03d' % n)  # username is unique
 
 
 class UserTests(TestCase):
@@ -66,10 +60,10 @@ class UserTests(TestCase):
     # create test users
     def setUp(self):
         super(UserTests, self).setUp()
-        UserFactory(email=self.EMAIL, first_name=self.FIRST_NAME, last_name=self.LAST_NAME)
-        UserFactory(email=self.EMAIL2)
-        UserFactory(email=self.ADMIN_EMAIL,  is_staff=True, is_superuser=True,
-                    first_name=self.ADMIN_FIRST_NAME, last_name=self.ADMIN_LAST_NAME)
+        factory.UserFactory(email=self.EMAIL, first_name=self.FIRST_NAME, last_name=self.LAST_NAME)
+        factory.UserFactory(email=self.EMAIL2)
+        factory.UserFactory(email=self.ADMIN_EMAIL,  is_staff=True, is_superuser=True,
+                            first_name=self.ADMIN_FIRST_NAME, last_name=self.ADMIN_LAST_NAME)
 
     def test_monkey_patches(self):
         """ Checking the properties monkey-patched on to the User model. """
