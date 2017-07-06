@@ -1868,6 +1868,13 @@ class Metabolite(MeasurementType):
         null=True,
         verbose_name=_('SMILES'),
     )
+    pubchem_cid = models.IntegerField(
+        blank=True,
+        help_text=_('Unique PubChem identifier'),
+        null=True,
+        unique=True,
+        verbose_name=_('PubChem CID'),
+    )
     id_map = ArrayField(
         VarCharField(),
         default=list,
@@ -1882,6 +1889,7 @@ class Metabolite(MeasurementType):
     )
 
     carbon_pattern = re.compile(r'C(\d*)')
+    pubchem_pattern = re.compile(r'cid:(\d+)')
 
     def __str__(self):
         return self.type_name

@@ -369,27 +369,67 @@ class TableImport(object):
         :param default: the default value to return if no better one can be inferred
         :return: the measurement type, or the specified default if no better one is found
         """
+        mtype_fn_lookup = {
+            MODE_PROTEOMICS: self._mtype_proteomics,
+            MODE_SKYLINE: self._mtype_skyline,
+            MODE_TRANSCRIPTOMICS: self._mtype_transcriptomics,
+        }
+        mtype_fn = mtype_fn_lookup.get(self._mode(), self._mtype_default)
+        return mtype_fn(item, default)
+
+    def _mtype_default(self, item, default=None):
+        return default
+
+    def _mtype_proteomics(self, item, default=None):
         found_type = default
-        mode = self._mode()
         compartment = self._load_compartment(item)
         measurement_name = item.get('measurement_name', None)
         units_id = self._load_unit(item)
-        if mode == MODE_TRANSCRIPTOMICS:
-            genes = models.GeneIdentifier.objects.filter(type_name=measurement_name)
-            if len(genes) == 1:
-                found_type = MType(compartment, genes[0].pk, units_id)
-            else:
-                logger.warning('Found %(length)s GeneIdentifier instances for %(name)s' % {
-                    'length': len(genes),
-                    'name': measurement_name,
-                })
-        elif mode in (MODE_PROTEOMICS, MODE_SKYLINE):
+        protein = models.ProteinIdentifier.load_or_create(
+            measurement_name,
+            self._datasource,
+            self._user.email,
+        )
+        found_type = MType(compartment, protein.pk, units_id)
+        return found_type
+
+    def _mtype_skyline(self, item, default=None):
+        found_type = default
+        compartment = self._load_compartment(item)
+        measurement_name = item.get('measurement_name', None)
+        units_id = self._load_unit(item)
+        # check if measurement_name should load metabolite
+        match = models.Metabolite.pubchem_pattern.match(measurement_name)
+        if match:
+            cid = int(match.group(1))
+            try:
+                metabolite = models.Metabolite.objects.get(pubchem_cid=cid)
+                found_type = MType(compartment, metabolite.pk, units_id)
+            except models.Metabolite.DoesNotExist:
+                # TODO lookup using PubChem APIs?
+                pass
+        else:
             protein = models.ProteinIdentifier.load_or_create(
                 measurement_name,
                 self._datasource,
                 self._user.email,
             )
             found_type = MType(compartment, protein.pk, units_id)
+        return found_type
+
+    def _mtype_transcriptomics(self, item, default=None):
+        found_type = default
+        compartment = self._load_compartment(item)
+        measurement_name = item.get('measurement_name', None)
+        units_id = self._load_unit(item)
+        genes = models.GeneIdentifier.objects.filter(type_name=measurement_name)
+        if len(genes) == 1:
+            found_type = MType(compartment, genes[0].pk, units_id)
+        else:
+            logger.warning('Found %(length)s GeneIdentifier instances for %(name)s' % {
+                'length': len(genes),
+                'name': measurement_name,
+            })
         return found_type
 
     def _mtype_guess_format(self, points):
