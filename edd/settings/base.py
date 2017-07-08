@@ -53,6 +53,7 @@ PUBLISH_REST_API = False
 ##############################
 ICE_KEY_ID = 'edd'
 ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
+ICE_ADMIN_ACCOUNT = 'Administrator'
 ICE_URL = 'https://registry-test.jbei.org/'
 ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
 

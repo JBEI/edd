@@ -13,13 +13,12 @@ from collections import defaultdict
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import F, Func, Q
+from django.db.models import Q
 from django.template.defaultfilters import slugify
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from itertools import chain
 from six import string_types
-from uuid import uuid4
 
 from .common import EDDSerialize
 from .measurement_type import MeasurementType, MeasurementUnit, Metabolite
@@ -51,14 +50,6 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.body
-
-    def save(self, *args, **kwargs):
-        if self.created_id is None:
-            update = kwargs.get('update', None)
-            if update is None:
-                update = Update.load_update()
-            self.created = update
-        super(Comment, self).save(*args, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -163,21 +154,11 @@ class Attachment(models.Model):
         return self.object_ref.user_can_write(user)
 
     def user_can_read(self, user):
-        """ Verify that a user has the appropriate permissions to see (that is, download) an
-            attachment. """
+        """
+        Verify that a user has the appropriate permissions to see (that is, download) an
+        attachment.
+        """
         return self.object_ref.user_can_read(user)
-
-    def save(self, *args, **kwargs):
-        if self.created_id is None:
-            update = kwargs.get('update', None)
-            if update is None:
-                update = Update.load_update()
-            self.created = update
-        self.filename = self.file.name
-        self.file_size = self.file.size
-        # self.file is the db field; self.file.file is the actual file
-        self.mime_type = self.file.file.content_type
-        super(Attachment, self).save(*args, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -280,38 +261,6 @@ class EDDObject(EDDMetadata, EDDSerialize):
 
     def __str__(self):
         return self.name
-
-    @classmethod
-    def all_sorted_by_name(cls):
-        """ Returns a query set sorted by the name field in case-insensitive order. """
-        return cls.objects.order_by(Func(F('name'), function='LOWER'))
-
-    def ensure_update(self, update=None):
-        if update is None:
-            update = Update.load_update()
-        if self.created_id is None:
-            self.created = update
-        self.updated = update
-        return update
-
-    def ensure_uuid(self):
-        if self.uuid is None:
-            self.uuid = uuid4()
-        return self.uuid
-
-    def update_name_from_form(self, form, key):
-        """ Set the 'name' field from a posted form, with error checking. """
-        name = form.get(key, "").strip()
-        if name == "":
-            raise ValueError("%s name must not be blank." % self.__class__.__name__)
-        self.name = name
-
-    def save(self, *args, **kwargs):
-        self.ensure_update(kwargs.get('update', None))
-        self.ensure_uuid()
-        super(EDDObject, self).save(*args, **kwargs)
-        # must ensure EDDObject is saved *before* attempting to add to updates
-        self.updates.add(self.updated)
 
     @classmethod
     def export_columns(cls, instances=[]):
@@ -574,14 +523,6 @@ class Study(EDDObject):
             'metabolic_map': self.get_attr_depth('metabolic_map', depth),
         })
         return json_dict
-
-    def save(self, *args, **kwargs):
-        # build the slug: use profile initials, study name; if needed, partial UUID, counter
-        if self.slug is None:
-            self.ensure_uuid()
-            self.slug = self._build_slug(self.name, self.uuid.hex)
-        # now we can continue save
-        super(Study, self).save(*args, **kwargs)
 
     def _build_slug(self, name=None, uuid=None):
         """ Builds a slug for this Study; by default uses initials-study-name. If there is a
@@ -1211,14 +1152,6 @@ class Measurement(EDDMetadata, EDDSerialize):
     def is_concentration_measurement(self):
         return (self.y_axis_units_name in ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L", ])
 
-    def save(self, *args, **kwargs):
-        update = kwargs.get('update', None)
-        # only call Update.load_update() if an update was *not* explicitly passed in
-        if update is None:
-            update = Update.load_update()
-        self.update_ref = update
-        super(Measurement, self).save(*args, **kwargs)
-
 
 @python_2_unicode_compatible
 class MeasurementValue(models.Model):
@@ -1268,11 +1201,3 @@ class MeasurementValue(models.Model):
 
     def is_defined(self):
         return (self.y is not None and len(self.y) > 0)
-
-    def save(self, *args, **kwargs):
-        update = kwargs.get('update', None)
-        # only call Update.load_update() if an update was *not* explicitly passed in
-        if update is None:
-            update = Update.load_update()
-        self.updated = update
-        super(MeasurementValue, self).save(*args, **kwargs)

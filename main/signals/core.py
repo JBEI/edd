@@ -10,8 +10,8 @@ from django.db.models import Q
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
 from uuid import uuid4
 
+from . import study_modified
 from .dispatcher import receiver
-from .signals import study_modified
 from .. import models as edd_models
 from ..tasks import link_ice_entry_to_study, unlink_ice_entry_from_study
 
