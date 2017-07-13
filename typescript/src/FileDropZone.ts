@@ -283,6 +283,7 @@ module FileDropZone {
             $('#fileDropInfoIcon').addClass('off');
             $('#fileDropInfoName').addClass('off');
             $('#fileDropInfoSending').addClass('off');
+            $(".linesDropZone").addClass('off');
         }
 
 
