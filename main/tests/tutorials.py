@@ -6,7 +6,6 @@ Tests used to validate the tutorial screencast functionality.
 """
 
 import environ
-import factory
 import json
 
 from django.core.urlresolvers import reverse
@@ -17,19 +16,7 @@ from mock import MagicMock, patch
 from requests import codes
 
 from .. import models, tasks
-
-
-class StudyFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = models.Study
-    name = factory.Faker('catch_phrase')
-    description = factory.Faker('text', max_nb_chars=300)
-
-
-class UserFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = models.User
-    username = factory.Sequence(lambda n: 'user%03d' % n)  # username is unique
+from . import factory
 
 
 def _load_test_file(name):
@@ -46,8 +33,8 @@ class ExperimentDescriptionTests(TestCase):
 
     def setUp(self):
         super(ExperimentDescriptionTests, self).setUp()
-        self.user = UserFactory()
-        self.target_study = StudyFactory()
+        self.user = factory.UserFactory()
+        self.target_study = factory.StudyFactory()
         self.target_kwargs = {'slug': self.target_study.slug}
         self.target_study.userpermission_set.update_or_create(
             permission_type=models.StudyPermission.WRITE,

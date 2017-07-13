@@ -302,7 +302,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         context = self.get_context_data(object=self.object, action=action, request=request)
         can_write = self.object.user_can_write(request.user)
         action_lookup = self.get_actions(can_write=can_write)
-        action_fn = action_lookup.get(action)
+        action_fn = action_lookup[action]
         view_or_valid = action_fn(request, context, *args, **kwargs)
         if type(view_or_valid) == bool:
             # boolean means a response to same page, with flag noting whether form was valid
