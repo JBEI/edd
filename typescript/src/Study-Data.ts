@@ -1373,6 +1373,8 @@ namespace StudyDataPage {
             $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== barGraphMode);
             queueRefreshDataDisplayIfStale();
             $('#mainFilterSection').appendTo('#content');
+            updateGraphViewFlag({'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
+                                'study_id': EDDData.currentStudyID});
         });
         $("#timeBarGraphButton").click(function() {
             barGraphMode = 'time';
@@ -1435,10 +1437,14 @@ namespace StudyDataPage {
 
         fetchEDDData(onSuccess);
 
-        fetchSettings('measurement', (data) => {
-            if (data.type === 'linegraph' && data.study_id === EDDData.currentStudyID) {
+        fetchSettings('measurement-' + EDDData.currentStudyID, (data) => {
+            if (data.type === 'linegraph') {
                 $(data.buttonElem).click();
-            } else if (data.study_id === EDDData.currentStudyID) {
+            } else if (typeof(data.type) === 'undefined')  {
+                return
+            } else if (data.type === 'measurement') {
+                $("#barGraphButton").click();
+            } else {
                 $("#barGraphButton").click();
                 $(data.buttonElem).click();
             }
@@ -1468,7 +1474,7 @@ namespace StudyDataPage {
     }
 
     function updateGraphViewFlag(type) {
-        $.ajax('/profile/settings/measurement', {
+        $.ajax('/profile/settings/measurement-' + type.study_id, {
                 'data': $.extend({}, basePayload(), { 'data': JSON.stringify(type) }),
                 'type': 'POST'
             });
