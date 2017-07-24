@@ -1,4 +1,3 @@
-// File last modified on: Mon Jul 24 2017 09:07:20
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
