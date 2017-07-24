@@ -1,3 +1,4 @@
+// File last modified on: Mon Jul 24 2017 09:07:20
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
@@ -1337,7 +1338,8 @@ namespace StudyDataPage {
             $('#filterControlsArea').removeClass('off');
             queueActionPanelRefresh();
             viewingMode = 'linegraph';
-            updateGraphViewFlag({'buttonElem': "#lineGraphButton", 'type': viewingMode});
+            updateGraphViewFlag({'buttonElem': "#lineGraphButton", 'type': viewingMode,
+                                'study_id': EDDData.currentStudyID});
             barGraphTypeButtonsJQ.addClass('off');
             $('#lineGraph').removeClass('off');
             $('#barGraphByTime').addClass('off');
@@ -1375,17 +1377,20 @@ namespace StudyDataPage {
         });
         $("#timeBarGraphButton").click(function() {
             barGraphMode = 'time';
-            updateGraphViewFlag({'buttonElem': "#timeBarGraphButton", 'type': barGraphMode});
+            updateGraphViewFlag({'buttonElem': "#timeBarGraphButton", 'type': barGraphMode,
+                                 'study_id': EDDData.currentStudyID});
             queueRefreshDataDisplayIfStale();
         });
         $("#lineBarGraphButton").click(function() {
             barGraphMode = 'line';
-            updateGraphViewFlag({'buttonElem':'#lineBarGraphButton', 'type': barGraphMode});
+            updateGraphViewFlag({'buttonElem':'#lineBarGraphButton', 'type': barGraphMode,
+                                'study_id': EDDData.currentStudyID});
             queueRefreshDataDisplayIfStale();
         });
         $("#measurementBarGraphButton").click(function() {
             barGraphMode = 'measurement';
-            updateGraphViewFlag({'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode});
+            updateGraphViewFlag({'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
+                                'study_id': EDDData.currentStudyID});
             queueRefreshDataDisplayIfStale();
             $('#graphLoading').addClass('off');
         });
@@ -1432,18 +1437,13 @@ namespace StudyDataPage {
         fetchEDDData(onSuccess);
 
         fetchSettings('measurement', (data) => {
-            if (data.type === 'linegraph') {
+            if (data.type === 'linegraph' && data.study_id === EDDData.currentStudyID) {
                 $(data.buttonElem).click();
-            } else {
+            } else if (data.study_id === EDDData.currentStudyID) {
                 $("#barGraphButton").click();
                 $(data.buttonElem).click();
             }
             }, []);
-
-        // Simply setting display:none doesn't work on flex items.
-        // They still occupy space in the layout.
-        // barGraphTypeButtonsJQ.detach();
-        // barGraphTypeButtonsJQ.removeClass('off');
 
         // Set up the Add Measurement to Assay modal
         $("#addMeasurement").dialog({
