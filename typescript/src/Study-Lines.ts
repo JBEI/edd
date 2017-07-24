@@ -656,6 +656,7 @@ class DGSelectAllLinesWidget extends DGSelectAllWidget {
         //update selected text
         var checkedBoxLen = $('#studyLinesTable').find('tbody input[type=checkbox]:checked').length;
         $('.linesSelectedCell').empty().text(checkedBoxLen + ' selected');
+        StudyLines.queueLinesActionPanelShow();
      }
 }
 
