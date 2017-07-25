@@ -2,7 +2,7 @@
 #FROM digitallyseamless/nodejs-bower-grunt
 FROM node
 
-MAINTAINER Traci Lopez "tlopez@lbl.gov"
+LABEL maintainer="Traci Lopez <tlopez@lbl.gov>"
 
 COPY package.json /
 

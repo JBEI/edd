@@ -1,6 +1,6 @@
 FROM buildpack-deps:stretch
 
-MAINTAINER William Morrell "WCMorrell@lbl.gov"
+LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
 ENV PYTHONUNBUFFERED 1
 ENV LANG C.UTF-8
