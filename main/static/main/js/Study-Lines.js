@@ -1,3 +1,4 @@
+// File last modified on: Mon Jul 24 2017 13:18:23  
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
@@ -61,11 +62,8 @@ var StudyLines;
             e.preventDefault();
             $(".linesDropZone").removeClass('off');
         });
-        $(document).on('dragEnd dragend drop mouseleave mouseup mousedown', function (e) {
-            e.stopPropagation();
-            e.preventDefault();
+        $('#content').on('dragend, dragleave, mouseleave', function (e) {
             $(".linesDropZone").addClass('off');
-            return false;
         });
         $('#content').tooltip({
             content: function () {
@@ -578,6 +576,7 @@ var DGSelectAllLinesWidget = (function (_super) {
         //update selected text
         var checkedBoxLen = $('#studyLinesTable').find('tbody input[type=checkbox]:checked').length;
         $('.linesSelectedCell').empty().text(checkedBoxLen + ' selected');
+        StudyLines.queueLinesActionPanelShow();
     };
     return DGSelectAllLinesWidget;
 }(DGSelectAllWidget));
