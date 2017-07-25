@@ -1372,9 +1372,11 @@ namespace StudyDataPage {
             $('#barGraphByLine').toggleClass('off', 'line' !== barGraphMode);
             $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== barGraphMode);
             queueRefreshDataDisplayIfStale();
-            $('#mainFilterSection').appendTo('#content');
-            updateGraphViewFlag({'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
+            if (barGraphMode === 'measurement') {
+                 updateGraphViewFlag({'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
                                 'study_id': EDDData.currentStudyID});
+            }
+            $('#mainFilterSection').appendTo('#content');
         });
         $("#timeBarGraphButton").click(function() {
             barGraphMode = 'time';
@@ -1445,6 +1447,7 @@ namespace StudyDataPage {
             } else if (data.type === 'measurement') {
                 $("#barGraphButton").click();
             } else {
+                barGraphMode = data.type;
                 $("#barGraphButton").click();
                 $(data.buttonElem).click();
             }
