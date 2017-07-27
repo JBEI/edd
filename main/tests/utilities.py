@@ -2,9 +2,10 @@
 from __future__ import unicode_literals
 
 import json
-import os
 
 from builtins import str
+from django.contrib.auth import get_user_model
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.test import TestCase
 from openpyxl import load_workbook
 
@@ -13,13 +14,11 @@ from main.importer.experiment_desc.constants import (STRAIN_NAME_ELT, REPLICATE_
                                                      ELEMENTS_SECTION, ABBREVIATIONS_SECTION,
                                                      BASE_NAME_ELT)
 from main.importer.experiment_desc.parsers import ExperimentDescFileParser, JsonInputParser
-from main.models import (CarbonSource, MetadataType, Protocol, Strain, Study, User)
+from main.models import (CarbonSource, MetadataType, Protocol, Strain, Study)
 
-main_dir = os.path.dirname(__file__),
-fixtures_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-fixtures_dir = os.path.join(fixtures_dir, 'fixtures')
-simple_experiment_def_xlsx = os.path.join(
-    fixtures_dir,
+
+User = get_user_model()
+simple_experiment_def_xlsx = staticfiles_storage.path(
     'main/example/sample_experiment_description.xlsx'
 )
 
@@ -27,8 +26,8 @@ simple_experiment_def_xlsx = os.path.join(
 class CombinatorialCreationTests(TestCase):
     """
     Defines automated integration tests for most of the supporting back-end code for experiment
-    description file upload and combinatorial line creation (processes are very similar/based on the
-    same code)
+    description file upload and combinatorial line creation (processes are very similar/based on
+    the same code)
     """
 
     @classmethod

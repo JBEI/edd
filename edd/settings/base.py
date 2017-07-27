@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/dev/ref/settings/
 
 import environ
 
-from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 
@@ -30,7 +29,7 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 # Custom EDD-defined configuration options
 ###################################################################################################
 
-EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.0.6')
+EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.1.0')
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
 # help prevent developers from accidentally altering data in production). Any value that starts
@@ -126,9 +125,6 @@ INSTALLED_APPS = (
     'allauth.account',
     'allauth.socialaccount',
     'django.contrib.flatpages',
-    # 'allauth.socialaccount.providers.github',
-    # 'allauth.socialaccount.providers.google',
-    # 'allauth.socialaccount.providers.linkedin_oauth2',
 
     # EDD apps
     'main',
@@ -160,20 +156,25 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [  # DIRS is a list of filesystem paths, NOT app names
-            root('edd_utils', 'templates'),
             root('main', 'templates'),
         ],
         'APP_DIRS': True,
         'OPTIONS': {
             'debug': DEBUG,  # only strictly needed when the value differs from DEBUG. Included
                              # explicitly here since it was in the prior version of this file
-            'context_processors': TCP + [
+            'context_processors': [
+                # required to enable auth templates
+                'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.debug',
+                'django.template.context_processors.i18n',
+                'django.template.context_processors.media',
+                'django.template.context_processors.static',
+                'django.template.context_processors.tz',
+                'django.contrib.messages.context_processors.messages',
                 # this gives us access to the original request in templates. see e.g.:
                 # http://stackoverflow.com/questions/2882490
                 # also required for django-allauth
                 'django.template.context_processors.request',
-                # required to enable auth templates
-                'django.contrib.auth.context_processors.auth',
             ],
         }
     },

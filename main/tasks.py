@@ -8,6 +8,7 @@ Module contains tasks to be executed asynchronously by Celery worker nodes.
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.db.models import F
 from django.http import QueryDict
@@ -23,6 +24,7 @@ from jbei.rest.clients.ice import IceApi
 
 
 logger = get_task_logger(__name__)
+User = get_user_model()
 
 
 def build_study_url(slug):
@@ -78,7 +80,7 @@ def import_table_task(study_id, user_id, data_path):
     try:
         storage = ScratchStorage()
         study = models.Study.objects.get(pk=study_id)
-        user = models.User.objects.get(pk=user_id)
+        user = User.objects.get(pk=user_id)
         data = storage.load(data_path)
         importer = TableImport(study, user)
         # data stored as urlencoded string, convert back to QueryDict

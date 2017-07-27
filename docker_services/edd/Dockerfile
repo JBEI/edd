@@ -33,6 +33,7 @@ RUN apt-get clean && apt-get update \
         libpq-dev \
         libsasl2-dev \
         libssl-dev \
+        libyaml-dev \
         netcat \
         postgresql-client \
         python-all \
@@ -53,6 +54,7 @@ COPY requirements.txt /tmp/
 RUN pip install -r /tmp/requirements.txt
 
 # Add Tini
+# Keep for now to maintain backward-compatibility; better to launch with docker run --init
 ENV TINI_VERSION v0.13.2
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini

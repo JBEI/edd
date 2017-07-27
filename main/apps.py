@@ -14,4 +14,5 @@ class EDDConfig(AppConfig):
         from .models import patch_user_model
         # before loading anything else, add our patches to the User object
         patch_user_model()
-        from .signals import *  # noqa
+        # make sure to load/register all the signals
+        from . import signals  # noqa

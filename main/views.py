@@ -800,7 +800,7 @@ class StudyDetailView(StudyDetailBaseView):
         measures = Measurement.objects.filter(
             Q(assay_id__in=assay_ids) | Q(id__in=measure_ids),
         ).select_related(
-            'assay__line', 'assay__protocol__name', 'measurement_type',
+            'assay__line', 'assay__protocol', 'measurement_type',
         ).order_by(
             'assay__line_id', 'assay_id',
         ).prefetch_related(
@@ -840,7 +840,7 @@ class StudyDetailView(StudyDetailBaseView):
         measures = Measurement.objects.filter(
             id__in=measure_ids.split(',')
         ).select_related(
-            'assay__line', 'assay__protocol__name', 'measurement_type',
+            'assay__line', 'assay__protocol', 'measurement_type',
         ).order_by(
             'assay__line_id', 'assay_id',
         ).prefetch_related(

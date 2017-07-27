@@ -8,13 +8,13 @@ Models and related classes for dealing with Update objects.
 import arrow
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from threadlocals.threadlocals import get_current_request
 
 from .common import EDDSerialize
-from .user import User
 
 
 class UpdateManager(models.Manager):
@@ -69,25 +69,27 @@ class Update(models.Model, EDDSerialize):
 
     @classmethod
     def load_update(cls, user=None, path=None):
-        """ Sometimes there will be actions happening outside the context of a request; use this
-            factory to create an Update object in those cases.
-            :param user: the user responsible for the update; None will be replaced with the
-                system user.
-            :param path: the path added to the update; it would be a good idea to put e.g. the
-                script name and arguments here.
-            :return: an Update instance persisted to the database
         """
+        Sometimes there will be actions happening outside the context of a request; use this
+        factory to create an Update object in those cases.
+        :param user: the user responsible for the update; None will be replaced with the
+            system user.
+        :param path: the path added to the update; it would be a good idea to put e.g. the
+            script name and arguments here.
+        :return: an Update instance persisted to the database
+        """
+        User = get_user_model()
         request = get_current_request()
         if request is None:
             mod_by = user
             if mod_by is None:
                 mod_by = User.system_user()
-            update = cls(mod_time=arrow.utcnow(),
-                         mod_by=mod_by,
-                         path=path,
-                         origin='localhost')
-            # TODO this save may be too early?
-            update.save()
+            update = cls.objects.create(
+                mod_time=arrow.utcnow(),
+                mod_by=mod_by,
+                path=path,
+                origin='localhost',
+            )
         else:
             update = cls.load_request_update(request)
         return update
@@ -97,14 +99,15 @@ class Update(models.Model, EDDSerialize):
         """ Load an existing Update object associated with a request, or create a new one. """
         rhost = '%s; %s' % (
             request.META.get('REMOTE_ADDR', None),
-            request.META.get('REMOTE_HOST', ''))
+            request.META.get('REMOTE_HOST', '')
+        )
         if not hasattr(request, 'update_obj'):
-            update = cls(mod_time=arrow.utcnow(),
-                         mod_by=request.user,
-                         path=request.get_full_path(),
-                         origin=rhost)
-            # TODO this save may be too early?
-            update.save()
+            update = cls.objects.create(
+                mod_time=arrow.utcnow(),
+                mod_by=request.user,
+                path=request.get_full_path(),
+                origin=rhost,
+            )
             request.update_obj = update
         else:
             update = request.update_obj

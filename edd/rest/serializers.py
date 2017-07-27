@@ -3,7 +3,8 @@ Defines serializers for EDD's nascent REST API, as supported by the django rest 
 (http://www.django-rest-framework.org/)
 """
 
-from main.models import Line, MetadataType, MetadataGroup, Strain, Study, Update, User, Protocol, \
+from django.contrib.auth import get_user_model
+from main.models import Line, MetadataType, MetadataGroup, Strain, Study, Update, Protocol, \
     MeasurementUnit
 from rest_framework import reverse, serializers
 
@@ -93,7 +94,7 @@ class LineSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
-        model = User
+        model = get_user_model()
         depth = 0
 
 

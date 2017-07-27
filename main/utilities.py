@@ -1,8 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
-import re
-
 from builtins import str
 from collections import defaultdict, Iterable
 from django.conf import settings
@@ -85,9 +83,7 @@ def get_edddata_study(study):
     protein_types = models.ProteinIdentifier.objects.filter(assay__line__study=study).distinct()
     protocols = study.get_protocols_used()
     carbon_sources = models.CarbonSource.objects.filter(line__study=study).distinct()
-    assays = study.get_assays().select_related(
-        'line__name', 'created__mod_by', 'updated__mod_by',
-    )
+    assays = study.get_assays().select_related('line', 'created__mod_by', 'updated__mod_by')
     # This could be nice, but slows down the query by an order of magnitude:
     #
     # from django.db.models import Case, Count, Value, When
@@ -202,47 +198,6 @@ def interpolate_at(measurement_data, x):
         return None
     fp = numpy.array([float(d.y[0]) for d in data])
     return numpy.interp(float(x), xp, fp)
-
-
-def extract_id_list(form, key):
-    """
-    Given a form parameter, extract the list of unique IDs that it specifies.
-    Both multiple key-value pairs (someIDs=1&someIDs=2) and comma-separated
-    lists (someIDs=1,2) are supported.
-    """
-    param = form[key]
-    if isinstance(param, string_types):
-        return param.split(",")
-    else:
-        ids = []
-        for item in param:
-            ids.extend(item.split(","))
-        return ids
-
-
-def extract_id_list_as_form_keys(form, prefix):
-    """
-    Extract unique IDs embedded in parameter keys, e.g. "prefix123include=1".
-    """
-    re_str = "^(%s)([0-9]+)include$" % prefix
-    ids = []
-    for key in form:
-        m = re.match(re_str, key)
-        if m is not None and form.get(key, "0") not in ["0", ""]:
-            ids.append(m.group(2))  # e.g. "123"
-    return ids
-
-
-def get_selected_lines(form, study):
-    selected_line_ids = []
-    if "selectedLineIDs" in form:
-        selected_line_ids = extract_id_list(form, "selectedLineIDs")
-    else:
-        selected_line_ids = extract_id_list_as_form_keys(form, "line")
-    if len(selected_line_ids) == 0:
-        return list(study.line_set.all())
-    else:
-        return study.line_set.filter(id__in=selected_line_ids)
 
 
 def get_absolute_url(relative_url):

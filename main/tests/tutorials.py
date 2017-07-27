@@ -11,13 +11,12 @@ import json
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
-from django.test import Client, TestCase
 from io import BytesIO
 from mock import MagicMock, patch
 from requests import codes
 
 from .. import models, tasks
-from . import factory
+from . import factory, TestCase
 
 
 def _load_test_file(name):
@@ -32,21 +31,23 @@ class ExperimentDescriptionTests(TestCase):
     Sets of tests to exercise the Experiment Description view.
     """
 
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = factory.UserFactory()
+        cls.target_study = factory.StudyFactory()
+        cls.target_kwargs = {'slug': cls.target_study.slug}
+        cls.target_study.userpermission_set.update_or_create(
+            permission_type=models.StudyPermission.WRITE,
+            user=cls.user,
+        )
+
     def setUp(self):
         super(ExperimentDescriptionTests, self).setUp()
-        self.user = factory.UserFactory()
-        self.target_study = factory.StudyFactory()
-        self.target_kwargs = {'slug': self.target_study.slug}
-        self.target_study.userpermission_set.update_or_create(
-            permission_type=models.StudyPermission.WRITE,
-            user=self.user,
-        )
-        self.fake_browser = Client()
-        self.fake_browser.force_login(self.user)
+        self.client.force_login(self.user)
 
     def _run_upload(self, name):
         with _load_test_file(name) as fp:
-            response = self.fake_browser.post(
+            response = self.client.post(
                 reverse('main:describe', kwargs=self.target_kwargs),
                 data=fp.read(),
                 content_type='application/octet-stream',
@@ -58,10 +59,10 @@ class ExperimentDescriptionTests(TestCase):
     def test_get_request(self):
         # TODO current behavior raises DRF exception, but not using DRF and result is 500 error
         with self.assertRaises(Exception):
-            self.fake_browser.get(reverse('main:describe', kwargs=self.target_kwargs))
+            self.client.get(reverse('main:describe', kwargs=self.target_kwargs))
 
     def test_invalid_filetype(self):
-        response = self.fake_browser.post(
+        response = self.client.post(
             reverse('main:describe', kwargs=self.target_kwargs),
             data=BytesIO(b''),
             content_type='application/octet-stream',
@@ -138,8 +139,7 @@ class ImportDataTests(TestCase):
         self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=7)
         self.target_kwargs = {'slug': self.target_study.slug}
-        self.fake_browser = Client()
-        self.fake_browser.force_login(self.user)
+        self.client.force_login(self.user)
 
     def _assay_count(self):
         return models.Assay.objects.filter(line__study=self.target_study).count()
@@ -164,7 +164,7 @@ class ImportDataTests(TestCase):
                 result.id = '00000000-0000-0000-0000-000000000001'
                 mock_task.return_value = result
                 # fake the request
-                response = self.fake_browser.post(
+                response = self.client.post(
                     reverse('main:table-import', kwargs=self.target_kwargs),
                     data=POST,
                 )
@@ -175,7 +175,7 @@ class ImportDataTests(TestCase):
 
     def _run_parse_view(self, filename, filetype, mode):
         with _load_test_file(filename) as fp:
-            response = self.fake_browser.post(
+            response = self.client.post(
                 reverse('main:import_parse'),
                 data=fp.read(),
                 content_type='application/octet-stream',
@@ -261,12 +261,11 @@ class ExportDataTests(TestCase):
         self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=7)
         self.target_kwargs = {'slug': self.target_study.slug}
-        self.fake_browser = Client()
-        self.fake_browser.force_login(self.user)
+        self.client.force_login(self.user)
 
     def test_step1_export(self):
         "First step loads the SBML export page, and has some warnings."
-        response = self.fake_browser.get(
+        response = self.client.get(
             reverse('main:sbml'),
             data={'lineId': 8},
         )
@@ -277,7 +276,7 @@ class ExportDataTests(TestCase):
         "Second step selects an SBML Template."
         with _load_test_file('ExportData_FBA_step2.post') as fp:
             POST = QueryDict(fp.read())
-        response = self.fake_browser.post(
+        response = self.client.post(
             reverse('main:sbml'),
             data=POST,
         )
@@ -288,7 +287,7 @@ class ExportDataTests(TestCase):
         "Third step maps metabolites to species/reactions, and selects an export timepoint."
         with _load_test_file('ExportData_FBA_step3.post') as fp:
             POST = QueryDict(fp.read())
-        response = self.fake_browser.post(
+        response = self.client.post(
             reverse('main:sbml'),
             data=POST,
         )

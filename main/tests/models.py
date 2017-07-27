@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import arrow
 import warnings
 
+from builtins import str
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
-from django.test import TestCase
+from django.test import RequestFactory
+from threadlocals.threadlocals import set_thread_variable
 
 from ..export import sbml as sbml_export
 from ..forms import LineForm
@@ -20,10 +21,7 @@ from ..models import (
     Study, Update, UserPermission,
 )
 from ..solr import StudySearch
-from ..utilities import (
-    extract_id_list, extract_id_list_as_form_keys, get_selected_lines,
-)
-from . import factory
+from . import factory, TestCase
 
 
 User = get_user_model()
@@ -39,15 +37,6 @@ User = get_user_model()
 
 
 class UserTests(TestCase):
-    EMAIL = "jsmith@localhost"
-    EMAIL2 = "jdoe@localhost"
-    FIRST_NAME = "Jane"
-    LAST_NAME = "Smith"
-
-    ADMIN_EMAIL = "ssue@localhost"
-    ADMIN_FIRST_NAME = "Sally"
-    ADMIN_LAST_NAME = "Sue"
-
     JSON_KEYS = [
         'description', 'disabled', 'email', 'firstname', 'groups', 'id', 'initials', 'institution',
         'lastname', 'name', 'uid',
@@ -58,43 +47,46 @@ class UserTests(TestCase):
     ]
 
     # create test users
-    def setUp(self):
-        super(UserTests, self).setUp()
-        factory.UserFactory(email=self.EMAIL, first_name=self.FIRST_NAME, last_name=self.LAST_NAME)
-        factory.UserFactory(email=self.EMAIL2)
-        factory.UserFactory(email=self.ADMIN_EMAIL,  is_staff=True, is_superuser=True,
-                            first_name=self.ADMIN_FIRST_NAME, last_name=self.ADMIN_LAST_NAME)
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = factory.UserFactory(
+            email="jsmith@localhost",
+            first_name="Jane",
+            last_name="Smith",
+        )
+        cls.user2 = factory.UserFactory(email="jdoe@localhost")
+        cls.admin = factory.UserFactory(
+            email="ssue@localhost",
+            is_staff=True,
+            is_superuser=True,
+            first_name="Sally",
+            last_name="Sue",
+        )
 
     def test_monkey_patches(self):
         """ Checking the properties monkey-patched on to the User model. """
-        # Load objects
-        user1 = User.objects.get(email=self.EMAIL)
-        user2 = User.objects.get(email=self.EMAIL2)
         # Asserts
-        self.assertIsNotNone(user1.profile)
-        self.assertEqual(user1.initials, 'JS')
-        self.assertEqual(user1.profile.initials, 'JS')
-        self.assertIsNone(user1.institution)
-        self.assertEqual(len(user1.institutions), 0)
-        self.assertIsNotNone(user2.profile)
-        self.assertEqual(user2.initials, '')
-        self.assertEqual(user2.profile.initials, '')
+        self.assertIsNotNone(self.user1.profile)
+        self.assertEqual(self.user1.initials, 'JS')
+        self.assertEqual(self.user1.profile.initials, 'JS')
+        self.assertIsNone(self.user1.institution)
+        self.assertEqual(len(self.user1.institutions), 0)
+        self.assertIsNotNone(self.user2.profile)
+        self.assertEqual(self.user2.initials, '')
+        self.assertEqual(self.user2.profile.initials, '')
         # ensure keys exist in JSON and Solr dict repr
-        user_json = user1.to_json()
+        user_json = self.user1.to_json()
         for key in self.JSON_KEYS:
             self.assertIn(key, user_json)
-        user_solr = user1.to_solr_json()
+        user_solr = self.user1.to_solr_json()
         for key in self.SOLR_KEYS:
             self.assertIn(key, user_solr)
 
     def test_initial_permissions(self):
         """ Checking initial class-based permissions for normal vs admin user. """
-        # Load objects
-        user1 = User.objects.get(email=self.EMAIL)
-        admin = User.objects.get(email=self.ADMIN_EMAIL)
         # Asserts
-        self.assertFalse(user1.has_perm('main.change.protocol'))
-        self.assertTrue(admin.has_perm('main.change.protocol'))
+        self.assertFalse(self.user1.has_perm('main.change.protocol'))
+        self.assertTrue(self.admin.has_perm('main.change.protocol'))
 
 
 class StudyTests(TestCase):
@@ -226,99 +218,114 @@ class SolrTests(TestCase):
         self.assertEqual(post_add['response']['numFound'], 1, "Added study was not found in query")
 
 
-class LineTests (TestCase):  # XXX also Strain, CarbonSource
+class LineTests(TestCase):  # XXX also Strain, CarbonSource
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = factory.UserFactory()
+        cls.study1 = factory.StudyFactory()
+        cls.study2 = factory.StudyFactory()
+        cls.cs1 = CarbonSource.objects.create(
+            name="Carbon source 1",
+            labeling="100% unlabeled",
+            volume=50.0,
+            description="Desc 1"
+        )
+        cls.cs2 = CarbonSource.objects.create(
+            name="Carbon source 2",
+            labeling="20% 13C",
+            volume=100.0
+        )
+        cls.cs3 = CarbonSource.objects.create(
+            name="Carbon source 3",
+            labeling="40% 14C",
+            volume=100.0
+        )
+        cls.strain1 = Strain.objects.create(
+            name="Strain 1",
+            description="JBEI strain 1",
+            registry_url="http://registry.jbei.org/strain/666",
+            registry_id="00000000-0000-0000-0000-000000000000",
+        )
+        cls.strain2 = Strain.objects.create(name="Strain 2")
+        cls.line1 = cls.study1.line_set.create(
+            name="Line 1",
+            description="mutant 1",
+            experimenter=cls.user1,
+            contact=cls.user1,
+        )
+        cls.line1.carbon_source.add(cls.cs1)
+        cls.line1.strains.add(cls.strain1)
+        cls.line2 = cls.study1.line_set.create(
+            name="Line 2",
+            description="mutant 2",
+            experimenter=cls.user1,
+            contact=cls.user1,
+        )
+        cls.line2.carbon_source.add(cls.cs2)
+        cls.line2.strains.add(cls.strain1)
+        cls.line3 = cls.study2.line_set.create(
+            name="Line 3",
+            description="double mutant",
+            experimenter=cls.user1,
+            contact=cls.user1,
+        )
+        cls.line3.carbon_source.add(cls.cs1)
+        cls.line3.carbon_source.add(cls.cs3)
+        cls.line3.strains.add(cls.strain1)
+        cls.line3.strains.add(cls.strain2)
+
     def setUp(self):
         super(LineTests, self).setUp()
-        user1 = User.objects.create_user(
-            username="admin", email="nechols@lbl.gov", password='12345')
-        study1 = Study.objects.create(name='Test Study 1', description='')
-        study2 = Study.objects.create(name='Test Study 2', description='')
-        cs1 = CarbonSource.objects.create(
-            name="Carbon source 1", labeling="100% unlabeled", volume=50.0, description="Desc 1")
-        cs2 = CarbonSource.objects.create(
-            name="Carbon source 2", labeling="20% 13C", volume=100.0)
-        cs3 = CarbonSource.objects.create(
-            name="Carbon source 3", labeling="40% 14C", volume=100.0)
-        strain1 = Strain.objects.create(
-            name="Strain 1", description="JBEI strain 1",
-            registry_url="http://registry.jbei.org/strain/666",
-            registry_id="00000000-0000-0000-0000-000000000000", )
-        strain2 = Strain.objects.create(name="Strain 2")
-        line1 = study1.line_set.create(
-            name="Line 1", description="mutant 1", experimenter=user1, contact=user1)
-        line1.carbon_source.add(cs1)
-        line2 = study1.line_set.create(
-            name="Line 2", description="mutant 2", experimenter=user1, contact=user1)
-        line2.carbon_source.add(cs2)
-        line3 = study2.line_set.create(
-            name="Line 3", description="double mutant", experimenter=user1, contact=user1)
-        line3.carbon_source.add(cs1)
-        line3.carbon_source.add(cs3)
-        line1.strains.add(strain1)
-        line2.strains.add(strain1)
-        line3.strains.add(strain1)
-        line3.strains.add(strain2)
+        # fake a request so all calls to Update.load_update resolve to a singluar Update
+        request = RequestFactory().get('/')
+        request.user = self.user1
+        set_thread_variable('request', request)
 
     def test_line_metadata(self):
-        line1 = Line.objects.get(name="Line 1")
         media = MetadataType.objects.get(type_name="Media")
         rt = MetadataType.objects.get(type_name="Retention Time")
-        line1.metadata_add(media, "M9")
-        self.assertTrue(line1.metadata_get(media) == "M9")
-        try:
-            line1.metadata_add(rt, 1.5)
-        except ValueError:
-            pass
-        else:
-            raise Exception("Should have caught a ValueError here...")
+        self.line1.metadata_add(media, "M9")
+        self.assertEqual(self.line1.metadata_get(media), "M9")
+        with self.assertRaises(ValueError):
+            self.line1.metadata_add(rt, 1.5)
 
     def test_line_form(self):
-        line1 = Line.objects.select_related('study').get(name="Line 1")
-        self.assertFalse(line1.control)
+        self.assertFalse(self.line1.control)
         # default form to existing data
-        data = LineForm.initial_from_model(line1, prefix='line')
+        data = LineForm.initial_from_model(self.line1, prefix='line')
         # flip the checkbox for control
         data['line-control'] = True
-        form = LineForm(data, instance=line1, prefix='line', study=line1.study)
+        form = LineForm(data, instance=self.line1, prefix='line', study=self.line1.study)
         # verify the form validates
         self.assertTrue(form.is_valid(), '%s' % form._errors)
         form.save()
         # verify the saved line is now a control
-        self.assertTrue(line1.control)
+        self.assertTrue(self.line1.control)
 
     def test_strain(self):
-        strain1 = Strain.objects.get(name="Strain 1")
-        strain2 = Strain.objects.get(name="Strain 2")
-        self.assertTrue(strain1.n_lines == 3)
-        self.assertTrue(strain1.n_studies == 2)
-        self.assertTrue(strain2.n_lines == 1)
-        self.assertTrue(strain2.n_studies == 1)
-        line1 = Line.objects.get(name="Line 1")
-        line2 = Line.objects.get(name="Line 2")
-        line3 = Line.objects.get(name="Line 3")
-        self.assertTrue(line1.primary_strain_name == "Strain 1")
-        self.assertTrue(line3.primary_strain_name == "Strain 1")
-        self.assertTrue(line1.strain_ids == "Strain 1")
-        self.assertTrue(line1.strain_ids == line2.strain_ids)
-        self.assertTrue(line3.strain_ids == "Strain 1,Strain 2")
+        self.assertEqual(self.strain1.n_lines, 3)
+        self.assertEqual(self.strain1.n_studies, 2)
+        self.assertEqual(self.strain2.n_lines, 1)
+        self.assertEqual(self.strain2.n_studies, 1)
+        self.assertEqual(self.line1.primary_strain_name, "Strain 1")
+        self.assertEqual(self.line3.primary_strain_name, "Strain 1")
+        self.assertEqual(self.line1.strain_ids, "Strain 1")
+        self.assertEqual(self.line1.strain_ids, self.line2.strain_ids)
+        self.assertEqual(self.line3.strain_ids, "Strain 1,Strain 2")
 
     def test_carbon_source(self):
-        line1 = Line.objects.get(name="Line 1")
-        line3 = Line.objects.get(name="Line 3")
-        cs1 = CarbonSource.objects.get(name="Carbon source 1")
-        cs2 = CarbonSource.objects.get(name="Carbon source 2")
-        self.assertTrue(cs1.n_lines == 2)
-        self.assertTrue(cs1.n_studies == 2)
-        self.assertTrue(cs2.n_lines == 1)
-        self.assertTrue(cs2.n_studies == 1)
-        self.assertTrue(line1.carbon_source_labeling == "100% unlabeled")
-        self.assertTrue(line1.carbon_source_name == "Carbon source 1")
-        self.assertTrue(
-            line1.carbon_source_info == "Carbon source 1 (100% unlabeled)",
-            line1.carbon_source_info)
-        self.assertTrue(
-            line3.carbon_source_info ==
-            "Carbon source 1 (100% unlabeled),Carbon source 3 (40% 14C)")
+        self.assertEqual(self.cs1.n_lines, 2)
+        self.assertEqual(self.cs1.n_studies, 2)
+        self.assertEqual(self.cs2.n_lines, 1)
+        self.assertEqual(self.cs2.n_studies, 1)
+        self.assertEqual(self.line1.carbon_source_labeling, "100% unlabeled")
+        self.assertEqual(self.line1.carbon_source_name, "Carbon source 1")
+        self.assertEqual(self.line1.carbon_source_info, "Carbon source 1 (100% unlabeled)")
+        self.assertEqual(
+            self.line3.carbon_source_info,
+            "Carbon source 1 (100% unlabeled),Carbon source 3 (40% 14C)"
+        )
 
 
 # XXX because there's so much overlap in functionality and the necessary setup
@@ -464,24 +471,50 @@ class AssayDataTests(TestCase):
 
 class ImportTests(TestCase):
     """ Test import of assay measurement data. """
+    table1 = [  # FPKM
+        ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
+        ["gene1", "5.34", "5.32", "7.45", "7.56"],
+        ["gene2", "1.79", "1.94", "0.15", "0.33"],
+    ]
+    table2 = [  # count
+        ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
+        ["gene1", "64", "67", "89", "91"],
+        ["gene2", "27", "30", "5", "4"],
+    ]
+    table3 = [  # combined
+        ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
+        ["gene1", "64,5.34", "67,5.32", "89,7.45", "91,7.56"],
+        ["gene2", "27,1.79", "30,1.94", "5,0.15", "4,0.33"],
+    ]
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = factory.UserFactory(username="admin")
+        cls.user2 = factory.UserFactory(username="postdoc")
+        cls.study1 = factory.StudyFactory(name='Test Study 1')
+        permissions = cls.study1.userpermission_set
+        permissions.update_or_create(permission_type=UserPermission.WRITE, user=cls.user1)
+        permissions.update_or_create(permission_type=UserPermission.READ, user=cls.user2)
+        cls.line1 = cls.study1.line_set.create(
+            name="L1",
+            description="Line 1",
+            experimenter=cls.user1,
+            contact=cls.user1,
+        )
+        cls.line2 = cls.study1.line_set.create(
+            name="L2",
+            description="Line 2",
+            experimenter=cls.user1,
+            contact=cls.user1,
+        )
+        cls.transcriptomics = Protocol.objects.create(name="Transcriptomics", owned_by=cls.user1)
+
     def setUp(self):
         super(ImportTests, self).setUp()
-        user1 = User.objects.create_user(
-            username="admin", email="nechols@lbl.gov", password='12345')
-        user2 = User.objects.create_user(
-            username="postdoc", email="nechols@lbl.gov", password='12345')
-        study1 = Study.objects.create(name='Test Study 1', description='')
-        UserPermission.objects.create(
-            study=study1, permission_type='R', user=user1)
-        UserPermission.objects.create(
-            study=study1, permission_type='W', user=user1)
-        UserPermission.objects.create(
-            study=study1, permission_type='R', user=user2)
-        study1.line_set.create(
-            name="L1", description="Line 1", experimenter=user1, contact=user1)
-        study1.line_set.create(
-            name="L2", description="Line 2", experimenter=user1, contact=user1)
-        Protocol.objects.create(name="Transcriptomics", owned_by=user1)
+        # fake a request so all calls to Update.load_update resolve to a singluar Update
+        self.request = RequestFactory().get('/')
+        self.request.user = self.user1
+        set_thread_variable('request', self.request)
 
     def get_form(self):
         p_id = str(Protocol.objects.get(name="GC-MS").pk)
@@ -541,177 +574,167 @@ class ImportTests(TestCase):
         }
 
     def test_import_gc_ms_metabolites(self):
-        table = TableImport(
-            Study.objects.get(name="Test Study 1"),
-            User.objects.get(username="admin"),
-        )
+        table = TableImport(self.study1, self.user1)
         (added, updated) = table.import_data(self.get_form())
         self.assertEqual(added, 10)
         self.assertEqual(updated, 0)
         data_literal = ("""[[(0.0, 0.1), (1.0, 0.2), (2.0, 0.4), (4.0, 1.7), (8.0, 5.9)], """
                         """[(0.0, 0.2), (1.0, 0.4), (2.0, 0.6), (4.0, 0.8), (8.0, 1.2)]]""")
-        assays = Line.objects.get(name="L1").assay_set.all()
-        self.assertTrue(len(assays) == 1)
+        assays = self.line1.assay_set.all()
+        self.assertEqual(len(assays), 1)
         meas = assays[0].measurement_set.all()
-        self.assertTrue(len(meas) == 2)
+        self.assertEqual(len(meas), 2)
         data = []
         for m in meas:
             data.append([(float(d.x[0]), float(d.y[0])) for d in m.measurementvalue_set.all()])
-        self.assertTrue('%s' % data == data_literal)
+        self.assertEqual(str(data), data_literal)
 
     def test_error(self):
-        try:  # failed user permissions check
-            table = TableImport(
-                Study.objects.get(name="Test Study 1"),
-                User.objects.get(username="postdoc"),
-            )
+        # failed user permissions check
+        with self.assertRaises(PermissionDenied):
+            table = TableImport(self.study1, self.user2)
             table.import_data(self.get_form())
-        except PermissionDenied:
-            pass
-        else:
-            raise Exception("Expected a PermissionDenied here")
 
-    def test_import_rna_seq(self):
-        line1 = Line.objects.get(name="L1")
-        line2 = Line.objects.get(name="L2")
-        table1 = [  # FPKM
-            ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
-            ["gene1", "5.34", "5.32", "7.45", "7.56"],
-            ["gene2", "1.79", "1.94", "0.15", "0.33"],
-        ]
-        user = User.objects.get(username="admin")
-        update = Update.objects.create(
-            mod_time=arrow.utcnow(),
-            mod_by=user)
+    def test_rnaseq_fpkm(self):
         # two assays per line (replicas)
         result = import_rna_seq(
-            study=Study.objects.get(name="Test Study 1"),
-            user=user,
-            update=update,
-            table=table1,
+            study=self.study1,
+            user=self.user1,
+            update=Update.load_update(),
+            table=self.table1,
             n_cols=4,
             data_type="fpkm",
-            line_ids=[line1.pk, line1.pk, line2.pk, line2.pk],
+            line_ids=[self.line1.pk, self.line1.pk, self.line2.pk, self.line2.pk],
             assay_ids=[0, 0, 0, 0],
-            meas_times=[0]*4)
-        self.assertTrue(result.n_meas == result.n_meas_data == 8)
-        self.assertTrue(result.n_assay == 4 and result.n_meas_type == 2)
-        result = interpret_raw_rna_seq_data(
-            raw_data="\n".join(["\t".join(row) for row in table1]),
-            study=Study.objects.get(name="Test Study 1"))
-        self.assertTrue(result["guessed_data_type"] == "fpkm")
-        self.assertTrue(result["samples"][0]["line_id"] == line1.pk)
-        self.assertTrue(result["samples"][2]["line_id"] == line2.pk)
+            meas_times=[0]*4
+        )
+        self.assertEqual(result.n_meas, result.n_meas_data)
+        self.assertEqual(result.n_meas, 8)
+        self.assertEqual(result.n_meas_type, 2)
+        self.assertEqual(result.n_assay, 4)
+        tsv = "\n".join(["\t".join(row) for row in self.table1])
+        result = interpret_raw_rna_seq_data(raw_data=tsv, study=self.study1)
+        self.assertEqual(result["guessed_data_type"], "fpkm")
+        self.assertEqual(result["samples"][0]["line_id"], self.line1.pk)
+        self.assertEqual(result["samples"][2]["line_id"], self.line2.pk)
+
         # one assay, two timepoints per line
         result = import_rna_seq(
-            study=Study.objects.get(name="Test Study 1"),
-            user=user,
-            update=update,
-            table=table1,
+            study=self.study1,
+            user=self.user1,
+            update=Update.load_update(),
+            table=self.table1,
             n_cols=4,
             data_type="fpkm",
-            line_ids=[line1.pk, line1.pk, line2.pk, line2.pk],
+            line_ids=[self.line1.pk, self.line1.pk, self.line2.pk, self.line2.pk],
             assay_ids=[0, 0, 0, 0],
             meas_times=[0, 1, 0, 1],
-            group_timepoints=1)
-        self.assertTrue(result.n_meas == 4 and result.n_meas_data == 8)
-        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 2)
-        table2 = [  # count
-            ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
-            ["gene1", "64", "67", "89", "91"],
-            ["gene2", "27", "30", "5", "4"],
-        ]
+            group_timepoints=1
+        )
+        self.assertEqual(result.n_meas, 4)
+        self.assertEqual(result.n_meas_data, 8)
+        self.assertEqual(result.n_meas_type, 0)
+        self.assertEqual(result.n_assay, 2)
+
+    def test_rnaseq_counts(self):
         result = import_rna_seq(
-            study=Study.objects.get(name="Test Study 1"),
-            user=user,
-            update=update,
-            table=table2,
+            study=self.study1,
+            user=self.user1,
+            update=Update.load_update(),
+            table=self.table2,
             n_cols=4,
             data_type="counts",
-            line_ids=[line1.pk, line1.pk, line2.pk, line2.pk],
+            line_ids=[self.line1.pk, self.line1.pk, self.line2.pk, self.line2.pk],
             assay_ids=[0, 0, 0, 0],
-            meas_times=[5]*4)
-        self.assertTrue(result.n_meas == result.n_meas_data == 8)
-        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 4)
-        table3 = [  # combined
-            ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
-            ["gene1", "64,5.34", "67,5.32", "89,7.45", "91,7.56"],
-            ["gene2", "27,1.79", "30,1.94", "5,0.15", "4,0.33"],
-        ]
+            meas_times=[5]*4
+        )
+        self.assertEqual(result.n_meas, 8)
+        self.assertEqual(result.n_meas_data, 8)
+        self.assertEqual(result.n_meas_type, 2)
+        self.assertEqual(result.n_assay, 4)
+
+    def test_rnaseq_combined(self):
         # one assay, two timepoints, counts+fpkms
         result = import_rna_seq(
-            study=Study.objects.get(name="Test Study 1"),
-            user=user,
-            update=update,
-            table=table3,
+            study=self.study1,
+            user=self.user1,
+            update=Update.load_update(),
+            table=self.table3,
             n_cols=4,
             data_type="combined",
-            line_ids=[line1.pk, line1.pk, line2.pk, line2.pk],
+            line_ids=[self.line1.pk, self.line1.pk, self.line2.pk, self.line2.pk],
             assay_ids=[0, 0, 0, 0],
             meas_times=[0, 1, 0, 1],
-            group_timepoints=1)
-        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 2)
-        self.assertTrue(result.n_meas == 8 and result.n_meas_data == 16)
+            group_timepoints=1
+        )
+        self.assertEqual(result.n_meas, 8)
+        self.assertEqual(result.n_meas_data, 16)
+        self.assertEqual(result.n_meas_type, 2)
+        self.assertEqual(result.n_assay, 2)
         # two timepoints per condition, separate assays
         result = import_rna_seq(
-            study=Study.objects.get(name="Test Study 1"),
-            user=user,
-            update=update,
-            table=table3,
+            study=self.study1,
+            user=self.user1,
+            update=Update.load_update(),
+            table=self.table3,
             n_cols=4,
             data_type="combined",
-            line_ids=[line1.pk, line1.pk, line2.pk, line2.pk],
+            line_ids=[self.line1.pk, self.line1.pk, self.line2.pk, self.line2.pk],
             assay_ids=[0, 0, 0, 0],
-            meas_times=[0, 1, 0, 1])
-        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 4)
-        self.assertTrue(result.n_meas == 16 and result.n_meas_data == 16)
+            meas_times=[0, 1, 0, 1]
+        )
+        self.assertEqual(result.n_meas, 16)
+        self.assertEqual(result.n_meas_data, 16)
+        self.assertEqual(result.n_meas_type, 0)
+        self.assertEqual(result.n_assay, 4)
+
+    def test_rnaseq_existing_assays(self):
         # error catching
-        p = Protocol.objects.get(name="Transcriptomics")
-        assay1 = line1.assay_set.create(
-            name="assay1", description="", protocol=p, experimenter=user)
-        assay2 = line2.assay_set.create(
-            name="assay1", description="", protocol=p, experimenter=user)
-        try:
+        p = self.transcriptomics
+        assay1 = self.line1.assay_set.create(
+            name="assay1", description="", protocol=p, experimenter=self.user1
+        )
+        assay2 = self.line2.assay_set.create(
+            name="assay1", description="", protocol=p, experimenter=self.user1
+        )
+        with self.assertRaises(ValueError):
             result = import_rna_seq(
-                study=Study.objects.get(name="Test Study 1"),
-                user=user,
-                update=update,
-                table=table3,
+                study=self.study1,
+                user=self.user1,
+                update=Update.load_update(),
+                table=self.table3,
                 n_cols=4,
                 data_type="combined",
-                line_ids=[line1.pk, line1.pk, line2.pk, line2.pk],
+                line_ids=[self.line1.pk, self.line1.pk, self.line2.pk, self.line2.pk],
                 assay_ids=[assay1.pk, assay1.pk, assay2.pk, assay2.pk],
-                meas_times=[0, 0, 0, 0])
-        except ValueError:
-            pass
-        else:
-            raise Exception("ValueError expected")
+                meas_times=[0, 0, 0, 0]
+            )
         # use existing Assays instead of creating new ones
         result = import_rna_seq(
-            study=Study.objects.get(name="Test Study 1"),
-            user=user,
-            update=update,
-            table=table3,
+            study=self.study1,
+            user=self.user1,
+            update=Update.load_update(),
+            table=self.table3,
             n_cols=4,
             data_type="combined",
-            line_ids=[line1.pk, line1.pk, line2.pk, line2.pk],
+            line_ids=[self.line1.pk, self.line1.pk, self.line2.pk, self.line2.pk],
             assay_ids=[assay1.pk, assay1.pk, assay2.pk, assay2.pk],
-            meas_times=[0, 4, 0, 4])
-        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 0)
-        self.assertTrue(result.n_meas == 8 and result.n_meas_data == 16)
-        self.assertTrue(assay1.measurement_set.count() == 4)
+            meas_times=[0, 4, 0, 4]
+        )
+        self.assertEqual(result.n_meas, 8)
+        self.assertEqual(result.n_meas_data, 16)
+        self.assertEqual(result.n_meas_type, 2)
+        self.assertEqual(result.n_assay, 0)
+        self.assertEqual(assay1.measurement_set.count(), 4)
         #
-        result = interpret_raw_rna_seq_data(
-            raw_data="\n".join(["\t".join(row) for row in table3]),
-            study=Study.objects.get(name="Test Study 1"))
-        self.assertTrue(result["guessed_data_type"] == "combined")
+        tsv = "\n".join(["\t".join(row) for row in self.table3])
+        result = interpret_raw_rna_seq_data(raw_data=tsv, study=self.study1)
+        self.assertEqual(result["guessed_data_type"], "combined")
 
     def test_import_rna_seq_edgepro(self):
-        line2 = Line.objects.get(name="L2")
-        user = User.objects.get(username="admin")
-        update = Update.objects.create(
-            mod_time=arrow.utcnow(),
-            mod_by=user)
+        line2 = self.line2
+        user = self.user1
+        update = Update.load_update()
         # EDGE-pro output
         raw = """\
 gene_ID            start_coord       end_coord     average_cov          #reads            RPKM
@@ -725,8 +748,9 @@ b0006                     5683            6459           183.9             565  
         assay = line2.assay_set.create(
             name="RNA-seq",
             description="EDGE-pro result",
-            protocol=Protocol.objects.get(name="Transcriptomics"),
-            experimenter=user)
+            protocol=self.transcriptomics,
+            experimenter=user
+        )
         result = import_rnaseq_edgepro(
             form={
                 "assay": assay.pk,
@@ -734,9 +758,11 @@ b0006                     5683            6459           183.9             565  
                 "data_table": raw,
             },
             study=line2.study,
-            update=update)
-        self.assertTrue(result.n_meas_type == 6)
-        self.assertTrue(result.n_meas == result.n_meas_data == 12)
+            update=update
+        )
+        self.assertEqual(result.n_meas_type, 6)
+        self.assertEqual(result.n_meas, 12)
+        self.assertEqual(result.n_meas_data, 12)
         # overwriting old data
         result = import_rnaseq_edgepro(
             form={
@@ -745,9 +771,11 @@ b0006                     5683            6459           183.9             565  
                 "data_table": raw,
             },
             study=line2.study,
-            update=update)
-        self.assertTrue(result.n_meas_type == result.n_meas == 0)
-        self.assertTrue(result.n_meas_data == 12)
+            update=update
+        )
+        self.assertEqual(result.n_meas, 0)
+        self.assertEqual(result.n_meas_type, 0)
+        self.assertEqual(result.n_meas_data, 12)
         # adding a timepoint
         result = import_rnaseq_edgepro(
             form={
@@ -756,9 +784,11 @@ b0006                     5683            6459           183.9             565  
                 "data_table": raw,
             },
             study=line2.study,
-            update=update)
-        self.assertTrue(result.n_meas_type == result.n_meas == 0)
-        self.assertTrue(result.n_meas_data == 12)
+            update=update
+        )
+        self.assertEqual(result.n_meas, 0)
+        self.assertEqual(result.n_meas_type, 0)
+        self.assertEqual(result.n_meas_data, 12)
         # erasing all existing data
         result = import_rnaseq_edgepro(
             form={
@@ -768,9 +798,11 @@ b0006                     5683            6459           183.9             565  
                 "remove_all": "1",
             },
             study=line2.study,
-            update=update)
-        self.assertTrue(result.n_meas_type == result.n_meas == 0)
-        self.assertTrue(result.n_meas_data == 12)
+            update=update
+        )
+        self.assertEqual(result.n_meas, 0)
+        self.assertEqual(result.n_meas_type, 0)
+        self.assertEqual(result.n_meas_data, 12)
         # now get rid of all count measurements...
         assay.measurement_set.filter(y_units__unit_name="counts").delete()
         # ... and reload, which will update the unchanged RPKMs and add new
@@ -782,11 +814,15 @@ b0006                     5683            6459           183.9             565  
                 "data_table": raw,
             },
             study=line2.study,
-            update=update)
-        self.assertTrue(result.n_meas_type == 0)
-        self.assertTrue(result.n_meas == 6 and result.n_meas_data == 12)
-        self.assertTrue(result.format_message() == "Added 0 gene identifiers and 6 measurements, "
-                        "and updated 6 measurements")
+            update=update
+        )
+        self.assertEqual(result.n_meas_type, 0)
+        self.assertEqual(result.n_meas, 6)
+        self.assertEqual(result.n_meas_data, 12)
+        self.assertEqual(
+            result.format_message(),
+            "Added 0 gene identifiers and 6 measurements, and updated 6 measurements"
+        )
 
 
 class SBMLUtilTests(TestCase):
@@ -870,20 +906,6 @@ class UtilityTests(TestCase):
         # data = meas.data()
         # self.assertTrue(abs(interpolate_at(data, 10)-0.3) < 0.00001)
         pass
-
-    def test_form_data(self):
-        lines = Line.objects.all()
-        form1 = {"selectedLineIDs": ",".join(['%s' % l.id for l in lines]), }
-        form2 = {"selectedLineIDs": ['%s' % l.id for l in lines], }
-        form3 = {}
-        for l in lines:
-            form3["line%dinclude" % l.id] = 1
-        ids1 = extract_id_list(form1, "selectedLineIDs")
-        ids2 = extract_id_list(form2, "selectedLineIDs")
-        ids3 = extract_id_list_as_form_keys(form3, "line")
-        self.assertTrue(ids1 == ids2 == sorted(ids3))
-        study = Study.objects.get(name="Test Study 1")
-        get_selected_lines(form1, study)
 
 
 class IceTests(TestCase):

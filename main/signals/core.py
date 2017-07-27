@@ -39,9 +39,13 @@ has_uuid = [
     edd_models.Strain,
     edd_models.Protocol,
     edd_models.Assay,
-    edd_models.Measurement,
 ]
-has_update = has_uuid + [edd_models.Attachment, edd_models.Comment, edd_models.MeasurementValue, ]
+has_update = has_uuid + [
+    edd_models.Attachment,
+    edd_models.Comment,
+    edd_models.Measurement,
+    edd_models.MeasurementValue,
+]
 
 
 @receiver(pre_save, sender=has_uuid)
@@ -56,8 +60,7 @@ def ensure_updates(sender, instance, raw, using, **kwargs):
         update = edd_models.Update.load_update()
         if hasattr(instance, 'created_id') and instance.created_id is None:
             instance.created = update
-        if hasattr(instance, 'updated'):
-            instance.updated = update
+        instance.updated = update
         # for some reason, Measurement has a distinct update_ref field?
         if sender is edd_models.Measurement:
             instance.update_ref = update
@@ -65,7 +68,8 @@ def ensure_updates(sender, instance, raw, using, **kwargs):
 
 @receiver(post_save, sender=has_uuid)
 def log_update(sender, instance, created, raw, using, **kwargs):
-    instance.updates.add(instance.updated)
+    if not raw:
+        instance.updates.add(instance.updated)
 
 
 # ----- Study signal handlers -----

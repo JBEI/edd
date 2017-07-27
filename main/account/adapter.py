@@ -86,8 +86,8 @@ class AllauthLDAPBackend(LDAPBackend):
     """ Extension of the Authentication Backend from django_auth_ldap, which creates a verified
         EmailAddress for django-allauth from the email in the LDAP record. """
 
-    def authenticate(self, username, password, **kwargs):
-        user = super(AllauthLDAPBackend, self).authenticate(username, password, **kwargs)
+    def authenticate(self, request, username, password, **kwargs):
+        user = super(AllauthLDAPBackend, self).authenticate(request, username, password)
         if user and user.email:
             try:
                 qs = EmailAddress.objects.filter(user=user, email__iexact=user.email)
