@@ -59,11 +59,9 @@
   },
   "scripts": {
     "test": "karma start karma.conf.js",
-    "test2": "tsc && concurrently \"tsc -w\" \"karma start karma.conf.js\"",
     "build": "NODE_ENV=production webpack -p --progress --profile --colors",
-    "watch": "webpack-dev-server --hot --inline --progress --colors --watch-poll",
-    "dev": "webpack-dev-server --devtool eval --progress --content-base build",
-    "clean": "rm -r edd/main/static/dist/*"
+    "watch": "webpack -p --progress --profile --colors --watch --watch-poll",
+    "clean": "rm -r code/main/static/dist/*"
   },
   "repository": {
     "type": "git",

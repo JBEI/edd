@@ -18,7 +18,7 @@ module.exports = {
     StudyOverview: "./code/typescript/src/Study-Overview.ts"
   },
   output: {
-    path: path.resolve(__dirname, './code/main/static/dist'),
+    path: path.resolve(__dirname, 'code/main/static/dist'),
     filename: '[name].js',
     publicPath: '/static/dist/'
   },
