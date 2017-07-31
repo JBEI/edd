@@ -39,7 +39,8 @@ class Command(BaseCommand):
             type_pk = models.MeasurementType._meta.pk
             metabolite_tp = metabolite_pk.to_python
             type_tp = type_pk.to_python
-            max_value = models.MeasurementType.objects.aggregate(max=Max('pk'))['max']
+            type_objects = models.MeasurementType.objects.using(self.using)
+            max_value = type_objects.aggregate(max=Max('pk'))['max']
             metabolite_pk.to_python = lambda v: max_value + metabolite_tp(v)
             type_pk.to_python = lambda v: max_value + type_tp(v)
             # Import the fixture data
@@ -60,7 +61,8 @@ class Command(BaseCommand):
             type_pk = models.MeasurementType._meta.pk
             protein_tp = protein_pk.to_python
             type_tp = type_pk.to_python
-            max_value = models.MeasurementType.objects.aggregate(max=Max('pk'))['max']
+            type_objects = models.MeasurementType.objects.using(self.using)
+            max_value = type_objects.aggregate(max=Max('pk'))['max']
             protein_pk.to_python = lambda v: max_value + protein_tp(v)
             type_pk.to_python = lambda v: max_value + type_tp(v)
             # Import the fixture data
