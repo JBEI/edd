@@ -87,13 +87,13 @@ services:
     # To run all setup tasks, but not launch the EDD application:
     #command: [init-only]
     # [DEVMODE] By default, edd runs with the application command; uncomment below to run with
-    #   the devmode command instead, and use Django's ruserver to serve the application.
-    #command: [-A, devmode]
+    #   the devmode command instead, and use Django's runserver to serve the application.
+    #command: [--static-watch, devmode]
     # [LOCAL] For more control over settings on each container, use the --local flag to pass a
     #   path to a local.py file to use. The path must be mounted in the volumes section! Take care
     #   to use only one volumes section, if multiples are specified in a service, only the last
     #   specified is used.
-    #command: [-A, --local, /etc/myorg/edd/local.py, -w, edd, application]
+    #command: [--local, /etc/myorg/edd/local.py, -w, edd, application]
     #volumes:
     #  - /full/path/to/local.py:/etc/myorg/edd/local.py
 

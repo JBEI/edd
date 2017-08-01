@@ -77,6 +77,8 @@ function print_help() {
     echo "        Only applies if -w is used. Specifies port to listen on. Defaults to"
     echo "        port 24051. This option may be specified multiple times. The Nth port"
     echo "        defined applies to the Nth host."
+    echo "    --watch-static"
+    echo "        Watch for changes to static files, to copy to the static volume."
     echo
     echo "Commands:"
     echo "    application"
@@ -98,7 +100,7 @@ short="adhimp:qsw:ADIMS"
 long="help,quiet,init,init-all,no-init,no-init-all"
 long="$long,init-static,no-init-static,init-database,no-init-database"
 long="$long,init-migration,no-init-migration,init-index,no-init-index"
-long="$long,local:,force-index,wait-host:,wait-port:"
+long="$long,local:,force-index,wait-host:,wait-port:,watch-static"
 params=`getopt -o "$short" -l "$long" --name "$0" -- "$@"`
 eval set -- "$params"
 
@@ -110,6 +112,7 @@ INIT_INDEX=1
 REINDEX_EDD=false
 WAIT_HOST=()
 WAIT_PORT=()
+WATCH_STATIC=false
 
 while [ ! $# -eq 0 ]; do
     case "$1" in
@@ -183,6 +186,10 @@ while [ ! $# -eq 0 ]; do
             WAIT_PORT+=("$2")
             shift 2
             ;;
+        --watch-static)
+            shift
+            WATCH_STATIC=true
+            ;;
         --)
             shift
             if [ ! $# -eq 0 ]; then
@@ -254,6 +261,10 @@ if [ $INIT_STATIC -eq 1 ]; then
     banner "Collecting static resources …"
     # Collect static first, worker will complain if favicons are missing
     python /code/manage.py collectstatic --noinput
+fi
+if [ "$WATCH_STATIC" = "true" ]; then
+    output "Watching for static resource changes …"
+    python /code/manage.py edd_collectstatic --watch &
 fi
 
 # Wait for postgres to become available
