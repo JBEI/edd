@@ -16,7 +16,6 @@ class ImportModeFlags(object):
     BIOLECTOR = 'biolector'
     HPLC = 'hplc'
     MASS_DISTRIBUTION = 'mdv'
-    PROTEOMICS_OLD = 'pr'
     SKYLINE = 'skyline'
     STANDARD = 'std'
     TRANSCRIPTOMICS = 'tr'
@@ -45,13 +44,22 @@ def biolector_parser(request):
 parser_registry[(ImportModeFlags.BIOLECTOR, ImportFileTypeFlags.XML)] = biolector_parser
 
 
+def csv_parser(request):
+    return ParsedInput(
+        ImportFileTypeFlags.CSV,
+        request.read()
+    )
+parser_registry[(ImportModeFlags.STANDARD, ImportFileTypeFlags.CSV)] = csv_parser
+parser_registry[(ImportModeFlags.TRANSCRIPTOMICS, ImportFileTypeFlags.CSV)] = csv_parser
+parser_registry[(ImportModeFlags.MASS_DISTRIBUTION, ImportFileTypeFlags.CSV)] = csv_parser
+
+
 def excel_parser(request):
     return ParsedInput(
         ImportFileTypeFlags.EXCEL,
         excel.import_xlsx_tables(file=request)
     )
 parser_registry[(ImportModeFlags.STANDARD, ImportFileTypeFlags.EXCEL)] = excel_parser
-parser_registry[(ImportModeFlags.PROTEOMICS_OLD, ImportFileTypeFlags.EXCEL)] = excel_parser
 parser_registry[(ImportModeFlags.TRANSCRIPTOMICS, ImportFileTypeFlags.EXCEL)] = excel_parser
 parser_registry[(ImportModeFlags.MASS_DISTRIBUTION, ImportFileTypeFlags.EXCEL)] = excel_parser
 

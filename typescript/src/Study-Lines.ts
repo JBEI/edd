@@ -14,6 +14,7 @@ import { CarbonBalance } from "../modules/StudyCarbonBalance"
 import { StudyBase } from "../modules/Study"
 import * as _ from "underscore"
 
+
 module StudyLines {
     'use strict';
 
@@ -42,7 +43,6 @@ module StudyLines {
     // switching back and forth between positions that might trigger resize events.
     export var actionPanelIsInBottomBar;
     export var actionPanelIsCopied = false;
-    export var fileUploadProgressBar: Utl.ProgressBar;
 
 
     // Called when the page loads.
@@ -70,7 +70,6 @@ module StudyLines {
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
 
-        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
         var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
            pageRedirect: '',
            haveInputData: false,
@@ -78,13 +77,11 @@ module StudyLines {
 
         Utl.FileDropZone.create({
             elementId: "addToLinesDropZone",
-            fileInitFn: fileDropZoneHelper.fileDropped.bind(fileDropZoneHelper),
-            processRawFn: fileDropZoneHelper.fileRead.bind(fileDropZoneHelper),
             url: '/study/' + EDDData.currentStudyID + '/describe/',
             processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
             processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
             processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
-            progressBar: this.fileUploadProgressBar
+            processICEerror: fileDropZoneHelper.processICEerror.bind(fileDropZoneHelper),
         });
 
         $('#content').on('dragover', function(e:any) {

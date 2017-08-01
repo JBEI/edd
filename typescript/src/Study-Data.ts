@@ -1,14 +1,7 @@
-import { DataGrid } from "../modules/DataGrid"
-import { DataGridSpecBase } from "../modules/DataGrid"
-import { DataGridDataCell } from "../modules/DataGrid"
-import { DataGridColumnSpec } from "../modules/DataGrid"
-import { DataGridTableSpec } from "../modules/DataGrid"
-import { DataGridHeaderWidget } from "../modules/DataGrid"
-import { DataGridColumnGroupSpec } from "../modules/DataGrid"
-import { DataGridHeaderSpec } from "../modules/DataGrid"
-import { DataGridOptionWidget } from "../modules/DataGrid"
-import { DataGridLoadingCell } from "../modules/DataGrid"
-import { DGSelectAllWidget } from "../modules/DataGrid"
+import { DataGrid, DataGridSpecBase, DataGridDataCell, DataGridColumnSpec,
+        DataGridTableSpec, DataGridHeaderWidget, DataGridColumnGroupSpec,
+        DataGridHeaderSpec, DataGridOptionWidget, DataGridLoadingCell, DGSelectAllWidget
+        } from "../modules/DataGrid"
 import { Utl } from "../modules/Utl"
 import { Dragboxes } from "../modules/Dragboxes"
 import { EDDGraphingTools } from "../modules/EDDGraphingTools"

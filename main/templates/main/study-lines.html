@@ -86,19 +86,15 @@
             </div>
             </div>
         </div>
-   <div class="linesDropZone off">
+    <div class="linesDropZone off">
         <div class="fd-zone excel linesZone" id="addToLinesDropZone">
-            <div></div>
-        </div>
-        <div class="fileDropInfoArea off" id="fileDropInfoArea">
-            <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
-            <p>Drop your file here</p>
-            <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
-            <div class="fileDropInfoSending" id="fileDropInfoSending">
-                <span id="fileUploadMessage">Sending To Server...</span>
-                <progress id="fileUploadProgressBar" />
+            <div class="dz-preview dz-file-preview">
+              <div class="dz-details">
+                <div class="dz-filename"><span data-dz-name></span></div>
+              </div>
+              <div class="dz-progress"><span class="dz-upload" data-dz-uploadprogress></span></div>
+              <div class="dz-error-message"><span data-dz-errormessage></span></div>
             </div>
-            <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
         </div>
     </div>
         <img src="{% static 'main/images/upload-file.png' %}"

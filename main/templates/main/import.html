@@ -14,7 +14,6 @@
 
   </script>
   <script type="text/javascript" src="{% static 'dist/Import.js' %}"></script>
-
 {% endblock js_css %}
 
 {% block head_title %}
@@ -153,42 +152,6 @@
 
       <li>
         <div class="disclose discloseHide">
-          <input type="radio" name="datalayout" value="pr" id="prlayout" />
-          <label for="prlayout">
-            <b>Proteomics</b> data, as a table of protein names and measurements.
-          </label>
-          <span><a class="discloseLink" href="#">Example</a></span>
-          <div class="discloseBody" id="prlayoutexample">
-            <p>In this example of proteomics data, the columns represent the accession IDs for the measured proteins
-                found on <a href="http://www.uniprot.org/uniprot/">UniProt</a> and the rows represent the Line or
-                Assay names created from your experiment description file (sp stands for SwisProt, tr stands for
-                accession IDs that have not yet been validated for inclusion).
-            </p>
-            <p>
-                Download the
-                <a href="{% static 'main/example/test_proteomics.csv' %}">Proteomics Data File</a>
-                 shown below and the
-                <a href="{% static 'main/example/test_proteomics_example_description.xlsx' %}">Experiment Description File</a>
-                that corresponds to the data file. Note - you will be asked for time (in hours) below
-                after uploading file.
-            </p>
-            <img class="exampleImageProteomics"
-                src="{% static 'main/images/data_examples/proteomics_shot.png' %}" />
-            <p>Select "Entire Row is..Assay/Line names" for the first row</p>
-            <img class="exampleImageProteomics"
-                src="{% static 'main/images/data_examples/proteomics_step1.png' %}" />
-            <p>Select "First Column is..Protein Name" for the second row</p>
-            <img class="exampleImageProteomics"
-                src="{% static 'main/images/data_examples/proteomics_step2.png' %}" />
-            <p>Then proceed to step 4</p>
-            <img class="exampleImageProteomics"
-                src="{% static 'main/images/data_examples/proteomics_step3.png' %}" />
-          </div>
-        </div>
-      </li>
-
-      <li>
-        <div class="disclose discloseHide">
           <input type="radio" name="datalayout" value="mdv" id="mdvlayout" />
           <label for="mdvlayout">
             A <b>Flux Analysis</b> document
@@ -292,26 +255,18 @@
           steps.</p>
       </div>
     </div>
-      <span id="prSampleFile" hidden>
-          Or upload edited
-            <a href="{% static 'main/example/test_proteomics.csv' %}">Example File</a>
-        </span>
-      <span id="gcmsSampleFile">
-          Or upload edited
-            <a href="{% static 'main/example/GC-MS_example.xlsx' %}">Example File</a>
-        </span>
-      <span id="biolectorFile" hidden>
-          Or upload edited
-            <a href="{% static 'main/example/Biolector.xml' %}">Example File</a>
-        </span>
-      <span id="skylineSample" hidden>
-          Or upload edited
-            <a href="{% static 'main/example/skyline_example.csv' %}">Example File</a>
-        </span>
-      <span id="hplcExample" hidden>
-          Or upload edited
-            <a href="{% static 'main/example/HPLC_example.txt' %}">Example File</a>
-        </span>
+    <span id="gcmsSampleFile">
+      Or upload edited <a href="{% static 'main/example/GC-MS_example.xlsx' %}">Example File</a>
+    </span>
+    <span id="biolectorFile" hidden>
+      Or upload edited <a href="{% static 'main/example/Biolector.xml' %}">Example File</a>
+    </span>
+    <span id="skylineSample" hidden>
+      Or upload edited <a href="{% static 'main/example/skyline_example.csv' %}">Example File</a>
+    </span>
+    <span id="hplcExample" hidden>
+      Or upload edited <a href="{% static 'main/example/HPLC_example.txt' %}">Example File</a>
+    </span>
     <div class="resetButtonDiv" id="resetstep2">Reset</div>
 
     <span class="tableControlImport">
@@ -335,16 +290,9 @@
 
   <div class="sectionContent" style="padding:2px;text-align:center;">
     <div id="completeStep1Label" class="disabledStepLabel">Complete Step 1 first!</div>
-    <textarea class="dataTextArea off" rows="16" id="step2textarea"
-        name="step2textarea"></textarea>
-    <div class="fileDropInfoArea off" id="fileDropInfoArea">
-      <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
-      <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
-      <div class="fileDropInfoSending" id="fileDropInfoSending">
-        <span id="fileUploadMessage">Sending To Server...</span>
-        <progress id="fileUploadProgressBar" />
-      </div>
-      <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
+    <div id="importDropZone">
+      <textarea class="dataTextArea fd-zone off" rows="16" id="step2textarea"
+          name="step2textarea"></textarea>
     </div>
   </div>
 </div>
