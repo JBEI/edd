@@ -84,7 +84,7 @@ alternate web stack.
 [1]:  https://hub.docker.com/_/nginx/
 [2]:  https://github.com/jwilder/docker-gen
 [3]:  https://golang.org/pkg/text/template/
-[4]:  https://github.com/JrCs/letsencrypt-nginx-proxy-companion
+[4]:  https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
 [5]:  https://letsencrypt.org/
 [6]:  https://docs.djangoproject.com/en/dev/howto/static-files/deployment/#staticfiles-from-cdn
 [7]:  https://django-storages.readthedocs.io/en/latest/
