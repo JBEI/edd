@@ -1,0 +1,945 @@
+[
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "",
+      "first_name": "",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "user000"
+    },
+    "model": "auth.user",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "mod_by": 1,
+      "mod_time": "2017-06-06T00:13:38.709Z",
+      "origin": "localhost",
+      "path": null
+    },
+    "model": "main.update",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "mod_by": 2,
+      "mod_time": "2017-06-06T00:13:39.925Z",
+      "origin": "127.0.0.1; ",
+      "path": "/s/intuitive-transitional-focus-group/describe/"
+    },
+    "model": "main.update",
+    "pk": 3
+  },
+  {
+    "fields": {
+      "contact": null,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "protocols": [],
+      "slug": "team-oriented-grid-enabled-implementation",
+      "updates": [2]
+    },
+    "model": "main.study",
+    "pk": 20
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 21
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 22
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 23
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 24
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 25
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 26
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 27
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 28
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 29
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 30
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 31
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 32
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 33
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 34
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 35
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 36
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 37
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 38
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 39
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 40
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 41
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 42
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 43
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 44
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 45
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 46
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 47
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 48
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 49
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 50
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 2,
+      "description": "Aliquam dolor cum consectetur quae vitae. Aliquam fugit dolorum quod. Maiores aliquam quos pariatur assumenda ab asperiores. Nam voluptas porro modi aspernatur.",
+      "meta_store": "{}",
+      "name": "Team-oriented grid-enabled implementation",
+      "updated": 2,
+      "updates": [2],
+      "uuid": "d5f0208a-dc85-49f2-a403-006a394f8586"
+    },
+    "model": "main.eddobject",
+    "pk": 20
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (medium + high copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "2X-Mh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "25a718d8-9ecd-44a9-8bbc-63f7882bb8cc"
+    },
+    "model": "main.eddobject",
+    "pk": 21
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (medium-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"0.2\"}",
+      "name": "B-Lm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "4b1bd32d-48a2-447a-ba41-75117e9c3f61"
+    },
+    "model": "main.eddobject",
+    "pk": 22
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (B + high with extra copy of LS) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "BL-Mm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "bb3d55be-d12c-433e-bc83-0485690d3c02"
+    },
+    "model": "main.eddobject",
+    "pk": 23
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (medium + high copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"0.2\"}",
+      "name": "2X-Ll",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "28181a6c-386c-4d4a-9731-57ac516fd9b7"
+    },
+    "model": "main.eddobject",
+    "pk": 24
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (high-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "A-Mm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "e748a6c9-9c2a-4f71-9553-11ac10604633"
+    },
+    "model": "main.eddobject",
+    "pk": 25
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (medium-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"0.2\"}",
+      "name": "B-Ll",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "1b5af027-9c89-41db-bc42-b438843fe097"
+    },
+    "model": "main.eddobject",
+    "pk": 26
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (high-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "A-Mh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "5343cdb4-052a-43bc-9ef6-89bbf1fc4ae7"
+    },
+    "model": "main.eddobject",
+    "pk": 27
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (medium + high copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"0.2\"}",
+      "name": "2X-Lm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "2660c670-68b9-4dfc-a5ad-67e1e621954e"
+    },
+    "model": "main.eddobject",
+    "pk": 28
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (high-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"2.5\"}",
+      "name": "A-Hl",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "c1c5319a-f9e5-4774-82eb-715523a9c891"
+    },
+    "model": "main.eddobject",
+    "pk": 29
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (medium + high copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"2.5\"}",
+      "name": "2X-Hh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "1331e5d2-7d64-413f-8917-87eb7019e10d"
+    },
+    "model": "main.eddobject",
+    "pk": 30
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (medium-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "B-Ml",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "67f1d0a6-0598-4741-8398-5b9867148949"
+    },
+    "model": "main.eddobject",
+    "pk": 31
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (medium-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "B-Mm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "6ae7b0b1-3224-4953-b56a-9d23244defec"
+    },
+    "model": "main.eddobject",
+    "pk": 32
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (medium + high copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"0.2\"}",
+      "name": "2X-Lh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "69440f19-a699-4960-b2db-6de82cd265f4"
+    },
+    "model": "main.eddobject",
+    "pk": 33
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (medium-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "B-Mh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "920b8cc8-2eb2-45b3-be78-39deb6960606"
+    },
+    "model": "main.eddobject",
+    "pk": 34
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (medium + high copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"2.5\"}",
+      "name": "2X-Hl",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "64ac4429-feba-461d-a6ed-286cbed86394"
+    },
+    "model": "main.eddobject",
+    "pk": 35
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (medium-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"2.5\"}",
+      "name": "B-Hl",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "50fa79ca-5c6c-4a5d-b1ee-258cf9d9e50e"
+    },
+    "model": "main.eddobject",
+    "pk": 36
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (medium + high copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "2X-Ml",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "87bc9d58-0ecc-4b84-9158-86429010dc5d"
+    },
+    "model": "main.eddobject",
+    "pk": 37
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (medium-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"2.5\"}",
+      "name": "B-Hm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "1411798a-6c93-49f6-888b-79d815f3ddd7"
+    },
+    "model": "main.eddobject",
+    "pk": 38
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (medium-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"0.2\"}",
+      "name": "B-Lh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "b35bcca3-0805-4f22-9629-5c0bc312727d"
+    },
+    "model": "main.eddobject",
+    "pk": 39
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (medium-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"2.5\"}",
+      "name": "B-Hh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "cf92a17a-17b7-4dfa-b5e8-31aa2ae8b0cd"
+    },
+    "model": "main.eddobject",
+    "pk": 40
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (high-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"0.2\"}",
+      "name": "A-Ll",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "4a9c5e65-e31b-4b4e-885e-22d46924a6c3"
+    },
+    "model": "main.eddobject",
+    "pk": 41
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (high-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"2.5\"}",
+      "name": "A-Hm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "e662a630-bfea-4d25-a38e-1aeeccb5c6dd"
+    },
+    "model": "main.eddobject",
+    "pk": 42
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (medium + high copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "2X-Mm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "36e753b4-5824-4ad7-a2f8-8efeb2c12742"
+    },
+    "model": "main.eddobject",
+    "pk": 43
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (high-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"2.5\"}",
+      "name": "A-Hh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "0981bf8d-a847-4e6c-a8a9-94795fa04d25"
+    },
+    "model": "main.eddobject",
+    "pk": 44
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (high-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "A-Ml",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "7c152207-29f0-45a7-8836-df9f021e8bfc"
+    },
+    "model": "main.eddobject",
+    "pk": 45
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (high-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"0.2\"}",
+      "name": "A-Lm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "492b95b2-86dd-4033-9300-0378d72a1593"
+    },
+    "model": "main.eddobject",
+    "pk": 46
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (B + high with extra copy of LS) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "BL-Mh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "005bb696-1b2c-40bb-a9a1-5c31b47771be"
+    },
+    "model": "main.eddobject",
+    "pk": 47
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with single plasmid (high-copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"0.2\"}",
+      "name": "A-Lh",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "ac780e9a-10de-4269-8bd0-0bf6f96d08fe"
+    },
+    "model": "main.eddobject",
+    "pk": 48
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (B + high with extra copy of LS) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"1.2\"}",
+      "name": "BL-Ml",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "a02622bd-e76b-4220-b57a-3dc9169994d0"
+    },
+    "model": "main.eddobject",
+    "pk": 49
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "DH1 with two plasmid (medium + high copy) expression system for production of Limonene",
+      "meta_store": "{\"11\": \"40\", \"10\": \"8\", \"19\": \"EZrich (Teknova) 1% Glucose\", \"18\": \"30\", \"1\": \"200\", \"2\": \"2.5\"}",
+      "name": "2X-Hm",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "2a57e90a-bab9-4d53-b1ae-ebb49b5efd79"
+    },
+    "model": "main.eddobject",
+    "pk": 50
+  },
+  {
+    "fields": {
+      "permission_type": "W",
+      "study": 20,
+      "user": 2
+    },
+    "model": "main.userpermission",
+    "pk": 1
+  }
+]

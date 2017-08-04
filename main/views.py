@@ -5,7 +5,6 @@ import collections
 import json
 import logging
 import re
-import tempfile
 
 from builtins import str
 from django.conf import settings
@@ -23,17 +22,20 @@ from django.utils.translation import ugettext as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
+from requests import codes
 from rest_framework.exceptions import MethodNotAllowed
 
 from main.importer.experiment_desc.constants import (
     ALLOW_DUPLICATE_NAMES_PARAM,
+    BAD_FILE_CATEGORY,
     DRY_RUN_PARAM,
     IGNORE_ICE_RELATED_ERRORS_PARAM,
     INTERNAL_EDD_ERROR_CATEGORY,
     INTERNAL_SERVER_ERROR,
     UNPREDICTED_ERROR,
+    UNSUPPORTED_FILE_TYPE,
 )
-from main.importer.experiment_desc.importer import _build_response_content
+from main.importer.experiment_desc.importer import _build_response_content, ImportErrorSummary
 from . import autocomplete, models as edd_models, redis
 from .export.forms import ExportOptionForm, ExportSelectionForm, WorklistForm
 from .export.sbml import SbmlExport
@@ -1371,7 +1373,26 @@ def study_describe_experiment(request, pk=None, slug=None):
     ignore_ice_related_errors = request.GET.get(IGNORE_ICE_RELATED_ERRORS_PARAM, False)
 
     # detect the input format
-    file = request.FILES.get('file')
+    file = request.FILES.get('file', None)
+    # TODO update API of CombinatorialCreationImporter.do_import() to not require a string
+    #   filename to switch between Excel and JSON modes
+    EXCEL_TYPES = [
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ]
+    if file and file.content_type in EXCEL_TYPES:
+        filename = file.name
+    elif file and file.content_type == 'application/json':
+        filename = None
+    elif file:
+        summary = ImportErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE)
+        summary.add_occurrence(file.content_type)
+        errors = {BAD_FILE_CATEGORY: {UNSUPPORTED_FILE_TYPE: summary}}
+        return JsonResponse(_build_response_content(errors, {}), status=codes.bad_request)
+    else:
+        summary = ImportErrorSummary(BAD_FILE_CATEGORY, "File missing")
+        errors = {BAD_FILE_CATEGORY: {"File missing": summary}}
+        return JsonResponse(_build_response_content(errors, {}), status=codes.bad_request)
 
     logger.info('Parsing file')
 
@@ -1379,10 +1400,13 @@ def study_describe_experiment(request, pk=None, slug=None):
     importer = CombinatorialCreationImporter(study, user)
     try:
         with transaction.atomic(savepoint=False):
-            status_code, reply_content = (
-                importer.do_import(file, allow_duplicate_names,
-                                   dry_run, ignore_ice_related_errors,
-                                   excel_filename=file.name))
+            status_code, reply_content = importer.do_import(
+                file,
+                allow_duplicate_names,
+                dry_run,
+                ignore_ice_related_errors,
+                excel_filename=filename
+            )
         logger.debug('Reply content: %s' % json.dumps(reply_content))
         return JsonResponse(reply_content, status=status_code)
 
@@ -1406,13 +1430,15 @@ def study_describe_experiment(request, pk=None, slug=None):
 # /utilities/parsefile/
 # To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
 def utilities_parse_import_file(request):
-    """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
-        extract a table of data automatically. """
-    # These are embedded by the filedrop.js class. Here for reference.
-    # file_name = request.META.get('HTTP_X_FILE_NAME')
-    # file_size = request.META.get('HTTP_X_FILE_SIZE')
-    # file_type = request.META.get('HTTP_X_FILE_TYPE')
-    # file_date = request.META.get('HTTP_X_FILE_DATE')
+    """
+    Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and extract a
+    table of data automatically.
+    """
+    # These are embedded by Utl.FileDropZone. Here for reference.
+    # file_name = request.POST['HTTP_X_FILE_NAME']
+    # file_size = request.POST['HTTP_X_FILE_SIZE']
+    # file_type = request.POST['HTTP_X_FILE_TYPE']
+    # file_date = request.POST['HTTP_X_FILE_DATE']
 
     # In requests from OS X clients, we can use the file_type value. For example, a modern Excel
     # document is reported as "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1422,17 +1448,14 @@ def utilities_parse_import_file(request):
     # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and
     # that guess is sent along in a custom header:
     file = request.FILES.get('file')
+    # TODO these do not need to be named with X_ prefix anymore
     edd_file_type = request.POST['X_EDD_FILE_TYPE']
     edd_import_mode = request.POST['X_EDD_IMPORT_MODE']
 
     parse_fn = find_parser(edd_import_mode, edd_file_type)
     if parse_fn:
         try:
-            with tempfile.TemporaryFile() as temp:
-                # write the request upload to a "real" stream buffer
-                temp.write(file)
-                temp.seek(0)
-                result = parse_fn(temp)
+            result = parse_fn(file)
             return JsonResponse({
                 'file_type': result.file_type,
                 'file_data': result.parsed_data,

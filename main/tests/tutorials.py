@@ -47,13 +47,13 @@ class ExperimentDescriptionTests(TestCase):
 
     def _run_upload(self, name):
         with _load_test_file(name) as fp:
-            response = self.client.post(
-                reverse('main:describe', kwargs=self.target_kwargs),
-                data=fp.read(),
-                content_type='application/octet-stream',
-                HTTP_X_EDD_FILE_TYPE='xlsx',
-                HTTP_X_FILE_NAME=name,
-            )
+            upload = BytesIO(fp.read())
+        upload.name = name
+        upload.content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response = self.client.post(
+            reverse('main:describe', kwargs=self.target_kwargs),
+            data={"file": upload},
+        )
         return response
 
     def test_get_request(self):
@@ -127,19 +127,12 @@ class ExperimentDescriptionTests(TestCase):
         )
 
 
-class ImportDataTests(TestCase):
+class ImportDataTestsMixin(object):
     """
-    Sets of tests to exercise Import Data views.
+    Common code for tests of import data. Expects following attributes on self:
+        + `target_study` set to a Study model
+        + `user` set to a User model
     """
-
-    fixtures = ['main/tutorial_fba']
-
-    def setUp(self):
-        super(ImportDataTests, self).setUp()
-        self.user = get_user_model().objects.get(pk=2)
-        self.target_study = models.Study.objects.get(pk=7)
-        self.target_kwargs = {'slug': self.target_study.slug}
-        self.client.force_login(self.user)
 
     def _assay_count(self):
         return models.Assay.objects.filter(line__study=self.target_study).count()
@@ -151,6 +144,12 @@ class ImportDataTests(TestCase):
         return models.MeasurementValue.objects.filter(
             measurement__assay__line__study=self.target_study
         ).count()
+
+    def _import_url(self):
+        return reverse('main:table-import', kwargs={'slug': self.target_study.slug})
+
+    def _view_url(self):
+        return reverse('main:detail', kwargs={'slug': self.target_study.slug})
 
     def _run_import_view(self, postfile):
         with _load_test_file(postfile) as poststring:
@@ -164,25 +163,25 @@ class ImportDataTests(TestCase):
                 result.id = '00000000-0000-0000-0000-000000000001'
                 mock_task.return_value = result
                 # fake the request
-                response = self.client.post(
-                    reverse('main:table-import', kwargs=self.target_kwargs),
-                    data=POST,
-                )
+                response = self.client.post(self._import_url(), data=POST)
                 # assert calls to redis and celery
                 storage.save.assert_called()
                 mock_task.assert_called_with(self.target_study.pk, self.user.pk, 'randomkey')
+        self.assertEqual(self._assay_count(), 0)  # view does not change assays
         return response
 
     def _run_parse_view(self, filename, filetype, mode):
         with _load_test_file(filename) as fp:
-            response = self.client.post(
-                reverse('main:import_parse'),
-                data=fp.read(),
-                content_type='application/octet-stream',
-                HTTP_X_EDD_FILE_TYPE=filetype,
-                HTTP_X_EDD_IMPORT_MODE=mode,
-                HTTP_X_FILE_NAME=filename,
-            )
+            upload = BytesIO(fp.read())
+        upload.name = filename
+        response = self.client.post(
+            reverse('main:import_parse'),
+            data={
+                "file": upload,
+                "X_EDD_FILE_TYPE": filetype,
+                "X_EDD_IMPORT_MODE": mode,
+            },
+        )
         self.assertEqual(response.status_code, codes.ok)
         with _load_test_file(filename + '.json') as fp:
             target = json.load(fp)
@@ -206,9 +205,22 @@ class ImportDataTests(TestCase):
             storage.load.assert_called_with(storage_key)
             storage.delete.assert_called_with(storage_key)
 
+
+class FBAImportDataTests(TestCase, ImportDataTestsMixin):
+    """
+    Sets of tests to exercise Import Data views used in Tutorial #4 (Flux Balance Analysis).
+    """
+
+    fixtures = ['main/tutorial_fba']
+
+    def setUp(self):
+        super(FBAImportDataTests, self).setUp()
+        self.user = get_user_model().objects.get(pk=2)
+        self.target_study = models.Study.objects.get(pk=7)
+        self.client.force_login(self.user)
+
     def test_hplc_import_parse(self):
-        name = 'ImportData_FBA_HPLC.xlsx'
-        response = self._run_parse_view(name, 'xlsx', 'std')
+        response = self._run_parse_view('ImportData_FBA_HPLC.xlsx', 'xlsx', 'std')
         self.assertEqual(response.status_code, codes.ok)
 
     def test_hplc_import_task(self):
@@ -219,10 +231,9 @@ class ImportDataTests(TestCase):
 
     def test_hplc_import_view(self):
         response = self._run_import_view('ImportData_FBA_HPLC.xlsx.post')
-        self.assertEqual(self._assay_count(), 0)  # view does not change assays
         self.assertRedirects(
             response,
-            reverse('main:detail', kwargs=self.target_kwargs),
+            self._view_url(),
             # because no assays exist yet, there is another redirect to the lines view
             target_status_code=codes.found,
         )
@@ -240,24 +251,96 @@ class ImportDataTests(TestCase):
 
     def test_od_import_view(self):
         response = self._run_import_view('ImportData_FBA_OD.xlsx.post')
-        self.assertEqual(self._assay_count(), 0)  # view does not change assays
         self.assertRedirects(
             response,
-            reverse('main:detail', kwargs=self.target_kwargs),
+            self._view_url(),
             # because no assays exist yet, there is another redirect to the lines view
             target_status_code=codes.found,
         )
 
 
-class ExportDataTests(TestCase):
+class PCAPImportDataTests(TestCase, ImportDataTestsMixin):
     """
-    Sets of tests to exercise the SBML and Table export views.
+    Sets of tests to exercise Import Data views used in Tutorial #5 (Principal Component Analysis
+    of Proteomics).
+    """
+
+    fixtures = ['main/tutorial_pcap']
+
+    def setUp(self):
+        super(PCAPImportDataTests, self).setUp()
+        self.user = get_user_model().objects.get(pk=2)
+        self.target_study = models.Study.objects.get(pk=20)
+        self.client.force_login(self.user)
+
+    def test_gcms_import_parse(self):
+        response = self._run_parse_view('ImportData_PCAP_GCMS.csv', 'csv', 'std')
+        self.assertEqual(response.status_code, codes.ok)
+
+    def test_gcms_import_task(self):
+        self._run_task('ImportData_PCAP_GCMS.csv')
+        self.assertEqual(self._assay_count(), 30)
+        self.assertEqual(self._measurement_count(), 30)
+        self.assertEqual(self._value_count(), 30)
+
+    def test_gcms_import_view(self):
+        response = self._run_import_view('ImportData_PCAP_GCMS.csv.post')
+        self.assertRedirects(
+            response,
+            self._view_url(),
+            # because no assays exist yet, there is another redirect to the lines view
+            target_status_code=codes.found,
+        )
+
+    def test_od_import_parse(self):
+        response = self._run_parse_view('ImportData_PCAP_OD.xlsx', 'xlsx', 'std')
+        self.assertEqual(response.status_code, codes.ok)
+
+    def test_od_import_task(self):
+        self._run_task('ImportData_PCAP_OD.xlsx')
+        self.assertEqual(self._assay_count(), 30)
+        self.assertEqual(self._measurement_count(), 30)
+        self.assertEqual(self._value_count(), 30)
+
+    def test_od_import_view(self):
+        response = self._run_import_view('ImportData_PCAP_OD.xlsx.post')
+        self.assertRedirects(
+            response,
+            self._view_url(),
+            # because no assays exist yet, there is another redirect to the lines view
+            target_status_code=codes.found,
+        )
+
+    def test_proteomics_import_parse(self):
+        response = self._run_parse_view('ImportData_PCAP_Proteomics.csv', 'csv', 'std')
+        self.assertEqual(response.status_code, codes.ok)
+
+    def test_proteomics_import_task(self):
+        self._run_task('ImportData_PCAP_Proteomics.csv')
+        self.assertEqual(self._assay_count(), 30)
+        self.assertEqual(self._measurement_count(), 270)
+        self.assertEqual(self._value_count(), 270)
+
+    def test_proteomics_import_view(self):
+        response = self._run_import_view('ImportData_PCAP_Proteomics.csv.post')
+        self.assertRedirects(
+            response,
+            self._view_url(),
+            # because no assays exist yet, there is another redirect to the lines view
+            target_status_code=codes.found,
+        )
+
+
+class FBAExportDataTests(TestCase):
+    """
+    Sets of tests to exercise the SBML and Table export views used in Tutorial #4 (Flux
+    Balance Analysis).
     """
 
     fixtures = ['main/tutorial_fba', 'main/tutorial_fba_loaded']
 
     def setUp(self):
-        super(ExportDataTests, self).setUp()
+        super(FBAExportDataTests, self).setUp()
         self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=7)
         self.target_kwargs = {'slug': self.target_study.slug}
@@ -293,3 +376,13 @@ class ExportDataTests(TestCase):
         )
         self.assertEqual(response.status_code, codes.ok)
         # TODO figure out how to test content of chunked responses
+
+
+class PCAPExportDataTests(TestCase):
+    """
+    """
+
+    fixtures = ['main/tutorial_pcap', 'main/tutorial_pcap_loaded']
+
+    def setUp(self):
+        super(PCAPExportDataTests, self).setUp()
