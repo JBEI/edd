@@ -1279,6 +1279,8 @@ namespace StudyDataPage {
             viewingMode = 'table';
             queueActionPanelRefresh();
             makeLabelsBlack(EDDGraphingTools.labels);
+            updateGraphViewFlag({'buttonElem': "#dataTableButton", 'type': viewingMode,
+                                'study_id': EDDData.currentStudyID});
             $("#tableControlsArea").removeClass('off');
             $("#filterControlsArea").addClass('off');
             $(".tableActionButtons").removeClass('off');
@@ -1440,7 +1442,7 @@ namespace StudyDataPage {
         fetchEDDData(onSuccess);
 
         fetchSettings('measurement-' + EDDData.currentStudyID, (data) => {
-            if (data.type === 'linegraph') {
+            if (data.type === 'linegraph' || data.type === 'table') {
                 $(data.buttonElem).click();
             } else if (typeof(data.type) === 'undefined')  {
                 return
