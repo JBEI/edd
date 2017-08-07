@@ -1472,9 +1472,7 @@ namespace StudyDataPage {
     }
 
     function basePayload():any {
-        var token:string = document.cookie.replace(
-            /(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/,
-            '$1');
+        var token:string = Utl.EDD.findCSRFToken();
         return { 'csrfmiddlewaretoken': token };
     }
 
