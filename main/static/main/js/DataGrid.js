@@ -828,7 +828,7 @@ var DataGrid = (function () {
         }
     };
     DataGrid.prototype._basePayload = function () {
-        var token = document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/, '$1');
+        var token = Utl.EDD.findCSRFToken();
         return { 'csrfmiddlewaretoken': token };
     };
     DataGrid.prototype._columnSettingsKey = function () {

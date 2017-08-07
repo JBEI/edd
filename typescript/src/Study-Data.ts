@@ -1279,6 +1279,8 @@ namespace StudyDataPage {
             viewingMode = 'table';
             queueActionPanelRefresh();
             makeLabelsBlack(EDDGraphingTools.labels);
+            updateGraphViewFlag({'buttonElem': "#dataTableButton", 'type': viewingMode,
+                                'study_id': EDDData.currentStudyID});
             $("#tableControlsArea").removeClass('off');
             $("#filterControlsArea").addClass('off');
             $(".tableActionButtons").removeClass('off');
@@ -1337,11 +1339,14 @@ namespace StudyDataPage {
             $('#filterControlsArea').removeClass('off');
             queueActionPanelRefresh();
             viewingMode = 'linegraph';
+            updateGraphViewFlag({'buttonElem': "#lineGraphButton", 'type': viewingMode,
+                                'study_id': EDDData.currentStudyID});
             barGraphTypeButtonsJQ.addClass('off');
             $('#lineGraph').removeClass('off');
             $('#barGraphByTime').addClass('off');
             $('#barGraphByLine').addClass('off');
             $('#barGraphByMeasurement').addClass('off');
+            $('#mainFilterSection').appendTo('#content');
             queueRefreshDataDisplayIfStale();
         });
 
@@ -1369,17 +1374,28 @@ namespace StudyDataPage {
             $('#barGraphByLine').toggleClass('off', 'line' !== barGraphMode);
             $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== barGraphMode);
             queueRefreshDataDisplayIfStale();
+            if (barGraphMode === 'measurement') {
+                 updateGraphViewFlag({'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
+                                'study_id': EDDData.currentStudyID});
+            }
+            $('#mainFilterSection').appendTo('#content');
         });
         $("#timeBarGraphButton").click(function() {
             barGraphMode = 'time';
+            updateGraphViewFlag({'buttonElem': "#timeBarGraphButton", 'type': barGraphMode,
+                                 'study_id': EDDData.currentStudyID});
             queueRefreshDataDisplayIfStale();
         });
         $("#lineBarGraphButton").click(function() {
             barGraphMode = 'line';
+            updateGraphViewFlag({'buttonElem':'#lineBarGraphButton', 'type': barGraphMode,
+                                'study_id': EDDData.currentStudyID});
             queueRefreshDataDisplayIfStale();
         });
         $("#measurementBarGraphButton").click(function() {
             barGraphMode = 'measurement';
+            updateGraphViewFlag({'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
+                                'study_id': EDDData.currentStudyID});
             queueRefreshDataDisplayIfStale();
             $('#graphLoading').addClass('off');
         });
@@ -1425,10 +1441,19 @@ namespace StudyDataPage {
 
         fetchEDDData(onSuccess);
 
-        // Simply setting display:none doesn't work on flex items.
-        // They still occupy space in the layout.
-        // barGraphTypeButtonsJQ.detach();
-        // barGraphTypeButtonsJQ.removeClass('off');
+        fetchSettings('measurement-' + EDDData.currentStudyID, (data) => {
+            if (data.type === 'linegraph' || data.type === 'table') {
+                $(data.buttonElem).click();
+            } else if (typeof(data.type) === 'undefined')  {
+                return
+            } else if (data.type === 'measurement') {
+                $("#barGraphButton").click();
+            } else {
+                barGraphMode = data.type;
+                $("#barGraphButton").click();
+                $(data.buttonElem).click();
+            }
+            }, []);
 
         // Set up the Add Measurement to Assay modal
         $("#addMeasurement").dialog({
@@ -1444,6 +1469,18 @@ namespace StudyDataPage {
         // Callbacks to respond to the filtering section
         $('#mainFilterSection').on('mouseover mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
             .on('keydown', filterTableKeyDown.bind(this));
+    }
+
+    function basePayload():any {
+        var token:string = Utl.EDD.findCSRFToken();
+        return { 'csrfmiddlewaretoken': token };
+    }
+
+    function updateGraphViewFlag(type) {
+        $.ajax('/profile/settings/measurement-' + type.study_id, {
+                'data': $.extend({}, basePayload(), { 'data': JSON.stringify(type) }),
+                'type': 'POST'
+            });
     }
 
     function copyActionButtons() {
@@ -1467,6 +1504,21 @@ namespace StudyDataPage {
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
             'success': success
+        });
+    }
+
+    export function fetchSettings(propKey:string, callback:(value:any)=>void, defaultValue?:any):void {
+        $.ajax('/profile/settings/' + propKey, {
+            'dataType': 'json',
+            'success': (data:any):void => {
+                data = data || defaultValue;
+                if (typeof data === 'string') {
+                    try {
+                        data = JSON.parse(data);
+                    } catch (e) { /* ParseError, just use string value */ }
+                }
+                callback.call({}, data);
+            }
         });
     }
 
