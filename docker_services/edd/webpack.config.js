@@ -15,7 +15,20 @@ module.exports = {
     RNASeq: "./code/typescript/src/RNASeq.ts",
     StudyData: "./code/typescript/src/Study-Data.ts",
     StudyLines: "./code/typescript/src/Study-Lines.ts",
-    StudyOverview: "./code/typescript/src/Study-Overview.ts"
+    StudyOverview: "./code/typescript/src/Study-Overview.ts",
+    vendor: [
+      "bootstrap",
+      "d3",
+      "dropzone",
+      "handsontable",
+      "jquery",
+      "jquery-ui",
+      "jquery.cookie",
+      "qtip2",
+      "select2",
+      "tinymce",
+      "underscore"
+    ]
   },
   output: {
     path: path.resolve(__dirname, 'code/main/static/dist'),
@@ -72,6 +85,11 @@ module.exports = {
       "window.jQuery": "jquery",
       "window.$": "jquery"
     }),
-    new ExtractTextPlugin("styles.css")
+    new ExtractTextPlugin("styles.css"),
+    new webpack.optimize.CommonsChunkPlugin({
+      "name": "vendor",
+      "filename": "vendor.js",
+      "minChunks": 2
+    })
   ]
 };

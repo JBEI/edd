@@ -10,11 +10,42 @@ require('jquery-ui/themes/base/autocomplete.css');
 require('jquery-ui/themes/base/theme.css');
 require('jquery-ui/ui/widgets/autocomplete')
 
-declare module EDDAuto {
-    class NonValueItem {
+
+export namespace MultiColumnAuto {
+
+    export class AutoColumn {
+        name: string;
+        width: string;
+        maxWidth: string;
+        valueField: string;
+
+        constructor(name, minWidth, valueField, maxWidth?) {
+            this.name = name;
+            this.width = minWidth;
+            this.maxWidth = maxWidth || null;
+            this.valueField = valueField;
+            return this;
+        }
+    }
+
+    /**
+     * Insert these items to display autocomplete messages which are not selectable values.
+     */
+    export class NonValueItem {
+        static NO_RESULT: NonValueItem = new NonValueItem('No Results Found');
+        static ERROR: NonValueItem = new NonValueItem('Server Error');
+
+        // the autocomplete JQuery UI plugin expects items with label and value properties
+        // anything without those properties gets converted to a plain object that does
         label: string;
         value: Object;
+
+        constructor(label: string) {
+            this.label = label;
+            this.value = {};
+        }
     }
+
 }
 
 (function($) { // immediately invoked function to bind jQuery to $
@@ -81,7 +112,7 @@ declare module EDDAuto {
         _renderItem: function(ul, item) {
             var t = '', self = this, result = $('<li>').data('ui-autocomplete-item', item);
 
-            if (item instanceof EDDAuto.NonValueItem) {
+            if (item instanceof MultiColumnAuto.NonValueItem) {
                 self._appendMessage(result, item.label);
             } else {
                 $.each(self.options.columns, function(index, column) {

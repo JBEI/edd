@@ -574,14 +574,16 @@ export module Utl {
     export class FileDropZone {
 
         csrftoken: any;
-        dropzone:any;
+        dropzone: any;
         fileInitFn: any;
+        options: any;
 
-        constructor(options:any) {
+        constructor(options: any) {
 
             this.csrftoken = EDD.findCSRFToken();
             this.fileInitFn = options.fileInitFn;
             this.fileInitFn = options.fileInitFn;
+            this.options = options;
 
             this.dropzone = new Dropzone("div#" + options.elementId, {
                 'url': options.url,
@@ -617,11 +619,13 @@ export module Utl {
                 var xhr = file.xhr;
                 var dropzone = this;
                 var response = JSON.parse(xhr.response);
-                    if (response.python_error) {
+                if (response.python_error) {
                     // If we were given a function to process the error, use it.
-                        alert(response.python_error);
-                }
-                else if (file.status === 'error') {
+                    if (typeof this.options.processErrorFn === 'function') {
+                        this.options.processErrorFn(file, xhr);
+                        return;
+                    }
+                } else if (file.status === 'error') {
                     // unique class for ice related errors
                     if (response['errors'][0].category === 'ICE-related error') {
                         //first remove all files in upload
@@ -632,24 +636,23 @@ export module Utl {
                         this.options.processICEerror(this, file, response.errors);
                         //click handler for omit strains
                         $('#alert_placeholder').find('.omitStrains').on('click', ():void => {
-                            //remove alert
                             $(this).parent().remove();
                             dropzone.options.url = dropzone.options.url +
                                                     '?IGNORE_ICE_RELATED_ERRORS=true';
                             dropzone.addFile(file);
                         });
-                    } else {
+                    } else if (typeof this.options.processErrorFn === 'function') {
                        this.options.processErrorFn(file, xhr);
                     }
-                    return
+                    return;
                 }
-                if (response.warnings) {
+                if (response.warnings && typeof this.options.processWarningFn === 'function') {
                     this.options.processWarningFn(file, response);
-                    return
+                    return;
                 }
                 if (typeof(this.options.processResponseFn) === 'function') {
                     this.options.processResponseFn(this, file, response);
-                    return
+                    return;
                 }
                 if (file.status === 'success' && !response.warnings) {
                     this.options.processResponseFn(file, response)
