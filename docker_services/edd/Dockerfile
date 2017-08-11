@@ -6,6 +6,7 @@ ARG GIT_BRANCH=master
 ARG GIT_URL=https://github.com/JBEI/edd.git
 ENV EDD_VERSION=${EDD_VERSION}
 RUN git clone --depth 1 -b ${GIT_BRANCH} ${GIT_URL} code \
+    && echo "Cache-bust: ${EDD_VERSION}" \
     && cp ./code/docker_services/edd/tsconfig.json \
         ./code/docker_services/edd/webpack.config.js \
         . \

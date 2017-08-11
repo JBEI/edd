@@ -61,6 +61,8 @@ function print_help() {
     echo "        Runs the initialization without any input prompts for omitted information."
     echo "    --nonginx"
     echo "        Builds a Docker Compose configuration without the nginx webserver container(s)."
+    echo "    --novenv"
+    echo "        Runs the initialization without attempting to create a project virtualenv."
     echo
     echo "    --split-nginx"
     echo "        Generates configuration to use a split Compose file for running Nginx. This will"
@@ -85,7 +87,7 @@ PROJECT=edd
 if [ ! $# -eq 0 ]; then
     check_gnu_getopt
     short='p:u:m:d:'
-    long='help,project:,user:,mail:,noinput,domain:,nonginx'
+    long='help,project:,user:,mail:,noinput,domain:,nonginx,novenv'
     long="${long},split-nginx,split-media:,split-network:,split-static:"
     params="$($GETOPT -o "$short" -l "$long" --name "$0" -- "$@")"
     eval set -- "$params"
@@ -119,6 +121,10 @@ if [ ! $# -eq 0 ]; then
             --nonginx)
                 shift
                 NONGINX=1
+                ;;
+            --novenv)
+                shift
+                MAKE_VIRTUALENV="n"
                 ;;
             --split-nginx)
                 shift
@@ -222,7 +228,9 @@ if [ "$WRITE_OVERRIDE" == "y" ]; then
     fi
 fi
 
-if [ "$VENV" == "" ] || [ ! -x "$VENV" ]; then
+if [ "$MAKE_VIRTUALENV" == "n" ]; then
+    echo "Skipping virtualenv creation"
+elif [ "$VENV" == "" ] || [ ! -x "$VENV" ]; then
     (>&2 echo "virtualenvwrapper is not installed. Cannot create a project for this edd install.")
 elif [ ! -z "$PROJECT" ]; then
     MAKE_VIRTUALENV=y

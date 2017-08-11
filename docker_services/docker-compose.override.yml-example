@@ -77,6 +77,9 @@ services:
   # Override settings for EDD container(s).
   edd:
 
+    # Override image name to reference something other than jbei/edd-core:latest
+    #image: tagname
+
     # Examples of overriding the default initialize command below.
     # To initialize EDD without attempting to run database migrations:
     #command: [-M, application]
@@ -155,8 +158,8 @@ services:
 
     # The following ports definition publishes (reading backwards) port 8000 of the container
     #   on port 8000 of the Docker host using the interface (loopback) with IP 127.0.0.1.
-    ports:
-      - '127.0.0.1:8000:8000'
+    #ports:
+    #  - '127.0.0.1:8000:8000'
 
     # The default mode is also to run with Python code contained within the edd-core image. To run
     #   with a local copy of code and do, e.g. live code reload, uncomment and edit the volume
@@ -168,6 +171,9 @@ services:
     #  - /full/path/to/source:/code
 
   worker:
+
+    # Override image name to reference something other than jbei/edd-core:latest
+    #image: tagname
 
     # Override the default environment to direct errors to the guilty.
     environment:

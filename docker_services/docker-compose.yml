@@ -171,9 +171,9 @@ services:
       - staticdata:/var/www/static
     healthcheck:
       test: ['CMD', 'curl', '--fail', '-LSs', 'http://localhost:8000/health/']
-      interval: 1m
+      interval: 15s
       timeout: 5s
-      retries: 3
+      retries: 5
     logging:
       driver: 'json-file'
       options:
