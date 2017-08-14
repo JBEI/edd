@@ -78,6 +78,9 @@ a:hover {
     display:none;
     visibility:hidden;
 }
+.bulk {
+    margin-right: 5px !important;
+}
 .hoverable:hover {
     cursor: pointer;
     text-decoration:underline;

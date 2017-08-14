@@ -240,8 +240,9 @@
             {% csrf_token %}
             <div class="modal-body">
                 <div class="bulkNoteGroup">
-                    <p class="bulkNote">All fields modified will update corresponding lines</p>
+                    <p class="bulkNote">Any fields modified will update corresponding lines</p>
                     <p class="bulkNote">Any fields left blank will remain unchanged</p>
+                    <p class="bulkNote">Any checked fields left blank will delete contents</p>
                 </div>
             {{ new_line.as_p }}
             <div class="line-edit-meta form-group">

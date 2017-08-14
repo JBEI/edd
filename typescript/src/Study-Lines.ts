@@ -258,13 +258,13 @@ namespace StudyLines {
              }
          });
 
-        $('#editLineModal').on('change', '.line-meta > :input', (ev) => {
+        $('#editLineModal').on('change', '.line-meta', (ev) => {
             // watch for changes to metadata values, and serialize to the meta_store field
             var form = $(ev.target).closest('form'),
                 metaIn = form.find('[name=line-meta_store]'),
                 meta = JSON.parse(metaIn.val() || '{}');
             form.find('.line-meta > :input').each((i, input) => {
-                if ($(input).val()) {
+                if ($(input).val() || $(input).siblings('label').find('input').prop('checked')) {
                     var key = $(input).attr('id').match(/-(\d+)$/)[1];
                     meta[key] = $(input).val();
                 }
@@ -509,11 +509,13 @@ namespace StudyLines {
     }
 
     function insertLineMetadataRow(refRow, key, value) {
-        var row, type, label, input, postfixVal, prefixVal, id = 'line-meta-' + key;
+        var row, type, label, input, postfixVal, prefixVal, id = 'line-meta-' + key, checkbox;
         row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
         type = EDDData.MetaDataTypes[key];
         label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
-        // bulk checkbox?
+        // bulk checkbox
+        checkbox = $('<input type="checkbox">').addClass('bulk').attr('name', id);
+        $(checkbox).prependTo(label);
         input = $('<input type="text">').attr('id', 'id_' + id).addClass('form-control').val(value).appendTo(row);
         postfixVal = $(refRow).find('.meta-postfix'); //returns array of postfix elems present
         prefixVal = $(refRow).find('.meta-prefix'); //returns array of prefix elems present
@@ -552,6 +554,7 @@ namespace StudyLines {
             $('#id_line-name').parent().hide();
             //show bulk notice
             $('.bulkNoteGroup').removeClass('off');
+            $('.bulk').removeClass('off')
             form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
                 $(ev.target).siblings('label').find('.bulk').prop('checked', true);
             });
