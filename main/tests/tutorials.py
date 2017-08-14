@@ -11,6 +11,7 @@ import json
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
+from django.test import tag
 from io import BytesIO
 from mock import MagicMock, patch
 from requests import codes
@@ -78,6 +79,7 @@ class ExperimentDescriptionTests(TestCase):
         self.assertEqual(response.status_code, codes.ok)
         self.assertEqual(self.target_study.line_set.count(), 2)
 
+    @tag('known-broken')
     def test_missing_strain(self):
         name = 'ExperimentDescription_missing_strain.xlsx'
         response = self._run_upload(name)

@@ -6,7 +6,7 @@ import json
 from builtins import str
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.storage import staticfiles_storage
-from django.test import TestCase
+from django.test import tag, TestCase
 from openpyxl import load_workbook
 
 from main.importer.experiment_desc import CombinatorialCreationImporter
@@ -546,6 +546,7 @@ class CombinatorialCreationTests(TestCase):
             is_excel_file=False,
         )
 
+    @tag('known-broken')
     def test_basic_experiment_description_xlsx(self):
 
         strain, _ = Strain.objects.get_or_create(name='JW0111')
