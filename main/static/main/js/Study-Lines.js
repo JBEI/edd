@@ -1,4 +1,3 @@
-// File last modified on: Mon Jul 24 2017 13:18:23  
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
@@ -6,11 +5,16 @@
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="FileDropZone.ts" />
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var StudyLines;
 (function (StudyLines) {
     'use strict';
@@ -215,8 +219,10 @@ var StudyLines;
             // watch for changes to metadata values, and serialize to the meta_store field
             var form = $(ev.target).closest('form'), metaIn = form.find('[name=line-meta_store]'), meta = JSON.parse(metaIn.val() || '{}');
             form.find('.line-meta > :input').each(function (i, input) {
-                var key = $(input).attr('id').match(/-(\d+)$/)[1];
-                meta[key] = $(input).val();
+                if ($(input).val()) {
+                    var key = $(input).attr('id').match(/-(\d+)$/)[1];
+                    meta[key] = $(input).val();
+                }
             });
             metaIn.val(JSON.stringify(meta));
         }).on('click', '.line-meta-add', function (ev) {
@@ -312,6 +318,8 @@ var StudyLines;
             }
         });
         if (count_rec < count_total) {
+            // TODO not all measurements downloaded; display a message indicating this
+            // explain downloading individual assay measurements too
         }
         queuePositionActionsBar();
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
@@ -559,7 +567,7 @@ var StudyLines;
 var LineResults = (function (_super) {
     __extends(LineResults, _super);
     function LineResults(dataGridSpec) {
-        _super.call(this, dataGridSpec);
+        return _super.call(this, dataGridSpec) || this;
     }
     LineResults.prototype._getClasses = function () {
         return 'dataTable sortable dragboxes hastablecontrols table-striped';
@@ -569,7 +577,7 @@ var LineResults = (function (_super) {
 var DGSelectAllLinesWidget = (function (_super) {
     __extends(DGSelectAllLinesWidget, _super);
     function DGSelectAllLinesWidget() {
-        _super.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     DGSelectAllLinesWidget.prototype.clickHandler = function () {
         _super.prototype.clickHandler.call(this);
@@ -584,7 +592,7 @@ var DGSelectAllLinesWidget = (function (_super) {
 var DataGridSpecLines = (function (_super) {
     __extends(DataGridSpecLines, _super);
     function DataGridSpecLines() {
-        _super.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     DataGridSpecLines.prototype.init = function () {
         this.findMetaDataIDsUsedInLines();
@@ -718,29 +726,35 @@ var DataGridSpecLines = (function (_super) {
         var leftSide = [
             new DataGridHeaderSpec(1, 'hLinesName', {
                 'name': 'Name',
-                'sortBy': this.loadLineName }),
+                'sortBy': this.loadLineName
+            }),
             new DataGridHeaderSpec(2, 'hLinesDescription', {
                 'name': 'Description',
                 'sortBy': this.loadLineDescription,
-                'sortAfter': 0 }),
+                'sortAfter': 0
+            }),
             new DataGridHeaderSpec(3, 'hLinesStrain', {
                 'name': 'Strain',
                 'sortBy': this.loadStrainName,
-                'sortAfter': 0 }),
+                'sortAfter': 0
+            }),
             new DataGridHeaderSpec(4, 'hLinesCarbon', {
                 'name': 'Carbon Source(s)',
                 'size': 's',
                 'sortBy': this.loadCarbonSource,
-                'sortAfter': 0 }),
+                'sortAfter': 0
+            }),
             new DataGridHeaderSpec(5, 'hLinesLabeling', {
                 'name': 'Labeling',
                 'size': 's',
                 'sortBy': this.loadCarbonSourceLabeling,
-                'sortAfter': 0 }),
+                'sortAfter': 0
+            }),
             new DataGridHeaderSpec(6, 'hLinesCarbonBalance', {
                 'name': 'Carbon Balance',
                 'size': 's',
-                'sortBy': this.loadLineName })
+                'sortBy': this.loadLineName
+            })
         ];
         // map all metadata IDs to HeaderSpec objects
         var metaDataHeaders = this.metaDataIDsUsedInLines.map(function (id, index) {
@@ -749,19 +763,22 @@ var DataGridSpecLines = (function (_super) {
                 'name': mdType.name,
                 'size': 's',
                 'sortBy': _this.makeMetaDataSortFunction(id),
-                'sortAfter': 0 });
+                'sortAfter': 0
+            });
         });
         var rightSide = [
             new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesExperimenter', {
                 'name': 'Experimenter',
                 'size': 's',
                 'sortBy': this.loadExperimenterInitials,
-                'sortAfter': 0 }),
+                'sortAfter': 0
+            }),
             new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hLinesModified', {
                 'name': 'Last Modified',
                 'size': 's',
                 'sortBy': this.loadLineModification,
-                'sortAfter': 0 })
+                'sortAfter': 0
+            })
         ];
         return leftSide.concat(metaDataHeaders, rightSide);
     };
@@ -1008,7 +1025,7 @@ var DataGridSpecLines = (function (_super) {
 var DGDisabledLinesWidget = (function (_super) {
     __extends(DGDisabledLinesWidget, _super);
     function DGDisabledLinesWidget() {
-        _super.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     DGDisabledLinesWidget.prototype.createElements = function (uniqueID) {
         var _this = this;
@@ -1057,7 +1074,7 @@ var DGDisabledLinesWidget = (function (_super) {
 var DGGroupStudyReplicatesWidget = (function (_super) {
     __extends(DGGroupStudyReplicatesWidget, _super);
     function DGGroupStudyReplicatesWidget() {
-        _super.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     DGGroupStudyReplicatesWidget.prototype.createElements = function (uniqueID) {
         var pThis = this;
@@ -1085,7 +1102,7 @@ var DGGroupStudyReplicatesWidget = (function (_super) {
 var DGLinesSearchWidget = (function (_super) {
     __extends(DGLinesSearchWidget, _super);
     function DGLinesSearchWidget(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus) {
-        _super.call(this, dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
+        return _super.call(this, dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus) || this;
     }
     // The uniqueID is provided to assist the widget in avoiding collisions when creating input
     // element labels or other things requiring an ID.
@@ -1107,10 +1124,11 @@ var DGLinesSearchWidget = (function (_super) {
 var DGShowCarbonBalanceWidget = (function (_super) {
     __extends(DGShowCarbonBalanceWidget, _super);
     function DGShowCarbonBalanceWidget(dataGridOwnerObject, dataGridSpec) {
-        _super.call(this, dataGridOwnerObject, dataGridSpec);
-        this.checkboxEnabled = true;
-        this.highlighted = false;
-        this._lineSpec = dataGridSpec;
+        var _this = _super.call(this, dataGridOwnerObject, dataGridSpec) || this;
+        _this.checkboxEnabled = true;
+        _this.highlighted = false;
+        _this._lineSpec = dataGridSpec;
+        return _this;
     }
     DGShowCarbonBalanceWidget.prototype.createElements = function (uniqueID) {
         var _this = this;
