@@ -264,8 +264,10 @@ namespace StudyLines {
                 metaIn = form.find('[name=line-meta_store]'),
                 meta = JSON.parse(metaIn.val() || '{}');
             form.find('.line-meta > :input').each((i, input) => {
-                var key = $(input).attr('id').match(/-(\d+)$/)[1];
-                meta[key] = $(input).val();
+                if ($(input).val()) {
+                    var key = $(input).attr('id').match(/-(\d+)$/)[1];
+                    meta[key] = $(input).val();
+                }
             });
             metaIn.val(JSON.stringify(meta));
         }).on('click', '.line-meta-add', (ev:JQueryMouseEventObject) => {
