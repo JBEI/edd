@@ -1825,6 +1825,9 @@ class MeasurementType(models.Model, EDDSerialize):
     def is_phosphor(self):
         return self.type_group == MeasurementType.Group.PHOSPHOR
 
+    def export_name(self):
+        return self.type_name
+
     # TODO: replace use of this in tests, then remove
     @classmethod
     def create_protein(cls, type_name, short_name=None):
@@ -2023,6 +2026,11 @@ class ProteinIdentifier(MeasurementType):
         r'([OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2})'  # the ID
         r'(?:\|(\w+))?'  # optional name
     )
+
+    def export_name(self):
+        if self.accession_id:
+            return self.accession_id
+        return self.type_name
 
     def to_solr_json(self):
         """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
@@ -2402,7 +2410,7 @@ class Measurement(EDDMetadata, EDDSerialize):
     def export_columns(cls):
         return [
             table.ColumnChoice(
-                cls, 'type', _('Measurement Type'), lambda x: x.name),
+                cls, 'type', _('Measurement Type'), lambda x: x.measurement_type.export_name()),
             table.ColumnChoice(
                 cls, 'comp', _('Compartment'), lambda x: x.compartment_symbol),
             table.ColumnChoice(
