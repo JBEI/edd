@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='measurementtype',
             name='alt_names',
-            field=django.contrib.postgres.fields.ArrayField(base_field=main.models.fields.VarCharField(), default=list, help_text='Alternate names for this Measurement Type.', size=None, verbose_name='Synonyms'),
+            field=django.contrib.postgres.fields.ArrayField(base_field=main.models.fields.VarCharField(), blank=True, default=list, help_text='Alternate names for this Measurement Type.', size=None, verbose_name='Synonyms'),
         ),
         migrations.AddField(
             model_name='metabolite',

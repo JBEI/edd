@@ -8,14 +8,22 @@ from collections import namedtuple
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import connection
-from django.db.models.signals import post_delete, pre_delete
+from django.db.models.signals import post_delete, post_save, pre_delete
 
-from . import study_modified, study_removed, user_modified, user_removed
+from . import (
+    study_modified,
+    study_removed,
+    type_modified,
+    type_removed,
+    user_modified,
+    user_removed,
+)
 from .dispatcher import receiver
 from .. import models as edd_models
-from ..solr import StudySearch, UserSearch
+from ..solr import MeasurementTypeSearch, StudySearch, UserSearch
 
 
+type_index = MeasurementTypeSearch()
 study_index = StudySearch()
 users_index = UserSearch()
 logger = logging.getLogger(__name__)
@@ -43,7 +51,7 @@ def index_update(index, items):
         logger.error("Failed to update solr with %s", items)
 
 
-@receiver(pre_delete, sender=(edd_models.Study, get_user_model()))
+@receiver(pre_delete, sender=(edd_models.MeasurementType, edd_models.Study, get_user_model()))
 def cache_deleting_key(sender, instance, **kwargs):
     """
     A model's primary key is removed during deletion; this handler will cache the primary key on
@@ -58,10 +66,26 @@ def removed_study(sender, instance, using, **kwargs):
         study_removed.send(sender=sender, doc=instance._pk_cached, using=using)
 
 
+@receiver(post_delete, sender=edd_models.MeasurementType)
+def removed_type(sender, instance, using, **kwargs):
+    if hasattr(instance, '_pk_cached'):
+        type_removed.send(sender=sender, doc=instance._pk_cached, using=using)
+
+
 @receiver(post_delete, sender=get_user_model())
 def removed_user(sender, instance, using, **kwargs):
     if hasattr(instance, '_pk_cached'):
         user_removed.send(sender=sender, doc=instance._pk_cached, using=using)
+
+
+@receiver(post_save, sender=edd_models.MeasurementType)
+def type_saved(sender, instance, created, raw, using, **kwargs):
+    """
+    Forwards a signal indicating a study was saved.
+    """
+    # raw save == database may be inconsistent; do not forward next signal
+    if not raw:
+        type_modified.send(sender=sender, measurement_type=instance, using=using)
 
 
 @receiver(study_modified)
@@ -70,6 +94,14 @@ def index_study(sender, study, using, **kwargs):
     if using in settings.EDD_MAIN_SOLR:
         # schedule the work for after the commit (or immediately if there's no transaction)
         connection.on_commit(functools.partial(index_update, study_index, [study, ]))
+
+
+@receiver(type_modified)
+def index_type(sender, measurement_type, using, **kwargs):
+    # only submit for indexing when the database key has a matching solr key
+    if using in settings.EDD_MAIN_SOLR:
+        # schedule the work for after the commit (or immediately if there's no transaction)
+        connection.on_commit(functools.partial(index_update, type_index, [measurement_type, ]))
 
 
 @receiver(user_modified)
@@ -86,6 +118,14 @@ def remove_study(sender, doc, using, **kwargs):
     if using in settings.EDD_MAIN_SOLR:
         # schedule the work for after the commit (or immediately if there's no transaction)
         connection.on_commit(functools.partial(index_remove, study_index, [doc, ]))
+
+
+@receiver(type_removed)
+def remove_type(sender, doc, using, **kwargs):
+    # only submit for removal when the database key has a matching solr key
+    if using in settings.EDD_MAIN_SOLR:
+        # schedule the work for after the commit (or immediately if there's no transaction)
+        connection.on_commit(functools.partial(index_remove, type_index, [doc, ]))
 
 
 @receiver(user_removed)

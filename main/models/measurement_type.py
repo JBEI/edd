@@ -86,6 +86,7 @@ class MeasurementType(models.Model, EDDSerialize):
     )
     alt_names = ArrayField(
         VarCharField(),
+        blank=True,
         default=list,
         help_text=_('Alternate names for this Measurement Type.'),
         verbose_name=_('Synonyms'),
@@ -103,12 +104,11 @@ class MeasurementType(models.Model, EDDSerialize):
         """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
         source_name = None
         # Check if this is coming from a child MeasurementType, and ref the base type
-        if hasattr(self, 'measurementtype_ptr'):
-            mtype = self.measurementtype_ptr
+        mtype = getattr(self, 'measurementtype_ptr', None)
         # check for annotated source attribute on self and base type
         if hasattr(self, '_source_name'):
             source_name = self._source_name
-        elif hasattr(mtype, '_source_name'):
+        elif mtype and hasattr(mtype, '_source_name'):
             source_name = mtype._source_name
         elif self.type_source:
             source_name = self.type_source.name
