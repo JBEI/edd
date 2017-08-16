@@ -704,6 +704,10 @@ class WorklistTemplateAdmin(EDDObjectAdmin):
     inlines = (WorklistColumnInline, )
 
 
+class MeasurementUnitAdmin(admin.ModelAdmin):
+    pass
+
+
 admin.site.register(MetadataGroup, MetadataGroupAdmin)
 admin.site.register(MetadataType, MetadataTypeAdmin)
 admin.site.register(Protocol, ProtocolAdmin)
@@ -718,5 +722,6 @@ admin.site.register(Study, StudyAdmin)
 admin.site.register(Assay, AssayAdmin)
 admin.site.register(SBMLTemplate, SBMLTemplateAdmin)
 admin.site.register(WorklistTemplate, WorklistTemplateAdmin)
+admin.site.register(models.MeasurementUnit, MeasurementUnitAdmin)
 admin.site.unregister(get_user_model())
 admin.site.register(get_user_model(), EDDUserAdmin)
