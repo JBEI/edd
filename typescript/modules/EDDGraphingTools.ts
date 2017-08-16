@@ -323,11 +323,15 @@ export class EDDGraphingTools {
             .text(label);
 
         // Draw the y Grid lines
-        yAxis = yAxis.tickSize(-graphSet.width).tickFormat(d3.format(""));
-        svg
-          .append("g")
+        let gridLines = d3.axisLeft(y)
+            .ticks(5)
+            .tickSize(-graphSet.width)
+            .tickFormat(d3.format(""));
+        let axes = svg.append("g")
             .attr("class", "grid")
-          .call(yAxis);
+          .call(gridLines);
+        // the empty tickFormat does not seem to apply; remove the extra labels here
+        axes.selectAll("text").remove();
     }
 
 
