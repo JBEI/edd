@@ -8,6 +8,7 @@ import { EDDGraphingTools } from "../modules/EDDGraphingTools"
 import { StudyBase } from "../modules/Study"
 import * as d3 from "d3"
 import * as _ from "underscore"
+import "bootstrap-loader"
 
 
 export namespace StudyDataPage {
