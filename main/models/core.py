@@ -859,31 +859,6 @@ class Line(EDDObject):
             json_dict.update(study=self.study_id)
         return json_dict
 
-    @property
-    def primary_strain_name(self):
-        strains = self.strains.all()
-        return strains[0].name if len(strains) > 0 else None
-
-    @property
-    def strain_ids(self):
-        """ String representation of associated strains; used in views. """
-        return ",".join([s.name for s in self.strains.all()])
-
-    @property
-    def carbon_source_info(self):
-        """ String representation of carbon source(s) with labeling included; used in views. """
-        return ",".join(['%s' % cs for cs in self.carbon_source.all()])
-
-    @property
-    def carbon_source_name(self):
-        """ String representation of carbon source(s); used in views. """
-        return ",".join([cs.name for cs in self.carbon_source.all()])
-
-    @property
-    def carbon_source_labeling(self):
-        """ String representation of labeling (if any); used in views. """
-        return ",".join([cs.labeling for cs in self.carbon_source.all()])
-
     def new_assay_number(self, protocol):
         """
         Given a Protocol name, fetch all matching child Assays, and return one greater than the

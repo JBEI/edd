@@ -308,24 +308,12 @@ class LineTests(TestCase):  # XXX also Strain, CarbonSource
         self.assertEqual(self.strain1.n_studies, 2)
         self.assertEqual(self.strain2.n_lines, 1)
         self.assertEqual(self.strain2.n_studies, 1)
-        self.assertEqual(self.line1.primary_strain_name, "Strain 1")
-        self.assertEqual(self.line3.primary_strain_name, "Strain 1")
-        self.assertEqual(self.line1.strain_ids, "Strain 1")
-        self.assertEqual(self.line1.strain_ids, self.line2.strain_ids)
-        self.assertEqual(self.line3.strain_ids, "Strain 1,Strain 2")
 
     def test_carbon_source(self):
         self.assertEqual(self.cs1.n_lines, 2)
         self.assertEqual(self.cs1.n_studies, 2)
         self.assertEqual(self.cs2.n_lines, 1)
         self.assertEqual(self.cs2.n_studies, 1)
-        self.assertEqual(self.line1.carbon_source_labeling, "100% unlabeled")
-        self.assertEqual(self.line1.carbon_source_name, "Carbon source 1")
-        self.assertEqual(self.line1.carbon_source_info, "Carbon source 1 (100% unlabeled)")
-        self.assertEqual(
-            self.line3.carbon_source_info,
-            "Carbon source 1 (100% unlabeled),Carbon source 3 (40% 14C)"
-        )
 
 
 # XXX because there's so much overlap in functionality and the necessary setup

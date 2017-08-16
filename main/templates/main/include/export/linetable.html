@@ -8,7 +8,7 @@
             {% endblocktrans %}
         </a>
     </div>
-  <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;"> 
+  <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">
     <!--
     Table displaying selected lines; used for table and SBML export pages
     -->
@@ -42,7 +42,13 @@
       <!-- {{ id }} {{ line }} -->
       <tr class="stripeRow{% if forloop.counter|divisibleby:'2' %}A{% else %}B{% endif %}" data-line-id="{{ line.id }}">
         <td>{{ line.name }}</td>
-        <td>{{ line.strain_ids }}</td>
+        <td>
+          <ul>
+          {% for strain in line.strains.all %}
+            <li>{{ strain.name }}</li>
+          {% endfor %}
+          </ul>
+        </td>
         <td>{{ line.media }}</td>
         <td>
           <ul>
