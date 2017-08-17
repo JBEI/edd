@@ -62,10 +62,18 @@ try {
         }
 
         stage('Build') {
-            // manually build the edd-core image to use --build-args!
+            // build edd-node and edd-core images outside docker-compose to use --build-args!
+            // tag both with build-specific versions, ensure edd-core builds off correct edd-node
             // NOTE: sudo is required to execute docker commands
             def build_script = $/#!/bin/bash -xe
-                cd docker_services/edd
+                cd docker_services/node
+                sudo docker build \
+                    -t jbei/edd-node:${image_version} .
+                cd ../edd
+                sed -i.bak \
+                    -e "s/edd-node:latest/edd-node:${image_version}/" \
+                    Dockerfile
+                rm Dockerfile.bak
                 sudo docker build \
                     --build-arg 'GIT_URL=${git_url}' \
                     --build-arg 'GIT_BRANCH=${git_branch}' \
@@ -114,6 +122,12 @@ try {
                 /$
                 sh test_script
             }
+
+            // TODO: more stages
+            // stage('Publish') {
+            // }
+            // stage('Deploy') {
+            // }
 
         } catch (exc) {
             throw exc
