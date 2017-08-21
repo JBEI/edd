@@ -61,11 +61,8 @@ var StudyLines;
             e.preventDefault();
             $(".linesDropZone").removeClass('off');
         });
-        $(document).on('dragEnd dragend drop mouseleave mouseup mousedown', function (e) {
-            e.stopPropagation();
-            e.preventDefault();
+        $('#content').on('dragend, dragleave, mouseleave', function (e) {
             $(".linesDropZone").addClass('off');
-            return false;
         });
         $('#content').tooltip({
             content: function () {

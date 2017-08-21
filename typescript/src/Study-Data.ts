@@ -11,9 +11,9 @@ declare var EDDData:EDDData;
 namespace StudyDataPage {
     'use strict';
 
-    var viewingMode;    // An enum: 'linegraph', 'bargraph', or 'table'
+    var viewingMode: 'linegraph'|'bargraph'|'table';
     var viewingModeIsStale:{[id:string]: boolean};
-    var barGraphMode;    // an enum: 'time', 'line', 'measurement'
+    var barGraphMode: 'time'|'line'|'measurement';
     var barGraphTypeButtonsJQ:JQuery;
 
     export var progressiveFilteringWidget: ProgressiveFilteringWidget;
@@ -1210,6 +1210,48 @@ namespace StudyDataPage {
     }
 
 
+    function _displayLineGraph(): void {
+        $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+        $('#filterControlsArea').removeClass('off');
+        queueActionPanelRefresh();
+        viewingMode = 'linegraph';
+        barGraphTypeButtonsJQ.addClass('off');
+        $('#lineGraph').removeClass('off');
+        $('#barGraphByTime').addClass('off');
+        $('#barGraphByLine').addClass('off');
+        $('#barGraphByMeasurement').addClass('off');
+        $('#mainFilterSection').appendTo('#content');
+        queueRefreshDataDisplayIfStale();
+    }
+
+
+    function _displayBarGraph(mode: 'time'|'line'|'measurement'): void {
+        $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+        $('#filterControlsArea').removeClass('off');
+        queueActionPanelRefresh();
+        viewingMode = 'bargraph';
+        barGraphTypeButtonsJQ.removeClass('off');
+        $('#lineGraph').addClass('off');
+        $('#barGraphByTime').toggleClass('off', 'time' !== mode);
+        $('#barGraphByLine').toggleClass('off', 'line' !== mode);
+        $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== mode);
+        $('#mainFilterSection').appendTo('#content');
+        queueRefreshDataDisplayIfStale();
+    }
+
+
+    function _displayTable(): void {
+        $(".exportButton, #tableControlsArea, .tableActionButtons").removeClass('off');
+        $("#filterControlsArea").addClass('off');
+        queueActionPanelRefresh();
+        viewingMode = 'table';
+        barGraphTypeButtonsJQ.addClass('off');
+        makeLabelsBlack(EDDGraphingTools.labels);
+        queueRefreshDataDisplayIfStale();
+        //TODO: enable users to export filtered data from graph
+    }
+
+
     // Called when the page loads.
     export function prepareIt() {
 
@@ -1276,18 +1318,12 @@ namespace StudyDataPage {
         });
 
         $("#dataTableButton").click(function() {
-            viewingMode = 'table';
-            queueActionPanelRefresh();
-            makeLabelsBlack(EDDGraphingTools.labels);
-            updateGraphViewFlag({'buttonElem': "#dataTableButton", 'type': viewingMode,
-                                'study_id': EDDData.currentStudyID});
-            $("#tableControlsArea").removeClass('off');
-            $("#filterControlsArea").addClass('off');
-            $(".tableActionButtons").removeClass('off');
-            barGraphTypeButtonsJQ.addClass('off');
-            queueRefreshDataDisplayIfStale();
-            //TODO: enable users to export filtered data from graph
-            $('.exportButton').removeClass('off');
+            _displayTable();
+            updateGraphViewFlag({
+                'buttonElem': "#dataTableButton",
+                'type': 'table',
+                'study_id': EDDData.currentStudyID
+            });
         });
 
         //click handler for edit assay measurements
@@ -1335,19 +1371,12 @@ namespace StudyDataPage {
 
         // This one is active by default
         $("#lineGraphButton").click(function() {
-            $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
-            $('#filterControlsArea').removeClass('off');
-            queueActionPanelRefresh();
-            viewingMode = 'linegraph';
-            updateGraphViewFlag({'buttonElem': "#lineGraphButton", 'type': viewingMode,
-                                'study_id': EDDData.currentStudyID});
-            barGraphTypeButtonsJQ.addClass('off');
-            $('#lineGraph').removeClass('off');
-            $('#barGraphByTime').addClass('off');
-            $('#barGraphByLine').addClass('off');
-            $('#barGraphByMeasurement').addClass('off');
-            $('#mainFilterSection').appendTo('#content');
-            queueRefreshDataDisplayIfStale();
+            _displayLineGraph();
+            updateGraphViewFlag({
+                'buttonElem': "#lineGraphButton",
+                'type': viewingMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
 
         //one time click event handler for loading spinner
@@ -1364,40 +1393,36 @@ namespace StudyDataPage {
             $('#graphLoading').removeClass('off');
         });
         $("#barGraphButton").click(function() {
-            $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
-            $('#filterControlsArea').removeClass('off');
-            queueActionPanelRefresh();
-            viewingMode = 'bargraph';
-            barGraphTypeButtonsJQ.removeClass('off');
-            $('#lineGraph').addClass('off');
-            $('#barGraphByTime').toggleClass('off', 'time' !== barGraphMode);
-            $('#barGraphByLine').toggleClass('off', 'line' !== barGraphMode);
-            $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== barGraphMode);
-            queueRefreshDataDisplayIfStale();
-            if (barGraphMode === 'measurement') {
-                 updateGraphViewFlag({'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
-                                'study_id': EDDData.currentStudyID});
-            }
-            $('#mainFilterSection').appendTo('#content');
+            _displayBarGraph(barGraphMode);
+            updateGraphViewFlag({
+                'buttonElem': '#measurementBarGraphButton',
+                'type': barGraphMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
         $("#timeBarGraphButton").click(function() {
-            barGraphMode = 'time';
-            updateGraphViewFlag({'buttonElem': "#timeBarGraphButton", 'type': barGraphMode,
-                                 'study_id': EDDData.currentStudyID});
-            queueRefreshDataDisplayIfStale();
+            _displayBarGraph(barGraphMode = 'time');
+            updateGraphViewFlag({
+                'buttonElem': "#timeBarGraphButton",
+                'type': barGraphMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
         $("#lineBarGraphButton").click(function() {
-            barGraphMode = 'line';
-            updateGraphViewFlag({'buttonElem':'#lineBarGraphButton', 'type': barGraphMode,
-                                'study_id': EDDData.currentStudyID});
-            queueRefreshDataDisplayIfStale();
+            _displayBarGraph(barGraphMode = 'line');
+            updateGraphViewFlag({
+                'buttonElem':'#lineBarGraphButton',
+                'type': barGraphMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
         $("#measurementBarGraphButton").click(function() {
-            barGraphMode = 'measurement';
-            updateGraphViewFlag({'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
-                                'study_id': EDDData.currentStudyID});
-            queueRefreshDataDisplayIfStale();
-            $('#graphLoading').addClass('off');
+            _displayBarGraph(barGraphMode = 'measurement');
+            updateGraphViewFlag({
+                'buttonElem': '#measurementBarGraphButton',
+                'type': barGraphMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
 
         //hides/shows filter section.
@@ -1442,18 +1467,17 @@ namespace StudyDataPage {
         fetchEDDData(onSuccess);
 
         fetchSettings('measurement-' + EDDData.currentStudyID, (data) => {
-            if (data.type === 'linegraph' || data.type === 'table') {
-                $(data.buttonElem).click();
-            } else if (typeof(data.type) === 'undefined')  {
-                return
-            } else if (data.type === 'measurement') {
-                $("#barGraphButton").click();
+            if (typeof(data) !== 'object' || typeof(data.type) === 'undefined') {
+                // do nothing if the parameter is not an object
+                return;
+            } else if (data.type === 'linegraph') {
+                _displayLineGraph();
+            } else if (data.type === 'table') {
+                _displayTable();
             } else {
-                barGraphMode = data.type;
-                $("#barGraphButton").click();
-                $(data.buttonElem).click();
+                _displayBarGraph(data.type);
             }
-            }, []);
+        }, []);
 
         // Set up the Add Measurement to Assay modal
         $("#addMeasurement").dialog({
@@ -1480,9 +1504,9 @@ namespace StudyDataPage {
 
     function updateGraphViewFlag(type) {
         $.ajax('/profile/settings/measurement-' + type.study_id, {
-                'data': $.extend({}, basePayload(), { 'data': JSON.stringify(type) }),
-                'type': 'POST'
-            });
+            'data': $.extend({}, basePayload(), { 'data': JSON.stringify(type) }),
+            'type': 'POST'
+        });
     }
 
     function copyActionButtons() {

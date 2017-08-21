@@ -1,16 +1,11 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
 //
 // This is a re-implementation of DataGridServerSide for wholly client-side tables.
 // Eventually DataGridServerSide should be phased out completely.
@@ -1229,9 +1224,8 @@ var DataGridDataCell = (function () {
 var DataGridLoadingCell = (function (_super) {
     __extends(DataGridLoadingCell, _super);
     function DataGridLoadingCell(gridSpec, id, opt) {
-        var _this = _super.call(this, gridSpec, id, opt) || this;
-        _this.contentString = '<span class="loading">Loading...</span>';
-        return _this;
+        _super.call(this, gridSpec, id, opt);
+        this.contentString = '<span class="loading">Loading...</span>';
     }
     return DataGridLoadingCell;
 }(DataGridDataCell));
@@ -1291,9 +1285,8 @@ var DataGridWidget = (function () {
 var DataGridOptionWidget = (function (_super) {
     __extends(DataGridOptionWidget, _super);
     function DataGridOptionWidget(dataGridOwnerObject, dataGridSpec) {
-        var _this = _super.call(this, dataGridOwnerObject, dataGridSpec) || this;
-        _this._createdElements = false;
-        return _this;
+        _super.call(this, dataGridOwnerObject, dataGridSpec);
+        this._createdElements = false;
     }
     // Return a fragment to use in generating option widget IDs
     DataGridOptionWidget.prototype.getIDFragment = function (uniqueID) {
@@ -1372,10 +1365,9 @@ var DataGridOptionWidget = (function (_super) {
 var DataGridHeaderWidget = (function (_super) {
     __extends(DataGridHeaderWidget, _super);
     function DataGridHeaderWidget(dataGridOwnerObject, dataGridSpec) {
-        var _this = _super.call(this, dataGridOwnerObject, dataGridSpec) || this;
-        _this._displayBeforeViewMenuFlag = false;
-        _this._createdElements = false;
-        return _this;
+        _super.call(this, dataGridOwnerObject, dataGridSpec);
+        this._displayBeforeViewMenuFlag = false;
+        this._createdElements = false;
     }
     // The uniqueID is provided to assist the widget in avoiding collisions
     // when creating input element labels or other things requiring an ID.
@@ -1425,7 +1417,7 @@ var DataGridHeaderWidget = (function (_super) {
 var DGSelectAllWidget = (function (_super) {
     __extends(DGSelectAllWidget, _super);
     function DGSelectAllWidget(dataGridOwnerObject, dataGridSpec) {
-        return _super.call(this, dataGridOwnerObject, dataGridSpec) || this;
+        _super.call(this, dataGridOwnerObject, dataGridSpec);
     }
     // The uniqueID is provided to assist the widget in avoiding collisions
     // when creating input element labels or other things requiring an ID.
@@ -1470,10 +1462,11 @@ var DGSelectAllWidget = (function (_super) {
 var DGSearchWidget = (function (_super) {
     __extends(DGSearchWidget, _super);
     function DGSearchWidget(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus) {
-        var _this = _super.call(this, dataGridOwnerObject, dataGridSpec) || this;
+        var _this = this;
+        _super.call(this, dataGridOwnerObject, dataGridSpec);
         // (Note: This syntax causes "this" to behave in a non-Javascript way
         // see http://stackoverflow.com/questions/16157839/typescript-this-inside-a-class-method )
-        _this.typingDelayExpirationHandler = function () {
+        this.typingDelayExpirationHandler = function () {
             // ignore if the following keys are pressed: [del] [shift] [capslock]
             //if (this.lastKeyPressCode == 46) {
             //    return;
@@ -1489,15 +1482,14 @@ var DGSearchWidget = (function (_super) {
             _this.previousSelection = v;
             _this.dataGridOwnerObject.clickedHeaderWidget(_this);
         };
-        _this.placeHolder = placeHolder;
-        _this.fieldSize = size;
-        _this.getsFocus = getsFocus;
-        _this.typingTimeout = null;
-        _this.typingDelay = 330;
-        _this.lastKeyPressCode = null;
-        _this.previousSelection = null;
-        _this.minCharsToTriggerSearch = 1;
-        return _this;
+        this.placeHolder = placeHolder;
+        this.fieldSize = size;
+        this.getsFocus = getsFocus;
+        this.typingTimeout = null;
+        this.typingDelay = 330;
+        this.lastKeyPressCode = null;
+        this.previousSelection = null;
+        this.minCharsToTriggerSearch = 1;
     }
     // The uniqueID is provided to assist the widget in avoiding collisions
     // when creating input element labels or other things requiring an ID.
@@ -1516,15 +1508,15 @@ var DGSearchWidget = (function (_super) {
         // track last key pressed
         this.lastKeyPressCode = e.keyCode;
         switch (e.keyCode) {
-            case 38:// up
+            case 38:
                 e.preventDefault();
                 break;
-            case 40:// down
+            case 40:
                 e.preventDefault();
                 break;
-            case 9:// tab
+            case 9:
                 break;
-            case 13:// return
+            case 13:
                 e.preventDefault();
                 break;
             default:
@@ -1596,15 +1588,15 @@ var DataGridSort = (function () {
 var DGPagingWidget = (function (_super) {
     __extends(DGPagingWidget, _super);
     function DGPagingWidget(dataGridOwnerObject, dataGridSpec, source) {
-        var _this = _super.call(this, dataGridOwnerObject, dataGridSpec) || this;
-        _this.requestDone = function (success) {
+        var _this = this;
+        _super.call(this, dataGridOwnerObject, dataGridSpec);
+        this.requestDone = function (success) {
             if (success) {
                 _this.dataGridOwnerObject.triggerDataReset();
             }
         };
-        _this.source = source;
-        _this.displayBeforeViewMenu(true);
-        return _this;
+        this.source = source;
+        this.displayBeforeViewMenu(true);
     }
     // This is called to append the widget elements beneath the given element.
     // If the elements have not been created yet, they are created, and the uniqueID is passed along.
