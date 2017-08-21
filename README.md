@@ -60,8 +60,8 @@ name for logging in is the part of your email before the `@` sign.
 For a more detailed reference for EDD's low-level configuration options, see [Configuration][4].
 Instructions on administering an EDD instance can be found in the [Administration][11] document,
 and steps to deploy a new instance are in the [Deployment][5] document. Getting a development
-environment set up to modify or contribute to EDD is outlined in the
-[Developer Setup][12] document.
+environment set up to modify or contribute to EDD is outlined in the [Developer Setup][12]
+document. The [Troubleshooting][17] guide details some commands to diagnose problems.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -81,3 +81,4 @@ environment set up to modify or contribute to EDD is outlined in the
 [14]:   https://public-edd.jbei.org/pages/tutorials/
 [15]:   https://www.docker.com/community-edition#/download
 [16]:   https://docs.docker.com/compose/install/
+[17]:   docs/Troubleshooting.md
