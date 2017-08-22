@@ -4,22 +4,17 @@
 /// <reference path="DataGrid.ts" />
 /// <reference path="EDDGraphingTools.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
 var StudyDataPage;
 (function (StudyDataPage) {
     'use strict';
-    var viewingMode; // An enum: 'linegraph', 'bargraph', or 'table'
+    var viewingMode;
     var viewingModeIsStale;
-    var barGraphMode; // an enum: 'time', 'line', 'measurement'
+    var barGraphMode;
     var barGraphTypeButtonsJQ;
     var postFilteringAssays;
     var postFilteringMeasurements;
@@ -710,7 +705,7 @@ var StudyDataPage;
     var StrainFilterSection = (function (_super) {
         __extends(StrainFilterSection, _super);
         function StrainFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         StrainFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, 'Strain', 'st');
@@ -740,7 +735,7 @@ var StudyDataPage;
     var CarbonSourceFilterSection = (function (_super) {
         __extends(CarbonSourceFilterSection, _super);
         function CarbonSourceFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         CarbonSourceFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, 'Carbon Source', 'cs');
@@ -769,7 +764,7 @@ var StudyDataPage;
     var CarbonLabelingFilterSection = (function (_super) {
         __extends(CarbonLabelingFilterSection, _super);
         function CarbonLabelingFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         CarbonLabelingFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, 'Labeling', 'l');
@@ -798,7 +793,7 @@ var StudyDataPage;
     var LineNameFilterSection = (function (_super) {
         __extends(LineNameFilterSection, _super);
         function LineNameFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         LineNameFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, 'Line', 'ln');
@@ -823,7 +818,7 @@ var StudyDataPage;
     var ProtocolFilterSection = (function (_super) {
         __extends(ProtocolFilterSection, _super);
         function ProtocolFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         ProtocolFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, 'Protocol', 'p');
@@ -848,7 +843,7 @@ var StudyDataPage;
     var AssayFilterSection = (function (_super) {
         __extends(AssayFilterSection, _super);
         function AssayFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         AssayFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, 'Assay', 'a');
@@ -876,12 +871,11 @@ var StudyDataPage;
     var MetaDataFilterSection = (function (_super) {
         __extends(MetaDataFilterSection, _super);
         function MetaDataFilterSection(metaDataID) {
-            var _this = _super.call(this) || this;
+            _super.call(this);
             var MDT = EDDData.MetaDataTypes[metaDataID];
-            _this.metaDataID = metaDataID;
-            _this.pre = MDT.pre || '';
-            _this.post = MDT.post || '';
-            return _this;
+            this.metaDataID = metaDataID;
+            this.pre = MDT.pre || '';
+            this.post = MDT.post || '';
         }
         MetaDataFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, EDDData.MetaDataTypes[this.metaDataID].name, 'md' + this.metaDataID);
@@ -892,7 +886,7 @@ var StudyDataPage;
     var LineMetaDataFilterSection = (function (_super) {
         __extends(LineMetaDataFilterSection, _super);
         function LineMetaDataFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         LineMetaDataFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             var _this = this;
@@ -914,7 +908,7 @@ var StudyDataPage;
     var AssayMetaDataFilterSection = (function (_super) {
         __extends(AssayMetaDataFilterSection, _super);
         function AssayMetaDataFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         AssayMetaDataFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             var _this = this;
@@ -938,7 +932,7 @@ var StudyDataPage;
     var MetaboliteCompartmentFilterSection = (function (_super) {
         __extends(MetaboliteCompartmentFilterSection, _super);
         function MetaboliteCompartmentFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         MetaboliteCompartmentFilterSection.prototype.configure = function () {
@@ -972,7 +966,7 @@ var StudyDataPage;
     var MeasurementFilterSection = (function (_super) {
         __extends(MeasurementFilterSection, _super);
         function MeasurementFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         MeasurementFilterSection.prototype.configure = function (title, shortLabel) {
             this.loadPending = true;
@@ -989,7 +983,7 @@ var StudyDataPage;
     var GeneralMeasurementFilterSection = (function (_super) {
         __extends(GeneralMeasurementFilterSection, _super);
         function GeneralMeasurementFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         GeneralMeasurementFilterSection.prototype.configure = function () {
             this.loadPending = true;
@@ -1023,7 +1017,7 @@ var StudyDataPage;
     var MetaboliteFilterSection = (function (_super) {
         __extends(MetaboliteFilterSection, _super);
         function MetaboliteFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         MetaboliteFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, 'Metabolite', 'me');
@@ -1053,7 +1047,7 @@ var StudyDataPage;
     var ProteinFilterSection = (function (_super) {
         __extends(ProteinFilterSection, _super);
         function ProteinFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         ProteinFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, 'Protein', 'pr');
@@ -1083,7 +1077,7 @@ var StudyDataPage;
     var GeneFilterSection = (function (_super) {
         __extends(GeneFilterSection, _super);
         function GeneFilterSection() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            _super.apply(this, arguments);
         }
         GeneFilterSection.prototype.configure = function () {
             _super.prototype.configure.call(this, 'Gene', 'gn');
@@ -1109,6 +1103,48 @@ var StudyDataPage;
         return GeneFilterSection;
     }(MeasurementFilterSection));
     StudyDataPage.GeneFilterSection = GeneFilterSection;
+    function _displayLineGraph() {
+        $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+        $('#filterControlsArea').removeClass('off');
+        $('#displayModeButtons .active').removeClass('active');
+        $('#lineGraphButton').addClass('active');
+        queueActionPanelRefresh();
+        viewingMode = 'linegraph';
+        barGraphTypeButtonsJQ.addClass('off');
+        $('#lineGraph').removeClass('off');
+        $('#barGraphByTime, #barGraphByLine, #barGraphByMeasurement, #studyAssaysTable').addClass('off');
+        $('#mainFilterSection').appendTo('#content');
+        queueRefreshDataDisplayIfStale();
+    }
+    function _displayBarGraph(mode) {
+        $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+        $('#filterControlsArea').removeClass('off');
+        $('#displayModeButtons .active').removeClass('active');
+        $('#barGraphButton').add('#' + mode + 'BarGraphButton').addClass('active');
+        queueActionPanelRefresh();
+        viewingMode = 'bargraph';
+        barGraphTypeButtonsJQ.removeClass('off');
+        $('#lineGraph, #studyAssaysTable').addClass('off');
+        $('#barGraphByTime').toggleClass('off', 'time' !== mode);
+        $('#barGraphByLine').toggleClass('off', 'line' !== mode);
+        $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== mode);
+        $('#mainFilterSection').appendTo('#content');
+        queueRefreshDataDisplayIfStale();
+    }
+    function _displayTable() {
+        $(".exportButton, #tableControlsArea, .tableActionButtons").removeClass('off');
+        $("#filterControlsArea").addClass('off');
+        $('#displayModeButtons .active').removeClass('active');
+        $('#dataTableButton').addClass('active');
+        queueActionPanelRefresh();
+        viewingMode = 'table';
+        barGraphTypeButtonsJQ.addClass('off');
+        $('#studyAssaysTable').removeClass('off');
+        $('#lineGraph, #barGraphByTime, #barGraphByLine, #barGraphByMeasurement').addClass('off');
+        makeLabelsBlack(EDDGraphingTools.labels);
+        queueRefreshDataDisplayIfStale();
+        //TODO: enable users to export filtered data from graph
+    }
     // Called when the page loads.
     function prepareIt() {
         StudyDataPage.progressiveFilteringWidget = new ProgressiveFilteringWidget();
@@ -1158,7 +1194,7 @@ var StudyDataPage;
             // show assay table by default if there are assays but no assay measurements
             if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
                 //TODO: create prepare it for no data?
-                $('#dataTableButton').click();
+                _displayTable();
                 $('.exportButton').prop('disabled', true);
             }
             else {
@@ -1166,18 +1202,12 @@ var StudyDataPage;
             }
         });
         $("#dataTableButton").click(function () {
-            viewingMode = 'table';
-            queueActionPanelRefresh();
-            makeLabelsBlack(EDDGraphingTools.labels);
-            updateGraphViewFlag({ 'buttonElem': "#dataTableButton", 'type': viewingMode,
-                'study_id': EDDData.currentStudyID });
-            $("#tableControlsArea").removeClass('off');
-            $("#filterControlsArea").addClass('off');
-            $(".tableActionButtons").removeClass('off');
-            barGraphTypeButtonsJQ.addClass('off');
-            queueRefreshDataDisplayIfStale();
-            //TODO: enable users to export filtered data from graph
-            $('.exportButton').removeClass('off');
+            _displayTable();
+            updateGraphViewFlag({
+                'buttonElem': "#dataTableButton",
+                'type': 'table',
+                'study_id': EDDData.currentStudyID
+            });
         });
         //click handler for edit assay measurements
         $('.editMeasurementButton').click(function (ev) {
@@ -1219,19 +1249,12 @@ var StudyDataPage;
         });
         // This one is active by default
         $("#lineGraphButton").click(function () {
-            $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
-            $('#filterControlsArea').removeClass('off');
-            queueActionPanelRefresh();
-            viewingMode = 'linegraph';
-            updateGraphViewFlag({ 'buttonElem': "#lineGraphButton", 'type': viewingMode,
-                'study_id': EDDData.currentStudyID });
-            barGraphTypeButtonsJQ.addClass('off');
-            $('#lineGraph').removeClass('off');
-            $('#barGraphByTime').addClass('off');
-            $('#barGraphByLine').addClass('off');
-            $('#barGraphByMeasurement').addClass('off');
-            $('#mainFilterSection').appendTo('#content');
-            queueRefreshDataDisplayIfStale();
+            _displayLineGraph();
+            updateGraphViewFlag({
+                'buttonElem': "#lineGraphButton",
+                'type': viewingMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
         //one time click event handler for loading spinner
         $('#barGraphButton').one("click", function () {
@@ -1247,40 +1270,36 @@ var StudyDataPage;
             $('#graphLoading').removeClass('off');
         });
         $("#barGraphButton").click(function () {
-            $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
-            $('#filterControlsArea').removeClass('off');
-            queueActionPanelRefresh();
-            viewingMode = 'bargraph';
-            barGraphTypeButtonsJQ.removeClass('off');
-            $('#lineGraph').addClass('off');
-            $('#barGraphByTime').toggleClass('off', 'time' !== barGraphMode);
-            $('#barGraphByLine').toggleClass('off', 'line' !== barGraphMode);
-            $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== barGraphMode);
-            queueRefreshDataDisplayIfStale();
-            if (barGraphMode === 'measurement') {
-                updateGraphViewFlag({ 'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
-                    'study_id': EDDData.currentStudyID });
-            }
-            $('#mainFilterSection').appendTo('#content');
+            _displayBarGraph(barGraphMode);
+            updateGraphViewFlag({
+                'buttonElem': '#measurementBarGraphButton',
+                'type': barGraphMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
         $("#timeBarGraphButton").click(function () {
-            barGraphMode = 'time';
-            updateGraphViewFlag({ 'buttonElem': "#timeBarGraphButton", 'type': barGraphMode,
-                'study_id': EDDData.currentStudyID });
-            queueRefreshDataDisplayIfStale();
+            _displayBarGraph(barGraphMode = 'time');
+            updateGraphViewFlag({
+                'buttonElem': "#timeBarGraphButton",
+                'type': barGraphMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
         $("#lineBarGraphButton").click(function () {
-            barGraphMode = 'line';
-            updateGraphViewFlag({ 'buttonElem': '#lineBarGraphButton', 'type': barGraphMode,
-                'study_id': EDDData.currentStudyID });
-            queueRefreshDataDisplayIfStale();
+            _displayBarGraph(barGraphMode = 'line');
+            updateGraphViewFlag({
+                'buttonElem': '#lineBarGraphButton',
+                'type': barGraphMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
         $("#measurementBarGraphButton").click(function () {
-            barGraphMode = 'measurement';
-            updateGraphViewFlag({ 'buttonElem': '#measurementBarGraphButton', 'type': barGraphMode,
-                'study_id': EDDData.currentStudyID });
-            queueRefreshDataDisplayIfStale();
-            $('#graphLoading').addClass('off');
+            _displayBarGraph(barGraphMode = 'measurement');
+            updateGraphViewFlag({
+                'buttonElem': '#measurementBarGraphButton',
+                'type': barGraphMode,
+                'study_id': EDDData.currentStudyID
+            });
         });
         //hides/shows filter section.
         var hideButtons = $('.hideFilterSection');
@@ -1319,19 +1338,18 @@ var StudyDataPage;
         });
         fetchEDDData(onSuccess);
         fetchSettings('measurement-' + EDDData.currentStudyID, function (data) {
-            if (data.type === 'linegraph' || data.type === 'table') {
-                $(data.buttonElem).click();
-            }
-            else if (typeof (data.type) === 'undefined') {
+            if (typeof (data) !== 'object' || typeof (data.type) === 'undefined') {
+                // do nothing if the parameter is not an object
                 return;
             }
-            else if (data.type === 'measurement') {
-                $("#barGraphButton").click();
+            else if (data.type === 'linegraph') {
+                _displayLineGraph();
+            }
+            else if (data.type === 'table') {
+                _displayTable();
             }
             else {
-                barGraphMode = data.type;
-                $("#barGraphButton").click();
-                $(data.buttonElem).click();
+                _displayBarGraph(data.type);
             }
         }, []);
         // Set up the Add Measurement to Assay modal
@@ -1451,7 +1469,7 @@ var StudyDataPage;
             case 38: // up
             case 40: // down
             case 9: // tab
-            case 13:// return
+            case 13:
                 return;
             default:
                 // ignore if the following keys are pressed: [shift] [capslock]
@@ -1525,8 +1543,6 @@ var StudyDataPage;
         });
         StudyDataPage.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
         if (count_rec < count_total) {
-            // TODO not all measurements downloaded; display a message indicating this
-            // explain downloading individual assay measurements too
         }
         queueRefreshDataDisplayIfStale();
     }
@@ -1551,6 +1567,7 @@ var StudyDataPage;
         // Any switch between viewing modes, or change in filtering, is also cause to check the UI
         // in the action panel and make sure it's current.
         queueActionPanelRefresh();
+        $('#graphLoading').addClass('off');
         // If the filtering widget claims a change since the last inquiry,
         // then all the viewing modes are stale, no matter what.
         // So we mark them all.
@@ -1564,7 +1581,6 @@ var StudyDataPage;
             var filterResults = StudyDataPage.progressiveFilteringWidget.buildFilteredMeasurements();
             postFilteringMeasurements = filterResults['filteredMeasurements'];
             postFilteringAssays = filterResults['filteredAssays'];
-            // If the filtering widget hasn't changed and the current mode doesn't claim to be stale, we're done.
         }
         else if (viewingMode == 'bargraph') {
             // Special case to handle the extra sub-modes of the bar graph
@@ -2232,7 +2248,7 @@ var StudyDataPage;
 var DataGridAssays = (function (_super) {
     __extends(DataGridAssays, _super);
     function DataGridAssays(dataGridSpec) {
-        return _super.call(this, dataGridSpec) || this;
+        _super.call(this, dataGridSpec);
     }
     DataGridAssays.prototype._getClasses = function () {
         return 'dataTable sortable dragboxes hastablecontrols table-striped';
@@ -2246,10 +2262,9 @@ var DataGridAssays = (function (_super) {
 var DataGridSpecAssays = (function (_super) {
     __extends(DataGridSpecAssays, _super);
     function DataGridSpecAssays() {
-        var _this = _super.call(this) || this;
-        _this.graphObject = null;
-        _this.measuringTimesHeaderSpec = null;
-        return _this;
+        _super.call(this);
+        this.graphObject = null;
+        this.measuringTimesHeaderSpec = null;
     }
     DataGridSpecAssays.prototype.init = function () {
         this.findMaximumXValueInData();
@@ -2801,7 +2816,7 @@ var DataGridSpecAssays = (function (_super) {
 var DGSelectAllAssaysMeasurementsWidget = (function (_super) {
     __extends(DGSelectAllAssaysMeasurementsWidget, _super);
     function DGSelectAllAssaysMeasurementsWidget() {
-        return _super !== null && _super.apply(this, arguments) || this;
+        _super.apply(this, arguments);
     }
     DGSelectAllAssaysMeasurementsWidget.prototype.clickHandler = function () {
         _super.prototype.clickHandler.call(this);
@@ -2813,7 +2828,7 @@ var DGSelectAllAssaysMeasurementsWidget = (function (_super) {
 var DGDisabledAssaysWidget = (function (_super) {
     __extends(DGDisabledAssaysWidget, _super);
     function DGDisabledAssaysWidget() {
-        return _super !== null && _super.apply(this, arguments) || this;
+        _super.apply(this, arguments);
     }
     // Return a fragment to use in generating option widget IDs
     DGDisabledAssaysWidget.prototype.getIDFragment = function (uniqueID) {
@@ -2885,7 +2900,7 @@ var DGDisabledAssaysWidget = (function (_super) {
 var DGEmptyAssaysWidget = (function (_super) {
     __extends(DGEmptyAssaysWidget, _super);
     function DGEmptyAssaysWidget() {
-        return _super !== null && _super.apply(this, arguments) || this;
+        _super.apply(this, arguments);
     }
     // Return a fragment to use in generating option widget IDs
     DGEmptyAssaysWidget.prototype.getIDFragment = function (uniqueID) {

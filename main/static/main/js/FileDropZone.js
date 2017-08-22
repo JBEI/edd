@@ -248,6 +248,7 @@ var FileDropZone;
             $('#fileDropInfoIcon').addClass('off');
             $('#fileDropInfoName').addClass('off');
             $('#fileDropInfoSending').addClass('off');
+            $(".linesDropZone").addClass('off');
         };
         // Here, we take a look at the type of the dropped file and decide whether to
         // send it to the server, or process it locally.
