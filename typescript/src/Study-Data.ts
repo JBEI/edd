@@ -1213,13 +1213,13 @@ namespace StudyDataPage {
     function _displayLineGraph(): void {
         $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
         $('#filterControlsArea').removeClass('off');
+        $('#displayModeButtons .active').removeClass('active');
+        $('#lineGraphButton').addClass('active');
         queueActionPanelRefresh();
         viewingMode = 'linegraph';
         barGraphTypeButtonsJQ.addClass('off');
         $('#lineGraph').removeClass('off');
-        $('#barGraphByTime').addClass('off');
-        $('#barGraphByLine').addClass('off');
-        $('#barGraphByMeasurement').addClass('off');
+        $('#barGraphByTime, #barGraphByLine, #barGraphByMeasurement, #studyAssaysTable').addClass('off');
         $('#mainFilterSection').appendTo('#content');
         queueRefreshDataDisplayIfStale();
     }
@@ -1228,10 +1228,12 @@ namespace StudyDataPage {
     function _displayBarGraph(mode: 'time'|'line'|'measurement'): void {
         $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
         $('#filterControlsArea').removeClass('off');
+        $('#displayModeButtons .active').removeClass('active');
+        $('#barGraphButton').add('#' + mode + 'BarGraphButton').addClass('active');
         queueActionPanelRefresh();
         viewingMode = 'bargraph';
         barGraphTypeButtonsJQ.removeClass('off');
-        $('#lineGraph').addClass('off');
+        $('#lineGraph, #studyAssaysTable').addClass('off');
         $('#barGraphByTime').toggleClass('off', 'time' !== mode);
         $('#barGraphByLine').toggleClass('off', 'line' !== mode);
         $('#barGraphByMeasurement').toggleClass('off', 'measurement' !== mode);
@@ -1243,9 +1245,13 @@ namespace StudyDataPage {
     function _displayTable(): void {
         $(".exportButton, #tableControlsArea, .tableActionButtons").removeClass('off');
         $("#filterControlsArea").addClass('off');
+        $('#displayModeButtons .active').removeClass('active');
+        $('#dataTableButton').addClass('active');
         queueActionPanelRefresh();
         viewingMode = 'table';
         barGraphTypeButtonsJQ.addClass('off');
+        $('#studyAssaysTable').removeClass('off');
+        $('#lineGraph, #barGraphByTime, #barGraphByLine, #barGraphByMeasurement').addClass('off');
         makeLabelsBlack(EDDGraphingTools.labels);
         queueRefreshDataDisplayIfStale();
         //TODO: enable users to export filtered data from graph
@@ -1310,7 +1316,7 @@ namespace StudyDataPage {
             // show assay table by default if there are assays but no assay measurements
             if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0) {
                 //TODO: create prepare it for no data?
-                $('#dataTableButton').click();
+                _displayTable();
                 $('.exportButton').prop('disabled', true);
             } else {
                 $('.exportButton').prop('disabled', false);
@@ -1717,6 +1723,7 @@ namespace StudyDataPage {
         // Any switch between viewing modes, or change in filtering, is also cause to check the UI
         // in the action panel and make sure it's current.
         queueActionPanelRefresh();
+        $('#graphLoading').addClass('off');
 
         // If the filtering widget claims a change since the last inquiry,
         // then all the viewing modes are stale, no matter what.
@@ -2043,7 +2050,7 @@ namespace StudyDataPage {
             }
         });
         if (sum === 0) {
-             $('#graphLoading').addClass('off');
+            $('#graphLoading').addClass('off');
             $(selector).prepend("<p class=' tooMuchData'>Too many data points to display" +
                 "</p><p  class=' tooMuchData'>Recommend filtering by protocol</p>");
         }
