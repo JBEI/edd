@@ -1255,7 +1255,7 @@ export namespace StudyDataPage {
         barGraphTypeButtonsJQ.addClass('off');
         $('#studyAssaysTable').removeClass('off');
         $('#lineGraph, #barGraphByTime, #barGraphByLine, #barGraphByMeasurement').addClass('off');
-        makeLabelsBlack(EDDGraphingTools.labels);
+        makeLabelsBlack(eddGraphing.labels);
         queueRefreshDataDisplayIfStale();
         //TODO: enable users to export filtered data from graph
     }

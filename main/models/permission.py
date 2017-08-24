@@ -27,6 +27,8 @@ class StudyPermission(models.Model):
         (READ, _('Read')),
         (WRITE, _('Write')),
     )
+    CAN_VIEW = (READ, WRITE)
+    CAN_EDIT = (WRITE, )
     study = models.ForeignKey(
         Study,
         help_text=_('Study this permission applies to.'),

@@ -30,8 +30,8 @@ namespace EddRest {
     export const ASSAY_METADATA_CONTEXT = 'A';
 
     /* REST API resource URLs */
-    const metadata_types_url: string = "/rest/metadata_type/";
-    const protocols_url: string = '/rest/protocol/';
+    const metadata_types_url: string = "/rest/metadata_types/";
+    const protocols_url: string = '/rest/protocols/';
     const measurement_units_url: string = '/rest/measurement_unit';
 
     /**

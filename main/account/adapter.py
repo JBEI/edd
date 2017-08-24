@@ -9,6 +9,7 @@ from allauth.account.models import EmailAddress
 from allauth.exceptions import ImmediateHttpResponse
 from allauth.socialaccount import providers
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from django.contrib.auth.backends import ModelBackend
 from django_auth_ldap.backend import LDAPBackend
 from django.conf import settings
 from django.contrib import messages
@@ -17,6 +18,7 @@ from django.utils.module_loading import import_string
 from django.utils.translation import ugettext_lazy as _
 from six import string_types
 
+from main.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -101,3 +103,14 @@ class AllauthLDAPBackend(LDAPBackend):
             except Exception:
                 logger.exception('Failed to check or update email verification from LDAP!')
         return user
+
+
+class LocalTestBackend(ModelBackend):
+    """
+    A simple workaround to facilitate offsite EDD Testing. When enabled, login attempts that
+    use a valid username will always succeed (e.g. without an Internet connection) to LDAP.
+    """
+
+    def authenticate(self, username=None, password=None, **kwargs):
+        queryset = User.objects.filter(username=username)
+        return queryset.first()

@@ -1,0 +1,200 @@
+[
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "",
+      "first_name": "",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": true,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "superuser"
+    },
+    "model": "auth.user",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "",
+      "first_name": "",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "unprivileged_user"
+    },
+    "model": "auth.user",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "mod_by": 1,
+      "mod_time": "2017-06-06T00:13:38.0000Z",
+      "origin": "localhost",
+      "path": null
+    },
+    "model": "main.update",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "mod_by": 1,
+      "mod_time": "2017-06-06T00:13:38.0001Z",
+      "origin": "localhost",
+      "path": "/s/test-study/describe/"
+    },
+    "model": "main.update",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "mod_by": 2,
+      "mod_time": "2017-06-06T00:13:38.0002Z",
+      "origin": "127.0.0.1; ",
+      "path": "/s/test-study/describe/"
+    },
+    "model": "main.update",
+    "pk": 3
+  },
+  {
+    "fields": {
+      "mod_by": 2,
+      "mod_time": "2017-06-06T00:13:38.0003Z",
+      "origin": "127.0.0.1; ",
+      "path": "/s/test-study/describe/"
+    },
+    "model": "main.update",
+    "pk": 4
+  },
+  {
+    "fields": {
+      "contact": null,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "protocols": [],
+      "slug": "test-study",
+      "updates": [1]
+    },
+    "model": "main.study",
+    "pk": 20
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [2]
+    },
+    "model": "main.line",
+    "pk": 21
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 22
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [3]
+    },
+    "model": "main.line",
+    "pk": 23
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Study description goes here",
+      "meta_store": "{}",
+      "name": "Test study",
+      "updated": 1,
+      "updates": [1],
+      "uuid": "d5f0208a-dc85-49f2-a403-006a394f8586"
+    },
+    "model": "main.eddobject",
+    "pk": 20
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 2,
+      "description": "First line sequentially created",
+      "meta_store": "{}",
+      "name": "Line 1",
+      "updated": 2,
+      "updates": [2],
+      "uuid": "25a718d8-9ecd-44a9-8bbc-63f7882bb8cc"
+    },
+    "model": "main.eddobject",
+    "pk": 21
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 3,
+      "description": "Second line sequentially created",
+      "meta_store": "{}",
+      "name": "Line 2",
+      "updated": 3,
+      "updates": [3],
+      "uuid": "4b1bd32d-48a2-447a-ba41-75117e9c3f61"
+    },
+    "model": "main.eddobject",
+    "pk": 22
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 4,
+      "description": "Third line sequentially created",
+      "meta_store": "{}",
+      "name": "Line 3",
+      "updated": 4,
+      "updates": [4],
+      "uuid": "bb3d55be-d12c-433e-bc83-0485690d3c02"
+    },
+    "model": "main.eddobject",
+    "pk": 23
+  },
+  {
+    "fields": {
+      "permission_type": "W",
+      "study": 20,
+      "user": 2
+    },
+    "model": "main.userpermission",
+    "pk": 1
+  }
+]

@@ -17,6 +17,7 @@ class StudyFactory(factory.django.DjangoModelFactory):
         model = models.Study
     name = factory.Faker('catch_phrase')
     description = factory.Faker('text', max_nb_chars=300)
+    contact_extra = ''
 
 
 class UserFactory(factory.django.DjangoModelFactory):

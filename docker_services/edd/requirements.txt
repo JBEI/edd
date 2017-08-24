@@ -18,6 +18,7 @@ django-extensions==1.8.1
 django-form-utils==1.0.3
 django-messages-extends==0.5
 django-redis==4.8.0
+django-rest-swagger==2.1.2
 django-threadlocals==0.8
 djangorestframework==3.6.3
 drf-nested-routers==0.90.0

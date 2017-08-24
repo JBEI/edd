@@ -16,10 +16,9 @@ from ..importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_raw_rna_seq_data,
 )
 from ..models import (
-    Assay, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementType, MeasurementUnit,
-    Metabolite, MetadataGroup, MetadataType, Protocol, Strain,
-    Study, Update, UserPermission,
-)
+    Assay, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementType,
+    MeasurementUnit, Metabolite, MetadataGroup, MetadataType, Protocol, Strain, Study, Update,
+    UserPermission)
 from ..solr import StudySearch
 from . import factory, TestCase
 
@@ -159,8 +158,12 @@ class StudyTests(TestCase):
         user3 = User.objects.get(username='test3')  # fuels AND decon
         user4 = User.objects.get(username='test4')  # no group
         # Create permissions
-        GroupPermission.objects.create(study=study, permission_type='W', group=fuels)
-        GroupPermission.objects.create(study=study, permission_type='R', group=decon)
+        GroupPermission.objects.create(study=study,
+                                       permission_type=GroupPermission.WRITE,
+                                       group=fuels)
+        GroupPermission.objects.create(study=study,
+                                       permission_type=GroupPermission.READ,
+                                       group=decon)
         # Asserts
         self.assertTrue(study.user_can_read(user1))
         self.assertTrue(study.user_can_write(user1))

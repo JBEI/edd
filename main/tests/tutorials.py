@@ -34,6 +34,7 @@ class ExperimentDescriptionTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        super(ExperimentDescriptionTests, cls).setUpTestData()
         cls.user = factory.UserFactory()
         cls.target_study = factory.StudyFactory()
         cls.target_kwargs = {'slug': cls.target_study.slug}
