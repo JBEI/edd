@@ -97,6 +97,12 @@ def study_name_change_check(sender, instance, raw, using, **kwargs):
             instance.pre_save_name = from_db.values('name')[0]['name']
 
 
+@receiver(pre_save, sender=edd_models.Study)
+def study_contact_extra(sender, instance, raw, using, **kwargs):
+    if instance.contact_extra is None and instance.contact:
+        instance.contact_extra = instance.contact.get_full_name()
+
+
 @receiver(post_save, sender=edd_models.Study)
 def study_update_ice(sender, instance, created, raw, using, **kwargs):
     """

@@ -1,55 +1,100 @@
+# coding: utf-8
+from __future__ import unicode_literals
 
-import rest_framework.routers as rest_routers
-import rest_framework_nested.routers as nested_routers
 from django.conf.urls import include, url
+from rest_framework import routers as rest_routers
+from rest_framework_nested import routers as nested_routers
 
-from jbei.rest.clients.edd.constants import (ASSAYS_RESOURCE_NAME, LINES_RESOURCE_NAME,
-                                             MEASUREMENTS_RESOURCE_NAME,
-                                             MEASUREMENT_TYPES_RESOURCE_NAME,
-                                             MEASUREMENT_UNITS_RESOURCE_NAME,
-                                             METADATA_GROUPS_RESOURCE_NAME,
-                                             METADATA_TYPES_RESOURCE_NAME,
-                                             PROTOCOLS_RESOURCE_NAME, STRAINS_RESOURCE_NAME,
-                                             STUDIES_RESOURCE_NAME, USERS_RESOURCE_NAME,
-                                             VALUES_RESOURCE_NAME)
-from views import schema_view
-from .views import (AssaysViewSet, LinesViewSet, MeasurementTypesViewSet, MeasurementUnitViewSet,
-                    MeasurementValuesViewSet, MeasurementsViewSet, MetadataGroupViewSet,
-                    MetadataTypeViewSet,
-                    ProtocolViewSet, StrainsViewSet, StudyAssaysViewSet,
-                    StudyLinesView,
-                    StudyMeasurementsViewSet, StudyValuesViewSet, StudiesViewSet, UsersViewSet,
-                    )
+from jbei.rest.clients.edd import constants
+from . import views
+
 
 ###################################################################################################
 # Define a router for base REST API methods & views
 ###################################################################################################
 base_rest_api_router = rest_routers.DefaultRouter()
-base_rest_api_router.register(ASSAYS_RESOURCE_NAME, AssaysViewSet, 'assays')
-base_rest_api_router.register(LINES_RESOURCE_NAME, LinesViewSet, 'lines')
-base_rest_api_router.register(MEASUREMENTS_RESOURCE_NAME, MeasurementsViewSet, 'measurements')
-base_rest_api_router.register(VALUES_RESOURCE_NAME, MeasurementValuesViewSet, 'values')
-base_rest_api_router.register(STUDIES_RESOURCE_NAME, StudiesViewSet, STUDIES_RESOURCE_NAME)
-base_rest_api_router.register(STRAINS_RESOURCE_NAME, StrainsViewSet, STRAINS_RESOURCE_NAME)
-base_rest_api_router.register(MEASUREMENT_UNITS_RESOURCE_NAME, MeasurementUnitViewSet,
-                              'measurement_units')
-base_rest_api_router.register(METADATA_TYPES_RESOURCE_NAME, MetadataTypeViewSet, 'metadata_type')
-base_rest_api_router.register(METADATA_GROUPS_RESOURCE_NAME, MetadataGroupViewSet)
-base_rest_api_router.register(PROTOCOLS_RESOURCE_NAME, ProtocolViewSet)
-base_rest_api_router.register(MEASUREMENT_TYPES_RESOURCE_NAME, MeasurementTypesViewSet,
-                              'measurement_types')
-base_rest_api_router.register(USERS_RESOURCE_NAME, UsersViewSet, 'users')
+base_rest_api_router.register(
+    constants.ASSAYS_RESOURCE_NAME,
+    views.AssaysViewSet,
+    base_name='assays',
+)
+base_rest_api_router.register(
+    constants.LINES_RESOURCE_NAME,
+    views.LinesViewSet,
+    base_name='lines',
+)
+base_rest_api_router.register(
+    constants.MEASUREMENTS_RESOURCE_NAME,
+    views.MeasurementsViewSet,
+    base_name='measurements',
+)
+base_rest_api_router.register(
+    constants.VALUES_RESOURCE_NAME,
+    views.MeasurementValuesViewSet,
+    base_name='values',
+)
+base_rest_api_router.register(
+    constants.STUDIES_RESOURCE_NAME,
+    views.StudiesViewSet,
+    base_name='studies',
+)
+base_rest_api_router.register(
+    constants.MEASUREMENT_UNITS_RESOURCE_NAME,
+    views.MeasurementUnitViewSet,
+    base_name='measurement_units',
+)
+base_rest_api_router.register(
+    constants.METADATA_TYPES_RESOURCE_NAME,
+    views.MetadataTypeViewSet,
+    base_name='metadata_type',
+)
+base_rest_api_router.register(
+    constants.METADATA_GROUPS_RESOURCE_NAME,
+    views.MetadataGroupViewSet,
+)
+base_rest_api_router.register(
+    constants.PROTOCOLS_RESOURCE_NAME,
+    views.ProtocolViewSet,
+)
+base_rest_api_router.register(
+    constants.MEASUREMENT_TYPES_RESOURCE_NAME,
+    views.MeasurementTypesViewSet,
+    base_name='measurement_types',
+)
+base_rest_api_router.register(
+    constants.USERS_RESOURCE_NAME,
+    views.UsersViewSet,
+    base_name='users',
+)
 
 ###################################################################################################
 # /rest/studies nested resources
 ###################################################################################################
-study_router = nested_routers.NestedSimpleRouter(base_rest_api_router,
-                                                 STUDIES_RESOURCE_NAME, lookup='study')
-study_router.register(LINES_RESOURCE_NAME, StudyLinesView, base_name='study-lines')
-study_router.register(ASSAYS_RESOURCE_NAME, StudyAssaysViewSet, base_name='study-assays')
-study_router.register(MEASUREMENTS_RESOURCE_NAME, StudyMeasurementsViewSet,
-                      base_name='study-measurements')
-study_router.register(VALUES_RESOURCE_NAME, StudyValuesViewSet, base_name='study-values')
+study_router = nested_routers.NestedSimpleRouter(
+    base_rest_api_router,
+    constants.STUDIES_RESOURCE_NAME,
+    lookup='study',
+)
+study_router.register(
+    constants.LINES_RESOURCE_NAME,
+    views.StudyLinesView,
+    base_name='study-lines'
+)
+study_router.register(
+    constants.ASSAYS_RESOURCE_NAME,
+    views.StudyAssaysViewSet,
+    base_name='study-assays'
+)
+study_router.register(
+    constants.MEASUREMENTS_RESOURCE_NAME,
+    views.StudyMeasurementsViewSet,
+    base_name='study-measurements',
+)
+study_router.register(
+    constants.VALUES_RESOURCE_NAME,
+    views.StudyValuesViewSet,
+    base_name='study-values'
+)
 
 
 ###################################################################################################
@@ -60,7 +105,5 @@ urlpatterns = [
 
     url(r'^', include(base_rest_api_router.urls)),
     url(r'^', include(study_router.urls)),
-    url(r'^', include('rest_framework.urls', namespace='rest_framework')),
-    url(r'docs/', schema_view),
-    # url(r'^', not_found_view), # TODO: this improves consistency, but stops the docs from working
+    url(r'docs/', views.schema_view),
 ]

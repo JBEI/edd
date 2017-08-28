@@ -12,13 +12,11 @@ from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.contrib.auth.backends import ModelBackend
 from django_auth_ldap.backend import LDAPBackend
 from django.conf import settings
-from django.contrib import messages
+from django.contrib import auth, messages
 from django.shortcuts import redirect
 from django.utils.module_loading import import_string
 from django.utils.translation import ugettext_lazy as _
 from six import string_types
-
-from main.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -112,5 +110,6 @@ class LocalTestBackend(ModelBackend):
     """
 
     def authenticate(self, username=None, password=None, **kwargs):
+        User = auth.get_user_model()
         queryset = User.objects.filter(username=username)
         return queryset.first()

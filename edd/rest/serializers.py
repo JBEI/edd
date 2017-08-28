@@ -54,6 +54,16 @@ class StudySerializer(serializers.ModelSerializer):
         depth = 0
         lookup_field = 'study'
 
+    def __init__(self, *args, **kwargs):
+        super(StudySerializer, self).__init__(*args, **kwargs)
+        self.fields['contact_extra'].required = False
+        self.fields['contact_extra'].allow_blank = True
+
+    def validate(self, data):
+        if 'contact' not in data and 'contact_extra' not in data:
+            raise serializers.ValidationError('Must specify one of "contact" or "contact_extra"')
+        return data
+
 
 class LineSerializer(serializers.ModelSerializer):
     class Meta:
@@ -141,13 +151,4 @@ class ProtocolSerializer(serializers.ModelSerializer):
 class MetadataGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.MetadataGroup
-        depth = 0
-
-
-class StrainSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = models.Strain
-
-        fields = ('name', 'description', 'registry_url', 'registry_id', 'pk')
         depth = 0

@@ -131,7 +131,8 @@ INSTALLED_APPS = (
     'main',
     'edd_utils',
     'edd.profile',
-    'edd.branding'
+    'edd.branding',
+    'edd.rest',
 )
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
