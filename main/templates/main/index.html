@@ -4,19 +4,19 @@
 {% block js_css %}
     {{ block.super }}
     <script type="text/javascript" src="{% static 'dist/index.js' %}"></script>
-    <script>
     {% if form.errors %}
+    <script>
         var options = {
             autoOpen: false,
             minWidth: 600,
             title: 'Add New Study'
-            };
+        };
         $(document).ready(function() {
             $('.errorlist').remove();
-            $("#addStudyModal").removeClass('off').dialog(options).dialog( "open" );
+            $("#addStudyModal").removeClass('off').dialog(options).dialog("open");
         });
-    {%  endif %}
     </script>
+    {% endif %}
 {% endblock js_css %}
 
 

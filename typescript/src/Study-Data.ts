@@ -6,6 +6,7 @@ import { Utl } from "../modules/Utl"
 import { Dragboxes } from "../modules/Dragboxes"
 import { EDDGraphingTools } from "../modules/EDDGraphingTools"
 import { StudyBase } from "../modules/Study"
+import * as $ from "jquery"
 import * as d3 from "d3"
 import * as _ from "underscore"
 import "bootstrap-loader"
@@ -2130,10 +2131,10 @@ export namespace StudyDataPage {
         x_name = d3.scaleBand().rangeRound([0, graphSet.width]).padding(0.1);
 
         //x axis scale for x values
-        x_xValue = d3.scaleOrdinal();
+        x_xValue = d3.scaleBand();
 
         //x axis scale for line id to differentiate multiple lines associated with the same name/type
-        lineID = d3.scaleOrdinal();
+        lineID = d3.scaleBand();
 
         // y axis range scale
         y = d3.scaleLinear()

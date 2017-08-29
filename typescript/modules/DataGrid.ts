@@ -1,5 +1,6 @@
 import { Dragboxes } from "../modules/Dragboxes"
 import { Utl } from "../modules/Utl"
+import * as $ from "jquery"
 import * as _ from "underscore"
 
 export class DataGrid {
@@ -139,7 +140,7 @@ export class DataGrid {
 
         // First, append the header widgets that should to appear "after" the pulldown.
         // (Since all widgets are styled to float right, they will appear from right to left.)
-        this._headerWidgets.forEach((widget, index) => {
+        this.headerWidgets().forEach((widget, index) => {
             if (!widget.displayBeforeViewMenu()) {
                 widget.appendElements(cArea, index.toString(10));
             }
@@ -147,7 +148,7 @@ export class DataGrid {
         // Now append the 'View' pulldown menu
         cArea.appendChild(this._optionsMenuElement);
         // Finally, append the header widgets that should appear "before".
-        this._headerWidgets.forEach((widget, index) => {
+        this.headerWidgets().forEach((widget, index) => {
             if (widget.displayBeforeViewMenu()) {
                 widget.appendElements(cArea, index.toString(10));
             }
@@ -188,13 +189,13 @@ export class DataGrid {
             .arrangeTableDataRows();
 
         // Call the support function in each widget, to apply styling to all the data rows of the table.
-        this._optionsMenuWidgets.forEach((widget) => {
+        this.optionsMenuWidgets().forEach((widget) => {
             this._spec.getRecordIDs().forEach((id) => {
                 widget.initialFormatRowElementsForID(this._recordElements[id].getDataGridDataRows(), id);
             });
         });
 
-        this._headerWidgets.forEach((widget) => {
+        this.headerWidgets().forEach((widget) => {
             this._spec.getRecordIDs().forEach((id) => {
                 widget.initialFormatRowElementsForID(this._recordElements[id].getDataGridDataRows(), id);
             });
@@ -244,11 +245,11 @@ export class DataGrid {
         var dgRecord = this._recordElements[recordID];
 
         // Call the support function in each widget, to apply styling to all the data rows of the table.
-        this._optionsMenuWidgets.forEach((widget) => {
+        this.optionsMenuWidgets().forEach((widget) => {
             widget.initialFormatRowElementsForID(dgRecord.getDataGridDataRows(), recordID);
         });
 
-        this._headerWidgets.forEach((widget) => {
+        this.headerWidgets().forEach((widget) => {
             widget.initialFormatRowElementsForID(dgRecord.getDataGridDataRows(), recordID);
         });
 
@@ -263,7 +264,7 @@ export class DataGrid {
 
         // Populate the master list of custom options menu widgets by calling the initialization routine in the spec
         this._optionsMenuWidgets = this._spec.createCustomOptionsWidgets(this);
-        var hasCustomWidgets: boolean = this._optionsMenuWidgets.length > 0;
+        var hasCustomWidgets: boolean = this.optionsMenuWidgets().length > 0;
 
         // Check in the column groups and see if any are hide-able
         var hasColumnsInVisibilityList: boolean = this._spec.tableColumnGroupSpec.some((group) => {
@@ -279,7 +280,7 @@ export class DataGrid {
         // If we have custom widgets, we need to call their support functions that apply styling
         // to all the data rows of the table.
         if (hasCustomWidgets) {
-            this._optionsMenuWidgets.forEach((widget) => {
+            this.optionsMenuWidgets().forEach((widget) => {
                 this._spec.getRecordIDs().forEach((id) => {
                     widget.initialFormatRowElementsForID(this._recordElements[id].getDataGridDataRows(), id);
                 });
@@ -316,7 +317,7 @@ export class DataGrid {
             if (hasColumnsInVisibilityList) {
                 menuCWList.addClass('withDivider');
             }
-            this._optionsMenuWidgets.forEach((widget, index) => {
+            this.optionsMenuWidgets().forEach((widget, index) => {
                 widget.appendElements($(document.createElement("li")).appendTo(menuCWList)[0], index.toString(10));
             });
         }
@@ -592,10 +593,10 @@ export class DataGrid {
 
 
     _refreshAllWidgets() {
-        this._headerWidgets.forEach((widget, index) => {
+        this.headerWidgets().forEach((widget, index) => {
             widget.refreshWidget();
         });
-        this._optionsMenuWidgets.forEach((widget, index) => {
+        this.optionsMenuWidgets().forEach((widget, index) => {
             widget.refreshWidget();
         });
     }
@@ -605,12 +606,12 @@ export class DataGrid {
     // the header widgets, and each of the options menu widgets, then return the filtered array.
     applyAllWidgetFiltering(filteredSequence: string[]): string[] {
         // Give each header widget a chance to apply filtering
-        this._headerWidgets.forEach((widget) => {
+        this.headerWidgets().forEach((widget) => {
             filteredSequence = widget.applyFilterToIDs(filteredSequence);
         });
 
         // Give each widget in the options menu a chance to apply filtering
-        this._optionsMenuWidgets.forEach((widget) => {
+        this.optionsMenuWidgets().forEach((widget) => {
             filteredSequence = widget.applyFilterToIDs(filteredSequence);
         });
         return filteredSequence;
@@ -707,13 +708,17 @@ export class DataGrid {
 
 
     private _getSequence(sort: DataGridSort): string[] {
-        var key = (sort.asc ? '' : '-') + sort.spec.id,
+        var key: string, sequence: string[];
+        if (sort) {
+            key = (sort.asc ? '' : '-') + sort.spec.id,
             sequence = this._sequence[key];
-        if (sequence === undefined) {
-            return this._spec.getRecordIDs();
+            if (sequence === undefined) {
+                sequence = this._spec.getRecordIDs();
+            }
+        } else {
+            sequence = this._spec.getRecordIDs();
         }
         return sequence;
-
     }
 
 
@@ -1066,6 +1071,14 @@ export class DataGrid {
             this._sort = cols;
             return this;
         }
+    }
+
+    headerWidgets(): DataGridHeaderWidget[] {
+        return this._headerWidgets || [];
+    }
+
+    optionsMenuWidgets(): DataGridOptionWidget[] {
+        return this._optionsMenuWidgets || [];
     }
 
 }

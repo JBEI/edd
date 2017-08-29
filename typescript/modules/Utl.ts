@@ -2,6 +2,7 @@
 // This file contains various utility classes under the Utl module.
 
 import * as jQuery from "jquery"
+import "jquery.cookie"
 // This file contains various utility classes under the Utl module.
 declare function require(name: string): any;
 //load dropzone module

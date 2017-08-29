@@ -93,7 +93,10 @@ module.exports = {
       "window.jQuery": "jquery",
       "window.$": "jquery"
     }),
-    new ExtractTextPlugin("styles.css"),
+    new ExtractTextPlugin({
+      "filename": "styles.css",
+      "allChunks": true
+    }),
     new webpack.optimize.CommonsChunkPlugin({
       "name": "vendor",
       "filename": "vendor.js",
