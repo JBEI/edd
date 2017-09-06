@@ -2092,7 +2092,7 @@ class ProteinIdentifier(MeasurementType):
                 accession_id=accession_id,
                 type_source=datasource,
             )
-            if link.strain:
+            if link.strain_id:
                 link.protein = p
                 link.save()
             return p
