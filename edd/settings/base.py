@@ -20,6 +20,7 @@ DOCKER_SENTINEL = object()
 env = environ.Env(
     EDD_DEBUG=(bool, True),
     ICE_HMAC_KEY=(str, ''),
+    LDAP_PASS=(str, None),
 )
 # Use the SECRET_KEY to detect if env is setup via Docker; if not, load from file secrets.env
 if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
@@ -51,7 +52,7 @@ PUBLISH_REST_API = False
 # ICE configuration used in multiple places, or that we want to be able to override in local.py
 ##############################
 ICE_KEY_ID = 'edd'
-ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
+ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY', default=None)
 ICE_ADMIN_ACCOUNT = 'Administrator'
 ICE_URL = 'https://registry-test.jbei.org/'
 ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
@@ -93,7 +94,7 @@ EMAIL_PORT = 25
 
 # SECURITY WARNING: do not run with debug turned on in production!
 # Override in local.py or set DEBUG=off in environment or secrets.env
-DEBUG = env('EDD_DEBUG')
+DEBUG = env('EDD_DEBUG', default=False)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # default quote from http://thedoomthatcametopuppet.tumblr.com/

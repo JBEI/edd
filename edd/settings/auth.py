@@ -7,22 +7,13 @@ from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 
 from .base import env
 
-# See https://pythonhosted.org/django-auth-ldap/install.html
-# See https://docs.djangoproject.com/en/dev/howto/auth-remote-user/
-AUTHENTICATION_BACKENDS = (
-    'main.account.adapter.AllauthLDAPBackend',  # 'django_auth_ldap.backend.LDAPBackend',
-    'django.contrib.auth.backends.RemoteUserBackend',
-    'django.contrib.auth.backends.ModelBackend',
-    # `allauth` specific authentication methods, such as login by e-mail
-    'allauth.account.auth_backends.AuthenticationBackend',
-)
 ROOT_URLCONF = 'edd.urls'
 WSGI_APPLICATION = 'edd.wsgi.application'
 # LDAP Configuration
 # https://pythonhosted.org/django-auth-ldap/example.html
 AUTH_LDAP_SERVER_URI = 'ldaps://identity.lbl.gov:636'
 AUTH_LDAP_BIND_DN = 'uid=jbei_auth,cn=operational,cn=other'
-AUTH_LDAP_BIND_PASSWORD = env('LDAP_PASS')
+AUTH_LDAP_BIND_PASSWORD = env('LDAP_PASS', default=None)
 AUTH_LDAP_USER_SEARCH = LDAPSearch(
     'ou=People,dc=lbl,dc=gov', ldap.SCOPE_ONELEVEL,
     '(&(uid=%(user)s)(objectclass=lblperson)(lblaccountstatus=active))'
@@ -41,6 +32,20 @@ AUTH_LDAP_USER_ATTR_MAP = {
 AUTH_LDAP_PROFILE_ATTR_MAP = {
     'employee_number': 'lblempnum',
 }
+
+# See https://pythonhosted.org/django-auth-ldap/install.html
+# See https://docs.djangoproject.com/en/dev/howto/auth-remote-user/
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    # 'django.contrib.auth.backends.RemoteUserBackend',
+    # `allauth` specific authentication methods, such as login by e-mail
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+# only enable AllauthLDAPBackend iff bind password is set
+if AUTH_LDAP_BIND_PASSWORD:
+    AUTHENTICATION_BACKENDS = (
+        'main.account.adapter.AllauthLDAPBackend',  # 'django_auth_ldap.backend.LDAPBackend',
+    ) + AUTHENTICATION_BACKENDS
 
 ###################################################################################################
 # Django Allauth Settings

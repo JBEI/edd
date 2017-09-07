@@ -209,7 +209,7 @@ class ImportDataTestsMixin(object):
             storage.delete.assert_called_with(storage_key)
 
 
-class FBAImportDataTests(TestCase, ImportDataTestsMixin):
+class FBAImportDataTests(ImportDataTestsMixin, TestCase):
     """
     Sets of tests to exercise Import Data views used in Tutorial #4 (Flux Balance Analysis).
     """
@@ -262,7 +262,7 @@ class FBAImportDataTests(TestCase, ImportDataTestsMixin):
         )
 
 
-class PCAPImportDataTests(TestCase, ImportDataTestsMixin):
+class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
     """
     Sets of tests to exercise Import Data views used in Tutorial #5 (Principal Component Analysis
     of Proteomics).
