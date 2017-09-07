@@ -546,7 +546,6 @@ class CombinatorialCreationTests(TestCase):
             is_excel_file=False,
         )
 
-    @tag('known-broken')
     def test_basic_experiment_description_xlsx(self):
 
         strain, _ = Strain.objects.get_or_create(name='JW0111')
