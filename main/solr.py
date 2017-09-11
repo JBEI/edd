@@ -11,7 +11,8 @@ from django.db.models import Count, F, Prefetch
 from itertools import ifilter, islice
 from six import string_types
 
-from . import models, utilities
+from . import models
+from edd import utilities
 
 
 logger = logging.getLogger(__name__)
@@ -192,7 +193,7 @@ class SolrSearch(object):
             # make an initial request to do the add / raise IOError if it occurs
             response = requests.post(
                 url,
-                data=json.dumps(group, cls=utilities.JSONDecimalEncoder),
+                data=json.dumps(group, cls=utilities.JSONEncoder),
                 headers=headers,
                 timeout=timeout,
             )

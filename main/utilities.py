@@ -11,16 +11,11 @@ from django.db.models.aggregates import Aggregate as SQLAggregate
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
-from edd.utilities import JSONEncoder
 from . import models
 
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-class JSONDecimalEncoder(JSONEncoder):
-    pass
 
 
 class SQLArrayAgg(SQLAggregate):

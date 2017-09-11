@@ -52,9 +52,15 @@ from .models import (Assay, Attachment, Line, Measurement, MeasurementType, Meas
 from .signals import study_modified
 from .solr import StudySearch
 from .tasks import import_table_task
-from .utilities import (JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement,
-                        get_edddata_misc, get_edddata_strains, get_edddata_study,
-                        get_edddata_users, )
+from .utilities import (
+    get_edddata_carbon_sources,
+    get_edddata_measurement,
+    get_edddata_misc,
+    get_edddata_strains,
+    get_edddata_study,
+    get_edddata_users,
+)
+from edd import utilities
 
 
 logger = logging.getLogger(__name__)
@@ -362,7 +368,7 @@ class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
                 "type": "Success",
                 "message": "Study %s updated." % self.fields,
             },
-            encoder=JSONDecimalEncoder,
+            encoder=utilities.JSONEncoder,
         )
 
     def form_invalid(self, form):
@@ -371,7 +377,7 @@ class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
                 "type": "Failure",
                 "message": "Validation failed",
             },
-            encoder=JSONDecimalEncoder,
+            encoder=utilities.JSONEncoder,
             status=400,
         )
 
@@ -1118,7 +1124,7 @@ def study_measurements(request, pk=None, slug=None, protocol=None):
         'measures': [m.to_json() for m in measure_list],
         'data': value_dict,
     }
-    return JsonResponse(payload, encoder=JSONDecimalEncoder)
+    return JsonResponse(payload, encoder=utilities.JSONEncoder)
 
 
 # /study/<study_id>/measurements/<protocol_id>/<assay_id>/
@@ -1163,7 +1169,7 @@ def study_assay_measurements(request, pk=None, slug=None, protocol=None, assay=N
         'measures': map(lambda m: m.to_json(), measure_list),
         'data': value_dict,
     }
-    return JsonResponse(payload, encoder=JSONDecimalEncoder)
+    return JsonResponse(payload, encoder=utilities.JSONEncoder)
 
 
 # /study/search/
@@ -1178,7 +1184,7 @@ def study_search(request):
     query_response = data['response']
     for doc in query_response['docs']:
         doc['url'] = reverse('main:detail', kwargs={'slug': doc['slug']})
-    return JsonResponse(query_response, encoder=JSONDecimalEncoder)
+    return JsonResponse(query_response, encoder=utilities.JSONEncoder)
 
 
 # /study/<study_id>/edddata/
@@ -1191,7 +1197,7 @@ def study_edddata(request, pk=None, slug=None):
     data_misc = get_edddata_misc()
     data_study = get_edddata_study(model)
     data_study.update(data_misc)
-    return JsonResponse(data_study, encoder=JSONDecimalEncoder)
+    return JsonResponse(data_study, encoder=utilities.JSONEncoder)
 
 
 # /study/<study_id>/assaydata/
@@ -1208,7 +1214,7 @@ def study_assay_table_data(request, pk=None, slug=None):
             "existingAssays": model.get_assays_by_protocol(),
         },
         "EDDData": get_edddata_study(model),
-    }, encoder=JSONDecimalEncoder)
+    }, encoder=utilities.JSONEncoder)
 
 
 # /study/<study_id>/map/
@@ -1223,10 +1229,13 @@ def study_map(request, pk=None, slug=None):
                 "id": mmap.pk,
                 "biomassCalculation": mmap.biomass_calculation,
             },
-            encoder=JSONDecimalEncoder,
+            encoder=utilities.JSONEncoder,
         )
     except SBMLTemplate.DoesNotExist as e:
-        return JsonResponse({"name": "", "biomassCalculation": -1, }, encoder=JSONDecimalEncoder)
+        return JsonResponse(
+            {"name": "", "biomassCalculation": -1, },
+            encoder=utilities.JSONEncoder
+        )
     except Exception as e:
         raise e
 
@@ -1603,12 +1612,12 @@ def study_import_rnaseq_process(request, pk=None, slug=None):
 
 # /data/users/
 def data_users(request):
-    return JsonResponse({"EDDData": get_edddata_users()}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_users()}, encoder=utilities.JSONEncoder)
 
 
 # /data/misc/
 def data_misc(request):
-    return JsonResponse({"EDDData": get_edddata_misc()}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_misc()}, encoder=utilities.JSONEncoder)
 
 
 # /data/measurements/
@@ -1616,7 +1625,7 @@ def data_measurements(request):
     data_meas = get_edddata_measurement()
     data_misc = get_edddata_misc()
     data_meas.update(data_misc)
-    return JsonResponse({"EDDData": data_meas}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": data_meas}, encoder=utilities.JSONEncoder)
 
 
 # /data/sbml/
@@ -1624,7 +1633,7 @@ def data_sbml(request):
     all_sbml = SBMLTemplate.objects.all()
     return JsonResponse(
         [sbml.to_json() for sbml in all_sbml],
-        encoder=JSONDecimalEncoder,
+        encoder=utilities.JSONEncoder,
         safe=False,
         )
 
@@ -1632,7 +1641,7 @@ def data_sbml(request):
 # /data/sbml/<sbml_id>/
 def data_sbml_info(request, sbml_id):
     sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
-    return JsonResponse(sbml.to_json(), encoder=JSONDecimalEncoder)
+    return JsonResponse(sbml.to_json(), encoder=utilities.JSONEncoder)
 
 
 # /data/sbml/<sbml_id>/reactions/
@@ -1645,7 +1654,7 @@ def data_sbml_reactions(request, sbml_id):
             "reactionName": r.getName(),
             "reactionID": r.getId(),
         } for r in rlist if 'biomass' in r.getId()],
-        encoder=JSONDecimalEncoder,
+        encoder=utilities.JSONEncoder,
         safe=False,
         )
 
@@ -1690,7 +1699,7 @@ def data_sbml_reaction_species(request, sbml_id, rxn_id):
         guessed_json.update(matched_json)
         return JsonResponse(
             guessed_json,
-            encoder=JSONDecimalEncoder,
+            encoder=utilities.JSONEncoder,
             safe=False,
             )
     raise Http404("Could not find reaction")
@@ -1733,17 +1742,17 @@ def data_sbml_compute(request, sbml_id, rxn_id):
                 "reactants": reactant_info,
                 "products": product_info,
             },
-            cls=JSONDecimalEncoder)
+            cls=utilities.JSONEncoder)
         sbml.biomass_calculation = biomass
         sbml.biomass_calculation_info = info
         sbml.save()
-        return JsonResponse(biomass, encoder=JSONDecimalEncoder, safe=False)
+        return JsonResponse(biomass, encoder=utilities.JSONEncoder, safe=False)
     raise Http404("Could not find reaction")
 
 
 # /data/strains/
 def data_strains(request):
-    return JsonResponse({"EDDData": get_edddata_strains()}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_strains()}, encoder=utilities.JSONEncoder)
 
 
 # /data/metadata/
@@ -1755,12 +1764,12 @@ def data_metadata(request):
                     {m.id: m.to_json() for m in MetadataType.objects.all()},
             }
         },
-        encoder=JSONDecimalEncoder)
+        encoder=utilities.JSONEncoder)
 
 
 # /data/carbonsources/
 def data_carbonsources(request):
-    return JsonResponse({"EDDData": get_edddata_carbon_sources()}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_carbon_sources()}, encoder=utilities.JSONEncoder)
 
 
 # /download/<file_id>/
