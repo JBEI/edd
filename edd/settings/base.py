@@ -51,11 +51,12 @@ PUBLISH_REST_API = False
 ##############################
 # ICE configuration used in multiple places, or that we want to be able to override in local.py
 ##############################
-ICE_KEY_ID = 'edd'
+ICE_KEY_ID = env('ICE_NAME', default='edd')
 ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY', default=None)
-ICE_ADMIN_ACCOUNT = 'Administrator'
-ICE_URL = 'https://registry-test.jbei.org/'
-ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
+ICE_ADMIN_ACCOUNT = env('ICE_ADMIN_USER', default='Administrator')
+ICE_URL = env('ICE_URL', default='https://registry-test.jbei.org/')
+# HTTP request connection and read timeouts, respectively (seconds)
+ICE_REQUEST_TIMEOUT = (10, 10)
 
 # Be very careful in changing this value!! Useful to avoid heachaches in *LOCAL* testing against a
 # non-TLS ICE deployment. Also barring another solution, useful as a temporary/risky workaround for

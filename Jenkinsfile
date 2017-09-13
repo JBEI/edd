@@ -93,7 +93,11 @@ try {
                         -e "s/#image: tagname/image: jbei\/edd-core:${image_version}/" \
                         docker-compose.override.yml
                     rm docker-compose.override.yml.bak
-                    sudo docker-compose -p '${project_name}' up -d
+                    sudo docker-compose -p '${project_name}' \
+                        -f docker-compose.yml \
+                        -f docker-compose.override.yml \
+                        -f ice.yml \
+                        up -d
                 /$
                 def health_script = $/#!/bin/bash -xe
                     cd docker_services
@@ -137,7 +141,11 @@ try {
             stage('Teardown') {
                 def teardown_script = $/#!/bin/bash -xe
                     cd docker_services
-                    sudo docker-compose -p '${project_name}' down
+                    sudo docker-compose -p '${project_name}' \
+                        -f docker-compose.yml \
+                        -f docker-compose.override.yml \
+                        -f ice.yml \
+                        down
                     sudo docker ps -qf 'name=${project_name}_*' | xargs \
                         sudo docker rm || true
                     sudo docker network ls -qf 'name=${project_name}_*' | xargs \

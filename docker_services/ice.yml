@@ -1,0 +1,59 @@
+---
+# This file adds an ICE instance to the launched services. Should use with the other
+#   docker-compose*.yml files like so:
+#     docker-compose -f docker-compose.yml -f docker-compose.override.yml -f ice.yml {COMMAND}
+
+version: '2.1'
+networks:
+  icenet: {}
+volumes:
+  ice_index: {}
+  ice_local: {}
+  ice_pg: {}
+services:
+  edd:
+    environment:
+      ICE_NAME: edd
+      ICE_URL: 'http://ice:8080/'
+    links:
+      - ice
+    networks:
+      - icenet
+  worker:
+    environment:
+      ICE_NAME: edd
+      ICE_URL: 'http://ice:8080/'
+    links:
+      - ice
+    networks:
+      - icenet
+  ice:
+    image: jbei/ice
+    restart: always
+    environment:
+      VIRTUAL_HOST: "ice.lvh.me"
+      VIRTUAL_NETWORK: eddnet_201705301928
+      VIRTUAL_PORT: "8080"
+      VIRTUAL_STATIC: "true"
+      HTTPS_METHOD: "noredirect"
+    links:
+      - ice_db:postgres
+    networks:
+      - icenet
+      - proxynet
+    volumes:
+      - ice_index:/var/lib/ice/lucene
+      - ice_local:/usr/local/tomcat/data
+    ports:
+      - '127.0.0.1:8080:8080'
+  ice_db:
+    image: library/postgres:9.6
+    restart: always
+    environment:
+      POSTGRES_DB: ice
+      POSTGRES_PASSWORD: icepass
+      POSTGRES_USER: iceuser
+    networks:
+      - icenet
+    volumes:
+      - ice_pg:/var/lib/postgresql/data
