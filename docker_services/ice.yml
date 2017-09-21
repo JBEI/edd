@@ -29,8 +29,12 @@ services:
       - icenet
   ice:
     image: jbei/ice
+    # uncomment command, JPDA_ADDRESS, JPDA_TRANSPORT, and ports entry to allow attaching debugger
+    # command: ['catalina.sh', 'jpda', 'run']
     restart: always
     environment:
+      # JPDA_ADDRESS: "8000"
+      # JPDA_TRANSPORT: "dt_socket"
       VIRTUAL_HOST: "ice.lvh.me"
       VIRTUAL_NETWORK: eddnet_201705301928
       VIRTUAL_PORT: "8080"
@@ -46,6 +50,7 @@ services:
       - ice_local:/usr/local/tomcat/data
     ports:
       - '127.0.0.1:8080:8080'
+      # - '127.0.0.1:9999:8000'
   ice_db:
     image: library/postgres:9.6
     restart: always

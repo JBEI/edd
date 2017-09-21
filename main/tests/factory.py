@@ -5,11 +5,19 @@ from __future__ import absolute_import, unicode_literals
 Factory classes used to generate objects under test.
 """
 
+import environ
 import factory
 
 from django.contrib.auth import get_user_model
 
 from .. import models
+
+
+def load_test_file(name):
+    "Opens test files saved in the `files` directory."
+    cwd = environ.Path(__file__) - 1
+    filepath = cwd('files', name)
+    return open(filepath, 'rb')
 
 
 class StudyFactory(factory.django.DjangoModelFactory):
@@ -23,4 +31,7 @@ class StudyFactory(factory.django.DjangoModelFactory):
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = get_user_model()
-    username = factory.Sequence(lambda n: 'user%03d' % n)  # username is unique
+    username = factory.Faker('user_name')
+    email = factory.Faker('safe_email')
+    first_name = factory.Faker('first_name')
+    last_name = factory.Faker('last_name')

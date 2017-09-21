@@ -5,7 +5,6 @@ from __future__ import absolute_import, unicode_literals
 Tests used to validate the tutorial screencast functionality.
 """
 
-import environ
 import json
 
 from django.contrib.auth import get_user_model
@@ -18,13 +17,6 @@ from requests import codes
 
 from .. import models, tasks
 from . import factory, TestCase
-
-
-def _load_test_file(name):
-    "Opens test files saved in the `files` directory."
-    cwd = environ.Path(__file__) - 1
-    filepath = cwd('files', name)
-    return open(filepath, 'rb')
 
 
 class ExperimentDescriptionTests(TestCase):
@@ -48,7 +40,7 @@ class ExperimentDescriptionTests(TestCase):
         self.client.force_login(self.user)
 
     def _run_upload(self, name):
-        with _load_test_file(name) as fp:
+        with factory.load_test_file(name) as fp:
             upload = BytesIO(fp.read())
         upload.name = name
         upload.content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -155,7 +147,7 @@ class ImportDataTestsMixin(object):
         return reverse('main:detail', kwargs={'slug': self.target_study.slug})
 
     def _run_import_view(self, postfile):
-        with _load_test_file(postfile) as poststring:
+        with factory.load_test_file(postfile) as poststring:
             POST = QueryDict(poststring.read())
         # mocking redis and celery task, to only test the view itself
         with patch('main.views.redis.ScratchStorage') as MockStorage:
@@ -174,7 +166,7 @@ class ImportDataTestsMixin(object):
         return response
 
     def _run_parse_view(self, filename, filetype, mode):
-        with _load_test_file(filename) as fp:
+        with factory.load_test_file(filename) as fp:
             upload = BytesIO(fp.read())
         upload.name = filename
         response = self.client.post(
@@ -186,7 +178,7 @@ class ImportDataTestsMixin(object):
             },
         )
         self.assertEqual(response.status_code, codes.ok)
-        with _load_test_file(filename + '.json') as fp:
+        with factory.load_test_file(filename + '.json') as fp:
             target = json.load(fp)
         # check that objects are the same when re-serialized with sorted keys
         self.assertEqual(
@@ -197,7 +189,7 @@ class ImportDataTestsMixin(object):
 
     def _run_task(self, filename):
         storage_key = 'randomkey'
-        with _load_test_file(filename + '.post') as post:
+        with factory.load_test_file(filename + '.post') as post:
             data = post.read()
         # mocking redis, so test provides the data instead of real redis
         with patch('main.tasks.ScratchStorage') as MockStorage:
@@ -360,7 +352,7 @@ class FBAExportDataTests(TestCase):
 
     def test_step2_export(self):
         "Second step selects an SBML Template."
-        with _load_test_file('ExportData_FBA_step2.post') as fp:
+        with factory.load_test_file('ExportData_FBA_step2.post') as fp:
             POST = QueryDict(fp.read())
         response = self.client.post(
             reverse('main:sbml'),
@@ -371,7 +363,7 @@ class FBAExportDataTests(TestCase):
 
     def test_step3_export(self):
         "Third step maps metabolites to species/reactions, and selects an export timepoint."
-        with _load_test_file('ExportData_FBA_step3.post') as fp:
+        with factory.load_test_file('ExportData_FBA_step3.post') as fp:
             POST = QueryDict(fp.read())
         response = self.client.post(
             reverse('main:sbml'),

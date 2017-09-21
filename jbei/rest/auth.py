@@ -10,6 +10,7 @@ import requests
 
 from requests.auth import AuthBase
 from requests.compat import urlparse
+from requests.utils import quote
 from urlparse import urlsplit
 
 from .utils import remove_trailing_slash, show_response_html
@@ -106,7 +107,15 @@ class HmacAuth(AuthBase):
         return sig
 
     def _sort_parameters(self, query):
-        params = sorted(map(lambda p: p.split('=', 1), query.split('&')), key=lambda p: p[0])
+        # split on ampersand
+        params = query.split('&')
+        # split each param into two-tuples of (key,value)
+        params = map(lambda p: p.split('=', 1), params)
+        # quote tuple entries
+        params = map(lambda p: (quote(p[0]), quote(p[1])), params)
+        # sort based on key portion
+        params = sorted(params, key=lambda p: p[0])
+        # join back together on ampersand
         return '&'.join(map(lambda p: '='.join(p), params))
 
 
