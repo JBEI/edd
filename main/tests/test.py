@@ -10,6 +10,7 @@ from .adapter import *  # noqa
 from .admin import *  # noqa
 from .forms import *  # noqa
 from .handlers import *  # noqa
+from .ice import *  # noqa
 from .models import *  # noqa
 from .solr import *  # noqa
 from .tutorials import *  # noqa

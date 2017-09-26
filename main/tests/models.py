@@ -53,7 +53,11 @@ class UserTests(TestCase):
             first_name="Jane",
             last_name="Smith",
         )
-        cls.user2 = factory.UserFactory(email="jdoe@localhost")
+        cls.user2 = factory.UserFactory(
+            email="jdoe@localhost",
+            first_name='',
+            last_name='',
+        )
         cls.admin = factory.UserFactory(
             email="ssue@localhost",
             is_staff=True,
@@ -191,31 +195,32 @@ class StudyTests(TestCase):
 
 class SolrTests(TestCase):
 
+    @classmethod
+    def setUpTestData(cls):
+        super(SolrTests, cls).setUpTestData()
+        cls.admin = factory.UserFactory(is_superuser=True)
+        cls.user1 = factory.UserFactory()
+        cls.study = factory.StudyFactory(description='Lorem ipsum dolor sit amet')
+
     def setUp(self):
         super(SolrTests, self).setUp()
-        email = 'wcmorrell@lbl.gov'
-        self.admin = User.objects.create_superuser(username='admin', email=email, password='12345')
-        self.user1 = User.objects.create_user(username='test1', email=email, password='password')
         self.solr_admin = StudySearch(ident=self.admin)
-        self.solr_user = StudySearch(ident=self.user1)
-        up1 = Update.objects.create(mod_by=self.user1)
-        self.study1 = Study.objects.create(name='Test Study 1',
-                                           description='Lorem ipsum dolor sit amet')
-        self.study1.updates.add(up1)
         self.solr_admin.clear()
 
     def tearDown(self):
         self.solr_admin.clear()
-        TestCase.tearDown(self)
+        super(SolrTests, self).tearDown()
 
     def test_initially_empty(self):
-        result = self.solr_user.query(query='*:*')
+        solr = StudySearch(ident=self.user1)
+        result = solr.query(query='*:*')
         self.assertEqual(result['response']['numFound'], 0,
                          "The test index is not initially empty")
 
     def test_add_and_retrieve(self):
+        solr = StudySearch(ident=self.user1)
         pre_add = self.solr_admin.query(query='description:dolor')
-        self.solr_user.update([self.study1])
+        solr.update([self.study])
         post_add = self.solr_admin.query(query='description:dolor')
         self.assertEqual(pre_add['response']['numFound'], 0, "Study in index before it was added")
         self.assertEqual(post_add['response']['numFound'], 1, "Added study was not found in query")

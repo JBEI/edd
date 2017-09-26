@@ -16,6 +16,7 @@ class HmacTests(TestCase):
     USER_ID = 'WCMorrell'
 
     def setUp(self):
+        super(HmacTests, self).setUp()
         HmacAuth.register_key(self.KEY_ID, self.KEY)
 
     def test_signature_gen(self):
