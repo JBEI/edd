@@ -6,6 +6,7 @@ import {DataGrid, DataGridSpecBase, DataGridDataCell, DGPageDataSource, DataGrid
         DataGridHeaderSpec, DGPagingWidget, DataGridOptionWidget, DGSearchWidget,
         DataGridDataRow } from "../modules/DataGrid"
 import { Utl } from "../modules/Utl"
+import "bootstrap-loader"
 
 
 declare function require(name: string): any;  // avoiding warnings for require calls below

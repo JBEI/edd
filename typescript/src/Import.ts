@@ -2,6 +2,7 @@ import { EDDATDGraphing } from "../modules/AssayTableDataGraphing"
 import { Utl } from "../modules/Utl"
 import { EDDAuto } from "../modules/EDDAutocomplete"
 import { EDDGraphingTools } from "../modules/EDDGraphingTools"
+import "bootstrap-loader"
 declare var ATData: any; // Setup by the server.
 
 // Doing this bullshit because TypeScript/InternetExplorer do not recognize static methods

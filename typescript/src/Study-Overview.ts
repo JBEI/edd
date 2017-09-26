@@ -6,6 +6,7 @@ import { StudyMetabolicMapChooser } from "../modules/BiomassCalculationUI"
 import { MetabolicMapChooserResult } from "../modules/BiomassCalculationUI"
 import { StudyBase } from "../modules/Study"
 import { EDDAuto } from "../modules/EDDAutocomplete"
+import "bootstrap-loader"
 
 module StudyOverview {
     'use strict';
@@ -210,7 +211,7 @@ module StudyOverview {
                     });
             }
         });
-        
+
         var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
            pageRedirect: 'experiment-description',
            haveInputData: false,

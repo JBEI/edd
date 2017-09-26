@@ -1,6 +1,7 @@
-import * as jQuery from "jquery";
-import 'handsontable';
-import 'handsontable.css';
+import * as jQuery from "jquery"
+import "bootstrap-loader"
+import "handsontable"
+import "handsontable.css"
 
 declare var Handsontable: any;
 

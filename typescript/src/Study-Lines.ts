@@ -13,6 +13,7 @@ import { StudyMetabolicMapChooser, MetabolicMapChooserResult, FullStudyBiomassUI
 import { CarbonBalance } from "../modules/StudyCarbonBalance"
 import { StudyBase } from "../modules/Study"
 import * as _ from "underscore"
+import "bootstrap-loader"
 
 
 module StudyLines {
