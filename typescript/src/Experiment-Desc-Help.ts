@@ -1,5 +1,4 @@
-/// <reference path="../modules/EDDRest.ts" />
-
+import { EddRest } from "../modules/EDDRest"
 import * as $ from "jquery"
 import "bootstrap-loader"
 

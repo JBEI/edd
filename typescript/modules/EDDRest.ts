@@ -1,6 +1,6 @@
 
 // This file contains utility functions for use in querying EDD's REST API.
-namespace EddRest {
+export module EddRest {
 
     /* DRF paged result query parameters */
     const PAGE_SIZE_PARAM: string = 'page_size';
@@ -32,7 +32,7 @@ namespace EddRest {
     /* REST API resource URLs */
     const metadata_types_url: string = "/rest/metadata_types/";
     const protocols_url: string = '/rest/protocols/';
-    const measurement_units_url: string = '/rest/measurement_unit';
+    const measurement_units_url: string = '/rest/measurement_units/';
 
     /**
      * Initiates one or more asynchronous requests to load Protocols from the REST API back
