@@ -13,7 +13,7 @@ from django.core.exceptions import PermissionDenied, SuspiciousOperation, Valida
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
-from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse, QueryDict
 from django.shortcuts import render, get_object_or_404, redirect
 from django.template import RequestContext
 from django.template.defaulttags import register
@@ -358,7 +358,10 @@ class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
         kwargs = super(StudyUpdateView, self).get_form_kwargs()
         # updated value comes in as 'value'; copy it to field the form expects
         if 'data' in kwargs and 'value' in kwargs['data']:
-            kwargs['data'].update({self.fields[0]: kwargs['data']['value']})
+            data = QueryDict(mutable=True)
+            data.update(kwargs['data'])
+            data.update({self.fields[0]: data['value']})
+            kwargs['data'] = data
         return kwargs
 
     def form_valid(self, form):

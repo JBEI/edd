@@ -92,13 +92,8 @@
                     {{ edit_study.contact.errors }}
                     <div class="editable-field inactive" id="editable-study-contact">
                         {% if study.contact %}
-                            {% if writable %}
-                                {{ study.contact.first_name }} {{ study.contact.last_name }}
-                            {% else %}
-                                <a href="mailto:{{ study.contact.email }}">
-                                    {{ study.contact.first_name }} {{ study.contact.last_name }}
-                                </a>
-                            {% endif %}
+                            {% firstof study.contact.get_full_name study.contact.email as label %}
+                            <a href="mailto:{{ study.contact.email }}">{{ label }}</a>
                         {% elif study.contact_extra %}
                             {{ study.contact_extra }}
                         {% else %}
