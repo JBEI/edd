@@ -48,7 +48,6 @@ from .importer.parser import find_parser
 from .models import (Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue,
                      Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
                      StudyPermission, Update, )
-from .signals import study_modified
 from .solr import StudySearch
 from .tasks import import_table_task
 from .utilities import (
@@ -207,13 +206,14 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
     template_name = 'main/study-overview.html'
 
     def get_actions(self, can_write=False):
-        """ Return a dict mapping action names to functions performing the action. These functions
-            may return one of the following values:
-            1. True: indicates a change was made; triggers a study_modified signal and redirects
-                to a GET request
-            2. False: indicates no change was made; triggers no signal and no redirect
+        """
+        Return a dict mapping action names to functions performing the action. These functions
+        may return one of the following values:
+            1. True: indicates a change was made; redirects to a GET request
+            2. False: indicates no change was made; no redirect
             3. HttpResponse instance: the explicit response to return
-            4. view function: another view to handle the request """
+            4. view function: another view to handle the request
+        """
         action_lookup = collections.defaultdict(lambda: self.handle_unknown)
         if can_write:
             action_lookup.update({
@@ -325,8 +325,6 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
 
     def post_response(self, request, context, form_valid):
         if form_valid:
-            # signal the change
-            study_modified.send(sender=self.__class__, study=self.object)
             # redirect to the same location to avoid re-submitting forms with back/forward
             return HttpResponseRedirect(request.path)
         return self.render_to_response(context)
