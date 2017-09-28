@@ -15,7 +15,6 @@ from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse, QueryDict
 from django.shortcuts import render, get_object_or_404, redirect
-from django.template import RequestContext
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
@@ -828,12 +827,15 @@ class StudyDetailView(StudyDetailBaseView):
             assay_dict = line_dict['assays'].setdefault(a.id, {
                 'assay': a,
                 'measures': collections.OrderedDict(),
-                })
+            })
             assay_dict['measures'][m.id] = {
                 'measure': m,
                 'form': MeasurementValueFormSet(
-                    instance=m, prefix=str(m.id), queryset=m.measurementvalue_set.order_by('x')),
-                }
+                    instance=m,
+                    prefix=str(m.id),
+                    queryset=m.measurementvalue_set.order_by('x')
+                ),
+            }
         return self.handle_measurement_edit_response(request, lines, measures)
 
     def handle_measurement_edit_response(self, request, lines, measures):
@@ -845,7 +847,6 @@ class StudyDetailView(StudyDetailBaseView):
                 'measures': ','.join(['%s' % m.pk for m in measures]),
                 'study': self.object,
             },
-            context_instance=RequestContext(request),
         )
 
     def handle_measurement_update(self, request, context):

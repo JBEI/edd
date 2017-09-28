@@ -18,7 +18,6 @@ from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
-from form_utils.forms import BetterModelForm
 from functools import partial
 
 from jbei.rest.auth import HmacAuth
@@ -740,11 +739,10 @@ class MeasurementForm(forms.ModelForm):
         return all_measures
 
 
-class MeasurementValueForm(BetterModelForm):
+class MeasurementValueForm(forms.ModelForm):
     """ Form for an individual measurement value. """
     class Meta:
         fields = ('x', 'y', )
-        fieldsets = [('', {'fields': ['x', 'y', ], }), ]
         model = MeasurementValue
         widgets = {
             'x': forms.widgets.NumberInput(),

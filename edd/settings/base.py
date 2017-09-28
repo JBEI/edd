@@ -121,7 +121,6 @@ INSTALLED_APPS = (
     'django_extensions',  # django-extensions in pip
     'rest_framework',  # djangorestframework in pip
     'rest_framework_swagger',
-    'form_utils',  # django-form-utils in pip
     'messages_extends',  # django-messages-extends in pip
     # django-allauth in pip; separate apps for each provider
     'allauth',
