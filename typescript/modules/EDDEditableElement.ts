@@ -1,9 +1,16 @@
 import { Utl } from "./Utl";
 import { EDDAuto } from "../modules/EDDAutocomplete";
-import tinymce from 'tinymce/tinymce';
-import 'tinymce/themes/modern/theme';
-import 'tinymce/plugins/link';
 
+declare var require: any;  // silence TypeScript compiler errors about require not being defined
+var tinymce = require('tinymce/tinymce');
+require('tinymce/themes/modern/theme');
+require('tinymce/plugins/link');
+
+require.context(
+    'file-loader?name=[path][name].[ext]&context=node_modules/tinymce!tinymce/skins',
+    true,
+    /.*/
+);
 
 // Creates a div element with the given styling, optionally hidden by default,
 // and provides a means to hide or show it.
@@ -288,12 +295,10 @@ export module EDDEditable {
             this.element.appendChild(this.inputElement);
             $(this.inputElement).show();
             if (this.element.id === 'editable-study-description') {
-                if (typeof tinymce !== 'undefined') {
-                    tinymce.init({
-                        selector: '#editable-study-description textarea',
-                        plugins: "link"
-                  });
-                }
+                tinymce.init({
+                    selector: '#editable-study-description textarea',
+                    plugins: "link"
+                });
             }
 
 

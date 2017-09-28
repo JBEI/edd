@@ -1,5 +1,3 @@
-/// <reference path="../typings/jquery/jquery.mcautocomplete.d.ts" />
-
 import { EDDAuto } from "../modules/EDDAutocomplete"
 import {DataGrid, DataGridSpecBase, DataGridDataCell, DGPageDataSource, DataGridColumnSpec,
         DataGridTableSpec, DataGridHeaderWidget, DataGridColumnGroupSpec, DataGridSort,
