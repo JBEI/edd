@@ -1563,6 +1563,9 @@ form.comments textarea {
     float: left;
     padding-right: 1em;
 }
+.exportDisplay {
+    position: absolute;
+}
 .exportDisplay textarea {
     width: 100%;
 }

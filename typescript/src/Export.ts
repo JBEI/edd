@@ -1,9 +1,12 @@
 import * as jQuery from "jquery"
 import "bootstrap-loader"
-import "handsontable"
-import "handsontable.css"
+import Handsontable from "handsontable"
+//import "handsontable.css"
 
-declare var Handsontable: any;
+declare function require(name: string): any;  // avoiding warnings for require calls below
+
+require('handsontable.css')
+
 
 module ExportPage {
 

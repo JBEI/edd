@@ -6,6 +6,12 @@ var path = require('path');
 var webpack = require('webpack');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 
+var css_extract = new ExtractTextPlugin({
+  "filename": "styles.css",
+  "disable": false,
+  "allChunks": true
+});
+
 module.exports = {
   entry: {
     ExperimentDescHelp: "./code/typescript/src/Experiment-Desc-Help.ts",
@@ -21,6 +27,7 @@ module.exports = {
       "d3",
       "dropzone",
       "handsontable",
+      "handsontable.css",
       "jquery",
       "jquery-ui",
       "jquery.cookie",
@@ -62,7 +69,7 @@ module.exports = {
       // define loader for stylesheets
       {
         test: /\.css$/,
-        use: ExtractTextPlugin.extract({
+        use: css_extract.extract({
           fallback: "style-loader",
           use: "css-loader"
         })
@@ -93,10 +100,7 @@ module.exports = {
       "window.jQuery": "jquery",
       "window.$": "jquery"
     }),
-    new ExtractTextPlugin({
-      "filename": "styles.css",
-      "allChunks": true
-    }),
+    css_extract,
     new webpack.optimize.CommonsChunkPlugin({
       "name": "vendor",
       "filename": "vendor.js",
