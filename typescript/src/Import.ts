@@ -2070,7 +2070,7 @@ module EDDTableImport {
                         // Transcriptomics: RPKM values
                         value = value.replace(/,/g, '');
                         if (value) {
-                            reassembledData = [[null, value]];
+                            reassembledData.push([null, value]);
                         }
                         return;
                     } else if (pulldown === TypeEnum.Gene_Names) {
