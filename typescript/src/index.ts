@@ -62,21 +62,12 @@ module IndexPage {
         //prepare tooltip for matched searches
         $(this.studiesDataGridSpec.tableElement).tooltip({
             content: function () {
-                return $(this).prop('title');
+                return $(this).find('.popupmenu').clone(true).removeClass('off');
             },
-            position: { my: "left-10 center", at: "right center" },
-            show: null,
-            close: function (event, ui:any) {
-                ui.tooltip.hover(
-                function () {
-                    $(this).stop(true).fadeTo(400, 1);
-                },
-                function () {
-                    $(this).fadeOut("400", function () {
-                        $(this).remove();
-                    })
-                });
-            }
+            items: '.has-popupmenu',
+            hide: false,  // no animations
+            show: false,  // no animations
+            track: true
         });
 
 		// Instantiate the table itself with the spec

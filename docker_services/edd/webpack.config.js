@@ -81,7 +81,7 @@ module.exports = {
       },
       // define loader for fonts, etc
       {
-        test: /\.(png|woff|woff2|eot|ttf|svg)$/,
+        test: /\.(woff|woff2|eot|ttf|svg)$/,
         loader: 'url-loader',
         options: {
           limit: 8192

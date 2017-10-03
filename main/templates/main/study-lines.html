@@ -104,17 +104,18 @@
         <a href="{% static 'main/example/sample_experiment_description.xlsx' %}">
             Example File <span class="dropLink dropImg"></span>
         </a>)
-        <div style="float:none" class="helpBadgeDiv helpBadgeLines"
-                title="&lt;a style=&quot;color:blue&quot;
-                    href=&quot;/help/experiment_description/&quot;&gt;What's an Experiment
-                    description file?&lt;/a&gt;">{% trans 'help' %}</div>
-        </div>
+        <a href="{% url 'main:experiment_description_help' %}">
+            <div class="helpBadgeDiv helpBadgeLines">
+                {% trans 'help' %}
+                <div class="helpContent">
+                    {% trans 'Click for help on Experiment Description files.' %}
+                </div>
+            </div>
+        </a>
         <div class="noLines">
             <h3 style="margin-bottom:12px">{% trans 'This study has no lines.' %}</h3>
         </div>
-        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-        <table id="studyLinesTable">
-             <div class="helpBadgeDiv helpBadgeLines move">
+        <div class="helpBadgeDiv helpBadgeLines move off">
             {% trans 'help' %}
             <div class="helpContent">
                 <p>
@@ -128,7 +129,8 @@
                 </p>
             </div>
         </div>
-        </table>
+        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+        <table id="studyLinesTable"></table>
         <div id="actionsBar" class="actionsBar sectionActions lineFlex">
             <div>
             <button id="addNewLineButton"

@@ -28,22 +28,23 @@ interface LineRecord extends EDDRecord {
     strain:number[];     // Strain ID array
     carbon:number[];     // Carbon Sources ID array
     exp:number;          // Experimenter ID
+    identifier:string;   // HTML ID for the line filter checkbox
 }
 
 
 
 // This is what we expect in EDDData.Assays
 interface AssayRecord extends EDDRecord {
-    active:boolean;     // Active assay
-    lid:number;         // Line ID
-    pid:number;         // Protocol ID
-    mod:number;         // Modification epoch
-    exp:number;         // Experimenter ID
-    measures:number[];  // All collected measurements associated with Assay
-    metabolites:number[];       // Metabolite measurements associated with Assay
-    transcriptions:number[];    // Transcription measurements associated with Assay
-    proteins:number[];          // Proteins measurements associated with Assay
-    general: number[];          // Measurements for everything else
+    active:boolean;          // Active assay
+    lid:number;              // Line ID
+    pid:number;              // Protocol ID
+    mod:number;              // Modification epoch
+    exp:number;              // Experimenter ID
+    measures:number[];       // All collected measurements associated with Assay
+    metabolites:number[];    // Metabolite measurements associated with Assay
+    transcriptions:number[]; // Transcription measurements associated with Assay
+    proteins:number[];       // Proteins measurements associated with Assay
+    general: number[];       // Measurements for everything else
     count: number;
 }
 

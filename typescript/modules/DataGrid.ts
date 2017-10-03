@@ -1357,14 +1357,19 @@ export class DataGridDataCell {
     createElement() {
         var id = this.recordID,
             c: HTMLElement = document.createElement("td"),
-            checkId: string, checkName: string, title: string;
+            checkId: string,
+            checkName: string,
+            cellClasses: string[] = [],
+            menu: JQuery;
         if (this.checkboxWithID) {
             checkId = this.checkboxWithID.call(this.gridSpec, id);
             checkName = this.checkboxName || checkId;
             this.checkboxElement = document.createElement('input');
             this.checkboxElement.setAttribute('type', 'checkbox');
             $(this.checkboxElement).attr({
-                'id': checkId, 'name': checkName, 'value': id.toString()
+                'id': checkId,
+                'name': checkName,
+                'value': id.toString()
             }).appendTo(c);
             this.contentContainerElement = $('<label>').attr('for', checkId).appendTo(c)[0];
         } else {
@@ -1373,27 +1378,13 @@ export class DataGridDataCell {
         $(this.contentContainerElement).html(this.contentString);
         this.contentFunction.call(this.gridSpec, this.contentContainerElement, id);
         if (this.sideMenuItems && this.sideMenuItems.length) {
-            title = '<span>';
+            menu = $('<ul>');
             this.sideMenuItems.forEach((item) => {
-                //TODO: clean up
-                if (item.slice(0, 1) != ('<')) {
-                    title += item
-                }
-                else if ($(item).attr('class') === "line-edit-link") {
-                    $(item).addClass('editLine');
-                    title += ('<ul>' + item + '</ul>');
-                } else {
-                    title += ('<ul>' + item + '</ul>');
-                }
-
-                title += '</span>';
+                $('<li>').html(item).appendTo(menu).find('.line-edit-link').addClass('editLine');
             });
-
-            c.setAttribute('title', title);
-            c.setAttribute('id', id);
+            menu.addClass('popupmenu off').appendTo(c);
+            cellClasses.push('has-popupmenu');
         }
-
-        var cellClasses = [];
 
         if (this.colspan > 1) {
             c.setAttribute('colspan', this.colspan.toString(10));

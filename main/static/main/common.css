@@ -61,6 +61,9 @@ a.darker {
 a:hover {
     text-decoration:underline;
 }
+label {
+    font-weight: normal !important;
+}
 
 
 /* Functional classes */
@@ -1737,6 +1740,12 @@ div.fileDropInfoLog {
     width: 24px
 }
 
+div.ui-tooltip {
+    max-width: 30em;
+}
+div.ui-tooltip ul {
+    list-style: none;
+}
 div.tooltip2 {
   position: absolute;
   text-align: center;

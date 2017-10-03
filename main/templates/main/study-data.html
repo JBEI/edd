@@ -117,21 +117,28 @@
         <div class="clear"></div>
     </div>
     <div id="tableActionButtons" class="tableActionButtons off" style="margin:auto 0;">
+        {% if writable %}
+        <button id="editAssaysButton"
+                class="editAssayButton actionButton"
+                disabled="true"
+                title="{% trans 'Edit selected assays' %}">
+            {% trans 'Edit Assays' %}
+        </button>
         <button id="editMeasurementButton"
-                class="editMeasurementButton actionButton {% if not writable or not assays %}off{% endif %}"
+                class="editMeasurementButton actionButton"
                 disabled="true"
                 title="{% trans 'Edit selected measurements' %}">
             {% trans 'Edit Measurements' %}
         </button>
         <button id="addMeasurementButton"
-                class="addMeasurementButton actionButton {% if not writable or not assays %}off{% endif %}"
+                class="addMeasurementButton actionButton"
                 type="button"
                 disabled="true"
                 title="{% trans 'Add a measurement to selected assays' %}">
             {% trans 'Add Measurement' %}
         </button>
         <button id="deleteButton"
-                class="deleteButton actionButton {% if not writable or not assays %}off{% endif %}"
+                class="deleteButton actionButton"
                 type="submit"
                 name="action"
                 value="disable"
@@ -148,8 +155,8 @@
                 title="{% trans 'Restore selected assays and/or measurements' %}">
             {% trans 'Restore' %}
         </button>
+        {% endif %}
     </div>
-
 
     <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
         <button type="button" id="exportButton" class="exportButton actionButton primary off"
