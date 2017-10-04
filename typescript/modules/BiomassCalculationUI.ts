@@ -409,7 +409,7 @@ class BiomassCalculationUI {
                 translated = $.map(data, (value:any, key:string):ServerBiomassSpeciesEntry => {
                     return $.extend(value, {
                         "sbmlSpeciesName": key,
-                        "eddMetaboliteName": value.sn
+                        "eddMetaboliteName": value.short
                     });
                 });
                 callback.call({}, translated);

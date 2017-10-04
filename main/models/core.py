@@ -722,7 +722,6 @@ class CarbonSource(EDDObject, LineProperty):
         json_dict.update({
             'labeling': self.labeling,
             'volume': self.volume,
-            'initials': self.created.initials,  # TODO: see if this is used, maybe replace
         })
         return json_dict
 
@@ -954,7 +953,10 @@ class Measurement(EDDMetadata, EDDSerialize):
         @classmethod
         def to_json(cls):
             return {
-                i: {"name": str(cls.names[i]), "sn": cls.short_names[i]}
+                i: {
+                    "name": str(cls.names[i]),
+                    "code": cls.short_names[i],
+                }
                 for i in range(3)
             }
 

@@ -127,7 +127,7 @@ class MeasurementType(models.Model, EDDSerialize):
             "id": self.pk,
             "uuid": self.uuid,
             "name": self.type_name,
-            "sn": self.short_name,
+            "short": self.short_name,
             "family": self.type_group,
         }
 
@@ -224,17 +224,9 @@ class Metabolite(MeasurementType):
     def to_json(self, depth=0):
         """ Export a serializable dictionary. """
         return dict(super(Metabolite, self).to_json(), **{
-            # FIXME the alternate names pointed to by the 'ans' key are
-            # supposed to come from the 'alternate_metabolite_type_names'
-            # table in the old EDD, but this is actually empty.  Do we need it?
-            "ans": "",
-            "f": self.molecular_formula,
-            "mm": float(self.molar_mass),
-            "cc": self.carbon_count,
-            "chg": self.charge,
-            "chgn": self.charge,  # TODO find anywhere in typescript using this and fix it
-            "kstr": ",".join(self.tags),  # TODO find anywhere in typescript using this and fix
-            "tags": self.tags,
+            "formula": self.molecular_formula,
+            "molar": float(self.molar_mass),
+            "carbons": self.carbon_count,
         })
 
     def to_solr_json(self):

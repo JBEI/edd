@@ -246,8 +246,8 @@ module StudyLines {
              line.find('.meta-prefix').remove();
 
              if (type) {
-                 if (type.pre) {
-                    $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+                 if (type.prefix) {
+                    $('<span>').addClass('meta-prefix').text(type.prefix).insertBefore(input);
                  }
 
                  if (type.postfix) {
@@ -845,7 +845,11 @@ class DataGridSpecLines extends DataGridSpecBase {
         return (gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] => {
             var contentStr = '', line = EDDData.Lines[index], type = EDDData.MetaDataTypes[id];
             if (line && type && line.meta && (contentStr = line.meta[id] || '')) {
-                contentStr = [ type.pre || '', contentStr, type.postfix || '' ].join(' ').trim();
+                contentStr = [
+                    type.prefix || '',
+                    contentStr,
+                    type.postfix || ''
+                ].join(' ').trim();
             }
             return [
                 new DataGridDataCell(gridSpec, index, {

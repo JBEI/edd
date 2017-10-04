@@ -224,18 +224,15 @@ class MetadataType(models.Model, EDDSerialize):
         super(MetadataType, self).save(*args, **kwargs)
 
     def to_json(self, depth=0):
-        # TODO: refactor to have sane names in EDDDataInterface.ts
         return {
             "id": self.pk,
-            "gn": self.group.group_name if self.group else None,
-            "gid": self.group.id if self.group else None,
             "name": self.type_name,
-            "is": self.input_size,
-            "pre": self.prefix,
+            "i18n": self.type_i18n,
+            "input_type": self.input_type,
+            "input_size": self.input_size,
+            "prefix": self.prefix,
             "postfix": self.postfix,
             "default": self.default_value,
-            "ll": self.for_line(),
-            "pl": self.for_assay(),
             "context": self.for_context,
         }
 

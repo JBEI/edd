@@ -211,13 +211,13 @@ export module CarbonBalance2 {
             }
             var uRecord: any = EDDData.UnitTypes[measure.y_units];
             var units: string = uRecord ? uRecord.name : '';
-            var carbonCount: number = mtype.cc; // # carbons per mole
+            var carbonCount: number = mtype.carbons; // # carbons per mole
 
             if (units === '' || units === 'n/a' || !carbonCount) {
                 return false;
             } else if (units === 'g/L') {
                 // g/L is fine if we have a molar mass so we can convert g->mol
-                return !!mtype.mm;
+                return !!mtype.molar;
             } else {
                 // Anything using mols is fine as well.
                 return (units === 'mol/L/hr' ||
@@ -245,7 +245,7 @@ export module CarbonBalance2 {
                 measurementType: MetaboliteTypeRecord = EDDData.MetaboliteTypes[measurement.type],
                 uRecord: UnitType = EDDData.UnitTypes[measurement.y_units],
                 units: string = uRecord ? uRecord.name : '',
-                carbonCount: number = measurementType.cc, // # carbons per mole
+                carbonCount: number = measurementType.carbons, // # carbons per mole
                 finalValue: number = 0,
                 isValid: boolean = false,
                 isOpticalDensity: boolean = this._isOpticalDensityMeasurement(measurementType),
@@ -292,16 +292,16 @@ export module CarbonBalance2 {
                     }
                     // Do molar mass conversions.
                     if (units === 'g/L') {
-                        if (!measurementType.mm) {
+                        if (!measurementType.molar) {
                             // We should never get in here.
                             this._writeDebugLine(dOut, "Trying to calculate carbon for a g/L " +
                                 "metabolite with an unspecified molar mass! " +
                                 "(The code should never get here).");
                         } else {
                             // (g/L) * (mol/g) = (mol/L)
-                            value = value * 1000 / measurementType.mm;
+                            value = value * 1000 / measurementType.molar;
                             this._writeDebugLineWithHeader(dOut, "divide by molar mass",
-                                [" * 1000 /", measurementType.mm, "g/mol =",
+                                [" * 1000 /", measurementType.molar, "g/mol =",
                                     this._numStr(value), "mMol/L"].join(' '));
                             units = 'mMol/L';
                         }
@@ -356,7 +356,7 @@ export module CarbonBalance2 {
                     if (!mtype) {
                         return;
                     }
-                    carbonCount = mtype.cc;
+                    carbonCount = mtype.carbons;
                     uRecord = EDDData.UnitTypes[measure.y_units];
                     units = uRecord ? uRecord.name : '';
                     // See 'Optical Density Note' below.

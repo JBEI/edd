@@ -2844,7 +2844,11 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return (gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] => {
             var contentStr = '', assay = EDDData.Assays[index], type = EDDData.MetaDataTypes[id];
             if (assay && type && assay.meta && (contentStr = assay.meta[id] || '')) {
-                contentStr = [ type.pre || '', contentStr, type.postfix || '' ].join(' ').trim();
+                contentStr = [
+                    type.prefix || '',
+                    contentStr,
+                    type.postfix || ''
+                ].join(' ').trim();
             }
             return [
                 new DataGridDataCell(gridSpec, index, {

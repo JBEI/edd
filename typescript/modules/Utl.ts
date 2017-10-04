@@ -23,7 +23,7 @@ export module Utl {
                 if (compID) {
                     var cRecord = EDDData.MeasurementTypeCompartments[compID];
                     if (cRecord) {
-                        compName = cRecord.sn + ' ';
+                        compName = cRecord.code + ' ';
                     }
                 }
                 var mRecord = EDDData.MetaboliteTypes[measurementRecord.mt];
