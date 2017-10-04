@@ -120,10 +120,12 @@ class WorklistColumn(models.Model):
         return ''
 
     def get_format_dict(self, instance, *args, **kwargs):
-        """ Build dict used in format string for columns that use it. This implementation re-uses
-            EDDObject.to_json(), in a flattened format. """
+        """
+        Build dict used in format string for columns that use it. This implementation re-uses
+        EDDObject.to_json(), in a flattened format.
+        """
         # Must import inside method to avoid circular import
-        from .utilities import flatten_json
+        from main.utilities import flatten_json
         fmt_dict = flatten_json(instance.to_json(depth=1) if instance else {})
         # add in: date
         # TODO: pass in tz based on user profile?

@@ -48,8 +48,10 @@ media_types = {
 
 
 def flatten_json(source):
-    """ Takes a json-shaped input (usually a dict), and flattens any nested dict, list, or tuple
-        with dotted key names. """
+    """
+    Takes a json-shaped input (usually a dict), and flattens any nested dict, list, or tuple
+    with dotted key names.
+    """
     # TODO: test this!
     output = defaultdict(lambda: '')
     # convert lists/tuples to a dict
