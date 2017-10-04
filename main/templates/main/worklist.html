@@ -38,6 +38,7 @@
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
       {{ worklist_form.as_p }}
+      <input type="hidden" id="id_separator" value=","/>
       {% if defaults_form %}
       <div class="disclose discloseHide">
         <a href="#" class="discloseLink">Modify Column Default Values</a>

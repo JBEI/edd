@@ -27,7 +27,9 @@ module ExportPage {
       }
       // empty string sections merge following section to last cell with a quote added
       else if (sections[i] === '') {
-        cells[last] = cells[last] + '"' + sections[++i];
+        if (i < sections.length - 1) {
+          cells[last] = cells[last] + '"' + sections[++i];
+        }
       }
       // all others, split on sep and trim whitespace
       else {
