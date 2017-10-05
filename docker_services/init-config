@@ -167,6 +167,45 @@ if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
     fi
 fi
 
+# the "project" will default to parent folder name with all non-alphanum characters stripped
+DEFAULT_PROJECT="$(basename "$DIR" | tr -cd '[[:alnum:]]')"
+if [ "$MAKE_VIRTUALENV" == "n" ]; then
+    echo "Skipping virtualenv creation"
+    PROJECT="$DEFAULT_PROJECT"
+elif [ "$VENV" == "" ] || [ ! -x "$VENV" ]; then
+    (>&2 echo "virtualenvwrapper is not installed. Cannot create a project for this edd install.")
+    PROJECT="$DEFAULT_PROJECT"
+elif [ ! -z "$PROJECT" ]; then
+    MAKE_VIRTUALENV=y
+elif [ "$NOINPUT" != "1" ]; then
+    read -r -n 1 -p "Create a project name for this install? (y/N): " MAKE_VIRTUALENV
+    echo
+    if [ "$MAKE_VIRTUALENV" == "y" ]; then
+        read -r -p "Project name: [edd] " PROJECT
+        if [ -z "$PROJECT" ]; then
+            PROJECT=edd
+        fi
+    fi
+fi
+if [ "$MAKE_VIRTUALENV" == "y" ]; then
+    source "$VENV"
+    while lsvirtualenv -b | grep -qe "^${PROJECT}$" && [ "$NOINPUT" != "1" ]; do
+        read -r -p "A virtualenv named '${PROJECT}' exists, choose another project name: " TEMP
+        if [ ! -z "$TEMP" ]; then
+            PROJECT="$TEMP"
+        fi
+    done
+    if ! lsvirtualenv -b | grep -qe "^${PROJECT}$"; then
+        mkvirtualenv -a "$DIR" --no-pip --no-setuptools "$PROJECT"
+        echo "export COMPOSE_PROJECT_NAME=$PROJECT" >> "$WORKON_HOME/$PROJECT/bin/postactivate"
+        echo "unset COMPOSE_PROJECT_NAME" >> "$WORKON_HOME/$PROJECT/bin/predeactivate"
+        # mkvirtualenv will activate the virtualenv before content is added to postactivate
+        workon "$PROJECT"
+    else
+        echo "A virtualenv for project '${PROJECT}' already exists; skipping creation ..."
+    fi
+fi
+
 if [ ! -f "$DIR/secrets.env" ]; then
     WRITE_SECRETS=y
 elif [ "$NOINPUT" != "1" ]; then
@@ -208,7 +247,9 @@ EOT
 )"
 if [ ! -z "$DOMAIN" ]; then
     REPLACEMENT="$REPLACEMENT;$(cat <<EOT
-    s/#VIRTUAL_HOST: edd.example.net/VIRTUAL_HOST: "${DOMAIN}"/;
+    s/VIRTUAL_HOST: "localhost,edd.lvh.me"/VIRTUAL_HOST: "${DOMAIN}"/;
+    s/VIRTUAL_NETWORK: "edd_proxynet"/VIRTUAL_NETWORK: "${PROJECT}_proxynet"/;
+    s/HTTPS_METHOD:/#HTTPS_METHOD:/;
     s/#LETSENCRYPT_HOST: edd.example.net/LETSENCRYPT_HOST: "${DOMAIN}"/;
     s/#LETSENCRYPT_EMAIL: "aliddell@example.net"/LETSENCRYPT_EMAIL: "${EDD_EMAIL}"/;
 EOT
@@ -225,42 +266,6 @@ if [ "$WRITE_OVERRIDE" == "y" ]; then
         awk '/# START LET/,/# END LET/ { sub(/^/, "#"); }{ print }' \
             "$DIR/docker-compose.override.yml" > "$DIR/docker-compose.replace.yml" \
             && mv "$DIR/docker-compose.replace.yml" "$DIR/docker-compose.override.yml"
-    fi
-fi
-
-if [ "$MAKE_VIRTUALENV" == "n" ]; then
-    echo "Skipping virtualenv creation"
-elif [ "$VENV" == "" ] || [ ! -x "$VENV" ]; then
-    (>&2 echo "virtualenvwrapper is not installed. Cannot create a project for this edd install.")
-elif [ ! -z "$PROJECT" ]; then
-    MAKE_VIRTUALENV=y
-elif [ "$NOINPUT" != "1" ]; then
-    read -r -n 1 -p "Create a project name for this install? (y/N): " MAKE_VIRTUALENV
-    echo
-    if [ "$MAKE_VIRTUALENV" == "y" ]; then
-        read -r -p "Project name: [edd] " PROJECT
-        if [ -z "$PROJECT" ]; then
-            PROJECT=edd
-        fi
-    fi
-fi
-
-if [ "$MAKE_VIRTUALENV" == "y" ]; then
-    source "$VENV"
-    while lsvirtualenv -b | grep -qe "^${PROJECT}$" && [ "$NOINPUT" != "1" ]; do
-        read -r -p "A virtualenv named '${PROJECT}' exists, choose another project name: " TEMP
-        if [ ! -z "$TEMP" ]; then
-            PROJECT="$TEMP"
-        fi
-    done
-    if ! lsvirtualenv -b | grep -qe "^${PROJECT}$"; then
-        mkvirtualenv -a "$DIR" --no-pip --no-setuptools "$PROJECT"
-        echo "export COMPOSE_PROJECT_NAME=$PROJECT" >> "$WORKON_HOME/$PROJECT/bin/postactivate"
-        echo "unset COMPOSE_PROJECT_NAME" >> "$WORKON_HOME/$PROJECT/bin/predeactivate"
-        # mkvirtualenv will activate the virtualenv before content is added to postactivate
-        workon "$PROJECT"
-    else
-        echo "A virtualenv for project '${PROJECT}' already exists; skipping creation ..."
     fi
 fi
 

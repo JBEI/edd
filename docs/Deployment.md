@@ -2,7 +2,9 @@
 
 ## Pre-requisites
 
-Have [Docker][1] and [Docker Compose][2] installed on the target host. Also have the contents of
+Have [Docker][1] and [Docker Compose][2] installed on the target host. EDD is tested with Docker
+version 17.09.0-ce and Docker Compose version 1.16.1; these instructions are not guaranteed to
+work for any older versions of Docker or Docker Compose. Also have the contents of
 the `docker_services` directory of the EDD codebase copied to the target host.
 
 ## Initial configuration
@@ -41,8 +43,10 @@ similar to the following:
 
 Before starting a deployment, the Docker images used by the various EDD services must be present
 on the host computer. This is accomplished either by pulling already-built images from a Docker
-Registry, or running the `docker-compose build` command to create images from the
-included `Dockerfile`s.
+Registry, or building the images from the Dockerfiles included in the project. To pull the images,
+use `docker-compose pull`. To build the images _with default parameters_, run
+`docker-compose build`. Customizing builds is beyond the scope of this document, consult the
+individual README files included with each Dockerfile if a custom build is required.
 
 ## TLS and domain configuration
 
@@ -51,18 +55,17 @@ encryption via certificates generated with the [Let's Encrypt][4] service. By se
 environment in the `edd` service container, EDD will generate a configuration file for Nginx to
 proxy HTTP requests and secure connections with TLS.
 
+By default, EDD will only listen for connections on the loopback or localhost network interface.
+Change the `docker-compose.override.yml` file under the `services/nginx/ports` keys to comment out
+the lines with `127.0.0.1`, and uncomment the lines with `0.0.0.0` to have EDD listen on all
+network interfaces. To only listen on a specific IP address, add in entries with that IP address.
+
 To proxy requests to a container, set the environment variables `VIRTUAL_HOST`, `VIRTUAL_NETWORK`,
 and `VIRTUAL_PORT` on that container. The values of these variables are the DNS hostname, the
 Docker virtual network name, and the IP network port exposed on the container, respectively. These
 values are set automatically for the central EDD service by the `init-config` script, but only for
-local connections. To use your own domain, append your domain to the comma-separated list in
-`VIRTUAL_HOST` in the `docker-compose.override.yml`.
-
-Adding TLS encryption requires setting a few more variables: `LETSENCRYPT_HOST` and
-`LETSENCRYPT_EMAIL`. These are used as parameters to the scripts using the Let's Encrypt APIs. The
-included Docker containers handle taking these values, performing the handshake with Let's Encrypt,
-installing the certificates in Nginx configuration, and refreshing the certificates before they
-expire.
+a single domain, via the `--domain` option. For more advanced configuration, consult the
+documentation for the [`letsencrypt-nginx-proxy-compainion`][6].
 
 If alternate TLS configuration -- or any other Nginx configuration -- is desired, replace the
 default `nginx` service image with one containing options for your alternate configuration, or
@@ -72,9 +75,9 @@ re-write the `nginx.tmpl` template.
 
 The purpose of EDD is to store actionable datasets in synthetic biology engineering. An important
 piece of information in understanding this data is the genetic sequences of engineered organisms.
-The EDD uses another piece of JBEI software, the Inventory of Composable Elements, or ICE, to keep
-track of this information. Any functionality on EDD that deals with linking to strains will not
-work unless the EDD server is connected to an ICE server.
+The EDD uses another piece of JBEI software, the [Inventory of Composable Elements][7], or ICE, to
+keep track of this information. Any functionality on EDD that deals with linking to strains will
+not work unless the EDD server is connected to an ICE server.
 
 To link to an ICE server, EDD uses a Base64-encoded key. Create a key using a command like this:
 
@@ -82,7 +85,9 @@ To link to an ICE server, EDD uses a Base64-encoded key. Create a key using a co
 
 This will create a file named `hmac.key`. Copy the contents of this file and add it to the line
 setting `ICE_HMAC_KEY` in your `secrets.env`. Then, copy this file to your ICE server, and place it
-in a file named `edd` in the `rest-auth` directory of the ICE home directory.
+in a file named `edd` in the `rest-auth` directory of the ICE home directory. This will usually be
+`/usr/local/tomcat`, but it may be configured differently. Look for "Data Directory" in the ICE
+Administration Settings.
 
 ## Creating an EDD administrator account
 
@@ -140,20 +145,21 @@ The following configuration options are specific to EDD and may be overridden in
 
 The entrypoint script for the `edd-core` image uses this approximate workflow:
 
-  * Load custom `local.py`
-  * Wait on custom service dependencies (if any)
-  * Wait on redis
-  * Initialize static files
-  * Wait on postgres
-  * Create and/or restore database
-  * Wait on solr
-  * Run pending database migrations (if any)
-  * Re-index solr (if any changes made to database)
-  * Wait on rabbitmq
-  * Execute entrypoint command
+  1. Load custom `local.py`
+  2. Wait on custom service dependencies (if any, none by default)
+  3. Wait on redis
+  4. Initialize static files (Javascript, stylesheets, and images included in EDD image)
+  5. Wait on postgres
+  6. Create and/or restore database
+  7. Wait on solr
+  8. Run pending database migrations (if any)
+  9. Re-index solr (if any changes made to database)
+  10. Wait on rabbitmq
+  11. Execute entrypoint command
 
-The entrypoint workflow can be modified with the flags defined below. This output can be recreated
-with `docker-compose exec edd entrypoint.sh --help`.
+The entrypoint workflow can be modified with the flags defined below. Set these flags in the
+`command` entry of the service using the `jbei/edd-core` image in `docker-compose.override.yml`.
+This output can be recreated with `docker-compose exec edd entrypoint.sh --help`.
 
     Usage: entrypoint.sh [options] [--] command [arguments]
     Options:
@@ -196,6 +202,8 @@ with `docker-compose exec edd entrypoint.sh --help`.
             Only applies if -w is used. Specifies port to listen on. Defaults to
             port 24051. This option may be specified multiple times. The Nth port
             defined applies to the Nth host.
+        --watch-static
+            Watch for changes to static files, to copy to the static volume.
 
     Commands:
         application
@@ -205,6 +213,8 @@ with `docker-compose exec edd entrypoint.sh --help`.
         init-only [port]
             Container will only perform selected init tasks. The service will begin
             listening on the specified port after init, default to port 24051.
+        init-exit
+            Container will only perform selected init tasks, then exit.
         test
             Execute the EDD unit tests.
         worker
@@ -223,3 +233,5 @@ Once configured, EDD is launched with a simple command, `./start-edd.sh`. To sto
 [3]:    https://nginx.org/en/docs/
 [4]:    https://letsencrypt.org/about/
 [5]:    http://django-allauth.readthedocs.org/en/latest/index.html
+[6]:    https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
+[7]:    http://ice.jbei.org/
