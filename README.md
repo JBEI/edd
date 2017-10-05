@@ -3,7 +3,10 @@
 The Experiment Data Depot (EDD) is an online tool designed as a repository of standardized
 biological experimental data and metadata. The EDD can easily uptake experimental data, provide
 visualization of these data, and produce downloadable data in several standard output formats. See
-the deployed version at [public-edd.jbei.org][1].
+the deployed version at [public-edd.jbei.org][1]. An academic article describing the EDD is
+available at ACS Synthetic Biology: Morrell, et al "The Experiment Data Depot: A Web-Based
+Software Tool for Biological Experimental Data Storage, Sharing, and Visualization". Get
+[the article][18] from the ACS website.
 
 The EDD is available under a [BSD 3-Clause License][6] and is actively developed at the
 [Lawrence Berkeley National Lab][7] (LBL) by the [Joint BioEnergy Institute][8] (JBEI), supported
@@ -82,3 +85,4 @@ document. The [Troubleshooting][17] guide details some commands to diagnose prob
 [15]:   https://www.docker.com/community-edition#/download
 [16]:   https://docs.docker.com/compose/install/
 [17]:   docs/Troubleshooting.md
+[18]:   http://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204
