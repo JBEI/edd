@@ -251,15 +251,16 @@ class TableImport(object):
         points = item.get('data', [])
         mtype = self._mtype(item)
 
-        logger.info('Loading measurements for %s:%s' % (mtype.compartment, mtype.type))
-        records = assay.measurement_set.filter(
-            active=True,
-            compartment=mtype.compartment,
-            measurement_type_id=mtype.type,
-            measurement_format=self._mtype_guess_format(points),
-            x_units=self._hours,
-            y_units_id=mtype.unit,
-        )
+        find = {
+            "active": True,
+            "compartment": mtype.compartment,
+            "measurement_type_id": mtype.type,
+            "measurement_format": self._mtype_guess_format(points),
+            "x_units": self._hours,
+            "y_units_id": mtype.unit,
+        }
+        logger.info('Finding measurements for %s', find)
+        records = assay.measurement_set.filter(**find)
 
         if records.count() > 0:
             if self._replace():
@@ -268,14 +269,9 @@ class TableImport(object):
                 record = records[0]
                 record.save()  # force refresh of Update
         if record is None:
-            record = assay.measurement_set.create(
-                compartment=mtype.compartment,
-                measurement_type_id=mtype.type,
-                measurement_format=self._mtype_guess_format(points),
-                experimenter=self._user,
-                x_units=self._hours,
-                y_units_id=mtype.unit,
-            )
+            find.update(experimenter=self._user)
+            logger.debug("Creating measurement with: %s", find)
+            record = assay.measurement_set.create(**find)
         return record
 
     def _process_measurement_points(self, record, points):
@@ -317,11 +313,11 @@ class TableImport(object):
 
     def _load_compartment(self, item):
         compartment = item.get('compartment_id', None)
-        if compartment is None:
+        if not compartment:
+            compartment = self._data.get('masterMCompValue', None)
             # master value could be set to null, want to still default to UNKNOWN
-            compartment = (
-                self._data.get('masterMCompValue', None) or models.Measurement.Compartment.UNKNOWN
-            )
+            if not compartment:
+                compartment = models.Measurement.Compartment.UNKNOWN
         return compartment
 
     def _load_type_id(self, item):
@@ -332,9 +328,11 @@ class TableImport(object):
 
     def _load_unit(self, item):
         unit = item.get('units_id', None)
-        if unit is None:
+        if not unit:
+            unit = self._data.get('masterMUnitsValue', None)
             # TODO: get rid of magic number fallback; every EDD will have n/a as Unit #1?
-            return self._data.get('masterMUnitsValue', None) or 1
+            if not unit:
+                unit = 1
         return unit
 
     def _mode(self):
@@ -349,19 +347,6 @@ class TableImport(object):
         return self._meta_lookup.get(meta_id, None)
 
     def _mtype(self, item):
-        # In Transcriptomics and Proteomics mode, we attempt to resolve measurements server-side,
-        # so we go by the measurement_name, ignoring the measurement_id and related fields (which
-        # will be blank)
-        found_type = self._mtype_from_mode(item, default=NO_TYPE)
-        if found_type is NO_TYPE:
-            found_type = MType(
-                self._load_compartment(item),
-                self._load_type_id(item),
-                self._load_unit(item),
-            )
-        return found_type
-
-    def _mtype_from_mode(self, item, default=None):
         """
         Attempts to infer the measurement type of the input item from the general import mode
         specified in the input / in Step 1 of the import GUI.
@@ -376,10 +361,23 @@ class TableImport(object):
             MODE_TRANSCRIPTOMICS: self._mtype_transcriptomics,
         }
         mtype_fn = mtype_fn_lookup.get(self._mode(), self._mtype_default)
-        return mtype_fn(item, default)
+        return mtype_fn(item, NO_TYPE)
 
     def _mtype_default(self, item, default=None):
-        return default
+        compartment = self._load_compartment(item)
+        type_id = self._load_type_id(item)
+        units_id = self._load_unit(item)
+        # if type_id is not set, assume it's a protein lookup
+        # TODO: also accept PubChem ID, etc
+        if not type_id:
+            name = item.get('measurement_name', None)
+            protein = models.ProteinIdentifier.load_or_create(
+                name,
+                self._datasource,
+                self._user.email,
+            )
+            return MType(compartment, protein.pk, units_id)
+        return MType(compartment, type_id, units_id)
 
     def _mtype_proteomics(self, item, default=None):
         found_type = default

@@ -1404,7 +1404,8 @@ module EDDTableImport {
                     ['First Column Is...', [
                         ['Time (in hours)', TypeEnum.Timestamp],
                             ['Metadata Name', TypeEnum.Metadata_Name],
-                            ['Measurement Type', TypeEnum.Measurement_Type]
+                            ['Measurement Type', TypeEnum.Measurement_Type],
+                            ['Protein ID', TypeEnum.Protein_Name]
                         ]
                     ]
                 ];
