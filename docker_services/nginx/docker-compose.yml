@@ -8,7 +8,7 @@ volumes:
   tlsdata: {}
 services:
   nginx:
-    image: nginx:1.11
+    image: nginx:1.13
     # using container_name means there will only ever be one nginx container!
     container_name: nginx
     restart: always

@@ -224,7 +224,7 @@ services:
   #   found in the $EDD_INSTALL/docker_services/nginx/README.md
   # START LET'S ENCRYPT CONFIGS
   nginx:
-    image: library/nginx:1.11
+    image: library/nginx:1.13
     # using container_name means there will only ever be one nginx container!
     container_name: nginx
     restart: always
