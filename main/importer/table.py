@@ -144,7 +144,7 @@ class TableImport(object):
                     # if we have no name, 'named_or_new' and 'new' are treated the same
                     index = line.new_assay_number(protocol)
                     assay_name = models.Assay.build_name(line, protocol, index)
-                key = (line.id, assay_name)
+                key = (line.id, assay_id)
                 if key in self._line_assay_lookup:
                     assay = self._line_assay_lookup[key]
                 else:
