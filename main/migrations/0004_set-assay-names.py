@@ -20,7 +20,7 @@ def build_full_name(apps, schema_editor):
     Assay = apps.get_model('main', 'Assay')
     db_alias = schema_editor.connection.alias
     queryset = Assay.objects.using(db_alias).all()
-    for assay in queryset.select_related('line__name', 'protocol__name'):
+    for assay in queryset.select_related('line', 'protocol'):
         assay.name = '-'.join([assay.line.name, assay.protocol.name, assay.name])
         assay.save()
 

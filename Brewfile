@@ -1,15 +1,6 @@
 tap 'caskroom/cask'
-tap 'caskroom/versions'
-tap 'homebrew/bundle'
-tap 'homebrew/science'
-tap 'homebrew/versions'
 
-cask 'dockertoolbox'
-cask 'virtualbox'
+cask 'docker'
 
 brew 'bash-completion'
 brew 'git'
-brew 'node'
-brew 'bower'
-brew 'openssl'
-brew 'python'

@@ -1,7 +1,5 @@
 {% extends "edd_base.html" %}
-{% load form_utils %}
 {% load staticfiles %}
-{% load firstof from future %}
 
 
 {% block js_css %}
@@ -23,7 +21,8 @@
 
 
 {% block body_title %}
-    <h4>Edit Measurements &ndash; <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a></h4>
+    {% url 'main:detail' slug=study.slug as study_link %}
+    <h4>Edit Measurements &ndash; <a href="{{ study_link }}">{{ study.name }}</a></h4>
 {% endblock body_title %}
 
 
@@ -43,7 +42,11 @@
                         <li>
                             <span>{{ m.measure.measurement_type.type_name }}</span>
                             {{ m.form.management_form }}
-                            {{ m.form|render }}
+                            <ul>
+                            {% for mf in m.form %}
+                                <li>{{ mf.id }} X: {{ mf.x }} Y: {{ mf.y }}</li>
+                            {% endfor %}
+                            </ul>
                         </li>
                     {% endfor %}
                     </ul>

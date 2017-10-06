@@ -4,14 +4,7 @@
 
 {% block js_css %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDGraphingTools.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Study-Data.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+    <script type="text/javascript" src="{% static 'dist/StudyData.js' %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -57,16 +50,20 @@
             <div class="pulldownMenuMenuBlock off">
                 <ul>
                     <li>
-                        <input id="filteringShowDisabledCheckbox" name="filteringShowDisabled"
-                                type="checkbox" value="1">
+                        <input id="filteringShowDisabledCheckbox"
+                                name="filteringShowDisabled"
+                                type="checkbox"
+                                value="1">
                         <label for="filteringShowDisabledCheckbox"
                                 title="{% trans 'Show assays that have been disabled.' %}">
                             {% trans 'Show Disabled' %}
                         </label>
                     </li>
                     <li>
-                        <input id="filteringShowEmptyCheckbox" name="filteringShowEmpty"
-                                type="checkbox" value="1">
+                        <input id="filteringShowEmptyCheckbox"
+                                name="filteringShowEmpty"
+                                type="checkbox"
+                                value="1">
                         <label for="filteringShowEmptyCheckbox"
                                 title="{% trans 'Show assays that do not have any measurements in them.' %}">
                             {% trans 'Show Empty' %}
@@ -82,23 +79,11 @@
 </div>
 
 <div id="graphDisplayContainer">
-    <div id="noData" class="off" style="
-        height: 300px;
-        width: 100%;
-        padding:auto;
-        text-align: center;
-        vertical-align: middle;">
-        No measurements.
-    </div>
+    <div id="noData" class="off">{% trans 'No measurements.' %}</div>
     <div id="tooManyPoints" class="off" class="tooManyPoints">
         {% trans 'Too many points to display!  Please change your filter settings.' %}
     </div>
-    <div id="graphLoading" class="wait-larger" style="
-        opacity:0.7;
-        height: 300px;
-        width: 100%;
-        padding:auto;">
-    </div>
+    <div id="graphLoading" class="wait-larger"></div>
     <div id="lineGraph" class="off"></div>
     <div id="barGraphByMeasurement" class="off"></div>
     <div id="barGraphByLine" class="off"></div>
@@ -132,21 +117,30 @@
         <div class="clear"></div>
     </div>
     <div id="tableActionButtons" class="tableActionButtons off" style="margin:auto 0;">
+        {% if writable %}
+        <!-- TODO enable this button
+        <button id="editAssaysButton"
+                class="editAssayButton actionButton"
+                disabled="true"
+                title="{% trans 'Edit selected assays' %}">
+            {% trans 'Edit Assays' %}
+        </button>
+        -->
         <button id="editMeasurementButton"
-                class="editMeasurementButton actionButton {% if not writable or not assays %}off{% endif %}"
+                class="editMeasurementButton actionButton"
                 disabled="true"
                 title="{% trans 'Edit selected measurements' %}">
             {% trans 'Edit Measurements' %}
         </button>
         <button id="addMeasurementButton"
-                class="addMeasurementButton actionButton {% if not writable or not assays %}off{% endif %}"
+                class="addMeasurementButton actionButton"
                 type="button"
                 disabled="true"
                 title="{% trans 'Add a measurement to selected assays' %}">
             {% trans 'Add Measurement' %}
         </button>
         <button id="deleteButton"
-                class="deleteButton actionButton {% if not writable or not assays %}off{% endif %}"
+                class="deleteButton actionButton"
                 type="submit"
                 name="action"
                 value="disable"
@@ -163,8 +157,8 @@
                 title="{% trans 'Restore selected assays and/or measurements' %}">
             {% trans 'Restore' %}
         </button>
+        {% endif %}
     </div>
-
 
     <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
         <button type="button" id="exportButton" class="exportButton actionButton primary off"

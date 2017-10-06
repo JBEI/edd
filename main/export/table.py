@@ -82,7 +82,7 @@ class ExportSelection(object):
     def __init__(self, user, exclude_disabled=True,
                  studyId=[], lineId=[], assayId=[], measureId=[]):
         # cannot import these at top-level
-        from main.models import Assay, CarbonSource, Line, Measurement, Strain, Study
+        from main import models
 
         def Q_active(**kwargs):
             """ Conditionally returns a QuerySet Q filter if exclude_disabled flag is set. """
@@ -91,7 +91,7 @@ class ExportSelection(object):
             return Q()
 
         # check studies linked to incoming IDs for permissions
-        matched_study = Study.objects.filter(
+        matched_study = models.Study.objects.filter(
             (Q(pk__in=studyId) & Q_active(active=True)) |
             (Q(line__in=lineId) & Q_active(line__active=True)) |
             (Q(line__assay__in=assayId) & Q_active(line__assay__active=True)) |
@@ -105,7 +105,7 @@ class ExportSelection(object):
         )
         self._allowed_study = [s for s in matched_study if s.user_can_read(user)]
         # load all matching measurements
-        self._measures = Measurement.objects.filter(
+        self._measures = models.Measurement.objects.filter(
             # all measurements are from visible study
             Q(assay__line__study__in=self._allowed_study),
             # OR grouping finds measurements under one of passed-in parameters
@@ -125,9 +125,9 @@ class ExportSelection(object):
             'assay__protocol',
             'assay__line__contact',
             'assay__line__experimenter',
-            'assay__line__study',
+            'assay__line__study__contact',
         )
-        self._assays = Assay.objects.filter(
+        self._assays = models.Assay.objects.filter(
             Q(line__study__in=self._allowed_study),
             (Q(line__in=lineId) & Q_active(line__active=True)) |
             (Q(pk__in=assayId) & Q_active(active=True)) |
@@ -136,7 +136,7 @@ class ExportSelection(object):
         ).select_related(
             'protocol',
         )
-        self._lines = Line.objects.filter(
+        self._lines = models.Line.objects.filter(
             Q(study__in=self._allowed_study),
             Q(study__in=studyId) |
             (Q(pk__in=lineId) & Q_active(active=True)) |
@@ -146,8 +146,8 @@ class ExportSelection(object):
         ).select_related(
             'experimenter__userprofile', 'updated',
         ).prefetch_related(
-            Prefetch('strains', queryset=Strain.objects.order_by('id')),
-            Prefetch('carbon_source', queryset=CarbonSource.objects.order_by('id')),
+            Prefetch('strains', queryset=models.Strain.objects.order_by('id')),
+            Prefetch('carbon_source', queryset=models.CarbonSource.objects.order_by('id')),
         )
 
     @property
@@ -331,11 +331,13 @@ class TableExport(object):
     def _do_export(self, tables):
         from main.models import Assay, Line, Measurement, MeasurementValue, Protocol, Study
         # add data from each exported measurement; already sorted by protocol
+        value_qs = MeasurementValue.objects.select_related('updated').order_by('x')
         measures = self.selection.measurements.prefetch_related(
-            Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x')),
+            Prefetch('measurementvalue_set', queryset=value_qs, to_attr='pf_values'),
             Prefetch('assay__line__strains'),
             Prefetch('assay__line__carbon_source'),
         )
+        print("-----|||||----- Queried Measurement 2")
         for measurement in measures:
             assay = measurement.assay
             protocol = assay.protocol
@@ -353,7 +355,7 @@ class TableExport(object):
                 # create row for protocol/all table
                 row = self._output_row_with_measure(measurement)
             table, table_key = self._init_tables_for_protocol(tables, protocol)
-            values = measurement.measurementvalue_set.all()  # prefetched above
+            values = measurement.pf_values  # prefetched above
             if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
                 for value in values:
                     arow = row[:]

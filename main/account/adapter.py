@@ -9,14 +9,14 @@ from allauth.account.models import EmailAddress
 from allauth.exceptions import ImmediateHttpResponse
 from allauth.socialaccount import providers
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from django.contrib.auth.backends import ModelBackend
 from django_auth_ldap.backend import LDAPBackend
 from django.conf import settings
-from django.contrib import messages
+from django.contrib import auth, messages
 from django.shortcuts import redirect
 from django.utils.module_loading import import_string
 from django.utils.translation import ugettext_lazy as _
 from six import string_types
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class EDDAccountAdapter(DefaultAccountAdapter):
     def get_email_confirmation_url(self, request, emailconfirmation):
         # This is super hacky but whatevs
         url = super(EDDAccountAdapter, self).get_email_confirmation_url(request, emailconfirmation)
-        if settings.DEFAULT_HTTP_PROTOCOL == 'http':
+        if getattr(settings, 'DEFAULT_HTTP_PROTOCOL', None) == 'http':
             url = url.replace('https://', 'http://', 1)
         return url
 
@@ -86,8 +86,8 @@ class AllauthLDAPBackend(LDAPBackend):
     """ Extension of the Authentication Backend from django_auth_ldap, which creates a verified
         EmailAddress for django-allauth from the email in the LDAP record. """
 
-    def authenticate(self, username, password, **kwargs):
-        user = super(AllauthLDAPBackend, self).authenticate(username, password, **kwargs)
+    def authenticate(self, request, username, password, **kwargs):
+        user = super(AllauthLDAPBackend, self).authenticate(request, username, password)
         if user and user.email:
             try:
                 qs = EmailAddress.objects.filter(user=user, email__iexact=user.email)
@@ -101,3 +101,15 @@ class AllauthLDAPBackend(LDAPBackend):
             except Exception:
                 logger.exception('Failed to check or update email verification from LDAP!')
         return user
+
+
+class LocalTestBackend(ModelBackend):
+    """
+    A simple workaround to facilitate offsite EDD Testing. When enabled, login attempts that
+    use a valid username will always succeed (e.g. without an Internet connection) to LDAP.
+    """
+
+    def authenticate(self, username=None, password=None, **kwargs):
+        User = auth.get_user_model()
+        queryset = User.objects.filter(username=username)
+        return queryset.first()

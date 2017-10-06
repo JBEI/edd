@@ -3,30 +3,20 @@
 
 {% block js_css %}
     {{ block.super }}
-    <!-- jQuery-UI needed for EDDAutocomplete -->
-    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}"/>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <!-- -->
-    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDAutocomplete.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/index.js' %}"></script>
-    <script>
+    <script type="text/javascript" src="{% static 'dist/index.js' %}"></script>
     {% if form.errors %}
+    <script>
         var options = {
-                autoOpen: false,
-                minWidth: 600,
-                title: 'Add New Study'
-                };
-             $(document).ready(function() {
-                 $('.errorlist').remove();
-                 $("#addStudyModal").removeClass('off').dialog(options).dialog( "open" );
-             });
-    {%  endif %}
+            autoOpen: false,
+            minWidth: 600,
+            title: 'Add New Study'
+        };
+        $(document).ready(function() {
+            $('.errorlist').remove();
+            $("#addStudyModal").removeClass('off').dialog(options).dialog("open");
+        });
     </script>
+    {% endif %}
 {% endblock js_css %}
 
 
@@ -37,21 +27,20 @@
 
 {% block content %}
     {% if can_create %}
-
-        <div style="float: right">
-            <button id="addStudyButton"
-                    class="actionButton primary larger"
-                    title="Add a new study">
-                Add New Study
-            </button>
-        </div>
+    <div style="float: right">
+        <button id="addStudyButton"
+                class="actionButton primary larger"
+                title="Add a new study">
+            Add New Study
+        </button>
+    </div>
     {% endif %}
-    <h2 {%  if latest_viewed_studies %} style="margin-bottom:12px;" {% else %} style="margin-bottom: 50px;" {% endif %}>
-        Recently Viewed Studies:</h2>
+    <h2 style="margin-bottom: {% if latest_viewed_studies %}12{% else %}50{% endif %}px;">
+        Recently Viewed Studies:
+    </h2>
     <div class="lastViewed">
         {% for study in latest_viewed_studies %}
             <span><a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a></span>
-            {% if not forloop.last %}{% endif %}
         {% endfor %}
     </div>
 
@@ -62,7 +51,9 @@
          title="Add New Study">
         {% if form.errors %}
         <div class="alert alert-danger alert-dismissible" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
             <p>{{ form.errors.as_text }}</p>
         </div>
         {% endif %}
@@ -72,7 +63,10 @@
             {{ form.as_p }}
             </div>
             <div class="modal-footer">
-                <button type="submit" name="action" class="btn btn-primary" value="assay">Add Study</button>
+                <button type="submit"
+                        name="action"
+                        class="btn btn-primary"
+                        value="assay">Add Study</button>
             </div>
         </form>
     </div>

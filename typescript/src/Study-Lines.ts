@@ -1,13 +1,37 @@
-/// <reference path="typescript-declarations.d.ts" />
-/// <reference path="Utl.ts" />
-/// <reference path="Dragboxes.ts" />
-/// <reference path="BiomassCalculationUI.ts" />
-/// <reference path="CarbonSummation.ts" />
-/// <reference path="DataGrid.ts" />
-/// <reference path="FileDropZone.ts" />
+declare var EDDData:EDDData;  // sticking this here as IDE isn't following references
 
-declare var EDDData:EDDData;
-namespace StudyLines {
+import { DataGrid, DataGridSpecBase, DataGridDataCell, DataGridColumnSpec,
+        DataGridTableSpec, DataGridHeaderWidget, DataGridColumnGroupSpec,
+        DataGridHeaderSpec, DGSelectAllWidget, DataGridOptionWidget,
+        DGSearchWidget } from "../modules/DataGrid"
+import { Utl } from "../modules/Utl"
+import { FileDropZone } from "../modules/FileDropZone"
+import { StudyMetabolicMapChooser, MetabolicMapChooserResult, FullStudyBiomassUI,
+        FullStudyBiomassUIResultsCallback } from "../modules/BiomassCalculationUI"
+import { CarbonBalance } from "../modules/StudyCarbonBalance"
+import { StudyBase } from "../modules/Study"
+import * as _ from "underscore"
+import "bootstrap-loader"
+
+
+declare function require(name: string): any;  // avoiding warnings for require calls below
+
+// as of JQuery UI 1.12, need to require each dependency individually
+require('jquery-ui/themes/base/core.css');
+require('jquery-ui/themes/base/menu.css');
+require('jquery-ui/themes/base/button.css');
+require('jquery-ui/themes/base/draggable.css');
+require('jquery-ui/themes/base/resizable.css');
+require('jquery-ui/themes/base/dialog.css');
+require('jquery-ui/themes/base/theme.css');
+require('jquery-ui/ui/widgets/button');
+require('jquery-ui/ui/widgets/draggable');
+require('jquery-ui/ui/widgets/resizable');
+require('jquery-ui/ui/widgets/dialog');
+require('jquery-ui/ui/widgets/tooltip');
+
+
+module StudyLines {
     'use strict';
 
     var linesActionPanelRefreshTimer:any;
@@ -35,7 +59,6 @@ namespace StudyLines {
     // switching back and forth between positions that might trigger resize events.
     export var actionPanelIsInBottomBar;
     export var actionPanelIsCopied = false;
-    export var fileUploadProgressBar: Utl.ProgressBar;
 
 
     // Called when the page loads.
@@ -63,7 +86,6 @@ namespace StudyLines {
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
 
-        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
         var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
            pageRedirect: '',
            haveInputData: false,
@@ -71,13 +93,11 @@ namespace StudyLines {
 
         Utl.FileDropZone.create({
             elementId: "addToLinesDropZone",
-            fileInitFn: fileDropZoneHelper.fileDropped.bind(fileDropZoneHelper),
-            processRawFn: fileDropZoneHelper.fileRead.bind(fileDropZoneHelper),
             url: '/study/' + EDDData.currentStudyID + '/describe/',
             processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
             processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
             processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
-            progressBar: this.fileUploadProgressBar
+            processICEerror: fileDropZoneHelper.processICEerror.bind(fileDropZoneHelper),
         });
 
         $('#content').on('dragover', function(e:any) {
@@ -85,48 +105,46 @@ namespace StudyLines {
             e.preventDefault();
             $(".linesDropZone").removeClass('off');
         });
-
         $('#content').on('dragend, dragleave, mouseleave', function(e:any) {
            $(".linesDropZone").addClass('off');
         });
 
+        //set up editable study name
+        new StudyBase.EditableStudyName($('#editable-study-name').get()[0]);
+
         $('#content').tooltip({
             content: function () {
-                return $(this).prop('title');
+                return $(this).find('.popupmenu').clone(true).removeClass('off');
             },
-            position: { my: "left-10 center", at: "right center" },
-            show: null,
-            close: function (event, ui:any) {
+            items: '.has-popupmenu',
+            position: {
+                my: "left-10 top-20",
+                at: "right bottom",
+                collision: "none none",
+                using: function (position, ui) {
+                    console.log(position);
+                    console.log(ui);
+                    setTimeout(() => {
+                        // default positioning API keeps flipping the menu, fix it here
+                        position.top = ui.element.top + ui.target.height - $(document).height();
+                        $(this).css(position);
+                    }, 100);
+                }
+            },
+            open: function (event, ui: {tooltip: JQuery}) {
+                // remove other tooltips when opening a new one
+                $('div.ui-tooltip').not(ui.tooltip).remove();
+            },
+            close: function (event, ui: {tooltip: JQuery}) {
+                // prevent close when hovering over the tooltip itself
                 ui.tooltip.hover(
-                function () {
-                    $(this).stop(true).fadeTo(400, 1);
-                },
-                function () {
-                    $(this).fadeOut("400", function () {
-                        $(this).remove();
-                    })
-                });
+                    function () { ui.tooltip.stop(true).show(); },
+                    function () { ui.tooltip.remove(); }
+                );
             }
-        });
-
-        // put the click handler at the document level, then filter to any link inside a .disclose
-        $(document).on('click', '.disclose .discloseLink', (e) => {
-            $(e.target).closest('.disclose').toggleClass('discloseHide');
-            return false;
         });
 
         $(window).on('resize', queuePositionActionsBar);
-
-        //when all ajax requests are finished, determine if there are AssayMeasurements.
-        $(document).ajaxStop(function() {
-            // hide export button if there are no assays
-            if (_.keys(EDDData.Assays).length === 0) {
-                $('#exportLineButton').prop('disabled', true);
-            }
-            else {
-                $('#exportLineButton').prop('disabled', false);
-            }
-        });
 
         $.ajax({
             'url': '../edddata/',
@@ -153,26 +171,6 @@ namespace StudyLines {
         });
     }
 
-    export function processCarbonBalanceData() {
-        // Prepare the carbon balance graph
-        this.carbonBalanceData = new CarbonBalance.Display();
-        var highlightCarbonBalanceWidget = false;
-        if ( this.biomassCalculation > -1 ) {
-            this.carbonBalanceData.calculateCarbonBalances(this.metabolicMapID,
-                    this.biomassCalculation);
-            // Highlight the "Show Carbon Balance" checkbox in red if there are CB issues.
-            if (this.carbonBalanceData.getNumberOfImbalances() > 0) {
-                highlightCarbonBalanceWidget = true;
-            }
-        } else {
-            // Highlight the carbon balance in red to indicate that we can't calculate
-            // carbon balances yet. When they click the checkbox, we'll get them to
-            // specify which SBML file to use for biomass.
-            highlightCarbonBalanceWidget = true;
-        }
-        this.linesDataGridSpec.highlightCarbonBalanceWidget(highlightCarbonBalanceWidget);
-    }
-
 
     // Called by DataGrid after the Lines table is rendered
     export function prepareAfterLinesTable() {
@@ -196,7 +194,7 @@ namespace StudyLines {
             return false;
         });
 
-        $(helpBadge).insertAfter(input);
+        $(helpBadge).insertAfter(input).removeClass('off');
 
         // Set up jQuery modals
         $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
@@ -248,8 +246,8 @@ namespace StudyLines {
              line.find('.meta-prefix').remove();
 
              if (type) {
-                 if (type.pre) {
-                    $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+                 if (type.prefix) {
+                    $('<span>').addClass('meta-prefix').text(type.prefix).insertBefore(input);
                  }
 
                  if (type.postfix) {
@@ -261,8 +259,8 @@ namespace StudyLines {
         $('#editLineModal').on('change', '.line-meta', (ev) => {
             // watch for changes to metadata values, and serialize to the meta_store field
             var form = $(ev.target).closest('form'),
-                metaIn = form.find('[name=line-meta_store]'),
-                meta = JSON.parse(metaIn.val() || '{}');
+                metaIn:any = form.find('[name=line-meta_store]'),
+                meta:number | string = JSON.parse(metaIn.val() || '{}');
             form.find('.line-meta > :input').each((i, input) => {
                 if ($(input).val() || $(input).siblings('label').find('input').prop('checked')) {
                     var key = $(input).attr('id').match(/-(\d+)$/)[1];
@@ -286,8 +284,8 @@ namespace StudyLines {
             // remove metadata row and insert null value for the metadata key
             var form = $(ev.target).closest('form'),
                 metaRow = $(ev.target).closest('.line-meta'),
-                metaIn = form.find('[name=line-meta_store]'),
-                meta = JSON.parse(metaIn.val() || '{}'),
+                metaIn:any = form.find('[name=line-meta_store]'),
+                meta:any = JSON.parse(metaIn.val() || '{}'),
                 key = metaRow.attr('id').match(/-(\d+)$/)[1];
             meta[key] = null;
             metaIn.val(JSON.stringify(meta));
@@ -295,20 +293,6 @@ namespace StudyLines {
         });
 
         queuePositionActionsBar();
-
-        //pulling in protocol measurements AssayMeasurements
-        $.each(EDDData.Protocols, (id, protocol) => {
-            $.ajax({
-                url: '/study/' + EDDData.currentStudyID + '/measurements/' + id + '/',
-                type: 'GET',
-                dataType: 'json',
-                error: (xhr, status) => {
-                    console.log('Failed to fetch measurement data on ' + protocol.name + '!');
-                    console.log(status);
-                },
-                success: processMeasurementData.bind(this, protocol)
-            });
-        });
     }
 
     function includeAllLinesIfEmpty() {
@@ -321,67 +305,6 @@ namespace StudyLines {
                 name: 'studyId',
             }).appendTo('form');
         }
-    }
-
-    function processMeasurementData(protocol, data) {
-        var assaySeen = {},
-            protocolToAssay = {},
-            count_total:number = 0,
-            count_rec:number = 0;
-        EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
-        EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
-
-        // attach measurement counts to each assay
-        $.each(data.total_measures, (assayId:string, count:number):void => {
-            var assay = EDDData.Assays[assayId];
-            if (assay) {
-                assay.count = count;
-                count_total += count;
-            }
-        });
-        // loop over all downloaded measurements
-        $.each(data.measures || {}, (index, measurement) => {
-            var assay = EDDData.Assays[measurement.assay], line, mtype;
-            ++count_rec;
-            if (!assay || !assay.active || assay.count === undefined) return;
-            line = EDDData.Lines[assay.lid];
-            if (!line || !line.active) return;
-            // attach values
-            $.extend(measurement, { 'values': data.data[measurement.id] || [] });
-            // store the measurements
-            EDDData.AssayMeasurements[measurement.id] = measurement;
-            // track which assays received updated measurements
-            assaySeen[assay.id] = true;
-            protocolToAssay[assay.pid] = protocolToAssay[assay.pid] || {};
-            protocolToAssay[assay.pid][assay.id] = true;
-            // handle measurement data based on type
-            mtype = data.types[measurement.type] || {};
-            (assay.measures = assay.measures || []).push(measurement.id);
-            if (mtype.family === 'm') { // measurement is of metabolite
-                (assay.metabolites = assay.metabolites || []).push(measurement.id);
-            } else if (mtype.family === 'p') { // measurement is of protein
-                (assay.proteins = assay.proteins || []).push(measurement.id);
-            } else if (mtype.family === 'g') { // measurement is of gene / transcript
-                (assay.transcriptions = assay.transcriptions || []).push(measurement.id);
-            } else {
-                // throw everything else in a general area
-                (assay.general = assay.general || []).push(measurement.id);
-            }
-        });
-
-        if (count_rec < count_total) {
-            // TODO not all measurements downloaded; display a message indicating this
-            // explain downloading individual assay measurements too
-        }
-
-        queuePositionActionsBar();
-        this.linesDataGridSpec.enableCarbonBalanceWidget(true);
-        this.processCarbonBalanceData();
-    }
-
-
-    export function carbonBalanceColumnRevealedCallback(spec:DataGridSpecLines, dataGridObj:DataGrid) {
-        rebuildCarbonBalanceGraphs();
     }
 
 
@@ -461,7 +384,7 @@ namespace StudyLines {
         }
     }
 
-    function clearLineForm() {
+    export function clearLineForm() {
         var form = $('#editLineModal');
         form.find('.line-meta').remove();
         form.find('[name^=line-]').not(':checkbox, :radio').val('');
@@ -473,7 +396,7 @@ namespace StudyLines {
         return form;
     }
 
-    function fillLineForm(record) {
+    export function fillLineForm(record) {
         var metaRow, experimenter, contact;
         var form = $('#editLineModal');
         experimenter = EDDData.Users[record.experimenter];
@@ -508,7 +431,7 @@ namespace StudyLines {
         form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
     }
 
-    function insertLineMetadataRow(refRow, key, value) {
+    export function insertLineMetadataRow(refRow, key, value) {
         var row, type, label, input, postfixVal, prefixVal, id = 'line-meta-' + key, checkbox;
         row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
         type = EDDData.MetaDataTypes[key];
@@ -534,7 +457,7 @@ namespace StudyLines {
             $('<span>').addClass('meta-postfix').text(" (" + type.postfix + ")").insertAfter(label);
         }
         return row;
-}
+    }
 
 
     export function editLines(ids:number[]):void {
@@ -579,67 +502,6 @@ namespace StudyLines {
         form.find('[name=line-ids]').val(ids.join(','));
         form.removeClass('off').dialog( "open" );
     }
-
-
-    export function onChangedMetabolicMap() {
-        if (this.metabolicMapName) {
-            // Update the UI to show the new filename for the metabolic map.
-            $("#metabolicMapName").html(this.metabolicMapName);
-        } else {
-            $("#metabolicMapName").html('(none)');
-        }
-
-        if (this.biomassCalculation && this.biomassCalculation != -1) {
-            // Calculate carbon balances now that we can.
-            this.carbonBalanceData.calculateCarbonBalances(this.metabolicMapID,
-                    this.biomassCalculation);
-
-            // Rebuild the CB graphs.
-            this.carbonBalanceDisplayIsFresh = false;
-            this.rebuildCarbonBalanceGraphs();
-        }
-    }
-
-
-    export function rebuildCarbonBalanceGraphs() {
-        var cellObjs:DataGridDataCell[],
-            group:DataGridColumnGroupSpec = this.linesDataGridSpec.carbonBalanceCol;
-        if (this.carbonBalanceDisplayIsFresh) {
-            return;
-        }
-        // Drop any previously created Carbon Balance SVG elements from the DOM.
-        this.carbonBalanceData.removeAllCBGraphs();
-        cellObjs = [];
-        // get all cells from all columns in the column group
-        group.memberColumns.forEach((col:DataGridColumnSpec):void => {
-            Array.prototype.push.apply(cellObjs, col.getEntireIndex());
-        });
-        // create carbon balance graph for each cell
-        cellObjs.forEach((cell:DataGridDataCell) => {
-            this.carbonBalanceData.createCBGraphForLine(cell.recordID, cell.cellElement);
-        });
-        this.carbonBalanceDiplayIsFresh = true;
-    }
-
-
-    // They want to select a different metabolic map.
-    export function onClickedMetabolicMapName():void {
-        var ui:StudyMetabolicMapChooser,
-            callback:MetabolicMapChooserResult = (error:string,
-                metabolicMapID?:number,
-                metabolicMapName?:string,
-                finalBiomass?:number):void => {
-            if (!error) {
-                this.metabolicMapID = metabolicMapID;
-                this.metabolicMapName = metabolicMapName;
-                this.biomassCalculation = finalBiomass;
-                this.onChangedMetabolicMap();
-            } else {
-                console.log("onClickedMetabolicMapName error: " + error);
-            }
-        };
-        ui = new StudyMetabolicMapChooser(false, callback);
-    }
 };
 
 class LineResults extends DataGrid {
@@ -672,21 +534,11 @@ class DataGridSpecLines extends DataGridSpecBase {
     groupIDsInOrder:any;
     groupIDsToGroupIndexes:any;
     groupIDsToGroupNames:any;
-    carbonBalanceCol:DataGridColumnGroupSpec;
-    carbonBalanceWidget:DGShowCarbonBalanceWidget;
 
     init() {
         this.findMetaDataIDsUsedInLines();
         this.findGroupIDsAndNames();
         super.init();
-    }
-
-    highlightCarbonBalanceWidget(v:boolean):void {
-        this.carbonBalanceWidget.highlight(v);
-    }
-
-    enableCarbonBalanceWidget(v:boolean):void {
-        this.carbonBalanceWidget.enable(v);
     }
 
     findMetaDataIDsUsedInLines() {
@@ -714,9 +566,8 @@ class DataGridSpecLines extends DataGridSpecBase {
         });
         this.groupIDsToGroupNames = {};
         // For each group ID, just use parent replicate name
-        $.each(rowGroups, (group, lines) => {
-            if (EDDData.Lines[group] === undefined || EDDData.Lines[group].name === undefined ) {
-                this.groupIDsToGroupNames[group] = null;
+        $.each(rowGroups, (group:any, lines) => {
+            if (typeof(EDDData.Lines[group]) === undefined || typeof(EDDData.Lines[group].name) === undefined ) {
             } else {
                 this.groupIDsToGroupNames[group] = EDDData.Lines[group].name;
             }
@@ -729,7 +580,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         // Now that they're sorted by name, create a hash for quickly resolving IDs to indexes in
         // the sorted array
         this.groupIDsToGroupIndexes = {};
-        $.each(this.groupIDsInOrder, (index, group) => this.groupIDsToGroupIndexes[group] = index);
+        $.each(this.groupIDsInOrder, (index, group) => { this.groupIDsToGroupIndexes[group] = index });
     }
 
     // Specification for the table as a whole
@@ -836,17 +687,13 @@ class DataGridSpecLines extends DataGridSpecBase {
                 'name': 'Labeling',
                 'size': 's',
                 'sortBy': this.loadCarbonSourceLabeling,
-                'sortAfter': 0 }),
-            new DataGridHeaderSpec(6, 'hLinesCarbonBalance', {
-                'name': 'Carbon Balance',
-                'size': 's',
-                'sortBy': this.loadLineName })
+                'sortAfter': 0 })
         ];
 
         // map all metadata IDs to HeaderSpec objects
         var metaDataHeaders:DataGridHeaderSpec[] = this.metaDataIDsUsedInLines.map((id, index) => {
             var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridHeaderSpec(7 + index, 'hLinesMeta' + id, {
+            return new DataGridHeaderSpec(6 + index, 'hLinesMeta' + id, {
                 'name': mdType.name,
                 'size': 's',
                 'sortBy': this.makeMetaDataSortFunction(id),
@@ -854,12 +701,12 @@ class DataGridSpecLines extends DataGridSpecBase {
         });
 
         var rightSide = [
-            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesExperimenter', {
+            new DataGridHeaderSpec(6 + metaDataHeaders.length, 'hLinesExperimenter', {
                 'name': 'Experimenter',
                 'size': 's',
                 'sortBy': this.loadExperimenterInitials,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hLinesModified', {
+            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesModified', {
                 'name': 'Last Modified',
                 'size': 's',
                 'sortBy': this.loadLineModification,
@@ -888,12 +735,19 @@ class DataGridSpecLines extends DataGridSpecBase {
 
     generateLineNameCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line = EDDData.Lines[index];
+        //move registration outsisde of funciton..just filter on class and attr with id. and
+        // pull out attr and
+        $(document).on('click', '.line-edit-link', function(e) {
+            var index:number = parseInt($(this).attr('dataIndex'), 10);
+            StudyLines.editLines([index]);
+        });
         return [
             new DataGridDataCell(gridSpec, index, {
                 'checkboxName': 'lineId',
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
                 'sideMenuItems': [
-                    '<a href="#" class="line-edit-link" onclick="StudyLines.editLines([' + index + '])">Edit Line</a>',
+                    '<a href="#" dataIndex="' + index + '" id="lineEditLink' + index +
+                        '" class="line-edit-link">Edit Line </a>',
                     '<a href="/export?lineId=' + index + '">Export Data as CSV/Excel</a>',
                     '<a href="/sbml?lineId=' + index + '">Export Data as SBML</a>'
                 ],
@@ -910,7 +764,10 @@ class DataGridSpecLines extends DataGridSpecBase {
         if ((line = EDDData.Lines[index])) {
             content = line.strain.map((id) => {
                 var strain = EDDData.Strains[id];
-                return [ '<a href="', strain.registry_url, '">', strain.name, '</a>' ].join('');
+                if (strain.registry_url) {
+                    return ['<a href="', strain.registry_url, '">', strain.name, '</a>'].join('');
+                }
+                return strain.name;
             });
         }
         return [
@@ -960,15 +817,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         });
     }
 
-    generateCarbonBalanceBlankCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
-        return [
-            new DataGridDataCell(gridSpec, index, {
-                'rowspan': gridSpec.rowSpanForRecord(index),
-                'minWidth': 200
-            })
-        ];
-    }
-
     generateExperimenterInitialsCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line, exp, content;
         if ((line = EDDData.Lines[index])) {
@@ -997,7 +845,11 @@ class DataGridSpecLines extends DataGridSpecBase {
         return (gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] => {
             var contentStr = '', line = EDDData.Lines[index], type = EDDData.MetaDataTypes[id];
             if (line && type && line.meta && (contentStr = line.meta[id] || '')) {
-                contentStr = [ type.pre || '', contentStr, type.postfix || '' ].join(' ').trim();
+                contentStr = [
+                    type.prefix || '',
+                    contentStr,
+                    type.postfix || ''
+                ].join(' ').trim();
             }
             return [
                 new DataGridDataCell(gridSpec, index, {
@@ -1018,16 +870,14 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridColumnSpec(2, this.generateDescriptionCells),
             new DataGridColumnSpec(3, this.generateStrainNameCells),
             new DataGridColumnSpec(4, this.generateCarbonSourceCells),
-            new DataGridColumnSpec(5, this.generateCarbonSourceLabelingCells),
-            // The Carbon Balance cells are populated by a callback, triggered when first displayed
-            new DataGridColumnSpec(6, this.generateCarbonBalanceBlankCells)
+            new DataGridColumnSpec(5, this.generateCarbonSourceLabelingCells)
         ];
         metaDataCols = this.metaDataIDsUsedInLines.map((id, index) => {
-            return new DataGridColumnSpec(7 + index, this.makeMetaDataCellsGeneratorFunction(id));
+            return new DataGridColumnSpec(6 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
         rightSide = [
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterInitialsCells),
-            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterInitialsCells),
+            new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells)
         ];
 
         return leftSide.concat(metaDataCols, rightSide);
@@ -1040,12 +890,7 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridColumnGroupSpec('Description'),
             new DataGridColumnGroupSpec('Strain'),
             new DataGridColumnGroupSpec('Carbon Source(s)'),
-            new DataGridColumnGroupSpec('Labeling'),
-            this.carbonBalanceCol = new DataGridColumnGroupSpec('Carbon Balance', {
-                'showInVisibilityList': false,    // Has its own header widget
-                'hiddenByDefault': true,
-                'revealedCallback': StudyLines.carbonBalanceColumnRevealedCallback
-            })
+            new DataGridColumnGroupSpec('Labeling')
         ];
 
         var metaDataColGroups:DataGridColumnGroupSpec[];
@@ -1098,11 +943,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         // Create a single widget for substring searching
         var searchLinesWidget = new DGLinesSearchWidget(dataGrid, this, 'Search Lines', 30, false);
         widgetSet.push(searchLinesWidget);
-        // A "Carbon Balance" checkbox
-        var showCarbonBalanceWidget = new DGShowCarbonBalanceWidget(dataGrid, this);
-        showCarbonBalanceWidget.displayBeforeViewMenu(true);
-        widgetSet.push(showCarbonBalanceWidget);
-        this.carbonBalanceWidget = showCarbonBalanceWidget;
         // A "select all / select none" button
         var selectAllWidget = new DGSelectAllLinesWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
@@ -1130,10 +970,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         var linesTable = this.getTableElement();
         $(linesTable).on('change', ':checkbox', () => StudyLines.queueLinesActionPanelShow());
 
-        // This calls down into the instantiated widget and alters its styling,
-        // so we need to do it after the table has been created.
-        this.enableCarbonBalanceWidget(false);
-
         // Wire-in our custom edit fields for the Studies page, and continue with general init
         StudyLines.prepareAfterLinesTable();
     }
@@ -1144,8 +980,8 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
 
     createElements(uniqueID:any):void {
         var cbID:string = this.dataGridSpec.tableSpec.id+'ShowDLinesCB'+uniqueID;
-        var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
-        $(cb).click( (e) => this.dataGridOwnerObject.clickedOptionWidget(e) );
+        var cb:any = this._createCheckbox(cbID, cbID, '1');
+        $(cb).click( (e:any) => this.dataGridOwnerObject.clickedOptionWidget(e) );
         if (this.isEnabledByDefault()) {
             cb.setAttribute('checked', 'checked');
         }
@@ -1182,7 +1018,7 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
 
     initialFormatRowElementsForID(dataRowObjects:any, rowID:string):any {
         if (!EDDData.Lines[rowID].active) {
-            $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
+            $.each(dataRowObjects, (x, row) => { $(row.getElement()).addClass('disabledRecord') });
         }
     }
 }
@@ -1237,101 +1073,6 @@ class DGLinesSearchWidget extends DGSearchWidget {
             this.createElements(uniqueID);
         }
         container.appendChild(this.element);
-    }
-}
-
-
-
-// A header widget to prepare the Carbon Balance table cells, and show or hide them.
-class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
-
-    checkBoxElement:any;
-    labelElement:any;
-    highlighted:boolean;
-    checkboxEnabled:boolean;
-
-    // store more specific type of spec to get to carbonBalanceCol later
-    private _lineSpec:DataGridSpecLines;
-
-    constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecLines) {
-        super(dataGridOwnerObject, dataGridSpec);
-        this.checkboxEnabled = true;
-        this.highlighted = false;
-        this._lineSpec = dataGridSpec;
-    }
-
-    createElements(uniqueID:any):void {
-        var cbID:string = this.dataGridSpec.tableSpec.id + 'CarBal' + uniqueID;
-        var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
-        cb.className = 'tableControl';
-        $(cb).click((ev:JQueryMouseEventObject):void => {
-            this.activateCarbonBalance();
-        });
-
-        var label:HTMLElement = this._createLabel('Carbon Balance', cbID);
-
-        var span:HTMLElement = document.createElement("span");
-        span.className = 'tableControl';
-        span.appendChild(cb);
-        span.appendChild(label);
-
-        this.checkBoxElement = cb;
-        this.labelElement = label;
-        this.element = span;
-        this.createdElements(true);
-    }
-
-    highlight(h:boolean):void {
-        this.highlighted = h;
-        if (this.checkboxEnabled) {
-            if (h) {
-                this.labelElement.style.color = 'red';
-            } else {
-                this.labelElement.style.color = '';
-            }
-        }
-    }
-
-    enable(h:boolean):void {
-        this.checkboxEnabled = h;
-        if (h) {
-            this.highlight(this.highlighted);
-            this.checkBoxElement.removeAttribute('disabled');
-        } else {
-            this.labelElement.style.color = 'gray';
-            this.checkBoxElement.setAttribute('disabled', true);
-        }
-    }
-
-    private activateCarbonBalance():void {
-        var ui:FullStudyBiomassUI,
-            callback:FullStudyBiomassUIResultsCallback;
-        callback = (error:string,
-                metabolicMapID?:number,
-                metabolicMapFilename?:string,
-                finalBiomass?:number):void => {
-            if (!error) {
-                StudyLines.metabolicMapID = metabolicMapID;
-                StudyLines.metabolicMapName = metabolicMapFilename;
-                StudyLines.biomassCalculation = finalBiomass;
-                StudyLines.onChangedMetabolicMap();
-                this.checkBoxElement.checked = true;
-                this.dataGridOwnerObject.showColumn(this._lineSpec.carbonBalanceCol);
-            }
-        };
-        if (this.checkBoxElement.checked) {
-            // We need to get a biomass calculation to multiply against OD.
-            // Have they set this up yet?
-            if (!StudyLines.biomassCalculation || StudyLines.biomassCalculation === -1) {
-                this.checkBoxElement.checked = false;
-                // Must setup the biomass
-                ui = new FullStudyBiomassUI(callback);
-            } else {
-                this.dataGridOwnerObject.showColumn(this._lineSpec.carbonBalanceCol);
-            }
-        } else {
-            this.dataGridOwnerObject.hideColumn(this._lineSpec.carbonBalanceCol);
-        }
     }
 }
 

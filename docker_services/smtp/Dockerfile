@@ -1,6 +1,6 @@
 FROM buildpack-deps:stretch
 
-MAINTAINER William Morrell "WCMorrell@lbl.gov"
+LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
 RUN apt-get clean && apt-get update \
     && DEBIAN_FRONTENT=noninteractive apt-get install -y -q \

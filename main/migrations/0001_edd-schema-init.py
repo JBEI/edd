@@ -149,8 +149,8 @@ class Migration(migrations.Migration):
             name='MetaboliteExchange',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('reactant_name', main.models.VarCharField(help_text='The reactant name used in for this exchange reaction.', verbose_name='Reactant Name')),
-                ('exchange_name', main.models.VarCharField(help_text='The exchange name used in the model.', verbose_name='Exchange Name')),
+                ('reactant_name', main.models.fields.VarCharField(help_text='The reactant name used in for this exchange reaction.', verbose_name='Reactant Name')),
+                ('exchange_name', main.models.fields.VarCharField(help_text='The exchange name used in the model.', verbose_name='Exchange Name')),
             ],
             options={
                 'db_table': 'measurement_type_to_exchange',
@@ -160,7 +160,7 @@ class Migration(migrations.Migration):
             name='MetaboliteSpecies',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('species', main.models.VarCharField(help_text='Species name used in the model for this metabolite.', verbose_name='Species')),
+                ('species', main.models.fields.VarCharField(help_text='Species name used in the model for this metabolite.', verbose_name='Species')),
             ],
             options={
                 'db_table': 'measurement_type_to_species',
@@ -258,7 +258,7 @@ class Migration(migrations.Migration):
             options={
                 'db_table': 'carbon_source',
             },
-            bases=('main.eddobject', main.models.LineProperty),
+            bases=('main.eddobject', main.models.core.LineProperty),
         ),
         migrations.CreateModel(
             name='GeneIdentifier',
@@ -298,7 +298,7 @@ class Migration(migrations.Migration):
                 ('carbon_count', models.IntegerField(help_text='Count of carbons present in this molecule.', verbose_name='Carbon Count')),
                 ('molar_mass', models.DecimalField(decimal_places=5, help_text='Molar mass of this molecule.', max_digits=16, verbose_name='Molar Mass')),
                 ('molecular_formula', models.TextField(help_text='Formula string defining this molecule.', verbose_name='Formula')),
-                ('tags', fields.ArrayField(base_field=main.models.VarCharField(), default=[], help_text='List of tags for classifying this molecule.', size=None, verbose_name='Tags')),
+                ('tags', fields.ArrayField(base_field=main.models.fields.VarCharField(), default=[], help_text='List of tags for classifying this molecule.', size=None, verbose_name='Tags')),
             ],
             options={
                 'db_table': 'metabolite',
@@ -321,7 +321,7 @@ class Migration(migrations.Migration):
             name='ProteinIdentifier',
             fields=[
                 ('measurementtype_ptr', models.OneToOneField(auto_created=True, on_delete=CASCADE, parent_link=True, primary_key=True, serialize=False, to='main.MeasurementType')),
-                ('accession_id', main.models.VarCharField(blank=True, help_text='Accession ID for protein characterized in e.g. UniProt.', null=True, verbose_name='Accession ID')),
+                ('accession_id', main.models.fields.VarCharField(blank=True, help_text='Accession ID for protein characterized in e.g. UniProt.', null=True, verbose_name='Accession ID')),
                 ('length', models.IntegerField(blank=True, help_text='sequence length', null=True, verbose_name='Length')),
                 ('mass', models.DecimalField(blank=True, decimal_places=5, help_text='of unprocessed protein, in Daltons', max_digits=16, null=True, verbose_name='Mass')),
             ],
@@ -367,7 +367,7 @@ class Migration(migrations.Migration):
             options={
                 'db_table': 'strain',
             },
-            bases=('main.eddobject', main.models.LineProperty),
+            bases=('main.eddobject', main.models.core.LineProperty),
         ),
         migrations.CreateModel(
             name='Study',

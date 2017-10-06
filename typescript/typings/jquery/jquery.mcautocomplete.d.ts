@@ -1,8 +1,7 @@
-///<reference path="../jquery/jquery.d.ts" />
-///<reference path="../jquery/jqueryui.d.ts" />
+/// <reference types="jquery" />
+/// <reference types="jqueryui" />
 
-
-declare module MultiColumnAuto {
+declare namespace MultiColumnAuto {
 
     interface ColumnDef {
         name: string;
@@ -34,5 +33,5 @@ interface JQuery {
 
     /* Adding this from use in EDDAutocomplete; normally this is a private function,
      * but there is no 'public' way to properly trigger events on autocompletes */
-    _trigger(eventType: string, eventSubType: string, extraParameters?: any[]|Object): JQuery;
+    _trigger(eventType: string, eventSubType: string, extraParameters?: any[] | Object): JQuery;
 }

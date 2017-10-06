@@ -1,15 +1,12 @@
-/// <reference path="typescript-declarations.d.ts" />
-/// <reference path="BiomassCalculationUI.ts" />
-/// <reference path="Dragboxes.ts" />
-/// <reference path="DataGrid.ts" />
-/// <reference path="EDDAutocomplete.ts" />
-/// <reference path="EDDEditableElement.ts" />
-/// <reference path="Study.ts" />
-/// <reference path="Utl.ts" />
-/// <reference path="FileDropZone.ts" />
-
 declare var EDDData:EDDData;
-
+import { Utl } from "../modules/Utl"
+import { EDDEditable } from "../modules/EDDEditableElement"
+import { FileDropZone } from "../modules/FileDropZone"
+import { StudyMetabolicMapChooser } from "../modules/BiomassCalculationUI"
+import { MetabolicMapChooserResult } from "../modules/BiomassCalculationUI"
+import { StudyBase } from "../modules/Study"
+import { EDDAuto } from "../modules/EDDAutocomplete"
+import "bootstrap-loader"
 
 module StudyOverview {
     'use strict';
@@ -18,8 +15,6 @@ module StudyOverview {
     var attachmentsByID: any;
     var prevDescriptionEditElement: any;
 
-    var fileUploadProgressBar: Utl.ProgressBar;
-    //
     // We can have a valid metabolic map but no valid biomass calculation.
     // If they try to show carbon balance in that case, we'll bring up the UI to
     // calculate biomass for the specified metabolic map.
@@ -49,7 +44,7 @@ module StudyOverview {
 
         $('form#permissions')
             .on('submit', (ev: JQueryEventObject): boolean => {
-                var perm: any = {}, klass: string, auto: JQuery;
+                var perm: any = {}, klass: any, auto: JQuery;
                 auto = $('form#permissions').find('[name=class]:checked');
                 klass = auto.val();
                 perm.type = $(auto).siblings('select').val();
@@ -198,32 +193,15 @@ module StudyOverview {
         new EditableStudyContact($('#editable-study-contact').get()[0]);
         new EditableStudyDescription($('#editable-study-description').get()[0]);
 
-        // put the click handler at the document level, then filter to any link inside a .disclose
-        $(document).on('click', '.disclose .discloseLink', (e) => {
-            $(e.target).closest('.disclose').toggleClass('discloseHide');
-            return false;
-        });
-
         $('#helpExperimentDescription').tooltip({
             content: function () {
-                return $(this).prop('title');
+                return $(this).data('popupmenu');
             },
-            position: {my: "left-10 center", at: "right center"},
-            show: null,
-            close: function (event, ui: any) {
-                ui.tooltip.hover(
-                    function () {
-                        $(this).stop(true).fadeTo(400, 1);
-                    },
-                    function () {
-                        $(this).fadeOut("400", function () {
-                            $(this).remove();
-                        })
-                    });
-            }
+            items: '.has-popupmenu',
+            track: true,
+            show: true,
         });
 
-        this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
         var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
            pageRedirect: 'experiment-description',
            haveInputData: false,
@@ -231,13 +209,11 @@ module StudyOverview {
 
         Utl.FileDropZone.create({
             elementId: "templateDropZone",
-            fileInitFn: fileDropZoneHelper.fileDropped.bind(fileDropZoneHelper),
-            processRawFn: fileDropZoneHelper.fileRead.bind(fileDropZoneHelper),
             url: '/study/' + EDDData.currentStudyID + '/describe/',
             processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
             processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
             processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
-            progressBar: this.fileUploadProgressBar
+            processICEerror: fileDropZoneHelper.processICEerror.bind(fileDropZoneHelper),
         });
 
         Utl.Tabs.prepareTabs();

@@ -4,13 +4,7 @@
 
 {% block js_css %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Study-Overview.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/FileDropZone.js' %}"></script>
-{#  this script is commented out until we have docker automically install bower dependencies  #}
-{#    <script type="text/javascript" src="{% static 'bower_components/tinymce/tinymce.min.js' %}"></script>#}
+    <script type="text/javascript" src="{% static 'dist/StudyOverview.js' %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -98,13 +92,8 @@
                     {{ edit_study.contact.errors }}
                     <div class="editable-field inactive" id="editable-study-contact">
                         {% if study.contact %}
-                            {% if writable %}
-                                {{ study.contact.first_name }} {{ study.contact.last_name }}
-                            {% else %}
-                                <a href="mailto:{{ study.contact.email }}">
-                                    {{ study.contact.first_name }} {{ study.contact.last_name }}
-                                </a>
-                            {% endif %}
+                            {% firstof study.contact.get_full_name study.contact.email as label %}
+                            <a href="mailto:{{ study.contact.email }}">{{ label }}</a>
                         {% elif study.contact_extra %}
                             {{ study.contact_extra }}
                         {% else %}
@@ -123,16 +112,16 @@
     <div class="fd-zone excel" id="templateDropZone">
         <div></div>
         Upload an Experiment Description file (
-        <a href="{% static 'experiment_description/sample_experiment_description.xlsx' %}">
+        <a href="{% static 'main/example/sample_experiment_description.xlsx' %}">
             Example <span class="dropLink dropImg">__</span>
         </a>)
-        <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"
-                title="Drag-and-drop an &lt;a style=&quot;color:blue&quot;
-                    href=&quot;/help/experiment_description/&quot;&gt;Experiment description
-                    file&lt;/a&gt; into this grey box to describe your experiment. Alternatively,
-                    you can click on the link below to manually input your
-                    experiment description.">help</div>
-        </div>
+        <a href="{% url 'main:experiment_description_help' %}">
+            <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"
+                    title="Drag-and-drop an Experiment description file into this grey box to
+                        describe your experiment. Alternatively, you can click on the link below
+                        to manually input your experiment description.">help</div>
+        </a>
+    </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
         <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>

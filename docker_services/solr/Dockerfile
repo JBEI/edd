@@ -1,6 +1,6 @@
 FROM solr:5.5
 
-MAINTAINER William Morrell "WCMorrell@lbl.gov"
+LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
 # Add Tini
 ENV TINI_VERSION v0.13.2

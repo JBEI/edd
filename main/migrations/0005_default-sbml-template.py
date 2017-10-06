@@ -5,11 +5,11 @@ from __future__ import unicode_literals
 import os
 
 from django.apps import apps as django_apps
-from django.core.files import File
+from django.core.files import storage
 from django.db import migrations
 
 from main.models import SBMLTemplate as RealSBMLTemplate
-from main.signals.handlers import template_sync_species
+from main.signals.sbml import template_sync_species
 
 
 def add_template(apps, schema_editor):
@@ -27,7 +27,7 @@ def add_template(apps, schema_editor):
     fixture_dir = os.path.join(conf.path, 'fixtures')
     template_file = os.path.join(fixture_dir, 'StdEciJO1366.xml')
     with open(template_file, 'rb') as fp:
-        django_file = File(fp)
+        path = storage.default_storage.save('StdEciJO1366.xml', fp)
         # Create objects
         template = SBMLTemplate(
             name="StdEciJO1366",
@@ -39,7 +39,7 @@ def add_template(apps, schema_editor):
         template.save()
         sbml_file = Attachment(
             object_ref=template,
-            file=django_file,
+            file=path,
             filename='StdEciJO1366.xml',
             mime_type='text/xml',
             file_size=os.path.getsize(template_file),

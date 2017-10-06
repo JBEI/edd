@@ -10,8 +10,8 @@ Usage statistics should likely eventually be integrated into EDD's UI.
 import argparse
 import arrow
 import os
-import re
 import requests
+
 from collections import defaultdict
 from dateutil import tz
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -20,7 +20,6 @@ from jbei.rest.auth import EddSessionAuth
 from jbei.rest.clients import EddApi
 from jbei.rest.utils import is_url_secure
 from jbei.utils import session_login, TerminalFormats, UserInputTimer
-
 from .settings import (EDD_REQUEST_TIMEOUT, EDD_URL, VERIFY_EDD_CERT)
 
 now = arrow.utcnow()
@@ -52,12 +51,13 @@ def main():
     parser.add_argument('-password',
                         '-p',
                         help='Provide an EDD password via the command line (user is prompted '
-                             'otherwise). A convenience for repeated use / testing of this script.')
+                             'otherwise). A convenience for repeated use / testing of '
+                             'this script.')
     parser.add_argument('-start',
                         help='The first year whose usage statistics should be queried',
                         default=2014)
     parser.add_argument('-end', help='The last year whose usage statistics should be queried.',
-                        default=arrow.utcnow().year)
+                        default=arrow.utcnow().year + 1)
     parser.add_argument('-timezone',
                         '-tz',
                         help='Time zone for which date queries apply',
@@ -126,7 +126,6 @@ def main():
     edd_session_auth = edd_login_details.session_auth
 
     edd = EddApi(base_url=EDD_URL, auth=edd_session_auth, verify=VERIFY_EDD_CERT)
-    edd.write_enabled = True
     edd.timeout = EDD_REQUEST_TIMEOUT
 
     # query EDD for studies created each quarter within requested years

@@ -1,53 +1,109 @@
+# coding: utf-8
+from __future__ import unicode_literals
 
 from django.conf.urls import include, url
-import rest_framework.routers as rest_routers
+from rest_framework import routers as rest_routers
+from rest_framework_nested import routers as nested_routers
 
-from .views import (LineViewSet, MetadataGroupViewSet, MetadataTypeViewSet,
-                    STRAIN_NESTED_RESOURCE_PARENT_PREFIX, StrainStudiesView, StrainViewSet,
-                    StudyLineView, StudyStrainsView, StudyViewSet, ProtocolViewSet,
-                    MeasurementUnitViewSet)
-import rest_framework_nested.routers as nested_routers
+from jbei.rest.clients.edd import constants
+from . import views
 
 
-# define a router for plain REST API methods & views
+###################################################################################################
+# Define a router for base REST API methods & views
+###################################################################################################
 base_rest_api_router = rest_routers.DefaultRouter()
-base_rest_api_router.register(r'line', LineViewSet)
-base_rest_api_router.register(r'study', StudyViewSet, 'study')
-base_rest_api_router.register(r'strain', StrainViewSet, 'strain')
-base_rest_api_router.register(r'measurement_unit', MeasurementUnitViewSet, 'measurement_unit')
-base_rest_api_router.register(r'metadata_type', MetadataTypeViewSet)
-base_rest_api_router.register(r'metadata_group', MetadataGroupViewSet)
-base_rest_api_router.register(r'protocol', ProtocolViewSet)
+base_rest_api_router.register(
+    constants.ASSAYS_RESOURCE_NAME,
+    views.AssaysViewSet,
+    base_name='assays',
+)
+base_rest_api_router.register(
+    constants.LINES_RESOURCE_NAME,
+    views.LinesViewSet,
+    base_name='lines',
+)
+base_rest_api_router.register(
+    constants.MEASUREMENTS_RESOURCE_NAME,
+    views.MeasurementsViewSet,
+    base_name='measurements',
+)
+base_rest_api_router.register(
+    constants.VALUES_RESOURCE_NAME,
+    views.MeasurementValuesViewSet,
+    base_name='values',
+)
+base_rest_api_router.register(
+    constants.STUDIES_RESOURCE_NAME,
+    views.StudiesViewSet,
+    base_name='studies',
+)
+base_rest_api_router.register(
+    constants.MEASUREMENT_UNITS_RESOURCE_NAME,
+    views.MeasurementUnitViewSet,
+    base_name='measurement_units',
+)
+base_rest_api_router.register(
+    constants.METADATA_TYPES_RESOURCE_NAME,
+    views.MetadataTypeViewSet,
+    base_name='metadata_type',
+)
+base_rest_api_router.register(
+    constants.METADATA_GROUPS_RESOURCE_NAME,
+    views.MetadataGroupViewSet,
+)
+base_rest_api_router.register(
+    constants.PROTOCOLS_RESOURCE_NAME,
+    views.ProtocolViewSet,
+)
+base_rest_api_router.register(
+    constants.MEASUREMENT_TYPES_RESOURCE_NAME,
+    views.MeasurementTypesViewSet,
+    base_name='measurement_types',
+)
+base_rest_api_router.register(
+    constants.USERS_RESOURCE_NAME,
+    views.UsersViewSet,
+    base_name='users',
+)
 
-# non-working dev code...maybe useful as an example for further work later on.
-# this was the first attempt to create nested resources based on some misleading docs on the django
-# rest framework
-# rest_api_router.register(r'study/(?P<study>\d+)/lines', views.StudyLineView,
-#                         "StudyLine")
-# rest_api_router.register(r'study/(?P<study>\d+)/lines(/(?P<line>\d+))?',
-#                          views.StudyListLinesView.as_view(),
-#                          "StudyListLinesView1")
-# rest_api_router.register(r'study/(?P<study>\d+)/lines',
-#                        views.StudyListLinesView.as_view(),
-#                        "StudyListLinesView")
+###################################################################################################
+# /rest/studies nested resources
+###################################################################################################
+study_router = nested_routers.NestedSimpleRouter(
+    base_rest_api_router,
+    constants.STUDIES_RESOURCE_NAME,
+    lookup='study',
+)
+study_router.register(
+    constants.LINES_RESOURCE_NAME,
+    views.StudyLinesView,
+    base_name='study-lines'
+)
+study_router.register(
+    constants.ASSAYS_RESOURCE_NAME,
+    views.StudyAssaysViewSet,
+    base_name='study-assays'
+)
+study_router.register(
+    constants.MEASUREMENTS_RESOURCE_NAME,
+    views.StudyMeasurementsViewSet,
+    base_name='study-measurements',
+)
+study_router.register(
+    constants.VALUES_RESOURCE_NAME,
+    views.StudyValuesViewSet,
+    base_name='study-values'
+)
 
-# define a separate router for nested resources under /study (not clearly supported by normal
-# django rest framework routers)
-# TODO: for consistency, adjust pluralization to always plural
-study_nested_resources_router = nested_routers.NestedSimpleRouter(base_rest_api_router, r'study',
-                                                                  lookup='study')
-study_nested_resources_router.register(r'lines', StudyLineView, base_name='study-lines')
-study_nested_resources_router.register(r'strains', StudyStrainsView, base_name='study-strains')
-strain_nested_resources_router = (
-    nested_routers.NestedSimpleRouter(base_rest_api_router, STRAIN_NESTED_RESOURCE_PARENT_PREFIX,
-                                      lookup='strain'))
-strain_nested_resources_router.register(r'studies', StrainStudiesView, base_name='strain-studies')
 
-# TODO: consider re-jiggering urlpatterns to make nested resources visible in the browseable API
+###################################################################################################
+# Use routers & supporting frameworks to construct URL patterns
+###################################################################################################
 urlpatterns = [
     # url(r'docs/$', include('rest_framework_swagger.urls')),
-    url(r'', include(base_rest_api_router.urls)),
-    url(r'', include(study_nested_resources_router.urls)),
-    url(r'', include(strain_nested_resources_router.urls)),
-    url(r'', include('rest_framework.urls', namespace='rest_framework')),
+
+    url(r'^', include(base_rest_api_router.urls)),
+    url(r'^', include(study_router.urls)),
+    url(r'docs/', views.schema_view),
 ]

@@ -1,14 +1,11 @@
-# https://github.com/dockerfile/nodejs-bower-grunt
-#FROM digitallyseamless/nodejs-bower-grunt
-FROM node
+FROM node:8.6.0
 
-MAINTAINER Traci Lopez "tlopez@lbl.gov"
+LABEL maintainer="Traci Lopez <tlopez@lbl.gov>"
 
-COPY package.json /node/
+COPY package.json /
 
-WORKDIR /node
+WORKDIR /
 
-RUN npm install -g bower grunt-cli \
-    && npm install
+RUN npm install
 
 CMD ["bash"]

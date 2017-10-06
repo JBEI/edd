@@ -81,11 +81,11 @@ class ExportSelectionForm(forms.Form):
 class WorklistForm(forms.Form):
     """ Form used for selecting worklist export options. """
     template = forms.ModelChoiceField(
+        empty_label=None,
         queryset=WorklistTemplate.objects.prefetch_related(
             Prefetch('worklistcolumn_set', queryset=WorklistColumn.objects.order_by('ordering', )),
         ),
         required=False,
-        empty_label=None
     )
 
     def __init__(self, *args, **kwargs):
@@ -113,7 +113,7 @@ class WorklistForm(forms.Form):
                 blank_columns = fform.columns
         self._options = table.ExportOption(
             layout=table.ExportOption.DATA_COLUMN_BY_LINE,
-            separator=table.ExportOption.COMMA_SEPARATED,
+            separator=table.ExportOption.COMMA_SEPARATED_TOKEN,
             data_format=table.ExportOption.ALL_DATA,
             line_section=False,
             protocol_section=False,

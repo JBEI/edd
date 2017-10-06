@@ -1,8 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
-import re
-
 from builtins import str
 from collections import defaultdict, Iterable
 from django.conf import settings
@@ -13,16 +11,11 @@ from django.db.models.aggregates import Aggregate as SQLAggregate
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
-from edd.utilities import JSONEncoder
 from . import models
 
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-class JSONDecimalEncoder(JSONEncoder):
-    pass
 
 
 class SQLArrayAgg(SQLAggregate):
@@ -55,8 +48,10 @@ media_types = {
 
 
 def flatten_json(source):
-    """ Takes a json-shaped input (usually a dict), and flattens any nested dict, list, or tuple
-        with dotted key names. """
+    """
+    Takes a json-shaped input (usually a dict), and flattens any nested dict, list, or tuple
+    with dotted key names.
+    """
     # TODO: test this!
     output = defaultdict(lambda: '')
     # convert lists/tuples to a dict
@@ -85,9 +80,7 @@ def get_edddata_study(study):
     protein_types = models.ProteinIdentifier.objects.filter(assay__line__study=study).distinct()
     protocols = study.get_protocols_used()
     carbon_sources = models.CarbonSource.objects.filter(line__study=study).distinct()
-    assays = study.get_assays().select_related(
-        'line__name', 'created__mod_by', 'updated__mod_by',
-    )
+    assays = study.get_assays().select_related('line', 'created__mod_by', 'updated__mod_by')
     # This could be nice, but slows down the query by an order of magnitude:
     #
     # from django.db.models import Case, Count, Value, When
@@ -204,47 +197,6 @@ def interpolate_at(measurement_data, x):
     return numpy.interp(float(x), xp, fp)
 
 
-def extract_id_list(form, key):
-    """
-    Given a form parameter, extract the list of unique IDs that it specifies.
-    Both multiple key-value pairs (someIDs=1&someIDs=2) and comma-separated
-    lists (someIDs=1,2) are supported.
-    """
-    param = form[key]
-    if isinstance(param, string_types):
-        return param.split(",")
-    else:
-        ids = []
-        for item in param:
-            ids.extend(item.split(","))
-        return ids
-
-
-def extract_id_list_as_form_keys(form, prefix):
-    """
-    Extract unique IDs embedded in parameter keys, e.g. "prefix123include=1".
-    """
-    re_str = "^(%s)([0-9]+)include$" % prefix
-    ids = []
-    for key in form:
-        m = re.match(re_str, key)
-        if m is not None and form.get(key, "0") not in ["0", ""]:
-            ids.append(m.group(2))  # e.g. "123"
-    return ids
-
-
-def get_selected_lines(form, study):
-    selected_line_ids = []
-    if "selectedLineIDs" in form:
-        selected_line_ids = extract_id_list(form, "selectedLineIDs")
-    else:
-        selected_line_ids = extract_id_list_as_form_keys(form, "line")
-    if len(selected_line_ids) == 0:
-        return list(study.line_set.all())
-    else:
-        return study.line_set.filter(id__in=selected_line_ids)
-
-
 def get_absolute_url(relative_url):
     """
     Computes the absolute URL for the specified relative URL.
@@ -256,43 +208,3 @@ def get_absolute_url(relative_url):
     if current_request and not current_request.is_secure():
         protocol = 'http://'
     return protocol + Site.objects.get_current().domain + relative_url
-
-
-extensions_to_icons = {
-    '.zip':  'icon-zip.png',
-    '.gzip': 'icon-zip.png',
-    '.bzip': 'icon-zip.png',
-    '.gz':   'icon-zip.png',
-    '.dmg':  'icon-zip.png',
-    '.rar':  'icon-zip.png',
-
-    '.ico':  'icon-image.gif',
-    '.gif':  'icon-image.gif',
-    '.jpg':  'icon-image.gif',
-    '.jpeg': 'icon-image.gif',
-    '.png':  'icon-image.gif',
-    '.tif':  'icon-image.gif',
-    '.tiff': 'icon-image.gif',
-    '.psd':  'icon-image.gif',
-    '.svg':  'icon-image.gif',
-
-    '.mov':  'icon-video.png',
-    '.avi':  'icon-video.png',
-    '.mkv':  'icon-video.png',
-
-    '.txt':  'icon-text.png',
-    '.rtf':  'icon-text.png',
-    '.wri':  'icon-text.png',
-    '.htm':  'icon-text.png',
-    '.html': 'icon-text.png',
-
-    '.pdf':  'icon-pdf.gif',
-    '.ps':   'icon-pdf.gif',
-
-    '.key':  'icon-keynote.gif',
-    '.mdb':  'icon-mdb.png',
-    '.doc':  'icon-word.png',
-    '.ppt':  'icon-ppt.gif',
-    '.xls':  'icon-excel.png',
-    '.xlsx': 'icon-excel.png',
-}

@@ -2,11 +2,21 @@
 
 This Dockerfile constructs the `edd-core` image for use in the [Experiment Data Depot][1]. The
 image is based on [buildpack-deps:stretch][2], and includes the Python dependencies used by EDD
-and clones the current `master` branch into the image.
+and clones the current `master` branch into the image. Build with:
+
+    docker build -t yourorg/edd-core .
+
+Build from alternate repositories and/or branches with build arguments `GIT_URL` and `GIT_BRANCH`,
+for example:
+
+    docker build -t yourorg/edd-core:1.0.0 \
+        --build-arg "GIT_URL=https://git.example.org/repo/edd.git" \
+        --build-arg "GIT_BRANCH=your-branch-name" \
+        .
 
 The image uses a custom entrypoint with commands for common tasks. Since EDD depends on multiple
 services, the entrypoint ensures that all dependencies are up before proceeding. A full listing
-of commands is provided below, or can be found by executing `docker run --rm edd-core --help`.
+of commands is provided below, or can be found by executing `docker run --rm -it edd-core --help`.
 
     Usage: entrypoint.sh [options] [--] command [arguments]
     Options:
@@ -49,6 +59,8 @@ of commands is provided below, or can be found by executing `docker run --rm edd
             Only applies if -w is used. Specifies port to listen on. Defaults to
             port 24051. This option may be specified multiple times. The Nth port
             defined applies to the Nth host.
+        --watch-static
+            Watch for changes to static files, to copy to the static volume.
 
     Commands:
         application
@@ -58,6 +70,8 @@ of commands is provided below, or can be found by executing `docker run --rm edd
         init-only [port]
             Container will only perform selected init tasks. The service will begin
             listening on the specified port after init, default to port 24051.
+        init-exit
+            Container will only perform selected init tasks, then exit.
         test
             Execute the EDD unit tests.
         worker

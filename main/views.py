@@ -5,7 +5,6 @@ import collections
 import json
 import logging
 import re
-import tempfile
 
 from builtins import str
 from django.conf import settings
@@ -14,23 +13,27 @@ from django.core.exceptions import PermissionDenied, SuspiciousOperation, Valida
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
-from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse, QueryDict
 from django.shortcuts import render, get_object_or_404, redirect
-from django.template import RequestContext
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from messages_extends import constants as msg_constants
+from requests import codes
 from rest_framework.exceptions import MethodNotAllowed
 
-from main.importer.experiment_desc.constants import (INTERNAL_SERVER_ERROR, UNPREDICTED_ERROR,
-                                                     BAD_REQUEST, UNSUPPORTED_FILE_TYPE,
-                                                     BAD_FILE_CATEGORY,
-                                                     ALLOW_DUPLICATE_NAMES_PARAM,
-                                                     IGNORE_ICE_RELATED_ERRORS_PARAM,
-                                                     DRY_RUN_PARAM, INTERNAL_EDD_ERROR_CATEGORY)
+from main.importer.experiment_desc.constants import (
+    ALLOW_DUPLICATE_NAMES_PARAM,
+    BAD_FILE_CATEGORY,
+    DRY_RUN_PARAM,
+    IGNORE_ICE_RELATED_ERRORS_PARAM,
+    INTERNAL_EDD_ERROR_CATEGORY,
+    INTERNAL_SERVER_ERROR,
+    UNPREDICTED_ERROR,
+    UNSUPPORTED_FILE_TYPE,
+)
 from main.importer.experiment_desc.importer import _build_response_content, ImportErrorSummary
 from . import autocomplete, models as edd_models, redis
 from .export.forms import ExportOptionForm, ExportSelectionForm, WorklistForm
@@ -45,17 +48,21 @@ from .importer.parser import find_parser
 from .models import (Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue,
                      Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
                      StudyPermission, Update, )
-from .signals import study_modified
 from .solr import StudySearch
 from .tasks import import_table_task
-from .utilities import (JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement,
-                        get_edddata_misc, get_edddata_strains, get_edddata_study,
-                        get_edddata_users, )
+from .utilities import (
+    get_edddata_carbon_sources,
+    get_edddata_measurement,
+    get_edddata_misc,
+    get_edddata_strains,
+    get_edddata_study,
+    get_edddata_users,
+)
+from edd import utilities
 
 
 logger = logging.getLogger(__name__)
-CAN_VIEW = [StudyPermission.READ, StudyPermission.WRITE]
-CAN_EDIT = [StudyPermission.WRITE]
+
 FILE_TYPE_HEADER = 'HTTP_X_EDD_FILE_TYPE'
 
 
@@ -81,7 +88,7 @@ def formula(molecular_formula):
         )
 
 
-def load_study(request, pk=None, slug=None, permission_type=CAN_VIEW):
+def load_study(request, pk=None, slug=None, permission_type=StudyPermission.CAN_VIEW):
     """
     Loads a study as a request user; throws a 404 if the study does not exist OR if no valid
     permissions are set for the user on the study.
@@ -151,7 +158,8 @@ class StudyObjectMixin(generic.detail.SingleObjectMixin):
         qs = super(StudyObjectMixin, self).get_queryset()
         if self.request.user.is_superuser:
             return qs
-        return qs.filter(Study.user_permission_q(self.request.user, CAN_VIEW)).distinct()
+        return qs.filter(Study.user_permission_q(self.request.user,
+                                                 StudyPermission.CAN_VIEW)).distinct()
 
 
 class StudyIndexView(generic.edit.CreateView):
@@ -198,13 +206,14 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
     template_name = 'main/study-overview.html'
 
     def get_actions(self, can_write=False):
-        """ Return a dict mapping action names to functions performing the action. These functions
-            may return one of the following values:
-            1. True: indicates a change was made; triggers a study_modified signal and redirects
-                to a GET request
-            2. False: indicates no change was made; triggers no signal and no redirect
+        """
+        Return a dict mapping action names to functions performing the action. These functions
+        may return one of the following values:
+            1. True: indicates a change was made; redirects to a GET request
+            2. False: indicates no change was made; no redirect
             3. HttpResponse instance: the explicit response to return
-            4. view function: another view to handle the request """
+            4. view function: another view to handle the request
+        """
         action_lookup = collections.defaultdict(lambda: self.handle_unknown)
         if can_write:
             action_lookup.update({
@@ -316,8 +325,6 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
 
     def post_response(self, request, context, form_valid):
         if form_valid:
-            # signal the change
-            study_modified.send(sender=self.__class__, study=self.object)
             # redirect to the same location to avoid re-submitting forms with back/forward
             return HttpResponseRedirect(request.path)
         return self.render_to_response(context)
@@ -348,7 +355,10 @@ class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
         kwargs = super(StudyUpdateView, self).get_form_kwargs()
         # updated value comes in as 'value'; copy it to field the form expects
         if 'data' in kwargs and 'value' in kwargs['data']:
-            kwargs['data'].update({self.fields[0]: kwargs['data']['value']})
+            data = QueryDict(mutable=True)
+            data.update(kwargs['data'])
+            data.update({self.fields[0]: data['value']})
+            kwargs['data'] = data
         return kwargs
 
     def form_valid(self, form):
@@ -358,7 +368,7 @@ class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
                 "type": "Success",
                 "message": "Study %s updated." % self.fields,
             },
-            encoder=JSONDecimalEncoder,
+            encoder=utilities.JSONEncoder,
         )
 
     def form_invalid(self, form):
@@ -367,7 +377,7 @@ class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
                 "type": "Failure",
                 "message": "Validation failed",
             },
-            encoder=JSONDecimalEncoder,
+            encoder=utilities.JSONEncoder,
             status=400,
         )
 
@@ -800,7 +810,7 @@ class StudyDetailView(StudyDetailBaseView):
         measures = Measurement.objects.filter(
             Q(assay_id__in=assay_ids) | Q(id__in=measure_ids),
         ).select_related(
-            'assay__line', 'assay__protocol__name', 'measurement_type',
+            'assay__line', 'assay__protocol', 'measurement_type',
         ).order_by(
             'assay__line_id', 'assay_id',
         ).prefetch_related(
@@ -815,12 +825,15 @@ class StudyDetailView(StudyDetailBaseView):
             assay_dict = line_dict['assays'].setdefault(a.id, {
                 'assay': a,
                 'measures': collections.OrderedDict(),
-                })
+            })
             assay_dict['measures'][m.id] = {
                 'measure': m,
                 'form': MeasurementValueFormSet(
-                    instance=m, prefix=str(m.id), queryset=m.measurementvalue_set.order_by('x')),
-                }
+                    instance=m,
+                    prefix=str(m.id),
+                    queryset=m.measurementvalue_set.order_by('x')
+                ),
+            }
         return self.handle_measurement_edit_response(request, lines, measures)
 
     def handle_measurement_edit_response(self, request, lines, measures):
@@ -832,7 +845,6 @@ class StudyDetailView(StudyDetailBaseView):
                 'measures': ','.join(['%s' % m.pk for m in measures]),
                 'study': self.object,
             },
-            context_instance=RequestContext(request),
         )
 
     def handle_measurement_update(self, request, context):
@@ -840,7 +852,7 @@ class StudyDetailView(StudyDetailBaseView):
         measures = Measurement.objects.filter(
             id__in=measure_ids.split(',')
         ).select_related(
-            'assay__line', 'assay__protocol__name', 'measurement_type',
+            'assay__line', 'assay__protocol', 'measurement_type',
         ).order_by(
             'assay__line_id', 'assay_id',
         ).prefetch_related(
@@ -1114,7 +1126,7 @@ def study_measurements(request, pk=None, slug=None, protocol=None):
         'measures': [m.to_json() for m in measure_list],
         'data': value_dict,
     }
-    return JsonResponse(payload, encoder=JSONDecimalEncoder)
+    return JsonResponse(payload, encoder=utilities.JSONEncoder)
 
 
 # /study/<study_id>/measurements/<protocol_id>/<assay_id>/
@@ -1159,7 +1171,7 @@ def study_assay_measurements(request, pk=None, slug=None, protocol=None, assay=N
         'measures': map(lambda m: m.to_json(), measure_list),
         'data': value_dict,
     }
-    return JsonResponse(payload, encoder=JSONDecimalEncoder)
+    return JsonResponse(payload, encoder=utilities.JSONEncoder)
 
 
 # /study/search/
@@ -1174,7 +1186,7 @@ def study_search(request):
     query_response = data['response']
     for doc in query_response['docs']:
         doc['url'] = reverse('main:detail', kwargs={'slug': doc['slug']})
-    return JsonResponse(query_response, encoder=JSONDecimalEncoder)
+    return JsonResponse(query_response, encoder=utilities.JSONEncoder)
 
 
 # /study/<study_id>/edddata/
@@ -1187,7 +1199,7 @@ def study_edddata(request, pk=None, slug=None):
     data_misc = get_edddata_misc()
     data_study = get_edddata_study(model)
     data_study.update(data_misc)
-    return JsonResponse(data_study, encoder=JSONDecimalEncoder)
+    return JsonResponse(data_study, encoder=utilities.JSONEncoder)
 
 
 # /study/<study_id>/assaydata/
@@ -1204,7 +1216,7 @@ def study_assay_table_data(request, pk=None, slug=None):
             "existingAssays": model.get_assays_by_protocol(),
         },
         "EDDData": get_edddata_study(model),
-    }, encoder=JSONDecimalEncoder)
+    }, encoder=utilities.JSONEncoder)
 
 
 # /study/<study_id>/map/
@@ -1219,10 +1231,13 @@ def study_map(request, pk=None, slug=None):
                 "id": mmap.pk,
                 "biomassCalculation": mmap.biomass_calculation,
             },
-            encoder=JSONDecimalEncoder,
+            encoder=utilities.JSONEncoder,
         )
     except SBMLTemplate.DoesNotExist as e:
-        return JsonResponse({"name": "", "biomassCalculation": -1, }, encoder=JSONDecimalEncoder)
+        return JsonResponse(
+            {"name": "", "biomassCalculation": -1, },
+            encoder=utilities.JSONEncoder
+        )
     except Exception as e:
         raise e
 
@@ -1305,7 +1320,7 @@ def study_import_table(request, pk=None, slug=None):
     View for importing tabular data (replaces AssayTableData.cgi).
     :raises: Exception if an error occurrs during the import attempt
     """
-    study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+    study = load_study(request, pk=pk, slug=slug, permission_type=StudyPermission.CAN_EDIT)
     user_can_write = study.user_can_write(request.user)
 
     # FIXME protocol display on import page should be an autocomplete
@@ -1357,7 +1372,7 @@ def study_describe_experiment(request, pk=None, slug=None):
     """
 
     # load the study first to detect any permission errors / fail early
-    study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+    study = load_study(request, pk=pk, slug=slug, permission_type=StudyPermission.CAN_EDIT)
 
     if request.method != "POST":
         raise MethodNotAllowed(request.method)
@@ -1369,32 +1384,40 @@ def study_describe_experiment(request, pk=None, slug=None):
     ignore_ice_related_errors = request.GET.get(IGNORE_ICE_RELATED_ERRORS_PARAM, False)
 
     # detect the input format
-    has_file_type = FILE_TYPE_HEADER in request.META
-    file_type = request.META.get(FILE_TYPE_HEADER, '')
-    file_name = None
-    is_excel_file = 'XLSX' == file_type.upper()
-    if has_file_type:
-        if is_excel_file:
-            file_name = request.META['HTTP_X_FILE_NAME']
-            logger.info('Parsing experiment description file "%s"' % file_name)
-
-        else:
-            summary = ImportErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE)
-            summary.add_occurrence(file_type)
-            errors = {BAD_FILE_CATEGORY: {UNSUPPORTED_FILE_TYPE: summary}}
-            return JsonResponse(
-                    _build_response_content(errors, {}),
-                    status=BAD_REQUEST)
+    file = request.FILES.get('file', None)
+    # TODO update API of CombinatorialCreationImporter.do_import() to not require a string
+    #   filename to switch between Excel and JSON modes
+    EXCEL_TYPES = [
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ]
+    if file and file.content_type in EXCEL_TYPES:
+        filename = file.name
+    elif file and file.content_type == 'application/json':
+        filename = None
+    elif file:
+        summary = ImportErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE)
+        summary.add_occurrence(file.content_type)
+        errors = {BAD_FILE_CATEGORY: {UNSUPPORTED_FILE_TYPE: summary}}
+        return JsonResponse(_build_response_content(errors, {}), status=codes.bad_request)
     else:
-        logger.info('Parsing request body as JSON input')
+        summary = ImportErrorSummary(BAD_FILE_CATEGORY, "File missing")
+        errors = {BAD_FILE_CATEGORY: {"File missing": summary}}
+        return JsonResponse(_build_response_content(errors, {}), status=codes.bad_request)
+
+    logger.info('Parsing file')
 
     # attempt the import
     importer = CombinatorialCreationImporter(study, user)
     try:
         with transaction.atomic(savepoint=False):
-            status_code, reply_content = (
-                importer.do_import(request, allow_duplicate_names,
-                                   dry_run, ignore_ice_related_errors, excel_filename=file_name))
+            status_code, reply_content = importer.do_import(
+                file,
+                allow_duplicate_names,
+                dry_run,
+                ignore_ice_related_errors,
+                excel_filename=filename
+            )
         logger.debug('Reply content: %s' % json.dumps(reply_content))
         return JsonResponse(reply_content, status=status_code)
 
@@ -1418,13 +1441,15 @@ def study_describe_experiment(request, pk=None, slug=None):
 # /utilities/parsefile/
 # To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
 def utilities_parse_import_file(request):
-    """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
-        extract a table of data automatically. """
-    # These are embedded by the filedrop.js class. Here for reference.
-    # file_name = request.META.get('HTTP_X_FILE_NAME')
-    # file_size = request.META.get('HTTP_X_FILE_SIZE')
-    # file_type = request.META.get('HTTP_X_FILE_TYPE')
-    # file_date = request.META.get('HTTP_X_FILE_DATE')
+    """
+    Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and extract a
+    table of data automatically.
+    """
+    # These are embedded by Utl.FileDropZone. Here for reference.
+    # file_name = request.POST['HTTP_X_FILE_NAME']
+    # file_size = request.POST['HTTP_X_FILE_SIZE']
+    # file_type = request.POST['HTTP_X_FILE_TYPE']
+    # file_date = request.POST['HTTP_X_FILE_DATE']
 
     # In requests from OS X clients, we can use the file_type value. For example, a modern Excel
     # document is reported as "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1433,17 +1458,15 @@ def utilities_parse_import_file(request):
 
     # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and
     # that guess is sent along in a custom header:
-    edd_file_type = request.META.get(FILE_TYPE_HEADER)
-    edd_import_mode = request.META.get('HTTP_X_EDD_IMPORT_MODE')
+    file = request.FILES.get('file')
+    # TODO these do not need to be named with X_ prefix anymore
+    edd_file_type = request.POST['X_EDD_FILE_TYPE']
+    edd_import_mode = request.POST['X_EDD_IMPORT_MODE']
 
     parse_fn = find_parser(edd_import_mode, edd_file_type)
     if parse_fn:
         try:
-            with tempfile.TemporaryFile() as temp:
-                # write the request upload to a "real" stream buffer
-                temp.write(request.read())
-                temp.seek(0)
-                result = parse_fn(temp)
+            result = parse_fn(file)
             return JsonResponse({
                 'file_type': result.file_type,
                 'file_data': result.parsed_data,
@@ -1467,7 +1490,7 @@ def study_import_rnaseq(request, pk=None, slug=None):
     """ View for importing multiple sets of RNA-seq measurements in various simple tabular formats
         defined by us.  Handles both GET and POST. """
     messages = {}
-    model = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+    model = load_study(request, pk=pk, slug=slug, permission_type=StudyPermission.CAN_EDIT)
     lines = model.line_set.all()
     if request.method == "POST":
         try:
@@ -1493,7 +1516,7 @@ def study_import_rnaseq_edgepro(request, pk=None, slug=None):
     """ View for importing a single set of RNA-seq measurements from the EDGE-pro pipeline,
         attached to an existing Assay.  Handles both GET and POST. """
     messages = {}
-    study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+    study = load_study(request, pk=pk, slug=slug, permission_type=StudyPermission.CAN_EDIT)
     assay_id = None
     if request.method == "GET":
         assay_id = request.POST.get("assay", None)
@@ -1540,7 +1563,7 @@ def study_import_rnaseq_parse(request, pk=None, slug=None):
     """ Parse raw data from an uploaded text file, and return JSON object of processed result.
         Result is identical to study_import_rnaseq_process, but this method is invoked by
         drag-and-drop of a file (via filedrop.js). """
-    study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+    study = load_study(request, pk=pk, slug=slug, permission_type=StudyPermission.CAN_EDIT)
     referrer = request.META['HTTP_REFERER']
     result = None
     # XXX slightly gross: using HTTP_REFERER to dictate choice of parsing
@@ -1562,7 +1585,7 @@ def study_import_rnaseq_parse(request, pk=None, slug=None):
 def study_import_rnaseq_process(request, pk=None, slug=None):
     """ Process form submission containing either a file or text field, and return JSON object of
         processed result. """
-    study = load_study(request, pk=pk, slug=slug, permission_type=CAN_EDIT)
+    study = load_study(request, pk=pk, slug=slug, permission_type=StudyPermission.CAN_EDIT)
     assert(request.method == "POST")
     try:
         data = request.POST.get("data", "").strip()
@@ -1591,12 +1614,12 @@ def study_import_rnaseq_process(request, pk=None, slug=None):
 
 # /data/users/
 def data_users(request):
-    return JsonResponse({"EDDData": get_edddata_users()}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_users()}, encoder=utilities.JSONEncoder)
 
 
 # /data/misc/
 def data_misc(request):
-    return JsonResponse({"EDDData": get_edddata_misc()}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_misc()}, encoder=utilities.JSONEncoder)
 
 
 # /data/measurements/
@@ -1604,7 +1627,7 @@ def data_measurements(request):
     data_meas = get_edddata_measurement()
     data_misc = get_edddata_misc()
     data_meas.update(data_misc)
-    return JsonResponse({"EDDData": data_meas}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": data_meas}, encoder=utilities.JSONEncoder)
 
 
 # /data/sbml/
@@ -1612,7 +1635,7 @@ def data_sbml(request):
     all_sbml = SBMLTemplate.objects.all()
     return JsonResponse(
         [sbml.to_json() for sbml in all_sbml],
-        encoder=JSONDecimalEncoder,
+        encoder=utilities.JSONEncoder,
         safe=False,
         )
 
@@ -1620,7 +1643,7 @@ def data_sbml(request):
 # /data/sbml/<sbml_id>/
 def data_sbml_info(request, sbml_id):
     sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
-    return JsonResponse(sbml.to_json(), encoder=JSONDecimalEncoder)
+    return JsonResponse(sbml.to_json(), encoder=utilities.JSONEncoder)
 
 
 # /data/sbml/<sbml_id>/reactions/
@@ -1633,7 +1656,7 @@ def data_sbml_reactions(request, sbml_id):
             "reactionName": r.getName(),
             "reactionID": r.getId(),
         } for r in rlist if 'biomass' in r.getId()],
-        encoder=JSONDecimalEncoder,
+        encoder=utilities.JSONEncoder,
         safe=False,
         )
 
@@ -1678,7 +1701,7 @@ def data_sbml_reaction_species(request, sbml_id, rxn_id):
         guessed_json.update(matched_json)
         return JsonResponse(
             guessed_json,
-            encoder=JSONDecimalEncoder,
+            encoder=utilities.JSONEncoder,
             safe=False,
             )
     raise Http404("Could not find reaction")
@@ -1721,17 +1744,17 @@ def data_sbml_compute(request, sbml_id, rxn_id):
                 "reactants": reactant_info,
                 "products": product_info,
             },
-            cls=JSONDecimalEncoder)
+            cls=utilities.JSONEncoder)
         sbml.biomass_calculation = biomass
         sbml.biomass_calculation_info = info
         sbml.save()
-        return JsonResponse(biomass, encoder=JSONDecimalEncoder, safe=False)
+        return JsonResponse(biomass, encoder=utilities.JSONEncoder, safe=False)
     raise Http404("Could not find reaction")
 
 
 # /data/strains/
 def data_strains(request):
-    return JsonResponse({"EDDData": get_edddata_strains()}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_strains()}, encoder=utilities.JSONEncoder)
 
 
 # /data/metadata/
@@ -1743,12 +1766,12 @@ def data_metadata(request):
                     {m.id: m.to_json() for m in MetadataType.objects.all()},
             }
         },
-        encoder=JSONDecimalEncoder)
+        encoder=utilities.JSONEncoder)
 
 
 # /data/carbonsources/
 def data_carbonsources(request):
-    return JsonResponse({"EDDData": get_edddata_carbon_sources()}, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_carbon_sources()}, encoder=utilities.JSONEncoder)
 
 
 # /download/<file_id>/

@@ -10,12 +10,14 @@
         {% trans 'Experiment Data Depot' context 'HTML Title' %}
         {% endblock head_title %}
     </title>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery-3.1.0.min.js'%}"></script>
+    <script type="text/javascript" src="{% static 'dist/vendor.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'dist/styles.css' %}" />
     <script type="text/javascript" src="https://support.jbei.org/s/d3a33d14666229eeb44aa891f5cfdb9a-T/en_US2qlmkc/70120/555786f388e7417b872cf1ceee812d89/2.0.8/_/download/batch/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector.js?locale=en-US&amp;collectorId=0c7d3216"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.css' %}" />
-    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{% stylesheet %}" />
+    {% stylesheet as branding_css %}
+    {% if branding_css %}
+    <link rel="stylesheet" type="text/css" href="{{ branding_css }}" />
+    {% endif %}
     {% block js_css %}
     {% if user.is_authenticated %}
     <script type="text/javascript">
@@ -109,6 +111,11 @@
     {% endif %}
     <span><a href="{% url 'edd_utils:index' %}">{% trans 'Utilities' %}</a></span>
     <span><a href="{% url 'flatpage' url='tutorials' %}">{% trans 'Tutorials' %}</a></span>
+    <span>
+        <a href="http://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204">
+            {% trans 'EDD Publication' %}
+        </a>
+    </span>
 </div>
 </body>
 </html>

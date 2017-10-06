@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/dev/ref/settings/
 
 import environ
 
-from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 
@@ -21,6 +20,7 @@ DOCKER_SENTINEL = object()
 env = environ.Env(
     EDD_DEBUG=(bool, True),
     ICE_HMAC_KEY=(str, ''),
+    LDAP_PASS=(str, None),
 )
 # Use the SECRET_KEY to detect if env is setup via Docker; if not, load from file secrets.env
 if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
@@ -30,13 +30,13 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 # Custom EDD-defined configuration options
 ###################################################################################################
 
-EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.0.6')
+EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.1.0')
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
 # help prevent developers from accidentally altering data in production). Any value that starts
 # with the prefix "DEVELOPMENT" or "TEST" will change EDD's background color and print a the value
 # of this variable at the top of each page.
-EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT',  default='PRODUCTION')
+EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT', default='PRODUCTION')
 
 # override to allow arbitrary text instead of requiring protein ID's to fit the pattern of Uniprot
 # accession id's (though at present validity isn't confirmed, only format).
@@ -51,10 +51,12 @@ PUBLISH_REST_API = False
 ##############################
 # ICE configuration used in multiple places, or that we want to be able to override in local.py
 ##############################
-ICE_KEY_ID = 'edd'
-ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
-ICE_URL = 'https://registry-test.jbei.org/'
-ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
+ICE_KEY_ID = env('ICE_NAME', default='edd')
+ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY', default=None)
+ICE_ADMIN_ACCOUNT = env('ICE_ADMIN_USER', default='Administrator')
+ICE_URL = env('ICE_URL', default='https://registry-test.jbei.org/')
+# HTTP request connection and read timeouts, respectively (seconds)
+ICE_REQUEST_TIMEOUT = (10, 10)
 
 # Be very careful in changing this value!! Useful to avoid heachaches in *LOCAL* testing against a
 # non-TLS ICE deployment. Also barring another solution, useful as a temporary/risky workaround for
@@ -76,15 +78,6 @@ EDD_MAIN_SOLR = {
 }
 
 
-###################################################################################################
-# Configure Django email variables
-# Note: Some of these are also referenced by Celery and custom Celery-related code
-###################################################################################################
-ADMINS = MANAGERS = (
-    ('William', 'wcmorrell@lbl.gov'),
-    ('Mark', 'mark.forrer@lbl.gov'),
-)
-
 # most of these just explicitly set the Django defaults, but since it affects Django, Celery, and
 # custom Celery support code, we enforce them here for consistency
 SERVER_EMAIL = 'jbei-edd-admin@lists.lbl.gov'
@@ -102,7 +95,7 @@ EMAIL_PORT = 25
 
 # SECURITY WARNING: do not run with debug turned on in production!
 # Override in local.py or set DEBUG=off in environment or secrets.env
-DEBUG = env('EDD_DEBUG')
+DEBUG = env('EDD_DEBUG', default=False)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # default quote from http://thedoomthatcametopuppet.tumblr.com/
@@ -127,22 +120,20 @@ INSTALLED_APPS = (
     'django.contrib.postgres',
     'django_extensions',  # django-extensions in pip
     'rest_framework',  # djangorestframework in pip
-    'form_utils',  # django-form-utils in pip
+    'rest_framework_swagger',
     'messages_extends',  # django-messages-extends in pip
     # django-allauth in pip; separate apps for each provider
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'django.contrib.flatpages',
-    # 'allauth.socialaccount.providers.github',
-    # 'allauth.socialaccount.providers.google',
-    # 'allauth.socialaccount.providers.linkedin_oauth2',
 
     # EDD apps
     'main',
     'edd_utils',
     'edd.profile',
-    'edd.branding'
+    'edd.branding',
+    'edd.rest',
 )
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -168,20 +159,25 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [  # DIRS is a list of filesystem paths, NOT app names
-            root('edd_utils', 'templates'),
             root('main', 'templates'),
         ],
         'APP_DIRS': True,
         'OPTIONS': {
             'debug': DEBUG,  # only strictly needed when the value differs from DEBUG. Included
                              # explicitly here since it was in the prior version of this file
-            'context_processors': TCP + [
+            'context_processors': [
+                # required to enable auth templates
+                'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.debug',
+                'django.template.context_processors.i18n',
+                'django.template.context_processors.media',
+                'django.template.context_processors.static',
+                'django.template.context_processors.tz',
+                'django.contrib.messages.context_processors.messages',
                 # this gives us access to the original request in templates. see e.g.:
                 # http://stackoverflow.com/questions/2882490
                 # also required for django-allauth
                 'django.template.context_processors.request',
-                # required to enable auth templates
-                'django.contrib.auth.context_processors.auth',
             ],
         }
     },
@@ -232,24 +228,40 @@ REST_FRAMEWORK = {
     # Note: in addition to requiring authentication for access, EDD uses custom study-level
     # permissions that should be enforced by custom code at the REST API implementation level. We
     # could also optionally override our model managers for more safety at the cost of
-    # convenience for developers.
+    # convenience for developers (e.g. while using the Django ORM via the command line).
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.DjangoModelPermissions',
+        # Note: DjangoModelPermissions would be better, but documentation won't support it
+        'rest_framework.permissions.IsAuthenticated',
     ),
 
-    # TODO: disable the browsable API to prevent access until we've had time to do a more careful
-    # design / testing of the API. See issues linked to SYNBIO-1299.
-    # 'DEFAULT_RENDERER_CLASSES': (
-    #     'rest_framework.renderers.JSONRenderer',
-    # ),
+    # disable DRF's built in HTML browsable API in favor of using the more fully-featured Swagger
+    # instead
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
     # allow default client-configurable pagination for REST API result size
     'DEFAULT_PAGINATION_CLASS': 'edd.rest.paginators.ClientConfigurablePagination',
+
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json',
 }
 
+# rest API documentation
 SWAGGER_SETTINGS = {
-    'api_version': '0.1',
-    'api_path': '/rest/',
-    'base_path': '/docs/',
+    'api_version': '0.3',
+    'api_path': '/',
+    'base_path': '/rest/docs',
+    'is_authenticated': True,
+    'permission_denied_handler': 'edd.rest.views.permission_denied_handler',
+    'info': {
+        'contact': 'jbei-edd-admin@lists.lbl.gov',
+        'description': "Documentation for the Experiment Data Depot's (EDD's) "
+                       "REST API. Both the REST API and this documentation are evolving "
+                       "works-in-progress. This initial API isn't mature, so use / create "
+                       "dependencies at your own risk!",
+        'license': 'BSD 3-Clause',
+        'licenseUrl': 'https://raw.githubusercontent.com/JBEI/edd/master/LICENSE.txt',
+        'title': 'EDD REST API',
+    },
 
 }
 

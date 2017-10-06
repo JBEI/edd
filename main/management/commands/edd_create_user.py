@@ -35,10 +35,8 @@ class Command(createsuperuser.Command):
         # attempt to load username from command-line options
         # username can come from command-line flag OR from interactive input
         self._username = options.get(self.UserModel.USERNAME_FIELD)
-        print('-- %s' % self._username)
         # let the base class handle all the user-creation details
         super(Command, self).handle(*args, **options)
-        print('>> %s' % self._username)
         # now try to create the validated EmailAddress object
         try:
             user = self.UserModel.objects.get(username=self._username)

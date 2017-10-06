@@ -8,7 +8,7 @@ import errno
 import os
 
 # Use everything in the common settings file
-from .base import *  # noqa
+from .base import *  # noqa: F403
 
 root = environ.Path(__file__) - 3  # we get this out of `from .base import *` too
 
@@ -20,12 +20,6 @@ MANAGERS = ADMINS = (
 ALLOWED_HOSTS = ['*', ]
 # Set the IPs where the Django debug toolbar will be available; use localhost IPv4 and IPv6
 INTERNAL_IPS = ['127.0.0.1', '::1', ]
-# Also add the 'external' IP for the nginx service proxying the appserver
-try:
-    import socket
-    INTERNAL_IPS.append(socket.gethostbyname('nginx'))
-except:
-    pass
 # Add login providers
 # INSTALLED_APPS = INSTALLED_APPS + (
 #     'allauth.socialaccount.providers.github',
@@ -33,25 +27,31 @@ except:
 #     'allauth.socialaccount.providers.linkedin_oauth2',
 # )
 
+# Uncomment this block to work around offsite LDAP authentication problems on development laptops
+# NOTE: this backend ignores passwords, and does immediate login for the provided username
+# AUTHENTICATION_BACKENDS = (
+#     'main.account.adapter.LocalTestBackend', # uncomment to simplify off-site development
+# )
+
 # Uncomment below to use DEBUG mode and include the debug toolbar
 # DEBUG = True
 
 # Add the Django Debug Toolbar to local instance
-if DEBUG:  # noqa
-    INSTALLED_APPS = INSTALLED_APPS + ('debug_toolbar', )  # noqa
+if DEBUG:  # noqa: F405
+    INSTALLED_APPS = INSTALLED_APPS + ('debug_toolbar', )  # noqa: F405
     MIDDLEWARE_CLASSES = (
         'debug_toolbar.middleware.DebugToolbarMiddleware',
-    ) + MIDDLEWARE_CLASSES  # noqa
+    ) + MIDDLEWARE_CLASSES  # noqa: F405
     DEBUG_TOOLBAR_CONFIG = {
-        'JQUERY_URL': '/static/main/js/lib/jquery/jquery-3.1.0.min.js',
+        'JQUERY_URL': '',
     }
 
-if env('HTTPS_METHOD', default=None) == 'noredirect':  # noqa
+if env('HTTPS_METHOD', default=None) == 'noredirect':  # noqa: F405
     DEFAULT_HTTP_PROTOCOL = 'http'
 
 # disable the initial new REST API by default since it's insecure. Only needed to support
 # create_lines.py and maintain_ice_links.py
-PUBLISH_REST_API = False
+PUBLISH_REST_API = True
 
 # False disables signup. A callable object will get called with a request object. A string type
 #   will attempt to look up and instantiate an object to use/call.

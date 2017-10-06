@@ -28,22 +28,23 @@ interface LineRecord extends EDDRecord {
     strain:number[];     // Strain ID array
     carbon:number[];     // Carbon Sources ID array
     exp:number;          // Experimenter ID
+    identifier:string;   // HTML ID for the line filter checkbox
 }
 
 
 
 // This is what we expect in EDDData.Assays
 interface AssayRecord extends EDDRecord {
-    active:boolean;     // Active assay
-    lid:number;         // Line ID
-    pid:number;         // Protocol ID
-    mod:number;         // Modification epoch
-    exp:number;         // Experimenter ID
-    measures:number[];  // All collected measurements associated with Assay
-    metabolites:number[];       // Metabolite measurements associated with Assay
-    transcriptions:number[];    // Transcription measurements associated with Assay
-    proteins:number[];          // Proteins measurements associated with Assay
-    general: number[];          // Measurements for everything else
+    active:boolean;          // Active assay
+    lid:number;              // Line ID
+    pid:number;              // Protocol ID
+    mod:number;              // Modification epoch
+    exp:number;              // Experimenter ID
+    measures:number[];       // All collected measurements associated with Assay
+    metabolites:number[];    // Metabolite measurements associated with Assay
+    transcriptions:number[]; // Transcription measurements associated with Assay
+    proteins:number[];       // Proteins measurements associated with Assay
+    general: number[];       // Measurements for everything else
     count: number;
 }
 
@@ -73,28 +74,25 @@ interface AssayMeasurementRecord {
 }
 
 
+interface MeasurementCompartmentRecord {
+    name: string;
+    code: string;
+}
+
 
 interface MeasurementTypeRecord {
-    id:number;      // Type ID
-    name:string;    // Type name
-    sn:string;      // Short-form name
-    family:string;  // 'm', 'g', 'p' for metabolite, gene, protien
+    id: number;     // Type ID
+    uuid: string;   // Type UUID
+    name: string;   // Type name
+    short: string;  // Short-form name
+    family: string; // 'm', 'g', 'p' for metabolite, gene, protien
 }
 
 // This is what we expect in EDDData.MetaboliteTypes
 interface MetaboliteTypeRecord extends MeasurementTypeRecord {
-    ans:string[];   // Altername Names
-    f:string;       // Molecular Formula
-    mm:number;      // Molar Mass As Number
-    cc:number;      // Carbon Count As Number
-    chgn:number;    // Charge As Number
-    kstr:string;    // Keywords string (used in autocomplete.ts, prepared in UtilitiesMeta.pm)
-    // Structure made by autocomplete.ts that prepares lowercase versions of every other value
-    // for every other key in the object.
-    _l:any;
-    // Made and used by autocomplete.ts.  Both this and _l should be described in an interface
-    // derived from this instead.
-    selectString:string;
+    formula: string;    // Molecular Formula
+    molar: number;      // Molar Mass As Number
+    carbons:number;     // Carbon Count As Number
 }
 
 
@@ -111,32 +109,21 @@ interface GeneTypeRecord extends MeasurementTypeRecord {
 
 
 interface UnitType {
-    name:string;
-
-    /////// BELOW ARE DEPRECATED ////////
-    altnames:string;
-    selectString:string;
+    id: number;
+    name: string;
 }
 
 
 interface MetadataTypeRecord {
     id: number;
     name: string;
+    i18n: string;
+    input_type: string;
+    input_size: number;
+    prefix: string;
     postfix: string;
     default: string;
     context: string;  // maybe switch to an enum
-
-    /////// TODO: these values should be sent too ////////
-    // i18n: string;
-    // input_type: string;
-
-    /////// TODO: DEPRECATE BELOW, USE BETTER VARIABLE NAMES ///////
-    gn: string;
-    gid: number;
-    is: number;
-    pre: string;
-    ll: boolean;
-    pl: boolean;
 }
 
 
@@ -153,8 +140,6 @@ interface StrainRecord extends EDDRecord {
 interface CarbonSourceRecord extends EDDRecord {
     labeling: string;
     volume: number;
-    // TODO: this is redundant, remove it
-    initials: string;
 }
 
 
@@ -184,7 +169,7 @@ interface EDDData {
     CSources:{[id:number]: CarbonSourceRecord};
     GeneTypes:{[id:number]: ProteinTypeRecord};
     Lines:{[id:number]: LineRecord};
-    MeasurementTypeCompartments:{[id:number]: any};
+    MeasurementTypeCompartments:{[id:number]: MeasurementCompartmentRecord};
     MeasurementTypes:{[id:number]: MeasurementTypeRecord};
     MetaboliteTypes:{[id:number]: MetaboliteTypeRecord};
     MetaDataTypes:{[id:number]: MetadataTypeRecord};

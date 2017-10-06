@@ -1,9 +1,24 @@
+FROM jbei/edd-node:latest as node
+
+# Copy in EDD code
+ARG EDD_VERSION=2.1.0
+ARG GIT_BRANCH=master
+ARG GIT_URL=https://github.com/JBEI/edd.git
+ENV EDD_VERSION=${EDD_VERSION}
+RUN git clone --depth 1 -b ${GIT_BRANCH} ${GIT_URL} code \
+    && echo "Cache-bust: ${EDD_VERSION}" \
+    && cp ./code/docker_services/edd/tsconfig.json \
+        ./code/docker_services/edd/webpack.config.js \
+        . \
+    && npm run build
+
+# ---
+
 FROM buildpack-deps:stretch
 
-MAINTAINER William Morrell "WCMorrell@lbl.gov"
-
-ENV PYTHONUNBUFFERED 1
-ENV LANG C.UTF-8
+LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
+WORKDIR /code
+ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
 
 # include Debian packages required to build pip packages
 RUN apt-get clean && apt-get update \
@@ -19,6 +34,7 @@ RUN apt-get clean && apt-get update \
         libpq-dev \
         libsasl2-dev \
         libssl-dev \
+        libyaml-dev \
         netcat \
         postgresql-client \
         python-all \
@@ -39,6 +55,7 @@ COPY requirements.txt /tmp/
 RUN pip install -r /tmp/requirements.txt
 
 # Add Tini
+# Keep for now to maintain backward-compatibility; better to launch with docker run --init
 ENV TINI_VERSION v0.13.2
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini
@@ -46,10 +63,8 @@ RUN chmod +x /tini
 # Copy in entrypoint shell scripts
 COPY entrypoint.sh /usr/local/bin
 
-# Copy in EDD python code
-RUN git clone --depth 1 -b master https://github.com/JBEI/edd.git /usr/local/edd
-
-WORKDIR /code
+# Copy in code from node image
+COPY --from=node /code /usr/local/edd
 
 ENTRYPOINT ["/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["--help"]

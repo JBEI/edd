@@ -4,30 +4,12 @@
 
 {% block js_css %}
   {{ block.super }}
-  <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
   <script type="text/javascript">
-  // FIXME move this somewhere central
-  function disclose() {
-    $(this).closest('.disclose').toggleClass('discloseHide');
-    return false;
-  }
-  $(window).on('load', function () {
-    $('.disclose').find('a.discloseLink').on('click', disclose);
-  });
+   $(document).on('click', '.disclose .discloseLink', function(e) {
+            $(e.target).closest('.disclose').toggleClass('discloseHide');
+            return false;
+        });
   </script>
-  <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-
-  <style type="text/css">
-    /* style for SVG graphics */
-    .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-    .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
-    .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
-    .cT { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-    /* style for errors */
-    .bad { color: red; background-color: transparent; }
-  </style>
   {{ od_select_form.media }}
 {% endblock js_css %}
 

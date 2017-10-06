@@ -100,7 +100,7 @@ class SkylineTests (TestCase):
         parser = skyline.SkylineParser()
         with open(file_name, 'U') as file:
             result = parser.export(file)
-            assert(['4', 'A', 22] in result['rows'])
+            self.assertIn(skyline.Record('4', 'A', 22), result['rows'])
 
 
 ########################################################################

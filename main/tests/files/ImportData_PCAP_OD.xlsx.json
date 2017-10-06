@@ -1,0 +1,199 @@
+{
+  "file_data": {
+    "worksheets": [
+      [
+        {
+          "headers": [
+            "Line Name",
+            "Control",
+            "Measurement Type",
+            24
+          ],
+          "values": [
+            [
+              "B-Mm",
+              "F",
+              "Optical Density",
+              5.31867
+            ],
+            [
+              "A-Ml",
+              "F",
+              "Optical Density",
+              4.886
+            ],
+            [
+              "BL-Mm",
+              "F",
+              "Optical Density",
+              4.4
+            ],
+            [
+              "A-Mh",
+              "F",
+              "Optical Density",
+              5.29333
+            ],
+            [
+              "A-Hl",
+              "F",
+              "Optical Density",
+              5.03733
+            ],
+            [
+              "2X-Hh",
+              "F",
+              "Optical Density",
+              4.18
+            ],
+            [
+              "B-Mh",
+              "F",
+              "Optical Density",
+              5.21
+            ],
+            [
+              "B-Hl",
+              "F",
+              "Optical Density",
+              3.89067
+            ],
+            [
+              "B-Hm",
+              "F",
+              "Optical Density",
+              4.03733
+            ],
+            [
+              "B-Hh",
+              "F",
+              "Optical Density",
+              4.248
+            ],
+            [
+              "A-Hm",
+              "F",
+              "Optical Density",
+              4.81667
+            ],
+            [
+              "A-Hh",
+              "F",
+              "Optical Density",
+              4.69667
+            ],
+            [
+              "A-Mm",
+              "F",
+              "Optical Density",
+              4.95867
+            ],
+            [
+              "BL-Mh",
+              "F",
+              "Optical Density",
+              4.10533
+            ],
+            [
+              "A-Ll",
+              "F",
+              "Optical Density",
+              4.90733
+            ],
+            [
+              "2X-Hm",
+              "F",
+              "Optical Density",
+              4.40867
+            ],
+            [
+              "2X-Ll",
+              "F",
+              "Optical Density",
+              6.362
+            ],
+            [
+              "2X-Lm",
+              "F",
+              "Optical Density",
+              4.87267
+            ],
+            [
+              "2X-Lh",
+              "F",
+              "Optical Density",
+              4.96467
+            ],
+            [
+              "2X-Ml",
+              "F",
+              "Optical Density",
+              5.93
+            ],
+            [
+              "2X-Mm",
+              "F",
+              "Optical Density",
+              4.316
+            ],
+            [
+              "A-Lm",
+              "F",
+              "Optical Density",
+              6.112
+            ],
+            [
+              "A-Lh",
+              "F",
+              "Optical Density",
+              5.778
+            ],
+            [
+              "BL-Ml",
+              "F",
+              "Optical Density",
+              4.46267
+            ],
+            [
+              "B-Ll",
+              "F",
+              "Optical Density",
+              4.14333
+            ],
+            [
+              "B-Lm",
+              "F",
+              "Optical Density",
+              6.20333
+            ],
+            [
+              "2X-Hl",
+              "F",
+              "Optical Density",
+              5.866
+            ],
+            [
+              "2X-Mh",
+              "F",
+              "Optical Density",
+              4.192
+            ],
+            [
+              "B-Lh",
+              "F",
+              "Optical Density",
+              5.69467
+            ],
+            [
+              "B-Ml",
+              "F",
+              "Optical Density",
+              4.17733
+            ]
+          ]
+        }
+      ]
+    ]
+  },
+  "file_type": "xlsx"
+}

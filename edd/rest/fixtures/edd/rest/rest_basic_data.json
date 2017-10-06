@@ -1,0 +1,543 @@
+[
+  {
+    "fields": {
+      "name": "study_read_only_group",
+      "permissions": []
+    },
+    "model": "auth.group",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "name": "study_write_only_group",
+      "permissions": []
+    },
+    "model": "auth.group",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "name": "study_default_read_group",
+      "permissions": []
+    },
+    "model": "auth.group",
+    "pk": 3
+  },
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "",
+      "first_name": "",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": true,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "superuser"
+    },
+    "model": "auth.user",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "",
+      "first_name": "",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "unprivileged_user"
+    },
+    "model": "auth.user",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "study_read_only@localhost",
+      "first_name": "",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "study.reader.user"
+    },
+    "model": "auth.user",
+    "pk": 3
+  },
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "study.writer@localhost",
+      "first_name": "",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "study.writer.user"
+    },
+    "model": "auth.user",
+    "pk": 4
+  },
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "study.group_reader@localhost",
+      "first_name": "",
+      "groups": [
+        1
+      ],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "study.reader.group.user"
+    },
+    "model": "auth.user",
+    "pk": 5
+  },
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "study.group_writer@localhost",
+      "first_name": "",
+      "groups": [
+        2
+      ],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "study.writer.group.user"
+    },
+    "model": "auth.user",
+    "pk": 6
+  },
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "default_read@localhost",
+      "first_name": "",
+      "groups": [
+        3
+      ],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "study.default_read_group.user"
+    },
+    "model": "auth.user",
+    "pk": 7
+  },
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "staff@localhost",
+      "first_name": "",
+      "groups": [],
+      "is_active": true,
+      "is_staff": true,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "staff.user"
+    },
+    "model": "auth.user",
+    "pk": 8
+  },
+  {
+    "fields": {
+      "mod_by": 1,
+      "mod_time": "2017-06-06T00:13:38.0000Z",
+      "origin": "localhost",
+      "path": null
+    },
+    "model": "main.update",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Proteomics protocol used at JBEI",
+      "meta_store": "{}",
+      "name": "JBEI Proteomics",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "fd0d81d8-0877-4e0f-bf40-83cfbbf1efb9"
+    },
+    "model": "main.eddobject",
+    "pk": 10
+  },
+  {
+    "fields": {
+      "owned_by": 1,
+      "variant_of": null,
+      "default_units": null,
+      "categorization": "TPOMICS",
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.protocol",
+    "pk": 10
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Everyone read study",
+      "meta_store": "{}",
+      "name": "Everyone read Study",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "65be9077-df4d-4886-bf45-e5703a796737"
+    },
+    "model": "main.eddobject",
+    "pk": 20
+  },
+  {
+    "fields": {
+      "contact": null,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "protocols": [],
+      "slug": "everyone-read-study",
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.study",
+    "pk": 20
+  },
+  {
+    "fields": {
+      "permission_type": "R",
+      "study": 20
+    },
+    "model": "main.everyonepermission",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Everyone write study",
+      "meta_store": "{}",
+      "name": "Everyone write Study",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "7f959400-7186-48b5-acaa-92f66523267e"
+    },
+    "model": "main.eddobject",
+    "pk": 21
+  },
+  {
+    "fields": {
+      "contact": null,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "protocols": [],
+      "slug": "everyone-write-study",
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.study",
+    "pk": 21
+  },
+  {
+    "fields": {
+      "permission_type": "W",
+      "study": 21
+    },
+    "model": "main.everyonepermission",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Group write study",
+      "meta_store": "{}",
+      "name": "Group write Study",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "25241444-4232-4c93-b9e5-4ee423ff54a1"
+    },
+    "model": "main.eddobject",
+    "pk": 22
+  },
+  {
+    "fields": {
+      "contact": null,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "protocols": [],
+      "slug": "group-write-study",
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.study",
+    "pk": 22
+  },
+  {
+    "fields": {
+      "group": 2,
+      "permission_type": "W",
+      "study": 22
+    },
+    "model": "main.grouppermission",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Group read study",
+      "meta_store": "{}",
+      "name": "Group read Study",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "09123790-548c-45c3-8b22-f81f61668e37"
+    },
+    "model": "main.eddobject",
+    "pk": 23
+  },
+  {
+    "fields": {
+      "contact": null,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "protocols": [],
+      "slug": "group-read-study",
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.study",
+    "pk": 23
+  },
+  {
+    "fields": {
+      "group": 1,
+      "permission_type": "R",
+      "study": 23
+    },
+    "model": "main.grouppermission",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Everyone read line",
+      "meta_store": "{}",
+      "name": "Everyone read line",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "f8f5924b-affd-496c-8c8c-047b71c07ceb"
+    },
+    "model": "main.eddobject",
+    "pk": 30
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 20,
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.line",
+    "pk": 30
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Everyone write line",
+      "meta_store": "{}",
+      "name": "Everyone write line",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "64670b12-258c-4c48-a2b4-1befc747f708"
+    },
+    "model": "main.eddobject",
+    "pk": 31
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "replicate": null,
+      "strains": [],
+      "study": 21,
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.line",
+    "pk": 31
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Everyone read Assay",
+      "meta_store": "{}",
+      "name": "Everyone read Assay",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "b760d850-43f0-425a-80a2-47601027aee5"
+    },
+    "model": "main.eddobject",
+    "pk": 40
+  },
+  {
+    "fields": {
+      "line": 30,
+      "protocol": 10,
+      "experimenter": 4,
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.assay",
+    "pk": 40
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "Everyone write Assay",
+      "meta_store": "{}",
+      "name": "Everyone write Assay",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "17334ba1-120a-4bb8-967c-b0b94dbd764b"
+    },
+    "model": "main.eddobject",
+    "pk": 41
+  },
+  {
+    "fields": {
+      "line": 31,
+      "protocol": 10,
+      "experimenter": 4,
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.assay",
+    "pk": 41
+  },
+  {
+    "fields": {
+      "active": true,
+      "assay": 40,
+      "compartment": "0",
+      "experimenter": 4,
+      "measurement_format": "0",
+      "measurement_type": 1,
+      "meta_store": "{}",
+      "update_ref": 1,
+      "x_units": 2,
+      "y_units": 1
+    },
+    "model": "main.measurement",
+    "pk": 50
+  },
+  {
+    "fields": {
+      "active": true,
+      "assay": 41,
+      "compartment": "0",
+      "experimenter": 4,
+      "measurement_format": "0",
+      "measurement_type": 1,
+      "meta_store": "{}",
+      "update_ref": 1,
+      "x_units": 2,
+      "y_units": 1
+    },
+    "model": "main.measurement",
+    "pk": 51
+  },
+  {
+    "fields": {
+      "measurement": 50,
+      "updated": 1,
+      "x": "[\"1.00000\"]",
+      "y": "[\"2.00000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 60
+  },
+  {
+    "fields": {
+      "measurement": 51,
+      "updated": 1,
+      "x": "[\"1.00000\"]",
+      "y": "[\"2.00000\"]"
+    },
+    "model": "main.measurementvalue",
+    "pk": 61
+  }
+]
