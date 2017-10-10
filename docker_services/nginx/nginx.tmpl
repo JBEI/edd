@@ -41,10 +41,22 @@ map $http_upgrade $proxy_connection {
   '' close;
 }
 
+# Apply fix for very long server names
+server_names_hash_bucket_size 128;
+
+# Default dhparam
+ssl_dhparam /etc/nginx/dhparam/dhparam.pem;
+
 # Set appropriate X-Forwarded-Ssl header
 map $scheme $proxy_x_forwarded_ssl {
   default off;
   https on;
+}
+
+# Handle HTTP/1.0 requests without Host properly for Django
+map $http_host $proxy_host {
+    default $http_host;
+    ''      $host;
 }
 
 gzip on;
@@ -58,13 +70,21 @@ log_format vhost '$host $remote_addr - $remote_user [$time_local] '
 
 access_log off;
 
+{{ if $.Env.RESOLVERS }}
+# Add dynamically-computed DNS resolvers
+resolver {{ $.Env.RESOLVERS }};
+{{ else }}
+# No dynamically-computed DNS resolvers; use Google
+resolver 8.8.8.8 8.8.4.4;
+{{ end }}
+
 {{ if (exists "/etc/nginx/proxy.conf") }}
 include /etc/nginx/proxy.conf;
 {{ else }}
 # HTTP 1.1 support
 proxy_http_version 1.1;
 proxy_buffering off;
-proxy_set_header Host $http_host;
+proxy_set_header Host $proxy_host;
 proxy_set_header Upgrade $http_upgrade;
 proxy_set_header Connection $proxy_connection;
 proxy_set_header X-Real-IP $remote_addr;
@@ -77,9 +97,13 @@ proxy_set_header X-Forwarded-Port $proxy_x_forwarded_port;
 proxy_set_header Proxy "";
 {{ end }}
 
+{{ $enable_ipv6 := eq (or ($.Env.ENABLE_IPV6) "") "true" }}
 server {
     server_name _; # This is just an invalid value which will never trigger on a real hostname.
     listen 80;
+    {{ if $enable_ipv6 }}
+    listen [::]:80;
+    {{ end }}
     access_log /var/log/nginx/access.log vhost;
     return 503;
 }
@@ -88,6 +112,9 @@ server {
 server {
     server_name _; # This is just an invalid value which will never trigger on a real hostname.
     listen 443 ssl http2;
+    {{ if $enable_ipv6 }}
+    listen [::]:443 ssl http2;
+    {{ end }}
     access_log /var/log/nginx/access.log vhost;
     return 503;
 
@@ -98,7 +125,9 @@ server {
 {{ end }}
 
 {{ range $host, $containers := groupByMulti $ "Env.VIRTUAL_HOST" "," }}
-{{ $upstream_name := sha1 $host }}
+{{ $host := trim $host }}
+{{ $is_regexp := hasPrefix "~" $host }}
+{{ $upstream_name := when $is_regexp (sha1 $host) $host }}
 # {{ $host }}
 upstream {{ $upstream_name }} {
 {{ range $container := $containers }}
@@ -106,7 +135,7 @@ upstream {{ $upstream_name }} {
 
     {{ range $knownNetwork := $CurrentContainer.Networks }}
         {{ range $containerNetwork := $container.Networks }}
-            {{ if eq $knownNetwork.Name $containerNetwork.Name }}
+            {{ if (and (ne $containerNetwork.Name "ingress") (or (eq $knownNetwork.Name $containerNetwork.Name) (eq $knownNetwork.Name "host"))) }}
             ## Can be connect with "{{ $containerNetwork.Name }}" network
 
             {{/* If only 1 port exposed, use that */}}
@@ -130,7 +159,7 @@ upstream {{ $upstream_name }} {
 {{ $default_server := index (dict $host "" $default_host "default_server") $host }}
 
 {{/* Get the VIRTUAL_PROTO defined by containers w/ the same vhost, falling back to "http" */}}
-{{ $proto := or (first (groupByKeys $containers "Env.VIRTUAL_PROTO")) "http" }}
+{{ $proto := trim (or (first (groupByKeys $containers "Env.VIRTUAL_PROTO")) "http") }}
 
 {{/* Get the HTTPS_METHOD defined by containers w/ the same vhost, falling back to "redirect" */}}
 {{ $https_method := or (first (groupByKeys $containers "Env.HTTPS_METHOD")) "redirect" }}
@@ -159,6 +188,9 @@ upstream {{ $upstream_name }} {
 server {
     server_name {{ $host }};
     listen 80 {{ $default_server }};
+    {{ if $enable_ipv6 }}
+    listen [::]:80 {{ $default_server }};
+    {{ end }}
     access_log /var/log/nginx/access.log vhost;
     return 301 https://$host$request_uri;
 }
@@ -167,6 +199,9 @@ server {
 server {
     server_name {{ $host }};
     listen 443 ssl http2 {{ $default_server }};
+    {{ if $enable_ipv6 }}
+    listen [::]:443 ssl http2 {{ $default_server }};
+    {{ end }}
     root /usr/share/nginx/html;
     access_log /var/log/nginx/access.log vhost;
 
@@ -176,7 +211,7 @@ server {
     }
 
     ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
-    ssl_ciphers 'ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS';
+    ssl_ciphers 'ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:!DSS';
 
     ssl_prefer_server_ciphers on;
     ssl_session_timeout 5m;
@@ -190,11 +225,10 @@ server {
     ssl_dhparam {{ printf "/etc/nginx/certs/%s.dhparam.pem" $cert }};
     {{ end }}
 
-    {{ if (exists (printf "etc/nginx/certs/%s.trustchain.crt" $cert)) }}
+    {{ if (exists (printf "/etc/nginx/certs/%s.chain.pem" $cert)) }}
     ssl_stapling on;
     ssl_stapling_verify on;
-    ssl_trusted_certificate {{ printf "etc/nginx/certs/%s.trustchain.crt" $cert }};
-    resolver 8.8.8.8 8.8.4.4;
+    ssl_trusted_certificate {{ printf "/etc/nginx/certs/%s.chain.pem" $cert }};
     {{ end }}
 
     {{ if (ne $https_method "noredirect") }}
@@ -230,9 +264,8 @@ server {
     {{ if $vhostStatic }}
     location @upstream_proxy {
       proxy_pass_header     Server;
-      # set permissive timeouts for synchronous requests (e.g. Experiment Description, can time out querying ICE)
-      proxy_connect_timeout 60;
-      proxy_read_timeout    60;
+      proxy_connect_timeout 20;
+      proxy_read_timeout    20;
       proxy_pass            {{ trim $proto }}://{{ trim $upstream_name }};
       proxy_redirect        {{ trim $proto }}://{{ trim $upstream_name }}   https://$host;
     }
@@ -246,8 +279,16 @@ server {
 server {
     server_name {{ $host }};
     listen 80 {{ $default_server }};
+    {{ if $enable_ipv6 }}
+    listen [::]:80 {{ $default_server }};
+    {{ end }}
     root /usr/share/nginx/html;
     access_log /var/log/nginx/access.log vhost;
+
+    # ignore requests with illegal host headers
+    if ($host !~* ^{{ $host }}$) {
+        return 444;
+    }
 
     {{ if (exists (printf "/etc/nginx/vhost.d/%s" $host)) }}
     include {{ printf "/etc/nginx/vhost.d/%s" $host }};
@@ -290,6 +331,9 @@ server {
 server {
     server_name {{ $host }};
     listen 443 ssl http2 {{ $default_server }};
+    {{ if $enable_ipv6 }}
+    listen [::]:443 ssl http2 {{ $default_server }};
+    {{ end }}
     access_log /var/log/nginx/access.log vhost;
     return 500;
 
