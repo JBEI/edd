@@ -2,21 +2,8 @@
 {% load staticfiles %}
 
 {% block js_css %}
-{{ block.super }}
-<script type="text/javascript" src="{% static 'lib/jquery.cookie.js' %}"></script>
-<script src="{% static 'edd_utils/js/lib/dropzone.js' %}"></script>
-<script src="{% static 'edd_utils/js/conversions.js' %}"></script>
-<script>
-$(document).ready(function () {
-  var table_out = new TableOutput("#formatted", "#sep_type", "#table_type");
-  $("#sep_type").change(function () {
-    $("#formatted").data().format_table();
-  });
-  $("#table_type").change(function() {
-    $("#formatted").data().format_table();
-  });
-});
-</script>
+  {{ block.super }}
+  <script type="text/javascript" src="{% static 'dist/Skyline_Convert.js' %}"></script>
 {% endblock js_css %}
 
 

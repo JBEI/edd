@@ -4,12 +4,7 @@
 {% block js_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}"/>
-    <link rel="stylesheet" type="text/css" href="{% static 'lib/jquery-ui/jquery-ui.min.css' %}" />
-    <script type="text/javascript" src="{% static 'lib/jquery.cookie.js' %}"></script>
-    <script type="text/javascript" src="{% static 'lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
-    <script type="text/javascript" src="{% static 'edd_utils/js/lib/dropzone.js' %}"></script>
-    <script type="text/javascript" src="{% static 'edd_utils/js/cytometry.js' %}"></script>
+    <script type="text/javascript" src="{% static 'dist/Cytometry.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -31,7 +26,8 @@ Cytometry Import
             imported data, contact the Study creator to get permissions added.</p>
         <label for="id_study_0" style="float:left;">
             <span>Select Study</span>
-            <input class="autocomp autocomp_study" id="id_study_0" name="study_0" type="text"/>
+            <input class="autocomp autocomp_study" id="id_study_0" name="study_0" type="text"
+                    eddautocompletetype="StudyWritable" />
             <input id="id_study_1" name="study_1" type="hidden"/>
         </label>
         <label for="id_create_study" style="float:left;margin:0 4em;" class="off">
