@@ -236,10 +236,11 @@ export module EDDAuto {
                     var cacheKey, record, visibleValue, hiddenValue;
                     if (ui.item) {
                         record = self.loadRecord(ui.item);
-                        self.visibleInput.val(self.loadDisplayValue(record));
-                        self.hiddenInput.val(self.loadHiddenValue(record))
+                        self.visibleInput.val(visibleValue = self.loadDisplayValue(record));
+                        self.hiddenInput.val(hiddenValue = self.loadHiddenValue(record))
                             .trigger('change')
                             .trigger('input');
+                        self.visibleInput.trigger('autochange', [visibleValue, hiddenValue]);
                     }
                     return false;
                 },

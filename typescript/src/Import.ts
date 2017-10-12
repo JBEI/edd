@@ -2387,6 +2387,26 @@ module EDDTableImport {
 
             // enable autocomplete on statically defined fields
             EDDAuto.BaseAuto.initPreexisting($('#typeDisambiguationStep'));
+
+            // set autofill callback for compartment/units
+            ['.autocomp_compartment', '.autocomp_unit'].forEach((selector) => {
+                var table: JQuery = $('#disambiguateMeasurementsTable');
+                // when an autocomplete changes
+                table.on('autochange', selector, (ev, visibleValue, hiddenValue) => {
+                    var visibleInput: JQuery = $(ev.target);
+                    // mark the changed autocomplete as user-set
+                    visibleInput.data('userSetValue', true);
+                    // then fill in all following autocompletes of same type
+                    // until one is user-set
+                    visibleInput.closest('tr').nextAll('tr').find(selector).each((i, element) => {
+                        var following = $(element);
+                        if (following.data('userSetValue')) {
+                            return false;
+                        }
+                        following.val(visibleValue).next('input').val(hiddenValue);
+                    });
+                });
+            });
         }
 
         setAllInputsEnabled(enabled: boolean) {
@@ -3448,6 +3468,7 @@ module EDDTableImport {
                 container:$(this.row.insertCell()),
                 cache:MeasurementDisambiguationRow.compAutoCache
             });
+            this.compAuto.visibleInput.addClass('autocomp_compartment');
             this.typeAuto = new EDDAuto.GenericOrMetabolite({
                 container:$(this.row.insertCell()),
                 cache:MeasurementDisambiguationRow.metaboliteAutoCache
@@ -3456,11 +3477,11 @@ module EDDTableImport {
                 container:$(this.row.insertCell()),
                 cache:MeasurementDisambiguationRow.unitAutoCache
             });
+            this.unitsAuto.visibleInput.addClass('autocomp_unit');
 
             // create autocompletes
             [this.compAuto, this.typeAuto, this.unitsAuto].forEach(
                 (auto: EDDAuto.BaseAuto): void => {
-                    var cell: JQuery = $(this.row.insertCell()).addClass('disamDataCell');
                     auto.container.addClass('disamDataCell');
                     auto.visibleInput.addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
                     auto.hiddenInput.addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
