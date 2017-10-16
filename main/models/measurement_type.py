@@ -403,38 +403,8 @@ class ProteinIdentifier(MeasurementType):
 
     def update_from_uniprot(self):
         match = self.accession_pattern.match(self.short_name)
-        # define some RDF predicate terms
-        fullname_predicate = URIRef('http://purl.uniprot.org/core/fullName')
-        mass_predicate = URIRef('http://purl.uniprot.org/core/mass')
-        name_predicate = URIRef('http://purl.uniprot.org/core/recommendedName')
-        sequence_predicate = URIRef('http://purl.uniprot.org/core/sequence')
-        value_predicate = URIRef('http://www.w3.org/1999/02/22-rdf-syntax-ns#value')
         if match:
-            url = 'http://www.uniprot.org/uniprot/%s.rdf' % self.short_name
-            try:
-                graph = Graph()
-                graph.parse(url)
-                # find top-level references
-                subject = URIRef('http://purl.uniprot.org/uniprot/%s' % self.short_name)
-                name_ref = graph.value(subject, name_predicate)
-                isoform = graph.value(subject, sequence_predicate)
-                # find values of interest
-                name = graph.value(name_ref, fullname_predicate)
-                sequence = graph.value(isoform, value_predicate)
-                mass = graph.value(isoform, mass_predicate)
-                # update the ProteinIdentifier
-                if name or sequence or mass:
-                    datasource = Datasource.objects.create(name='UniProt', url=url)
-                    self.type_name = name.value if name else self.type_name
-                    self.type_source = datasource
-                    self.length = len(sequence.value) if sequence else None
-                    self.mass = mass.value if mass else None
-                    self.save()
-            except:
-                logger.exception('Failed to load UniProt')
-                raise ValidationError(
-                    _u('Could not load information on %s from UniProt') % self.short_name
-                )
+            self._load_uniprot(self.short_name, self.accession_id)
 
     @classmethod
     def _load_uniprot(cls, uniprot_id, accession_id):
@@ -454,19 +424,24 @@ class ProteinIdentifier(MeasurementType):
             name_ref = graph.value(subject, name_predicate)
             isoform = graph.value(subject, sequence_predicate)
             # find values of interest
+            values = {'accession_id': accession_id}
             name = graph.value(name_ref, fullname_predicate)
+            if name:
+                values.update(type_name=name.value)
             sequence = graph.value(isoform, value_predicate)
+            if sequence:
+                values.update(length=len(sequence.value))
             mass = graph.value(isoform, mass_predicate)
+            if mass:
+                values.update(mass=mass.value)
             # build the ProteinIdentifier
             datasource = Datasource.objects.create(name='UniProt', url=url)
-            return cls.objects.create(
-                type_name=name.value,
+            values.update(type_source=datasource)
+            protein, created = cls.objects.update_or_create(
                 short_name=uniprot_id,
-                type_source=datasource,
-                accession_id=accession_id,
-                length=len(sequence.value),
-                mass=mass.value,
+                defaults=values,
             )
+            return protein
         except:
             logger.exception('Failed to read UniProt: %s', uniprot_id)
             raise ValidationError(_u('Could not load information on %s from UniProt') % uniprot_id)
