@@ -72,7 +72,6 @@ class TableImport(object):
         self._request = request
         # end up looking for hours repeatedly, just load once at init
         self._hours = models.MeasurementUnit.objects.get(unit_name='hours')
-        self._datasource = models.Datasource(name=self._user.username)
         if not self._study.user_can_write(user):
             raise PermissionDenied(
                 '%s does not have write access to study "%s"' % (user.username, study.name)
@@ -367,16 +366,15 @@ class TableImport(object):
         compartment = self._load_compartment(item)
         type_id = self._load_type_id(item)
         units_id = self._load_unit(item)
-        # if type_id is not set, assume it's a protein lookup
-        # TODO: also accept PubChem ID, etc
+        # if type_id is not set, assume it's a lookup pattern
         if not type_id:
             name = item.get('measurement_name', None)
-            protein = models.ProteinIdentifier.load_or_create(
-                name,
-                self._datasource,
-                self._user.email,
-            )
-            return MType(compartment, protein.pk, units_id)
+            if models.Metabolite.pubchem_pattern.match(name):
+                metabolite = models.Metabolite.load_or_create(name)
+                return MType(compartment, metabolite.pk, units_id)
+            else:
+                protein = models.ProteinIdentifier.load_or_create(name, self._user)
+                return MType(compartment, protein.pk, units_id)
         return MType(compartment, type_id, units_id)
 
     def _mtype_proteomics(self, item, default=None):
@@ -384,11 +382,7 @@ class TableImport(object):
         compartment = self._load_compartment(item)
         measurement_name = item.get('measurement_name', None)
         units_id = self._load_unit(item)
-        protein = models.ProteinIdentifier.load_or_create(
-            measurement_name,
-            self._datasource,
-            self._user.email,
-        )
+        protein = models.ProteinIdentifier.load_or_create(measurement_name, self._user)
         found_type = MType(compartment, protein.pk, units_id)
         return found_type
 
@@ -400,19 +394,11 @@ class TableImport(object):
         # check if measurement_name should load metabolite
         match = models.Metabolite.pubchem_pattern.match(measurement_name)
         if match:
-            cid = int(match.group(1))
-            try:
-                metabolite = models.Metabolite.objects.get(pubchem_cid=cid)
-                found_type = MType(compartment, metabolite.pk, units_id)
-            except models.Metabolite.DoesNotExist:
-                # TODO lookup using PubChem APIs?
-                pass
+            # TODO: refactor this to eliminate double-check on format, try all available lookups
+            metabolite = models.Metabolite.load_or_create(measurement_name)
+            found_type = MType(compartment, metabolite.pk, units_id)
         else:
-            protein = models.ProteinIdentifier.load_or_create(
-                measurement_name,
-                self._datasource,
-                self._user.email,
-            )
+            protein = models.ProteinIdentifier.load_or_create(measurement_name, self._user)
             found_type = MType(compartment, protein.pk, units_id)
         return found_type
 

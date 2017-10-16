@@ -27,6 +27,7 @@ future==0.16.0
 gunicorn==19.7.1
 idna==2.6
 ipaddress==1.0.18
+isodate==0.5.4
 jdcal==1.3
 jsonpickle==0.9.5
 kombu==4.1.0
@@ -44,6 +45,7 @@ python-ldap==2.4.44
 python-libsbml==5.15.0
 python-openid==2.2.5
 pytz==2017.2
+rdflib==4.2.2
 redis==2.10.6
 requests==2.18.4
 requests-oauthlib==0.8.0
