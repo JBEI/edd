@@ -409,15 +409,25 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
 
     def get_fields(self, request, obj=None):
         return super(MetaboliteAdmin, self).get_fields(request, obj) + [
+            'pubchem_cid',
             ('molecular_formula', 'molar_mass', 'charge', ),  # grouping in tuple puts in a row
-            'smiles', 'id_map', 'tags',
+            'smiles',
+            'id_map',
+            'tags',
         ]
 
     def get_list_display(self, request):
         # complete override
         return [
-            'type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge', '_tags',
-            '_study_count', 'type_source'
+            'type_name',
+            'short_name',
+            'pubchem_cid',
+            'molecular_formula',
+            'molar_mass',
+            'charge',
+            '_tags',
+            '_study_count',
+            'type_source',
         ]
 
     def get_merge_autowidget(self):
@@ -428,6 +438,12 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
         qs = super(MetaboliteAdmin, self).get_queryset(request)
         qs = qs.select_related('type_source')
         return qs
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly = super(MetaboliteAdmin, self).get_readonly_fields(request, obj)
+        if obj and obj.pubchem_cid is None:
+            return readonly
+        return readonly + ['pubchem_cid', ]
 
     def _tags(self, obj):
         return ', '.join(obj.tags)
