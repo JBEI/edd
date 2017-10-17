@@ -50,7 +50,7 @@ img.exampleImageProteomics {
 
 /* Formatting for the label that appears when a step is disabled or irrelevant */
 
-div.disabledStepLabel {				
+div.disabledStepLabel {
 	height:50px;
 
 	text-align:center;
@@ -276,6 +276,7 @@ div.disambiguationSections > div table tr > th {
 }
 div.disambiguationSections > div table tr > td > div {
 	padding-left:10px;
+	padding-right:10px;
 }
 div.disambiguationSections > div table tr > td select {
 	margin:0px 3px 0px 3px;
@@ -291,6 +292,11 @@ div.disambiguationSections > div table tr > td > span {
 }
 div.disambiguationSections > div table tr > td input[type="text"] {
 	margin:0px 2px 0px 0px;
+}
+
+p.warningUnmatched {
+	color: red;
+	padding-bottom: 10px;
 }
 
 .step4SubsectionToggle {
