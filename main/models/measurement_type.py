@@ -7,6 +7,7 @@ Models describing measurement types.
 
 import logging
 import re
+import requests
 
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
@@ -15,6 +16,8 @@ from django.db import models
 from django.db.models import F, Func
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _, ugettext as _u
+from rdflib import Graph
+from rdflib.term import URIRef
 from uuid import uuid4
 
 from .common import EDDSerialize
@@ -258,6 +261,52 @@ class Metabolite(MeasurementType):
             count = count + (int(c) if c else 1)
         return count
 
+    @classmethod
+    def _load_pubchem(cls, pubchem_cid):
+        try:
+            base_url = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug'
+            url = '%s/compound/cid/%s/JSON' % (base_url, pubchem_cid)
+            response = requests.post(url, data={'cid': pubchem_cid})
+            record = response.json()['PC_Compounds'][0]
+            properties = {
+                item['urn']['label']: item['value'].values()[0]
+                for item in record['props']
+            }
+            datasource = Datasource.objects.create(name='PubChem', url=url)
+            return cls.objects.create(
+                type_name=properties['IUPAC Name'],
+                short_name=pubchem_cid,
+                type_source=datasource,
+                charge=record.get('charge', 0),
+                carbon_count=len(filter(lambda a: a == 6, record['atoms']['element'])),
+                molar_mass=properties['Molecular Weight'],
+                molecular_formula=properties['Molecular Formula'],
+                smiles=properties['SMILES'],
+                pubchem_cid=pubchem_cid,
+            )
+        except:
+            logger.exception('Failed loading PubChem %s', pubchem_cid)
+            raise ValidationError(
+                _u('Could not load information on %s from PubChem') % pubchem_cid
+            )
+
+    @classmethod
+    def load_or_create(cls, pubchem_cid):
+        match = cls.pubchem_pattern.match(pubchem_cid)
+        if match:
+            cid = match.group(1)
+            # try to find existing Metabolite record
+            try:
+                return cls.objects.get(pubchem_cid=cid)
+            except cls.DoesNotExist:
+                return cls._load_pubchem(cid)
+            except:
+                logger.exception('Error loading Metabolite with cid %s', pubchem_cid)
+                raise ValidationError(_u('There was a problem looking up %s') % pubchem_cid)
+        raise ValidationError(
+            _u('Metabolite lookup failed: %s must match pattern "cid:0000"') % pubchem_cid
+        )
+
 
 @python_2_unicode_compatible
 class GeneIdentifier(MeasurementType):
@@ -357,16 +406,75 @@ class ProteinIdentifier(MeasurementType):
             'p_mass': self.mass,
         })
 
+    def update_from_uniprot(self):
+        match = self.accession_pattern.match(self.short_name)
+        if match:
+            self._load_uniprot(self.short_name, self.accession_id)
+
     @classmethod
-    def load_or_create(cls, measurement_name, datasource, user_token):
+    def _load_uniprot(cls, uniprot_id, accession_id):
+        url = 'http://www.uniprot.org/uniprot/%s.rdf' % uniprot_id
+        # define some RDF predicate terms
+        fullname_predicate = URIRef('http://purl.uniprot.org/core/fullName')
+        mass_predicate = URIRef('http://purl.uniprot.org/core/mass')
+        name_predicate = URIRef('http://purl.uniprot.org/core/recommendedName')
+        sequence_predicate = URIRef('http://purl.uniprot.org/core/sequence')
+        value_predicate = URIRef('http://www.w3.org/1999/02/22-rdf-syntax-ns#value')
+        # build the RDF graph
+        try:
+            graph = Graph()
+            graph.parse(url)
+            # find top-level references
+            subject = URIRef('http://purl.uniprot.org/uniprot/%s' % uniprot_id)
+            name_ref = graph.value(subject, name_predicate)
+            isoform = graph.value(subject, sequence_predicate)
+            # find values of interest
+            values = {'accession_id': accession_id}
+            name = graph.value(name_ref, fullname_predicate)
+            if name:
+                values.update(type_name=name.value)
+            sequence = graph.value(isoform, value_predicate)
+            if sequence:
+                values.update(length=len(sequence.value))
+            mass = graph.value(isoform, mass_predicate)
+            if mass:
+                values.update(mass=mass.value)
+            # build the ProteinIdentifier
+            datasource = Datasource.objects.create(name='UniProt', url=url)
+            values.update(type_source=datasource)
+            protein, created = cls.objects.update_or_create(
+                short_name=uniprot_id,
+                defaults=values,
+            )
+            return protein
+        except:
+            logger.exception('Failed to read UniProt: %s', uniprot_id)
+            raise ValidationError(_u('Could not load information on %s from UniProt') % uniprot_id)
+
+    @classmethod
+    def _load_ice(cls, link):
+        part = link.strain.part
+        datasource = Datasource.objects.create(name='Part Registry', url=link.strain.registry_url)
+        protein = cls.objects.create(
+            type_name=link.strain.name,
+            short_name=part.part_id,
+            type_source=datasource,
+            accession_id=part.part_id,
+        )
+        link.protein = protein
+        link.save()
+        return protein
+
+    @classmethod
+    def load_or_create(cls, protein_name, user):
         # extract Uniprot accession data from the measurement name, if present
-        accession_match = cls.accession_pattern.match(measurement_name)
-        proteins = ProteinIdentifier.objects.none()
+        accession_match = cls.accession_pattern.match(protein_name)
+        proteins = cls.objects.none()
         if accession_match:
-            uniprot_id = accession_match.group(1)
-            proteins = ProteinIdentifier.objects.filter(short_name=uniprot_id)
+            short_name = accession_match.group(1)
+            proteins = cls.objects.filter(short_name=short_name)
         else:
-            proteins = ProteinIdentifier.objects.filter(short_name=measurement_name)
+            proteins = cls.objects.filter(short_name=protein_name)
 
         # force query to LIMIT 2
         proteins = proteins[:2]
@@ -375,45 +483,37 @@ class ProteinIdentifier(MeasurementType):
             # fail if protein couldn't be uniquely matched
             raise ValidationError(
                 _u('More than one match was found for protein name "%(type_name)s".') % {
-                    'type_name': measurement_name,
+                    'type_name': protein_name,
                 }
             )
         elif len(proteins) == 0:
             # try to create a new protein
-            # enforce ProteinIdentifier naming conventions for new ProteinIdentifiers,
-            # if configured. this isn't as good as looking them up in Uniprot, but should
-            # help as a stopgap to curate our protein entries
             link = ProteinStrainLink()
             if accession_match:
-                # TODO: try external lookup to validate accession ID?
-                type_name = accession_match.group(2)
-                type_name = measurement_name if type_name is None else type_name
-                accession_id = measurement_name
-            elif link.check_ice(user_token, measurement_name):
-                type_name = link.strain.name
-                uniprot_id = measurement_name
-                accession_id = measurement_name
+                # if it looks like a UniProt ID, look up in UniProt
+                short_name = accession_match.group(1)
+                accession_id = protein_name
+                return cls._load_uniprot(short_name, accession_id)
+            elif link.check_ice(user.email, protein_name):
+                # if it is found in ICE, create based on ICE info
+                return cls._load_ice(link)
             elif getattr(settings, 'REQUIRE_UNIPROT_ACCESSION_IDS', True):
                 raise ValidationError(
                     _u('Protein name "%(type_name)s" is not a valid UniProt accession id.') % {
-                        'type_name': measurement_name,
+                        'type_name': protein_name,
                     }
                 )
             logger.info('Creating a new ProteinIdentifier for %(name)s' % {
-                'name': measurement_name,
+                'name': protein_name,
             })
-            if datasource.pk is None:
-                datasource.save()
-            p = ProteinIdentifier.objects.create(
-                type_name=type_name,
-                short_name=uniprot_id,
-                accession_id=accession_id,
+            # not requiring accession ID or ICE entry; just create protein with arbitrary name
+            datasource = Datasource.objects.create(name=user.username, url=user.email)
+            return cls.objects.create(
+                type_name=protein_name,
+                short_name=protein_name,
+                accession_id=protein_name,
                 type_source=datasource,
             )
-            if link.strain_id:
-                link.protein = p
-                link.save()
-            return p
         return proteins[0]
 
     @classmethod
@@ -466,6 +566,7 @@ class ProteinStrainLink(models.Model):
                 registry_url=''.join((ice.base_url, '/entry/', str(part.id))),
             )
             self.strain, x = Strain.objects.get_or_create(registry_id=part.uuid, defaults=default)
+            self.strain.part = part
             return True
         return False
 
