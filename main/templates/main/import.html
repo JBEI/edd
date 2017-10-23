@@ -513,41 +513,42 @@
         </div>
     </div>
     <div class="sectionContent off" id="disambiguateAssaysSection">
-        <div class="alert alert-warning alert-dismissible" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-            </button>
-            <div>Warning! The following inputs were not matched to an experiment description line and will not be imported.
-                First add new lines <a href="{% url 'main:lines' slug=study.slug %}" and then upload data.>
-                here</a>.</div>
-        </div>
-        <h3 class="noMatch"> Unmatched Inputs </h3>
-        <table id="disambiguateAssaysTable" cellspacing="0">
-            <thead>
-              <th></th>
-              <th>Input Name</th>
-            </thead>
-            <tbody></tbody>
-        </table>
+      <div class="alert alert-warning alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        {% url 'main:lines' slug=study.slug as lines_url %}
+        <p>Warning! The following inputs were not matched to an experiment description line and
+            will not be imported. First add new lines <a href="{{ lines_url }}">here</a> and then
+            upload data.</p>
+      </div>
+      <h3 class="noMatch"> Unmatched Inputs </h3>
+      <table id="disambiguateAssaysTable" cellspacing="0">
+          <thead>
+            <th></th>
+            <th>Input Name</th>
+          </thead>
+          <tbody></tbody>
+      </table>
     </div>
 
-      <div class="sectionContent off" id="disambiguateMeasurementsSection">
-          <h3>Measurement Types</h3>
-          <div id="noCompartmentWarning" class="statusMessage neutral">
-            Make sure you specify a cellular compartment (Intracellular/Extracellular) for your mass
-              distribution measurements.
-          </div>
-          <table id="disambiguateMeasurementsTable" cellspacing="0">
-            <thead>
-              <th colspan="2">{# Empty placeholder for checkbox and label columns #}</th>
-              <th>Compartment</th>
-              <th>Type</th>
-              <th>Units</th>
-            </thead>
-                <tbody>
-                </tbody>
-          </table>
-      </div>
+    <div class="sectionContent off" id="disambiguateMeasurementsSection">
+        <h3>Measurement Types</h3>
+        <div id="noCompartmentWarning" class="statusMessage neutral">
+          Make sure you specify a cellular compartment (Intracellular/Extracellular) for your mass
+            distribution measurements.
+        </div>
+        <table id="disambiguateMeasurementsTable" cellspacing="0">
+          <thead>
+            <th colspan="2">{# Empty placeholder for checkbox and label columns #}</th>
+            <th>Compartment</th>
+            <th>Type</th>
+            <th>Units</th>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+    </div>
     <div id="disambiguateMetadataSection" class="off">
       <h3>Metadata Types</h3>
       {# This section filled in via TypeScript if needed #}
