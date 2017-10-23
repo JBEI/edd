@@ -15,10 +15,12 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework import mixins, response, schemas, viewsets
 from rest_framework.decorators import api_view, renderer_classes
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
 from rest_framework_swagger.renderers import OpenAPIRenderer, SwaggerUIRenderer
 from threadlocals.threadlocals import get_request_variable, set_request_variable
+from uuid import UUID
 
 from jbei.rest.clients.edd import constants
 from main.models import (
@@ -106,6 +108,31 @@ class StudyFilterMixin(object):
             queryset = queryset.filter(q_filter)
         return queryset
 
+    def get_nested_filter(self):
+        study_id = self.kwargs.get('study_pk')
+        # try converting to UUID
+        try:
+            study_id = UUID(study_id)
+            return Q(**{self._filter_prefix + 'uuid': study_id})
+        except ValueError:
+            pass
+        return Q(**{self._filter_prefix + self.lookup_field: study_id})
+
+    def get_object(self):
+        """
+        Find the object if the parameter matches the primary key OR the UUID.
+        """
+        url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup = self.kwargs.get(url_kwarg, None)
+        # try converting to UUID, call parent to lookup by UUID if successful
+        try:
+            lookup = UUID(lookup)
+            self.lookup_url_kwarg = url_kwarg
+            self.lookup_field = 'uuid'
+        except ValueError:
+            pass
+        return super(StudyFilterMixin, self).get_object()
+
 
 class StudiesViewSet(StudyFilterMixin,
                      mixins.CreateModelMixin,
@@ -141,8 +168,7 @@ class StudyLinesView(StudyFilterMixin, mixins.ListModelMixin, GenericViewSet):
 
     @cached_request_queryset
     def get_queryset(self):
-        study_id = self.kwargs.get('study_pk', None)
-        return Line.objects.filter(study_id=study_id).order_by('pk')
+        return Line.objects.filter(self.get_nested_filter()).order_by('pk')
 
 
 class AssaysViewSet(StudyFilterMixin, viewsets.ReadOnlyModelViewSet):
@@ -157,8 +183,7 @@ class StudyAssaysViewSet(StudyFilterMixin, mixins.ListModelMixin, GenericViewSet
 
     @cached_request_queryset
     def get_queryset(self):
-        study_id = self.kwargs.get('study_pk')
-        return Assay.objects.filter(line__study_id=study_id).order_by('pk')
+        return Assay.objects.filter(self.get_nested_filter()).order_by('pk')
 
 
 class MeasurementsViewSet(StudyFilterMixin, viewsets.ReadOnlyModelViewSet):
@@ -173,8 +198,7 @@ class StudyMeasurementsViewSet(StudyFilterMixin, mixins.ListModelMixin, GenericV
 
     @cached_request_queryset
     def get_queryset(self):
-        study_id = self.kwargs.get('study_pk')
-        return Measurement.objects.filter(assay__line__study_id=study_id).order_by('pk')
+        return Measurement.objects.filter(self.get_nested_filter()).order_by('pk')
 
 
 class MeasurementValuesViewSet(StudyFilterMixin, viewsets.ReadOnlyModelViewSet):
@@ -189,9 +213,7 @@ class StudyValuesViewSet(StudyFilterMixin, mixins.ListModelMixin, GenericViewSet
 
     @cached_request_queryset
     def get_queryset(self):
-        study_id = self.kwargs.get('study_pk')
-        queryset = MeasurementValue.objects.order_by('pk')
-        return queryset.filter(measurement__assay__line__study_id=study_id)
+        return MeasurementValue.objects.filter(self.get_nested_filter()).order_by('pk')
 
 
 class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
