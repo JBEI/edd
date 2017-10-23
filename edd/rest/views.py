@@ -141,7 +141,7 @@ class StudyLinesView(StudyFilterMixin, mixins.ListModelMixin, GenericViewSet):
 
     @cached_request_queryset
     def get_queryset(self):
-        study_id = self.kwargs.get('study_id', None)
+        study_id = self.kwargs.get('study_pk', None)
         return Line.objects.filter(study_id=study_id).order_by('pk')
 
 
@@ -157,7 +157,7 @@ class StudyAssaysViewSet(StudyFilterMixin, mixins.ListModelMixin, GenericViewSet
 
     @cached_request_queryset
     def get_queryset(self):
-        study_id = self.kwargs.get('study_id')
+        study_id = self.kwargs.get('study_pk')
         return Assay.objects.filter(line__study_id=study_id).order_by('pk')
 
 
@@ -173,7 +173,7 @@ class StudyMeasurementsViewSet(StudyFilterMixin, mixins.ListModelMixin, GenericV
 
     @cached_request_queryset
     def get_queryset(self):
-        study_id = self.kwargs.get('study_id')
+        study_id = self.kwargs.get('study_pk')
         return Measurement.objects.filter(assay__line__study_id=study_id).order_by('pk')
 
 
@@ -189,7 +189,7 @@ class StudyValuesViewSet(StudyFilterMixin, mixins.ListModelMixin, GenericViewSet
 
     @cached_request_queryset
     def get_queryset(self):
-        study_id = self.kwargs.get('study_id')
+        study_id = self.kwargs.get('study_pk')
         queryset = MeasurementValue.objects.order_by('pk')
         return queryset.filter(measurement__assay__line__study_id=study_id)
 
