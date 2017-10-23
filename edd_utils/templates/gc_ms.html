@@ -2,25 +2,8 @@
 {% load staticfiles %}
 
 {% block js_css %}
-{{ block.super }}
-<link rel="stylesheet" media="screen" href="{% static 'lib/handsontable.full.min.css' %}"/>
-<script src="{% static 'edd_utils/js/lib/dropzone.js' %}"></script>
-<script src="{% static 'lib/handsontable.full.min.js' %}"></script>
-<script src="{% static 'lib/d3.min.js' %}"></script>
-<script type="text/javascript" src="{% static 'lib/jquery.cookie.js' %}"></script>
-<script src="{% static 'edd_utils/js/workbench.js' %}"></script>
-<script>
-$(document).ready(function () {
-  $("#hidden-options").toggle();
-  $("#auto-peaks").change(function () {
-    $("#hidden-options").toggle();
-  });
-  $("#add-molecule").click(function () { onAddMolecule(); });
-  $("#del-molecule").click(function () { onDeleteMolecule(); });
-  $("#n-molecules").data("n_mols", 1);
-});
-
-</script>
+  {{ block.super }}
+  <script type="text/javascript" src="{% static 'dist/GCMS_Workbench.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -30,7 +13,7 @@ GC-MS data reduction
 
 {% block body_title %}
 GC-MS data reduction
-<a id="show-help-1" href="#" onclick="showHelp(1);">[show help]</a>
+<a id="show-help-1" href="#" onclick="Workbench.showHelp(1);">[show help]</a>
 {% endblock body_title %}
 
 {% block content %}
@@ -130,7 +113,7 @@ continue" to merge the processed peak areas and metadata.  The server
 will then generate an Excel spreadsheet that will be downloaded to your
 computer.</p>
 <center>
-<button type="button" class="workbench-button" onclick="showHelp(1)">
+<button type="button" class="workbench-button" onclick="Workbench.showHelp(1)">
   Close</button>
 </center>
 </div>
