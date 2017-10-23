@@ -127,6 +127,9 @@ class ExportSelection(object):
             'assay__line__experimenter',
             'assay__line__study__contact',
         )
+        # TODO: use Prefetch for measurement_type with django-model-utils
+        # type_queryset = models.MeasurementType.objects.select_subclasses(models.ProteinIdentifier)
+        # self._measures.prefetch_related(Prefetch('measurement_type', queryset=type_queryset))
         self._assays = models.Assay.objects.filter(
             Q(line__study__in=self._allowed_study),
             (Q(line__in=lineId) & Q_active(line__active=True)) |

@@ -1067,7 +1067,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         }
 
     def __str__(self):
-        return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
+        return 'Measurement{%d}{%s}' % (self.assay_id, self.measurement_type)
 
     # may not be the best method name, if we ever want to support other
     # types of data as vectors in the future
