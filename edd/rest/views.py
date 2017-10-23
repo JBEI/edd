@@ -14,9 +14,8 @@ import logging
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework import mixins, response, schemas, viewsets
-from rest_framework.decorators import api_view, renderer_classes
-from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes, renderer_classes
+from rest_framework.permissions import AllowAny, DjangoModelPermissions, IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
 from rest_framework_swagger.renderers import OpenAPIRenderer, SwaggerUIRenderer
 from threadlocals.threadlocals import get_request_variable, set_request_variable
@@ -44,7 +43,8 @@ logger = logging.getLogger(__name__)
 
 
 @api_view()
-@renderer_classes([OpenAPIRenderer, SwaggerUIRenderer])
+@permission_classes([AllowAny, ])
+@renderer_classes([OpenAPIRenderer, SwaggerUIRenderer, ])
 def schema_view(request):
     """
     Auto-generated, web-browseable documentation for EDD's REST API.

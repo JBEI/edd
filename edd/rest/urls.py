@@ -101,8 +101,6 @@ study_router.register(
 # Use routers & supporting frameworks to construct URL patterns
 ###################################################################################################
 urlpatterns = [
-    # url(r'docs/$', include('rest_framework_swagger.urls')),
-
     url(r'^', include(base_rest_api_router.urls)),
     url(r'^', include(study_router.urls)),
     url(r'docs/', views.schema_view),
