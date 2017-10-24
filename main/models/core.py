@@ -9,6 +9,7 @@ import arrow
 import json
 import os
 
+from builtins import str
 from collections import defaultdict
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField

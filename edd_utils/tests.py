@@ -4,6 +4,7 @@ from __future__ import division, unicode_literals
 import logging
 import os.path
 
+from builtins import str
 from cStringIO import StringIO
 from edd_utils.parsers.excel import (
     export_to_xlsx, import_xlsx_table, import_xlsx_tables,

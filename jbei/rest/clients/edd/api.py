@@ -11,9 +11,10 @@ import json
 import logging
 import requests
 
+from builtins import str
+from datetime import datetime
 from urlparse import urlparse, urlsplit
 
-from datetime import datetime
 
 from .constants import (CASE_SENSITIVE_DEFAULT, CASE_SENSITIVE_PARAM,
                         ACTIVE_STATUS_DEFAULT, METADATA_CONTEXT_VALUES, METADATA_TYPE_CONTEXT,
