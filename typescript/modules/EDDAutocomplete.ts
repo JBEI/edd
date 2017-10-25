@@ -4,6 +4,8 @@ import * as jQuery from "jquery";
 import "jquery-ui";
 import { MultiColumnAuto } from "./MultiColumnAutocomplete"
 
+declare var EDDData;
+
 
 export module EDDAuto {
 
@@ -343,13 +345,17 @@ export module EDDAuto {
         }
 
         undo(): void {
-            var oldId: string = <string>this.hiddenInput.val(),
-                old: any = this.cache[parseInt(oldId, 10)] || {};
+            var old: any = this.cache[this.valKey()] || {};
             this.visibleInput.val(this.loadDisplayValue(old));
         }
 
-        val(): any {
-            return this.hiddenInput.val();
+        val(): string {
+            return <string> this.hiddenInput.val();
+        }
+
+        valKey(): any {
+            // most autocompletes key values by integers
+            return parseInt(this.val(), 10);
         }
     }
 
@@ -694,6 +700,11 @@ export module EDDAuto {
             this.cacheId = 'Registries';
             this.value_key = 'recordId';
             this.init();
+        }
+
+        valKey(): any {
+            // Registry autocompletes key values by UUID
+            return this.val();
         }
     }
 
