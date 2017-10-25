@@ -106,6 +106,9 @@ USE_X_FORWARDED_HOST = True
 
 LOGIN_REDIRECT_URL = '/'
 
+# Default 1000; limits number of parameters in requests. None disables the limit.
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+
 # Application definition
 INSTALLED_APPS = (
     'django.contrib.admin',
