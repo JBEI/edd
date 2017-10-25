@@ -18,7 +18,7 @@ import os
 import re
 import requests
 
-from builtins import object
+from builtins import object, str
 from requests.compat import urlparse
 from urllib import urlencode
 from urlparse import urlunparse, ParseResult, parse_qs

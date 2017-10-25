@@ -7,6 +7,7 @@ import logging
 import requests
 import traceback
 
+from builtins import str
 from collections import defaultdict, OrderedDict
 from django.conf import settings
 from django.core.mail import mail_admins

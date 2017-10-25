@@ -7,6 +7,7 @@ Step 2 of the EDD Data Table Import page.
 
 from __future__ import unicode_literals
 
+from builtins import str
 from xml.dom import pulldom
 from xml.sax import handler
 from xml.sax.expatreader import ExpatParser as _ExpatParser

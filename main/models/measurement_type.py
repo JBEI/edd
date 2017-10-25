@@ -9,6 +9,7 @@ import logging
 import re
 import requests
 
+from builtins import str
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
