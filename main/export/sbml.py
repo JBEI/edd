@@ -559,24 +559,26 @@ class SbmlExport(object):
                     time_delta = float(time - times[-2])
                 else:
                     # calculate flux to next value for all but last value
-                    y_0 = interpolate_at(values, time)
+                    y_0 = interpolate_at(values, time)       # interpolate_at returns a float
                     y_next = float(values[next_index].y[0])
                     y_delta = y_next - y_0
                     time_delta = float(times[next_index] - time)
-                # interpolate_at returns a float
                 # NOTE: arithmetic operators do not work between float and Decimal
                 density = interpolate_at(self._density, time)
+                start_density = interpolate_at(self._density, time - time_delta)
                 # TODO: find better way to detect ratio units
                 if values[0].measurement.y_units.unit_name.endswith('/hr'):
-                    flux = y_0 / density
+                    flux_end = y_0 / density
+                    flux_start = flux_end
                 else:
-                    flux = (y_delta / time_delta) / density
+                    flux_start = (y_delta / time_delta) / start_density
+                    flux_end = (y_delta / time_delta) / density
                 kinetic_law = reaction.getKineticLaw()
                 # NOTE: libsbml calls require use of 'bytes' CStrings
                 upper_bound = kinetic_law.getParameter(b"UPPER_BOUND")
                 lower_bound = kinetic_law.getParameter(b"LOWER_BOUND")
-                upper_bound.setValue(flux)
-                lower_bound.setValue(flux)
+                upper_bound.setValue(max(flux_start, flux_end))
+                lower_bound.setValue(min(flux_start, flux_end))
             except Exception as e:
                 logger.exception('hit an error calculating reaction values: %s', type(e))
 
