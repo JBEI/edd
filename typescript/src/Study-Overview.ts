@@ -8,6 +8,24 @@ import { StudyBase } from "../modules/Study"
 import { EDDAuto } from "../modules/EDDAutocomplete"
 import "bootstrap-loader"
 
+
+declare function require(name: string): any;  // avoiding warnings for require calls below
+
+// as of JQuery UI 1.12, need to require each dependency individually
+require('jquery-ui/themes/base/core.css');
+require('jquery-ui/themes/base/menu.css');
+require('jquery-ui/themes/base/button.css');
+require('jquery-ui/themes/base/draggable.css');
+require('jquery-ui/themes/base/resizable.css');
+require('jquery-ui/themes/base/dialog.css');
+require('jquery-ui/themes/base/theme.css');
+require('jquery-ui/ui/widgets/button');
+require('jquery-ui/ui/widgets/draggable');
+require('jquery-ui/ui/widgets/resizable');
+require('jquery-ui/ui/widgets/dialog');
+require('jquery-ui/ui/widgets/tooltip');
+
+
 module StudyOverview {
     'use strict';
 
