@@ -222,7 +222,7 @@ class Metabolite(MeasurementType):
     )
 
     carbon_pattern = re.compile(r'C(\d*)')
-    pubchem_pattern = re.compile(r'cid:(\d+)')
+    pubchem_pattern = re.compile(r'cid:(\d+)(:.*)?')
 
     def __str__(self):
         return self.type_name
