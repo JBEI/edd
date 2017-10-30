@@ -32,7 +32,9 @@ class UserSerializer(serializers.ModelSerializer):
 
 class EDDObjectSerializer(serializers.ModelSerializer):
     created = UpdateSerializer(read_only=True)
+    pk = serializers.IntegerField(read_only=True)
     updated = UpdateSerializer(read_only=True)
+    uuid = serializers.UUIDField(format='hex_verbose', read_only=True)
 
     class Meta:
         model = models.EDDObject
@@ -58,15 +60,19 @@ class AssaySerializer(EDDObjectSerializer):
         )
 
 
-class MeasurementSerializer(EDDObjectSerializer):
+class MeasurementSerializer(serializers.ModelSerializer):
+    pk = serializers.IntegerField(read_only=True)
+    update_ref = UpdateSerializer(read_only=True)
+
     class Meta:
         model = models.Measurement
-        fields = EDDObjectSerializer.Meta.fields + (
+        fields = (
             'assay',
             'compartment',
             'experimenter',
             'measurement_format',
             'measurement_type',
+            'pk',
             'update_ref',
             'x_units',
             'y_units',
@@ -74,6 +80,9 @@ class MeasurementSerializer(EDDObjectSerializer):
 
 
 class MeasurementValueSerializer(serializers.ModelSerializer):
+    pk = serializers.IntegerField(read_only=True)
+    updated = UpdateSerializer(read_only=True)
+
     class Meta:
         model = models.MeasurementValue
         fields = (
@@ -87,6 +96,7 @@ class MeasurementValueSerializer(serializers.ModelSerializer):
 
 class StudySerializer(EDDObjectSerializer):
     contact = UserSerializer(read_only=True)
+    contact_id = serializers.IntegerField(write_only=True)
     contact_extra = serializers.CharField(allow_blank=True, required=False)
 
     class Meta:
@@ -95,14 +105,17 @@ class StudySerializer(EDDObjectSerializer):
         fields = EDDObjectSerializer.Meta.fields + (
             'contact',
             'contact_extra',
+            'contact_id',
             'metabolic_map',
             'slug',
         )
         read_only_fields = ('slug', )
 
     def validate(self, data):
-        if 'contact' not in data and 'contact_extra' not in data:
-            raise serializers.ValidationError('Must specify one of "contact" or "contact_extra"')
+        if 'contact_id' not in data and 'contact_extra' not in data:
+            raise serializers.ValidationError(
+                'Must specify one of "contact_id" or "contact_extra"'
+            )
         return data
 
 
