@@ -2566,7 +2566,8 @@ class DataGridAssays extends DataGrid {
 // Extending the standard AssayRecord to hold some client-side calculations.
 // The idea is, these start out undefined, and are calculated on-demand.
 interface AssayRecordExended extends AssayRecord {
-    maxXValue:number;
+    maxXValue: number;
+    minXValue: number;
 }
 
 
@@ -2575,6 +2576,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     metaDataIDsUsedInAssays:any;
     maximumXValueInData:number;
+    minimumXValueInData:number;
 
     measuringTimesHeaderSpec:DataGridHeaderSpec;
 
@@ -2608,7 +2610,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
         this.findMaximumXValueInData();
         if (this.measuringTimesHeaderSpec && this.measuringTimesHeaderSpec.element) {
             $(this.measuringTimesHeaderSpec.element).children(':first').text(
-                    'Measuring Times (Range 0 to ' + this.maximumXValueInData + ')');
+                'Measuring Times (Range ' + this.minimumXValueInData + ' to '
+                    + this.maximumXValueInData + ')');
         }
     }
 
@@ -2636,33 +2639,44 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
     findMaximumXValueInData():void {
-        var maxForAll:number = 0;
-        // reduce to find highest value across all records
-        maxForAll = this.getRecordIDs().reduce((prev:number, assayId) => {
+        var minmax: number[];
+        // reduce to find highest/lowest value across all records
+        minmax = this.getRecordIDs().reduce((prev:number[], assayId) => {
             var assay: AssayRecordExended = <AssayRecordExended>EDDData.Assays[assayId],
-                measures, maxForRecord;
+                measures, recordMinmax;
             // Some caching to speed subsequent runs way up...
-            if (assay.maxXValue !== undefined) {
-                maxForRecord = assay.maxXValue;
+            if (assay.maxXValue !== undefined && assay.minXValue !== undefined) {
+                recordMinmax = [assay.maxXValue, assay.minXValue];
             } else {
                 measures = assay.measures || [];
-                // reduce to find highest value across all measures
-                maxForRecord = measures.reduce((prev:number, measureId) => {
+                // reduce to find highest/lowest value across all measures
+                recordMinmax = measures.reduce((prev:number, measureId) => {
                     var lookup:any = EDDData.AssayMeasurements || {},
                         measure:any = lookup[measureId] || {},
-                        maxForMeasure;
-                    // reduce to find highest value across all data in measurement
-                    maxForMeasure = (measure.values || []).reduce((prev:number, point) => {
-                        return Math.max(prev, point[0][0]);
-                    }, 0);
-                    return Math.max(prev, maxForMeasure);
-                }, 0);
-                assay.maxXValue = maxForRecord;
+                        measureMinmax: number[];
+                    // reduce to find highest/lowest value across all data in measurement
+                    measureMinmax = (measure.values || []).reduce((prev: number[], point) => {
+                        return [
+                            Math.max(prev[0], point[0][0]),
+                            Math.min(prev[0], point[0][0])
+                        ];
+                    }, [0, Number.MAX_VALUE]);
+                    return [
+                        Math.max(prev[0], measureMinmax[0]),
+                        Math.min(prev[1], measureMinmax[1])
+                    ];
+                }, [0, Number.MAX_VALUE]);
+                assay.maxXValue = recordMinmax[0];
+                assay.minXValue = recordMinmax[1];
             }
-            return Math.max(prev, maxForRecord);
-        }, 0);
+            return [
+                Math.max(prev[0], recordMinmax[0]),
+                Math.min(prev[1], recordMinmax[1])
+            ];
+        }, [0, Number.MAX_VALUE]);
         // Anything above 0 is acceptable, but 0 will default instead to 1.
-        this.maximumXValueInData = maxForAll || 1;
+        this.maximumXValueInData = minmax[0] || 1;
+        this.minimumXValueInData = minmax[1] === Number.MAX_VALUE ? 0 : minmax[1];
     }
 
     private loadAssayName(index:any):string {
@@ -3100,10 +3114,11 @@ class DataGridSpecAssays extends DataGridSpecBase {
         points.sort((a,b) => { return a[0] - b[0]; }).forEach((point) => {
             var x = point[0][0],
                 y = point[1][0],
-                rx = ((x / this.maximumXValueInData) * 450) + 10,
+                range = this.maximumXValueInData - this.minimumXValueInData,
+                rx = (((x - this.minimumXValueInData) / range) * 450) + 10,
                 tt = [y, ' at ', x, 'h'].join('');
             paths.push(['<path class="cE" d="M', rx, ',5v4"></path>'].join(''));
-            if (y === null) {
+            if (y === undefined || y === null) {
                 paths.push(['<path class="cE" d="M', rx, ',2v6"></path>'].join(''));
                 return;
             }

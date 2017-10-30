@@ -100,13 +100,12 @@ export class EDDGraphingTools {
         //data for one line entry
         var singleDataValues = dataObj['measure'].values;
 
-        _.each(singleDataValues, (dataValue, index) => {
-             let dataset = {};
-            //can also change to omit data point with null which was done before..
-            if (dataValue[0].length == 0) {
-                dataValue[0] = ["0"];
-            } else if (dataValue[1].length == 0) {
-                dataValue[1] = ["0"];
+        _.each(singleDataValues, (dataValue: number[][], index) => {
+            let dataset = {};
+            // skip adding any invalid values
+            if (dataValue.length !== 2 || dataValue[0].length <= 0 || dataValue[1].length <= 0
+                    || !isFinite(dataValue[0][0]) || !isFinite(dataValue[1][0])) {
+                return;
             }
             dataset['label'] = 'dt' + dataObj['measure'].assay;
             dataset['x'] = parseFloat(dataValue[0].join());
