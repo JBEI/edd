@@ -276,6 +276,10 @@ class MeasurementValueFilter(filters.FilterSet):
         name='measurement__assay__line',
         queryset=models.Line.objects.all(),
     )
+    measurement = django_filters.ModelChoiceFilter(
+        name='measurement',
+        queryset=models.Measurement.objects.all(),
+    )
     x__gt = django_filters.NumberFilter(name='x', lookup_expr='0__gte')
     x__lt = django_filters.NumberFilter(name='x', lookup_expr='0__lte')
     y__gt = django_filters.NumberFilter(name='y', lookup_expr='0__gte')
@@ -315,7 +319,10 @@ class StudyValuesViewSet(ValuesFilterMixin, viewsets.ReadOnlyModelViewSet):
 class MeasurementTypesFilter(filters.FilterSet):
     class Meta:
         model = models.MeasurementType
-        fields = ['type_group']
+        fields = {
+            'type_group': ['exact'],
+            'type_name': ['exact', 'iregex'],
+        }
 
 
 class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
