@@ -150,7 +150,23 @@ class StudiesViewSet(StudyFilterMixin,
     queryset = models.Study.objects.order_by('pk').select_related('created', 'updated')
 
 
+class LineFilter(EDDObjectFilter):
+    strain = django_filters.CharFilter(name='strains', method='filter_strain')
+
+    class Meta:
+        model = models.Line
+        fields = []
+
+    def filter_strain(self, queryset, name, value):
+        try:
+            return queryset.filter(strains__registry_id=UUID(value))
+        except ValueError:
+            pass
+        return queryset.filter(strains__registry_url=value)
+
+
 class LineFilterMixin(StudyFilterMixin):
+    filter_class = LineFilter
     serializer_class = serializers.LineSerializer
     _filter_prefix = 'study__'
 
@@ -276,6 +292,10 @@ class MeasurementValueFilter(filters.FilterSet):
         name='measurement__assay__line',
         queryset=models.Line.objects.all(),
     )
+    measurement = django_filters.ModelChoiceFilter(
+        name='measurement',
+        queryset=models.Measurement.objects.all(),
+    )
     x__gt = django_filters.NumberFilter(name='x', lookup_expr='0__gte')
     x__lt = django_filters.NumberFilter(name='x', lookup_expr='0__lte')
     y__gt = django_filters.NumberFilter(name='y', lookup_expr='0__gte')
@@ -315,7 +335,10 @@ class StudyValuesViewSet(ValuesFilterMixin, viewsets.ReadOnlyModelViewSet):
 class MeasurementTypesFilter(filters.FilterSet):
     class Meta:
         model = models.MeasurementType
-        fields = ['type_group']
+        fields = {
+            'type_group': ['exact'],
+            'type_name': ['exact', 'iregex'],
+        }
 
 
 class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
@@ -374,7 +397,16 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.MetadataTypeSerializer
 
 
+class MeasurementUnitFilter(filters.FilterSet):
+    name = django_filters.CharFilter(name='unit_name')
+
+    class Meta:
+        model = models.MeasurementUnit
+        fields = []
+
+
 class MeasurementUnitViewSet(viewsets.ReadOnlyModelViewSet):
+    filter_class = MeasurementUnitFilter
     queryset = models.MeasurementUnit.objects.order_by('pk')
     serializer_class = serializers.MeasurementUnitSerializer
     lookup_url_kwarg = 'id'
