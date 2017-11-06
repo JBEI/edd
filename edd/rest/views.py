@@ -150,7 +150,23 @@ class StudiesViewSet(StudyFilterMixin,
     queryset = models.Study.objects.order_by('pk').select_related('created', 'updated')
 
 
+class LineFilter(EDDObjectFilter):
+    strain = django_filters.CharFilter(name='strains', method='filter_strain')
+
+    class Meta:
+        model = models.Line
+        fields = []
+
+    def filter_strain(self, queryset, name, value):
+        try:
+            return queryset.filter(strains__registry_id=UUID(value))
+        except ValueError:
+            pass
+        return queryset.filter(strains__registry_url=value)
+
+
 class LineFilterMixin(StudyFilterMixin):
+    filter_class = LineFilter
     serializer_class = serializers.LineSerializer
     _filter_prefix = 'study__'
 
@@ -381,7 +397,16 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.MetadataTypeSerializer
 
 
+class MeasurementUnitFilter(filters.FilterSet):
+    name = django_filters.CharFilter(name='unit_name')
+
+    class Meta:
+        model = models.MeasurementUnit
+        fields = []
+
+
 class MeasurementUnitViewSet(viewsets.ReadOnlyModelViewSet):
+    filter_class = MeasurementUnitFilter
     queryset = models.MeasurementUnit.objects.order_by('pk')
     serializer_class = serializers.MeasurementUnitSerializer
     lookup_url_kwarg = 'id'
