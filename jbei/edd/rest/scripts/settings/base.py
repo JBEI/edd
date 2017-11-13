@@ -1,6 +1,6 @@
 """
 Defines settings used by scripts in this package.  Clients may override settings defined here in a 
-local_settings.py in the same package.
+custom local.py in the same package.
 
 Note that because of the development history of scripts within this package, settings defined here
 may not be universally read/applied by all of the scripts.  When overriding a setting, it's best
@@ -18,6 +18,9 @@ from jbei.rest.clients.ice.api import DEFAULT_RESULT_LIMIT as DEFAULT_ICE_PAGE_S
 ###################################################################################################
 EDD_URL = 'https://edd-test.jbei.org/'
 ICE_URL = 'https://registry-test.jbei.org'
+
+EDD_USERNAME = None
+EDD_PASSWORD = None
 
 # result page sizes used for REST API query results
 EDD_PAGE_SIZE = DEFAULT_EDD_PAGE_SIZE
@@ -65,10 +68,24 @@ ICE_PRODUCTION_HOSTNAMES = [
     'public-registry.agilebiofoundry.org',
 ]
 
-###################################################################################################
-#  local_settings.py: enables any configuration here to be overridden without changing this file.
-###################################################################################################
-try:
-    from .local_settings import *  # noqa
-except ImportError:
-    pass
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+          '__main__': {
+             'level': 'INFO',
+             'handlers': ['console', ],
+         },
+    },
+}

@@ -57,7 +57,7 @@ def main():
                         help='The first year whose usage statistics should be queried',
                         default=2014)
     parser.add_argument('-end', help='The last year whose usage statistics should be queried.',
-                        default=arrow.utcnow().year + 1)
+                        default=arrow.utcnow().year+1)
     parser.add_argument('-timezone',
                         '-tz',
                         help='Time zone for which date queries apply',

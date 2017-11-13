@@ -16,6 +16,11 @@ Transferring notes on remaining known work on the script into this file so they'
 anyone with access to the script. Recent tests indicate that at a minimum, the following should be
 done before using this script on the production databases:
 
+* __Retest legacy Perl URL pattern matching__ legacy Perl-style EDD URLs no longer appear to be 
+   detected by the script according to a test on 8/24/17 against edd-test.jbei.org
+* __Resolve REST API strain resource intent__ this script was initally coded to depend on 
+  `/rest/strains/` and `/rest/strains/studies/` API resources, which more recently are under 
+  debate, and have been temporarily disabled in EDD's initial REST API
 * __Add a user prompt to confirm target URL’s___ as in more recent work on `create_lines.py`. 
   There's currently no confirmation
   of the targeted deployment URL's captured in configuration files, and developers may change these 
@@ -51,6 +56,10 @@ done before using this script on the production databases:
 * __Clarify summary output re: ICE scan__ on first look following a successful scan, it appears that
   some strains were skipped. In fact, an optimization was used to avoid reprocessing strains that
   were used in EDD.
+* __Update URL pattern matching__ recent updates to EDD have added slug-based URLs as the default, 
+  and the script has not yet been updated to detect those URLs.  Instead, the new URLs are treated
+  as external references, which is incorrect.
+
 
 ## Running the Script
 

@@ -5,6 +5,8 @@ import arrow
 import logging
 
 from requests.sessions import Session as SessionApi
+from urlparse import parse_qs, urlsplit, urlunsplit
+from urllib import urlencode
 
 logger = logging.getLogger(__name__)
 
@@ -69,20 +71,19 @@ class Session(SessionApi):
         :return: a dictionary with defaults applied as appropriate. If there are any defaults to
             apply, this will be a different dictionary that kwargs.
         """
-        temp = kwargs.copy()
 
         # if not explicitly provided, use the default timeout configured in the constructor
         if self._timeout and TIMEOUT_KEY not in kwargs:
-            temp[TIMEOUT_KEY] = self._timeout
+            kwargs[TIMEOUT_KEY] = self._timeout
 
         # if not explicitly provided, use the default setting configured in the constructor
         # if self._verify_ssl_cert and VERIFY_KEY not in kwargs:
-        temp[VERIFY_KEY] = self._verify_ssl_cert
+        kwargs[VERIFY_KEY] = self._verify_ssl_cert
 
         if self.auth and AUTH_KEY not in kwargs:
-            temp[AUTH_KEY] = self.auth
+            kwargs[AUTH_KEY] = self.auth
 
-        return temp
+        return kwargs
 
     @property
     def timeout(self):
@@ -121,11 +122,11 @@ class PagedSession(Session):
         self.result_limit_param_name = result_limit_param_name
         self.result_limit = result_limit
 
-    def _set_defaults(self, **kwargs):
-        kwargs = super(PagedSession, self)._set_defaults(**kwargs)
-        return self._add_pagination_params(**kwargs)
+    def request(self, method, url, **kwargs):
+        url, kwargs = self._add_pagination_params(url, **kwargs)
+        return super(PagedSession, self).request(method, url, **kwargs)
 
-    def _add_pagination_params(self, **kwargs):
+    def _add_pagination_params(self, url, **kwargs):
         """
         If a result limit is configured, enforces it by copying kwargs and inserting the request
         parameter that controls page size.
@@ -134,25 +135,58 @@ class PagedSession(Session):
         param_name = self.result_limit_param_name
         result_limit = self.result_limit
 
-        if not (result_limit and param_name):
-            return kwargs
+        original_url = url
 
+        # return early if this session isn't configured to auto-set pagination parameters
+        if not (result_limit and param_name):
+            return url, kwargs
+
+        # look for  / replace pagination parameters encoded in the URL itself. Note this may be
+        # a common use case, e.g. in DRF where each paged response includes the full URL of the
+        # next results page
+
+        url_parts = urlsplit(url)
+        url_query_params = parse_qs(url_parts.query)
+
+        found_in_url = param_name in url_query_params
+        if found_in_url:
+            url_param_val = url_query_params.get(param_name)
+            updated_value = [unicode(self.result_limit)]
+            if url_param_val != updated_value:
+                logger.warning(
+                    'An existing request parameter named "%(param)s" was present in the URL. This '
+                    'value (%(url_val)s) will be overridden to %(new_val)s' % {
+                        'param': param_name,
+                        'url_val': url_param_val,
+                        'new_val': updated_value, })
+                url_query_params[param_name] = updated_value
+                # url = urlunsplit(
+                #     url_parts.scheme, url_parts.netloc, url_parts.path,
+                #     urlencode(url_query_params), url_parts.fragment, url_parts.username,
+                #     url_parts.password, url_parts.hostname, url_parts.port)
+                url = url_parts.geturl()
+                logger.debug('......Original URL: %s, Updated URL: %s' % (original_url, url))
+
+        # look for & replace pagination parameter explicitly provided via request kwargs
         params = kwargs.get('params')
         if not params:
             params = {}
+            if not found_in_url:
+                params[param_name] = result_limit
+                kwargs['params'] = params
         elif param_name in params.keys():
             existing_value = params.get(param_name)
             if existing_value != self.result_limit:
-                logger.warning(
-                    'An existing request parameter named "%s" was present. This value (%s) will '
-                    'be overridden to (%s)', param_name, existing_value, self.result_limit
-                )
-            params = params.copy()
-        params[param_name] = result_limit
+                logger.warning('An existing request parameter named "%(param)s" was present. '
+                               'This value (%(existing)s) will be overridden to (%(new)s)' % {
+                                    'param': param_name,
+                                    'existing': existing_value,
+                                    'new': self.result_limit, })
+                params[param_name] = result_limit
+        elif not found_in_url:
+            params[param_name] = result_limit
 
-        updated_kwargs = kwargs.copy()
-        updated_kwargs['params'] = params
-        return updated_kwargs
+        return url, kwargs
 
 
 class PagedResult(object):

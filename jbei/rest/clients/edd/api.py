@@ -2,97 +2,52 @@
 """
 Contains utility classes for connecting with and gathering data from EDD's REST API. This initial
 implementation, as well as the REST API itself, can use some additions/improvements over time,
-but is implemented to initially fulfill the basic need to connect to EDD programatically.
+but is implemented to initially fulfill the basic need to connect to EDD programmatically.
 """
 
 from __future__ import unicode_literals
 
+import collections
 import json
 import logging
 import requests
 
 from builtins import str
 from datetime import datetime
-from urlparse import urlparse, urlsplit
 
-
-from .constants import (CASE_SENSITIVE_DEFAULT, CASE_SENSITIVE_PARAM,
-                        ACTIVE_STATUS_DEFAULT, METADATA_CONTEXT_VALUES, METADATA_TYPE_CONTEXT,
-                        METADATA_TYPE_GROUP, METADATA_TYPE_I18N, METADATA_TYPE_LOCALE,
-                        METADATA_TYPE_NAME_REGEX, PAGE_NUMBER_QUERY_PARAM, PAGE_SIZE_QUERY_PARAM,
-                        STRAIN_CASE_SENSITIVE, STRAIN_DESCRIPTION_KEY, STRAIN_NAME,
-                        STRAIN_NAME_KEY, STRAIN_NAME_REGEX, STRAIN_REG_ID_KEY, STRAIN_REG_URL_KEY,
-                        STRAIN_REGISTRY_ID, STRAIN_REGISTRY_URL_REGEX, CREATED_BEFORE_PARAM,
-                        CREATED_AFTER_PARAM, UPDATED_AFTER_PARAM, UPDATED_BEFORE_PARAM,
-                        STRAINS_RESOURCE_NAME, ACTIVE_STATUS_PARAM, NAME_REGEX_PARAM,
-                        DESCRIPTION_REGEX_PARAM)
 from jbei.rest.api import RestApiClient
 from jbei.rest.auth import EddSessionAuth
-from jbei.rest.sessions import Session, PagedResult, PagedSession
-from jbei.rest.utils import show_response_html
+from jbei.rest.sessions import PagedResult, PagedSession, Session
+from .constants import (ACTIVE_STATUS_PARAM, ASSAYS_PARAM,
+                        COMPARTMENT_PARAM,
+                        CREATED_AFTER_PARAM,
+                        CREATED_BEFORE_PARAM, DESCRIPTION_REGEX_PARAM, EXPERIMENTERS_REQUEST_PARAM,
+                        LINES_REQUEST_PARAM, MEASUREMENT_PKS_PARAM,
+                        MEAS_TYPES_PARAM,
+                        MEAS_TYPE_NAME_REGEX, METADATA_CONTEXT_VALUES, METADATA_TYPE_CONTEXT_PARAM,
+                        METADATA_TYPE_GROUP_PARAM, METADATA_TYPE_I18N,
+                        NAME_REGEX_PARAM, PAGE_NUMBER_URL_PARAM, PAGE_SIZE_QUERY_PARAM,
+                        PROTOCOLS_REQUEST_PARAM, TYPE_GROUP_PARAM,
+                        UNIT_NAME_REGEX_PARAM,
+                        UPDATED_AFTER_PARAM, UPDATED_BEFORE_PARAM)
 
-
-# controls whether error response content is written to temp file, then displayed in a browser tab
-DEBUG = False
 VERIFY_SSL_DEFAULT = Session.VERIFY_SSL_DEFAULT
+
 # HTTP request connection and read timeouts, respectively (in seconds)
 DEFAULT_REQUEST_TIMEOUT = (10, 10)
 DEFAULT_PAGE_SIZE = 30
 
+_PAGE_NUMBER_PARAM = 'page_number'
+_QUERY_URL_PARAM = 'query_url'
+
 logger = logging.getLogger(__name__)
 
-# TODO: either continue with this approach, or investigate using reflection to dynamically derive
-# Model classes that prevent database access. Note that our current deserialization process is
-# reflection-based, so it makes sense to pursue that when possible so we can avoid maintaining
-# these classes in parallel to the Django ORM models (which we shouldn't always use on the client
-# side).
-# class EmptyQuerysetManager(models.Manager):
-#     """
-#     A custom Django model manager whose purpose is to hide the database.
-#     """
-#     def get_queryset(self):
-#         return super(EmptyQuerysetManager, self).get_queryset().none()
-#
-# class PreventSaveMixin(object):
-#     def save(self):
-#         pass
-#
-# class PreventQueryMixin(object):
-#     class Meta:
-#         proxy=True
-#         manager = EmptyQuerysetManager()
-#
-#
-# #     Proxy models for EDD's Django instances obtained via calls to EDD's REST API rather than
-# #     from
-# #     direct database access using the ORM.  Detached* instances have all the same fields as
-# #     their base Django model class, but they prevent accidental database modification via
-# #     client-side REST code while keeping all the same fields and methods otherwise available to
-# #     the base class.=.
-# #
-# #     While EDD is still changing significantly in early development, this approach should
-# #     minimize maintenance for  client-side code (though at the cost of needing Django libraries
-# #     that aren't strictly necessary on the client side).
-#
-# class DetachedStrain(Strain, PreventQueryMixin, PreventSaveMixin):
-#     pass
-#
-# class DetachedLine(Line, PreventQueryMixin, PreventSaveMixin):
-#     pass
 
-#############################################################################################
-
-# TODO: replace string resource names below with uses of constants in
-# jbei.rest.clients.edd.constants
-
-
-# TODO: if continuing with this approach, extract string constants from EddObject & derived classes
-# to a separate file and reference from both here and from edd.rest.serializers
 class EddRestObject(object):
     """
     Defines the plain Python object equivalent of Django model objects persisted to EDD's
     database.  This separate object hierarchy should be used only on by external clients of EDD's
-    REST API, since little-to-no validation is performed on the data stored in these objects.
+    REST API, since little-to-no validation is performed on the data stored in them.
 
     This separate object hierarchy that mirrors EDD's is necessary for a couple of reasons:
     1) It prevents EDD's REST API clients from having to install Django libraries that won't really
@@ -100,117 +55,130 @@ class EddRestObject(object):
     2) It allows client and server-side code to be versioned independently, allowing for some
     wiggle room during for non-breaking API changes. For example, REST API additions on the server
     side shouldn't require updates to client code.
+    3) It provides for some client-side error checking, e.g. for misspelled or misplaced query
+    parameters that fail silently when provided via the REST URL
 
     As a result, it creates a separate object hierarchy that closely matches EDD's Django
     models, but needs to be maintained separately.
 
-    Note that there con be some differences in defaults between EddRestObjects and the Django
+    Note that there can be some differences in defaults between EddRestObjects and the Django
     models on which they're based. While Django modules have defaults defined for application to
     related database records, EddRestObjects, which may only be partially populated from the
     ground truth in the database, use None for all attributes that arent' specifically set. This
     should hopefully help to distinguish unknown values from those that have defaults applied.
-
-    TODO: alternatively, and BEFORE putting a lot of additional work into this, consider
-    finding/implementing a reflection-based solution that dynamically inspects EDD's Django model
-    objects and creates non-Django variants.
     """
     def __init__(self, **kwargs):
-        self.pk = kwargs.get('pk')
-        self.name = kwargs.get('name')
-        self.description = kwargs.get('description')
-        self.active = kwargs.get('active')
-        self.created = kwargs.get('created')
-        self.updated = kwargs.get('updated')
-        self.meta_store = kwargs.get('meta_store')
+        self.pk = kwargs.pop('pk', None)
+        self.uuid = kwargs.pop('uuid', None)
+        self.name = kwargs.pop('name', None)
+        self.description = kwargs.pop('description', None)
+        self.active = kwargs.pop('active', None)
+        self.created = kwargs.pop('created', None)
+        self.updated = kwargs.pop('updated', None)
+        self.meta_store = kwargs.pop('meta_store', None)
 
     def __str__(self):
         return self.name
 
 
-class Strain(EddRestObject):
-    def __init__(self, registry_id, registry_url, **kwargs):
-        temp = kwargs.copy()  # don't change parameter!
-        self.registry_id = registry_id
-        self.registry_url = registry_url
-        super(Strain, self).__init__(**temp)
+class Protocol(EddRestObject):
+    def __init__(self, **kwargs):
+        self.owned_by = kwargs.pop('owned_by', None)
+        self.variant_of = kwargs.pop('variant_of', None)
+        self.default_units = kwargs.pop('default_units', None)
+        self.categorization = kwargs.pop('categorization', None)
+        super(Protocol, self).__init__(**kwargs)
 
 
 class Line(EddRestObject):
     def __init__(self, **kwargs):
-        temp = kwargs.copy()  # don't change parameter!
-        self.study = temp.pop('study', None)
-        self.contact = temp.pop('contact', None)
-        self.contact_extra = temp.pop('contact_extra', None)
-        self.experimentor = temp.pop('experimentor', None)
-        self.carbon_source = temp.pop('carbon_source', None)
-        self.protocols = temp.pop('protocols', None)
-        self.strains = temp.pop('strains', None)
-        self.control = temp.pop('control', None)
-        self.replicate = temp.pop('replicate', None)
-        self.meta_store = temp.pop('meta_store', None)
-        super(Line, self).__init__(**temp)
+        self.study = kwargs.pop('study', None)
+        self.contact = kwargs.pop('contact', None)
+        self.experimenter = kwargs.pop('experimenter', None)
+        self.carbon_source = kwargs.pop('carbon_source', None)
+        self.strains = kwargs.pop('strains', None)
+        self.control = kwargs.pop('control', None)
+        self.replicate = kwargs.pop('replicate', None)
+        super(Line, self).__init__(**kwargs)
+
+
+class Assay(EddRestObject):
+    def __init__(self, **kwargs):
+        self.line = kwargs.pop('line', None)
+        self.protocol = kwargs.pop('protocol', None)
+        self.experimenter = kwargs.pop('experimenter', None)
+        super(Assay, self).__init__(**kwargs)
 
 
 class Study(EddRestObject):
     def __init__(self, **kwargs):
-        temp = kwargs.copy()  # don't change parameter!
-        self.contact = temp.pop('contact', None)
-        self.contact_extra = temp.pop('contact_extra', None)
-        self.metabolic_map = temp.pop('metabolic_map', None)
-        self.protocols = temp.pop('protocols', None)
-        super(Study, self).__init__(**temp)
+        self.contact = kwargs.pop('contact', None)
+        self.contact_extra = kwargs.pop('contact_extra', None)
+        self.metabolic_map = kwargs.pop('metabolic_map', None)
+        self.protocols = kwargs.pop('protocols', None)
+        super(Study, self).__init__(**kwargs)
+
+
+class MeasurementUnit(object):
+    def __init__(self, **kwargs):
+        self.unit_name = kwargs.pop('unit_name', None)
+        self.pk = kwargs.pop('pk', None)
+        self.type_group = kwargs.pop('type_group', None)
+        self.display = kwargs.pop('display', None)
+        self.alternate_names = kwargs.pop('alternate_names', None)
+
+
+class MeasurementType(object):
+    def __init__(self, **kwargs):
+        self.pk = kwargs.pop('pk')
+        self.type_name = kwargs.pop('type_name')  # required
+        self.type_group = kwargs.pop('type_group', None)
+        self.type_source = kwargs.pop('type_source', None)
+        self.uuid = kwargs.pop('uuid')
+
+
+class Measurement(object):
+    def __init__(self, **kwargs):
+        self.pk = kwargs.pop('pk', None)
+        self.assay = kwargs.pop('assay', None)
+        self.experimenter = kwargs.pop('experimenter', None)
+        self.measurement_type = kwargs.pop('measurement_type', None)
+        self.x_units = kwargs.pop('x_units', None)
+        self.y_units = kwargs.pop('y_units', None)
+        self.update_ref = kwargs.pop('update_ref', None)
+        self.active = kwargs.pop('active', None)
+        self.compartment = kwargs.pop('compartment', None)
+        self.measurement_format = kwargs.pop('measurement_format', None)
+
+
+class MeasurementValue(object):
+    def __init__(self, **kwargs):
+        self.pk = kwargs.pop('pk', None)
+        self.measurement = kwargs.pop('measurement', None)
+        self.x = kwargs.pop('x', [])
+        self.y = kwargs.pop('y', [])
+        self.updated = kwargs.pop('updated', None)
 
 
 class MetadataType(object):
-    def __init__(self, type_name, for_context, prefix='', postfix='', pk=None, group=None,
-                 type_i18n=None, type_field=None, input_size=None, input_type=None,
-                 default_value=None, type_class=None):
-        self.pk = pk
-        self.group = group
-        self.type_name = type_name
-        self.type_i18n = type_i18n
-        self.type_field = type_field
-        self.input_size = input_size
-        self.input_type = input_type
-        self.default_value = default_value
-        self.prefix = prefix
-        self.postfix = postfix
-        self.for_context = for_context
-        self.type_class = type_class
+    def __init__(self, **kwargs):
+        self.pk = kwargs.pop('pk', None)
+        self.uuid = kwargs.pop('uuid', None)
+        self.group = kwargs.pop('group', None)
+        self.type_name = kwargs.pop('type_name')  # required
+        self.type_i18n = kwargs.get('type_i19n', None)
+        self.input_size = kwargs.pop('input_size', None)
+        self.input_type = kwargs.pop('input_type', None)
+        self.default_value = kwargs.pop('default_value', None)
+        self.prefix = kwargs.pop('prefix', None)
+        self.postfix = kwargs.pop('postfix', None)
+        self.for_context = kwargs.pop('for_context')  # required
+        self.type_class = kwargs.pop('type_class', None)
 
 
 class MetadataGroup(object):
     def __init__(self, **kwargs):
         self.group_name = kwargs['group_name']
-
-
-DJANGO_CSRF_COOKIE_KEY = 'csrftoken'
-
-
-def insert_spoofed_https_csrf_headers(headers, base_url):
-    """
-    Creates HTTP headers that help to work around Django's CSRF protection, which shouldn't apply
-    outside of the browser context.
-    :param headers: a dictionary into which headers will be inserted, if needed
-    :param base_url: the base URL of the Django application being contacted
-    """
-    # if connecting to Django/DRF via HTTPS, spoof the 'Host' and 'Referer' headers that Django
-    # uses to help prevent cross-site scripting attacks for secure browser connections. This
-    # should be OK for a standalone Python REST API client, since the origin of a
-    # cross-site scripting attack is malicious website code that executes in a browser,
-    # but accesses another site's credentials via the browser or via user prompts within the
-    # browser. Not applicable in this case for a standalone REST API client.
-    # References:
-    # https://docs.djangoproject.com/en/dev/ref/csrf/#how-it-works
-    # http://security.stackexchange.com/questions/96114/why-is-referer-checking-needed-for-django
-    # http://mathieu.fenniak.net/is-your-web-api-susceptible-to-a-csrf-exploit/
-    # -to-prevent-csrf
-    if urlparse(base_url).scheme == 'https':
-        headers['Host'] = urlsplit(base_url).netloc
-        headers['Referer'] = base_url  # LOL! Bad spelling is now standard :-)
-
-_ASSUME_PAGED_RESOURCE = False
-_DEFAULT_SINGLE_REQUEST_RESULT_LIMIT = None
 
 
 class DrfSession(PagedSession):
@@ -232,6 +200,18 @@ class DrfSession(PagedSession):
         self._base_url = base_url
 
 
+def _set_multivalue_pk_input(dictionary, key, values):
+    """
+    A helper method for passing multivalue primary key inputs to EDD's REST API, which consumes
+    them as a single comma-delimited string rather than as a multivalue request parameter.
+    """
+    if values:
+        if isinstance(values, collections.Sequence):
+            dictionary[key] = ','.join(str(item) for item in values)
+        else:
+            dictionary[key] = [values]
+
+
 def _set_if_value_valid(dictionary, key, value):
     # utility method to get rid of long blocks of setting dictionary keys only if values valid
     if value:
@@ -240,10 +220,24 @@ def _set_if_value_valid(dictionary, key, value):
         dictionary[key] = value
 
 
+def _add_active_flag_if_present(search_params, **kwargs):
+    # default to only returning active objects, unless client specifically requests to see all
+    # or some subset of them (by providing parameter active=None)
+    if 'active' in kwargs:
+        active = kwargs.pop('active', None)
+    else:
+        active = True
+
+    if active is not None:
+        _set_if_value_valid(search_params, ACTIVE_STATUS_PARAM, active)
+
+    return kwargs
+
+
 class EddApi(RestApiClient):
     """
-    Defines a high-level interface to EDD's REST API. The initial version of this class is very
-    basic, and exposes only a minimal subset of the initial API exposed as part of SYNBIO-1299.
+    Defines a high-level interface to EDD's REST API. The initial version of this class only
+    exposes only a subset of the REST API, and will evolve over time.
     Note that data exposed via this API is subject to user and group-based access controls,
     and unlike Django ORM queries, won't necessarily reflect all the data present in the EDD
     database.
@@ -275,91 +269,260 @@ class EddApi(RestApiClient):
             auth.apply_session_token(session)
         super(EddApi, self).__init__('EDD', base_url, session, result_limit=result_limit)
 
-    def get_strain(self, strain_id=None):
-        """
-        A convenience method to get the strain (if any) with the provided primary key and/or
-        registry id (either should be
-        sufficient to uniquely identify the strain within an EDD deployment).
-        :param strain_id: a unique identifier for the strain (either the numeric primary key or
-        registry_id)
-        """
-        # make the HTTP request
-        url = '%(base_url)s/rest/strains/%(strain_id)s/' % {
-            'base_url': self.base_url,
-            'strain_id': strain_id,
-        }
-        response = self.session.get(url, headers=self._json_header)
+    @staticmethod
+    def _add_eddobject_search_params(search_params, **kwargs):
+        _set_if_value_valid(search_params, NAME_REGEX_PARAM,
+                            kwargs.pop('name_regex', None))
+        _set_if_value_valid(search_params, DESCRIPTION_REGEX_PARAM,
+                            kwargs.pop('description', None))
+        _set_if_value_valid(search_params, CREATED_AFTER_PARAM,
+                            kwargs.pop('created_after', None))
+        _set_if_value_valid(search_params, CREATED_BEFORE_PARAM,
+                            kwargs.pop('created_before', None))
+        _set_if_value_valid(search_params, UPDATED_AFTER_PARAM,
+                            kwargs.pop('updated_after', None))
+        _set_if_value_valid(search_params, UPDATED_BEFORE_PARAM,
+                            kwargs.pop('updated_before', None))
+        return _add_active_flag_if_present(search_params, **kwargs)
 
-        # throw an error for unexpected reply
-        try:
-            response.raise_for_status()
-            return Strain(**json.loads(response.content))
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == requests.codes.not_found:
-                return None
-            raise e
+    def search_measurement_units(self, **kwargs):
+        """
+        Searches EDD for the MeasurementUnits that match the search criteria
+        :param query_url: the URL to query, including all desired search parameters ( e.g. as
+                    returned in the "next" result from a results page).  If provided,
+                    all other parameters will be ignored.
+        :param unit_name_regex: a regular expression for the unit name (case-insensitive)
+        :param page_number: optional results page number to request (defaults to 1)
+        :return: a DrfPagedResult object containing results or None if none were found
+        :raises: requests.HttpError if one occurs
+        """
 
-    def get_metadata_type(self, local_pk=None):
-        """
-        Queries EDD to get the MetadataType uniquely identified by local numeric primary key,
-        by i18n string, or by the combination of
-        :param local_pk: the integer primary key that uniquely identifies the metadata type
-        within this EDD deployment
-        :return: the MetadaDataType, or None
-        """
-        # make the HTTP request
-        url = '%(base_url)s/rest/metadata_types/%(pk)d' % {
-            'base_url': self.base_url,
-            'pk': local_pk,
-        }
-        response = self.session.get(url, headers=self._json_header)
+        query_url = kwargs.get(_QUERY_URL_PARAM, None)
+        if query_url:
+            response = self.session.get(query_url, headers=self._json_header)
+        else:
+            search_params = {}
+            _set_if_value_valid(search_params, UNIT_NAME_REGEX_PARAM,
+                                kwargs.pop('unit_name_regex', None))
+            _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
+                                kwargs.pop(_PAGE_NUMBER_PARAM, None))
+
+            # make the HTTP request
+            url = '%s/rest/measurement_units/' % self.base_url
+            response = self.session.get(url, params=search_params, headers=self._json_header)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return MetadataType(**response.content)
+        return DrfPagedResult.of(response.content, model_class=MeasurementUnit)
 
-    def search_metadata_types(self, context=None, group=None, local_name_regex=None,
-                              locale=b'en_US', case_sensitive=CASE_SENSITIVE_DEFAULT,
-                              type_i18n=None, query_url=None, page_number=None):
+    def _enforce_valid_kwargs(self, kwargs):
+        if kwargs:
+            raise KeyError('Invalid keyword argument(s) : %s' % kwargs)
+
+    def search_measurement_types(self, **kwargs):
         """
-        Searches EDD for the MetadataType(s) that match the search criteria
-        :param context: the context for the metadata to be searched. Must be in
-            METADATA_CONTEXT_VALUES
-        :param group: the group this metadat is part of
-        :param local_name_regex: the localized name for the metadata type
-        :param locale: the locale to search for the metadata type
-        :param case_sensitive: True if local_name_regex should be compiled for case-sensitive
-            matching, False otherwise.
-        :param type_i18n:
-        :param query_url:
-        :param page_number: the page number of results to be returned (1-indexed)
-        :return:
+        Searches EDD for the MeasurementTypes that match the search criteria
+        :param query_url: the URL to query, including all desired search parameters (e.g. as
+                    returned in the "next" result from a results page).  If provided, all other
+                    parameters will be ignored.
+        :param type_name_regex: a regular expression for the name (case-insensitive)
+        :param type_group: the primary key f the type group to filter results for
+        :param page_number: optional results page number to request (defaults to 1)
+        :return: a DrfPagedResult object containing results or None if none were found
+        :raises: requests.HttpError if one occurs
         """
-
-        if local_name_regex and not locale:
-            raise RuntimeError('locale is required if local_name_regex is provided')
-
-        if context and context not in METADATA_CONTEXT_VALUES:
-            raise ValueError('context \"%s\" is not a supported value' % context)
-
-        self._verify_page_number(page_number)
-
-        # build up a dictionary of search parameters based on provided inputs
+        query_url = kwargs.pop('query_url', None)
         if query_url:
             response = self.session.get(query_url, headers=self._json_header)
         else:
             search_params = {}
-            _set_if_value_valid(search_params, METADATA_TYPE_CONTEXT, context)
-            _set_if_value_valid(search_params, METADATA_TYPE_GROUP, group)
-            _set_if_value_valid(search_params, METADATA_TYPE_I18N, type_i18n)
-            if local_name_regex:
-                search_params[METADATA_TYPE_NAME_REGEX] = local_name_regex
-                search_params[METADATA_TYPE_LOCALE] = locale
-            _set_if_value_valid(search_params, CASE_SENSITIVE_PARAM, case_sensitive)
+            _set_if_value_valid(search_params, MEAS_TYPE_NAME_REGEX,
+                                kwargs.pop('type_name_regex', None))
+            _set_if_value_valid(search_params, TYPE_GROUP_PARAM,
+                                kwargs.pop('type_group', None))
+            _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
+                                kwargs.pop(_PAGE_NUMBER_PARAM, None))
+            self._enforce_valid_kwargs(kwargs)
+
+            # make the HTTP request
+            url = '%s/rest/measurement_types/' % self.base_url
+            response = self.session.get(url, params=search_params, headers=self._json_header)
+
+        # throw an error for unexpected reply
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        return DrfPagedResult.of(response.content, model_class=MeasurementType)
+
+    def search_measurements(self, **kwargs):
+        """
+        Searches EDD for the Measurements that match the search criteria
+        :param study_id: the primary key or UUID of the study to search in.
+        :param active: optionally filter objects by 'active' status.  If not provided,
+            only active objects are returned by default, or set active=None to return all objects.
+        :param assays: an iterable of assay pk's to use in filtering measurements.
+        :param compartment: which cellular compartment to filter measurements for.
+        :param measurement_types: an iterable of MeasurementType pk's to use in filtering
+                measurements.  Only measurements of the provided types will be returned.
+        :param created_after: a datetime used to filter objects by creation date (inclusive)
+        :param created_before: a datetime used to filter objects by creation date (inclusive)
+        :param query_url: the URL to query, including all desired search parameters (e.g. as
+            returned in the "next" result from a results page).  If provided, all other
+            parameters will be ignored.
+        :param x_units: one or more primary keys for units that measurements will be filtered by
+        :param y_units: one or more primary keys for units that measurements will be filtered by
+        :param page_number: optional results page number to request (defaults to 1)
+        :return: a DrfPagedResult object containing results or None if none were found
+        :raises: requests.HttpError if one occurs
+        """
+        query_url = kwargs.pop('query_url', None)
+        study_id = kwargs.pop('study_id', None)
+        if query_url:
+            response = self.session.get(query_url, headers=self._json_header)
+        else:
+            if study_id:
+                url = '%(base)s/rest/studies/%(study_id)s/measurements/' % {
+                    'base': self.base_url,
+                    'study_id': study_id, }
+            else:
+                url = '%s/rest/measurements/' % self.base_url
+
+            search_params = {}
+            _set_multivalue_pk_input(search_params, ASSAYS_PARAM,
+                                     kwargs.pop('assays', None))
+            _set_multivalue_pk_input(search_params, MEAS_TYPES_PARAM,
+                                     kwargs.pop('measurement_types', None))
+            _set_multivalue_pk_input(search_params, 'x_units__in',
+                                     kwargs.pop('x_units', None))
+            _set_multivalue_pk_input(search_params, 'y_units__in',
+                                     kwargs.pop('y_units', None))
+            _set_if_value_valid(search_params, COMPARTMENT_PARAM,
+                                kwargs.pop('compartment', None))
+            _set_if_value_valid(search_params, CREATED_AFTER_PARAM,
+                                kwargs.pop('created_after', None))
+            _set_if_value_valid(search_params, CREATED_BEFORE_PARAM,
+                                kwargs.pop('created_before', None))
+            _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
+                                kwargs.pop(_PAGE_NUMBER_PARAM, None))
+
+            unprocessed_kwargs = _add_active_flag_if_present(search_params, **kwargs)
+            self._enforce_valid_kwargs(unprocessed_kwargs)
+
+            # make the HTTP request
+            response = self.session.get(url, params=search_params, headers=self._json_header)
+
+        # throw an error for unexpected reply
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        return DrfPagedResult.of(response.content, model_class=Measurement)
+
+    def search_values(self, **kwargs):
+        """
+        Searches EDD for the Measurements that match the search criteria
+        :param study_id: the primary key or UUID of the study to search in.
+        :param measurements: one or more measurement pks to filter values by
+        :param created_after: a datetime used to filter objects by creation date (inclusive)
+        :param created_before: a datetime used to filter objects by creation date (inclusive)
+        :param query_url: the URL to query, including all desired search parameters (e.g. as
+            returned in the "next" result from a results page).  If provided, all other
+            parameters will be ignored.
+        :param page_number: optional results page number to request (defaults to 1)
+        :return: a DrfPagedResult object containing results or None if none were found
+        :raises: requests.HttpError if one occurs
+        """
+
+        query_url = kwargs.pop('query_url', None)
+        if query_url:
+            response = self.session.get(query_url, headers=self._json_header)
+        else:
+            study_id = kwargs.pop('study_id', None)
+            if study_id:
+                url = '%(base)s/rest/studies/%(study_id)s/values/' % {
+                    'base': self.base_url,
+                    'study_id': study_id, }
+            else:
+                url = '%s/rest/values/' % self.base_url
+
+            search_params = {}
+            _set_multivalue_pk_input(search_params, MEASUREMENT_PKS_PARAM,
+                                     kwargs.pop('measurements', None))
+            _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
+                                kwargs.pop(_PAGE_NUMBER_PARAM, None))
+            self._enforce_valid_kwargs(kwargs)
+
+            # make the HTTP request
+            response = self.session.get(url, params=search_params, headers=self._json_header)
+
+        # throw an error for unexpected reply
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        return DrfPagedResult.of(response.content, model_class=MeasurementValue)
+
+    def _detect_invalid_kwargs(self, **kwargs):
+        if kwargs:
+            raise KeyError('Unsupported kwargs: %s' % kwargs)
+
+    def get_metadata_type(self, id):
+        """
+        Queries EDD to get the MetadataType uniquely identified by local numeric primary key,
+        by i18n string, or by the combination of
+        :return: the MetadaDataType, or None
+        :raises: requests.HttpError, if one occurs
+        """
+        # make the HTTP request
+        url_pattern = '%(base)s/rest/metadata_types/%(id)s'
+        return self._get_single_object(id, url_pattern, MetadataType)
+
+    def get_measurement_unit(self, id):
+        """
+        Gets the MeasurementUnit identified by the provided ID
+        :param id: the unique identifier (either a UUID or integer primary key)
+        :return: the MeasurementUnit, or None if none was found using the provided identifier
+        :raises: requests.HttpError, if one occurs
+        """
+        url_pattern = '%(base)s/rest/measurement_units/%(id)s'
+        return self._get_single_object(id, url_pattern, MeasurementUnit)
+
+    def search_metadata_types(self, **kwargs):
+        """
+        Searches EDD for the MetadataType(s) that match the search criteria
+        :param query_url: the URL to query, including all desired search parameters (e.g. as
+                    returned in the "next" result from a results page).  If provided, all other
+                    parameters will be ignored.
+        :param for_context: the context for the metadata to be searched. Must be in
+            METADATA_CONTEXT_VALUES
+        :param group: the primary key for the group this metadata is part of
+        :param type_i18n:
+        :param page_number: optional results page number to request (defaults to 1)
+        :return: a DrfPagedResult object containing results or None if none were found
+        :raises: requests.HttpError if one occurs
+        """
+        for_context = kwargs.pop('for_context', None)
+        if for_context and for_context not in METADATA_CONTEXT_VALUES:
+            raise ValueError('context \"%s\" is not a supported value' % for_context)
+
+        # build up a dictionary of search parameters based on provided inputs
+        query_url = kwargs.pop('query_url', None)
+        if query_url:
+            response = self.session.get(query_url, headers=self._json_header)
+        else:
+            search_params = {}
+            _set_if_value_valid(search_params, METADATA_TYPE_CONTEXT_PARAM, for_context)
+            _set_if_value_valid(search_params,
+                                METADATA_TYPE_GROUP_PARAM,
+                                kwargs.get('group', None))
+            _set_if_value_valid(search_params,
+                                METADATA_TYPE_I18N,
+                                kwargs.pop('type_i18n', None))
             _set_if_value_valid(search_params, PAGE_SIZE_QUERY_PARAM, self.result_limit)
-            _set_if_value_valid(search_params, PAGE_NUMBER_QUERY_PARAM, page_number)
+            _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
+                                kwargs.pop(_PAGE_NUMBER_PARAM, None))
+
+            self._enforce_valid_kwargs(kwargs)
 
             # make the HTTP request
             url = '%s/rest/metadata_types' % self.base_url
@@ -371,30 +534,119 @@ class EddApi(RestApiClient):
 
         return DrfPagedResult.of(response.content, model_class=MetadataType)
 
-    def search_studies(self, name_regex=None, description_regex=None, created_after=None,
-                       created_before=None, updated_after=None,
-                       updated_before=None, active=ACTIVE_STATUS_DEFAULT,
-                       case_sensitive=CASE_SENSITIVE_DEFAULT, page_number=None, ):
-        # TODO: implement/test other search parameters
-
-        search_params = {'type': 'studies'}
-        _set_if_value_valid(search_params, NAME_REGEX_PARAM, name_regex)
-        _set_if_value_valid(search_params, DESCRIPTION_REGEX_PARAM, description_regex)
-        _set_if_value_valid(search_params, CASE_SENSITIVE_PARAM, case_sensitive)
-        _set_if_value_valid(search_params, CREATED_AFTER_PARAM, created_after)
-        _set_if_value_valid(search_params, CREATED_BEFORE_PARAM, created_before)
-        _set_if_value_valid(search_params, UPDATED_AFTER_PARAM, updated_after)
-        _set_if_value_valid(search_params, UPDATED_BEFORE_PARAM, updated_before)
-        _set_if_value_valid(search_params, ACTIVE_STATUS_PARAM, active)
-
-        paging_params = {}
-        _set_if_value_valid(paging_params, PAGE_SIZE_QUERY_PARAM, self.result_limit)
-        _set_if_value_valid(paging_params, PAGE_NUMBER_QUERY_PARAM, page_number)
-
+    def get_protocol(self, id=None):
+        """
+        Queries EDD to get the Protocol a single protocol
+        :param id: either a UUID that uniquely identifies this Protocol, or an integer
+        primary key that identifies it uniquely within the context of a single EDD deployment.
+        :return: the Protocol or None
+        :raises: requests.HttpError if one occurs
+        """
         # make the HTTP request
-        url = '%s/rest/search/' % self.base_url
-        response = self.session.post(url, params=paging_params, data=json.dumps(search_params),
-                                     headers=self._json_header)
+        url_pattern = '%(base)s/rest/protocols/%(id)s'
+        return self._get_single_object(id, url_pattern, Protocol)
+
+    def get_measurement_type(self, unique_id=None):
+        """
+        Queries EDD to get a single MeasurementType
+        :param unique_id: either a UUID that uniquely identifies this MeasurementTYpe,
+        or an integer primary key that identifies it uniquely within the context of a single EDD
+        deployment.
+        :return: the MeasurementType or None
+        :raises: requests.HttpError, if one occurs
+        """
+        # make the HTTP request
+        url_pattern = '%(base)s/rest/measurement_types/%(id)d'
+        return self._get_single_object(unique_id, url_pattern, MeasurementType)
+
+    def _get_single_object(self, unique_id, url_pattern, result_class):
+        url = url_pattern % {
+            'base': self.base_url,
+            'id': unique_id,
+        }
+        response = self.session.get(url, headers=self._json_header)
+
+        if response.status_code == requests.codes.not_found:
+            return None
+        response.raise_for_status()  # raise an Exception for unexpected reply
+        kwargs = json.loads(response.content)
+        return result_class(**kwargs)
+
+    def search_protocols(self, **kwargs):
+        """
+        Searches EDD for protocols according to the parameters.
+        :param query_url: the URL to query, including all desired search parameters (e.g. as
+            returned in the "next" result from a results page).  If provided, all other
+            parameters will be ignored.
+
+        :param name_regex: a regular expression for the name (case-insensitive).
+        :param description_regex: a regular expression for the description (case-insensitive)
+        :param created_after: a datetime used to filter objects by creation date (inclusive)
+        :param created_before: a datetime used to filter objects by creation date (inclusive)
+        :param updated_after: a datetime used to filter objects by update date (inclusive)
+        :param updated_before: a datetime used to filter objects by creation date (inclusive)
+        :param active: optionally filter objects by 'active' status.  If not provided,
+            only active objects are returned by default, or set active=None to return all objects.
+        :param page_number: optional results page number to request (defaults to 1)
+        :return: a DrfPagedResult object containing results or None if none were found
+        :raises: requests.HttpError if one occurs
+        """
+
+        query_url = kwargs.pop('query_url', None)
+        if query_url:
+            response = self.session.get(query_url, headers=self._json_header)
+        else:
+            search_params = {}
+            _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
+                                kwargs.pop(_PAGE_NUMBER_PARAM, None))
+            unprocessed_kwargs = self._add_eddobject_search_params(search_params, **kwargs)
+            self._enforce_valid_kwargs(unprocessed_kwargs)
+
+            # make the HTTP request
+            url = '%s/rest/protocols/' % self.base_url
+            response = self.session.get(url, params=search_params, headers=self._json_header)
+
+        # throw an error for unexpected reply
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        return DrfPagedResult.of(response.content, model_class=Protocol)
+
+    def search_studies(self, **kwargs):
+        """
+        Searches EDD for studies according to the parameters.
+
+        :param query_url: the URL to query, including all desired search parameters (e.g. as
+            returned in the "next" result from a results page).  If provided, all other
+            parameters will be ignored.
+        :param name_regex: a regular expression for the name (case-insensitive).
+        :param description_regex: a regular expression for the description (case-insensitive)
+        :param created_after: a datetime used to filter objects by creation date (inclusive)
+        :param created_before: a datetime used to filter objects by creation date (inclusive)
+        :param updated_after: a datetime used to filter objects by update date (inclusive)
+        :param updated_before: a datetime used to filter objects by creation date (inclusive)
+        :param active: optionally filter objects by 'active' status.  If not provided,
+            only active objects are returned by default, or set active=None to return all
+            objects.
+        :param page_number: optional results page number to request (defaults to 1)
+        :return: a DrfPagedResult object containing results or None if none were found
+        :raises: requests.HttpError if one occurs
+        """
+
+        url = '%s/rest/studies/' % self.base_url
+
+        query_url = kwargs.pop('query_url', None)
+        if query_url:
+            response = self.session.get(url, headers=self._json_header)
+        else:
+            search_params = {}
+            _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
+                                kwargs.pop('page_number', None))
+            unprocessed_kwargs = self._add_eddobject_search_params(search_params, **kwargs)
+            self._enforce_valid_kwargs(unprocessed_kwargs)
+
+            # make the HTTP request
+            response = self.session.get(url, params=search_params, headers=self._json_header)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
@@ -402,345 +654,119 @@ class EddApi(RestApiClient):
 
         return DrfPagedResult.of(response.content, model_class=Study)
 
-    def search_strains(self, query_url=None, local_pk=None, registry_id=None,
-                       registry_url_regex=None, name=None,
-                       name_regex=None, case_sensitive=None, page_number=None):
+    def search_lines(self, **kwargs):
         """
-        Searches EDD for strain(s) matching the search criteria.
-        :param query_url: a convenience for getting the next page of results in multi-page
-        result sets. Query_url is the entire URL for the search, including query parameters (for
-        example, the value returned for next_page as a result of a prior search). If present,
-        all other parameters will be ignored.
-        :param local_pk: the integer primary key that identifies the strain within this EDD
-        deployment
-        :param registry_id: the registry id (UUID) to search for
-        :param registry_url_regex: the registry URL to search for
-        :param name: the strain name or name fragment to search for (case-sensitivity determined
-        by case_sensitive)
-        :param name_regex: a regular expression for the strain name (case-sensitivity determined
-        by case_sensitive)
-        :param case_sensitive: whether or not to use case-sensitive string comparisons. False or
-        None indicates that searches should be case-insensitive.
-        :param page_number: the page number of results to be returned (1-indexed)
-        :return: a PagedResult containing some or all of the EDD strains that matched the search
-        criteria
+        Searches EDD for lines according to the parameters.
+        :param query_url: the URL to query, including all desired search parameters (e.g. as
+            returned in the "next" result from a results page).  If provided, all other
+            parameters will be ignored.
+        :param strains: one or more UUIDs or ICE UI URL's for strains to filter lines for.  If the
+        line contains any of the provided strains, it will be returned in the results.
+        :param name_regex: a regular expression for the name (case-insensitive).
+        :param description_regex: a regular expression for the description (case-insensitive)
+        :param created_after: a datetime used to filter objects by creation date (inclusive)
+        :param created_before: a datetime used to filter objects by creation date (inclusive)
+        :param updated_after: a datetime used to filter objects by update date (inclusive)
+        :param updated_before: a datetime used to filter objects by creation date (inclusive)
+        :param active: optionally filter objects by 'active' status.  If not provided,
+            only active objects are returned by default, or set active=None to return
+            all objects.
+        :param page_number: optional results page number to request (defaults to 1)
+        :return: a DrfPagedResult object containing results or None if none were found
+        :raises: requests.HttpError if one occurs
         """
-
-        self._verify_page_number(page_number)
-
-        # build up a dictionary of search parameters based on provided inputs
+        query_url = kwargs.pop('query_url', None)
         if query_url:
             response = self.session.get(query_url, headers=self._json_header)
         else:
-            search_params = {}
-            _set_if_value_valid(search_params, 'pk', local_pk)
-            _set_if_value_valid(search_params, STRAIN_REGISTRY_ID, registry_id)
-            _set_if_value_valid(search_params, STRAIN_REGISTRY_URL_REGEX, registry_url_regex)
-            _set_if_value_valid(search_params, STRAIN_NAME, name)
-            _set_if_value_valid(search_params, STRAIN_NAME_REGEX, name_regex)
-            _set_if_value_valid(search_params, STRAIN_CASE_SENSITIVE, case_sensitive)
-            _set_if_value_valid(search_params, PAGE_SIZE_QUERY_PARAM, self.result_limit)
-            _set_if_value_valid(search_params, PAGE_NUMBER_QUERY_PARAM, page_number)
+            study_id = kwargs.pop('study_id', None)
+            if study_id:
+                url = '%(base)s/rest/studies/%(study_id)s/lines/' % {
+                    'base': self.base_url,
+                    'study_id': study_id,
+                }
+            else:
+                url = '%s/rest/lines/' % self.base_url
 
-            # make the HTTP request
-            url = '%(base_url)s/rest/%(resource)s' % {
-                'base_url': self.base_url, 'resource': STRAINS_RESOURCE_NAME
-            }
+            search_params = {}
+            _set_multivalue_pk_input(search_params, 'strains__in', kwargs.pop('strains', None))
+            _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
+                                kwargs.pop(_PAGE_NUMBER_PARAM, None))
+            unprocessed_kwargs = self._add_eddobject_search_params(search_params, **kwargs)
+            self._enforce_valid_kwargs(unprocessed_kwargs)
+
             response = self.session.get(url, params=search_params, headers=self._json_header)
 
-        # throw an error for unexpected reply
-        if response.status_code != requests.codes.ok:
-            response.raise_for_status()
+        response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=Strain)
+        return DrfPagedResult.of(response.content, model_class=Line)
 
-    def get_strain_studies(self, local_strain_pk=None, strain_uuid=None, query_url=None,
-                           page_number=None):
+    def search_assays(self, **kwargs):
         """
-        Queries EDD for all of the studies associated with the given strain.
-        :param local_strain_pk: the integer local primary key for this strain in this EDD
-        deployment. When available, strain_uuid is preferred since it's valid across EDD
-        deployments.
-        :param strain_uuid: the UUID for this strain as created by ICE. When available,
-        strain_uuid is preferred since it's valid across EDD deployments.
-        :param query_url: a convenience for getting the next page of results in multi-page
-        result sets. Query_url is the entire URL for the search, including query parameters (for
-        example, the value returned for next_page as a result of a prior search). If present,
-        all other parameters will be ignored.
-        :param page_number: the page number of results to be returned (1-indexed)
-        :return: a PagedResult with some or all of the associated studies, or None if none were
-        found for this strain
+        Searches EDD for lines according to the parameters.
+        :param study_id: the primary key or UUID of the study to search for assays in
+        :param lines: one or more Line primary keys to use in filtering protocols
+        :param protocols: one or more Protocol primary keys to use in filtering assays
+        :param experimenters: one or more experimenter primary keys to use in filtering protocols
+        :param query_url: the URL to query, including all desired search parameters (e.g. as
+            returned in the "next" result from a results page).  If provided, all other
+            parameters will be ignored.
+        :param name_regex: a regular expression for the name (case-insensitive).
+        :param description_regex: a regular expression for the description (case-insensitive)
+        :param created_after: a datetime used to filter objects by creation date (inclusive)
+        :param created_before: a datetime used to filter objects by creation date (inclusive)
+        :param updated_after: a datetime used to filter objects by update date (inclusive)
+        :param updated_before: a datetime used to filter objects by creation date (inclusive)
+        :param active: optionally filter objects by 'active' status.  If not provided,
+            only active objects are returned by default, or set active=None to return
+            all objects.
+        :param page_number: optional results page number to request (defaults to 1)
+        :return: a DrfPagedResult object containing results or None if none were found
+        :raises: requests.HttpError if one occurs
         """
-        self._verify_page_number(page_number)
-        response = None
-
-        # if the whole query was provided, just use it
+        query_url = kwargs.pop('query_url', None)
         if query_url:
             response = self.session.get(query_url, headers=self._json_header)
-
-        # otherwise, build up a dictionary of search parameters based on provided inputs
         else:
-            search_params = {}
-
-            id_key = 'id'
-
-            if strain_uuid:
-                # TODO: consider renaming the param to ID, but def use a constant here and in else
-                search_params[id_key] = strain_uuid
-            elif local_strain_pk:
-                search_params[id_key] = local_strain_pk
+            study_id = kwargs.pop('study_id', None)
+            if study_id:
+                url = '%(base)s/rest/studies/%(study_id)s/assays/' % {
+                    'base': self.base_url,
+                    'study_id': study_id,
+                }
             else:
-                raise KeyError('At least one strain identifier must be provided')  # TODO: consider
-                # exception type and message
+                url = '%s/rest/assays/' % self.base_url
+            search_params = {}
+            _set_multivalue_pk_input(search_params, PROTOCOLS_REQUEST_PARAM,
+                                     kwargs.pop('protocols', None))
+            _set_multivalue_pk_input(search_params, LINES_REQUEST_PARAM,
+                                     kwargs.pop('lines', None))
+            _set_multivalue_pk_input(search_params, EXPERIMENTERS_REQUEST_PARAM,
+                                     kwargs.pop('experimenters', None))
+            _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
+                                kwargs.pop(_PAGE_NUMBER_PARAM, None))
+            unprocessed_kwargs = self._add_eddobject_search_params(search_params, **kwargs)
+            self._enforce_valid_kwargs(unprocessed_kwargs)
 
-            if self.result_limit:
-                search_params[PAGE_SIZE_QUERY_PARAM] = self.result_limit
+            response = self.session.get(url, params=search_params, headers=self._json_header)
 
-            if page_number:
-                search_params[PAGE_NUMBER_QUERY_PARAM] = page_number
+        response.raise_for_status()
 
-            url = '%s/rest/strains/%d/studies/' % (self.base_url, local_strain_pk)
+        return DrfPagedResult.of(response.content, model_class=Assay)
 
-            response = self.session.get(url, params=search_params)
-
-        if response.status_code == requests.codes.ok:
-            return DrfPagedResult.of(response.content, model_class=Study)
-
-    def get_study_lines(self, study_pk, line_active_status=ACTIVE_STATUS_DEFAULT, query_url=None,
-                        page_number=None):
-
+    def get_study(self, id):
         """
-        Queries EDD for the lines associated with a specific study
-        :param query_url: a convenience for getting the next page of results in multi-page
-        result sets. Query_url is the entire URL for the search, including query parameters (for
-        example, the value returned for next_page as a result of a prior search). If present,
-        all other parameters will be ignored.
-        :param page_number: the page number of results to be returned (1-indexed)
-        :return: a PagedResult containing some or all of the EDD lines that matched the search
-        criteria
+        Gets the study identified by the provided ID
+        :param id: the unique identifier (either a UUID or integer primary key)
+        :return: the study, or None if none was found using the provided identifier
+        :raises requests.HttpError, if one occurs
         """
-        self._verify_page_number(page_number)
-
-        # if servicing a paged response, just use the provided query URL so clients don't have to
-        # keep track of all the parameters
-        if query_url:
-            response = self.session.get(query_url, headers=self._json_header)
-        else:
-            # make the HTTP request
-            url = '%s/rest/studies/%d/lines/' % (self.base_url, study_pk)
-
-            params = {}
-
-            if line_active_status:
-                params[ACTIVE_STATUS_PARAM] = line_active_status
-
-            if page_number:
-                params[PAGE_NUMBER_QUERY_PARAM] = page_number
-
-            response = self.session.get(url, headers=self._json_header, params=params)
-
-        # throw an error for unexpected reply
-        if response.status_code != requests.codes.ok:
-            response.raise_for_status()
-
-        return DrfPagedResult.of(response.content, Line)
-
-    def get_study_strains(self, study_pk, strain_id='',
-                          line_active_status=ACTIVE_STATUS_DEFAULT,
-                          page_number=None, query_url=None):
-        """
-
-        :param study_pk: the integer primary key for the EDD study whose strain assocations we
-            want to get
-        :param strain_id: an optional unique identifier to test whether a specific strain is used
-            in this EDD study. The unique ID can be either EDD's numeric primary key for the
-            strain, or ICE's UUID, or an empty string to get all strains associated with the study.
-        :param line_active_status:
-        :param page_number: the page number of results to be returned (1-indexed)
-        :param query_url: a convenience for getting the next page of results in multi-page
-            result sets. Query_url is the entire URL for the search, including query parameters
-            (for example, the value returned for next_page as a result of a prior search). If
-            present, all other parameters will be ignored.
-        :return: a PagedResult containing some or all of the EDD strains used in this study
-        """
-
-        self._verify_page_number(page_number)
-        response = None
-
-        if query_url:
-            response = self.session.get(query_url, headers=self._json_header)
-        else:
-            url = '%s/rest/studies/%d/strains/%s' % (self.base_url, study_pk, strain_id)
-
-            # add parameters to the request
-            params = {}
-            if line_active_status:
-                params[ACTIVE_STATUS_PARAM] = line_active_status
-            if page_number:
-                params[PAGE_NUMBER_QUERY_PARAM] = page_number
-            response = self.session.get(url, headers=self._json_header, params=params)
-
-        try:
-            response.raise_for_status()
-            return DrfPagedResult.of(response.content, Strain)
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == requests.codes.not_found:
-                return None
-            raise e
-
-    def create_line(self, study_id, strain_id, name, description=None, metadata={}):
-        """
-        Creates a new line in EDD
-        :return: the newly-created Line, but containing only the subset of its state serialized
-        by the REST API.
-        :raises: exception if the line couldn't be created
-        :raises RuntimeError: if writes are disabled when this method is invoked
-        """
-        self._prevent_write_while_disabled()
-
-        url = '%s/rest/studies/%d/lines/' % (self.base_url, study_id)
-
-        new_line = {
-            "study": study_id,
-            "name": name,
-            "control": False,
-            "replicate": None,
-            # "contact": 60,
-            # "contact_extra": ' ',
-            # "experimenter": 60,
-            # "protocols": [
-            #     1933
-            # ],
-            "strains": [] if strain_id is None else [strain_id],
-            "meta_store": metadata,
-        }
-
-        if description:
-            new_line['description'] = description
-
-        response = self.session.post(url, headers=self._json_header, data=json.dumps(new_line))
-
-        # throw an error for unexpected reply
-        try:
-            response.raise_for_status()
-            return Line(**json.loads(response.content))
-        except requests.exceptions.HTTPError as e:
-            if DEBUG:
-                show_response_html(response)
-            raise e
-
-    # TODO: shouldn't be able to do this via the API...? Investigate use in Admin app.
-    # Will's comment is that line creation / edit should take a strain UUID as input
-    def create_strain(self, name, description, registry_id, registry_url):
-        """
-        Creates or updates a Strain in EDD
-        :return: the newly-created strain, but containing only the subset of its state serialized
-        by the REST API.
-        :raises: an Exception if the strain couldn't be created
-        :raises RuntimeError: if writes are disabled when this method is invoked
-        """
-        self._prevent_write_while_disabled()
-
-        post_data = {
-            STRAIN_NAME_KEY: name,
-            STRAIN_DESCRIPTION_KEY: description,
-            STRAIN_REG_ID_KEY: registry_id,
-            STRAIN_REG_URL_KEY: registry_url,
-        }
-
-        # make the HTTP request
-        url = '%s/rest/strains/' % self.base_url
-        response = self.session.post(url, data=json.dumps(post_data), headers=self._json_header)
-
-        # throw an error for unexpected reply
-        try:
-            response.raise_for_status()
-            # return the created/updated strain
-            return Strain(**json.loads(response.content))
-        except requests.exceptions.HTTPError as e:
-            if DEBUG:
-                show_response_html(response)
-            raise e
-
-    def _update_strain(self, http_method, name=None, description=None, local_pk=None,
-                       registry_id=None, registry_url=None):
-        """
-        A helper method that is the workhorse for both setting all of a strains values,
-        or updating just a select subset of them
-        :param http_method: the method to use in updating the strain (determines replacement type
-            by REST convention).
-        :param name: the strain name
-        :param description: the strain description
-        :param local_pk: the numeric primary key for this strain in the local EDD deployment
-        :param registry_id: the ICE UUID for this strain
-        :param registry_url: the ICE URL for this strain
-        :return: the strain if it was created
-        """
-
-        self._prevent_write_while_disabled()
-
-        strain_values = {}
-        _set_if_value_valid(strain_values, STRAIN_NAME_KEY, name)
-        _set_if_value_valid(strain_values, STRAIN_DESCRIPTION_KEY, description)
-        _set_if_value_valid(strain_values, STRAIN_REG_ID_KEY, registry_id)
-        _set_if_value_valid(strain_values, STRAIN_REG_URL_KEY, registry_url)
-
-        # determine which identifier to use for the strain. if the local_pk is provided, use that
-        # since we may be trying to update a strain that has no UUID defined
-        strain_id = str(local_pk) if local_pk else str(registry_id)
-
-        # build the URL for this strain resource
-        url = '%(base_url)s/rest/strains/%(strain_id)s/' % {
-            'base_url': self.base_url, 'strain_id': strain_id,
-        }
-
-        response = self.session.request(http_method, url, data=json.dumps(strain_values),
-                                        headers=self._json_header)
-
-        try:
-            response.raise_for_status()
-            return Strain(**json.loads(response.content))
-        except requests.exceptions.HTTPError as e:
-            if DEBUG:
-                show_response_html(response)
-            raise e
-
-    def update_strain(self, name=None, description=None, local_pk=None, registry_id=None,
-                      registry_url=None):
-        return self._update_strain('PATCH', name, description, local_pk, registry_id, registry_url)
-
-    def set_strain(self, name, description, local_pk=None, registry_id=None, registry_url=None):
-        """
-        Updates the content of a preexisting strain, replacing all of its fields with the ones
-        provided (or null/empty for any except the pk that aren't)
-        :return:
-        """
-        return self._update_strain('PUT', name, description, local_pk, registry_id, registry_url)
-
-    def get_study(self, pk):
-        url = '%s/rest/studies/%d/' % (self.base_url, pk)
-        response = self.session.get(url)
-
-        # throw an error for unexpected reply
-        if response.status_code == 404:
-            return None
-
-        if response.status_code != requests.codes.ok:
-            response.raise_for_status()
-
-        kwargs = json.loads(response.content)
-
-        # remove Update kwargs, which just have the primary keys...maybe we'll serialize /
-        # TODO: deserialize more of this data later
-        kwargs.pop('created')
-        kwargs.pop('updated')
-
-        return Study(**kwargs)
+        url = '%(base)s/rest/studies/%(id)s/'
+        return self._get_single_object(id, url, Study)
 
     def get_abs_study_browser_url(self, study_pk, alternate_base_url=None):
         """
-        Gets the absolute URL of the study with the provided identifier.
-        :return:
+        Gets the absolute URL of the user interface for the study with the provided primary key.
         """
         # Note: we purposefully DON'T use reverse() here since this code runs outside the context
         # of Django, if the library is even installed (it shouldn't be required).
@@ -764,6 +790,7 @@ class DrfPagedResult(PagedResult):
         Gets a PagedResult containing object results from the provided JSON input. For consistency,
         the result is always a PagedResult, even if the JSON response actually included the full
         set of results.
+
         :param json_string: the raw content of the HTTP response containing potentially paged
             content
         :param model_class: the class object to use in instantiating object instances to capture
@@ -788,15 +815,15 @@ class DrfPagedResult(PagedResult):
             return None
 
         # pull out the 'results' subsection *if* the data is paged
-        RESULTS_KEY = u'results'
-        response_content = json_dict.get(RESULTS_KEY)
+        _RESULTS_KEY = u'results'
+
         count = None
         next_page = None
         prev_page = None
         results_obj_list = []
 
         # IF response is paged, pull out paging context
-        if response_content or RESULTS_KEY in json_dict:
+        if _RESULTS_KEY in json_dict:
             next_page = json_dict.pop(u'next', None)
             prev_page = json_dict.pop(u'previous', None)
             count = json_dict.pop(u'count', None)
@@ -805,11 +832,11 @@ class DrfPagedResult(PagedResult):
                 return None
 
             # iterate through the returned data, deserializing each object found
+            response_content = json_dict.get(_RESULTS_KEY)
             for object_dict in response_content:
                 # using parallel object hierarchy to Django model objects. Note that input isn't
                 # validated, but that shouldn't really be an issue on the client side,
-                # so long as the
-                # server connection is secure / trusted
+                # so long as the server connection is secure / trusted
                 result_object = model_class(**object_dict)
 
                 results_obj_list.append(result_object)
