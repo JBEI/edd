@@ -10,9 +10,9 @@ is, you probably shouldn't write your own code using these scripts, or <font col
 should do so with help and with great care to avoid destroying important scientific data hosted in
 JBEI's web applications.</u></font>.</em>
 
-This initial version of these scripts and API's are only supported for the purpose of automating
-line creation in EDD. Feel free to write your own code against the API's defined here, but expect
-some changes as we polish them in upcoming versions.
+The initial version of these scripts and API's are being published for comments, and will 
+likely need to evolve over time.  While breaking API changes will be avoided like the plague, 
+they're a possibility.
 
 ## Conventions in this document
 
@@ -34,39 +34,41 @@ This stuff can be intimidating! Ask for help!
 ## Set up a Python 2 environment
 
 See [the directions][11] for setting up a Python environment to run 
-this code.
+this code. Please note that EDD is in the process of transitioning to Python 3, and these 
+published client-side libraries and example scripts will also be migrated to Python 3. The
+ Python 2 versions should continue to work.
 	
 #### Configure the target URL's for the script
 
 If you're running a command line tool that targets a specific EDD and/or ICE deployment, you should 
 edit configuration files to adjust which URL's are used to access those deployments.
 
-* `jbei/edd/rest/scripts/settings.py` contains the default settings used by all the scripts in this
- directory. Its purpose is to set defaults used by the scripts to contact EDD and ICE.  If you need 
- to change the defaults in this file, create a `local_settings.py` in the same directory, and any 
- values defined in `local_settings.py` will override the defaults, but won't show up as edits when 
- you use `git` to check out the latest code. 
+* `jbei/edd/rest/scripts/settings/` contains the default settings used by all the scripts in this
+ directory. If you need to change the defaults in this file, create a `local.py` in the same 
+ directory, and any values defined in your `local.py` will override the defaults, but won't show 
+ up as edits when you use `git` to check out the latest code. 
  
 ## Provided Code
 
 Three types of code are provided in this package:
 
-1. Python API's for accessing JBEI's web applications
-2. Special-purpose scripts that use the Python API's to accomplish a task
-3. General utility code, mostly in support of #1
+1. Client-side Python API's for accessing JBEI's web applications
+2. Example scripts, e.g. scripts that demonstrate basic and advanced use of EDD's REST API.
+3. Special-purpose scripts that use the Python API's to accomplish an administrative task 
+(likely to be relocated later).
+4. General utility code, mostly in support of #1
 
 ### Python API's <a name="python_apis">
 
-Client-side Python libraries for accessing ICE's and EDD's REST API's are currently under 
-development, but are already in limited production use by EDD and by its command line tools.
+Client-side Python libraries for accessing ICE's and EDD's REST API's have just been released, but 
+are already in limited production use by EDD and by its command line tools.
 These libraries aren't mature yet, but may already be helpful for other uses (e.g. in researchers' 
-iPython notebooks). This code is still in active development, and is likely to change (including 
-breaking API changes) over time. Feel free to use it, but use at your own risk!
+iPython notebooks). This code is still in active development, and is likely to change over time. 
+Feel free to use it, but use at your own risk!
 
 See `api.py` modules for EDD and ICE under [`jbei/rest/clients/`][8], as well as other supporting 
 modules. Both modules are designed to follow a similar usage pattern. The example below shows 
-how to use
-EDDApi, but IceApi is very similar.
+how to use EDDApi, but IceApi is very similar.
 
 __Sample client-side use of EddApi__
 
@@ -90,17 +92,19 @@ __Sample client-side use of EddApi__
     study = edd.get_study(1)
 
 For examples of more advanced use, see usage of EddApi in the main() methods of 
-[`create_lines.py`][9] or [`maintain_ice_links.py`][10]
+[`basic_rest_queries.py`][9] or [`sample_rest_quries.py`][10]
 
 ### Command Line Tools
 
 The following command-line tools re provided. Run each with the `--help` parameter for more 
 detailed information on the available options.
 
-* `create_lines.py`: This is a stopgap script to support bulk creation of large numbers of lines 
-  for studies where that's necessary.  It will eventually be replaced by user interface(s) that 
-  support simplified / optimized line creation.
-
+* `basic_rest_queries.py` This script demonstrates the most basic approach extracting study data
+  from EDD using its REST API.
+* `sample_rest_queries.py` This script is a more powerful and realistic client-side example of 
+  using EDD's REST API.  It allows clients to perform sample searches of EDD to extract data of
+  interest, and supports optionally writing the results to a simple CSV file similar to EDD's 
+  export format.
 * `maintain_ice_links.py` This work-in-progress script supports scanning linked EDD/ICE deployments 
   and maintaining the association between EDD experiments and ICE parts, which can become 
   out-of-date under some circumstances (e.g. downtime or communication failure). See the 
@@ -109,33 +113,14 @@ detailed information on the available options.
 #### Running Command Line Tools
 
 Running an example script from the base EDD directory: 
-`python -m jbei.edd.rest.scripts.create_lines my_csv_file.csv`
-
-Get help for a script: append `--help` to the command
-
-    (jbei-scripts)$ python -m jbei.edd.rest.scripts.create_lines --help
-    usage: create_lines.py [-h] [-p P] [-u U] [-s] [-study STUDY] file_name
-
-    Create EDD lines/strains from a list of ICE entries
-
-    positional arguments:
-      file_name          A CSV file containing strains exported from ICE
-
-    optional arguments:
-      -h, --help         show this help message and exit
-      -p P, -password P  provide a password via the command line (helps with
-                         testing)
-      -u U, -username U  provide username via the command line (helps with
-                         testing)
-      -s, -silent        skip user prompts to verify CSV content
-      -study STUDY       the number of the EDD study to create the new lines in
+`python -m jbei.edd.rest.scripts.sample_rest_queries`
 
 
 [1]:    https://en.wikipedia.org/wiki/Application_programming_interface
 [2]:    edd/rest/scripts/Maintain_Links.md
 [8]:    rest/clients/
-[9]:    edd/rest/scripts/create_lines.py
-[10]:   edd/rest/scripts/maintain_ice_links.py
+[9]:    edd/rest/scripts/basic_rest_queries.py
+[10]:   edd/rest/scripts/sample_rest_queries.py
 [11]:   ../docs/Python_Environment.md
 
 

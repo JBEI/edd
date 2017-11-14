@@ -10,8 +10,9 @@ tscommand-*
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN
 secrets.env
 
-# per-machine local settings file; this will override default settigns with local changes
+# per-machine local settings files; this will override default settings with local changes
 edd/settings/local.py
+jbei/edd/rest/scripts/settings/local.py
 docker-compose.override.yml
 # also ignore any local media/upload folders
 /media
@@ -33,3 +34,5 @@ typescript/src/*.d.ts
 secrets.cfg
 bower_components
 node_modules
+
+

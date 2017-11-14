@@ -19,7 +19,7 @@ from openpyxl import load_workbook
 from pprint import pformat
 
 from jbei.rest.clients.ice.api import Strain as IceStrain
-from jbei.rest.clients.ice.utils import make_entry_url
+from jbei.rest.clients.ice.utils import build_entry_ui_url
 from main.models import Protocol, MetadataType, Strain, Assay, Line
 from main.tasks import create_ice_connection
 # avoiding loading a ton of names to the module by only loading the namespace to constants
@@ -670,7 +670,7 @@ class CombinatorialCreationImporter(object):
                 name=ice_entry.name,
                 description=ice_entry.short_description,
                 registry_id=ice_entry.uuid,
-                registry_url=make_entry_url(settings.ICE_URL, ice_entry.id)
+                registry_url=build_entry_ui_url(settings.ICE_URL, ice_entry.id)
             )
 
             edd_strains_by_part_number[ice_entry.part_id] = strain

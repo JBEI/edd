@@ -27,6 +27,9 @@ from jbei.rest.api import RestApiClient
 from jbei.rest.sessions import PagedResult, PagedSession, Session
 
 
+from .constants import *
+from .utils import build_entry_ui_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -87,36 +90,7 @@ _ICE_ENTRY_URL_REGEX = '(%(protocol)s)://(%(base_url)s)/entry/(%(identifier)s)/?
 ICE_ENTRY_URL_PATTERN = re.compile('^%s$' % _ICE_ENTRY_URL_REGEX, re.IGNORECASE)
 
 
-###################################################################################################
-# String constants used to communicate with ICE.
-# TODO: most/all of these should be enums after upgrading to Python 3
-###################################################################################################
-# ICE's current automatic limit on results returned in the absence of a specific requested page
-# size
-DEFAULT_RESULT_LIMIT = 15
-DEFAULT_PAGE_NUMBER = 1
 
-STRAIN = 'STRAIN'
-PLASMID = 'PLASMID'
-PART = 'PART'
-ARABIDOPSIS = 'ARABIDOPSIS'
-ICE_ENTRY_TYPES = (STRAIN,
-                   PLASMID,
-                   ARABIDOPSIS,)
-
-ARABIDOPSIS_DATA_JSON_KEYWORD = 'Arabidopsis'
-
-BLAST_N = 'BLAST_N'
-TBLAST_X = 'TBLAST_X'
-BLAST_PROGRAMS = (BLAST_N, TBLAST_X)
-RESULT_LIMIT_PARAMETER = 'limit'
-RESULT_OFFSET_PARAMETER = 'offset'
-
-HOST_PYTHON_PARAM = 'host'
-HOST_JSON_PARAM = 'host'
-GENOTYPE_PHENOTYPE_PYTHON_PARAM = 'genotype_phenotype'
-STRAIN_DATA_JSON_KEYWORD = 'strainData'
-PLASMID_DATA_JSON_KEYWORD = 'plasmidData'
 ###################################################################################################
 
 PART_ID_JSON_FIELD = 'partId'
@@ -1245,6 +1219,9 @@ class IceApi(RestApiClient):
                 return old_study_url.lower() == link.get(url_key).lower()
             return False
         return [link for link in existing_links if is_outdated_link(link)]
+
+    def build_entry_ui_url(self, entry_id):
+        return build_entry_ui_url(self.base_url, entry_id)
 
 
 def calculate_pages(count, offset, limit):
