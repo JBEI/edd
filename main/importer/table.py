@@ -369,6 +369,8 @@ class TableImport(object):
         # if type_id is not set, assume it's a lookup pattern
         if not type_id:
             name = item.get('measurement_name', None)
+            # drop any non-ascii characters
+            name = str(name.encode('ascii', 'ignore'))
             if models.Metabolite.pubchem_pattern.match(name):
                 metabolite = models.Metabolite.load_or_create(name)
                 return MType(compartment, metabolite.pk, units_id)

@@ -222,7 +222,7 @@ class Metabolite(MeasurementType):
     )
 
     carbon_pattern = re.compile(r'C(\d*)')
-    pubchem_pattern = re.compile(r'cid:(\d+)(:.*)?')
+    pubchem_pattern = re.compile(r'(?i)cid:\s*(\d+)(:.*)?')
 
     def __str__(self):
         return self.type_name
@@ -556,7 +556,7 @@ class ProteinStrainLink(models.Model):
     )
 
     def check_ice(self, user_token, name):
-        from .tasks import create_ice_connection
+        from main.tasks import create_ice_connection
         from .core import Strain
         ice = create_ice_connection(user_token)
         part = ice.get_entry(name, suppress_errors=True)
