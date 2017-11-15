@@ -590,10 +590,6 @@ class CombinatorialCreationTests(TestCase):
 
                     assay_name_to_meta_dict[assay_name] = {time_pk_str: time_str}
 
-        # TODO: remove debug block
-        from pprint import pprint
-        pprint(expected_assay_metadata)
-
         creation_results = self._test_combinatorial_input(
                 study, advanced_experiment_def_xlsx, expected_line_names, expected_assay_suffixes,
                 strains_by_pk, strains_by_part_number, expected_line_metadata,
