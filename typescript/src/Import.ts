@@ -1407,7 +1407,7 @@ module EDDTableImport {
                             ['Metadata Name', TypeEnum.Metadata_Name],
                             ['Measurement Type', TypeEnum.Measurement_Type],
                             ['Protein ID', TypeEnum.Protein_Name],
-                            ['PubChem ID', TypeEnum.Pubchem_Name]
+                            ['PubChem CID', TypeEnum.Pubchem_Name]
                         ]
                     ]
                 ];
