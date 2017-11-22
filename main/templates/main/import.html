@@ -64,28 +64,57 @@
           <input type="radio" name="datalayout" value="std" id="stdlayout"
               checked="checked" />
           <label for="stdlayout">
-            A <b>table of data</b>, with Lines, Assays, measurements,
-            and/or metadata.
+            A <b>table of data</b>, with Lines, Assays, measurements, and/or metadata.
           </label>
           <a class="discloseLink" href="#">Examples</a>
           <div class="discloseBody" id="stdlayoutexample">
+            <p>This import format accepts an Excel or other tabular formatted file, like a CSV.
+              The EDD will attempt to auto-detect some common layouts of rows and columns. Each
+              row and column in the file can be ignored. Then in Step 3, EDD can interpret
+              values each row as column labels, or values in the first column as row labels.</p>
+            <p>The column labels are selected with "Entire Row Is..." options, set to read columns
+              as for a "Line Name" or a "Measurement Name". Both of these options will use values
+              in the row as labels to further resolve in Step 4. A value in a "Line Name" row will
+              be matched with the Line in the Study for the sample label. For values in
+              "Measurement Name" rows, the labels are matched to a Compartment, Type, and Unit for
+              that name.</p>
+            <p>Row labels are selected with "First Column Is..." options. Some of these options
+              require more interpretation in Step 4.</p>
+            <ul style="padding-left: 2em;">
+              <li>"Time (in hours)" rows expect the first column to be a number for the time of
+                the measurement, in hours. If this option is <em>not</em> used, then a single
+                measurement time is set in Step 4.</li>
+              <li>"Metadata Name" rows set Assay metadata for the imported data. The labels here
+                must be resolved to specific Metadata Types in EDD in Step 4.</li>
+              <li>"Measurement Type" rows set the Measurement Type for the row of values. These
+                names should be either Metabolites or "General" measurement types in EDD, and
+                must be matched with types already existing in EDD.</li>
+              <li>"Protein ID" rows are for loading Protein measurements. The values here should
+                be a UniProt accession ID (sp|P01234|NAME) <em>or</em> an ICE
+                part number (JBx_12345). The protein information is loaded from the external
+                services, and no action is needed in import Step 4.</li>
+              <li>"PubChem CID" rows are for loading Metabolite measurements. The values here
+                should be in the format of "CID:12345" or "CID:12345:Chemical Name". Metabolite
+                information is loaded from PubChem, and no action is needed in import Step 4.</li>
+            </ul>
             <p>Example 1:</p>
             <p>Here is a sequence of metabolites measured at different times. To import this, you
               would paste it into the Step 2 box. The EDD automatically flips the axes and detects
               the presence of a time sequence and measurement names.</p>
-            <img class="exampleImage" src="{% static 'main/images/data_examples/excel_example-a.png' %}" />
-              <p>Set the pulldowns in Step 3 like so: </p>
-            <img src="{% static 'main/images/data_examples/excel_example-a-settings.png' %}"
-                style="border:none;padding:5px;"/>
+            {% static 'main/images/data_examples/excel_example-a.png' as example_a %}
+            <img class="exampleImage" src="{{ example_a }}" />
+            <p>Set the pulldowns in Step 3 like so:</p>
+            {% static 'main/images/data_examples/excel_example-a-settings.png' as example_a_1 %}
+            <img class="exampleImage" src="{{ example_a_1 }}" />
             <p>Example 2:</p>
             <p>Here is a sequence of measurements for multiple metabolites across different Lines.
               The EDD will recognize the metabolites, but might not recognize the top row as Line
               names</p>
-            <img class="exampleImage"
-                src="{% static 'main/images/data_examples/excel_example-b.png' %}" />
-            <p> If this is the case, the pulldowns will look like this:</p>
-            <img src="{% static 'main/images/data_examples/excel_example-b-settings.png' %}"
-                 style="border:none;padding:5px;">
+            {% static 'main/images/data_examples/excel_example-b.png' as example_b %}
+            <img class="exampleImage" src="{{ example_b }}" />
+            <p>If this is the case, the pulldowns will look like this:</p>
+            {% static 'main/images/data_examples/excel_example-b-settings.png' as example_b_1 %}
+            <img class="exampleImage" src="{{ example_b_1 }}" />
             <p>If you set the first pulldown to "Assay/Line Names", you can proceed to link the
               items with existing Lines or Assays in Step 4 before submitting the data.</p>
           </div>

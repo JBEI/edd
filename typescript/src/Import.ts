@@ -1092,6 +1092,7 @@ module EDDTableImport {
         static RPKM_Values = 11;
         static Line_Names = 1;
         static Protein_Name = 12;
+        static Pubchem_Name = 13;
         static Measurement_Types = 2; // plural!!
         static Timestamp = 3;
         static Metadata_Name = 4;
@@ -1405,7 +1406,8 @@ module EDDTableImport {
                         ['Time (in hours)', TypeEnum.Timestamp],
                             ['Metadata Name', TypeEnum.Metadata_Name],
                             ['Measurement Type', TypeEnum.Measurement_Type],
-                            ['Protein ID', TypeEnum.Protein_Name]
+                            ['Protein ID', TypeEnum.Protein_Name],
+                            ['PubChem CID', TypeEnum.Pubchem_Name]
                         ]
                     ]
                 ];
@@ -1576,6 +1578,7 @@ module EDDTableImport {
                 } else if (pulldown === TypeEnum.Timestamp ||
                     pulldown === TypeEnum.Metadata_Name ||
                     pulldown === TypeEnum.Protein_Name ||
+                    pulldown === TypeEnum.Pubchem_Name ||
                     pulldown === TypeEnum.Measurement_Type) {
                     hlLabel = true;
                 }
@@ -1646,7 +1649,8 @@ module EDDTableImport {
             if (value === TypeEnum.Timestamp ||
                 value === TypeEnum.Metadata_Name ||
                 value === TypeEnum.Measurement_Type ||
-                value === TypeEnum.Protein_Name) {
+                value === TypeEnum.Protein_Name ||
+                value === TypeEnum.Pubchem_Name) {
                 // "Timestamp", "Metadata", or other single-table-cell types
                 // Set all the rest of the pulldowns to this,
                 // based on the assumption that the first is followed by many others
@@ -1947,7 +1951,8 @@ module EDDTableImport {
                 if (!this.activeRowFlags[y]) { return; }    // Skip inactive rows
                 pulldown = this.pulldownSettings[y];
                 if (pulldown === TypeEnum.Measurement_Type ||
-                        pulldown === TypeEnum.Protein_Name) {
+                        pulldown === TypeEnum.Protein_Name ||
+                        pulldown === TypeEnum.Pubchem_Name) {
                     singleCompatibleCount++; // Single Measurement Name or Single Protein Name
                 } else if (pulldown === TypeEnum.Metadata_Name ||
                         pulldown === TypeEnum.Timestamp) {
@@ -2007,7 +2012,8 @@ module EDDTableImport {
                                 this.uniqueMeasurementNames.push(label);
                             }
                             m_name = label;
-                        } else if (pulldown === TypeEnum.Protein_Name) {
+                        } else if (pulldown === TypeEnum.Protein_Name ||
+                                pulldown === TypeEnum.Pubchem_Name) {
                             m_name = label;
                         } else {
                             // If we aren't on a row that's labeled as either a metabolite value
