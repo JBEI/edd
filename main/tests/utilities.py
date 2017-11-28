@@ -580,7 +580,6 @@ class CombinatorialCreationTests(TestCase):
             for protocol_pk, assay_suffixes in expected_assay_suffixes.iteritems():
                 for assay_suffix in assay_suffixes:
                     assay_name = "%s-%s" % (line_name, assay_suffix)
-                    print('assay_suffix = %s' % assay_suffix)
                     time_str = str(float(assay_suffix[0:-1]))  # re/cast to get the decimal
 
                     assay_name_to_meta_dict = expected_assay_metadata[line_name].get(protocol_pk,
