@@ -2,8 +2,10 @@
 from __future__ import unicode_literals
 
 import json
+import os
 
 from builtins import str
+from collections import defaultdict
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.test import tag, TestCase
@@ -18,9 +20,10 @@ from main.models import (CarbonSource, MetadataType, Protocol, Strain, Study)
 
 
 User = get_user_model()
-simple_experiment_def_xlsx = staticfiles_storage.path(
-    'main/example/sample_experiment_description.xlsx'
-)
+main_dir = os.path.dirname(__file__),
+fixtures_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+fixtures_dir = os.path.join(fixtures_dir, 'fixtures')
+advanced_experiment_def_xlsx = os.path.join(fixtures_dir, 'advanced_experiment_description.xlsx')
 
 
 class CombinatorialCreationTests(TestCase):
@@ -510,11 +513,12 @@ class CombinatorialCreationTests(TestCase):
         study = Study.objects.create(name='Unit Test Study')
         strains_by_pk = {strain.pk: strain}
         media_meta = MetadataType.objects.get(type_name='Media', for_context=MetadataType.LINE)
+        time = MetadataType.objects.get(type_name='Time', for_context=MetadataType.ASSAY)
 
         ###########################################################################################
         # define test input
         ###########################################################################################
-        test_input = {  # TODO: replace string literals with constants
+        test_input = {
             BASE_NAME_ELT: '181-aceF',
             'replicate_count': 3,
             'desc': '181 JW0111 aceF R1',
@@ -546,18 +550,16 @@ class CombinatorialCreationTests(TestCase):
             is_excel_file=False,
         )
 
-    def test_basic_experiment_description_xlsx(self):
+    def test_advanced_experiment_description_xlsx(self):
 
         strain, _ = Strain.objects.get_or_create(name='JW0111')
         study = Study.objects.create(name='Unit Test Study')
         strains_by_pk = {strain.pk: strain}
         strains_by_part_number = {'JBx_002078': strain}
-        targeted_proteomics = Protocol.objects.get(
-            name='Targeted Proteomics',
-            owned_by=self.system_user
-        )
-        metabolomics = Protocol.objects.get(name='Metabolomics', owned_by=self.system_user)
+        targeted_proteomics = Protocol.objects.get(name='Targeted Proteomics')
+        metabolomics = Protocol.objects.get(name='Metabolomics')
         media_meta = MetadataType.objects.get(type_name='Media', for_context=MetadataType.LINE)
+        time_meta = MetadataType.objects.get(type_name='Time', for_context=MetadataType.ASSAY)
 
         expected_line_names = ['181-aceF-R1', '181-aceF-R2', '181-aceF-R3']
         expected_assay_suffixes = {
@@ -570,17 +572,27 @@ class CombinatorialCreationTests(TestCase):
             for line_name in expected_line_names
         }
 
-        # TODO: complete building this dict, then pass it as a test param
-        # expected_assay_metadata = {}  # maps line name -> protocol - > assay metadata
-        # dict...needs more abstraction?
-        # for line_name in expected_line_names:
-        #     expected_assay_metadata[line_name] = {
-        #         self.targeted_proteomics.pk: [self.assay_time.pk: '8']
-        #     }
+        # construct a dict of expected assay metadata as a result of submitting this ED file
+        time_pk_str = str(time_meta.pk)
+        expected_assay_metadata = {}  # maps line name -> protocol pk -> assay name -> metadata
+        for line_name in expected_line_names:
+            expected_assay_metadata[line_name] = {}
+            for protocol_pk, assay_suffixes in expected_assay_suffixes.iteritems():
+                for assay_suffix in assay_suffixes:
+                    assay_name = "%s-%s" % (line_name, assay_suffix)
+                    time_str = str(float(assay_suffix[0:-1]))  # re/cast to get the decimal
+
+                    assay_name_to_meta_dict = expected_assay_metadata[line_name].get(protocol_pk,
+                                                                                     {})
+                    if not assay_name_to_meta_dict:
+                        expected_assay_metadata[line_name][protocol_pk] = assay_name_to_meta_dict
+
+                    assay_name_to_meta_dict[assay_name] = {time_pk_str: time_str}
 
         creation_results = self._test_combinatorial_input(
-                study, simple_experiment_def_xlsx, expected_line_names, expected_assay_suffixes,
+                study, advanced_experiment_def_xlsx, expected_line_names, expected_assay_suffixes,
                 strains_by_pk, strains_by_part_number, expected_line_metadata,
+                expected_assay_metadata=expected_assay_metadata,
                 is_excel_file=True)
 
         # verify that line descriptions match the expected value set in the file (using database
