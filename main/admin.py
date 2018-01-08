@@ -514,15 +514,13 @@ class ProteinAdmin(MeasurementTypeAdmin):
 class GeneAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
         return super(GeneAdmin, self).get_fields(request, obj) + [
-            ('location_in_genome', 'positive_strand', 'location_start', 'location_end',
-             'gene_length'),  # join these on the same row
+            ('gene_length'),  # join these on the same row
         ]
 
     def get_list_display(self, request):
         # complete override
         return [
-            'type_name', 'location_in_genome', 'positive_strand', 'location_start',
-            'location_end', 'gene_length', '_study_count',
+            'type_name', 'gene_length', '_study_count', 'type_source',
         ]
 
     def get_merge_autowidget(self):

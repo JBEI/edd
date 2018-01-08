@@ -61,7 +61,8 @@ module EDDTableImport {
     }
     // These are returned by the server after parsing a dropped file
     export interface RawImportSet extends MeasurementValueSequence {
-        kind: string;
+        kind: string;  // the type of import selected in step 1
+        hint: string;  // any additional hints about type of data
         line_name: string;
         assay_name: string;
         measurement_name: string;
@@ -1088,11 +1089,12 @@ module EDDTableImport {
 
     // Magic numbers used in pulldowns to assign types to rows/fields.
     export class TypeEnum {
-        static Gene_Names = 10;
+        static Gene_Names = 10;  // plural!
         static RPKM_Values = 11;
         static Line_Names = 1;
         static Protein_Name = 12;
         static Pubchem_Name = 13;
+        static Gene_Name = 14;  // singular!
         static Measurement_Types = 2; // plural!!
         static Timestamp = 3;
         static Metadata_Name = 4;
@@ -1407,7 +1409,8 @@ module EDDTableImport {
                             ['Metadata Name', TypeEnum.Metadata_Name],
                             ['Measurement Type', TypeEnum.Measurement_Type],
                             ['Protein ID', TypeEnum.Protein_Name],
-                            ['PubChem CID', TypeEnum.Pubchem_Name]
+                            ['PubChem CID', TypeEnum.Pubchem_Name],
+                            ['Gene ID', TypeEnum.Gene_Name]
                         ]
                     ]
                 ];
@@ -1579,6 +1582,7 @@ module EDDTableImport {
                     pulldown === TypeEnum.Metadata_Name ||
                     pulldown === TypeEnum.Protein_Name ||
                     pulldown === TypeEnum.Pubchem_Name ||
+                    pulldown === TypeEnum.Gene_Name ||
                     pulldown === TypeEnum.Measurement_Type) {
                     hlLabel = true;
                 }
@@ -1650,7 +1654,8 @@ module EDDTableImport {
                 value === TypeEnum.Metadata_Name ||
                 value === TypeEnum.Measurement_Type ||
                 value === TypeEnum.Protein_Name ||
-                value === TypeEnum.Pubchem_Name) {
+                value === TypeEnum.Pubchem_Name ||
+                value === TypeEnum.Gene_Name) {
                 // "Timestamp", "Metadata", or other single-table-cell types
                 // Set all the rest of the pulldowns to this,
                 // based on the assumption that the first is followed by many others
@@ -1919,6 +1924,7 @@ module EDDTableImport {
                     set = {
                         // Copy across the fields from the RawImportSet record
                         kind: rawSet.kind,
+                        hint: rawSet.hint,
                         line_name: rawSet.line_name,
                         assay_name: an,
                         measurement_name: rawSet.measurement_name,
@@ -1952,7 +1958,8 @@ module EDDTableImport {
                 pulldown = this.pulldownSettings[y];
                 if (pulldown === TypeEnum.Measurement_Type ||
                         pulldown === TypeEnum.Protein_Name ||
-                        pulldown === TypeEnum.Pubchem_Name) {
+                        pulldown === TypeEnum.Pubchem_Name ||
+                        pulldown === TypeEnum.Gene_Name) {
                     singleCompatibleCount++; // Single Measurement Name or Single Protein Name
                 } else if (pulldown === TypeEnum.Metadata_Name ||
                         pulldown === TypeEnum.Timestamp) {
@@ -1995,6 +2002,7 @@ module EDDTableImport {
                     grid.forEach((row: string[], r: number): void => {
                         var pulldown: number, label: string, value: string, timestamp: number;
                         var rawSet: RawImportSet;
+                        var hint: string;
                         if (!this.activeRowFlags[r] || !this.activeFlags[r][c]) {
                             return;
                         }
@@ -2013,16 +2021,29 @@ module EDDTableImport {
                             }
                             m_name = label;
                         } else if (pulldown === TypeEnum.Protein_Name ||
-                                pulldown === TypeEnum.Pubchem_Name) {
+                                pulldown === TypeEnum.Pubchem_Name ||
+                                pulldown === TypeEnum.Gene_Name) {
                             m_name = label;
                         } else {
                             // If we aren't on a row that's labeled as either a metabolite value
                             // or a protein value, return without making a set.
                             return;
                         }
+                        switch (pulldown) {
+                            case TypeEnum.Protein_Name:
+                                hint = 'p';
+                                break;
+                            case TypeEnum.Gene_Name:
+                                hint = 'g';
+                                break;
+                            default:
+                                hint = null;
+                                break;
+                        }
 
                         rawSet = {
                             kind: this.selectMajorKindStep.interpretationMode,
+                            hint: hint,
                             line_name: null,
                             assay_name: cellValue,
                             measurement_name: m_name,
@@ -2053,6 +2074,7 @@ module EDDTableImport {
 
                 set = {
                     kind: this.selectMajorKindStep.interpretationMode,
+                    hint: null,
                     line_name: null,
                     assay_name: null,
                     measurement_name: null,
@@ -2083,6 +2105,7 @@ module EDDTableImport {
                     } else if (pulldown === TypeEnum.Gene_Names) {
                         // Transcriptomics: Gene names
                         if (value) {
+                            set.hint = 'g';
                             set.measurement_name = value;
                         }
                         return;
@@ -3283,6 +3306,7 @@ module EDDTableImport {
                 resolvedSet = {
                     // Copy across the fields from the RawImportSet record
                     kind:              set.kind,
+                    hint:              set.hint,
                     line_name:         set.line_name,
                     assay_name:        set.assay_name,
                     measurement_name:  set.measurement_name,

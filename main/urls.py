@@ -38,23 +38,6 @@ study_url_patterns = [
         r'^import/',
         include([
             url(r'^$', login_required(views.study_import_table), name='table-import'),
-            # TODO these should be folded into the main import page at some point
-            url(r'^rnaseq/$', login_required(views.study_import_rnaseq), name='rnaseq'),
-            url(
-                r'^rnaseq/parse/$',
-                login_required(views.study_import_rnaseq_parse),
-                name='rnaseq-parse'
-            ),
-            url(
-                r'^rnaseq/process/$',
-                login_required(views.study_import_rnaseq_process),
-                name='rnaseq-process'
-            ),
-            url(
-                r'^rnaseq/edgepro/$',
-                login_required(views.study_import_rnaseq_edgepro),
-                name='rnaseq-edgepro'
-            ),
         ])
     ),
     url(r'^rename/$',

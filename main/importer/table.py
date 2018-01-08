@@ -319,6 +319,13 @@ class TableImport(object):
                 compartment = models.Measurement.Compartment.UNKNOWN
         return compartment
 
+    def _load_hint(self, item):
+        mode = self._mode()
+        hint = item.get('hint', None)
+        if hint:
+            return hint
+        return mode
+
     def _load_type_id(self, item):
         type_id = item.get('measurement_id', None)
         if type_id is None:
@@ -358,8 +365,10 @@ class TableImport(object):
             MODE_PROTEOMICS: self._mtype_proteomics,
             MODE_SKYLINE: self._mtype_skyline,
             MODE_TRANSCRIPTOMICS: self._mtype_transcriptomics,
+            models.MeasurementType.Group.GENEID: self._mtype_transcriptomics,
+            models.MeasurementType.Group.PROTEINID: self._mtype_proteomics,
         }
-        mtype_fn = mtype_fn_lookup.get(self._mode(), self._mtype_default)
+        mtype_fn = mtype_fn_lookup.get(self._load_hint(item), self._mtype_default)
         return mtype_fn(item, NO_TYPE)
 
     def _mtype_default(self, item, default=None):
@@ -409,15 +418,8 @@ class TableImport(object):
         compartment = self._load_compartment(item)
         measurement_name = item.get('measurement_name', None)
         units_id = self._load_unit(item)
-        genes = models.GeneIdentifier.objects.filter(type_name=measurement_name)
-        if len(genes) == 1:
-            found_type = MType(compartment, genes[0].pk, units_id)
-        else:
-            logger.warning('Found %(length)s GeneIdentifier instances for %(name)s' % {
-                'length': len(genes),
-                'name': measurement_name,
-            })
-        return found_type
+        gene = models.GeneIdentifier.load_or_create(measurement_name, self._user)
+        return MType(compartment, gene.pk, units_id)
 
     def _mtype_guess_format(self, points):
         mode = self._mode()

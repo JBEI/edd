@@ -314,40 +314,12 @@ class GeneIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
         db_table = 'gene_identifier'
-    location_in_genome = models.TextField(
-        blank=True,
-        help_text=_('Location of this Gene in the organism genome.'),
-        null=True,
-        verbose_name=_('Location'),
-    )
-    positive_strand = models.BooleanField(
-        default=True,
-        help_text=_('Flag indicating if transcript is positive (sense).'),
-        verbose_name=_('Positive'),
-    )
-    location_start = models.IntegerField(
-        blank=True,
-        help_text=_('Offset location for gene start.'),
-        null=True,
-        verbose_name=_('Start'),
-    )
-    location_end = models.IntegerField(
-        blank=True,
-        help_text=_('Offset location for gene end.'),
-        null=True,
-        verbose_name=_('End'),
-    )
     gene_length = models.IntegerField(
         blank=True,
         help_text=_('Length of the gene nucleotides.'),
         null=True,
         verbose_name=_('Length'),
     )
-
-    @classmethod
-    def by_name(cls):
-        """ Generate a dictionary of genes keyed by name. """
-        return {g.type_name: g for g in cls.objects.order_by("type_name")}
 
     def __str__(self):
         return self.type_name
@@ -356,6 +328,52 @@ class GeneIdentifier(MeasurementType):
         # force GENEID group
         self.type_group = MeasurementType.Group.GENEID
         super(GeneIdentifier, self).save(*args, **kwargs)
+
+    @classmethod
+    def _load_ice(cls, identifier, user):
+        try:
+            return cls.objects.get(type_name=identifier, strainlink__isnull=False)
+        except cls.DoesNotExist:
+            # actually check ICE
+            link = GeneStrainLink()
+            if link.check_ice(user.email, identifier):
+                # save link if found in ICE
+                datasource = Datasource.objects.create(
+                    name='ICE Registry',
+                    url=link.strain.registry_url,
+                )
+                gene = cls.objects.create(
+                    type_name=identifier,
+                    type_source=datasource,
+                    gene_length=link.strain.part.bp_count,
+                )
+                link.gene = gene
+                link.save()
+                return gene
+        except:
+            pass  # fall through to raise ValidationError
+        raise ValidationError(_u('Could not load gene "%s"') % identifier)
+
+    @classmethod
+    def _load_fallback(cls, identifier, user):
+        try:
+            return cls.objects.get(type_name=identifier, type_source__created__mod_by=user)
+        except cls.DoesNotExist:
+            datasource = Datasource.objects.create(name=user.username)
+            return cls.objects.create(type_name=identifier, type_source=datasource)
+        except:
+            logger.exception('Failed to load GeneIdentifier "%s"', identifier)
+            raise ValidationError(_u('Could not load gene "%s"') % identifier)
+
+    @classmethod
+    def load_or_create(cls, identifier, user):
+        # TODO check for NCBI pattern in identifier
+        try:
+            # check ICE for identifier
+            return cls._load_ice(identifier, user)
+        except ValidationError:
+            # fall back to checking for same identifier used by same user
+            return cls._load_fallback(identifier, user)
 
 
 @python_2_unicode_compatible
@@ -553,6 +571,40 @@ class ProteinStrainLink(models.Model):
     strain = models.OneToOneField(
         'main.Strain',
         related_name='proteinlink',
+    )
+
+    def check_ice(self, user_token, name):
+        from main.tasks import create_ice_connection
+        from .core import Strain
+        ice = create_ice_connection(user_token)
+        part = ice.get_entry(name, suppress_errors=True)
+        if part:
+            default = dict(
+                name=part.name,
+                description=part.short_description,
+                registry_url=''.join((ice.base_url, '/entry/', str(part.id))),
+            )
+            self.strain, x = Strain.objects.get_or_create(registry_id=part.uuid, defaults=default)
+            self.strain.part = part
+            return True
+        return False
+
+    def __str__(self):
+        return self.strain.name
+
+
+@python_2_unicode_compatible
+class GeneStrainLink(models.Model):
+    """ Defines a link between a GeneIdentifier and a Strain. """
+    class Meta:
+        db_table = 'gene_strain'
+    gene = models.OneToOneField(
+        GeneIdentifier,
+        related_name='strainlink',
+    )
+    strain = models.OneToOneField(
+        'main.Strain',
+        related_name='genelink',
     )
 
     def check_ice(self, user_token, name):

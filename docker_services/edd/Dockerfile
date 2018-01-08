@@ -18,7 +18,8 @@ FROM buildpack-deps:stretch
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 WORKDIR /code
-ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
+ARG EDD_VERSION=2.1.1
+ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8 EDD_VERSION=${EDD_VERSION}
 
 # include Debian packages required to build pip packages
 RUN apt-get clean && apt-get update \
