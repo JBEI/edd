@@ -122,8 +122,6 @@ module StudyLines {
                 at: "right bottom",
                 collision: "none none",
                 using: function (position, ui) {
-                    console.log(position);
-                    console.log(ui);
                     setTimeout(() => {
                         // default positioning API keeps flipping the menu, fix it here
                         position.top = ui.element.top + ui.target.height - $(document).height();
@@ -384,8 +382,7 @@ module StudyLines {
         }
     }
 
-    export function clearLineForm() {
-        var form = $('#editLineModal');
+    export function clearLineForm(form) {
         form.find('.line-meta').remove();
         form.find('[name^=line-]').not(':checkbox, :radio').val('');
         form.find('[name^=line-]').filter(':checkbox, :radio').prop('checked', false);
@@ -396,9 +393,8 @@ module StudyLines {
         return form;
     }
 
-    export function fillLineForm(record) {
+    export function fillLineForm(form, record) {
         var metaRow, experimenter, contact;
-        var form = $('#editLineModal');
         experimenter = EDDData.Users[record.experimenter];
         contact = EDDData.Users[record.contact.user_id];
         form.find('[name=line-name]').val(record.name);
@@ -462,7 +458,7 @@ module StudyLines {
 
     export function editLines(ids:number[]):void {
         var form = $('#editLineModal'), allMeta = {}, metaRow;
-        clearLineForm();
+        clearLineForm(form);
 
         // Update the disclose title
         var text = 'Add New Line';
@@ -470,27 +466,17 @@ module StudyLines {
             text = 'Edit Line' + (ids.length > 1 ? 's ' + "(" + ids.length + ")" : '');
         }
 
-        $("#editLineModal").dialog({ minWidth: 500, autoOpen: false, title: text });
+        form.dialog({ minWidth: 500, autoOpen: false, title: text });
 
         if (ids.length > 1) {
-            //hide line name because this doesn't matter
-            $('#id_line-name').parent().hide();
-            //show bulk notice
-            $('.bulkNoteGroup').removeClass('off');
-            $('.bulk').removeClass('off')
+            // hide line name because this doesn't matter; also remove required attr
+            form.find('[name=line-name]').prop('required', false).parent().hide();
+            // show bulk notice
+            $('.bulkNoteGroup', form).removeClass('off');
+            $('.bulk', form).removeClass('off')
             form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
                 $(ev.target).siblings('label').find('.bulk').prop('checked', true);
             });
-        } else {
-             $('.bulkNoteGroup').addClass('off');
-             $('#id_line-name').parent().show();
-        }
-
-        if (ids.length === 1) {
-            $('.bulkNoteGroup').addClass('off');
-            fillLineForm(EDDData.Lines[ids[0]]);
-            $('#id_line-name').parent().show();
-        } else {
             // compute used metadata fields on all data.ids, insert metadata rows?
             ids.map((id:number) => EDDData.Lines[id] || {}).forEach((line:LineRecord) => {
                 $.extend(allMeta, line.meta || {});
@@ -498,7 +484,14 @@ module StudyLines {
             metaRow = form.find('.line-edit-meta');
             // Run through the collection of metadata, and add a form element entry for each
             $.each(allMeta, (key) => insertLineMetadataRow(metaRow, key, ''));
+        } else if (ids.length === 1) {
+            $('.bulkNoteGroup', form).addClass('off');
+            form.find('[name=line-name]').prop('required', true).parent().show();
+            fillLineForm(form, EDDData.Lines[ids[0]]);
+        } else {
+            return;
         }
+
         form.find('[name=line-ids]').val(ids.join(','));
         form.removeClass('off').dialog( "open" );
     }
