@@ -16,6 +16,7 @@ from rest_framework.exceptions import ValidationError
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
 from main.models import Line, Study, StudyPermission
+from main.models.common import qfilter
 from . import models as edd_models, solr
 
 DEFAULT_RESULT_COUNT = 20
@@ -105,6 +106,9 @@ def search_study_lines(request):
     """ Autocomplete search on lines in a study."""
     study_pk = request.GET.get('study', '')
     name_regex = re.escape(request.GET.get('term', ''))
+    active_param = request.GET.get('active', None)
+    active_value = 'true' == active_param if active_param in ('true', 'false') else None
+    active = qfilter(value=active_value, fields=['active'])
     user = request.user
 
     if (not study_pk) or (not study_pk.isdigit()):
@@ -119,20 +123,17 @@ def search_study_lines(request):
         # Note: distinct() necessary in case the user has multiple permission paths to access
         # the study (e.g. individual and group permissions)
         study = Study.objects.filter(permission_check, pk=study_pk).distinct().get()
-        query = study.line_set.all()
+        query = study.line_set.filter(active)
 
     # if study doesn't exist or requesting user doesn't have read acccess, return an empty
     # set of lines
     except Study.DoesNotExist as e:
         query = Line.objects.none()
 
-    name_filters = [Q(name__iregex=name_regex), Q(strains__name__iregex=name_regex)]
-    query = query.filter(reduce(operator.or_, name_filters, Q()))[:DEFAULT_RESULT_COUNT]
+    query = query.filter(Q(name__iregex=name_regex) | Q(strains__name__iregex=name_regex))
+    query = query.values('name', 'id')[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
-        'rows': [{'name': line.name,
-                  'id': line.id,
-                  }
-                 for line in query],
+        'rows': list(query),
     })
 
 
@@ -200,7 +201,11 @@ def search_user(request):
     """ Autocomplete delegates searches to the Solr index of users. """
     core = solr.UserSearch()
     term = request.GET.get('term', '')
-    found = core.query(query=term, options={'edismax': True})
+    options = {'edismax': True}
+    active_param = request.GET.get('active', None)
+    if active_param in ('true', 'false'):
+        options['is_active'] = 'true' == active_param
+    found = core.query(query=term, options=options)
     return JsonResponse({
         'rows': found.get('response', {}).get('docs', []),
     })

@@ -23,7 +23,6 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 from threadlocals.threadlocals import set_thread_variable
 
-from jbei.rest.clients.edd import constants
 from main import models
 
 logger = logging.getLogger(__name__)
@@ -160,9 +159,9 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         """
         url = reverse('rest:studies-list')
         post_data = {
-            constants.STUDY_NAME_KEY: 'new study 1',
-            constants.STUDY_DESCRIPTION_KEY: 'description goes here',
-            constants.STUDY_CONTACT_KEY: self.write_user.pk,
+            'name': 'new study 1',
+            'description': 'description goes here',
+            'contact_id': self.write_user.pk,
         }
 
         # verify that an un-authenticated request gets a 403
@@ -202,8 +201,8 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         url = reverse('rest:studies-detail', args=[self.study.pk])
         # define placeholder put data that shouldn't get applied
         put_data = {
-            constants.STUDY_NAME_KEY:        'Test study',
-            constants.STUDY_DESCRIPTION_KEY: 'Description goes here',
+            'name': 'Test study',
+            'description': 'Description goes here',
         }
 
         # verify that an un-authenticated request gets a 404
@@ -217,9 +216,9 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self._check_status(self.client.put(url, put_data), status.HTTP_404_NOT_FOUND)
 
         put_data = {
-            constants.STUDY_NAME_KEY: 'Updated study name',
-            constants.STUDY_DESCRIPTION_KEY: 'Updated study description',
-            constants.STUDY_CONTACT_KEY: self.write_user.pk,
+            'name': 'Updated study name',
+            'description': 'Updated study description',
+            'contact_id': self.write_user.pk,
         }
         url = reverse('rest:studies-detail', args=[22])  # group write study
         self.client.force_login(self.write_group_user)

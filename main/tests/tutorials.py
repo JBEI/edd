@@ -72,11 +72,10 @@ class ExperimentDescriptionTests(TestCase):
         self.assertEqual(response.status_code, codes.ok)
         self.assertEqual(self.target_study.line_set.count(), 2)
 
-    @tag('known-broken')
     def test_missing_strain(self):
         name = 'ExperimentDescription_missing_strain.xlsx'
         response = self._run_upload(name)
-        self.assertEqual(response.status_code, codes.server_error)
+        self.assertEqual(response.status_code, codes.bad_request)
         self.assertEqual(self.target_study.line_set.count(), 0)
         messages = response.json()
         self.assertIn('errors', messages)

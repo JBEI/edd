@@ -21,7 +21,7 @@ from django.utils.translation import ugettext_lazy as _
 from itertools import chain
 from six import string_types
 
-from .common import EDDSerialize
+from .common import EDDSerialize, qfilter
 from .measurement_type import MeasurementType, MeasurementUnit, Metabolite
 from .metadata import EDDMetadata, MetadataType
 from .update import Update
@@ -496,21 +496,19 @@ class Study(EDDObject):
             Q(assay__line__study=self) | Q(study=self)
         ).distinct()
 
-    def get_strains_used(self):
+    def get_strains_used(self, active=None):
         """ Returns a QuerySet of all Strains used in the Study. """
-        return Strain.objects.filter(line__study=self).distinct()
+        return Strain.objects.filter(
+            qfilter(fields=['line', 'active'], value=active),
+            line__study_id=self.pk,
+        ).distinct()
 
-    def get_assays(self):
+    def get_assays(self, active=None):
         """ Returns a QuerySet of all Assays contained in the Study. """
-        return Assay.objects.filter(line__study=self)
-
-    def get_assays_by_protocol(self):
-        """ Returns a dict mapping Protocol ID to a list of Assays the in Study using that
-        Protocol. """
-        assays_by_protocol = defaultdict(list)
-        for assay in self.get_assays():
-            assays_by_protocol[assay.protocol_id].append(assay.id)
-        return assays_by_protocol
+        return Assay.objects.filter(
+            qfilter(fields=['active'], value=active),
+            line__study_id=self.pk,
+        )
 
     def to_json(self, depth=0):
         json_dict = super(Study, self).to_json(depth=depth)

@@ -1,4 +1,4 @@
-FROM node:8.8.0
+FROM node:8.9-alpine
 
 LABEL maintainer="Traci Lopez <tlopez@lbl.gov>"
 

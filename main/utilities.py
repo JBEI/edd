@@ -6,8 +6,6 @@ from collections import defaultdict, Iterable
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.sites.models import Site
-from django.db.models import Aggregate
-from django.db.models.aggregates import Aggregate as SQLAggregate
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
@@ -16,19 +14,6 @@ from . import models
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-class SQLArrayAgg(SQLAggregate):
-    sql_function = 'array_agg'
-
-
-class ArrayAgg(Aggregate):
-    name = 'ArrayAgg'
-
-    def add_to_query(self, query, alias, col, source, is_summary):
-        query.aggregates[alias] = SQLArrayAgg(
-            col, source=source, is_summary=is_summary, **self.extra
-        )
 
 
 class EDDSettingsMiddleware(object):
@@ -70,10 +55,14 @@ def flatten_json(source):
 
 
 def get_edddata_study(study):
-    """ Dump of selected database contents used to populate EDDData object on the client.
-        Although this includes some data types like Strain and CarbonSource that are not
-        "children" of a Study, they have been filtered to include only those that are used by
-        the given study. """
+    """
+    Dump of selected database contents used to populate EDDData object on the client.
+    Although this includes some data types like Strain and CarbonSource that are not
+    "children" of a Study, they have been filtered to include only those that are used by
+    the given study.
+    """
+
+    # TODO: this is a lot of queries that are likely unnecessary; should look into removing
 
     metab_types = study.get_metabolite_types_used()
     gene_types = models.GeneIdentifier.objects.filter(assay__line__study=study).distinct()

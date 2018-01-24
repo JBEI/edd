@@ -13,11 +13,13 @@ require('jquery-ui/ui/widgets/autocomplete')
 
 export namespace MultiColumnAuto {
 
+    export type AutoValueFieldCallback = (item: any, col: AutoColumn, i: number) => string;
+
     export class AutoColumn {
         name: string;
         width: string;
         maxWidth: string;
-        valueField: string;
+        valueField: any; // string | AutoValueFieldCallback;
 
         constructor(name, minWidth, valueField, maxWidth?) {
             this.name = name;

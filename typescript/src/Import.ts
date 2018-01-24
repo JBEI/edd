@@ -141,7 +141,9 @@ module EDDTableImport {
                 $.extend(ATData, data.ATData);
                 $.extend(EDDData, data.EDDData);
                 EDDTableImport.onReferenceRecordsLoad();
-            }
+            },
+            // pass along extra parameter "active"
+            "data": { "active": true }
         }).fail(function(x, s, e) {
             alert(s);
         });
@@ -1887,13 +1889,17 @@ module EDDTableImport {
                     // Validate the provided set of time/value points
                     rawSet.data.forEach((xy: any[]): void => {
                         var time: number, value: number;
-                        if (!JSNumber.isFinite(xy[0])) {
+                        if (xy[0] === null) {
+                            // keep explicit null values
+                            time = null;
+                        } else if (!JSNumber.isFinite(xy[0])) {
                             // Sometimes people - or Excel docs - drop commas into large numbers.
                             time = parseFloat((xy[0] || '0').replace(/,/g, ''));
                         } else {
                             time = <number>xy[0];
                         }
-                        // If we can't get a usable timestamp, discard this point.
+                        // If we can't parse a usable timestamp, discard this point.
+                        // NOTE: JSNumber.isNaN(null) === false
                         if (JSNumber.isNaN(time)) {
                             return;
                         }
@@ -1906,20 +1912,15 @@ module EDDTableImport {
                         } else {
                             value = <number>xy[1];
                         }
-                        if (!times[time]) {
+                        if (times[time] === undefined) {
                             times[time] = value;
                             uniqueTimes.push(time);
-                            this.seenAnyTimestamps = true;
+                            this.seenAnyTimestamps = time !== null;
                         }
                     });
                     uniqueTimes.sort((a, b) => a - b).forEach((time: number): void => {
                         reassembledData.push([time, times[time]]);
                     });
-
-                    // Only save if we accumulated some data or metadata
-                    if (!uniqueTimes.length && !foundMeta) {
-                        return;
-                    }
 
                     set = {
                         // Copy across the fields from the RawImportSet record
@@ -2282,34 +2283,17 @@ module EDDTableImport {
         }
 
         requiredInputsProvided(): boolean {
-            var mode: any, hadInput: boolean;
-            var mode = this.selectMajorKindStep.interpretationMode;
-
-            // if the current mode doesn't require input from this step, just return true
-            // if the previous step had input
-            if (IdentifyStructuresStep.MODES_WITH_DATA_TABLE.indexOf(mode) < 0) {
-                return this.rawInputStep.haveInputData;
-            }
-
-            // otherwise, require user input for every non-ignored row
-            for(let row in this.pulldownObjects) {
-                var rowInactivated = !this.activeRowFlags[row];
-
-                if(rowInactivated) {
-                    continue;
-                }
-                var inputSelector = this.pulldownObjects[row];
-                var comboBox = $(inputSelector);
-                if (comboBox.val() == IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE) {
-                    // NOTE: typecomparison breaks it!
-                    $('#missingStep3InputDiv').removeClass('off');
+            var needPulldownSet: boolean;
+            // require user input for every non-ignored row
+            needPulldownSet = this.pulldownObjects.some((p: HTMLElement, row: number): boolean => {
+                if (!this.activeRowFlags[row]) {
                     return false;
+                } else {
+                    return $(p).val() == IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE;
                 }
-            }
-
-            $('#missingStep3InputDiv').addClass('off');
-
-            return this.parsedSets.length > 0;
+            });
+            $('#missingStep3InputDiv').toggleClass('off', !needPulldownSet);
+            return !needPulldownSet && this.parsedSets.length > 0;
         }
     }
 
@@ -2510,9 +2494,7 @@ module EDDTableImport {
 
         disableInputDuringProcessing():void {
             var hasRequiredInitialInputs = this.identifyStructuresStep.requiredInputsProvided();
-            if(hasRequiredInitialInputs) {
-                $('#emptyDisambiguationLabel').addClass('off');
-            }
+            $('#emptyDisambiguationLabel').toggleClass('off', hasRequiredInitialInputs);
             $('#processingStep3Label').toggleClass('off', !hasRequiredInitialInputs);
             this.setAllInputsEnabled(false);
         }
@@ -2521,13 +2503,13 @@ module EDDTableImport {
         // where the user can fill out additional information for the pasted table.
         reconfigure(): void {
             var mode: string,
-                parsedSets: RawImportSet[],
                 seenAnyTimestamps: boolean,
                 hideMasterTimestamp: boolean,
                 hasRequiredInitialInput: boolean;
 
             mode = this.selectMajorKindStep.interpretationMode;
             seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
+            hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
 
             // Hide all the subsections by default
             $('#masterTimestampDiv').addClass('off');
@@ -2546,12 +2528,9 @@ module EDDTableImport {
             $('.' + TypeDisambiguationStep.STEP_4_TOGGLE_SUBSECTION_CLASS).remove();
             $('.' + TypeDisambiguationStep.STEP_4_SUBSECTION_REQUIRED_CLASS).remove();
 
-            hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
-
             // If parsed data exists, but we haven't seen a single timestamp, show the "master
             // timestamp" input.
-            hideMasterTimestamp = (!hasRequiredInitialInput) || seenAnyTimestamps ||
-                (this.identifyStructuresStep.parsedSets.length === 0);
+            hideMasterTimestamp = !hasRequiredInitialInput || seenAnyTimestamps;
             $('#masterTimestampDiv').toggleClass('off', hideMasterTimestamp);
             // Call subroutines for each of the major sections
             if (mode === "biolector") {
@@ -2897,7 +2876,7 @@ module EDDTableImport {
             }
 
             // If in Skyline mode, need to specify the units to import
-            if (mode === 'skyline') {
+            if (hasRequiredInitialInput && mode === 'skyline') {
                 $('#masterUnitDiv').removeClass('off')
                     .find('[name=masterUnits]')
                         .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
@@ -3544,14 +3523,17 @@ module EDDTableImport {
 
         appendLineAutoselect(parentElement:JQuery, defaultSelection): void {
             // create a text input to gather user input
-            var lineInputId = 'disamLineInput' + this.visibleIndex;
+            var lineInputId: string = 'disamLineInput' + this.visibleIndex,
+                autoOptions: EDDAuto.AutocompleteOptions;
 
-            this.lineAuto = new EDDAuto.StudyLine({
-                container:parentElement,
-                hiddenValue:defaultSelection.lineID,
-                emptyCreatesNew:true,
-                nonEmptyRequired:false
-            });
+            autoOptions = {
+                "container": parentElement,
+                "hiddenValue": defaultSelection.lineID,
+                "emptyCreatesNew": true,
+                "nonEmptyRequired": false
+            };
+            // passes extra "active" parameter to line search
+            this.lineAuto = new EDDAuto.StudyLine(autoOptions, { "active": 'true' });
 
             //if there is a line name, auto fill line.
             $(this.lineAuto.container[0]).children('.autocomp').val(defaultSelection.name);
@@ -3582,7 +3564,7 @@ module EDDTableImport {
             // ATData.existingAssays is type {[index: string]: number[]}
             protocol = EDDTableImport.selectMajorKindStep.masterProtocol;
             assays = ATData.existingAssays[protocol] || [];
-            assays.every((id: number, i: number): boolean => {
+            assays.every((id: number): boolean => {
                 var assay: AssayRecord = EDDData.Assays[id];
                 if (assayOrLine.toLowerCase() === assay.name.toLowerCase()) {
                     // The full Assay name, even case-insensitive, is the best match
@@ -3593,12 +3575,12 @@ module EDDTableImport {
             });
             // Now we repeat the practice, separately, for the Line pulldown.
             highest = 0;
-            // ATData.existingLines is type {id: number; n: string;}[]
+            // ATData.existingLines is type {id: number; name: string;}[]
             (ATData.existingLines || []).every((line: any): boolean => {
-                if (assayOrLine.toLowerCase() === line.n.toLowerCase()) {
+                if (assayOrLine.toLowerCase() === line.name.toLowerCase()) {
                     // The Line name, case-insensitive, is the best match
                     selections.lineID = line.id;
-                    selections.name = line.n;
+                    selections.name = line.name;
                     return false;  // do not need to continue
                 }
                 return true;

@@ -58,11 +58,11 @@ export module EDDAuto {
         cache?: any,
 
         // the URI of the REST resource to use for querying autocomplete results
-        search_uri?: string,
-
-        // Extra parameters to append to each query to the search engine
-        search_extra?: any
+        search_uri?: string
     }
+
+
+    export type ExtraSearchParameters = {[param: string]: string};
 
 
     export class BaseAuto {
@@ -75,7 +75,7 @@ export module EDDAuto {
         uid: number;
 
         opt: AutocompleteOptions;
-        search_opt: AutocompleteOptions;
+        search_opt: ExtraSearchParameters;
         columns: MultiColumnAuto.AutoColumn[];
         display_key: any;
         value_key: any;
@@ -158,11 +158,9 @@ export module EDDAuto {
          * called after the $(window).load handler above.
          * @param opt a dictionary of settings following the AutocompleteOptions interface format.
          * @param search_options an optional dictionary of data to be sent to the search backend
-         *     as part of the autocomplete search request.  To be received on the back-end,
-         *     additional search parameters should be captured under an included "search_extra"
-         *     element.
+         *     as part of the autocomplete search request.
          */
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
 
             var id = BaseAuto._uniqueIndex;
             BaseAuto._uniqueIndex += 1;
@@ -206,7 +204,7 @@ export module EDDAuto {
         }
 
         init() {
-            var self: any = this;
+            var self: BaseAuto = this;
 
             // this.cacheId might have been set by a constructor in a subclass
             this.cacheId = this.opt['cacheId']
@@ -268,10 +266,8 @@ export module EDDAuto {
                 // The rest of the options are for configuring the ajax webservice call.
                 'minLength': 0,
                 'source': function(request, response) {
-                    var result, modelCache, termCachedResults;
-                    modelCache = BaseAuto._request_cache[self.modelName] || {};
-                    BaseAuto._request_cache[self.modelName] = modelCache;
-                    termCachedResults = modelCache[request.term];
+                    var result, termCachedResults;
+                    termCachedResults = self.loadModelCache()[request.term];
                     if (termCachedResults) {
                         response(termCachedResults);
                         return;
@@ -282,26 +278,8 @@ export module EDDAuto {
                         'data': $.extend({
                             'model': self.modelName,
                             'term': request.term
-                        }, self.opt['search_extra']),
-                        // The success event handler will display "No Results Found" if no
-                        // items are returned.
-                        'success': function(data) {
-                            var result;
-                            if (!data || !data.rows || data.rows.length === 0) {
-                                result = [MultiColumnAuto.NonValueItem.NO_RESULT];
-                            } else {
-                                result = data.rows;
-                                // store returned results in cache
-                                result.forEach(function(item) {
-                                    var cacheKey = item[self.value_key],
-                                        cache_record = self.cache[cacheKey] || {};
-                                    self.cache[cacheKey] = cache_record;
-                                    $.extend(cache_record, item);
-                                });
-                            }
-                            modelCache[request.term] = result;
-                            response(result);
-                        },
+                        }, self.search_opt),
+                        'success': self.processResults.bind(self, request, response),
                         'error': function(jqXHR, status, err) {
                             response([MultiColumnAuto.NonValueItem.ERROR]);
                         }
@@ -337,11 +315,36 @@ export module EDDAuto {
             return record[this.value_key] || '';
         }
 
+        loadModelCache(): any {
+            var cache = BaseAuto._request_cache[this.modelName] || {};
+            BaseAuto._request_cache[this.modelName] = cache;
+            return cache;
+        }
+
         loadRecord(item: any): any {
             var cacheKey = item[this.value_key],
                 record = (this.cache[cacheKey] = this.cache[cacheKey] || {});
             $.extend(record, item);
             return record;
+        }
+
+        processResults(request, response, data: any): void {
+            var result, modelCache = this.loadModelCache();
+            // The default handler will display "No Results Found" if no items are returned.
+            if (!data || !data.rows || data.rows.length === 0) {
+                result = [MultiColumnAuto.NonValueItem.NO_RESULT];
+            } else {
+                // store returned results in cache
+                result = data.rows;
+                result.forEach((item) => {
+                    var cacheKey = item[this.value_key],
+                        cacheRecord = this.cache[cacheKey] || {};
+                    this.cache[cacheKey] = cacheRecord;
+                    $.extend(cacheRecord, item);
+                });
+            }
+            modelCache[request.term] = result;
+            response(result);
         }
 
         undo(): void {
@@ -369,7 +372,7 @@ export module EDDAuto {
             new MultiColumnAuto.AutoColumn('E-mail', '150px', 'email')
         ];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'User';
             this.columns = User.columns;
@@ -395,7 +398,7 @@ export module EDDAuto {
             new MultiColumnAuto.AutoColumn('Group', '200px', 'name')
         ];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'Group';
             this.columns = Group.columns;
@@ -417,7 +420,7 @@ export module EDDAuto {
             new MultiColumnAuto.AutoColumn('Initials', '60px', 'initials')
         ];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'CarbonSource';
             this.columns = CarbonSource.columns;
@@ -439,7 +442,7 @@ export module EDDAuto {
             })
         ];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'MetadataType';
             this.columns = MetadataType.columns;
@@ -454,7 +457,7 @@ export module EDDAuto {
 
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'AssayMetadataType';
             this.columns = AssayMetadataType.columns;
@@ -467,7 +470,7 @@ export module EDDAuto {
     // .autocomp_altype
     export class AssayLineMetadataType extends BaseAuto {
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'AssayLineMetadataType';
             this.columns = MetadataType.columns;
@@ -481,7 +484,7 @@ export module EDDAuto {
     export class LineMetadataType extends BaseAuto {
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'LineMetadataType';
             this.columns = LineMetadataType.columns;
@@ -495,7 +498,7 @@ export module EDDAuto {
     export class StudyMetadataType extends BaseAuto {
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'StudyMetadataType';
             this.columns = StudyMetadataType.columns;
@@ -510,7 +513,7 @@ export module EDDAuto {
 
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'Metabolite';
             this.columns = Metabolite.columns;
@@ -525,7 +528,7 @@ export module EDDAuto {
 
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'Protein';
             this.columns = Protein.columns;
@@ -540,7 +543,7 @@ export module EDDAuto {
 
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'Gene';
             this.columns = Gene.columns;
@@ -555,7 +558,7 @@ export module EDDAuto {
 
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'Phosphor';
             this.columns = Phosphor.columns;
@@ -567,15 +570,31 @@ export module EDDAuto {
 
 
     export class GenericOrMetabolite extends BaseAuto {
-        static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+        static columns = [
+            new MultiColumnAuto.AutoColumn('Name', '300px', 'name'),
+            new MultiColumnAuto.AutoColumn('Type', '100px', GenericOrMetabolite.type_label)
+        ];
+        static family_lookup = {
+            'm': 'Metabolite',
+            'p': 'Protein',
+            'g': 'Gene'
+        }
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'GenericOrMetabolite';
             this.columns = GenericOrMetabolite.columns;
-            this.cacheId = 'GenericOrMetaboliteTypes';    // TODO: Is this correct?
+            this.cacheId = 'GenericOrMetaboliteTypes';
             this.visibleInput.attr('size', 45)
             this.init();
+        }
+
+        static type_label(item: any, col: MultiColumnAuto.AutoColumn, i: number): string {
+            var type_family = GenericOrMetabolite.family_lookup[item.family];
+            if (type_family !== undefined) {
+                return type_family;
+            }
+            return 'Generic';
         }
     }
 
@@ -584,7 +603,7 @@ export module EDDAuto {
     export class MeasurementType extends BaseAuto {
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'MeasurementType';
             this.columns = MeasurementType.columns;
@@ -598,7 +617,7 @@ export module EDDAuto {
     export class MeasurementCompartment extends BaseAuto {
         static columns = [new MultiColumnAuto.AutoColumn('Name', '200px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'MeasurementCompartment';
             this.columns = MeasurementCompartment.columns;
@@ -612,7 +631,7 @@ export module EDDAuto {
     export class MeasurementUnit extends BaseAuto {
         static columns = [new MultiColumnAuto.AutoColumn('Name', '150px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'MeasurementUnit';
             this.columns = MeasurementUnit.columns;
@@ -631,13 +650,13 @@ export module EDDAuto {
             new MultiColumnAuto.AutoColumn('Reactant', '200px', 'reactant')
         ];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'MetaboliteExchange';
             this.columns = MetaboliteExchange.columns;
             this.cacheId = 'Exchange';
             this.display_key = 'exchange';
-            this.opt['search_extra'] = { 'template': $(this.visibleInput).data('template') };
+            $.extend(this.search_opt, { 'template': $(this.visibleInput).data('template') });
             this.init();
         }
     }
@@ -647,12 +666,12 @@ export module EDDAuto {
     export class MetaboliteSpecies extends BaseAuto {
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'MetaboliteSpecies';
             this.columns = MetaboliteSpecies.columns;
             this.cacheId = 'Species';
-            this.opt['search_extra'] = { 'template': $(this.visibleInput).data('template') };
+            $.extend(this.search_opt, { 'template': $(this.visibleInput).data('template') });
             this.init();
         }
     }
@@ -661,7 +680,7 @@ export module EDDAuto {
     export class StudyWritable extends BaseAuto {
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'StudyWritable';
             this.columns = StudyWritable.columns;
@@ -674,12 +693,12 @@ export module EDDAuto {
     export class StudyLine extends BaseAuto {
         static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'StudyLine';
             this.columns = StudyLine.columns;
             this.cacheId = 'Lines';
-            this.opt['search_extra'] = { 'study': EDDData.currentStudyID };
+            $.extend(this.search_opt, { 'study': EDDData.currentStudyID });
             this.init();
         }
     }
@@ -693,7 +712,7 @@ export module EDDAuto {
             new MultiColumnAuto.AutoColumn('Description', '250px', 'shortDescription')
         ];
 
-        constructor(opt: AutocompleteOptions, search_options?) {
+        constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
             this.modelName = 'Registry';
             this.columns = Registry.columns;
@@ -716,7 +735,7 @@ export module EDDAuto {
      * Now it will use:
      *    new class_lookup[classname]()
      */
-    const class_lookup: {[name: string]: any} = {
+    const class_lookup: {[name: string]: typeof BaseAuto} = {
         "User": User,
         "Group": Group,
         "CarbonSource": CarbonSource,

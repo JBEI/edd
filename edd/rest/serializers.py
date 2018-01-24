@@ -96,7 +96,7 @@ class MeasurementValueSerializer(serializers.ModelSerializer):
 
 class StudySerializer(EDDObjectSerializer):
     contact = UserSerializer(read_only=True)
-    contact_id = serializers.IntegerField(write_only=True)
+    contact_id = serializers.IntegerField(write_only=True, required=False)
     contact_extra = serializers.CharField(allow_blank=True, required=False)
 
     class Meta:

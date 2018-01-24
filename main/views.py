@@ -9,6 +9,7 @@ import re
 from builtins import str
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.exceptions import PermissionDenied, SuspiciousOperation, ValidationError
 from django.core.urlresolvers import reverse
 from django.db import transaction
@@ -46,6 +47,7 @@ from .importer.parser import find_parser
 from .models import (Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue,
                      Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
                      StudyPermission, Update, )
+from .models.common import qfilter
 from .solr import StudySearch
 from .tasks import import_table_task
 from .utilities import (
@@ -554,6 +556,12 @@ class StudyLinesView(StudyDetailBaseView):
                 count = details[Line._meta.label]
             else:
                 count = form.selection.lines.update(active=active)
+                # cascade deactivation to assays and measurements
+                # NOTE: ExportSelectionForm already filters out deactivated elements, so this will
+                #   _NOT_ re-activate objects from previously deactivated lines.
+                form.selection.assays.update(active=active)
+                form.selection.measurements.update(active=active)
+
             messages.success(
                 request,
                 _('%(action)s %(count)d Lines') % {
@@ -1204,14 +1212,18 @@ def study_edddata(request, pk=None, slug=None):
 def study_assay_table_data(request, pk=None, slug=None):
     """ Request information on assays associated with a study. """
     model = load_study(request, pk=pk, slug=slug)
-    # FIXME filter protocols?
-    protocols = Protocol.objects.all()
-    lines = model.line_set.all()
+    active_param = request.GET.get('active', None)
+    active_value = 'true' == active_param if active_param in ('true', 'false') else None
+    active = qfilter(value=active_value, fields=['active'])
+    existingLines = model.line_set.filter(active)
+    existingAssays = edd_models.Assay.objects.filter(active, line__study=model)
     return JsonResponse({
         "ATData": {
-            "existingProtocols": {p.id: p.name for p in protocols},
-            "existingLines": [{"n": l.name, "id": l.id} for l in lines],
-            "existingAssays": model.get_assays_by_protocol(),
+            "existingLines": list(existingLines.values('name', 'id')),
+            "existingAssays": {
+                assays['protocol_id']: assays['ids']
+                for assays in existingAssays.values('protocol_id').annotate(ids=ArrayAgg('id'))
+            },
         },
         "EDDData": get_edddata_study(model),
     }, encoder=utilities.JSONEncoder)
