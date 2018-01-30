@@ -180,7 +180,7 @@ module StudyLines {
         parent.find('.addNewLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
             ev.preventDefault();
             ev.stopPropagation();
-            StudyLines.editLines([]);
+            StudyLines.showLineEditDialog([]);
             return false;
         });
 
@@ -188,7 +188,7 @@ module StudyLines {
         parent.find('.editButton').on('click', (ev:JQueryMouseEventObject):boolean => {
             var button = $(ev.target), data = button.data();
             ev.preventDefault();
-            StudyLines.editLines(data.ids || []);
+            StudyLines.showLineEditDialog(data.ids || []);
             return false;
         });
 
@@ -456,7 +456,7 @@ module StudyLines {
     }
 
 
-    export function editLines(ids:number[]):void {
+    export function showLineEditDialog(ids:number[]):void {
         var form = $('#editLineModal'), allMeta = {}, metaRow;
         clearLineForm(form);
 
@@ -484,12 +484,12 @@ module StudyLines {
             metaRow = form.find('.line-edit-meta');
             // Run through the collection of metadata, and add a form element entry for each
             $.each(allMeta, (key) => insertLineMetadataRow(metaRow, key, ''));
-        } else if (ids.length === 1) {
+        } else {
             $('.bulkNoteGroup', form).addClass('off');
             form.find('[name=line-name]').prop('required', true).parent().show();
-            fillLineForm(form, EDDData.Lines[ids[0]]);
-        } else {
-            return;
+            if (ids.length === 1) {
+                fillLineForm(form, EDDData.Lines[ids[0]]);
+            }
         }
 
         form.find('[name=line-ids]').val(ids.join(','));
@@ -732,7 +732,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         // pull out attr and
         $(document).on('click', '.line-edit-link', function(e) {
             var index:number = parseInt($(this).attr('dataIndex'), 10);
-            StudyLines.editLines([index]);
+            StudyLines.showLineEditDialog([index]);
         });
         return [
             new DataGridDataCell(gridSpec, index, {
