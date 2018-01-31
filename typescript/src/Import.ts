@@ -1145,6 +1145,9 @@ module EDDTableImport {
         uniqueLineNames: any[];
         uniqueAssayNames: string[];
         uniqueMeasurementNames: any[];
+        uniqueUniprot: string[];
+        uniquePubchem: string[];
+        uniqueGenbank: string[];
         uniqueMetadataNames: any[];
         // A flag to indicate whether we have seen any timestamps specified in the import data
         seenAnyTimestamps: boolean;
@@ -1201,6 +1204,9 @@ module EDDTableImport {
             this.uniqueLineNames = [];
             this.uniqueAssayNames = [];
             this.uniqueMeasurementNames = [];
+            this.uniqueUniprot = [];
+            this.uniquePubchem = [];
+            this.uniqueGenbank = [];
             this.uniqueMetadataNames = [];
             // A flag to indicate whether we have seen any timestamps specified in the import data
             this.seenAnyTimestamps = false;
@@ -1825,6 +1831,9 @@ module EDDTableImport {
             this.uniqueLineNames = [];
             this.uniqueAssayNames = [];
             this.uniqueMeasurementNames = [];
+            this.uniqueUniprot = [];
+            this.uniquePubchem = [];
+            this.uniqueGenbank = [];
             this.uniqueMetadataNames = [];
             this.seenAnyTimestamps = false;
 
@@ -2031,11 +2040,17 @@ module EDDTableImport {
                             return;
                         }
                         switch (pulldown) {
+                            case TypeEnum.Pubchem_Name:
+                                hint = 'm';
+                                this.uniquePubchem.push(m_name);
+                                break;
                             case TypeEnum.Protein_Name:
                                 hint = 'p';
+                                this.uniqueUniprot.push(m_name);
                                 break;
                             case TypeEnum.Gene_Name:
                                 hint = 'g';
+                                this.uniqueGenbank.push(m_name);
                                 break;
                             default:
                                 hint = null;
@@ -2108,6 +2123,7 @@ module EDDTableImport {
                         if (value) {
                             set.hint = 'g';
                             set.measurement_name = value;
+                            this.uniqueGenbank.push(value);
                         }
                         return;
                     } else if (pulldown === TypeEnum.Timestamp) {
@@ -2844,7 +2860,7 @@ module EDDTableImport {
             parentDiv = $('#disambiguateMeasurementsSection')
 
             parentDiv.addClass('off');
-            $('#masterMTypeDiv').addClass('off');
+            $('#masterMTypeDiv, #masterCompDiv, #masterUnitDiv').addClass('off');
 
             bodyJq = $('#disambiguateMeasurementsTable tbody');
             bodyJq.children().detach();
@@ -2862,32 +2878,45 @@ module EDDTableImport {
                 return;
             }
 
-            // No measurements for disambiguation, have timestamp data:  That means we need to
-            // choose one measurement. You might think that we should display this even without
-            // timestamp data, to handle the case where we're importing a single measurement type
-            // for a single timestamp...  But that would be a 1-dimensional import, since there
-            // is only one other object with multiple types to work with (lines/assays).  We're
-            // not going to bother supporting that.
-            if (hasRequiredInitialInput
-                    && uniqueMeasurementNames.length === 0
-                    && seenAnyTimestamps) {
-                $('#masterMTypeDiv').removeClass('off');
-                return;
+            // If using the implicit IDs for measurements, need to specify units
+            var needUnits: boolean = this.identifyStructuresStep.uniquePubchem.length > 0 ||
+                    this.identifyStructuresStep.uniqueUniprot.length > 0 ||
+                    this.identifyStructuresStep.uniqueGenbank.length > 0;
+            // If using pubchem IDs, need to specify compartment
+            var needComp: boolean = this.identifyStructuresStep.uniquePubchem.length > 0;
+            if (hasRequiredInitialInput) {
+                if (needUnits) {
+                    $('#masterUnitDiv').removeClass('off')
+                        .find('[name=masterUnits]')
+                            .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                        .end()
+                        .find('[name=masterUnitsValue]')
+                            .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS)
+                        .end();
+                    if (needComp) {
+                        $('#masterCompDiv').removeClass('off')
+                            .find('[name=masterComp]')
+                                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                            .end()
+                            .find('[name=masterCompValue]')
+                                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS)
+                            .end();
+                    }
+                    return;
+                } else if (uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
+                    // No measurements for disambiguation, have timestamp data: That means we
+                    // need to choose one measurement. You might think that we should display
+                    // this even without timestamp data, to handle the case where we are
+                    // importing a single measurement type  for a single timestamp... But
+                    // that would be a 1-dimensional import, since there is only one other
+                    // object with multiple types to work with (lines/assays). We are not
+                    // going to bother supporting that.
+                    $('#masterMTypeDiv').removeClass('off');
+                    return;
+                }
             }
 
-            // If in Skyline mode, need to specify the units to import
-            if (hasRequiredInitialInput && mode === 'skyline') {
-                $('#masterUnitDiv').removeClass('off')
-                    .find('[name=masterUnits]')
-                        .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
-                    .end()
-                    .find('[name=masterUnitsValue]')
-                        .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS)
-                    .end()
-                return;
-            }
-
-            if(uniqueMeasurementNames.length > this.TOGGLE_ALL_THREASHOLD) {
+            if (uniqueMeasurementNames.length > this.TOGGLE_ALL_THREASHOLD) {
                 this.makeToggleAllButton('Measurement Types')
                     .insertBefore($('#disambiguateMeasurementsTable'));
             }
@@ -3121,7 +3150,8 @@ module EDDTableImport {
                 masterMType: any,
                 masterMComp: any,
                 masterMUnits: any,
-                masterUnits: any;
+                masterUnits: any,
+                masterComp: any;
             this.errorMessages = [];
             this.warningMessages = [];
 
@@ -3142,6 +3172,8 @@ module EDDTableImport {
             masterMType = $('#masterMTypeValue').val();
             masterMComp = $('#masterMCompValue').val();
             masterMUnits = $('#masterMUnitsValue').val();
+            masterComp = $('#masterCompValue').val();
+            masterUnits = $('#masterUnitsValue').val();
 
             resolvedSets = [];
             droppedDatasetsForMissingTime = 0;
@@ -3168,17 +3200,22 @@ module EDDTableImport {
                 lineId = 'new';    // A convenient default
                 assay_id = 'named_or_new';
 
+                // In modes where we resolve measurement types in the client UI, go with the
+                // master values by default.
                 measurementTypeId = null;
                 compartmentId = null;
                 unitsId = null;
-                // In modes where we resolve measurement types in the client UI, go with the
-                // master values by default.
-                if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === "hplc") {
+                if (this.identifyStructuresStep.uniquePubchem.length > 0 ||
+                        this.identifyStructuresStep.uniqueUniprot.length > 0 ||
+                        this.identifyStructuresStep.uniqueGenbank.length > 0) {
+                    unitsId = masterUnits;
+                    if (this.identifyStructuresStep.uniquePubchem.length > 0) {
+                        compartmentId = masterComp;
+                    }
+                } else if (this.identifyStructuresStep.uniqueMeasurementNames.length === 0) {
                     measurementTypeId = masterMType;
                     compartmentId = masterMComp;
                     unitsId = masterMUnits;
-                } else if (mode === 'skyline') {
-                    unitsId = masterUnits;
                 }
 
                 metaDataPresent = false;
@@ -3228,19 +3265,15 @@ module EDDTableImport {
 
                 // Same for measurement name, but resolve all three measurement fields if we find
                 // a match, and only if we are resolving measurement types client-side.
-                if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === 'hplc') {
-                    if (set.measurement_name !== null) {
-                        measDisam = this.measurementObjSets[set.measurement_name];
-                        if (measDisam) {
-                            measurementTypeId = measDisam.typeAuto.val();
-                            compartmentId = measDisam.compAuto.val() || "0";
-                            unitsId = measDisam.unitsAuto.val() || "1";
-                            // If we've disabled import for measurements of this type, skip adding
-                            // this measurement to the list
-                            if (measDisam.typeAuto.hiddenInput.is(':disabled')) {
-                                return;  // continue to the next loop iteration parsedSets.forEach
-                            }
-                        }
+                measDisam = this.measurementObjSets[set.measurement_name];
+                if (measDisam) {
+                    measurementTypeId = measDisam.typeAuto.val();
+                    compartmentId = measDisam.compAuto.val() || "0";
+                    unitsId = measDisam.unitsAuto.val() || "1";
+                    // If we've disabled import for measurements of this type, skip adding
+                    // this measurement to the list
+                    if (measDisam.typeAuto.hiddenInput.is(':disabled')) {
+                        return;  // continue to the next loop iteration parsedSets.forEach
                     }
                 }
 

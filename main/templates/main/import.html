@@ -492,17 +492,20 @@
         <tbody>
           <tr>
             <td>
-              <input class="autocomp form-control" type="text" size="20" name="masterMComp" id="masterMComp"
+              <input class="autocomp form-control" type="text" size="20" name="masterMComp"
+                  id="masterMComp"
                   eddautocompletetype="MeasurementCompartment"
                   value="" style="margin-right: 2px;">
               <input type="hidden" id="masterMCompValue" name="masterMCompValue">
             </td><td>
-              <input class="autocomp form-control" type="text" size="45" name="masterMType" id="masterMType"
+              <input class="autocomp form-control" type="text" size="45" name="masterMType"
+                  id="masterMType"
                   eddautocompletetype="GenericOrMetabolite"
                   value="" style="margin-right: 2px;">
               <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
             </td><td>
-              <input class="autocomp form-control" type="text" size="15" name="masterMUnits" id="masterMUnits"
+              <input class="autocomp form-control" type="text" size="15" name="masterMUnits"
+                  id="masterMUnits"
                   eddautocompletetype="MeasurementUnit"
                   value="">
               <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
@@ -511,6 +514,22 @@
         </tbody>
       </table>
 
+    </div>
+
+    <div class="sectionContent off" id="masterCompDiv">
+      <h3>Compartment for all data</h3>
+      <table class="table">
+        <tr>
+          <td>
+            <label for="masterComp">
+              <input class="autocomp" type="text" size="15" name="masterComp" id="masterComp"
+                  eddautocompletetype="MeasurementCompartment"
+                  value="" />
+              <input type="hidden" id="masterCompValue" name="masterCompValue" />
+            </label>
+          </td>
+        </tr>
+      </table>
     </div>
 
     <div class="sectionContent off" id="masterUnitDiv">
@@ -522,7 +541,7 @@
               <input class="autocomp" type="text" size="15" name="masterUnits" id="masterUnits"
                   eddautocompletetype="MeasurementUnit"
                   value="" />
-              <input type="hidden" name="masterUnitsValue" />
+              <input type="hidden" id="masterUnitsValue" name="masterUnitsValue" />
             </label>
           </td>
         </tr>
