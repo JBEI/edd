@@ -25,12 +25,6 @@ from .forms import (
     MeasurementTypeAutocompleteWidget, MetadataTypeAutocompleteWidget, RegistryAutocompleteWidget,
     RegistryValidator, UserAutocompleteWidget
 )
-from .models import (
-    Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, Measurement,
-    MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
-    ProteinIdentifier, Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
-    WorklistColumn, WorklistTemplate,
-)
 from .solr import StudySearch, UserSearch
 
 logger = logging.getLogger(__name__)
@@ -38,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class AttachmentInline(admin.TabularInline):
     """ Inline submodel for editing attachments """
-    model = Attachment
+    model = models.Attachment
     fields = ('file', 'description', 'created', 'mime_type', 'file_size')
     # would like to have file readonly for existing attachments
     # Django cannot currently do this on Inlines; see:
@@ -87,8 +81,8 @@ class MetadataTypeAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         q = super(MetadataTypeAdmin, self).get_queryset(request)
-        self._num_lines = Line.metadata_type_frequencies()
-        self._num_assay = Assay.metadata_type_frequencies()
+        self._num_lines = models.Line.metadata_type_frequencies()
+        self._num_assay = models.Assay.metadata_type_frequencies()
         # q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
         return q
 
@@ -105,17 +99,10 @@ class EDDObjectAdmin(admin.ModelAdmin):
     """ Parent class for EDD Object model admin classes """
     search_fields = ['name', 'description', ]
 
-    def save_model(self, request, obj, form, change):
-        update = Update.load_request_update(request)
-        if not change:
-            obj.created = update
-        obj.updated = update
-        super(EDDObjectAdmin, self).save_model(request, obj, form, change)
-
 
 class ProtocolAdminForm(forms.ModelForm):
     class Meta:
-        model = Protocol
+        model = models.Protocol
         fields = (
             'name', 'variant_of', 'active', 'owned_by', 'description', 'default_units',
             'categorization',
@@ -209,7 +196,7 @@ class StrainAdmin(EDDObjectAdmin):
         # same name as admin site uses for checkboxes to select items for actions
         _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
         strain = forms.ModelChoiceField(
-            Strain.objects.exclude(Q(registry_id=None) | Q(registry_url=None)),
+            models.Strain.objects.exclude(Q(registry_id=None) | Q(registry_url=None)),
             widget=RegistryAutocompleteWidget,
             to_field_name='registry_id',
         )
@@ -223,7 +210,7 @@ class StrainAdmin(EDDObjectAdmin):
             if form.is_valid():
                 strain = form.cleaned_data['strain']
                 # Update all lines referencing strains in queryset to reference `strain` instead
-                lines = Line.objects.filter(strains__in=queryset)
+                lines = models.Line.objects.filter(strains__in=queryset)
                 for line in lines:
                     line.strains.remove(*queryset.all())
                     line.strains.add(strain)
@@ -268,7 +255,7 @@ class StrainAdmin(EDDObjectAdmin):
         super(StrainAdmin, self).save_model(request, obj, form, change)
 
     def study_list(self, instance):
-        qs = Study.objects.filter(line__strains=instance).distinct()
+        qs = models.Study.objects.filter(line__strains=instance).distinct()
         count = qs.count()
         if count:
             html = ', '.join([
@@ -322,13 +309,14 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super(MeasurementTypeAdmin, self).get_queryset(request)
-        if self.model == MeasurementType:
-            qs = qs.filter(type_group=MeasurementType.Group.GENERIC)
+        if self.model == models.MeasurementType:
+            qs = qs.filter(type_group=models.MeasurementType.Group.GENERIC)
         qs = qs.annotate(num_studies=Count('measurement__assay__line__study', distinct=True))
         return qs
 
     def get_readonly_fields(self, request, obj=None):
-        return ['type_source', 'study_list', ]
+        # TODO: need to make a custom ModelForm to properly handle alt_names
+        return ['alt_names', 'type_source', 'study_list', ]
 
     def get_search_fields(self, request):
         return ['type_name', 'short_name', 'alt_names', ]
@@ -341,7 +329,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
             if form.is_valid():
                 mtype = form.cleaned_data['mtype']
                 # update all measurements referencing mtype
-                Measurement.objects.filter(
+                models.Measurement.objects.filter(
                     measurement_type__in=queryset,
                 ).update(measurement_type=mtype)
                 queryset.delete()
@@ -364,7 +352,8 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         super(MeasurementTypeAdmin, self).save_model(request, obj, form, change)
 
     def study_list(self, instance):
-        qs = Study.objects.filter(line__assay__measurement__measurement_type=instance).distinct()
+        relevant_study = Q(line__assay__measurement__measurement_type=instance)
+        qs = models.Study.objects.filter(relevant_study).distinct()
         count = qs.count()
         if count:
             html = ', '.join([
@@ -441,6 +430,8 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         readonly = super(MetaboliteAdmin, self).get_readonly_fields(request, obj)
+        # TODO: need to make a custom ModelForm to properly handle id_map and tags
+        readonly = readonly + ['id_map', 'tags', ]
         if obj and obj.pubchem_cid is None:
             return readonly
         return readonly + ['pubchem_cid', ]
@@ -474,7 +465,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
         new_identifier = not obj
         if new_identifier and settings.REQUIRE_UNIPROT_ACCESSION_IDS:
             generated_form.base_fields['type_name'].validators.append(RegexValidator(
-                    regex=ProteinIdentifier.accession_pattern,
+                    regex=models.ProteinIdentifier.accession_pattern,
                     message=_('New entries must be valid UniProt accession IDs')))
         return generated_form
 
@@ -507,7 +498,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
         return ['accession_id', 'type_source', 'study_list', ]
 
     def get_search_results(self, request, queryset, search_term):
-        search_term = ProteinIdentifier.match_accession_id(search_term)
+        search_term = models.ProteinIdentifier.match_accession_id(search_term)
         return super(ProteinAdmin, self).get_search_results(request, queryset, search_term)
 
 
@@ -549,7 +540,7 @@ class PhosphorAdmin(MeasurementTypeAdmin):
 
 class UserPermissionInline(admin.TabularInline):
     """ Inline submodel for editing user permissions """
-    model = UserPermission
+    model = models.UserPermission
     extra = 1
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -560,7 +551,7 @@ class UserPermissionInline(admin.TabularInline):
 
 class GroupPermissionInline(admin.TabularInline):
     """ Inline submodel for editing group permissions """
-    model = GroupPermission
+    model = models.GroupPermission
     extra = 1
 
 
@@ -607,7 +598,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'sbml_file':
-            kwargs['queryset'] = Attachment.objects.filter(object_ref=self._obj)
+            kwargs['queryset'] = models.Attachment.objects.filter(object_ref=self._obj)
         return super(SBMLTemplateAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_fields(self, request, obj=None):
@@ -701,7 +692,7 @@ class EDDUserAdmin(UserAdmin):
 
 class WorklistColumnInline(admin.TabularInline):
     """ Inline submodel for editing worklist columns. """
-    model = WorklistColumn
+    model = models.WorklistColumn
     fields = ('ordering', 'heading', 'meta_type', 'default_value', 'help_text', )
     ordering = ('ordering', 'heading', )
     extra = 1
@@ -722,20 +713,20 @@ class MeasurementUnitAdmin(admin.ModelAdmin):
     pass
 
 
-admin.site.register(MetadataGroup, MetadataGroupAdmin)
-admin.site.register(MetadataType, MetadataTypeAdmin)
-admin.site.register(Protocol, ProtocolAdmin)
-admin.site.register(Strain, StrainAdmin)
-admin.site.register(CarbonSource, CarbonSourceAdmin)
-admin.site.register(MeasurementType, MeasurementTypeAdmin)
-admin.site.register(Metabolite, MetaboliteAdmin)
-admin.site.register(GeneIdentifier, GeneAdmin)
-admin.site.register(ProteinIdentifier, ProteinAdmin)
-admin.site.register(Phosphor, PhosphorAdmin)
-admin.site.register(Study, StudyAdmin)
-admin.site.register(Assay, AssayAdmin)
-admin.site.register(SBMLTemplate, SBMLTemplateAdmin)
-admin.site.register(WorklistTemplate, WorklistTemplateAdmin)
+admin.site.register(models.MetadataGroup, MetadataGroupAdmin)
+admin.site.register(models.MetadataType, MetadataTypeAdmin)
+admin.site.register(models.Protocol, ProtocolAdmin)
+admin.site.register(models.Strain, StrainAdmin)
+admin.site.register(models.CarbonSource, CarbonSourceAdmin)
+admin.site.register(models.MeasurementType, MeasurementTypeAdmin)
+admin.site.register(models.Metabolite, MetaboliteAdmin)
+admin.site.register(models.GeneIdentifier, GeneAdmin)
+admin.site.register(models.ProteinIdentifier, ProteinAdmin)
+admin.site.register(models.Phosphor, PhosphorAdmin)
+admin.site.register(models.Study, StudyAdmin)
+admin.site.register(models.Assay, AssayAdmin)
+admin.site.register(models.SBMLTemplate, SBMLTemplateAdmin)
+admin.site.register(models.WorklistTemplate, WorklistTemplateAdmin)
 admin.site.register(models.MeasurementUnit, MeasurementUnitAdmin)
 admin.site.unregister(get_user_model())
 admin.site.register(get_user_model(), EDDUserAdmin)

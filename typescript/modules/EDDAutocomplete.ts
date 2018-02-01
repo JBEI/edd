@@ -4,10 +4,10 @@ import * as jQuery from "jquery";
 import "jquery-ui";
 import { MultiColumnAuto } from "./MultiColumnAutocomplete"
 
-declare var EDDData;
-
 
 export module EDDAuto {
+
+    var autoCache = {};
 
     export interface AutocompleteOptions {
         // Mandatory: A JQuery object identifying the DOM element that contains, or will contain,
@@ -211,7 +211,7 @@ export module EDDAuto {
                 || this.cacheId
                 || 'cache_' + (this.uid);
             this.cache = this.opt['cache']
-                || (EDDData[this.cacheId] = EDDData[this.cacheId] || {});
+                || (autoCache[this.cacheId] = autoCache[this.cacheId] || {});
 
             // TODO add flag(s) to handle multiple inputs
             // TODO possibly also use something like https://github.com/xoxco/jQuery-Tags-Input
@@ -698,7 +698,6 @@ export module EDDAuto {
             this.modelName = 'StudyLine';
             this.columns = StudyLine.columns;
             this.cacheId = 'Lines';
-            $.extend(this.search_opt, { 'study': EDDData.currentStudyID });
             this.init();
         }
     }

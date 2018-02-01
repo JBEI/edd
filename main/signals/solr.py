@@ -26,6 +26,17 @@ from ..solr import MeasurementTypeSearch, StudySearch, UserSearch
 type_index = MeasurementTypeSearch()
 study_index = StudySearch()
 users_index = UserSearch()
+measurement_types = [
+    edd_models.MeasurementType,
+    edd_models.Metabolite,
+    edd_models.GeneIdentifier,
+    edd_models.ProteinIdentifier,
+    edd_models.Phosphor,
+]
+all_indexed_types = measurement_types + [
+    edd_models.Study,
+    get_user_model(),
+]
 logger = logging.getLogger(__name__)
 
 
@@ -51,7 +62,7 @@ def index_update(index, items):
         logger.error("Failed to update solr with %s", items)
 
 
-@receiver(pre_delete, sender=(edd_models.MeasurementType, edd_models.Study, get_user_model()))
+@receiver(pre_delete, sender=all_indexed_types)
 def cache_deleting_key(sender, instance, **kwargs):
     """
     A model's primary key is removed during deletion; this handler will cache the primary key on
@@ -66,7 +77,7 @@ def removed_study(sender, instance, using, **kwargs):
         study_removed.send(sender=sender, doc=instance._pk_cached, using=using)
 
 
-@receiver(post_delete, sender=edd_models.MeasurementType)
+@receiver(post_delete, sender=measurement_types)
 def removed_type(sender, instance, using, **kwargs):
     if hasattr(instance, '_pk_cached'):
         type_removed.send(sender=sender, doc=instance._pk_cached, using=using)
@@ -78,7 +89,7 @@ def removed_user(sender, instance, using, **kwargs):
         user_removed.send(sender=sender, doc=instance._pk_cached, using=using)
 
 
-@receiver(post_save, sender=edd_models.MeasurementType)
+@receiver(post_save, sender=measurement_types)
 def type_saved(sender, instance, created, raw, using, **kwargs):
     """
     Forwards a signal indicating a study was saved.

@@ -18,7 +18,7 @@ def receiver(signal, sender=None, dispatch_uid=_sentinel, **kwargs):
         signal_list = signal if isinstance(signal, (list, tuple)) else [signal]
         sender_list = sender if isinstance(sender, (list, tuple)) else [sender]
         for sig, send in product(signal_list, sender_list):
-            uid = uuid4() if dispatch_uid is not None else dispatch_uid
+            uid = uuid4() if dispatch_uid is _sentinel else dispatch_uid
             sig.connect(func, sender=send, dispatch_uid=uid, **kwargs)
         return func
     return _decorator

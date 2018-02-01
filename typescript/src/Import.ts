@@ -3566,7 +3566,10 @@ module EDDTableImport {
                 "nonEmptyRequired": false
             };
             // passes extra "active" parameter to line search
-            this.lineAuto = new EDDAuto.StudyLine(autoOptions, { "active": 'true' });
+            this.lineAuto = new EDDAuto.StudyLine(autoOptions, {
+                "active": 'true',
+                "study": '' + EDDData.currentStudyID
+            });
 
             //if there is a line name, auto fill line.
             $(this.lineAuto.container[0]).children('.autocomp').val(defaultSelection.name);
