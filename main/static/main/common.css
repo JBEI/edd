@@ -65,6 +65,11 @@ label {
     font-weight: normal !important;
 }
 
+input:disabled+label{color:#ccc;}
+
+.disabled-label {
+    color:#ccc
+}
 
 /* Functional classes */
 
@@ -421,14 +426,13 @@ div.pageSection div.sectionChapter {
 }
 div.pageSection div.sectionContent {
     margin:0px;
-    padding:4px 8px 4px 8px;
+    padding:4px 8px 4px 25px;
 }
 div.pageSection div.sectionContent.sectionRight {
     text-align: right;
 }
 div.pageSection div.sectionContent div.subSectionChapter {
     margin:2px 0px 0px 4px;
-    padding:0px 1px 0px 1px;
     border-style:solid;
     border-width:0px;
 }
@@ -507,10 +511,6 @@ div.pageSection.minor div.sectionHead {
 ul.studyTabs {
     margin: 15px 0px 10px 0px;
      border-bottom: 1px solid lightgray;
-}
-
-div.noLines {
-    display: none;
 }
 
 span.allowError {
@@ -1627,7 +1627,7 @@ form.comments textarea {
 }
 
 div.fileDropInfoArea {
-    margin:24px 8px 24px 8px;
+    margin:30px 8px 24px 8px;
 }
 
 div.fileDropInfoIcon {
@@ -2051,6 +2051,16 @@ div.tooltip2 {
     height: 300px;
     width: 100%;
     padding:auto;
+}
+
+/** Remove distracting styling from the sample file download links*/
+.sampleFileDownloadLink {
+    text-decoration: none;
+    font-size: 75%;
+}
+
+.sampleFileDownloadLink, .sampleFileDownloadLink a:link, .sampleFileDownloadLink :visited .sampleFileDownloadLink {
+    color: gray;
 }
 
 /* End of common styles */

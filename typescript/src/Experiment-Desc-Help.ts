@@ -48,7 +48,7 @@ module ExperimentDescriptionHelp {
                 'request_all': true, // get all result pages
                 'wait': function() { showWaitMessage(LINE_DIV_SELECTOR); },
                 'context': EddRest.LINE_METADATA_CONTEXT,
-                'sort_order': EddRest.ASCENDING_SORT,
+                'ordering': 'type_name',
             });
     }
 
@@ -60,7 +60,7 @@ module ExperimentDescriptionHelp {
                 'request_all': true, // get all result pages
                 'wait': function() { showWaitMessage(ASSAY_DIV_SELECTOR); },
                 'context': EddRest.ASSAY_METADATA_CONTEXT,
-                'sort_order': EddRest.ASCENDING_SORT,
+                'ordering': 'type_name',
             });
     }
 
@@ -71,7 +71,7 @@ module ExperimentDescriptionHelp {
                 'error': () => { showLoadFailed(PROTOCOL_DIV_SELECTOR); },
                 'request_all': true, // get all result pages
                 'wait': () => { showWaitMessage(PROTOCOL_DIV_SELECTOR); },
-                'sort_order': EddRest.ASCENDING_SORT
+                'ordering': 'name'
             });
     }
 

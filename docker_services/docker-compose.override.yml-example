@@ -91,7 +91,7 @@ services:
     #command: [init-only]
     # [DEVMODE] By default, edd runs with the application command; uncomment below to run with
     #   the devmode command instead, and use Django's runserver to serve the application.
-    #command: [--static-watch, devmode]
+    # command: [--watch-static, devmode]
     # [LOCAL] For more control over settings on each container, use the --local flag to pass a
     #   path to a local.py file to use. The path must be mounted in the volumes section! Take care
     #   to use only one volumes section, if multiples are specified in a service, only the last
@@ -169,6 +169,12 @@ services:
     #   in the edd service, one should also mount code in the appserver and worker services.
     #volumes:
     #  - /full/path/to/source:/code
+
+    # For development only, use volumes to (indirectly) override the descendent webpack build
+    # images' config files so we don't have to rebuild the webpack container when these files
+    # change, e.g. for adding new TS modules
+    #  - /Users/your.username/code/edd/docker_services/edd/tsconfig.json:/tsconfig.json
+    #  - /Users/your.username/code/edd/docker_services/edd/webpack.config.js:/webpack.config.js
 
   worker:
 

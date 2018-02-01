@@ -5,6 +5,7 @@
 
 {% block js_css %}
     {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/study-lines.css' %}" />
     <script type="text/javascript" src="{% static 'dist/StudyLines.js' %}"></script>
     {% if new_line.errors %}
     <script type="text/javascript">
@@ -97,23 +98,32 @@
             </div>
         </div>
     </div>
-        <img src="{% static 'main/images/upload-file.png' %}"
-             alt="Drag and drop files below">
-        <span>{% trans 'Drag and drop an experiment description file below to add more lines' %} (
-        </span>
-        <a href="{% static 'main/example/sample_experiment_description.xlsx' %}">
-            Example File <span class="dropLink dropImg"></span>
-        </a>)
-        <a href="{% url 'main:experiment_description_help' %}">
-            <div class="helpBadgeDiv helpBadgeLines">
-                {% trans 'help' %}
-                <div class="helpContent">
-                    {% trans 'Click for help on Experiment Description files.' %}
-                </div>
-            </div>
-        </a>
-        <div class="noLines">
+        <div id="noLinesDiv" class="hide">
             <h3 style="margin-bottom:12px">{% trans 'This study has no lines.' %}</h3>
+        </div>
+        <div id="loadingLinesDiv">
+            <h3 style="margin-bottom:12px">{% trans 'Loading study lines...'%}
+                <span class="waitbadge wait"></span></h3>
+        </div>
+        <div id="edUploadDirectionsDiv" class="hide">
+            <img src="{% static 'main/images/upload-file.png' %}"
+                 alt="Drag-and-drop files below">
+            <span>{% trans 'Drag-and-drop an Experiment Description file below to add more lines' %}
+            </span>
+            <br>
+            <a href="{% static 'main/example/sample_experiment_description.xlsx' %}"
+               class="sampleFileDownloadLink">
+                Example File <span class="glyphicon glyphicon-download-alt"></span>
+            </a>
+
+            <a href="{% url 'main:experiment_description_help' %}">
+                <div class="helpBadgeDiv helpBadgeLines">
+                    {% trans 'help' %}
+                    <div class="helpContent">
+                        {% trans 'Click for help on Experiment Description files.' %}
+                    </div>
+                </div>
+            </a>
         </div>
         <div class="helpBadgeDiv helpBadgeLines move off">
             {% trans 'help' %}
@@ -130,15 +140,10 @@
             </div>
         </div>
         {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-        <table id="studyLinesTable"></table>
+        <table id="studyLinesTable" class="linesRequiredControls"></table>
         <div id="actionsBar" class="actionsBar sectionActions lineFlex">
             <div>
-            <button id="addNewLineButton"
-                    class="addNewLineButton actionButton primary {% if not writable %}
-                    off{% endif %}">
-                {% trans 'New line' %}
-            </button>
-            <span class="linesSelectedCell">
+            <span class="linesSelectedCell linesRequiredControls">
                 {# TODO: this gets replaced in Typescript, figure out i18n there #}
                 {% blocktrans count counter=0 %}
                 {{ counter }} selected
@@ -146,10 +151,11 @@
                 {{ counter }} selected
                 {% endblocktrans %}
             </span>
-            <span class="disablableButtons">
+            <span class="disablableButtons linesRequiredControls">
                 <button id="editButton"
                         class="editButton actionButton {% if not writable or not lines %}off{% endif %}"
                         disabled="true">
+                    <span class="glyphicon glyphicon-pencil"></span>
                     {% trans 'Edit' %}
                 </button>
                 <button id="cloneButton"
@@ -158,6 +164,7 @@
                         name="action"
                         disabled="true"
                         value="clone">
+                    <span class="glyphicon glyphicon-duplicate"></span>
                     {% trans 'Clone' %}
                 </button>
                 <button id="groupButton"
@@ -172,6 +179,7 @@
                         class="addAssayButton actionButton {% if not writable or not lines %}off{% endif %}"
                         type="button"
                         disabled="true">
+                    <span class="glyphicon glyphicon-plus"></span>
                     {% trans 'Add Assay' %}
                 </button>
                 <button id="disableButton"
@@ -180,6 +188,7 @@
                         name="action"
                         value="disable"
                         disabled="true">
+                    <span class="glyphicon glyphicon-trash"></span>
                     {% trans 'Delete' %}
                 </button>
                 <button id="enableButton"
@@ -191,14 +200,29 @@
                     {% trans 'Restore' %}
                 </button>
             </span>
+            <span id="newLinesSpan">
+               <button id="addNewLineButton"
+                     class="addNewLineButton actionButton primary {% if not writable %}
+                   off{% endif %}"><span class="glyphicon glyphicon-plus"></span>
+                   {% trans 'Add Line' %}
+               </button>
+                <a href="{% url 'main:combos' slug=study.slug %}">
+                    <button id="combosButton" class="combosButton actionButton primary"
+                                  type="button"
+                                  name="action">
+                    <span class="glyphicon glyphicon-random"></span> {% trans "Add Line Combo's" %}
+                    </button>
+                </a>
+            </span>
             </div>
             <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">
                 <button style="margin-right:30px" type="button" id="worklistButton"
                         class="worklistButton actionButton primary">
-                    {% trans 'Generate Worklist' %}
+                    <span class="glyphicon glyphicon-save"></span> {% trans 'Generate Worklist' %}
                 </button>
                 <button type="button" id="exportLineButton"
                         class="exportLineButton actionButton primary">
+                    <span class="glyphicon glyphicon-cloud-download"></span>
                     {% trans 'Export Data' %}
                 </button>
             </div>

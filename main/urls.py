@@ -19,6 +19,10 @@ study_url_patterns = [
         login_required(views.StudyLinesView.as_view()),
         name='lines'
     ),
+    url(r'^experiment-description/combos/$',
+        login_required(views.AddLineCombos.as_view()),
+        name='combos'
+        ),
     url(r'^overview/$', login_required(views.StudyOverviewView.as_view()), name='overview'),
     url(r'^assaydata/$', login_required(views.study_assay_table_data)),
     url(r'^edddata/$', login_required(views.study_edddata)),

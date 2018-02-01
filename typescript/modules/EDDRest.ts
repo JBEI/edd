@@ -20,10 +20,24 @@ export module EddRest {
     export const PAGE_SIZE_OPTION = 'page_size';
     export const WAIT_HANDLER_OPTION = 'wait';
     export const REQUEST_ALL_OPTION = 'request_all';
-    export const SORT_ORDER_OPTION = 'sort_order';
+    export const SORT_ORDER_OPTION = 'ordering';
     export const RECEIVED_SO_FAR_OPTION = 'received_so_far';
     export const SUCCESS_OPTION = 'success';
     export const ERROR_OPTION = 'error';
+
+    /* Default metadata names that may have to be explicitly-referenced in the UI */
+    export const LINE_NAME_META_NAME = 'Line Name';
+    export const LINE_EXPERIMENTER_META_NAME = 'Line Experimenter';
+    export const LINE_DESCRIPTION_META_NAME = 'Line Description';
+    export const LINE_CONTACT_META_NAME = 'Line Contact';
+    export const CARBON_SOURCE_META_NAME = 'Carbon Source(s)';
+    export const STRAINS_META_NAME = 'Strain(s)';
+    export const CONTROL_META_NAME = 'Control';
+
+    // Metadata types present in the database that should be omitted from user-displayed lists in
+    // contexts where separate display is available for line attributes.
+    export const LINE_ATTRIBUTE_META_TYPES = [LINE_NAME_META_NAME, LINE_DESCRIPTION_META_NAME,
+        LINE_CONTACT_META_NAME, LINE_EXPERIMENTER_META_NAME, STRAINS_META_NAME];
 
     /* MetadataType API query parameter values */
     export const LINE_METADATA_CONTEXT = 'L';
@@ -239,7 +253,7 @@ export module EddRest {
         var sortOrder: string;
         sortOrder = options[SORT_ORDER_OPTION];
         if (sortOrder) {
-            queryParams.sort_order = sortOrder;
+            queryParams.ordering = sortOrder;
         }
     }
 }

@@ -69,6 +69,7 @@ fill_char = b'.'
 # link processing outcomes for do_initial_run_entry_link_processing
 NOT_PROCESSED_OUTCOME = 'NOT_PROCESSED'
 REMOVED_DEVELOPMENT_URL_OUTCOME = 'REMOVED_DEV_URL'
+# edd.lvh.me
 REMOVED_TEST_URL_OUTCOME = 'REMOVED_TEST_URL'
 UPDATED_PERL_URL_OUTCOME = 'UPDATED_PERL_URL'
 REMOVED_BAD_STUDY_LINK = 'REMOVED_NON_EXISTENT_STUDY_LINK'
@@ -80,6 +81,11 @@ UPDATED_OLD_LINK_OUTCOMES = (UPDATED_PERL_URL_OUTCOME, UPDATED_WRONG_HOSTNAME_OU
 # production database following deployment of SYNBIO-1105 / corrected in SYNBIO-1312.
 WRONG_HOSTNAME_PATTERN = re.compile('^http(?:s?)://edd.jbei.lbl.gov/study/(?P<study_id>\d+)/?$',
                                     re.IGNORECASE)
+
+_DEVELOPER_MACHINE_NAMES = ['gbirkel-mr.dhcp.lbl.gov', 'mforrer-mr.dhcp.lbl.gov',
+                           'jeads-mr.dhcp.lbl.gov', 'wcmorrell-mr.dhcp.lbl.gov', 'edd.lvh.me',
+                           'localhost', '127.0.0.1']
+
 
 class Performance(object):
     """
@@ -460,6 +466,8 @@ class ProcessingSummary:
     def total_ice_entries_found(self, entries_found):
         self._total_ice_entries_found = entries_found
 
+    # TODO: this needs to be used! See _DEVELOPER_MACHINE_NAMES above for detecting known links to
+    # developer's machines that should be removed from prod/test databases
     def removed_development_link(self, ice_entry, experiment_link):
         self._existing_links_processed += 1
         self._development_links_pruned += 1

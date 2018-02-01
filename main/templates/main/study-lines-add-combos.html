@@ -1,0 +1,185 @@
+{% extends "main/study.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/study-lines-add-combos.css' %}" />
+    <script type="text/javascript" src="{% static 'dist/StudyLinesAddCombos.js' %}"></script>
+    {{ block.super }}
+{% endblock js_css %}
+
+{% block body_title %}
+    <h1><span class="glyphicon glyphicon-random"></span> Add Line Combinations for <a
+            href="/study/{{ study.id }}">{{ study.name }}</a></h1>
+{% endblock body_title %}
+{% block content %}
+<div id="add-prop-dialog" title="Add Line Properties">
+    <ul id="line-properties-list"></ul>
+    <div id="no-properties-div" class="hide">No more items available</div>
+</div>
+<div id="add-abbrev-dialog" title="Add Abbreviation">
+    <p>Choose line name elements to add abbreviations for:</p>
+    <ul id="line-name-abbrev-list"></ul>
+    <div id="no-abbrev-options-div" class="hide">No more items available</div>
+</div>
+<div id="creating-lines-dialog">
+    <p><span class="waitbadge wait-larger"></span>
+        Please wait a moment while your lines are created.</p>
+    <div id="creation-status-div"></div>
+</div>
+    <!-- Step 1 - Disabled pending addition of other options-->
+    <!--div class="pageSection stepBorder" id="step1">
+        <div class="sectionHead">Step 1: Choose the source(s) for line definitions</div>
+            <div class="sectionContent">
+                <ul id="step1_list">
+                    <li>
+                        <input type="radio" name="input_source" id="manual_input_btn"
+                       class="property_radio" checked="checked" />
+                <label for="manual_input_btn">Manual input only (see Step 2)</label>
+                    </li>
+                    <li>
+                        <input type="radio" name="input_source" id="spreadsheet_btn"
+     glyphicon glyphicon-plus                  class="property_radio" disabled="disabled"/>
+                <label for="spreadsheet_btn">Spreadsheet</label>
+                    </li>
+                    <li>
+                         <input type="radio" name="input_source" id="ice_collection_btn"
+                                class="property_radio" disabled="disabled"/>
+                <label for="ice_collection_btn" >ICE collection</label>
+                        <input type="text" name="ice_collection" class="autocomplete" disabled="disabled">
+                    </li>
+                </ul>
+            </div>
+    </div-->
+    <!-- Step 1 (Dynamic) -->
+    <div id="step1" class="pageSection stepBorder">
+        <div class="sectionHead">Step 1: Choose line properties that describe your experiment</div>
+        <div class="sectionContent">
+            <div id="step2_status_div"></div>
+            <div class="bulk-line-table" id="line-properties-table">
+                <div class="step2_table_heading">
+                    <div class="bulk_lines_table_cell" class="addCell"><!-- empty for add button--></div>
+                    <div class="bulk_lines_table_cell">
+                        <label for="addPropertyButton">Property</label>
+                        <button id="addPropertyButton" class="addButton">
+                            <span class="ui-icon ui-icon-plusthick"></span></button>
+                    </div>
+                    <div class="bulk_lines_table_cell"><!--empty for value input--></div>
+                    <div class="bulk_lines_table_cell">
+                        <label>Apply to<br> All Lines</label>
+                    </div>
+                    <div class="bulk_lines_table_cell">
+                        <label>Make <br>Combinations</label>
+                    </div>
+                </div>
+            </div>
+            <button id="step1-next-btn" class="next-btn actionButton primary" disabled="disabled">
+                Next</button>
+        </div>
+    </div>
+    <!-- Step 2 -->
+    <div id="step2" class="pageSection stepBorder hide">
+        <div class="sectionHead">Step 2: Choose the order of identifying data in line names</div>
+        <div class="sectionContent" id="custom-elts-wrapper">
+            <div>
+                <div class="step2_subsection">
+                    <label>Custom Name Elements:</label>
+                <button id="add-custom-elt-btn" class="addButton">
+                    <span class="ui-icon ui-icon-plusthick"></span></button>
+                </div>
+            <div id="no-custom-elts-div">None (optional)</div>
+            <div id="custom-elements-table" class="bulk-line-table hide">
+                <div class="step2_table_heading">
+                    <div class="bulk_lines_table_cell"><label>Label</label></div>
+                    <div class="bulk_lines_table_cell"><label>Value</label></div>
+                </div>
+            </div>
+        </div>
+        </div>
+        <div class="sectionContent stepSeparator">
+            <div class="step2_subsection">
+                <label for="name_ordering_table">Name Element Order:</label>
+            </div>
+            <div class="bulk-line-table" id="name_ordering_table">
+                <div class="step2_table_heading">
+                    <div class="bulk_lines_table_cell"><label>Order:</label></div>
+                    <div class="bulk_lines_table_cell"><label>Unused Elements:</label></div>
+                </div>
+                <div class="table-row">
+                    <!-- Line Name Elements List -->
+                    <div class="bulk_lines_table_cell name_elt_cell">
+                        <div>
+                            <ul id="line_name_elts" class="connectedSortable"></ul>
+                        </div>
+                    </div>
+                    <!-- Unused Elements List -->
+                    <div class="bulk_lines_table_cell name_elt_cell">
+                        <div>
+                            <ul id="unused_line_name_elts" class="connectedSortable"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button id="step2-next-btn" class="next-btn  actionButton primary"
+                disabled="disabled">Next</button>
+    </div>
+    <!-- Step 3 -->
+    <div id="step3" class="pageSection stepBorder hide">
+            <div id="step3Label" class="sectionHead">Step 3: Review
+                summary<span id="refresh-summary-div"
+                             class="glyphicon glyphicon-refresh"></span></div>
+            <div class="sectionContent">
+                    <div class="step2_subsection"><label>Abbreviations:</label><button
+                            id="addAbbreviationButton" class="addButton">
+                                <span class="ui-icon ui-icon-plusthick"></span></button></div>
+                    <div id="no-abbrevs-div">None (optional)</div>
+                    <div id="abbreviations-table" class="bulk-line-table hide">
+                        <div class="step2_table_heading">
+                            <div class="bulk_lines_table_cell"><!-- empty for add button--></div>
+                            <div class="bulk_lines_table_cell"><label>Name Element
+                            </label></div>
+                            <div class="bulk_lines_table_cell"><label>Value</label></div>
+                            <div class="bulk_lines_table_cell">
+                                <label>Abbreviation</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <div class="sectionContent">
+                <div id="step3-status-div"></div>
+                <div id="line-preview-table" class="bulk-line-table"></div>
+                <div id="options-div" class="hide">
+                    <div class="table-row">
+                        <div class="step2_subsection"><label>Options:</label></div>
+                    </div>
+                    <div class="bulk-line-table">
+                        <div id="non-strains-opts-div" class="table-row hide">
+                            <div class="bulk_lines_table_cell">&nbsp</div>
+                            <div class="bulk_lines_table_cell">
+                                <input type="checkbox" id="non-strains-opts-chkbx"
+                                       class="non-strains-chkbx"> <label
+                                    for="non-strains-opts-chkbx">Lines contain extracted
+                                cell parts</label>
+                            </div>
+                        </div>
+                        <div id="ignore-ice-errors-opts-div" class="table-row hide">
+                            <div class="bulk_lines_table_cell">&nbsp;</div>
+                            <div class="bulk_lines_table_cell">
+                                <input type="checkbox" id="ignore-ice-access-errors-opts-chkbx"
+                                       class="ignore-ice-errors-chkbx"> <label
+                                       for="ignore-ice-access-errors-opts-chkbx">Ignore ICE access
+                                errors</label> <span id="strains-omitted-span"
+                                                     class="hide">Inaccessible strains will be
+                                                     omitted</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button id='create-lines-btn' class="next-btn  actionButton primary larger"
+                        disabled="disabled">
+                    <span class="glyphicon glyphicon-random"></span> Add Lines</button>
+                </div>
+
+
+        </div>
+{% endblock content %}

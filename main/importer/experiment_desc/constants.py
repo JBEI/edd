@@ -17,12 +17,13 @@ from requests import codes
 ###################################################################################################
 # generic errors (apply regardless of input format)
 NO_INPUT = "No line description data were found in the input"
-DUPLICATE_INPUT_LINE_NAMES = 'Duplicate line names in the input'
+EMPTY_RESULTS = 'No lines created as a result of the input'
+DUPLICATE_INPUT_LINE_NAMES = 'Insufficient data in new line names to make them unique'
 EXISTING_LINE_NAMES = 'Input would duplicate existing line names'
 DUPLICATE_INPUT_ASSAY_NAMES = 'Duplicate assay names within the input for a single protocol'
 EXISTING_ASSAY_NAMES = 'Inputs would duplicate existing assay names'
 
-NON_STRAIN_TITLE = 'Non-strain ICE entry'
+NON_STRAINS_CATEGORY = 'Non-Strains'
 NON_STRAIN_ICE_ENTRY = 'Non-strain ICE entries'
 PART_NUMBER_NOT_FOUND = 'Part number(s) not found in ICE'
 
@@ -46,11 +47,13 @@ INCORRECT_TIME_FORMAT = 'Incorrect time format'
 # only supported for strains, since some metadata columns purposefully allow comma-delimited entry
 INCONSISTENT_COMBINATORIAL_VALUE = 'Combinatorial value provided for single-valued column'
 UNPARSEABLE_COMBINATORIAL_VALUE = 'Unparseable combinatorial value'
-DELIMETER_NOT_ALLOWED_VALUE = ("Semicolon character isn't allowed within part numbers. Use commas"
-                               " to delimit part numbers, except strain group members "
-                               "during combinatorial line creation")
+DELIMETER_NOT_ALLOWED_VALUE = ("Semicolon character isn't allowed within part numbers. Use commas "
+                               "to delimit ICE part numbers, except when defining multiple strain "
+                               "groups for combinatorial creation")
 
 INTERNAL_EDD_ERROR_CATEGORY = 'Internal EDD error'
+
+POSSIBLE_USER_ERROR_CATEGORY = 'Possible User Error'
 
 
 # either user input error in Experiment Description/ICE part permissions, or an ICE error (known
@@ -85,6 +88,7 @@ UNMATCHED_PART_NUMBER = 'Unmatched part number(s). This indicates a coding error
 
 # Combinatorial GUI or API - specific errors
 INVALID_AUTO_NAMING_INPUT = 'Invalid element for automatic naming'
+MISSING_REQUIRED_NAMING_INPUT = 'Missing required input for line names'
 
 ###################################################################################################
 # ICE-related errors
@@ -92,14 +96,13 @@ INVALID_AUTO_NAMING_INPUT = 'Invalid element for automatic naming'
 
 # anticipated systemic (e.g. communication) error or error that isn't otherwise planned for /
 # handled separately (e.g. EDD/ICE configuration errors or ICE bugs)
-SYSTEMIC_ICE_ERROR_CATEGORY = 'ICE-related error'
+SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY = 'ICE access error'
 GENERIC_ICE_RELATED_ERROR = ("ICE couldn't be contacted to find strains referenced in your "
                              "file")
 
 # Proactively check for part numbers that don't match EDD's part number pattern. This will help
 # users detect bad data entry when diagnosing other parsing-related errors, and will also help
 # us keep EDD's pattern configuration data up to date with use
-PART_NUM_PATTERN_TITLE = 'Unrecognized part number pattern'
 PART_NUMBER_PATTERN_UNMATCHED_WARNING = "Part number(s) didn't match the expected pattern"
 
 ###################################################################################################
@@ -117,7 +120,9 @@ SUSPECTED_MATCH_STRAINS = 'Suspected match strain(s)'
 ###################################################################################################
 # Request parameters
 ###################################################################################################
-IGNORE_ICE_RELATED_ERRORS_PARAM = 'IGNORE_ICE_RELATED_ERRORS'
+OMIT_STRAINS = 'OMIT_STRAINS'
+IGNORE_ICE_ACCESS_ERRORS_PARAM = 'IGNORE_ICE_ACCESS_ERRORS'
+ALLOW_NON_STRAIN_PARTS = 'ALLOW_NON_STRAIN_PARTS'
 ALLOW_DUPLICATE_NAMES_PARAM = 'ALLOW_DUPLICATE_NAMES'
 DRY_RUN_PARAM = 'DRY_RUN'
 
@@ -171,35 +176,45 @@ ERROR_PRIORITY_ORDER[INVALID_FILE_VALUE_CATEGORY] = (
     DELIMETER_NOT_ALLOWED_VALUE,
 )
 
+INVALID_JSON = 'Invalid JSON format'
+ILLEGAL_FIELD_REFERENCE = ''
+INVALID_RELATED_FIELD_REFERENCE = 'Invalid related field reference'
+ILLEGAL_RELATED_FIELD_REFERENCE = 'Illegal related field reference'
+INVALID_LINE_ATTRIBUTE = 'Invalid Line attribute'
+
 # these apply equally to JSON or Excel
 BAD_GENERIC_INPUT_CATEGORY = 'Invalid values'
 ERROR_PRIORITY_ORDER[BAD_GENERIC_INPUT_CATEGORY] = (
         NO_INPUT,
+        INVALID_RELATED_FIELD_REFERENCE,
+        ILLEGAL_RELATED_FIELD_REFERENCE,
+        INVALID_LINE_ATTRIBUTE,
         INVALID_REPLICATE_COUNT,
-        ZERO_REPLICATES
+        ZERO_REPLICATES,
+        INVALID_JSON
 )
 
 ##################################
 # User-created ICE errors
-#################################
+##################################
 USER_CREATED_ICE_PART_ERRORS = (
     PART_NUMBER_NOT_FOUND,
-    NON_STRAIN_ICE_ENTRY,
     FORBIDDEN_PART_KEY,)
 ERROR_PRIORITY_ORDER[SINGLE_PART_ACCESS_ERROR_CATEGORY] = USER_CREATED_ICE_PART_ERRORS
 
 ################################
 # ICE-related software/configuration/communication errors
 ################################
-ERROR_PRIORITY_ORDER[SYSTEMIC_ICE_ERROR_CATEGORY] = (ICE_NOT_CONFIGURED,
-                                                     GENERIC_ICE_RELATED_ERROR,)
+ERROR_PRIORITY_ORDER[SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY] = (ICE_NOT_CONFIGURED,
+                                                            GENERIC_ICE_RELATED_ERROR,)
 
 
-ERROR_PRIORITY_ORDER[NON_STRAIN_TITLE] = (  # TODO: rename to NON_STRAIN_PART_CATEGORY
-    NON_STRAIN_ICE_ENTRY
-)
+ERROR_PRIORITY_ORDER[NON_STRAINS_CATEGORY] = (NON_STRAIN_ICE_ENTRY,)
 
 NAMING_OVERLAP_CATEGORY = 'Naming overlap'
+
+STRAINS_REQUIRED_FOR_NAMES = ('ICE lookup failed for one or more parts, but part names are '
+                              'required as input to computing line names')
 
 # User-created naming overlaps (depend on prior ICE communication since strain names could be used
 # in line/assay naming)
@@ -211,6 +226,7 @@ _NAMING_OVERLAPS = (
     # until we implement/use a combinatorial GUI under EDD-257, then remove if never witnessed.
     DUPLICATE_INPUT_ASSAY_NAMES,
     EXISTING_ASSAY_NAMES,
+    STRAINS_REQUIRED_FOR_NAMES,
 )
 ERROR_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
 
@@ -219,6 +235,7 @@ ERROR_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
 ################################
 ERROR_PRIORITY_ORDER[INTERNAL_EDD_ERROR_CATEGORY] = (
     INVALID_AUTO_NAMING_INPUT,  # Combinatorial GUI- or other API-client errors
+    MISSING_REQUIRED_NAMING_INPUT,
 
     UNPREDICTED_ERROR,
     # Errors caused by outstanding curation work in JBEI's database / resulting lack of constraints
@@ -235,6 +252,7 @@ ERROR_PRIORITY_ORDER[INTERNAL_EDD_ERROR_CATEGORY] = (
     INVALID_PROTOCOL_META_PK,
     PARSE_ERROR,
     UNMATCHED_PART_NUMBER,
+    EMPTY_RESULTS
 )
 
 WARNING_PRIORITY_ORDER = OrderedDict()
@@ -245,18 +263,20 @@ WARNING_PRIORITY_ORDER[IGNORED_INPUT_CATEGORY] = (
     LINE_META_CAPITALIZATION_ONLY_DIFFERENCE,
     ASSAY_META_CAPITALIZATION_ONLY_DIFFERENCE,
 )
+WARNING_PRIORITY_ORDER[POSSIBLE_USER_ERROR_CATEGORY] = (PART_NUMBER_PATTERN_UNMATCHED_WARNING,)
 
 WARNING_PRIORITY_ORDER[SINGLE_PART_ACCESS_ERROR_CATEGORY] = USER_CREATED_ICE_PART_ERRORS
 WARNING_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
-WARNING_PRIORITY_ORDER[SYSTEMIC_ICE_ERROR_CATEGORY] = (GENERIC_ICE_RELATED_ERROR,)
-WARNING_PRIORITY_ORDER[INTERNAL_EDD_ERROR_CATEGORY] = (PART_NUMBER_PATTERN_UNMATCHED_WARNING,)
+WARNING_PRIORITY_ORDER[SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY] = (GENERIC_ICE_RELATED_ERROR,)
+
 
 ###################################################################################################
 # Name elements for AutomatedNamingStrategy (used during JSON input implemented for eventual
 # combinatorial line creation GUI).
 ###################################################################################################
-STRAIN_NAME_ELT = 'strain_name'
-REPLICATE_ELT = 'replicate'
+NAME_ELT_STRAIN_NAME = 'strain__name'
+NAME_ELT_REPLICATE_NUM = 'replicate_num'
+REPLICATE_COUNT_ELT = 'replicate_count'
 BASE_NAME_ELT = 'base_name'
 ELEMENTS_SECTION = 'elements'
 CUSTOM_ADDITIONS_SECTION = 'custom_additions'

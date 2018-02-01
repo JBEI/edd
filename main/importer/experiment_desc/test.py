@@ -47,7 +47,7 @@ class IceTestStub(IceApi):
         #
         # Expected results to verify (manually for now):
         #    A) admin email sent (probably via an added log message...not working in DEV ATM)
-        #    B) generic user-facing error message about ICE-related problems
+        #    B) generic user-facing error message about ICE access problems
         #    C) 500 "internal server error" response (use Chrome's "network" develop tool)
         ###########################################################################################
         # raise requests.exceptions.ConnectionError()

@@ -271,7 +271,7 @@ export module FileDropZone {
         };
 
         clearDropZone=(): void => {
-            $('#templateDropZone').removeClass('off');
+            $('#experimentDescDropZone').removeClass('off');
             $('#fileDropInfoIcon').addClass('off');
             $('#fileDropInfoName').addClass('off');
             $('#fileDropInfoSending').addClass('off');

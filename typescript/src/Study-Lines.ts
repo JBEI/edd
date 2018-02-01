@@ -149,9 +149,11 @@ module StudyLines {
             'type': 'GET',
             'error': (xhr, status, e) => {
                 $('#overviewSection').prepend("<div class='noData'>Error. Please reload</div>");
+                $('#loadingLinesDiv').addClass('hide');
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
             },
             'success': (data) => {
+                var hasLines: boolean;
                 EDDData = $.extend(EDDData || {}, data);
                 // Instantiate a table specification for the Lines table
                 StudyLines.linesDataGridSpec = new DataGridSpecLines();
@@ -159,12 +161,12 @@ module StudyLines {
                 // Instantiate the table itself with the spec
                 StudyLines.linesDataGrid = new LineResults(this.linesDataGridSpec);
 
-                // Show possible next steps div if needed
-                if (_.keys(EDDData.Lines).length === 0) {
-                    $('.noLines').css('display', 'block');
-                } else {
-                    $('.noLines').css('display', 'none');
-                }
+                // Show controls that depend on having some lines present to be useful
+                hasLines = _.keys(EDDData.Lines).length !== 0;
+                $('#loadingLinesDiv').addClass('hide');
+                $('#edUploadDirectionsDiv').removeClass('hide');
+                $('.linesRequiredControls').toggleClass('hide', !hasLines);
+                $('#noLinesDiv').toggleClass('hide', hasLines);
             }
         });
     }

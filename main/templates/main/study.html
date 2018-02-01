@@ -46,7 +46,7 @@
         <a style="color:white;" href="{% url 'main:table-import' slug=study.slug %}">
             <button style="{% if showingimport %}display:none;{% endif %}float:right;"
                 type="button" class="{% if not lines %}off{% endif %} actionButton primary larger">
-                Import Data
+                <span class="glyphicon glyphicon-cloud-upload"></span> Import Data
             </button>
         </a>
     {% endif %}

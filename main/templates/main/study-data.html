@@ -112,7 +112,8 @@
         <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
         <label for="assay_action_edit">{% trans 'Edit Measurements' %}</label>
         <input id="assay_action_export" type="radio" name="assay_action" value="export" />
-        <label for="assay_action_export">{% trans 'Export Data' %}</label>
+        <label for="assay_action_export"><span
+                class="glyphicon glyphicon-cloud-download"></span> {% trans 'Export Data' %}</label>
         <button name="action" type="submit" value="assay_action">{% trans 'Take Action' %}</button>
         <div class="clear"></div>
     </div>
@@ -163,7 +164,7 @@
     <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
         <button type="button" id="exportButton" class="exportButton actionButton primary off"
                 title="{% trans 'Export your data in a file type of your choosing' %}">
-            {% trans 'Export Data' %}
+            <span class="glyphicon glyphicon-cloud-download"></span> {% trans 'Export Data' %}
         </button>
     </div>
 </div>

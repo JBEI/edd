@@ -1,0 +1,290 @@
+/* <!-- http://www.dummies.com/how-to/content/using-the-div-tag-to-create-tables.html */
+
+.bulk-line-table
+{
+    display: table;
+    border-collapse:collapse;  /* allow err message styling to come through */
+    width: auto;
+    margin-right: auto;
+    margin-bottom: 15px;
+}
+
+.title
+{
+    display: table-caption;
+    text-align: center;
+    font-weight: bold;
+    font-size: larger;
+}
+.step2_table_heading {
+    display: table-row;
+}
+
+.step2_table_heading, .step2_table_heading label {
+    font-weight: bold;
+    text-decoration: underline;
+    text-align: left;
+}
+
+.step2_table_heading {
+    display: table-row;
+}
+
+.step2_table_heading, .step2_table_heading label{
+    text-decoration: underline;
+    text-align: left;
+}
+
+.step2_table_heading div, .step2_table_heading div {
+    vertical-align: bottom;
+}
+
+.step2_subsection {
+    margin-top: 15px;
+}
+
+.step2_subsection, .step2_subsection label {
+    /*font-size: 110%;*/
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.property_radio {
+    margin: auto;
+}
+.table-row {
+    display: table-row;
+    padding-right: 6px; /* add some spacing to err messages */
+}
+
+.name-elt-icon {
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+#refresh-summary-div {
+    float: right;
+}
+
+.bulk_lines_table_cell {
+    display: table-cell;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 8px;
+}
+
+/* add some padding between error message styling and text */
+#step3-status-div {
+    padding-right: 8px;
+}
+
+#no-abbrevs-div, #no-custom-elts-div {
+    margin-top: 10px;
+    margin-left: 20px;
+}
+
+.err-summary-label {
+    text-decoration: underline;
+}
+
+/* Indent tables in steps 2 to make subsection labeling easier to parse, esp with many entries. TODO: doesn't work yet!! */
+#step2 .bulk-line-table {
+    margin-left: 20px;
+}
+
+/* TODO: unused! fix and use! */
+.odd_row {
+    background: linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
+    background: -o-linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
+    background: -moz-linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
+    background: -webkit-linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
+    background: -ms-linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
+}
+
+/* TODO: unused! fix and use! */
+.even_row {
+    background: linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
+    background: -o-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
+    background: -moz-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
+    background: -webkit-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
+    background: -ms-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
+}
+
+#step1_list,#step2_sample_position_list{
+    padding-top: 8px;
+    list-style-type: none;
+}
+
+#step1_list li,#step2_sample_position_list li {
+    padding-bottom: 8px;
+}
+
+.centered_radio_btn_parent {
+    text-align: center;
+}
+
+/* */
+input[type="radio"] {
+    margin: auto;
+}
+
+#name_ordering_table, #custom_elements_table, #abbreviations-table {
+    /* margin-left: 10px; */
+    margin-top: 8px;
+    min-width: 50px;
+    vertical-align: text-top;
+}
+
+#dialog-confirm {
+    display: none;
+}
+
+.in-use {
+    text-decoration: underline;
+}
+
+.not-in-use {
+    font-weight: 300;
+}
+
+.name_elt_cell {
+    vertical-align: top;
+}
+
+.name_elt_cell ul {
+    flex-grow: 1;
+}
+
+#line_name_elts .required-name-elt, #unused_line_name_elts .required-name-elt {
+    font-weight: bold;
+}
+
+.inputCell {
+    display: table-cell;
+    width: auto;
+    min-width: 210px;  /* prevents cells from resizing when new rows are added */
+}
+
+.inputCell input, .inputCell button{
+    margin-left: 5px;
+}
+
+.inputContent {
+    display: flex;
+    margin: 0;
+    padding: 0;
+}
+
+.columnar-text-input {
+    flex-grow: 1;
+}
+
+.columnar-text-input span {
+    display: inline-block;
+}
+
+#line-properties-list, #line_name_elts, #unused_line_name_elts, #line-name-abbrev-list {
+    vertical-align: text-top;
+    min-height: 100px;
+    min-width: 212px;
+    list-style-type: none;
+    border: 1px solid #eee;
+}
+
+#line-properties-list li, #line_name_elts li, #unused_line_name_elts li, #line-name-abbrev-list li {
+    height: 100%;
+    margin: 0 5px 5px 5px;
+    padding: 5px;
+}
+#line_name_elts li .ui-icon, #unused_line_name_elts li .ui-icon {
+    float: right;
+    margin-left: 1.3em;
+}
+
+#line-properties-list .ui-selecting, #line-name-abbrev-list .ui-selecting { background: #FECA40; }
+#line-properties-list .ui-selected, #line-name-abbrev-list .ui-selected {
+    background: #F39814; color: white;
+}
+
+.addButton {
+    margin-left: 5px;
+    width: 20px;
+    padding: 0;
+}
+
+.addCell {
+    padding: 0px;
+    width: 25px;  /* prevent table from jumping when a combinatorial property with this button is added */
+}
+
+.removeButton {
+    /*float: right;*/
+}
+
+.controlRemoveBtn {
+
+}
+
+.noCheckBox {
+    margin-left: 20px;
+}
+
+#no-custom-elts-div,#no-abbrevs-div {
+    color:#BBB;
+}
+
+.disabledErrMsg {
+    background: none;
+    border: 2px solid gray;
+}
+
+#step3-status-div .bulk-line-table {
+    margin-left: 20px;
+}
+
+/* Add a margin that's taken care of by the .stepSeparator class for other Step 2 subsections*/
+#custom-elts-wrapper {
+    margin-bottom: 20px;
+}
+
+.next-btn {
+    margin-top: 20px;
+    margin-left: 500px;
+    margin-bottom: 10px
+}
+
+
+/* TODO: consider relocating these import-derived classes to a "multistep.css" or similar. */
+div.sectionContent {
+    padding-bottom: 30px;
+}
+
+.stepBorder {
+	background: #fcfcfc;
+    margin: 10px 8px 3px 8px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #a0a0a0;
+}
+
+.stepSeparator {
+	border-top:1px solid #6CA5E9;
+	padding:0em 1em 3px 3em;
+}
+
+/* TODO: consider altering common.cs where this came from. Doesnt work here!*/
+.sectionContent {
+    margin-bottom: 10px;
+}
+
+.comboNameElement {
+    border: double;
+}
+
+#no-properties-div, #no-abbrev-options-div {
+    color: grey;
+}
+
+#strains-omitted-span {
+    color: red;
+}

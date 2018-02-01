@@ -4,6 +4,7 @@
 
 {% block js_css %}
     {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/study-overview.css' %}" />
     <script type="text/javascript" src="{% static 'dist/StudyOverview.js' %}"></script>
 {% endblock js_css %}
 
@@ -109,18 +110,24 @@
 </form>
 
 <div class="overviewDropZone" style="{% if lines %}display:none;{% endif %}">
-    <div class="fd-zone excel" id="templateDropZone">
-        <div></div>
-        Upload an Experiment Description file (
-        <a href="{% static 'main/example/sample_experiment_description.xlsx' %}">
-            Example <span class="dropLink dropImg">__</span>
-        </a>)
+    <div class="fd-zone excel" id="experimentDescDropZone">
         <a href="{% url 'main:experiment_description_help' %}">
-            <div style="float:none" class="helpBadgeDiv" id="helpExperimentDescription"
-                    title="Drag-and-drop an Experiment description file into this grey box to
-                        describe your experiment. Alternatively, you can click on the link below
-                        to manually input your experiment description.">help</div>
+            <div id="helpExperimentDescription" class="helpBadgeDiv">{% trans 'help' %}
+            <div class="helpContent">
+                {% blocktrans trimmed %}
+                Drag-and-drop an Experiment description file into this grey box to
+                describe your experiment. Alternatively, you can click on the link below
+                to manually input your experiment description.
+
+                Click on this icon for more information about Experiment Description files.
+                {% endblocktrans %}
+            </div></div>
         </a>
+        <div id="dz-title">Upload an Experiment Description file</div>
+        <a href="{% static 'main/example/sample_experiment_description.xlsx' %}"
+           class="sampleFileDownloadLink">
+            Example File <span class="glyphicon glyphicon-download-alt"></span></a>
+
     </div>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
         <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
@@ -131,8 +138,20 @@
         </div>
         <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
     </div>
-    or <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">manually describe</a>
-    your experiment.
+    <a class="dropLink" href="{% url 'main:combos' slug=study.slug %}">
+        <button id="combosButton" class="combosButton actionButton primary"
+                              type="button"
+                              name="action">
+            <span class="glyphicon glyphicon-random"></span> {% trans "Add Line Combo's" %}
+                </button>
+    </a>
+    <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">
+        <button id="manualButton" class="manualButton actionButton primary"
+                                  type="button"
+                                  name="action">
+            <span class="glyphicon glyphicon-pencil"></span> {% trans 'Enter Manually' %}
+        </button>
+    </a>
 </div>
 
 {% if writable %}

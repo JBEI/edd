@@ -628,7 +628,7 @@ export module Utl {
                     }
                 } else if (file.status === 'error') {
                     // unique class for ice related errors
-                    if (response['errors'][0].category === 'ICE-related error') {
+                    if (response['errors'][0].category === 'ICE access error') {
                         //first remove all files in upload
                         this.removeAllFiles();
                         file.status = undefined;
@@ -639,7 +639,7 @@ export module Utl {
                         $('#alert_placeholder').find('.omitStrains').on('click', ():void => {
                             $(this).parent().remove();
                             dropzone.options.url = dropzone.options.url +
-                                                    '?IGNORE_ICE_RELATED_ERRORS=true';
+                                                    '?IGNORE_ICE_ACCESS_ERRORS=true';
                             dropzone.addFile(file);
                         });
                     } else if (typeof this.options.processErrorFn === 'function') {

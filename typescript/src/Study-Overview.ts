@@ -226,7 +226,7 @@ module StudyOverview {
         });
 
         Utl.FileDropZone.create({
-            elementId: "templateDropZone",
+            elementId: "experimentDescDropZone",
             url: '/study/' + EDDData.currentStudyID + '/describe/',
             processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
             processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
