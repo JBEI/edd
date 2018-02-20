@@ -113,7 +113,7 @@ class StudyInternalsFilterMixin(object):
                 models.StudyPermission.CAN_VIEW,
                 self._filter_prefix,
             )
-            queryset = queryset.filter(q_filter)
+            queryset = queryset.filter(q_filter).distinct()
         return queryset
 
     def get_nested_filter(self):
