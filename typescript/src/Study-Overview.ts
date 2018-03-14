@@ -2,8 +2,6 @@ declare var EDDData:EDDData;
 import { Utl } from "../modules/Utl"
 import { EDDEditable } from "../modules/EDDEditableElement"
 import { FileDropZone } from "../modules/FileDropZone"
-import { StudyMetabolicMapChooser } from "../modules/BiomassCalculationUI"
-import { MetabolicMapChooserResult } from "../modules/BiomassCalculationUI"
 import { StudyBase } from "../modules/Study"
 import { EDDAuto } from "../modules/EDDAutocomplete"
 import "bootstrap-loader"
@@ -33,12 +31,7 @@ module StudyOverview {
     var attachmentsByID: any;
     var prevDescriptionEditElement: any;
 
-    // We can have a valid metabolic map but no valid biomass calculation.
-    // If they try to show carbon balance in that case, we'll bring up the UI to
-    // calculate biomass for the specified metabolic map.
-    export var metabolicMapID: any;
-    export var metabolicMapName: any;
-    export var biomassCalculation: number;
+    let studyBaseUrl: URL = Utl.relativeURL('../');
 
     function preparePermissions() {
         var user: EDDAuto.User, group: EDDAuto.Group;
@@ -62,35 +55,46 @@ module StudyOverview {
 
         $('form#permissions')
             .on('submit', (ev: JQueryEventObject): boolean => {
-                var perm: any = {}, klass: any, auto: JQuery;
+                var perm: any = {}, klass: any, auto: JQuery, token: string;
                 auto = $('form#permissions').find('[name=class]:checked');
                 klass = auto.val();
                 perm.type = $(auto).siblings('select').val();
                 perm[klass.toLowerCase()] = {'id': $(auto).siblings('input:hidden').val()};
+                token = $('form#permissions').find('[name=csrfmiddlewaretoken]').val();
                 $.ajax({
-                    'url': '/study/' + EDDData.currentStudyID + '/permissions/',
+                    'url': Utl.relativeURL('permissions/', studyBaseUrl).toString(),
                     'type': 'POST',
                     'data': {
                         'data': JSON.stringify([perm]),
-                        'csrfmiddlewaretoken': $('form#permissions').find('[name=csrfmiddlewaretoken]').val()
+                        'csrfmiddlewaretoken': token
                     },
                     'success': (): void => {
                         //reset permission options
-                        $('form#permissions').find('.autocomp_search').siblings('select').val('N');
+                        $('form#permissions').find('.autocomp_search')
+                            .siblings('select')
+                            .val('N');
                         //reset input
                         $('form#permissions').find('.autocomp_search').val('');
 
-                        $('<div>').text('Permission Updated').addClass('success')
-                            .appendTo($('form#permissions')).delay(2000).fadeOut(2000);
+                        $('<div>').text('Permission Updated')
+                            .addClass('success')
+                            .appendTo($('form#permissions'))
+                            .delay(2000)
+                            .fadeOut(2000);
                     },
                     'error': (xhr, status, err): void => {
                         console.log(['Setting permission failed: ', status, ';', err].join(''));
                         //reset permission options
-                        $('form#permissions').find('.autocomp_search').siblings('select').val('N');
+                        $('form#permissions').find('.autocomp_search')
+                            .siblings('select')
+                            .val('N');
                         //reset input
                         $('form#permissions').find('.autocomp_search').val('');
-                        $('<div>').text('Server Error: ' + err).addClass('bad')
-                            .appendTo($('form#permissions')).delay(5000).fadeOut(2000);
+                        $('<div>').text('Server Error: ' + err)
+                            .addClass('bad')
+                            .appendTo($('form#permissions'))
+                            .delay(5000)
+                            .fadeOut(2000);
                     }
                 });
                 return false;
@@ -98,8 +102,12 @@ module StudyOverview {
             .find(':radio').trigger('change').end()
             .removeClass('off');
         //set style on inputs for permissions
-        $('#permission_user_box').find('input').insertBefore('#user_permission_options').addClass('permissionUser');
-        $('#permission_group_box').find('input').insertBefore('#group_permission_options').addClass('permissionGroup');
+        $('#permission_user_box').find('input')
+            .insertBefore('#user_permission_options')
+            .addClass('permissionUser');
+        $('#permission_group_box').find('input')
+            .insertBefore('#group_permission_options')
+            .addClass('permissionGroup');
         $('#permission_public_box').addClass('permissionGroup');
 
         // Set up the Add Measurement to Assay modal
@@ -112,38 +120,6 @@ module StudyOverview {
             $("#permissionsSection").removeClass('off').dialog("open");
             return false;
         });
-        //TODO: remove this and fix bug
-        $("#attachmentsSection a:contains('Delete')").hide()
-    }
-
-
-    export function onChangedMetabolicMap() {
-        if (this.metabolicMapName) {
-            // Update the UI to show the new filename for the metabolic map.
-            $("#metabolicMapName").html(this.metabolicMapName);
-        } else {
-            $("#metabolicMapName").html('(none)');
-        }
-    }
-
-
-    // They want to select a different metabolic map.
-    export function onClickedMetabolicMapName(): void {
-        var ui: StudyMetabolicMapChooser,
-            callback: MetabolicMapChooserResult = (error: string,
-                                                   metabolicMapID?: number,
-                                                   metabolicMapName?: string,
-                                                   finalBiomass?: number): void => {
-                if (!error) {
-                    this.metabolicMapID = metabolicMapID;
-                    this.metabolicMapName = metabolicMapName;
-                    this.biomassCalculation = finalBiomass;
-                    this.onChangedMetabolicMap();
-                } else {
-                    console.log("onClickedMetabolicMapName error: " + error);
-                }
-            };
-        ui = new StudyMetabolicMapChooser(false, callback);
     }
 
 
@@ -154,15 +130,11 @@ module StudyOverview {
         constructor(inputElement: HTMLElement, style?: string) {
             super(inputElement, style);
             this.minimumRows = 4;
-            this.formURL('/study/' + EDDData.currentStudyID + '/setdescription/')
+            this.formURL(Utl.relativeURL('setdescription/', studyBaseUrl).toString());
         }
 
         getValue(): string {
-            return EDDData.Studies[EDDData.currentStudyID].description;
-        }
-
-        setValue(value) {
-            EDDData.Studies[EDDData.currentStudyID].description = value;
+            return $(this.inputElement).val();
         }
 
         blankLabel(): string {
@@ -175,10 +147,11 @@ module StudyOverview {
 
         constructor(inputElement: HTMLElement, style?: string) {
             super(inputElement, style);
-            this.formURL('/study/' + EDDData.currentStudyID + '/setcontact/');
+            this.formURL(Utl.relativeURL('setcontact/', studyBaseUrl).toString());
         }
 
-        // Have to reproduce these here rather than using EditableStudyElement because the inheritance is different
+        // Have to reproduce these here rather than using EditableStudyElement because the
+        //     inheritance is different
         editAllowed(): boolean {
             return EDDData.currentStudyWritable;
         }
@@ -188,50 +161,36 @@ module StudyOverview {
         }
 
         getValue(): string {
-            return EDDData.Studies[EDDData.currentStudyID].contact;
-        }
-
-        setValue(value) {
-            EDDData.Studies[EDDData.currentStudyID].contact = value;
+            return $(this.inputElement).val();
         }
     }
 
 
     // Called when the page loads.
     export function prepareIt() {
-
         this.attachmentIDs = null;
         this.attachmentsByID = null;
         this.prevDescriptionEditElement = null;
 
-        this.metabolicMapID = -1;
-        this.metabolicMapName = null;
-        this.biomassCalculation = -1;
-
         new EditableStudyContact($('#editable-study-contact').get()[0]);
         new EditableStudyDescription($('#editable-study-description').get()[0]);
 
-        $('#helpExperimentDescription').tooltip({
-            content: function () {
-                return $(this).data('popupmenu');
-            },
-            items: '.has-popupmenu',
-            track: true,
-            show: true,
-        });
+        $('#helpExperimentDescription').tooltip();
 
-        var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
+        var helper = new FileDropZone.FileDropZoneHelpers({
            pageRedirect: 'experiment-description',
            haveInputData: false,
         });
 
         Utl.FileDropZone.create({
-            elementId: "experimentDescDropZone",
-            url: '/study/' + EDDData.currentStudyID + '/describe/',
-            processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
-            processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
-            processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
-            processICEerror: fileDropZoneHelper.processICEerror.bind(fileDropZoneHelper),
+            'elementId': "experimentDescDropZone",
+            'url': Utl.relativeURL('describe/', studyBaseUrl),
+            // must bind these functions; otherwise the function this will be the options object
+            // here, instead of the helper object
+            'processResponseFn': helper.fileReturnedFromServer.bind(helper),
+            'processErrorFn': helper.fileErrorReturnedFromServer.bind(helper),
+            'processWarningFn': helper.fileWarningReturnedFromServer.bind(helper),
+            'processICEerror': helper.processICEerror.bind(helper),
         });
 
         Utl.Tabs.prepareTabs();

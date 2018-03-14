@@ -14,7 +14,4 @@ urlpatterns = [
     url(r'^cytometry/$', login_required(views.cytometry_home), name='cytometry_home'),
     url(r'^cytometry/parse/$', login_required(views.cytometry_parse), name="cytometry_parse"),
     url(r'^cytometry/import/$', login_required(views.cytometry_import), name="cytometry_import"),
-    url(r'^ec/import/$', login_required(views.ec_import), name="ec_import"),
-    url(r'^ec/import/action/(?P<target>[a-z0-9]+)/(?P<path>.*)$',
-        login_required(views.ec_import_action), name="ec_import_action"),
 ]

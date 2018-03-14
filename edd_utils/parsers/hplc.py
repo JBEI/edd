@@ -2,7 +2,6 @@
 """
 This is for parsing the output of HPLC machines.
 """
-from __future__ import unicode_literals
 
 import chardet
 import logging
@@ -10,7 +9,6 @@ import re
 
 from collections import defaultdict, OrderedDict, namedtuple
 from decimal import Decimal
-from itertools import imap
 
 from .util import RawImportRecord
 
@@ -210,7 +208,7 @@ class HPLC_Parser(object):
         # { compound: [ compound_record_for_assay1, ... ], ... }
         compound_record_dict = defaultdict(list)
 
-        for (name, sample) in self.samples.iteritems():
+        for (name, sample) in self.samples.items():
             # Collects the DB names from the name.
             line = time = assay = None
             match_result = self.sample_name_regex.match(name)
@@ -328,7 +326,7 @@ class HPLC_Parser(object):
                 column_headers[section_index] += segment
 
         # each value is indexed by column header, clean up headers
-        for i, header_tokens in enumerate(imap(lambda h: h.split(), column_headers)):
+        for i, header_tokens in enumerate(map(lambda h: h.split(), column_headers)):
             header = ' '.join(header_tokens)
             column_headers[i] = header
 

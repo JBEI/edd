@@ -1320,38 +1320,6 @@ export namespace StudyDataPage {
 
         actionPanelRefreshTimer = null;
 
-        $('#studyAssaysTable').tooltip({
-            content: function () {
-                return $(this).find('.popupmenu').clone(true).removeClass('off');
-            },
-            items: '.has-popupmenu',
-            position: {
-                my: "left-10 top-20",
-                at: "right bottom",
-                collision: "none none",
-                using: function (position, ui) {
-                    console.log(position);
-                    console.log(ui);
-                    setTimeout(() => {
-                        // default positioning API keeps flipping the menu, fix it here
-                        position.top = ui.element.top + ui.target.height - $(document).height();
-                        $(this).css(position);
-                    }, 100);
-                }
-            },
-            open: function (event, ui: {tooltip: JQuery}) {
-                // remove other tooltips when opening a new one
-                $('div.ui-tooltip').not(ui.tooltip).remove();
-            },
-            close: function (event, ui: {tooltip: JQuery}) {
-                // prevent close when hovering over the tooltip itself
-                ui.tooltip.hover(
-                    function () { ui.tooltip.stop(true).show(); },
-                    function () { ui.tooltip.remove(); }
-                );
-            }
-        });
-
         //set up editable study name
         new StudyBase.EditableStudyName($('#editable-study-name').get()[0]);
         // This only adds code that turns the other buttons off when a button is made active,
@@ -1549,7 +1517,15 @@ export namespace StudyDataPage {
         });
 
         $(".addMeasurementButton").click(function() {
-            $("#addMeasurement").removeClass('off').dialog( "open" );
+            // copy inputs to the modal form
+            let inputs = $('#studyAssaysTable').find('input[name=assayId]:checked').clone();
+            $('#addMeasurement')
+                .find('.hidden-assay-inputs')
+                    .empty()
+                    .append(inputs)
+                .end()
+                .removeClass('off')
+                .dialog('open');
             return false;
         });
 
@@ -2816,26 +2792,14 @@ class DataGridSpecAssays extends DataGridSpecBase {
             let index:number = parseInt($(this).attr('dataIndex'), 10);
             StudyDataPage.editAssay(index);
         });
-        var sideMenuItems = [
-            '<a class="assay-edit-link" dataIndex="' + index + '">Edit Assay</a>',
-            '<a href="/export?assayId=' + index + '">Export Data as CSV</a>'
-        ];
 
         // Set up jQuery modals
         $("#assayMain").dialog({ minWidth: 500, autoOpen: false });
 
-        // TODO we probably don't want to special-case like this by name
-        if (EDDData.Protocols[record.pid].name == "Transcriptomics") {
-            sideMenuItems.push(
-                '<a href="import/rnaseq/edgepro?assay=' + index
-                + '">Import RNA-seq data from EDGE-pro</a>'
-            );
-        }
         return [
             new DataGridDataCell(gridSpec, index, {
                 'checkboxName': 'assayId',
                 'checkboxWithID': (id) => { return 'assay' + id + 'include'; },
-                'sideMenuItems': sideMenuItems,
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),

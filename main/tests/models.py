@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
+import math
 import warnings
 
-from builtins import str
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
@@ -310,16 +309,12 @@ class LineTests(TestCase):  # XXX also Strain, CarbonSource
         self.assertTrue(self.line1.control)
 
     def test_strain(self):
-        self.assertEqual(self.strain1.n_lines, 3)
-        self.assertEqual(self.strain1.n_studies, 2)
-        self.assertEqual(self.strain2.n_lines, 1)
-        self.assertEqual(self.strain2.n_studies, 1)
+        self.assertEqual(self.strain1.line_set.count(), 3)
+        self.assertEqual(self.strain2.line_set.count(), 1)
 
     def test_carbon_source(self):
-        self.assertEqual(self.cs1.n_lines, 2)
-        self.assertEqual(self.cs1.n_studies, 2)
-        self.assertEqual(self.cs2.n_lines, 1)
-        self.assertEqual(self.cs2.n_studies, 1)
+        self.assertEqual(self.cs1.line_set.count(), 2)
+        self.assertEqual(self.cs2.line_set.count(), 1)
 
 
 # XXX because there's so much overlap in functionality and the necessary setup
@@ -452,9 +447,12 @@ class AssayDataTests(TestCase):
             measurement_type__type_group=MeasurementType.Group.GENEID
         )[0]
         y_interp = meas1.interpolate_at(21)
-        self.assertTrue('%s' % y_interp == "1.2")
+        if hasattr(math, 'isclose'):
+            self.assertTrue(math.isclose(y_interp, 1.2))
+        else:
+            self.assertEqual('%s' % y_interp, "1.2")
         y_interp2 = meas1.interpolate_at(25)
-        self.assertTrue(y_interp2 is None)
+        self.assertIsNone(y_interp2)
         try:
             meas2.interpolate_at(20)
         except ValueError:
@@ -638,41 +636,6 @@ class ExportTests(TestCase):
         pass
 
 
-class UtilityTests(TestCase):
-    # TODO: regenerate export_data_1 fixture to be compatible with bootstrap fixture
-    # fixtures = ['export_data_1', ]
-
-    def test_get_edddata(self):
-        # users = get_edddata_users()
-        # TODO validate output of get_edddata_users()
-        # print(users)
-        # meas = get_edddata_measurement()
-        # self.assertTrue(
-        #   sorted([m['name'] for k, m in meas['MetaboliteTypes'].iteritems()]) ==
-        #   [u'Acetate', u'CO2', u'CO2 production', u'D-Glucose', u'O2',
-        #    u'O2 consumption', u'Optical Density'])
-        # get_edddata_carbon_sources()
-        # # TODO validate output of get_edddata_carbon_sources()
-        # strains = get_edddata_strains()
-        # self.assertTrue(len(strains['EnabledStrainIDs']) == 1)
-        # misc = get_edddata_misc()
-        # misc_keys = sorted(["UnitTypes", "MediaTypes", "Users", "MetaDataTypes",
-        #                     "MeasurementTypeCompartments"])
-        # self.assertTrue(sorted(misc.keys()) == misc_keys)
-        # study = Study.objects.get(name="Test Study 1")
-        # get_edddata_study(study)
-        # TODO validate output of get_edddata_study()
-        pass
-
-    def test_interpolate(self):
-        # assay = Assay.objects.get(name="Assay 1")
-        # mt1 = Metabolite.objects.get(short_name="ac")
-        # meas = assay.measurement_set.get(measurement_type=mt1)
-        # data = meas.data()
-        # self.assertTrue(abs(interpolate_at(data, 10)-0.3) < 0.00001)
-        pass
-
-
 class IceTests(TestCase):
 
     def test_entry_uri_pattern(self):
@@ -681,16 +644,16 @@ class IceTests(TestCase):
         # test matching against ICE URI's with a numeric ID
         uri = 'https://registry-test.jbei.org/entry/49194/'
         match = ICE_ENTRY_URL_PATTERN.match(uri)
-        self.assertEquals('https', match.group(1))
-        self.assertEquals('registry-test.jbei.org', match.group(2))
-        self.assertEquals('49194', match.group(3))
+        self.assertEqual('https', match.group(1))
+        self.assertEqual('registry-test.jbei.org', match.group(2))
+        self.assertEqual('49194', match.group(3))
 
         # test matching against ICE URI's with a UUID
         uri = 'https://registry-test.jbei.org/entry/761ec36a-cd17-41b8-a348-45d7552d4f4f'
         match = ICE_ENTRY_URL_PATTERN.match(uri)
-        self.assertEquals('https', match.group(1))
-        self.assertEquals('registry-test.jbei.org', match.group(2))
-        self.assertEquals('761ec36a-cd17-41b8-a348-45d7552d4f4f', match.group(3))
+        self.assertEqual('https', match.group(1))
+        self.assertEqual('registry-test.jbei.org', match.group(2))
+        self.assertEqual('761ec36a-cd17-41b8-a348-45d7552d4f4f', match.group(3))
 
         # verify non-match against invalid URLs
         uri = 'ftp://registry.jbei.org/entry/12345'

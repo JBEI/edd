@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import logging
 
@@ -21,7 +20,7 @@ class LatestViewedStudies(object):
         self._user = user
 
     def __iter__(self):
-        return iter(self._redis.lrange(self._key(), 0, self._end))
+        return map(self._decode, iter(self._redis.lrange(self._key(), 0, self._end)))
 
     def _key(self):
         return '%(module)s.%(klass)s:%(user)s' % {
@@ -29,6 +28,9 @@ class LatestViewedStudies(object):
             'klass': self.__class__.__name__,
             'user': self._user.username,
         }
+
+    def _decode(self, value):
+        return value.decode('utf-8')
 
     def remove_study(self, study):
         key = self._key()

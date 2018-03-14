@@ -1,10 +1,9 @@
-
+# coding: utf-8
 """
 Convenience methods wrapping openpyxl module for handling .xlsx file I/O.
 (Despite the module name, this doesn't actually do any parsing of the file
 format, but it attempts to intelligently interpret the content.)
 """
-from __future__ import division
 
 import sys
 
@@ -33,6 +32,19 @@ def export_to_xlsx(table, headers=None, title="Exported table", file_name=None):
     else:
         wb.save(file_name)
         return file_name
+
+
+def _get_sheets_from_workbook(wb, name, worksheet_id):
+    ws = None
+    if name is not None:
+        ws = [sheet for sheet in wb.worksheets if sheet.title == name]
+        if len(ws) == 0:
+            raise KeyError(f"Cannot find worksheet named {name}")
+    elif worksheet_id is not None:
+        ws = [wb.worksheets[worksheet_id]]
+    else:
+        ws = wb.worksheets
+    return ws
 
 
 def import_xlsx_tables(
@@ -69,18 +81,7 @@ def import_xlsx_tables(
     wb = load_workbook(file, read_only=True, data_only=True)
     if (len(wb.worksheets) == 0):
         raise ValueError("No worksheets found in Excel file!")
-    ws = None
-    if (worksheet_name is not None):
-        for _ws in wb.worksheets:
-            if _ws.title == worksheet_name:
-                ws = [_ws]
-                break
-        else:
-            raise KeyError("Can't find worksheet named '%s'" % worksheet_name)
-    elif (worksheet_id is not None):
-        ws = [wb.worksheets[worksheet_id]]
-    else:
-        ws = wb.worksheets
+    ws = _get_sheets_from_workbook(wb, worksheet_name, worksheet_id)
     ws_results = []
     for i_sheet, ws_ in enumerate(ws):
         try:
@@ -126,7 +127,7 @@ def _find_table_of_values(
         column_search_text=None,
         expect_numeric_data=False,
         minimum_number_of_data_rows=2,
-        maximum_number_of_tables=sys.maxint,
+        maximum_number_of_tables=sys.maxsize,
         enforce_non_blank_cells=False):
     """
     Scan a worksheet for a block of cells resembling a regular table structure,
@@ -145,7 +146,7 @@ def _find_table_of_values(
     if (column_search_text is not None):
         column_search_text = column_search_text.lower()
     if (column_labels is not None):
-        column_labels = set([cl.lower() for cl in column_labels])
+        column_labels = {cl.lower() for cl in column_labels}
     possible_tables = []
 
     row_index = 0
@@ -248,7 +249,7 @@ def _find_table_of_values(
                             # and the row is still continuing, count it as a
                             # blank cell inside the table.
                             if first_non_empty_cell is not None:
-                              found_blank_cells = True
+                                found_blank_cells = True
                             continue
                         if first_non_empty_cell is None:
                             first_non_empty_cell = c_cell_index
@@ -261,7 +262,8 @@ def _find_table_of_values(
 
                     if first_non_empty_column is not None:
                         if first_non_empty_column != first_non_empty_cell:
-                            first_non_empty_column = min(first_non_empty_column, first_non_empty_cell)
+                            first_non_empty_column = min(first_non_empty_column,
+                                                         first_non_empty_cell)
                             irregular_row_sizes = True
                     else:
                         first_non_empty_column = first_non_empty_cell
@@ -297,7 +299,7 @@ def _find_table_of_values(
                 tmp = []
                 for c_rows_index, c_row in enumerate(contiguous_rows):
                     c_row_part = c_row[first_non_empty_column:]
-                    tmp.append( list(c_row_part) )
+                    tmp.append(list(c_row_part))
 
                 # check that we have a reasonable number of rows in current table
                 if len(tmp) > minimum_number_of_data_rows:
@@ -322,20 +324,10 @@ def _find_table_of_values(
             "identified in this worksheet."
         )
     else:
-        tables = []
-        for tmp in possible_tables:
-            headers = None
-
-            if number_of_numerical_cells(tmp[0]) == 0:
-                headers = tmp[0]
-                table = tmp[1:]
-            else:
-                table = tmp
-            tables.append({
-                "headers": headers,
-                "values": table,
-            })
-        return tables
+        return [
+            {"headers": tmp[0], "values": tmp[1:]}
+            for tmp in possible_tables
+        ]
 
 
 def worksheet_as_list_of_lists(ws):
@@ -355,10 +347,11 @@ def assert_is_two_dimensional_list(table, allow_tuple_values=False):
     for row in table:
         assert (isinstance(row, list) or isinstance(row, tuple)), row
         for cell in row:
+            valid_cell = isinstance(cell, string_types) or not hasattr(cell, '__iter__')
             if (allow_tuple_values):
-                assert (isinstance(cell, tuple) or (not hasattr(cell, "__iter__"))), cell
+                assert isinstance(cell, tuple) or valid_cell, cell
             else:
-                assert (not hasattr(cell, "__iter__")), cell
+                assert valid_cell, cell
 
 
 def number_of_numerical_cells(row):

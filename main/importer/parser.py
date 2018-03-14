@@ -1,10 +1,9 @@
 # coding: utf-8
-from __future__ import division, unicode_literals
 
+import codecs
+import mimetypes
 
-from builtins import str
 from collections import namedtuple
-from io import StringIO
 
 from edd_utils.parsers import biolector, excel, hplc, skyline
 
@@ -32,49 +31,69 @@ parser_registry = {}
 
 
 def find_parser(import_mode, file_type):
-    return parser_registry.get((import_mode, file_type), None)
+    if not mimetypes.inited:
+        mimetypes.init()
+    extension = mimetypes.guess_extension(file_type)
+    if extension and extension[0] == '.':
+        extension = extension[1:]
+    return parser_registry.get((import_mode, extension), None)
 
 
+class ParserFunction(object):
+    def __init__(self, mode, mime):
+        self.signature = (mode, mime)
+
+    def __call__(self, fn, *args, **kwargs):
+        parser_registry[self.signature] = fn
+
+        def wrapper(*args, **kwargs):
+            return fn(*args, **kwargs)
+        return wrapper
+
+
+@ParserFunction(ImportModeFlags.BIOLECTOR, ImportFileTypeFlags.XML)
 def biolector_parser(request):
     # We pass the request directly along, so it can be read as a stream by the parser
     return ParsedInput(
         ImportFileTypeFlags.XML,
         biolector.getRawImportRecordsAsJSON(request, 0),
     )
-parser_registry[(ImportModeFlags.BIOLECTOR, ImportFileTypeFlags.XML)] = biolector_parser
 
 
+@ParserFunction(ImportModeFlags.STANDARD, ImportFileTypeFlags.CSV)
+@ParserFunction(ImportModeFlags.TRANSCRIPTOMICS, ImportFileTypeFlags.CSV)
+@ParserFunction(ImportModeFlags.MASS_DISTRIBUTION, ImportFileTypeFlags.CSV)
 def csv_parser(request):
+    reader = codecs.getreader(request.charset or 'utf8')
     return ParsedInput(
         ImportFileTypeFlags.CSV,
-        request.read()
+        reader(request).read()
     )
-parser_registry[(ImportModeFlags.STANDARD, ImportFileTypeFlags.CSV)] = csv_parser
-parser_registry[(ImportModeFlags.TRANSCRIPTOMICS, ImportFileTypeFlags.CSV)] = csv_parser
-parser_registry[(ImportModeFlags.MASS_DISTRIBUTION, ImportFileTypeFlags.CSV)] = csv_parser
 
 
+@ParserFunction(ImportModeFlags.STANDARD, ImportFileTypeFlags.EXCEL)
+@ParserFunction(ImportModeFlags.TRANSCRIPTOMICS, ImportFileTypeFlags.EXCEL)
+@ParserFunction(ImportModeFlags.MASS_DISTRIBUTION, ImportFileTypeFlags.EXCEL)
 def excel_parser(request):
     return ParsedInput(
         ImportFileTypeFlags.EXCEL,
         excel.import_xlsx_tables(file=request)
     )
-parser_registry[(ImportModeFlags.STANDARD, ImportFileTypeFlags.EXCEL)] = excel_parser
-parser_registry[(ImportModeFlags.TRANSCRIPTOMICS, ImportFileTypeFlags.EXCEL)] = excel_parser
-parser_registry[(ImportModeFlags.MASS_DISTRIBUTION, ImportFileTypeFlags.EXCEL)] = excel_parser
 
 
+@ParserFunction(ImportModeFlags.SKYLINE, ImportFileTypeFlags.CSV)
 def skyline_csv_parser(request):
     # we could get Mac-style \r line endings, need to use StringIO to handle
     parser = skyline.SkylineParser()
-    spreadsheet = [row.split(',') for row in StringIO(str(request.read()), newline=None)]
+    # row will be bytes, need to decode (to probably utf8)
+    spreadsheet = [row.decode(request.charset or 'utf8').split(',') for row in request]
     return ParsedInput(
         ImportFileTypeFlags.CSV,
         parser.getRawImportRecordsAsJSON(spreadsheet)
     )
-parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.CSV)] = skyline_csv_parser
 
 
+@ParserFunction(ImportModeFlags.SKYLINE, ImportFileTypeFlags.EXCEL)
 def skyline_excel_parser(request):
     parser = skyline.SkylineParser()
     spreadsheet = excel.import_xlsx_tables(file=request)
@@ -82,12 +101,11 @@ def skyline_excel_parser(request):
         ImportFileTypeFlags.EXCEL,
         parser.getRawImportRecordsAsJSON(spreadsheet)
     )
-parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.EXCEL)] = skyline_excel_parser
 
 
+@ParserFunction(ImportModeFlags.HPLC, ImportFileTypeFlags.PLAINTEXT)
 def hplc_parser(request):
     return ParsedInput(
         ImportFileTypeFlags.PLAINTEXT,
         hplc.getRawImportRecordsAsJSON(request)
     )
-parser_registry[(ImportModeFlags.HPLC, ImportFileTypeFlags.PLAINTEXT)] = hplc_parser

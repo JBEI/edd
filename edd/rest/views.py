@@ -1,6 +1,4 @@
 # coding: utf-8
-from __future__ import unicode_literals
-
 """
 Defines views for EDD's REST API.
 
@@ -13,7 +11,6 @@ import logging
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
-from django.forms.widgets import TextInput as FormTextInput
 from django_filters import filters as django_filters, rest_framework as filters
 from rest_framework import mixins, response, schemas, viewsets
 from rest_framework.decorators import api_view, permission_classes, renderer_classes
@@ -28,6 +25,7 @@ from . import serializers
 
 
 logger = logging.getLogger(__name__)
+
 
 @api_view()
 @permission_classes([AllowAny, ])
@@ -171,7 +169,6 @@ class LineFilter(EDDObjectFilter):
         fields = {
             'study': ['exact', 'in'],
             'control': ['exact'],
-            'replicate': ['exact'],
             'contact': ['exact'],
             'experimenter': ['exact'],
         }

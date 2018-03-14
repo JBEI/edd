@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import json
 import logging
@@ -8,7 +7,7 @@ import requests
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.db.models import Count, F, Prefetch
-from itertools import ifilter, islice
+from itertools import islice
 from six import string_types
 
 from . import models
@@ -179,13 +178,13 @@ class SolrSearch(object):
         :raises IOError: if an error occurs during the update attempt
         """
         url = self.url + '/update/json'
-        payload = ifilter(lambda d: d is not None, map(self.get_solr_payload, docs))
+        payload = filter(lambda d: d is not None, map(self.get_solr_payload, docs))
         response_list = []
 
         headers = {'content-type': 'application/json'}
         # Send updates in groups of 50
         for group in iter(lambda: list(islice(payload, 50)), []):
-            ids = map(lambda item: item.get('id'), group)
+            ids = [item.get('id') for item in group]
             logger.info('%(cls)s updating solr index with IDs: %(ids)s' % {
                 'cls': self.__class__.__name__,
                 'ids': ids,
@@ -276,12 +275,11 @@ class StudySearch(SolrSearch):
         # Admins get no filter on read, and a query that will always eval true for write
         if ident.is_superuser:
             return ('', 'id:*')
-        acl = ['"g:__Everyone__"', '"u:'+ident.username+'"', ] + map(
-            lambda g: '"g:'+g.name+'"', ident.groups.all()
-        )
+        user_acl = '"u:%s"' % ident.username
+        acl = ['"g:__Everyone__"', user_acl, ] + ['"g:%s"' % g.name for g in ident.groups.all()]
         return (
-            ' OR '.join(map(lambda r: 'aclr:'+r, acl)),
-            ' OR '.join(map(lambda w: 'aclw:'+w, acl)),
+            ' OR '.join(['aclr:%s' % r for r in acl]),
+            ' OR '.join(['aclw:%s' % w for w in acl]),
         )
 
     @staticmethod
@@ -454,10 +452,11 @@ class MeasurementTypeSearch(SolrSearch):
         return queryopt
 
     def get_solr_payload(self, obj):
+        Group = models.MeasurementType.Group
         try:
-            if obj.type_group == models.MeasurementType.Group.METABOLITE:
+            if obj.type_group == Group.METABOLITE and hasattr(obj, 'metabolite'):
                 item = obj.metabolite
-            elif obj.type_group == models.MeasurementType.Group.PROTEINID:
+            elif obj.type_group == Group.PROTEINID and hasattr(obj, 'proteinidentifier'):
                 item = obj.proteinidentifier
             else:
                 item = obj

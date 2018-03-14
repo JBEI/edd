@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+# coding: utf8
 """
 A sample Python 2 script that demonstrates several anticipated read-only uses of EDD's REST
 API. The general process followed by this script is:
@@ -10,11 +10,11 @@ API. The general process followed by this script is:
     narrow and/or interpret search results. Clients would likely need to create additional
     caches -- this sample focuses just on querying / cacheing the most relevant and
     easily-cacheable EDD data.
-4) If requested, write results to CSV file in a similar format to that produced by EDD's file 
+4) If requested, write results to CSV file in a similar format to that produced by EDD's file
    export feature.
 
 One notable omission in this example is querying for line/assay metadata that define culture
-conditions.  If the first version is helpful, further examples of those queries can be added 
+conditions.  If the first version is helpful, further examples of those queries can be added
 here later as the API improves.
 
 For a simpler example of accessing EDD's REST API:
@@ -24,17 +24,20 @@ import argparse
 import arrow
 import collections
 import csv
-import logging
-from logging.config import dictConfig
-
 import imp
+import logging
+
+from logging.config import dictConfig
+from future.utils import viewitems, viewvalues
 from os import path
 from requests import HTTPError, codes
+from six.moves.urllib.parse import urlparse
 
 from jbei.rest.auth import EddSessionAuth, IceSessionAuth
-from jbei.rest.clients import EddApi, IceApi
-from jbei.rest.clients.ice import Strain as IceStrain
-from jbei.rest.clients.ice.utils import build_entry_ui_url, extract_id_from_ui_url
+from jbei.rest.clients.edd.api import EddApi
+from jbei.rest.clients.ice.api import IceApi
+from jbei.rest.clients.ice.api import Strain as IceStrain
+from jbei.rest.clients.ice.utils import build_entry_ui_url
 from jbei.utils import session_login, UserInputTimer
 from . import settings
 
@@ -45,6 +48,8 @@ logger = logging.getLogger(__name__)
 _PAGE_RECEIVED_MSG = ('Received page %(page)d with %(count)d %(class)s (total %(total)d '
                       'found)')
 
+_EDD_URL_ARG = 'edd_url'
+_ICE_URL_ARG = 'ice_url'
 _USERNAME_ARG = 'username'
 _PASSWORD_ARG = 'password'
 _IGNORE_ICE_ERRORS_ARG = 'ignore_ice_errors'
@@ -52,7 +57,8 @@ _OUTPUT_FILE_ARG = 'output_file'
 _OVERWRITE_ARG = 'overwrite'
 _ALLOW_CO_CULTURE_ARG = 'allow_co_culture'
 _TARGET_ICE_INSTANCE_ARG = 'target_ice_url'
-_STUDY_ARG = 'study'
+_STUDY_SLUG_ARG = 'study_slug'
+_STUDY_ID_ARG = 'study_id'
 _ICE_PARTS_ARG = 'ice_parts'
 _PROTOCOLS_ARG = 'protocols'
 _MTYPES_ARG = 'mtypes'
@@ -89,7 +95,9 @@ class SearchParameters:
     performance / earlier detection of some common errors.
     """
     def __init__(self):
-        self.study_id = None  # used to specify a single study of interest
+        self.study_slug = None  # URL portion that uniquely identifies the study of interest
+
+        self.study_id = None  # UUID or integer pk used to specify a single study of interest
 
         # if no study is specified, used to search & process only studies updated after the
         # specified date. Note that at the time of writing, EDD's stored study modification date
@@ -109,7 +117,7 @@ class SearchParameters:
         self.unit_name_regexes = []
 
     def filter_by_studies(self):
-        return self.study_id
+        return self.study_slug or self.study_id or self.studies_modified_since
 
     def filter_by_strains(self):
         return bool(self.ice_part_ids)
@@ -131,7 +139,9 @@ class SearchParameters:
     def print_summary(self):
         logger.info('Search parameters:')
         logger.indent_level += 1
-        if self.study_id:
+        if self.study_slug:
+            logger.info('Study slug:\t%s' % self.study_slug)
+        elif self.study_id:
             logger.info('Study id:\t%s' % self.study_id)
         elif self.studies_modified_since:
             logger.info('Studies mod after:\t%s' % self.studies_modified_since)
@@ -149,6 +159,24 @@ class SearchParameters:
             logger.info('Units: %s' % self.unit_name_regexes)
 
         logger.indent_level -= 1
+
+
+def extract_id_from_ui_url(ice_part_ui_url):
+    """
+    Extracts an ICE identifier for a part from a valid ICE user interface URL.  Note that ICE's
+    user interface accepts multiple different identifiers, so prior knowledge is needed to
+    distinguish between the identifiers accepted.
+    :param ice_part_ui_url:
+    :return: the identifier
+    """
+    url_parts = urlparse(ice_part_ui_url)
+    url_path = url_parts.path
+    elts = url_path.split('/')
+    if elts[-1]:
+        return elts[-1]
+    elif len(elts) > 1:
+        return elts[-2]
+    return None
 
 
 class ContextCache:
@@ -374,6 +402,8 @@ def main():
     parser = argparse.ArgumentParser(description='A sample script that demonstrates anticipated '
                                                  'use of EDD REST API to simplify integration '
                                                  'work for client applications.')
+    parser.add_argument(('--%s' % _EDD_URL_ARG), help='the URL to use in accessing EDD'),
+    parser.add_argument(('--%s' % _ICE_URL_ARG), help='the URL to use in accessing ICE'),
     parser.add_argument(('--%s' % _USERNAME_ARG), '-u',
                         help='The username used to authenticate with both EDD & ICE '
                              'APIs. If provided, overrides username in the '
@@ -384,9 +414,15 @@ def main():
                              'If not provided, a user prompt will appear.')
     parser.add_argument('--settings', '-s',
                         help='The path to a search-specific Python file containing settings for '
-                             'this search. If not provided, the script will search for a file '
-                             'named "sample_query_settings.py" in the current working directory.')
-    parser.add_argument('--%s' % _STUDY_ARG, '-S',
+                             'this script. If not provided, the script will search for a file '
+                             'named "sample_query_settings.py" in the current working directory.'
+                             'Note that this is distinct from the more general "local.py" used '
+                             'to configure general settings shared by multiple scripts.')
+    parser.add_argument('--%s' % _STUDY_SLUG_ARG,
+                        help='The URL portion, or "slug" that uniquely identifies this study '
+                             'within the EDD deployment. Overrides "%s" if both are present'
+                             % _STUDY_ID_ARG)
+    parser.add_argument('--%s' % _STUDY_ID_ARG, '-S',
                         help='The integer primary key or UUID of the study whose data should be '
                              'queried.')
     parser.add_argument('--%s' % _ICE_PARTS_ARG, '-i', nargs='*',
@@ -406,7 +442,7 @@ def main():
                              'e.g. "2017-10-26:04:54:00:US/Pacific".  If provided, '
                              'this sample script will search for all studies modified on or after '
                              'the provided timestamp.  This parameter is ignored if the %s '
-                             'parameter is provided.' % _STUDY_ARG)
+                             'parameter is provided.' % _STUDY_ID_ARG)
     parser.add_argument(('--%s' % _OUTPUT_FILE_ARG), '-o',
                         help="The optional path to an output file where search results will be "
                              "written using a CSV format similar to EDD's export files")
@@ -504,6 +540,11 @@ def main():
 
 
 def parse_search_settings(args):
+    """
+    Loads search parameters for this script from a custom settings file.  If the path is
+    provided via the command line, settings are read from that path.  Otherwise a default path
+    is inspected.
+    """
 
     settings_file = getattr(args, 'settings', None)
     if settings_file:
@@ -513,14 +554,28 @@ def parse_search_settings(args):
     else:
         default_file = './sample_query_settings.py'
         if path.isfile(default_file):
-            print('Found a settings file at the default path %s' % path.abspath(settings_file))
+            print('Found a settings file at the default path %s' % path.abspath(default_file))
             settings_file = default_file
 
     global_search_params = SearchParameters()
     if settings_file:
         search_settings = imp.load_source('jbei.edd.rest.scripts.sample_query_settings',
                                           settings_file)
-        global_search_params.study_id = getattr(search_settings, 'STUDY_ID', None)
+
+        _STUDY_SLUG_SETTING = 'STUDY_SLUG'
+        _STUDY_ID_SETTING = 'STUDY_ID'
+
+        global_search_params.study_slug = getattr(search_settings, 'STUDY_SLUG', None)
+
+        if global_search_params.study_slug:
+            if hasattr(search_settings, _STUDY_ID_SETTING):
+                logger.warning('Ignored %(id)s settings, which was overridden by %(slug)s' % {
+                    'id': _STUDY_ID_SETTING,
+                    'slug': _STUDY_SLUG_SETTING
+                })
+        else:
+            global_search_params.study_id = getattr(search_settings, _STUDY_ID_SETTING, None)
+
         global_search_params.studies_modified_since = getattr(
             search_settings, 'STUDIES_MODIFIED_SINCE', None)
         global_search_params.measurement_type_name_regexes = getattr(
@@ -532,8 +587,16 @@ def parse_search_settings(args):
             search_settings, 'MEASUREMENT_TYPE_NAME_REGEXES', [])
         global_search_params.unit_name_regexes = getattr(search_settings, 'UNIT_NAME_REGEXES', [])
 
-    # read command line args, overriding any in config file (if present)
-    if getattr(args, _STUDY_ARG):
+    # read command line args, overriding any in script-specific config file (if present)
+    if hasattr(args, _STUDY_SLUG_ARG):
+        global_search_params.study_slug = args.study_slug
+
+        if args.study_slug and getattr(args, _STUDY_ID_ARG, None):
+            logger.warning('Ignoring %(id)s argument, which is overridden by %(slug)s' % {
+                                'id': _STUDY_ID_ARG,
+                                'slug': _STUDY_SLUG_ARG, })
+
+    elif hasattr(args, _STUDY_ID_ARG):
         global_search_params.study_id = args.study
 
     if getattr(args, _MOD_SINCE_ARG):
@@ -553,7 +616,7 @@ def parse_search_settings(args):
         global_search_params.unit_name_regexes = getattr(args, _UNITS_ARG, [])
 
     if not global_search_params.has_filters():
-        print('No search-narrowing parameters were found in the settings file. At least '
+        logger.info('No search-narrowing parameters were found in the settings file. At least '
               'one filter must be applied to limit the expense of querying EDD')
         return None
 
@@ -564,8 +627,17 @@ _IGNORE_ICE_ERRORS_DEFAULT = False
 
 
 def authenticate_with_apis(args, user_input):
-    # if not overridden by command line arguments, look in settings for EDD/ICE credentials.
-    # Note assumption that they're the same, which holds true for JBEI/ABF, but maybe not others
+    # if not overridden by command line arguments, look in settings for EDD/ICE config
+    # and credentials. Only a limit number of settings from file are supported for override via
+    # the command line.
+    # Note assumption that credentials are the same for both EDD & ICE, which holds true for
+    # JBEI/ABF, but maybe not others
+    edd_url = getattr(args, _EDD_URL_ARG, None)
+    if (not edd_url) and hasattr(settings, 'EDD_URL'):
+        edd_url = settings.EDD_URL
+    ice_url = getattr(args, _ICE_URL_ARG, None)
+    if (not ice_url) and hasattr(settings, 'ICE_URL'):
+        ice_url = settings.ICE_URL
     password = getattr(args, _PASSWORD_ARG, None)
     if (not password) and hasattr(settings, 'EDD_PASSWORD'):
         password = settings.EDD_PASSWORD
@@ -576,8 +648,8 @@ def authenticate_with_apis(args, user_input):
     ######################################################################################
     # If not already provided, prompt terminal user for credentials and log into EDD
     ######################################################################################
-    logger.info('Logging into EDD at %s...' % settings.EDD_URL)
-    edd_login_details = session_login(EddSessionAuth, settings.EDD_URL, 'EDD',
+    logger.info('Logging into EDD at %s...' % edd_url)
+    edd_login_details = session_login(EddSessionAuth, edd_url, 'EDD',
                                       username_arg=username,
                                       password_arg=password,
                                       user_input=user_input,
@@ -587,7 +659,7 @@ def authenticate_with_apis(args, user_input):
     edd_session_auth = edd_login_details.session_auth
 
     # instantiate and configure an EddApi client instance
-    edd = EddApi(base_url=settings.EDD_URL, auth=edd_session_auth,
+    edd = EddApi(base_url=edd_url, auth=edd_session_auth,
                  result_limit=settings.EDD_PAGE_SIZE)
     edd.timeout = settings.EDD_REQUEST_TIMEOUT
 
@@ -598,10 +670,10 @@ def authenticate_with_apis(args, user_input):
     # trying to query strain data
     ##############################
     ice = None
-    ice_login_details = None
     try:
+        logger.info('Logging into ICE at %s...' % ice_url)
         login_application = 'ICE'
-        ice_login_details = session_login(IceSessionAuth, settings.ICE_URL, login_application,
+        ice_login_details = session_login(IceSessionAuth, ice_url, login_application,
                                           username_arg=edd_login_details.username,
                                           password_arg=edd_login_details.password,
                                           print_result=False,
@@ -610,7 +682,7 @@ def authenticate_with_apis(args, user_input):
                                           verify_ssl_cert=settings.VERIFY_ICE_CERT)
 
         ice_session_auth = ice_login_details.session_auth
-        ice = IceApi(ice_session_auth, settings.ICE_URL, result_limit=settings.ICE_PAGE_SIZE,
+        ice = IceApi(ice_session_auth, ice_url, result_limit=settings.ICE_PAGE_SIZE,
                      verify_ssl_cert=settings.VERIFY_ICE_CERT)
         ice.timeout = settings.ICE_REQUEST_TIMEOUT
 
@@ -897,7 +969,7 @@ class SampleQuery:
                 # aggregate ICE part permission errors, which are currently common enough to
                 # warrant aggregating them as a user/administrator convenience
                 if http_err.response.status_code == codes.forbidden:
-                    cache.ice_permission_error_part_ids[id] = http_err.response.status_code
+                    cache.ice_permission_error_part_ids.append(id)
                     continue
 
                 # abort search for all other errors, which we have no way of processing
@@ -996,7 +1068,21 @@ class SampleQuery:
         # limited use at JBEI, and will only grow over time.
         edd = self.edd
         search_params = self.global_search_params
+        study_slug = search_params.study_slug
         study_id = search_params.study_id
+
+        if study_slug:
+            logger.info('Searching EDD studies for a study with slug "%s"' % study_slug)
+            studies_page = edd.search_studies(slug=study_slug)
+            if not studies_page:
+                logger.info('No studies were found with slug "%s"' % study_slug)
+                return False
+            if studies_page.current_result_count != 1:
+                logger.info('Expected 1 study with slug "%(slug)s", but found %(count)d' % {
+                                'slug': study_slug,
+                                'count': studies_page.current_result_count, })
+                return False
+            study_id = studies_page.results[0].pk
 
         if study_id:
             logger.info('Querying EDD for data in study %s' % study_id)
@@ -1081,8 +1167,7 @@ class SampleQuery:
             protocols_by_pk = cache.protocols_by_pk
 
             if len(protocols_by_pk) <= 10:
-                log_suffix = ': %s ' % (', '.join([str(protocol_pk) for protocol_pk in
-                                        cache.protocols_by_pk.iterkeys()]))
+                log_suffix = ': %s ' % ', '.join(map(str, cache.protocols_by_pk))
             else:
                 log_suffix = '.'
 
@@ -1092,8 +1177,7 @@ class SampleQuery:
                             'lines': lines_filter_msg,
                             'count': len(protocols_by_pk),
                             'suffix': log_suffix})
-            assay_search_params['protocols'] = [protocol_pk for protocol_pk in
-                                                protocols_by_pk.iterkeys()]
+            assay_search_params['protocols'] = set(protocols_by_pk)
         else:
             logger.info('Searching for all assays in study %(study_id)s%(lines)s...' % {
                 'study_id': study.pk, 'lines': lines_filter_msg})
@@ -1157,7 +1241,7 @@ class SampleQuery:
                         'strains of interest...' % {
                             'study_id': study_pk,
                             'strain_count': len(global_search_params.ice_part_ids)})
-            strain_uuids = [strain.uuid for strain in cache.ice_entries_by_url.itervalues()]
+            strain_uuids = [strain.uuid for strain in viewvalues(cache.ice_entries_by_url)]
             line_search_params['strains'] = strain_uuids
         else:
             logger.info('Searching for all lines in study %s...' % study_pk)
@@ -1240,7 +1324,7 @@ class SampleQuery:
 
             # configure pks of measurement types to filter for.  If global search params dictated
             # only searching for a subset of measurement types, they should already be cached
-            type_pks = [pk for pk in cache.meas_types_by_pk.iterkeys()]
+            type_pks = set(cache.meas_types_by_pk)
             meas_search_params['measurement_types'] = type_pks
             prefix = ('%(prefix)s (of %(count)d MeasurementTypes)' % {
                             'prefix': prefix,
@@ -1362,7 +1446,8 @@ class SampleQuery:
         if path.exists(file_path) and not overwrite_output_file:
             raise RuntimeError('Output file already exists at %s' % path.abspath(file_path))
 
-        study_pk = self.result_cache.studies_by_pk.iterkeys().next()
+        # grabbing the first pk
+        study_pk = next(iter(self.result_cache.studies_by_pk))
 
         DEFAULT_COLUMN_HEADERS = ['Line Name', 'Strain', 'Protocol Name', 'Measurement Type',
                                   'Time (h)', 'Value', 'Units']
@@ -1375,12 +1460,12 @@ class SampleQuery:
         if len(self.result_cache.studies_by_pk) > 1:
             logger.info('Arbitrarily picking study %s to output to file' % study_pk)
 
-        with open(file_path, 'wb') as csvfile:
+        with open(file_path, 'w') as csvfile:
             writer = csv.writer(csvfile)
 
             writer.writerow(col_headers)
 
-            for study_pk, study in self.result_cache.studies_by_pk.iteritems():
+            for study_pk, study in viewitems(self.result_cache.studies_by_pk):
 
                 if not hasattr(study, 'lines'):
                     continue

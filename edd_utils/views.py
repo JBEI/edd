@@ -1,12 +1,10 @@
-
+# coding: utf-8
 """ Miscellaneous data-processing utilities. """
 
 import json
 import logging
-import os
 import re
 
-from builtins import str
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse, JsonResponse
@@ -15,8 +13,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from functools import partial
 from io import BytesIO
 
-from . import cytometry, data_excelreader, data_map_ecdata, gc_ms_workbench
-from .net_smb import SMBController
+from . import cytometry, gc_ms_workbench
 from .parsers import excel, skyline
 from main.forms import CreateStudyForm
 
@@ -119,11 +116,11 @@ def cytometry_parse(request):
             for sheet in parsed.get('worksheets', []):
                 for ws in sheet:
                     header = ws.get('headers', [])
-                    table = [u'\t'.join(map(replace, map(str, header)))] if header else []
+                    table = ['\t'.join(map(replace, map(str, header)))] if header else []
                     for row in ws.get('values', []):
-                        table.append(u'\t'.join(map(replace, map(str, row))))
-                    tables.append(u'\n'.join(table))
-            return JsonResponse({'data': u'\n\n'.join(tables), })
+                        table.append('\t'.join(map(replace, map(str, row))))
+                    tables.append('\n'.join(table))
+            return JsonResponse({'data': '\n\n'.join(tables), })
         else:
             # try to parse as plain text
             return JsonResponse({'data': upload.read(), })
@@ -146,58 +143,4 @@ def cytometry_import(request):
     obj.process(study)
     return render(request, 'cytometry.html', {
         'study_form': study_form,
-        })
-
-
-########################################################################
-# ENZYME CHARACTERIZATION
-#
-
-MAX_PATH_LENGTH = 260
-
-
-def ec_import(request):
-    return render(request, 'ec_import.html', {})
-
-
-def ec_import_action(request, target, path):
-    data = {'result': 'success'}
-    if len(target) > MAX_PATH_LENGTH:
-        data['result'] = 'error'
-        data['message'] = 'Path length max size exceeded.'
-    # TODO: sanatize to prevent injections!
-
-    else:
-        # TODO: Check if samba drive is mounted first
-
-        # remote_folder_path = "/SPMAX-M2-02/Jason/"
-        # remote_file_path = "/SPMAX-M2-02/ktran/HTP-Pre/cellulase dispensing/"
-        #                    "cell_disp_60uL_4_25_13_kt.xlsx"
-
-        # TODO: local file path must be non-colliding
-        volume = "instrumentdata"
-        remote_file_path = path
-        local_file_path = "output/%s" % os.path.split(path)[1]
-
-        try:
-            os.mkdir('output')
-        except OSError:
-            pass  # already exists
-        # TODO: IOError
-
-        # TODO try: except:
-        smb = SMBController()
-        smb.retrieve_file(volume, remote_file_path, local_file_path)
-
-        # print 'downloaded file'
-
-        datablocks = data_excelreader.process_spreadsheet(local_file_path)
-
-        # print 'indexed sheet'
-
-        data_map_ecdata.map_datablocks(datablocks)
-
-        # print 'updated database'
-
-    # TODO: kickback any EDD-specific exceptions
-    return JsonResponse(data)
+    })

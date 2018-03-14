@@ -530,7 +530,7 @@ export module EDDAuto {
 
         constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
-            this.modelName = 'Protein';
+            this.modelName = 'ProteinIdentifier';
             this.columns = Protein.columns;
             this.cacheId = 'Proteins';
             this.visibleInput.attr('size', 45);
@@ -545,7 +545,7 @@ export module EDDAuto {
 
         constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
             super(opt, search_options);
-            this.modelName = 'Gene';
+            this.modelName = 'GeneIdentifier';
             this.columns = Gene.columns;
             this.cacheId = 'Genes';
             this.visibleInput.attr('size', 45);

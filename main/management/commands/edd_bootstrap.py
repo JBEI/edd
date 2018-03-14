@@ -1,6 +1,4 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 """
 A manage.py command used to load in optional bootstrap data to an EDD installation. The fixtures
 begin at ID 1; this command will shift the IDs to start after the highest existing ID.

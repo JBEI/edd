@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 from django.conf.urls import include, url
 from django.contrib.auth.decorators import login_required
@@ -36,6 +35,11 @@ study_url_patterns = [
     ),
     url(r'^map/$', login_required(views.study_map)),
     url(r'^permissions/$', login_required(views.StudyPermissionJSONView.as_view())),
+    url(
+        r'^files/(?P<file_id>\d+)/(?:(?P<file_name>[^/]+)/)?$',
+        login_required(views.StudyAttachmentView.as_view()),
+        name='attachment',
+    ),
     url(r'^describe/$', login_required(views.study_describe_experiment), name='describe'),
     url(
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
@@ -83,17 +87,11 @@ urlpatterns = [
     url(r'^sbml/$', login_required(views.SbmlView.as_view()), name='sbml'),
 
     # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
-    url(r'^file/download/(?P<file_id>\d+)/$', login_required(views.download)),
-    # url(r'^file/delete/(?P<file_id>\d+)/$', login_required(views.delete_file)),
     url(
         r'^utilities/parsefile/$',
         login_required(views.utilities_parse_import_file),
         name='import_parse'
     ),
-    url(r'^data/carbonsources/$', login_required(views.data_carbonsources)),
-    url(r'^data/measurements/$', login_required(views.data_measurements)),
-    url(r'^data/metadata/$', login_required(views.data_metadata)),
-    url(r'^data/misc/$', login_required(views.data_misc)),
     url(r'^data/sbml/$', login_required(views.data_sbml)),
     url(r'^data/sbml/(?P<sbml_id>\d+)/$', login_required(views.data_sbml_info)),
     url(r'^data/sbml/(?P<sbml_id>\d+)/reactions/$', login_required(views.data_sbml_reactions)),
@@ -101,8 +99,6 @@ urlpatterns = [
         r'^data/sbml/(?P<sbml_id>\d+)/reactions/(?P<rxn_id>.+)/$',
         login_required(views.data_sbml_reaction_species),
     ),
-    url(r'^data/strains/$', login_required(views.data_strains)),
-    url(r'^data/users/$', login_required(views.data_users)),
     url(
         r'help/experiment_description/$',
         login_required(views.ExperimentDescriptionHelp.as_view()),
@@ -112,6 +108,7 @@ urlpatterns = [
     url(r'^search/(?P<model>\w+)/$', login_required(views.model_search)),
 
     url(r'^health/$', lambda request: HttpResponse()),
+    url(r'^demo/$', login_required(views.websocket_demo)),
 
     # Call-out for the favicon, which would normally only be accessible via a URL like:
     #   https://edd.example.org/static/favicon.ico

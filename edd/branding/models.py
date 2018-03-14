@@ -1,8 +1,6 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
 from django.db import models
-from django.contrib.sites.models import Site
 
 
 class Branding(models.Model):
@@ -13,7 +11,7 @@ class Branding(models.Model):
     logo_file = models.ImageField(null=True)
     favicon_file = models.ImageField(null=True)
     style_sheet = models.FileField(null=True, blank=True)
-    sites = models.ManyToManyField(Site, through='Page')
+    sites = models.ManyToManyField('sites.Site', through='Page')
 
     def __str__(self):
         return self.logo_name
@@ -24,7 +22,7 @@ class Page(models.Model):
     Join Branding and Site models
     """
     site = models.OneToOneField(
-        Site,
+        'sites.Site',
         unique=True,
         on_delete=models.CASCADE,
     )

@@ -616,7 +616,6 @@ tr.columnLabels > th.sortwait > div:hover {
 table.dataTable tr > td {
     padding:4px 4px 4px 8px;
     margin:0px;
-    font-size:12px;
     font-family: Helvetica, sans-serif;
     vertical-align:top;
 }
@@ -1071,6 +1070,7 @@ table.formTable {
     margin:10px 3px 20px 3px;
     border:none;
     font-size:16px;
+    width: 90%;
 }
 table.formTable tr > td {
     text-align:left;
@@ -1570,9 +1570,6 @@ form.comments textarea {
     float: left;
     padding-right: 1em;
 }
-.exportDisplay {
-    position: absolute;
-}
 .exportDisplay textarea {
     width: 100%;
 }
@@ -1589,13 +1586,15 @@ form.comments textarea {
 /* File drop-zone styling */
 
 .fd-zone {
-    background-repeat: no-repeat;
     background-attachment: scroll;
-    background-position: center;
+    background-color: inherit;
     background-image: url(images/dropzone-excel_csv.png);
+    background-position: center;
+    background-repeat: no-repeat;
+    border: none;
+    font-size:17px;
     min-height:220px;
     padding:5px;
-    font-size:17px;
 }
 
 .fd-zone.over {

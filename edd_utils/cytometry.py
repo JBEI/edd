@@ -1,10 +1,8 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
 import json
 import logging
 
-from builtins import str as unicode
 from collections import defaultdict
 
 from main.models import Assay, Line, Measurement, MeasurementUnit, MeasurementValue, Protocol
@@ -136,8 +134,8 @@ class CytometerRow(object):
                     x_units=self._hours,
                     y_units=self._na,
                     )
-            x = map(float, [time, ])
-            y = map(float, [value, variance, self._count, ])
+            x = list(map(float, [time, ]))
+            y = list(map(float, [value, variance, self._count, ]))
             try:
                 point = obj.measurementvalue_set.get(x=x)
             except MeasurementValue.DoesNotExist:
@@ -155,7 +153,7 @@ class CytometerRow(object):
             print("Invalid count value")
 
     def define_deviation(self, seq, value):
-        seq = unicode(seq)  # ensure sequence is a string
+        seq = str(seq)  # ensure sequence is a string
         try:
             dev = float(value)
         except ValueError:
@@ -164,7 +162,7 @@ class CytometerRow(object):
             self._measure_data[seq]['deviation'] = dev
 
     def define_measurement(self, seq, ptype, value):
-        seq = unicode(seq)  # ensure sequence is a string
+        seq = str(seq)  # ensure sequence is a string
         try:
             avg = float(value)
         except ValueError:
@@ -180,10 +178,10 @@ class CytometerRow(object):
             self._assay.meta_store[meta_type] = value
 
     def define_variance(self, seq, value):
-        seq = unicode(seq)  # ensure sequence is a string
+        seq = str(seq)  # ensure sequence is a string
         try:
-            if unicode(value)[-1] == u'%':
-                cv = float(unicode(value)[:-1]) / 100
+            if str(value)[-1] == '%':
+                cv = float(str(value)[:-1]) / 100
             else:
                 cv = float(value)
         except ValueError:
@@ -193,8 +191,8 @@ class CytometerRow(object):
 
     def define_viable(self, value):
         try:
-            if unicode(value)[-1] == u'%':
-                viable = float(unicode(value)[:-1]) / 100
+            if str(value)[-1] == '%':
+                viable = float(str(value)[:-1]) / 100
             else:
                 viable = float(value)
         except ValueError:

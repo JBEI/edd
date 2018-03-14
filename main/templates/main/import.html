@@ -129,13 +129,15 @@
           </label>
           <span><a class="discloseLink" href="#">Example</a></span>
           <div class="discloseBody" id="skylinelayoutexample">
+            {% static 'main/example/skyline_example.csv' as skyline_example_url %}
             <p>Use this format for data coming out of Skyline analysis of mass spec data. This
                 import expects data to come in four columns, with a sample name in the first
-                column, a protein name in the second (represented by its accession ID found on
-                <a href="http://www.uniprot.org/uniprot/">UniProt</a>), a peptide in the third
-                column, and a numeric value for peak area in the fourth. Here is an example of a
-                <a href="{% static 'main/example/skyline_example.csv' %}">Skyline Data File</a>
-                that has been successfully imported.
+                column, a measurement name in the second (represented by either an accession ID
+                from <a href="http://www.uniprot.org/uniprot/">UniProt</a> <i>or</i> a PubChem
+                identifier in the form "CID:12345" or "CID:12345:Chemical Name"), an optional
+                peptide in the third column (leave blank for metabolites), and a numeric value
+                in the fourth. Here is an example of a <a href="{{ skyline_example_url }}">Skyline
+                Data File</a> that has been successfully imported.
             </p>
             <img class="exampleImage"
                 src="{% static 'main/images/data_examples/skyline_example_a.png' %}" />

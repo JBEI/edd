@@ -1,43 +1,46 @@
-from __future__ import unicode_literals
+# coding: utf-8
 
 from django.contrib.auth import get_user_model
+from django.core.urlresolvers import reverse
 from django.test import TestCase
+from requests import codes
+
+from main.tests.factory import UserFactory
 
 
 User = get_user_model()
 
 
 class UserProfileTest(TestCase):
-    USERNAME = "Jane Smith"
-    EMAIL = "jsmith@localhost"
-    PASSWORD = 'password'
-    FIRST_NAME = "Jane"
-    LAST_NAME = "Smith"
 
-    USERNAME2 = "John Doe"
-    EMAIL2 = "jdoe@localhost"
+    @classmethod
+    def setUpTestData(cls):
+        super(UserProfileTest, cls).setUpTestData()
+        cls.user1 = UserFactory()
+        cls.user2 = UserFactory(first_name='', last_name='')
 
-    # create test users
     def setUp(self):
         super(UserProfileTest, self).setUp()
-        User.objects.create_user(
-            username=self.USERNAME,
-            email=self.EMAIL,
-            password=self.PASSWORD,
-            first_name=self.FIRST_NAME,
-            last_name=self.LAST_NAME
-            )
-        User.objects.create_user(
-            username=self.USERNAME2,
-            email=self.EMAIL2,
-            password=self.PASSWORD)
+        self.client.force_login(self.user1)
 
-    def test_profile(self):
-        """ Ensure user profile has appropriate fields"""
-        # Load objects
-        user1 = User.objects.get(email=self.EMAIL)
-        user2 = User.objects.get(email="jdoe@localhost")
-        # Asserts
-        self.assertTrue(user1.profile is not None)
-        self.assertTrue(user1.profile.initials == "JS")
-        self.assertTrue(user2.profile.initials == '')
+    def test_self_profile(self):
+        response = self.client.get(reverse('profile:index'))
+        self.assertEqual(response.status_code, codes.ok)
+
+    def test_other_profile(self):
+        target_kwargs = {'username': self.user2.username}
+        response = self.client.get(reverse('profile:profile', kwargs=target_kwargs))
+        self.assertEqual(response.status_code, codes.ok)
+
+    def test_settings(self):
+        response = self.client.get(reverse('profile:settings'))
+        self.assertEqual(response.status_code, codes.ok)
+        response = self.client.post(
+            reverse('profile:settings'),
+            data={'data': '{"testkey": "testvalue"}'},
+        )
+        self.assertEqual(response.status_code, codes.no_content)
+        target_kwargs = {'key': 'testkey'}
+        response = self.client.get(reverse('profile:settings_key', kwargs=target_kwargs))
+        self.assertEqual(response.json(), 'testvalue')
+

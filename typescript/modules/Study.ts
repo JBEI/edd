@@ -5,10 +5,13 @@
 import * as $ from "jquery";
 import { EDDEditable } from "./EDDEditableElement"
 import { EDDAuto } from "./EDDAutocomplete"
+import { Utl } from "../modules/Utl"
 
 
 export module StudyBase {
     'use strict';
+
+    let studyBaseUrl: URL = Utl.relativeURL('../');
 
     $( window ).on("load", function() { // Shortcutting this to .load confuses jQuery
         EDDAuto.BaseAuto.initPreexisting();
@@ -33,7 +36,7 @@ export module StudyBase {
     export class EditableStudyName extends EditableStudyElement {
         constructor(inputElement: HTMLElement) {
             super(inputElement);
-            this.formURL('/study/' + EDDData.currentStudyID + '/rename/');
+            this.formURL(Utl.relativeURL('rename/', studyBaseUrl).toString());
         }
 
         canCommit(value): boolean {
@@ -41,11 +44,7 @@ export module StudyBase {
         }
 
         getValue():string {
-            return EDDData.Studies[EDDData.currentStudyID].name;
-        }
-
-        setValue(value) {
-            EDDData.Studies[EDDData.currentStudyID].name = value;
+            return $(this.inputElement).val();
         }
 
         blankLabel(): string {

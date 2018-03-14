@@ -1,13 +1,10 @@
 #!/usr/bin/python
-
+# coding: utf-8
 """
 Interpret a Biolector XML file, creating a series of measurement sets suitable for passing to
 Step 2 of the EDD Data Table Import page.
 """
 
-from __future__ import unicode_literals
-
-from builtins import str
 from xml.dom import pulldom
 from xml.sax import handler
 from xml.sax.expatreader import ExpatParser as _ExpatParser
@@ -56,7 +53,7 @@ class BiolectorXMLReader(six.Iterator):
             return self.rawImportRecordBuffer.pop()
 
         # If the buffer is empty, we add a new chunk of RawImportRecord objects to it, by rolling
-        # through this ugly finite state machine until we hit the closing of a Fermentation element.
+        # through this ugly finite state machine until we hit the closing of a Fermentation element
         # (RawImportRecords are most easy to create in quantity, since a Fermentation node contains
         # many record' worth of measurements, and contains a Line name and metadata that applies to
         # all of them.)

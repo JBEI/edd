@@ -1,4 +1,5 @@
 import * as jQuery from "jquery"
+import { Utl } from "./Utl"
 
 export module FileDropZone {
 
@@ -18,46 +19,41 @@ export module FileDropZone {
         // fileRead(), is passed a processed result from the server as a second argument,
         // rather than the raw contents of the file.
         fileReturnedFromServer(fileContainer, result): void {
-
-            let currentPath = window.location.pathname;
-            let linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) +
-                this.pageRedirect;
+            let base = Utl.relativeURL('../');
+            let redirect = Utl.relativeURL(this.pageRedirect, base);
+            let message = JSON.parse(result.xhr.response);
             $('<p>', {
-                text: 'Success! ' + result['lines_created'] + ' lines added!',
+                text: ['Success!', message['lines_created'], 'lines added!'].join(' '),
                 style: 'margin:auto'
             }).appendTo('#linesAdded');
-
-            $('#linesAdded').show();
-
-            this.successfulRedirect(linesPathName)
+            $('#linesAdded').removeClass('off');
+            this.successfulRedirect(redirect.pathname)
         }
 
         fileWarningReturnedFromServer(fileContainer, result): void {
-            let currentPath = window.location.pathname;
             let newWarningAlert = $('.alert-warning').eq(0).clone();
-            let linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) +
-                this.pageRedirect;
+            let base = Utl.relativeURL('../');
+            let redirect = Utl.relativeURL(this.pageRedirect, base);
 
             this.copyActionButtons();
 
-            $('#acceptWarnings').find('.acceptWarnings').on('click', (ev:JQueryMouseEventObject): boolean => {
-                ev.preventDefault();
-                ev.stopPropagation();
-                this.successfulRedirect(linesPathName);
-                return false;
-            });
+            $('#acceptWarnings').find('.acceptWarnings')
+                .on('click', (ev:JQueryMouseEventObject): boolean => {
+                    this.successfulRedirect(redirect.pathname);
+                    return false;
+                });
 
             $('<p>', {
                 text: 'Success! ' + result['lines_created'] + ' lines added!',
                 style: 'margin:auto'
             }).appendTo('#linesAdded');
-            //display success message
-            $('#linesAdded').show();
+            // display success message
+            $('#linesAdded').removeClass('off');
             this.generateMessages('warnings', result.warnings);
             this.generateAcceptWarning();
         }
 
-        successfulRedirect=(linesPathName): void => {
+        successfulRedirect(linesPathName): void {
             //redirect to lines page
             setTimeout(function () {
                 window.location.pathname = linesPathName;
@@ -65,7 +61,7 @@ export module FileDropZone {
         };
 
 
-        copyActionButtons=(): void=> {
+        copyActionButtons(): void {
             let original:JQuery, copy:JQuery, originalDismiss:JQuery, copyDismiss:JQuery,
                 originalAcceptWarnings:JQuery, copyAcceptWarnings:JQuery;
             if (!this.actionPanelIsCopied) {
@@ -98,12 +94,11 @@ export module FileDropZone {
 
             this.copyActionButtons();
 
-            let parent:JQuery = $('#alert_placeholder'), dismissAll:JQuery = $('#dismissAll').find('.dismissAll'),
-                linesPathName:string, currentPath:string;
-            currentPath = window.location.pathname;
-            linesPathName = currentPath.slice(0, currentPath.lastIndexOf('overview')) + 'experiment-description';
+            let parent: JQuery = $('#alert_placeholder'),
+                dismissAll: JQuery = $('#dismissAll'),
+                baseUrl: URL = Utl.relativeURL('../');
             // reset the drop zone here
-            //parse xhr.response
+            // parse xhr.response
             var obj, error, id;
             try {
                 if (xhr.status === 504) {
@@ -117,7 +112,7 @@ export module FileDropZone {
                     this.generateMessages('warnings', obj.warnings)
                 }
             } catch (e) {
-                //if there is no backend error message or error (html response), show this
+                // if there is no backend error message or error (html response), show this
                 let defaultError = {
                     category: "",
                     summary: "There was an error",
@@ -125,9 +120,9 @@ export module FileDropZone {
                 };
                 this.alertError(defaultError);
             }
-            //add a dismiss all alerts button
-            if ($('.alert').length > 8 && !dismissAll.is(":visible")) {
-                dismissAll.show();
+            // add a dismiss all alerts button
+            if ($('.alert').length > 8) {
+                dismissAll.removeClass('off');
             }
 
             //set up click handler events
@@ -139,10 +134,12 @@ export module FileDropZone {
             });
 
             parent.find('.allowDuplicates').on('click', (ev:JQueryMouseEventObject): boolean => {
+                let f = fileContainer.file,
+                    targetUrl = new URL('describe', baseUrl.toString());
                 ev.preventDefault();
                 ev.stopPropagation();
-                var f = fileContainer.file;
-                f.sendTo(currentPath.split('overview')[0] + 'describe/?ALLOW_DUPLICATE_NAMES=true');
+                targetUrl.searchParams.append('ALLOW_DUPLICATE_NAMES', 'true');
+                f.sendTo(targetUrl.toString());
                 $('#duplicateError').hide();
                 return false;
             });
@@ -154,7 +151,7 @@ export module FileDropZone {
                 return false;
             });
             //dismiss all alerts
-            dismissAll.on('click', (ev:JQueryMouseEventObject): boolean => {
+            dismissAll.on('click', '.dismissAll', (ev:JQueryMouseEventObject): boolean => {
                 ev.preventDefault();
                 ev.stopPropagation();
                 parent.find('.close').click();
@@ -162,15 +159,16 @@ export module FileDropZone {
                 return false;
             });
 
-            $('#acceptWarnings').find('.acceptWarnings').on('click', (ev:JQueryMouseEventObject): boolean => {
+            $('#acceptWarnings').find('.acceptWarnings').on('click', (ev): boolean => {
+                let redirect = Utl.relativeURL('experiment-description/', baseUrl);
                 ev.preventDefault();
                 ev.stopPropagation();
-                this.successfulRedirect(linesPathName);
+                this.successfulRedirect(redirect.pathname);
                 return false;
             });
         }
 
-        generateMessages=(type, response) => {
+        generateMessages(type, response) {
             var responseMessages = this.organizeMessages(response);
             for (var key in responseMessages) {
                 let div;
@@ -183,8 +181,8 @@ export module FileDropZone {
             }
         };
 
-        processICEerror=(dropzone, type, responses): void => {
-            $('.noDuplicates, .noOmitStrains').on('click', (ev:JQueryMouseEventObject): boolean => {
+        processICEerror(dropzone, type, responses): void {
+            $('.noDuplicates, .noOmitStrains').on('click', (ev): boolean => {
                 ev.preventDefault();
                 ev.stopPropagation();
                 window.location.reload();
@@ -193,11 +191,11 @@ export module FileDropZone {
             for (var response of responses) {
                 // create dismissible error alert
                 this.alertIceWarning(response);
-                }
+            }
         };
 
 
-        generateAcceptWarning=(): void => {
+        generateAcceptWarning(): void {
             var warningAlerts:JQuery, acceptWarningDiv:JQuery;
             warningAlerts = $('.alert-warning:visible');
             acceptWarningDiv = $('#acceptWarnings').find('.acceptWarnings');
@@ -209,7 +207,7 @@ export module FileDropZone {
             acceptWarningDiv.show();
         };
 
-        organizeMessages=(responses)=>{
+        organizeMessages(responses) {
             var obj = {};
             for (var response of responses) {
                 var message = response.summary + ": " + response.details;
@@ -223,7 +221,7 @@ export module FileDropZone {
             return obj;
         };
 
-        generate504Error=(): void =>{
+        generate504Error(): void {
             let response = {
                 category: "",
                 summary: "EDD timed out",
@@ -232,27 +230,27 @@ export module FileDropZone {
             this.alertError(response)
         };
 
-        alertIceWarning=(response): void => {
+        alertIceWarning(response): void {
             let iceError = $('#iceError');
             response.category = "Warning! " + response.category;
             this.createAlertMessage(iceError, response);
         };
 
-        alertError=(response): void => {
+        alertError(response): void {
             var newErrorAlert = $('.alert-danger').eq(0).clone();
             this.createAlertMessage(newErrorAlert, response);
             this.clearDropZone();
         };
 
-        createAlertMessage=(alertClone, response) => {
+        createAlertMessage(alertClone, response) {
             $(alertClone).children('h4').text(response.category);
             $(alertClone).children('p').text(response.summary + ": " + response.details);
             $('#alert_placeholder').append(alertClone);
-            $(alertClone).show();
+            $(alertClone).removeClass('off').show();
         };
 
 
-        alertMessage=(subject, messages, newAlert, type): void => {
+        alertMessage(subject, messages, newAlert, type): void {
             if (type === "warnings") {
                 $(newAlert).children('h4').text("Warning! " + subject);
             } else {
@@ -267,10 +265,10 @@ export module FileDropZone {
                 $(newAlert).append(summary)
             };
             $('#alert_placeholder').append(newAlert);
-            $(newAlert).show();
+            $(newAlert).removeClass('off').show();
         };
 
-        clearDropZone=(): void => {
+        clearDropZone(): void {
             $('#experimentDescDropZone').removeClass('off');
             $('#fileDropInfoIcon').addClass('off');
             $('#fileDropInfoName').addClass('off');

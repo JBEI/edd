@@ -35,11 +35,11 @@ import requests
 from logging.config import dictConfig
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from requests.exceptions import HTTPError
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from jbei.rest.auth import EddSessionAuth, IceSessionAuth
-from jbei.rest.clients import EddApi, IceApi
-from jbei.rest.clients.ice import Strain as IceStrain
+from jbei.rest.clients.edd.api import EddApi
+from jbei.rest.clients.ice.api import IceApi, Strain as IceStrain
 from jbei.rest.clients.ice.api import ICE_ENTRY_TYPES
 from jbei.rest.utils import is_url_secure
 from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TYPICAL_UUID_PATTERN

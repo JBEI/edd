@@ -4,9 +4,9 @@ Defines utility classes for use in HTTP request generation.
 import arrow
 import logging
 
+from requests.compat import urlsplit
 from requests.sessions import Session as SessionApi
-from urlparse import parse_qs, urlsplit, urlunsplit
-from urllib import urlencode
+from six.moves.urllib.parse import parse_qs
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,7 @@ class PagedSession(Session):
         found_in_url = param_name in url_query_params
         if found_in_url:
             url_param_val = url_query_params.get(param_name)
-            updated_value = [unicode(self.result_limit)]
+            updated_value = [str(self.result_limit)]
             if url_param_val != updated_value:
                 logger.warning(
                     'An existing request parameter named "%(param)s" was present in the URL. This '
@@ -160,10 +160,6 @@ class PagedSession(Session):
                         'url_val': url_param_val,
                         'new_val': updated_value, })
                 url_query_params[param_name] = updated_value
-                # url = urlunsplit(
-                #     url_parts.scheme, url_parts.netloc, url_parts.path,
-                #     urlencode(url_query_params), url_parts.fragment, url_parts.username,
-                #     url_parts.password, url_parts.hostname, url_parts.port)
                 url = url_parts.geturl()
                 logger.debug('......Original URL: %s, Updated URL: %s' % (original_url, url))
 

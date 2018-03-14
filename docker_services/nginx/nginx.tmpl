@@ -92,6 +92,10 @@ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $proxy_x_forwarded_proto;
 proxy_set_header X-Forwarded-Ssl $proxy_x_forwarded_ssl;
 proxy_set_header X-Forwarded-Port $proxy_x_forwarded_port;
+# timeouts
+proxy_connect_timeout 30s;
+proxy_read_timeout 7d;
+proxy_send_timeout 30s;
 
 # Mitigate httpoxy attack (see README for details)
 proxy_set_header Proxy "";
@@ -264,8 +268,6 @@ server {
     {{ if $vhostStatic }}
     location @upstream_proxy {
       proxy_pass_header     Server;
-      proxy_connect_timeout 20;
-      proxy_read_timeout    20;
       proxy_pass            {{ trim $proto }}://{{ trim $upstream_name }};
       proxy_redirect        {{ trim $proto }}://{{ trim $upstream_name }}   https://$host;
     }
@@ -319,8 +321,6 @@ server {
     {{ if $vhostStatic }}
     location @upstream_proxy {
       proxy_pass_header     Server;
-      proxy_connect_timeout 20;
-      proxy_read_timeout    20;
       proxy_pass            {{ trim $proto }}://{{ trim $upstream_name }};
       proxy_redirect        {{ trim $proto }}://{{ trim $upstream_name }}   https://$host;
     }

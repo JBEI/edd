@@ -1,7 +1,5 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
-from builtins import str
 from django.contrib import messages
 from django.db import transaction
 from django.utils.translation import ugettext as _

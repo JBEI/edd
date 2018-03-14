@@ -1,6 +1,5 @@
 /* Example images */
 
-
 img.exampleImage {
 	border: none;
 	padding:4px;
@@ -9,7 +8,6 @@ img.exampleImage {
 	-moz-box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
 	box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
 }
-
 
 .form-control-import {
     display: inline-block;
@@ -86,11 +84,14 @@ div.resetButtonDiv:hover {
 }
 
 /* The Step 2 data entry box and file drop area */
+div#importDropZone {
+	padding: 0;
+}
 
 textarea.dataTextArea {
 	margin:0px;
 	font-size:8.5pt;
-	width:98.5%;
+	width:100%;
 }
 
 /* (The file drop zone styling is in common.css) */

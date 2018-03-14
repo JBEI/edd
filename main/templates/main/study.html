@@ -1,55 +1,63 @@
 {% extends "edd_base.html" %}
+{% load i18n %}
 {% load staticfiles %}
 
+
 {% block js_css %}
-    {{ block.super }}
-    <script type="text/javascript">
-
-        EDDData.currentStudyID = {{ study.id }};
-        EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
-        EDDData.Studies = EDDData.Studies || {};
-        EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
-
-    </script>
-
+  {{ block.super }}
+  <script type="text/javascript">
+    // TODO: should not need this script block
+    var EDDData = EDDData || {};
+    EDDData.currentStudyID = {{ study.id }};
+    EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
+    EDDData.Studies = EDDData.Studies || {};
+    EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
+  </script>
 {% endblock js_css %}
 
+
 {% block head_title %}
-    {{ study.name }} - Experiment Data Depot
+  {{ study.name }} - Experiment Data Depot
 {% endblock head_title %}
+
 
 {% block body_title %}
 <div class="editable-field inactive editableStudyName" id="editable-study-name">
-    {{ study.name }}
-    {{ edit_study.name }}
+  {{ study.name }}
+  {{ edit_study.name }}
 </div>
 {% endblock body_title %}
 
+
 {% block content %}
 <div class="studyNav">
-    <ui class="nav nav-pills navbar">
-        <li class="{% if showingoverview %}active{% endif %}">
-            <a href="{% url 'main:overview' slug=study.slug %}">Overview</a>
-        </li>
-        {% if lines %}
-            <li class="{% if showinglines %}active{% endif %}">
-               <a href="{% url 'main:lines' slug=study.slug %}">Experiment Description</a>
-            </li>
-        {% endif %}
-        {% if assays %}
-            <li class="{% if showingdata %}active{% endif %}">
-            <a href="{% url 'main:detail' slug=study.slug %}">Data</a>
-            </li>
-        {% endif %}
-    </ui>
-    {% if writable %}
-        <a style="color:white;" href="{% url 'main:table-import' slug=study.slug %}">
-            <button style="{% if showingimport %}display:none;{% endif %}float:right;"
-                type="button" class="{% if not lines %}off{% endif %} actionButton primary larger">
-                <span class="glyphicon glyphicon-cloud-upload"></span> Import Data
-            </button>
-        </a>
+  <ui class="nav nav-pills">
+    <li class="{% if showingoverview %}active{% endif %}">
+      <a href="{% url 'main:overview' slug=study.slug %}">{% trans 'Overview' %}</a>
+    </li>
+    {% if lines %}
+    <li class="{% if showinglines %}active{% endif %}">
+      <a href="{% url 'main:lines' slug=study.slug %}">{% trans 'Experiment Description' %}</a>
+    </li>
     {% endif %}
+    {% if assays %}
+    <li class="{% if showingdata %}active{% endif %}">
+      <a href="{% url 'main:detail' slug=study.slug %}">{% trans 'Data' %}</a>
+    </li>
+    {% endif %}
+  </ui>
+  {% if writable and not showingimport %}
+  <a style="color:white;"
+      class="{% if not lines %}off{% endif %}"
+      href="{% url 'main:table-import' slug=study.slug %}">
+    <button type="button"
+        style="float:right;"
+        class="actionButton primary larger">
+      <span class="glyphicon glyphicon-cloud-upload"></span>
+      {% trans 'Import Data' %}
+    </button>
+  </a>
+  {% endif %}
 </div>
 
 {% endblock content %}

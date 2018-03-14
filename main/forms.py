@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import json
 import logging
 
-from builtins import str
 from copy import deepcopy
 from django import forms
 from django.conf import settings
@@ -13,15 +11,18 @@ from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import CharField as DbCharField, F, Q, Value as V
 from django.db.models.base import Model
+from django.db.models.functions import Concat
 from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from functools import partial
+from future.utils import viewitems
 
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
+from . import models
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
     MeasurementValue, MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, Strain,
@@ -75,7 +76,7 @@ class MultiAutocompleteWidget(AutocompleteWidget):
             # delegate decompress for individual items
             values = map(super(MultiAutocompleteWidget, self).decompress, value.all())
             # zip together into array of two value-arrays
-            values = zip(*values)
+            values = list(zip(*values))
             if len(values):
                 # join by the separator string
                 return [
@@ -89,17 +90,17 @@ class MultiAutocompleteWidget(AutocompleteWidget):
 
     def render(self, name, value, attrs=None):
         joined = []
-        _range = range(len(self.widgets))
-        for index in _range:
+        widget_count = len(self.widgets)
+        for index in range(widget_count):
             joined.append([])
         if value is None:
             value = []
         for item in value:
             if not isinstance(item, list):
                 item = self.decompress(item)
-            for index in _range:
+            for index in range(widget_count):
                 joined[index].append(item[index] if len(item) > index else '')
-        for index in _range:
+        for index in range(widget_count):
             joined[index] = self._separator.join(map(str, joined[index]))
         return super(MultiAutocompleteWidget, self).render(name, joined, attrs)
 
@@ -305,9 +306,8 @@ class SbmlInfoAutocompleteWidget(AutocompleteWidget):
         'Try casting a value to int, return None if fails'
         try:
             return int(value)
-        except:
-            pass
-        return None
+        except ValueError:
+            return None
 
 
 class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
@@ -371,21 +371,23 @@ class CreateStudyForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
-        self._user = kwargs.pop('user', None)   # Q: Why are we assigning this to self?
+        self._user = kwargs.pop('user', None)
         super(CreateStudyForm, self).__init__(*args, **kwargs)
         # self.fields exists after super.__init__()
         if self._user:
             # make sure lines are in a readable study
-            q = Study.user_permission_q(
-                self._user,
-                StudyPermission.READ,
-                keyword_prefix='study__',
-            )
             if self._user.is_superuser:
                 queryset = Line.objects.filter()
             else:
-                queryset = Line.objects.filter(q)
+                queryset = Line.objects.filter(Study.access_filter(self._user, via='study'))
             self.fields['lineId'].queryset = queryset
+
+    def clean(self):
+        super().clean()
+        # if no explicit contact is set, make the current user the contact
+        # TODO: handle contact_extra too
+        if 'contact' not in self.cleaned_data or not self.cleaned_data.get('contact'):
+            self.cleaned_data['contact'] = self._user
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
         # perform updates atomically to the study and related user permissions
@@ -403,20 +405,21 @@ class CreateStudyForm(forms.ModelForm):
             default_group_names = getattr(settings, _SETTING_NAME, None)
             if default_group_names:
                 default_groups = Group.objects.filter(name__in=default_group_names)
+                default_groups = default_groups.values_list('pk', flat=True)
                 requested_groups = len(default_group_names)
                 found_groups = len(default_groups)
                 if requested_groups != found_groups:
                     logger.error(
-                        'Setting only %(found)d of %(requested)d default read permissions for '
-                        'study %(study)d. Check %(setting_name)s and update this study.' % {
-                            'found': found_groups,
-                            'requested': requested_groups,
-                            'study': s.id,
-                            'setting_name': _SETTING_NAME, })
-
+                        f'Setting only {found_groups} of {requested_groups} read permissions '
+                        f'for study `{s.slug}`.'
+                    )
+                    logger.error(
+                        f'Check that all group names set in the `{_SETTING_NAME}` value in '
+                        'Django settings is valid.'
+                    )
                 for group in default_groups:
                     s.grouppermission_set.update_or_create(
-                        group_id=group.pk,
+                        group_id=group,
                         defaults={'permission_type': StudyPermission.READ}
                     )
 
@@ -556,7 +559,7 @@ class LineForm(forms.ModelForm):
         super(LineForm, self).__init__(*args, **kwargs)
         # alter all fields to include a "bulk-edit" checkbox in label
         # initially hidden via "off" class
-        for fieldname, field in self.fields.items():
+        for fieldname, field in viewitems(self.fields):
             field.label = mark_safe(
                 '<input type="checkbox" class="off bulk" name="%s" checked="checked" '
                 'value/>%s' % (self.add_prefix('_bulk_%s' % fieldname), field.label)
@@ -616,7 +619,7 @@ class LineForm(forms.ModelForm):
         # go through and delete any keys with None values
         meta = self.cleaned_data['meta_store']
         none_keys = []
-        for key, value in meta.items():
+        for key, value in viewitems(meta):
             if value is None:
                 none_keys.append(key)
         for key in none_keys:
@@ -629,6 +632,13 @@ class LineForm(forms.ModelForm):
             in_place.update(meta)
             meta = in_place
         return meta
+
+    def clean(self):
+        super().clean()
+        # if no explicit experimenter is set, make the study contact the experimenter
+        if 'experimenter' not in self.cleaned_data or not self.cleaned_data.get('experimenter'):
+            if self._study.contact:
+                self.cleaned_data['experimenter'] = self._study.contact
 
     def is_editing(self):
         return self.instance.pk is not None
@@ -647,6 +657,10 @@ class AssayForm(forms.ModelForm):
     """ Form to create/edit an assay. """
     # include hidden field for applying form changes to an Assay instance by ID
     assay_id = forms.CharField(required=False, widget=forms.HiddenInput())
+    name = forms.CharField(
+        required=False,
+        max_length=255,
+    )
 
     class Meta:
         model = Assay
@@ -656,7 +670,6 @@ class AssayForm(forms.ModelForm):
         help_texts = {
             'name': _('If left blank, a name in form [Line]-[Protocol]-[#] will be generated. '),
             'description': _(''),
-
         }
         labels = {
             'name': _('Name'),
@@ -684,16 +697,48 @@ class AssayForm(forms.ModelForm):
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
         assay = super(AssayForm, self).save(commit=False, *args, **kwargs)
-
-        # quick function to copy assay instance from form, and set to correct line
-        def link_assay(line_id):
-            clone = deepcopy(assay)
-            clone.line_id = line_id
-            return clone
-        all_assays = map(link_assay, self._lines)
         if commit:
-            [a.save() for a in all_assays]
-        return all_assays
+            if not self._lines:
+                # when self._lines is not set, proceed normally for a ModelForm save override
+                assay.save()
+                self.save_m2m()
+
+            # when self._lines is set, Assay objects get created for each item
+
+            def link_to_line(line_id):
+                clone = deepcopy(assay)
+                clone.line_id = line_id
+                return clone
+
+            def save_linked(enum):
+                # caller passes linked iterator through enumerate, unpack the tuple
+                index = enum[0]
+                assay = enum[1]
+                if assay.name:
+                    # when the name is set, append the creation index to stay distinct
+                    assay.name = f'{assay.name} ({index})'
+                    assay.save()
+                else:
+                    # when the name is not set, save in two parts
+                    assay.save()
+                    # once saved, can update with linked parts in name
+                    parts = [F('line__name'), V('-'), F('protocol__name'), V(f'-{index}')]
+                    new_name = models.Assay.objects.values_list(
+                        Concat(*parts, output_field=DbCharField()),
+                        flat=True
+                    ).get(pk=assay)
+                    # required to query then update; Django does not support joins in update
+                    models.Assay.objects.filter(pk=assay).update(name=new_name)
+                return assay
+
+            # clone assay info and link each clone to a line
+            linked = map(link_to_line, self._lines)
+            # save the linked clones to the database
+            with transaction.atomic():
+                # wrap map in list to force iterating over the entire map, executing save
+                saved = list(map(save_linked, enumerate(linked, 1)))
+            return saved[0]  # returning only the first created assay
+        return assay
 
 
 class MeasurementForm(forms.ModelForm):
@@ -723,20 +768,29 @@ class MeasurementForm(forms.ModelForm):
         kwargs.setdefault('label_suffix', '')
         # store the parent Assays
         self._assays = kwargs.pop('assays', [])
+        # end up looking for hours repeatedly, just load once at init
+        self._hours = models.MeasurementUnit.objects.get(unit_name='hours')
         super(MeasurementForm, self).__init__(*args, **kwargs)
+
+    def _link_to_assay(self, measurement, assay_id):
+        clone = deepcopy(measurement)
+        clone.assay_id = assay_id
+        return clone
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
         measure = super(MeasurementForm, self).save(commit=False, *args, **kwargs)
-
-        # quick function to copy measurement instance from form, and set to correct assay
-        def link_measure(assay_id):
-            clone = deepcopy(measure)
-            clone.assay_id = assay_id
-            return clone
-        all_measures = map(link_measure, self._assays)
+        # TODO: hard-coding x_units for now; extend to take input for x-units?
+        measure.x_units = self._hours
         if commit:
-            [m.save() for m in all_measures]
-        return all_measures
+            def link_to_assay(assay_id):
+                clone = deepcopy(measure)
+                clone.assay_id = assay_id
+                return clone
+            linked = map(link_to_assay, self._assays)
+            with transaction.atomic():
+                saved = list(map(lambda m: m.save(), linked))
+            return saved[0]
+        return measure
 
 
 class MeasurementValueForm(forms.ModelForm):

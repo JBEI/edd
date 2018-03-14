@@ -247,6 +247,7 @@ if [ ! -f /code/edd/settings/local.py ]; then
     rm /code/edd/settings/local.py.bak
 fi
 cd /code
+export EDD_VERSION_HASH="$(git -C /code rev-parse --short HEAD)"
 
 # If specified, wait on other service(s)
 for ((i=0; i<${#WAIT_HOST[@]}; i++)); do
@@ -377,6 +378,14 @@ case "$COMMAND" in
     worker)
         banner "Starting Celery worker"
         exec celery -A edd worker -l info
+        ;;
+    daphne)
+        banner "Starting daphne"
+        exec daphne -b 0.0.0.0 -p 8000 edd.asgi:channel_layer
+        ;;
+    websocket)
+        banner "Starting WebSocket worker"
+        exec python manage.py runworker --threads 6
         ;;
     *)
         output "Unrecognized command: $COMMAND"

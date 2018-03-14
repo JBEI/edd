@@ -1,21 +1,18 @@
 # coding: utf-8
-from __future__ import division, unicode_literals
 
 import logging
 import os.path
 
-from builtins import str
-from cStringIO import StringIO
-from edd_utils.parsers.excel import (
-    export_to_xlsx, import_xlsx_table, import_xlsx_tables,
-)
-from edd_utils.form_utils import (
-    extract_floats_from_form, extract_integers_from_form, extract_non_blank_string_from_form,
-)
-from edd_utils.parsers import gc_ms
-from edd_utils.parsers import skyline
-from edd_utils.parsers import biolector
 from django.test import TestCase
+from io import StringIO
+
+from .parsers.excel import export_to_xlsx, import_xlsx_table, import_xlsx_tables
+from .form_utils import (
+    extract_floats_from_form,
+    extract_integers_from_form,
+    extract_non_blank_string_from_form,
+)
+from .parsers import biolector, gc_ms, skyline
 
 test_dir = os.path.join(os.path.dirname(__file__), "fixtures", "misc_data")
 logger = logging.getLogger(__name__)
@@ -26,19 +23,19 @@ logger = logging.getLogger(__name__)
 class GCMSTests(TestCase):
     def test_1(self):
         test_file = os.path.join(test_dir, "gc_ms_1.txt")
-        l = gc_ms.run([test_file], out=StringIO(), err=StringIO())
-        assert len(l.samples) == 102
-        # l.find_consensus_peaks(show_plot=True)
+        result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
+        assert len(result.samples) == 102
+        # result.find_consensus_peaks(show_plot=True)
         err = StringIO()
         out = StringIO()
-        l.show_peak_areas(out=out, err=err)
+        result.show_peak_areas(out=out, err=err)
         assert ("0059.D          562         None         None" in out.getvalue())
         assert ("0062.D       104049      1192526        35926" in out.getvalue())
         assert ("WARNING: 2 peaks near 8.092 for sample 0062.D" in err.getvalue())
         assert (err.getvalue().count("WARNING") == 44)
         err = StringIO()
         out = StringIO()
-        l.show_peak_areas_csv(out=out, err=err)
+        result.show_peak_areas_csv(out=out, err=err)
         assert ("0059.D,562,None,None" in out.getvalue())
         assert ("0062.D,104049,1192526,35926" in out.getvalue())
 
@@ -46,12 +43,12 @@ class GCMSTests(TestCase):
         # a slightly different format
         #
         test_file = os.path.join(test_dir, "gc_ms_2.txt")
-        l = gc_ms.run([test_file], out=StringIO(), err=StringIO())
-        assert len(l.samples) == 5, len(l.samples)
-        # print l.find_consensus_peaks()
+        result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
+        assert len(result.samples) == 5, len(result.samples)
+        # print result.find_consensus_peaks()
         err = StringIO()
         out = StringIO()
-        l.show_peak_areas(out=out, err=err)
+        result.show_peak_areas(out=out, err=err)
         assert (out.getvalue() == """\
           ID       Peak 1       Peak 2       Peak 3       Peak 4
   0827.a24.D       197080      1830086       849878       702183
@@ -65,7 +62,7 @@ class GCMSTests(TestCase):
         #
         test_file = os.path.join(test_dir, "skyline.csv")
         try:
-            l = gc_ms.run([test_file], out=StringIO(), err=StringIO())
+            result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
         except ValueError:
             pass
         else:
@@ -219,46 +216,31 @@ class UtilsTests(TestCase):
             'str2': ["foo", "bar"],
             'str3': "",
         }
-        assert(extract_integers_from_form(form, "int1") == 1)
-        assert(extract_floats_from_form(form, "int1") == 1.0)
-        assert(extract_integers_from_form(form, "int3", allow_list=True) == [1, 2, 3, ])
-        assert(extract_floats_from_form(form, 'float3', allow_list=True) == [1.5, ])
-        assert(extract_non_blank_string_from_form(form, 'str1') == "foo")
-        assert(extract_non_blank_string_from_form(form, 'str2', allow_list=True) == ["foo", "bar"])
-        try:
+        self.assertEqual(extract_integers_from_form(form, "int1"), 1)
+        self.assertEqual(extract_floats_from_form(form, "int1"), 1.0)
+        self.assertEqual(extract_integers_from_form(form, "int3", allow_list=True), [1, 2, 3, ])
+        self.assertEqual(extract_floats_from_form(form, 'float3', allow_list=True), [1.5, ])
+        self.assertEqual(extract_non_blank_string_from_form(form, 'str1'), "foo")
+        self.assertEqual(
+            extract_non_blank_string_from_form(form, 'str2', allow_list=True),
+            ["foo", "bar"]
+        )
+        with self.assertRaises(TypeError):
             extract_integers_from_form(form, "int3")
-        except TypeError:
-            pass
-        else:
-            assert False
-        try:
+        with self.assertRaises(ValueError):
             extract_integers_from_form(form, 'int2')
-        except ValueError:
-            pass
-        else:
-            assert False
-        try:
+        with self.assertRaises(KeyError):
             extract_integers_from_form(form, 'int5')
-        except KeyError:
-            pass
-        else:
-            assert False
-        try:
+        with self.assertRaises(ValueError):
             extract_integers_from_form(form, 'int4', allow_list=True)
-        except ValueError:
-            pass
-        else:
-            assert False
-        try:
+        with self.assertRaises(ValueError):
             extract_non_blank_string_from_form(form, 'str3')
-        except ValueError:
-            pass
-        else:
-            assert False
-        assert (extract_non_blank_string_from_form(form, 'str3',
-                return_none_if_missing=True) is None)
-        assert (extract_floats_from_form(form, 'float4',
-                return_none_if_missing=True) is None)
+        self.assertIsNone(
+            extract_non_blank_string_from_form(form, 'str3', return_none_if_missing=True)
+        )
+        self.assertIsNone(
+            extract_floats_from_form(form, 'float4', return_none_if_missing=True)
+        )
 
 # _INITIAL_ICE_RETRY_DELAY = config['ice'].get('initial_retry_delay_seconds', 2)
 # _MAX_ICE_RETRIES = config['ice'].get('max_retries', 19)

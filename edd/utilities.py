@@ -3,11 +3,8 @@
 General utility code for EDD, not tied to Django or Celery.
 """
 
-from __future__ import absolute_import, unicode_literals
-
 import json
 
-from builtins import str
 from datetime import datetime
 from dateutil import parser
 from decimal import Decimal

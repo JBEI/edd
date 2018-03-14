@@ -22,7 +22,7 @@ Row = namedtuple('Row', ['info', 'values', 'count', 'mean', 'variance', ])
 
 # builds list of bins from 0.15, 0.25, …, 7.85, 7.95
 halfstep = Decimal('0.05')
-bins = list(map(lambda v: (v / 10) - halfstep, list(map(Decimal, range(2, 81)))))
+bins = [(Decimal(v) / 10) - halfstep for v in range(2, 81)]
 name_pattern = re.compile(r'(\w+)_(\d+)h_MP(\d)_(\w+)\s+(\w+)')
 
 
@@ -52,16 +52,16 @@ def process_file(filename):
             # name is the first cell, parse into Info
             info = parse_name(row[0])
             # values are the remaining cells; last cell is empty
-            values = list(map(int, row[1:-1]))
+            values = [int(v) for v in row[1:-1]]
             # build an enumeration of values
-            evalues = list(map(lambda e: Enum(*e), enumerate(values)))
+            evalues = [Enum(*e) for e in enumerate(values)]
             # sum of all cells is population count
             count = sum(values)
             if count:
                 # cell value multiplied by bin value across all bins, averaged
-                mean = sum(map(lambda v: bins[v.index] * v.value, evalues)) / count
+                mean = sum([bins[v.index] * v.value for v in evalues]) / count
                 # cell value multiplied by square of difference from bin to mean, averaged
-                variance = sum(map(lambda v: ((bins[v.index] - mean) ** 2) * v.value, evalues)) / count
+                variance = sum([((bins[v.index] - mean) ** 2) * v.value for v in evalues]) / count
             else:
                 mean = Decimal(0.)
                 variance = Decimal(0.)

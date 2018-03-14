@@ -1,22 +1,20 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import json
 import os
 
-from builtins import str
-from collections import defaultdict
 from django.contrib.auth import get_user_model
-from django.contrib.staticfiles.storage import staticfiles_storage
-from django.db import transaction
-from django.test import tag, TestCase
+from django.test import TestCase
+from future.utils import viewitems
 from jsonschema import Draft4Validator
 from openpyxl import load_workbook
 
 from main.importer.experiment_desc import CombinatorialCreationImporter
-from main.importer.experiment_desc.constants import (REPLICATE_COUNT_ELT,
-                                                     ELEMENTS_SECTION, ABBREVIATIONS_SECTION,
-                                                     BASE_NAME_ELT)
+from main.importer.experiment_desc.constants import (
+    ABBREVIATIONS_SECTION,
+    ELEMENTS_SECTION,
+    REPLICATE_COUNT_ELT,
+)
 from main.importer.experiment_desc.importer import (_build_response_content,
                                                     ExperimentDescriptionOptions)
 from main.importer.experiment_desc.parsers import ExperimentDescFileParser, JsonInputParser
@@ -219,7 +217,7 @@ class CombinatorialCreationTests(TestCase):
         for line_name in expected_line_names:
             protocol_to_assay_to_meta = {}
             expected_assay_metadata[line_name] = protocol_to_assay_to_meta
-            for protocol_pk, assay_meta in assay_metadata.iteritems():
+            for protocol_pk, assay_meta in viewitems(assay_metadata):
                 assay_to_meta = {}
                 protocol_to_assay_to_meta[protocol_pk] = assay_to_meta
                 for meta in assay_meta:
@@ -274,9 +272,6 @@ class CombinatorialCreationTests(TestCase):
         planned_line_count = len(naming_results.line_names)
         unique_planned_line_names = set(naming_results.line_names)
 
-        # TODO: remove debug stmt
-        print('Computed line names: %s' % naming_results.line_names)
-
         # verify planned line names, while tolerating ordering differences in dict use as a
         # result of parsing
         self.assertEqual(len(naming_results.line_names), len(expected_line_names))
@@ -296,7 +291,7 @@ class CombinatorialCreationTests(TestCase):
 
         for line_name in expected_line_names:
             if expected_protocols_to_assay_suffixes:
-                for protocol_pk, exp_suffixes in expected_protocols_to_assay_suffixes.iteritems():
+                for protocol_pk, exp_suffixes in viewitems(expected_protocols_to_assay_suffixes):
                     self._test_assay_names(
                         line_name,
                         naming_results,
@@ -348,7 +343,7 @@ class CombinatorialCreationTests(TestCase):
                     'found': found_protocol_count
                 })
 
-            for protocol_pk, assays_list in protocol_to_assays_list.iteritems():
+            for protocol_pk, assays_list in viewitems(protocol_to_assays_list):
                 planned_assay_names = protocol_to_planned_assay_names.get(protocol_pk)
                 self.assertEquals(
                     len(assays_list),
@@ -370,10 +365,6 @@ class CombinatorialCreationTests(TestCase):
                 related_object_mtypes = cache.related_object_mtypes  # includes many_related
                 many_related_obj_mtypes = cache.many_related_mtypes
 
-                # TODO: remove debug block
-                print('Related object mtypes: %s' % related_object_mtypes)
-                print('Many related mtypes: %s' % many_related_obj_mtypes)
-
                 exp_metadata = exp_meta_by_line.get(created_line.name)
                 self._test_line_metadata(created_line, exp_metadata, cache,
                                          related_object_mtypes,
@@ -386,13 +377,12 @@ class CombinatorialCreationTests(TestCase):
             # TODO: reorganize this test to be driven by expected results rather than actual..
             # also add size checks for intermediate storage levels and move it back under
             # the larger line-based loop above
-            line_items = creation_results.line_to_protocols_to_assays_list.iteritems()
+            line_items = viewitems(creation_results.line_to_protocols_to_assays_list)
             for line_name, protocol_to_assay in line_items:
-                for protocol, assays_list in protocol_to_assay.iteritems():
+                for protocol, assays_list in viewitems(protocol_to_assay):
                     for assay in assays_list:
-                            expected_metadata = exp_assay_metadata[line_name][protocol][
-                                assay.name]
-                            self.assertEqual(expected_metadata, assay.meta_store)
+                        expected_metadata = exp_assay_metadata[line_name][protocol][assay.name]
+                        self.assertEqual(expected_metadata, assay.meta_store)
 
         # for future tests that may want access to creation results, (e.g. to spot check large
         # assay metadata sets instead of exhaustively specifying), return them
@@ -406,24 +396,12 @@ class CombinatorialCreationTests(TestCase):
             # attributes with a MetadataType analog
             return
 
-        print('Expected line metadata: %s' % exp_metadata)  # TODO: remove
-
         # find pks of expected line metadata that correspond to specialized
         # MetadataTypes representing Line foreign key relations in the created lines
 
         # includes many_related
-        exp_related_obj_meta_pks = [meta_pk for meta_pk in
-                                    exp_metadata.iterkeys() if
-                                    meta_pk in related_object_mtypes]
-        exp_many_related_obj_meta_pks = [meta_pk for meta_pk in
-                                         exp_metadata.iterkeys() if
-                                         meta_pk in many_related_obj_mtypes]
-
-        # TODO: remove debug block following test improvements
-        print('exp_ro: %s' % exp_related_obj_meta_pks)
-        print('exp mro: %s' % exp_many_related_obj_meta_pks)
-        print('line meta: %s' % line.meta_store)
-        print('line: %s' % line)
+        exp_related_obj_meta_pks = set(exp_metadata) & set(related_object_mtypes)
+        exp_many_related_obj_meta_pks = set(exp_metadata) & set(many_related_obj_mtypes)
 
         # if no relations are specified by metadata, just do a strict equality check
         if not exp_related_obj_meta_pks:
@@ -440,34 +418,23 @@ class CombinatorialCreationTests(TestCase):
         # cleaner/safer to just re-fetch here.
         line = Line.objects.get(pk=line.pk)
 
-        # TODO: also consider collapsing much of this experimental-but-functional code together &
-        # removing print stmts... once things work
+        # TODO: also consider collapsing much of this experimental-but-functional code together
 
         # loop over expected metadata for this line
-        for meta_pk, exp_meta_val in exp_metadata.iteritems():
+        for meta_pk, exp_meta_val in viewitems(exp_metadata):
             # work around string encoding used to facilitate hstore comparison
             meta_pk = meta_pk if isinstance(meta_pk, int) else int(meta_pk)
             meta_type = cache.line_meta_types[meta_pk]
 
-            # TODO: remove Python 2 workaround when converting
-            line_attr = (getattr(line, meta_type.type_field.encode('ascii'))
-                         if meta_type.type_field else None)
+            line_attr = None
+            if meta_type.type_field:
+                line_attr = getattr(line, meta_type.type_field)
 
             # obs_val = line.metadata_get(meta_type)  # TODO: try this approach
             many_related_obj = False
 
             # if expected metadata is a 1-M or M2M relation, get related primary keys
             if meta_pk in exp_many_related_obj_meta_pks:
-
-                # TODO: remove debug stmt once test is corrected
-                print('Treating expected meta type "%(type)s" as a multi-valued '
-                      'relation.  Value is %(value)s. Test value is %(test)s.' %
-                      {
-                          'type': meta_type.type_name,
-                          'value': str(line_attr),
-                          'test': 'N/A',
-                       })
-
                 related_object = True
                 many_related_obj = True
                 obs_val = [pk for pk in line_attr.values_list('pk', flat=True).order_by('pk')]
@@ -478,11 +445,6 @@ class CombinatorialCreationTests(TestCase):
 
             # if expected metadata is a 1-1 relation, get primary key
             elif meta_pk in exp_related_obj_meta_pks:
-                # TODO: remove debug stmt
-                print('Treating expected meta type "%s" as a single-valued '
-                      'relation' %
-                      meta_type.type_name)
-
                 related_object = True
                 obs_val = line_attr.values_list('pk', flat=True)
 
@@ -493,17 +455,9 @@ class CombinatorialCreationTests(TestCase):
 
                 # handle non-relation line fields
                 if meta_type.type_field:
-                    # TODO: remove debug stmt
-                    print('Treating expected meta type "%s" as a native Line '
-                          'field' %
-                          meta_type.type_name)
-
                     obs_val = line_attr
                 # default is that results should be store as metadata
                 else:
-                    # TODO: remove debug stmt
-                    print('Treating meta type "%s" as generic metadata' %
-                          meta_type.type_name)
                     obs_val = line.meta_store.get(str(meta_pk))
 
             # if data should be stored as a relation, check that the related value
@@ -549,8 +503,6 @@ class CombinatorialCreationTests(TestCase):
         """
         cache = self.cache
 
-        print('Initial related objects cache: %s' % cache.related_objects)  # TODO: remove
-
         # Parse JSON inputs
         if is_excel_file:
             source_input = load_workbook(source_input,
@@ -573,7 +525,6 @@ class CombinatorialCreationTests(TestCase):
         # maintenance with a nice error message
         unique_strain_ids = set()
         for combo in combinatorial_inputs:
-            print('common_line_metadata: %s' % combo.common_line_metadata)  # TODO: remove
             unique_strain_ids = combo.get_related_object_ids(cache.strains_mtype.pk,
                                                              unique_strain_ids)
         missing_strain_ids = [strain_id for strain_id in unique_strain_ids if strain_id not in
@@ -734,7 +685,7 @@ class CombinatorialCreationTests(TestCase):
         }
 
         expected_line_metadata = {
-            line_name: {str(media_meta.pk): u'LB'}
+            line_name: {str(media_meta.pk): 'LB'}
             for line_name in expected_line_names
         }
 
@@ -743,7 +694,7 @@ class CombinatorialCreationTests(TestCase):
         expected_assay_metadata = {}  # maps line name -> protocol pk -> assay name -> metadata
         for line_name in expected_line_names:
             expected_assay_metadata[line_name] = {}
-            for protocol_pk, assay_suffixes in expected_assay_suffixes.iteritems():
+            for protocol_pk, assay_suffixes in viewitems(expected_assay_suffixes):
                 for assay_suffix in assay_suffixes:
                     assay_name = "%s-%s" % (line_name, assay_suffix)
                     time_str = str(float(assay_suffix[0:-1]))  # re/cast to get the decimal

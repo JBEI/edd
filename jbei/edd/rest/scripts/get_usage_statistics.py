@@ -17,10 +17,10 @@ from dateutil import tz
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from jbei.rest.auth import EddSessionAuth
-from jbei.rest.clients import EddApi
+from jbei.rest.clients.edd.api import EddApi
 from jbei.rest.utils import is_url_secure
 from jbei.utils import session_login, TerminalFormats, UserInputTimer
-from .settings import (EDD_REQUEST_TIMEOUT, EDD_URL, VERIFY_EDD_CERT)
+from . import settings
 
 now = arrow.utcnow()
 zero_time_delta = now - now
@@ -31,8 +31,6 @@ ice = None
 
 SEPARATOR_CHARS = 75
 OUTPUT_SEPARATOR = ('*' * SEPARATOR_CHARS)
-
-os.environ.setdefault('ICE_SETTINGS_MODULE', 'jbei.edd.rest.scripts.settings')
 
 
 def main():
@@ -64,6 +62,9 @@ def main():
                         default='US/Pacific')
     args = parser.parse_args()
 
+    username = args.username if args.username else getattr(settings, 'EDD_USERNAME', None)
+    password = args.password if args.password else getattr(settings, 'EDD_PASSWORD', None)
+
     ############################################################################################
     # Repeat back important parameters
     ############################################################################################
@@ -71,9 +72,9 @@ def main():
     print(os.path.basename(__file__))
     print(OUTPUT_SEPARATOR)
     print('\tSettings module:\t%s' % os.environ['ICE_SETTINGS_MODULE'])
-    print('\tEDD URL:\t%s' % EDD_URL)
-    if args.username:
-        print('\tEDD Username:\t%s' % args.username)
+    print('\tEDD URL:\t%s' % settings.EDD_URL)
+    if username:
+        print('\tEDD Username:\t%s' % username)
     print(OUTPUT_SEPARATOR)
 
     ############################################################################################
@@ -82,12 +83,12 @@ def main():
     # easy to make!
     ############################################################################################
 
-    if not is_url_secure(EDD_URL, print_err_msg=True, app_name='EDD'):
+    if not is_url_secure(settings.EDD_URL, print_err_msg=True, app_name='EDD'):
         return 0
 
     # silence library warnings if we're skipping SSL certificate verification for local
     # testing. otherwise the warnings will swamp useful output from this script
-    if not VERIFY_EDD_CERT:
+    if not settings.VERIFY_EDD_CERT:
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
     ############################################################################################
@@ -118,15 +119,20 @@ def main():
     ##############################
 
     years = range(args.start, args.end)
-
-    edd_login_details = session_login(EddSessionAuth, EDD_URL, 'EDD', username_arg=args.username,
-                                      password_arg=args.password, user_input=input_timer,
-                                      print_result=True, verify_ssl_cert=VERIFY_EDD_CERT,
-                                      timeout=EDD_REQUEST_TIMEOUT)
+    timeout = settings.EDD_REQUEST_TIMEOUT
+    edd_login_details = session_login(EddSessionAuth, settings.EDD_URL, 'EDD',
+                                      username_arg=username,
+                                      password_arg=password, user_input=input_timer,
+                                      print_result=True, verify_ssl_cert=settings.VERIFY_EDD_CERT,
+                                      timeout=settings.EDD_REQUEST_TIMEOUT)
     edd_session_auth = edd_login_details.session_auth
 
-    edd = EddApi(base_url=EDD_URL, auth=edd_session_auth, verify=VERIFY_EDD_CERT)
-    edd.timeout = EDD_REQUEST_TIMEOUT
+    # remove password from memory ASAP
+    password = None
+    edd_login_details.password = None
+
+    edd = EddApi(base_url=settings.EDD_URL, auth=edd_session_auth, verify=settings.VERIFY_EDD_CERT)
+    edd.timeout = settings.EDD_REQUEST_TIMEOUT
 
     # query EDD for studies created each quarter within requested years
     time_zone = tz.gettz(args.timezone)

@@ -7,8 +7,20 @@ import "jquery.cookie"
 declare function require(name: string): any;
 //load dropzone module
 var Dropzone = require('dropzone');
+require('dropzone/dist/dropzone.css');
 
 export module Utl {
+
+    export function relativeURL(path: string, base?: URL): URL {
+        // Defining this to clean up boilerplate as TypeScript compiler requires URL constructor
+        // to take only strings as both arguments, instead of a string and another URL.
+        let baseStr = window.location.toString();
+        if (base) {
+            baseStr = base.toString();
+        }
+        return new URL(path, baseStr);
+    }
+
 
     export class EDD {
 
@@ -570,6 +582,7 @@ export module Utl {
     //  processWarningFn: process warning result return from server for experiment description
     //  processICEerror: process ice connectivity problem for experiment description
     //  fileInitFn: preprocess for import
+    //  clickable: value to pass to dropzone clickable parameter
     // }
 
     export class FileDropZone {
@@ -580,84 +593,77 @@ export module Utl {
         options: any;
 
         constructor(options: any) {
-
-            this.csrftoken = EDD.findCSRFToken();
-            this.fileInitFn = options.fileInitFn;
-            this.fileInitFn = options.fileInitFn;
-            this.options = options;
-
-            this.dropzone = new Dropzone("div#" + options.elementId, {
-                'url': options.url,
-                'params': {'csrfmiddlewaretoken': this.csrftoken},
-                'maxFilesize': 2,
-                'acceptedFiles': ".doc,.docx,.pdf,.txt,.xls,.xlsx, .xml, .csv",
-                'processErrorFn': options.processErrorFn,
-                'processWarningFn': options.processWarningFn,
-                'processResponseFn': options.processResponseFn,
-                'processICEerror': options.processICEerror,
-                'fileInitFn':  options.fileInitFn
-            });
+            let element = document.getElementById(options.elementId);
+            let clickable = options.clickable === undefined ? true : options.clickable;
+            if (element) {
+                $(element).addClass('dropzone');
+                this.csrftoken = EDD.findCSRFToken();
+                this.fileInitFn = options.fileInitFn;
+                this.options = options;
+                this.dropzone = new Dropzone(element, {
+                    'url': options.url,
+                    'params': {'csrfmiddlewaretoken': this.csrftoken},
+                    'maxFilesize': 2,
+                    'acceptedFiles': ".doc,.docx,.pdf,.txt,.xls,.xlsx, .xml, .csv",
+                    'clickable': clickable
+                });
+            }
         }
 
         // Helper function to create and set up a FileDropZone.
-        static create(options:any): void {
-            var h = new FileDropZone(options);
-            h.uploadFile();
+        static create(options: any): void {
+            let widget = new FileDropZone(options);
+            if (widget.dropzone) {
+                widget.setEventHandlers();
+            }
         }
 
-        uploadFile():void {
-
-            this.dropzone.on('sending', function(file, xhr, formData) {
+        setEventHandlers():void {
+            this.dropzone.on('sending', (file, xhr, formData) => {
                 //for import
                 if (this.options.fileInitFn) {
-                    this.headers = this.options.fileInitFn(file, formData);
-                    this.fileType = formData["X_EDD_FILE_TYPE"];
-                    formData.append('X_EDD_FILE_TYPE', this.fileType);
-                    formData.append('X_EDD_IMPORT_MODE', formData["X_EDD_IMPORT_MODE"]);
+                    this.options.fileInitFn(file, formData);
                 }
             });
-            this.dropzone.on('complete', function(file) {
-                var xhr = file.xhr;
-                var dropzone = this;
-                var response = JSON.parse(xhr.response);
-                if (response.python_error) {
-                    // If we were given a function to process the error, use it.
-                    if (typeof this.options.processErrorFn === 'function') {
-                        this.options.processErrorFn(file, xhr);
-                        return;
-                    }
-                } else if (file.status === 'error') {
-                    // unique class for ice related errors
-                    if (response['errors'][0].category === 'ICE access error') {
-                        //first remove all files in upload
-                        this.removeAllFiles();
+            this.dropzone.on('error', (file, msg, xhr) => {
+                var response;
+                if (xhr) {
+                    response = JSON.parse(xhr.response);
+                    if (response.errors && response.errors[0].category.indexOf('ICE') > -1) {
+                        // first remove all files in upload
+                        this.dropzone.removeAllFiles();
                         file.status = undefined;
                         file.accepted = undefined;
-                        //create alert notification
+                        // create alert notification
                         this.options.processICEerror(this, file, response.errors);
-                        //click handler for omit strains
-                        $('#alert_placeholder').find('.omitStrains').on('click', ():void => {
-                            $(this).parent().remove();
-                            dropzone.options.url = dropzone.options.url +
-                                                    '?IGNORE_ICE_ACCESS_ERRORS=true';
-                            dropzone.addFile(file);
+                        // click handler for omit strains
+                        $('#alert_placeholder').find('.omitStrains').on('click', (ev):void => {
+                            var parsedUrl: URL = new URL(
+                                this.dropzone.options.url,
+                                window.location.toString()
+                            );
+                            $(ev.target).parent().remove();
+                            parsedUrl.searchParams.append('IGNORE_ICE_ACCESS_ERRORS', 'true');
+                            this.dropzone.options.url = parsedUrl.toString();
+                            this.dropzone.addFile(file);
                         });
                     } else if (typeof this.options.processErrorFn === 'function') {
-                       this.options.processErrorFn(file, xhr);
+                        this.options.processErrorFn(file, xhr);
                     }
-                    return;
+                    this.dropzone.removeAllFiles();
                 }
-                if (response.warnings && typeof this.options.processWarningFn === 'function') {
-                    this.options.processWarningFn(file, response);
-                    return;
-                }
-                if (typeof(this.options.processResponseFn) === 'function') {
+            });
+            this.dropzone.on('success', (file) => {
+                var xhr = file.xhr;
+                var response = JSON.parse(xhr.response);
+                if (response.warnings) {
+                    if ('function' === typeof this.options.processWarningFn) {
+                        this.options.processWarningFn(file, response);
+                    }
+                } else if ('function' === typeof this.options.processResponseFn) {
                     this.options.processResponseFn(this, file, response);
-                    return;
                 }
-                if (file.status === 'success' && !response.warnings) {
-                    this.options.processResponseFn(file, response)
-                }
+                this.dropzone.removeAllFiles();
             });
         };
     }

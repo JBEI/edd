@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 from django.test import TestCase
 
 from .rest.auth import HmacAuth
+
+
+KEY = 'yJwU0chpercYs/R4YmCUxhbRZBHM4WqpO3ZH0ZW6+4X+/aTodSGTI2w5jeBxWgJXNN1JNQIg02Ic3ZnZtSEVYA=='
 
 
 class FakeRequest(object):
@@ -12,12 +14,11 @@ class FakeRequest(object):
 
 class HmacTests(TestCase):
     KEY_ID = 'test.jbei.org'
-    KEY = 'yJwU0chpercYs/R4YmCUxhbRZBHM4WqpO3ZH0ZW6+4X+/aTodSGTI2w5jeBxWgJXNN1JNQIg02Ic3ZnZtSEVYA=='
     USER_ID = 'WCMorrell'
 
     def setUp(self):
         super(HmacTests, self).setUp()
-        HmacAuth.register_key(self.KEY_ID, self.KEY)
+        HmacAuth.register_key(self.KEY_ID, KEY)
 
     def test_signature_gen(self):
         request = FakeRequest()

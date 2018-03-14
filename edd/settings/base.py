@@ -28,7 +28,8 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 # Custom EDD-defined configuration options
 ###################################################################################################
 
-EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.1.2')
+EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.2.0')
+EDD_VERSION_HASH = env('EDD_VERSION_HASH', default=None)
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
 # help prevent developers from accidentally altering data in production). Any value that starts
@@ -103,6 +104,7 @@ SECRET_KEY = env('SECRET_KEY', default='I was awake and dreaming at the same tim
 ALLOWED_HOSTS = []
 SITE_ID = 1
 USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 LOGIN_REDIRECT_URL = '/'
 
@@ -129,6 +131,7 @@ INSTALLED_APPS = (
     'allauth.account',
     'allauth.socialaccount',
     'django.contrib.flatpages',
+    'channels',  # channels in pip
 
     # EDD apps
     'main',
@@ -245,22 +248,28 @@ REST_FRAMEWORK = {
 
 # rest API documentation
 SWAGGER_SETTINGS = {
-    'api_version': '0.3',
-    'api_path': '/',
-    'base_path': '/rest/docs',
-    'is_authenticated': True,
-    'permission_denied_handler': 'edd.rest.views.permission_denied_handler',
-    'info': {
-        'contact': 'jbei-edd-admin@lists.lbl.gov',
-        'description': "Documentation for the Experiment Data Depot's (EDD's) "
-                       "REST API. Both the REST API and this documentation are evolving "
-                       "works-in-progress. This initial API isn't mature, so use / create "
-                       "dependencies at your own risk!",
-        'license': 'BSD 3-Clause',
-        'licenseUrl': 'https://raw.githubusercontent.com/JBEI/edd/master/LICENSE.txt',
-        'title': 'EDD REST API',
-    },
+    'USE_SESSION_AUTH': True,
+    'VALIDATOR_URL': None,
+}
 
+
+###################################################################################################
+# WebSockets / Channels
+###################################################################################################
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'asgi_redis.RedisChannelLayer',
+        'ROUTING': 'main.routing.channel_routing',
+        'CONFIG': {
+            'hosts': [
+                'redis://redis:6379/2',
+            ],
+            'symmetric_encryption_keys': [
+                SECRET_KEY,
+            ],
+        }
+    }
 }
 
 

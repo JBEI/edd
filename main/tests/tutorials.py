@@ -1,16 +1,14 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 """
 Tests used to validate the tutorial screencast functionality.
 """
 
+import codecs
 import json
 
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
-from django.test import tag
 from io import BytesIO
 from mock import MagicMock, patch
 from requests import codes
@@ -56,10 +54,12 @@ class ExperimentDescriptionTests(TestCase):
             self.client.get(reverse('main:describe', kwargs=self.target_kwargs))
 
     def test_invalid_filetype(self):
+        upload = BytesIO(b'')
+        upload.name = 'testfile.docx'
+        upload.content_type = 'application/octet-stream'
         response = self.client.post(
             reverse('main:describe', kwargs=self.target_kwargs),
-            data=BytesIO(b''),
-            content_type='application/octet-stream',
+            data={'file': upload},
             # front-end returns one of: xlsx, csv, xml, txt; view requires xlsx
             HTTP_X_EDD_FILE_TYPE='txt',
             HTTP_X_FILE_NAME='testfile.docx',
@@ -115,7 +115,7 @@ class ExperimentDescriptionTests(TestCase):
         self.assertIn('errors', messages)
         self.assertIn('warnings', messages)
         self.assertEqual(len(messages['errors']), 2)
-        self.assertItemsEqual(
+        self.assertEqual(
             {'Incorrect file', 'Invalid values'},
             {err['category'] for err in messages['errors']}
         )
@@ -178,7 +178,8 @@ class ImportDataTestsMixin(object):
         )
         self.assertEqual(response.status_code, codes.ok)
         with factory.load_test_file(filename + '.json') as fp:
-            target = json.load(fp)
+            reader = codecs.getreader('utf-8')
+            target = json.load(reader(fp))
         # check that objects are the same when re-serialized with sorted keys
         self.assertEqual(
             json.dumps(target, sort_keys=True),

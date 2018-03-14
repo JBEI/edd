@@ -1,4 +1,3 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
-from .api import IceApi, parse_entry_id, Strain  # noqa
+from .api import IceApi, parse_entry_id, parse_query_url  # noqa: F401

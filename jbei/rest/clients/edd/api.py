@@ -5,14 +5,11 @@ implementation, as well as the REST API itself, can use some additions/improveme
 but is implemented to initially fulfill the basic need to connect to EDD programmatically.
 """
 
-from __future__ import unicode_literals
-
 import collections
 import json
 import logging
 import requests
 
-from builtins import str
 from datetime import datetime
 
 from jbei.rest.api import RestApiClient
@@ -98,7 +95,6 @@ class Line(EddRestObject):
         self.carbon_source = kwargs.pop('carbon_source', None)
         self.strains = kwargs.pop('strains', None)
         self.control = kwargs.pop('control', None)
-        self.replicate = kwargs.pop('replicate', None)
         super(Line, self).__init__(**kwargs)
 
 
@@ -315,7 +311,7 @@ class EddApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=MeasurementUnit)
+        return DrfPagedResult.of(response.text, model_class=MeasurementUnit)
 
     def _enforce_valid_kwargs(self, kwargs):
         if kwargs:
@@ -354,7 +350,7 @@ class EddApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=MeasurementType)
+        return DrfPagedResult.of(response.text, model_class=MeasurementType)
 
     def search_measurements(self, **kwargs):
         """
@@ -417,7 +413,7 @@ class EddApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=Measurement)
+        return DrfPagedResult.of(response.text, model_class=Measurement)
 
     def search_values(self, **kwargs):
         """
@@ -460,7 +456,7 @@ class EddApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=MeasurementValue)
+        return DrfPagedResult.of(response.text, model_class=MeasurementValue)
 
     def _detect_invalid_kwargs(self, **kwargs):
         if kwargs:
@@ -532,7 +528,7 @@ class EddApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=MetadataType)
+        return DrfPagedResult.of(response.text, model_class=MetadataType)
 
     def get_protocol(self, id=None):
         """
@@ -569,7 +565,7 @@ class EddApi(RestApiClient):
         if response.status_code == requests.codes.not_found:
             return None
         response.raise_for_status()  # raise an Exception for unexpected reply
-        kwargs = json.loads(response.content)
+        kwargs = json.loads(response.text)
         return result_class(**kwargs)
 
     def search_protocols(self, **kwargs):
@@ -610,7 +606,7 @@ class EddApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=Protocol)
+        return DrfPagedResult.of(response.text, model_class=Protocol)
 
     def search_studies(self, **kwargs):
         """
@@ -619,6 +615,9 @@ class EddApi(RestApiClient):
         :param query_url: the URL to query, including all desired search parameters (e.g. as
             returned in the "next" result from a results page).  If provided, all other
             parameters will be ignored.
+        :param slug: the slug (URL portion) that uniquely identifies the study within this
+            DD instance.  This is the URL portion visible in the web browser when
+            accessing a study.
         :param name_regex: a regular expression for the name (case-insensitive).
         :param description_regex: a regular expression for the description (case-insensitive)
         :param created_after: a datetime used to filter objects by creation date (inclusive)
@@ -642,6 +641,7 @@ class EddApi(RestApiClient):
             search_params = {}
             _set_if_value_valid(search_params, PAGE_NUMBER_URL_PARAM,
                                 kwargs.pop('page_number', None))
+            _set_if_value_valid(search_params, 'slug', kwargs.pop('slug', None))
             unprocessed_kwargs = self._add_eddobject_search_params(search_params, **kwargs)
             self._enforce_valid_kwargs(unprocessed_kwargs)
 
@@ -652,7 +652,7 @@ class EddApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=Study)
+        return DrfPagedResult.of(response.text, model_class=Study)
 
     def search_lines(self, **kwargs):
         """
@@ -699,7 +699,7 @@ class EddApi(RestApiClient):
 
         response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=Line)
+        return DrfPagedResult.of(response.text, model_class=Line)
 
     def search_assays(self, **kwargs):
         """
@@ -752,7 +752,7 @@ class EddApi(RestApiClient):
 
         response.raise_for_status()
 
-        return DrfPagedResult.of(response.content, model_class=Assay)
+        return DrfPagedResult.of(response.text, model_class=Assay)
 
     def get_study(self, id):
         """
@@ -814,25 +814,22 @@ class DrfPagedResult(PagedResult):
         if not json_dict:
             return None
 
-        # pull out the 'results' subsection *if* the data is paged
-        _RESULTS_KEY = u'results'
-
         count = None
         next_page = None
         prev_page = None
         results_obj_list = []
 
         # IF response is paged, pull out paging context
-        if _RESULTS_KEY in json_dict:
-            next_page = json_dict.pop(u'next', None)
-            prev_page = json_dict.pop(u'previous', None)
-            count = json_dict.pop(u'count', None)
+        if 'results' in json_dict:
+            next_page = json_dict.get('next', None)
+            prev_page = json_dict.get('previous', None)
+            count = json_dict.get('count', None)
 
             if count == 0:
                 return None
 
             # iterate through the returned data, deserializing each object found
-            response_content = json_dict.get(_RESULTS_KEY)
+            response_content = json_dict.get('results', {})
             for object_dict in response_content:
                 # using parallel object hierarchy to Django model objects. Note that input isn't
                 # validated, but that shouldn't really be an issue on the client side,

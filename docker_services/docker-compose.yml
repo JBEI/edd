@@ -147,7 +147,7 @@ services:
     build: ./edd/
     image: jbei/edd-core:latest
     restart: always
-    command: ['application']
+    command: ['daphne']
     env_file: secrets.env
     environment:
       EDD_DEBUG: "false"
@@ -179,8 +179,32 @@ services:
       options:
         max-size: 1m
         max-file: '5'
+  websocket:
+    image: jbei/edd-core:latest
+    env_file: secrets.env
+    environment:
+      EDD_DEBUG: "false"
+      SEARCH_URL: "solr://solr:8983/solr/"
+    networks:
+      - backnet
+    volumes:
+      - attachdata:/var/www/uploads
+      - staticdata:/var/www/static
+    restart: always
+    command: [-A, -w, edd, -p, '8000', websocket]
+    links:
+      - edd
+      - postgres
+      - rabbitmq
+      - redis
+      - smtp
+      - solr
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
   worker:
-    build: ./edd/
     image: jbei/edd-core:latest
     env_file: secrets.env
     environment:

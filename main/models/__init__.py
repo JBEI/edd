@@ -1,6 +1,4 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 """
 Module contains the database models for the core EDD functionality.
 """

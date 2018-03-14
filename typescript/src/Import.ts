@@ -637,12 +637,12 @@ module EDDTableImport {
             $('#transpose').on('change', this.clickedOnTranspose.bind(this));
             $('#resetstep2').on('click', this.reset.bind(this));
 
-
             Utl.FileDropZone.create({
                 elementId: "importDropZone",
                 fileInitFn: this.fileDropped.bind(this),
                 url: "/utilities/parsefile/",
                 processResponseFn: this.fileReturnedFromServer.bind(this),
+                clickable: false
             });
 
             this.processingFileCallback = processingFileCallback;
@@ -794,11 +794,7 @@ module EDDTableImport {
         fileDropped(file, formData): void {
             this.haveInputData = true;
             processingFileCallback();
-            var mode = this.selectMajorKindStep.interpretationMode;
-            formData['X_EDD_IMPORT_MODE'] = mode;
-            var ft = file.name.split('.');
-            ft = ft[1];
-            formData['X_EDD_FILE_TYPE'] = ft;
+            formData.set('import_mode', this.selectMajorKindStep.interpretationMode);
         }
 
         // This is called upon receiving a response from a file upload operation, and unlike
@@ -853,6 +849,7 @@ module EDDTableImport {
             var missingStep1Inputs = !this.selectMajorKindStep.requiredInputsProvided();
 
             $('#completeStep1Label').toggleClass('off', !missingStep1Inputs);
+            $('#importDropZone').toggleClass('off', missingStep1Inputs);
             $('#step2textarea').toggleClass('off', missingStep1Inputs);
         }
 
@@ -2872,9 +2869,7 @@ module EDDTableImport {
             // If in 'Transcription' or 'Proteomics' mode, there are no measurement types needing
             // explicit disambiguation. Skip the measurement section, and provide statistics about
             // the gathered records.
-            // TODO: sometimes skyline will target metabolites instead of proteins; in those cases
-            //  do not abort section
-            if (mode === "tr" || mode === "pr") {
+            if (mode === "tr" || mode === "pr" || mode === "skyline") {
                 return;
             }
 

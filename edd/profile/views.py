@@ -1,10 +1,12 @@
+# coding: utf-8
+
 import json
 
 from django.contrib.auth import get_user_model
 from django.http import (
     Http404, HttpResponse, HttpResponseNotAllowed, JsonResponse
 )
-from django.shortcuts import render, render_to_response
+from django.shortcuts import render
 from django.template import RequestContext
 
 # /profile/
@@ -16,38 +18,43 @@ def profile(request, username):
     User = get_user_model()
     try:
         user = User.objects.get(username=username)
-    except User.DoesNotExist, e:
+    except User.DoesNotExist as e:
         raise Http404("User does not exist")
     return profile_for_user(request, user)
 
 def profile_for_user(request, user):
-    return render_to_response("edd/profile/profile.html",
-        dictionary={ 'profile_user': user, 'profile': user.userprofile, },
-        context_instance=RequestContext(request),
-        )
+    context = {
+        'profile_user': user,
+        'profile': user.profile,
+    }
+    return render(
+        request,
+        "edd/profile/profile.html",
+        context=context,
+    )
 
 # /profile/settings/
 def settings(request):
     user = request.user
-    if hasattr(user, 'userprofile'):
+    if hasattr(user, 'profile'):
         if request.method == 'HEAD':
             return HttpResponse(status=200)
         elif request.method == 'GET':
-            return JsonResponse(user.userprofile.prefs or {})
+            return JsonResponse(user.profile.prefs or {})
         elif request.method == 'PUT' or request.method == 'POST':
             try:
-                user.userprofile.prefs = json.loads(request.POST['data'])
-                user.userprofile.save()
+                user.profile.prefs = json.loads(request.POST['data'])
+                user.profile.save()
                 return HttpResponse(status=204)
-            except Exception, e:
+            except Exception as e:
                 # TODO: logging
                 return HttpResponse(status=500)
         elif request.method == 'DELETE':
             try:
-                user.userprofile.prefs = {}
-                user.userprofile.save()
+                user.profile.prefs = {}
+                user.profile.save()
                 return HttpResponse(status=204)
-            except Exception, e:
+            except Exception as e:
                 # TODO: logging
                 return HttpResponse(status=500)
         else:
@@ -57,8 +64,8 @@ def settings(request):
 # /profile/settings/<key>
 def settings_key(request, key):
     user = request.user
-    if hasattr(user, 'userprofile'):
-        prefs = user.userprofile.prefs
+    if hasattr(user, 'profile'):
+        prefs = user.profile.prefs
         if request.method == 'HEAD':
             return HttpResponse(status=200)
         elif request.method == 'GET':
@@ -66,17 +73,17 @@ def settings_key(request, key):
         elif request.method == 'PUT' or request.method == 'POST':
             try:
                 prefs.update({ key: request.POST['data'], })
-                user.userprofile.save()
+                user.profile.save()
                 return HttpResponse(status=204)
-            except Exception, e:
+            except Exception as e:
                 # TODO: logging
                 return HttpResponse(status=500)
         elif request.method == 'DELETE':
             try:
                 del prefs[key]
-                user.userprofile.save()
+                user.profile.save()
                 return HttpResponse(status=204)
-            except Exception, e:
+            except Exception as e:
                 # TODO: logging
                 return HttpResponse(status=500)
         else:

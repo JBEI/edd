@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 A collection of utility methods for interacting with REST frameworks
 """
@@ -7,8 +8,8 @@ import tempfile
 import webbrowser
 
 from six import string_types
+from six.moves.urllib.parse import urlparse
 from threading import Timer
-from urlparse import urlparse
 
 from jbei.utils import DOCKER_HOST_ENV_VARIABLE
 
@@ -29,7 +30,7 @@ def show_response_html(response):
     temp_file = tempfile.mkstemp(text=True, suffix='.html')
     temp_file_path = temp_file[1]
     with open(temp_file_path, mode='w+') as response_file:
-        response_file.write(response.content)
+        response_file.write(response.text)
     webbrowser.open('file://%s' % temp_file_path)
     # non-blocking wait 5 seconds, then delete the temp file
     Timer(5, os.remove, args=[temp_file_path, ])

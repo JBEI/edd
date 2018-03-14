@@ -1,14 +1,13 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
 
 import logging
 import re
-import urlparse
 
 from django.core import mail
 from django.views import debug
 from itertools import chain
 from six import string_types
+from six.moves.urllib.parse import urlparse, urlunparse
 from textwrap import TextWrapper
 
 from .celery import app as celery_app
@@ -26,17 +25,17 @@ def cleanse_setting(key, value):  # noqa
         try:
             parsed = None
             if isinstance(value, string_types):
-                parsed = urlparse.urlparse(value)
+                parsed = urlparse(value)
             if parsed and parsed.password:
                 # urlparse returns a read-only tuple, use a list to rewrite parts
                 parsed_list = list(parsed)
                 parsed_list[1] = parsed.netloc.replace(':%s' % parsed.password, ':**********', 1)
                 # put Humpty Dumpty back together again
-                cleansed = urlparse.urlunparse(parsed_list)
-        except:
+                cleansed = urlunparse(parsed_list)
+        except Exception:
             logger.exception('Exception cleansing URLs for error reporting')
     return cleansed
-debug.cleanse_setting = cleanse_setting
+debug.cleanse_setting = cleanse_setting  # noqa: E305
 
 
 # monkey-patch django.core.mail.mail_admins to properly wrap long lines
@@ -50,7 +49,7 @@ def mail_admins(subject, message, *args, **kwargs):  # noqa
                           subsequent_indent='  ')
     message = '\n'.join(chain(*[wrapper.wrap(line) for line in message.splitlines()]))
     _mail_admins(subject, message, *args, **kwargs)
-mail.mail_admins = mail_admins
+mail.mail_admins = mail_admins  # noqa: E305
 
 
 __all__ = ['celery_app']

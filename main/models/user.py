@@ -1,6 +1,4 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 """
 Overrides and monkey-patching to the Django User model.
 """
@@ -25,7 +23,7 @@ def User_profile(self):
             return self.userprofile
         except UserProfile.DoesNotExist:
             return UserProfile.objects.create(user=self, initials=guess_initials(self))
-    except:
+    except Exception:
         logger.exception('Failed to load a profile object for %s', self)
         return None
 
@@ -85,6 +83,7 @@ def User_to_solr_json(self):
         'is_staff': self.is_staff,
         'is_superuser': self.is_superuser,
     }
+
 
 # this will get replaced by the actual model as soon as the app is initialized
 User = None

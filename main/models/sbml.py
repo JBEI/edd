@@ -1,6 +1,4 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 """
 Models for SBML mapping.
 """
@@ -74,9 +72,9 @@ class SBMLTemplate(EDDObject):
             # self.sbml_file = ForeignKey
             # self.sbml_file.file = FileField on Attachment
             # self.sbml_file.file.file = File object on FileField
-            contents = self.sbml_file.file.file.read()
+            # self.sbml_file.file.file.name = path to file
             import libsbml
-            self._sbml_document = libsbml.readSBMLFromString(contents)
+            self._sbml_document = libsbml.readSBML(self.sbml_file.file.file.name)
         return self._sbml_document
 
     def save(self, *args, **kwargs):

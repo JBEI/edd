@@ -1,0 +1,55 @@
+{% extends "main/study.html" %}
+{% load staticfiles %}
+{% load i18n %}
+
+{% comment %}
+This file works as a generic deletion confirm page. As it extends main/study.html, it makes use of
+  all the context variables used in that file:
+    - messages: the Django messages framework message list
+    - study: a Django model for Study, a main.models.Study object
+    - user: a Django User object for the current user
+
+The context variables used directly in this template are:
+    - cancel_link: a string for the reverse() URL to cancel the delete and return to previous page
+    - confirm_action: a token used to validate the items to delete
+    - delete_select: a Django Form holding fields defining the objects to delete
+    - item_names: a list of names for items to be deleted
+    - measurement_count: an integer of the number of measurements that would be deleted
+    - typename: a translated string for the kind of object to be deleted
+{% endcomment %}
+
+{% block content %}
+
+{% blocktrans trimmed with name=item_names|first count counter=item_names|length asvar t_items %}
+the {{ typename }} "{{ name }}"
+{% plural %}
+{{ counter }} {{ typename }} objects, including "{{ name }}"
+{% endblocktrans %}
+
+  <div class="confirm-form">
+    <p>
+      {% if measurement_count >= 1 %}
+        {% blocktrans trimmed with item=t_items count counter=measure_count %}
+          Are you sure you want to delete {{ item }}? This will remove a measurement value.
+        {% plural %}
+          Are you sure you want to delete {{ item }}? This will remove {{ counter }}
+          measurement values.
+        {% endblocktrans %}
+      {% else %}
+        {% blocktrans trimmed with item=t_items %}
+          Are you sure you want to delete {{ item }}?
+        {% endblocktrans %}
+      {% endif %}
+    </p>
+    <form action="" method="POST">
+      {% csrf_token %}
+      {% if delete_select %}
+        {{ delete_select.as_p }}
+      {% endif %}
+      <button class="btn btn-danger" type="submit" name="action"
+          value="{{ confirm_action }}">{% trans "Confirm Delete" %}</button>
+      <a href="{{ cancel_link }}">{% trans "Cancel" %}</a>
+    </form>
+  </div>
+
+{% endblock content %}

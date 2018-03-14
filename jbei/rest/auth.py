@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, unicode_literals
 
 import base64
 import hashlib
@@ -9,9 +8,8 @@ import logging
 import requests
 
 from requests.auth import AuthBase
-from requests.compat import urlparse
+from requests.compat import urlparse, urlsplit
 from requests.utils import quote
-from urlparse import urlsplit
 
 from .utils import remove_trailing_slash, show_response_html
 
@@ -86,15 +84,22 @@ class HmacAuth(AuthBase):
         #   * SORTED query string, keyed by natural UTF8 byte-ordering of names
         #   * Request Body
         delimiter = '\n'
+        body = ''
+        if request.body:
+            # Django request object has body as bytes; requests request object has body as str
+            if isinstance(request.body, bytes):
+                body = request.body.decode('utf-8')
+            else:
+                body = request.body
         msg = delimiter.join((
             self._USERNAME or '',
             request.method,
             url.netloc,
             url.path,
             self._sort_parameters(url.query),
-            request.body or '',
+            body,
         ))
-        return msg
+        return msg.encode('utf-8')
 
     def _build_signature(self, request):
         """
@@ -109,8 +114,8 @@ class HmacAuth(AuthBase):
     def _sort_parameters(self, query):
         # split on ampersand
         params = query.split('&')
-        # split each param into two-tuples of (key,value) and quote tuple entries
-        params = map(lambda p: map(quote, p.split('=', 1)), params)
+        # split each param into two-item lists of (key,value) and quote list entries
+        params = [[quote(v) for v in item.split('=', 1)] for item in params]
         # sort based on key portion
         params = sorted(params, key=lambda p: p[0])
         # join back together on ampersand
@@ -319,10 +324,14 @@ class EddSessionAuth(AuthBase):
         # return the session if it's successfully logged in, or print error messages/raise
         # exceptions as appropriate
         if response.status_code == requests.codes.ok:
-            DJANGO_LOGIN_FAILURE_CONTENT = 'Login failed'
-            DJANGO_REST_API_FAILURE_CONTENT = 'This field is required'
-            if (DJANGO_LOGIN_FAILURE_CONTENT in response.content or
-                    DJANGO_REST_API_FAILURE_CONTENT in response.content):
+            _DJANGO_LOGIN_FAILURE_CONTENT = 'Login failed'
+            _DJANGO_REST_API_FAILURE_CONTENT = 'This field is required'
+
+            # Note use of response.text here instead of response.content.  While EDD server-side
+            # code is transitioning from Python 2 to 3, .text is important for converting response
+            # to unicode so client can tolerate either bytestring or unicode content from server.
+            if (_DJANGO_LOGIN_FAILURE_CONTENT in response.text or
+                    _DJANGO_REST_API_FAILURE_CONTENT in response.text):
                 logger.warning('Login failed. Please try again.')
                 logger.info(response.headers)
                 if debug:

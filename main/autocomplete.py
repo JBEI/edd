@@ -1,11 +1,9 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
 import operator
 import logging
 import re
 
-from builtins import str
 from django.conf import settings
 from django.db.models import Q
 from django.http import JsonResponse

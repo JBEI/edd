@@ -1,5 +1,4 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
 from collections import OrderedDict
 
@@ -38,7 +37,7 @@ INVALID_CELL_TYPE = 'Cells have invalid type'
 INVALID_REPLICATE_COUNT = 'Invalid replicate count'
 ZERO_REPLICATES = ('Zero replicates are not allowed. If no lines are desired, remove row(s) from '
                    'the file.')
-MISSING_REQUIRED_LINE_NAME = 'Rows missing required line name'
+MISSING_REQUIRED_LINE_NAME = 'Missing required line name in non-empty row(s)'
 MISSING_REQUIRED_COLUMN_TITLE = 'Incorrect file format'
 INVALID_COLUMN_HEADER_TITLE = 'Invalid column headers'
 UNMATCHED_ASSAY_COL_HEADERS_KEY = 'Invalid column header(s) (Unmatched assay metadata suffix)'
@@ -215,6 +214,9 @@ NAMING_OVERLAP_CATEGORY = 'Naming overlap'
 
 STRAINS_REQUIRED_FOR_NAMES = ('ICE lookup failed for one or more parts, but part names are '
                               'required as input to computing line names')
+
+STRAINS_ACCESS_REQUIRED_FOR_NAMES = ('Missing ICE read permission for part(s) '
+                                     'required as input to computing EDD line names')
 
 # User-created naming overlaps (depend on prior ICE communication since strain names could be used
 # in line/assay naming)

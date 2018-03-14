@@ -1,5 +1,4 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
 import json
 import logging
@@ -12,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils.translation import ugettext as _
+from future.utils import viewitems, viewvalues
 from six import string_types
 
 from .. import models
@@ -238,7 +238,7 @@ class TableImport(object):
                 self._process_metadata(assay, meta)
                 # force refresh of Assay's Update (also saves any changed metadata)
                 assay.save()
-        for line in self._line_lookup.values():
+        for line in viewvalues(self._line_lookup):
             # force refresh of Update (also saves any changed metadata)
             line.save()
         self._study.save()
@@ -289,7 +289,7 @@ class TableImport(object):
             if self._replace():
                 # would be simpler to do assay.meta_store.clear()
                 # but we only want to replace types included in import data
-                for label, metatype in self._meta_lookup.items():
+                for label, metatype in viewitems(self._meta_lookup):
                     if metatype.pk in assay.meta_store:
                         del assay.meta_store[metatype.pk]
                     elif metatype.pk in assay.line.meta_store:
@@ -305,7 +305,7 @@ class TableImport(object):
     def _extract_value(self, value):
         # make sure input is string first, split on slash or colon, and give back array of numbers
         try:
-            return map(float, re.split('/|:', ('%s' % value).replace(',', '')))
+            return list(map(float, re.split('/|:', ('%s' % value).replace(',', ''))))
         except ValueError:
             warnings.warn('Value %s could not be interpreted as a number' % value)
         return []
@@ -379,7 +379,7 @@ class TableImport(object):
         if not type_id:
             name = item.get('measurement_name', None)
             # drop any non-ascii characters
-            name = str(name.encode('ascii', 'ignore'))
+            name = name.encode('ascii', 'ignore').decode('utf-8')
             if models.Metabolite.pubchem_pattern.match(name):
                 metabolite = models.Metabolite.load_or_create(name)
                 return MType(compartment, metabolite.pk, units_id)
@@ -414,7 +414,6 @@ class TableImport(object):
         return found_type
 
     def _mtype_transcriptomics(self, item, default=None):
-        found_type = default
         compartment = self._load_compartment(item)
         measurement_name = item.get('measurement_name', None)
         units_id = self._load_unit(item)

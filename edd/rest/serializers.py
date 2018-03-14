@@ -131,7 +131,6 @@ class LineSerializer(EDDObjectSerializer):
             'contact',
             'control',
             'experimenter',
-            'replicate',
             'strains',
             'study',
         )

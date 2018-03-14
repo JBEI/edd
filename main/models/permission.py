@@ -1,6 +1,4 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 """
 Models related to setting permissions to view/edit objects in EDD.
 """
@@ -9,8 +7,6 @@ from django.conf import settings
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-
-from .core import Study
 
 
 @python_2_unicode_compatible
@@ -30,7 +26,7 @@ class StudyPermission(models.Model):
     CAN_VIEW = (READ, WRITE)
     CAN_EDIT = (WRITE, )
     study = models.ForeignKey(
-        Study,
+        'main.Study',
         help_text=_('Study this permission applies to.'),
         on_delete=models.CASCADE,
         verbose_name=_('Study'),

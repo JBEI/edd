@@ -3,9 +3,9 @@
 {% load i18n %}
 
 {% block js_css %}
-    {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static 'main/study-overview.css' %}" />
-    <script type="text/javascript" src="{% static 'dist/StudyOverview.js' %}"></script>
+  {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="{% static 'main/study-overview.css' %}" />
+  <script type="text/javascript" src="{% static 'dist/StudyOverview.js' %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -17,294 +17,309 @@
 {% endblock body_title %}
 
 {% block content %}
-    {{ block.super }}
+  {{ block.super }}
 
-<form action="" class="edd-form" enctype="multipart/form-data" method="POST" style="clear:both;"
-        id="general">
-    {% csrf_token %}
+<form action=""
+    class="edd-form"
+    enctype="multipart/form-data"
+    id="general"
+    method="POST"
+    style="clear:both;">
+  {% csrf_token %}
 
-    <div class="overviewFlex">
-        <div style="flex-grow:1">
-        {% if edit_study.errors %}
-        <div class="alert alert-danger alert-dismissible" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-            <p>{{ edit_study.name.errors.as_text }}</p>
-        </div>
-        <div class="alert alert-danger alert-dismissible" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-            <p>{{ edit_study.non_field_errors.as_text }}</p>
-        </div>
-        {% endif %}
-        <div id="linesAdded" class="alert alert-success alert-dismissible" role="alert" hidden>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
-        <div id="dismissAll">
-            <button class="btn btn-info dismissAll" style="display: none;">Dismiss</button>
-        </div>
-        <div id="acceptWarnings">
-            <button type="button" class="acceptWarnings btn btn-primary" style="display: none;">Acknowledge Warnings</button>
-        </div>
-        <div id="alert_placeholder">
-            <div class="alert alert-danger alert-dismissible" hidden>
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <h4 class="alertSubject"></h4>
-                <p class="alertWarning"></p>
+  <div>
+    {% if writable %}
+      {% include 'main/include/dropzone_messages.html' %}
+    {% endif %}
+    <table class="formTable">
+      <tr>
+        <td style="width:260px;">
+          {% if writable %}
+            {{ edit_study.description.errors }}
+            <div class="editable-field inactive" id="editable-study-description">
+              {% firstof study.description|safe "<i>(Click to add description)</i>"|safe %}
+              {{ edit_study.description }}
             </div>
-            <div class="alert alert-warning alert-dismissible" hidden>
-                <button type="button" class="close" data-dismiss="alert">&times;</button><h4 class="alertSubject"></h4>
+          {% else %}
+            <div>
+              {% firstof study.description|safe "<i>No description set</i>"|safe %}
             </div>
-            <div id="actionWarningBar">
-            <div id="duplicateError" role="alert" class="alert alert-warning alert-dismissible " hidden>
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <h4 class="alertSubject"></h4>
-                <p class="alertWarning"></p>
-                <button type="button" class="btn btn-warning yesAlertInput allowDuplicates" >Allow Duplicates</button>
-                <button type="button" class="btn btn-danger dontAllowError noDuplicates">Cancel</button>
+          {% endif %}
+        </td>
+        <td class="form-label" style="width:70px;">
+          <label for="{{ edit_study.contact.id_for_label }}">Contact:</label>
+        </td>
+        <td style="width:260px;">
+          {% if writable %}
+            {{ edit_study.contact.errors }}
+            <div class="editable-field inactive" id="editable-study-contact">
+              {% if study.contact %}
+                {% firstof study.contact.get_full_name study.contact.email as label %}
+                <a href="mailto:{{ study.contact.email }}">{{ label }}</a>
+              {% elif study.contact_extra %}
+                {{ study.contact_extra }}
+              {% else %}
+                <i>(Enter Contact)</i>
+              {% endif %}
+              {{ edit_study.contact }}
             </div>
-            <div id="iceError" role="alert" class="alert alert-warning alert-dismissible" hidden>
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <h4 class="alertSubject"></h4>
-                <p class="alertWarning"></p>
-                <button type="button" class="btn btn-warning yesAlertInput omitStrains">Omit Strains</button>
-                <button type="button" class="btn btn-danger dontAllowError noOmitStrains">Cancel</button>
+          {% else %}
+            <div>
+              {% if study.contact %}
+                {% firstof study.contact.get_full_name study.contact.email as label %}
+                <a href="mailto:{{ study.contact.email }}">{{ label }}</a>
+              {% elif study.contact_extra %}
+                {{ study.contact_extra }}
+              {% else %}
+                <i>No contact set.</i>
+              {% endif %}
             </div>
-            </div>
-        </div>
-
-        <table class="formTable" style="width:90%;">
-            <tr>
-                <td style="width:260px;">
-                    {{ edit_study.description.errors }}
-                    <div class="editable-field inactive" id="editable-study-description">
-                        {% firstof study.description|safe "<i>(Click to add description)</i>"|safe %}
-                        {{ edit_study.description }}
-                    </div>
-                </td>
-                <td class="form-label" style="width:70px;">
-                    <label for="{{ edit_study.contact.id_for_label }}">Contact:</label>
-                </td>
-                <td style="width:260px;">
-                    {{ edit_study.contact.errors }}
-                    <div class="editable-field inactive" id="editable-study-contact">
-                        {% if study.contact %}
-                            {% firstof study.contact.get_full_name study.contact.email as label %}
-                            <a href="mailto:{{ study.contact.email }}">{{ label }}</a>
-                        {% elif study.contact_extra %}
-                            {{ study.contact_extra }}
-                        {% else %}
-                            <i>(Enter Contact)</i>
-                        {% endif %}
-                        {{ edit_study.contact }}
-                    </div>
-                </td>
-            </tr>
-        </table>
-        </div>
-    </div>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+  </div>
 </form>
 
-<div class="overviewDropZone" style="{% if lines %}display:none;{% endif %}">
-    <div class="fd-zone excel" id="experimentDescDropZone">
-        <a href="{% url 'main:experiment_description_help' %}">
-            <div id="helpExperimentDescription" class="helpBadgeDiv">{% trans 'help' %}
-            <div class="helpContent">
-                {% blocktrans trimmed %}
-                Drag-and-drop an Experiment description file into this grey box to
-                describe your experiment. Alternatively, you can click on the link below
-                to manually input your experiment description.
 
-                Click on this icon for more information about Experiment Description files.
-                {% endblocktrans %}
-            </div></div>
-        </a>
-        <div id="dz-title">Upload an Experiment Description file</div>
-        <a href="{% static 'main/example/sample_experiment_description.xlsx' %}"
-           class="sampleFileDownloadLink">
-            Example File <span class="glyphicon glyphicon-download-alt"></span></a>
-
-    </div>
-    <div class="fileDropInfoArea off" id="fileDropInfoArea">
-        <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
-        <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
-        <div class="fileDropInfoSending" id="fileDropInfoSending">
-            <span id="fileUploadMessage">Sending To Server...</span>
-            <progress id="fileUploadProgressBar" />
+{% if writable %}
+<div class="overviewDropZone">
+  <div class="fd-zone excel" id="experimentDescDropZone">
+    <div id="dz-title">
+      {% trans 'Upload an Experiment Description file' %}
+      <a href="{% url 'main:experiment_description_help' %}">
+        <div id="helpExperimentDescription" class="helpBadgeDiv">{% trans 'help' %}
+          <div class="helpContent">
+            <p>
+              {% blocktrans trimmed %}
+              Drag-and-drop an Experiment description file into this grey box to
+              describe your experiment. Alternatively, you can click on the link below
+              to manually input your experiment description.
+              {% endblocktrans %}
+            </p>
+            <p>
+              {% blocktrans trimmed %}
+              Click on this icon for more information about Experiment Description files.
+              {% endblocktrans %}
+            </p>
+          </div>
         </div>
-        <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
+      </a>
     </div>
-    <a class="dropLink" href="{% url 'main:combos' slug=study.slug %}">
-        <button id="combosButton" class="combosButton actionButton primary"
-                              type="button"
-                              name="action">
-            <span class="glyphicon glyphicon-random"></span> {% trans "Add Line Combo's" %}
-                </button>
+    <a href="{% static 'main/example/sample_experiment_description.xlsx' %}"
+        class="sampleFileDownloadLink">
+      {% trans 'Example File' %} <span class="glyphicon glyphicon-download-alt"></span>
     </a>
-    <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">
-        <button id="manualButton" class="manualButton actionButton primary"
-                                  type="button"
-                                  name="action">
-            <span class="glyphicon glyphicon-pencil"></span> {% trans 'Enter Manually' %}
+  </div>
+  <a class="dropLink" href="{% url 'main:combos' slug=study.slug %}">
+    <button id="combosButton"
+        class="combosButton actionButton primary"
+        type="button"
+        name="action">
+      <span class="glyphicon glyphicon-random"></span>
+      {% trans "Add Line Combo's" %}
+    </button>
+  </a>
+  <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">
+    <button id="manualButton"
+        class="manualButton actionButton primary"
+        type="button"
+        name="action">
+      <span class="glyphicon glyphicon-pencil"></span>
+      {% trans 'Enter Manually' %}
+    </button>
+  </a>
+</div>
+
+<div class="disclose discloseHide">
+  <div class="pageDivider" for="permissionsSection">
+    <span class="discloseLink">{% trans " Permissions" %}</span>
+  </div>
+  <div class="discloseBody">
+    <div class="sectionContent indent">
+      {% with perms=study.get_combined_permission %}
+      {% if perms %}
+      <table style="width:50%; margin: 10px 0px 24px 37px"
+          cellpadding="0"
+          cellspacing="0"
+          class="dataTable sortable">
+        <tr class="columnLabels">
+          <th class="sortheader smaller">{% trans 'Who' %}</th>
+          <th class="sortheader smaller">{% trans 'Level' %}</th>
+        </tr>
+        {% for perm in perms %}
+        <tr class="stripeRow{% cycle 'A' 'B' %}">
+          <td>{{ perm.get_who_label }}</td>
+          <td>{{ perm.get_type_label }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+      {% endwith %}
+      <button class="actionButton primary" id="addPermission">
+        {% trans 'Configure Permissions' %}
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="disclose discloseHide">
+  <div class="pageDivider {% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
+    <span class="discloseLink">
+      {% blocktrans with count=study.attachments|length %}
+      Attachments ({{ count }})
+      {% endblocktrans %}
+    </span>
+  </div>
+  <div style="padding-bottom: 10px;" class="discloseBody" id="attachmentsSection">
+    <div class="sectionContent indent">
+      {% with attachments=study.attachments %}
+      {% include "main/include/attachments.html" %}
+      {% endwith %}
+      {% if writable %}
+      <form action=""
+          method="POST"
+          class="attachments edd-form"
+          enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ new_attach.as_p }}
+        <p>
+          <button type="submit"
+              class="actionButton primary"
+              style="margin-top:-4px"
+              name="action"
+              value="attach">
+            {% trans 'Attach File' %}
+          </button>
+        </p>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="disclose discloseHide">
+  <div class="pageDivider" for="commentsSection">
+    <span class="discloseLink">
+      {% blocktrans with count=study.comment_list|length %}
+      Comments ({{ count }})
+      {% endblocktrans %}
+    </span>
+  </div>
+  <div class="discloseBody" id="commentsSection">
+    <div class="indent sectionContent">
+      <ol class="comment-list">
+        {% for comment in study.comment_list reversed %}
+        <li>
+          <span>
+            {% with created=comment.created %}
+            {% blocktrans with name=created.full_name time=created.format_timestamp %}
+            {{ name }} at {{ time }}
+            {% endblocktrans %}
+            {% endwith %}
+          </span>
+          <p>{{ comment.body }}</p>
+        </li>
+        {% endfor %}
+      </ol>
+      <div class="sectionActions">
+        <form method="POST" class="comments edd-form" action="">
+          {% csrf_token %}
+          {{ new_comment.as_p }}
+          <p>
+            <button type="submit"
+                class="actionButton primary"
+                name="action"
+                value="comment">
+              {% trans 'Add Comment' %}
+            </button>
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if writable %}
+<div class="disclose discloseHide">
+  <div class="pageDivider" for="permissionsSection">
+    <span class="discloseLink">{% trans " Manage Study" %}</span>
+  </div>
+
+  <div class="discloseBody">
+    <div class="sectionContent indent">
+      <form method="POST" class="edd-form" action="">
+        {% csrf_token %}
+        <input type="hidden" name="studyId" value="{{ object.id }}" />
+        {% if object.active %}
+        <button type="submit"
+            class="btn btn-danger"
+            name="action"
+            value="study_delete">
+          {% trans "Delete Study" %}
         </button>
-    </a>
+        {% else %}
+        <button type="submit"
+            class="btn btn-primary"
+            name="action"
+            value="study_restore">
+          {% trans "Restore Study" %}
+        </button>
+        {% endif %}
+      </form>
+    </div>
+  </div>
 </div>
-
-{% if writable %}
-<div class="disclose discloseHide">
-    <div class="pageDivider" for="permissionsSection">
-        <span class="discloseLink">{% trans " Permissions" %}</span>
-    </div>
-    <div class="discloseBody">
-        <div class="sectionContent indent">
-            {% with perms=study.get_combined_permission %}
-                {% if perms %}
-                <table style="width:50%; margin: 10px 0px 24px 37px" cellpadding="0"
-                        cellspacing="0" class="dataTable sortable">
-                    <tr class="columnLabels">
-                        <th class="sortheader smaller">Who</th>
-                        <th class="sortheader smaller">Level</th>
-                    </tr>
-                    {% for perm in perms %}
-                    <tr class="stripeRow{% cycle 'A' 'B' %}">
-                        <td>{{ perm.get_who_label }}</td>
-                        <td>{{ perm.get_type_label }}</td>
-                    </tr>
-                    {% endfor %}
-                </table>
-                {% endif %}
-            {% endwith %}
-            <button class="actionButton primary" id="addPermission">Configure Permissions</button>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<div class="disclose discloseHide">
-    <div class="pageDivider {% if new_attach.errors %}active{% endif %}" for="attachmentsSection">
-        <span class="discloseLink"> Attachments ({{ study.attachments|length }})</span>
-    </div>
-    <div style="padding-bottom: 10px;" class="discloseBody" id="attachmentsSection">
-        <div class="sectionContent indent">
-            {% with attachments=study.attachments %}
-                {% include "main/include_attachments.html" %}
-            {% endwith %}
-            {% if writable %}
-            <form method="POST" enctype="multipart/form-data"
-                    class="attachments edd-form" action="">
-                {% csrf_token %}
-                {{ new_attach.as_p }}
-                <p>
-                    <button type="submit" class="actionButton primary" style="margin-top:-4px"
-                            name="action" value="attach">Attach File</button>
-                </p>
-            </form>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<div class="disclose discloseHide">
-    <div class="pageDivider{% if new_comment.errors %}{% endif %}" for="commentsSection">
-        <span class="discloseLink"> Comments ({{ study.comment_list|length }}) </span>
-    </div>
-    <div class="discloseBody{% if not new_comment.errors %}{% endif %}" id="commentsSection">
-        <div class="indent sectionContent">
-            <ol class="comment-list">
-                {% for comment in study.comment_list reversed %}
-                    <li>
-                        <span>{{ comment.created.full_name }} at
-                            {{ comment.created.format_timestamp }}</span>
-                        <p>{{ comment.body }}</p>
-                    </li>
-                {% endfor %}
-            </ol>
-            <div class="sectionActions">
-                <form method="POST" class="comments edd-form" action="">
-                    {% csrf_token %}
-                    {{ new_comment.as_p }}
-                    <p>
-                        <button type="submit" class="actionButton primary" name="action"
-                                value="comment">Add Comment</button>
-                    </p>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% if writable %}
-<div class="disclose discloseHide">
-    <div class="pageDivider" for="permissionsSection">
-        <span class="discloseLink">{% trans " Manage Study" %}</span>
-    </div>
-
-    <div class="discloseBody">
-        <div class="sectionContent indent">
-            <form method="POST" class="edd-form" action="">
-                {% csrf_token %}
-                <input type="hidden" name="studyId" value="{{ object.id }}" />
-                {% if object.active %}
-                <button type="submit" class="btn btn-danger"
-                        name="action" value="study_delete">{% trans "Delete Study" %}</button>
-                {% else %}
-                <button type="submit" class="btn btn-primary"
-                        name="action" value="study_restore">{% trans "Restore Study" %}</button>
-                {% endif %}
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 {# add permissions modal #}
-<div class="indent off" title="Configure Permissions" id="permissionsSection">
-    <div class="sectionActions">
-        <form method="POST" enctype="multipart/form-data" class="edd-form" id="permissions"
-                action="">
-            {% csrf_token %}
-            <div class="permission" id="permission_user_box">
-                <label for="permission_user">
-                    <input type="radio" id="permission_user" name="class" value="User"
-                            checked="checked" hidden/>
-                    <span>User</span>
-                </label>
-                <select id="user_permission_options" name="type">
-                    <option value={{ permission_none }}>None</option>
-                    <option value={{ permission_read }}>Read</option>
-                    <option value={{ permission_write }}>Write</option>
-                </select>
-                <button id="set_user_permission">Set Permission</button>
-            </div>
-            <div  class="permission"  id="permission_group_box">
-                <label for="permission_group">
-                    <input type="radio" id="permission_group" name="class" value="Group" hidden/>
-                    <span>Group</span>
-                </label>
-                <select id="group_permission_options" name="type">
-                    <option value={{ permission_none }}>None</option>
-                    <option value={{ permission_read }}>Read</option>
-                    <option value={{ permission_write }}>Write</option>
-                </select>
-                <button id="set_group_permission">Set Permission</button>
-            </div>
-            <div  class="permission" id="permission_public_box">
-                <input type="radio" id="permission_public" name="class" value="Public" hidden/>
-                <label for="permission_public">
-                    <span>Everyone</span>
-                </label>
-                <select name="type">
-                    <option value={{ permission_none }}>None</option>
-                    <option value={{ permission_read }}>Read</option>
-                    <option value={{ permission_write }}>Write</option>
-                </select>
-                <button id="set_everyone_permission">Set Permission</button>
-            </div>
-        </form>
-    </div>
+<div class="indent off" title="{% trans 'Configure Permissions' %}" id="permissionsSection">
+  <div class="sectionActions">
+    <form action=""
+        method="POST"
+        class="edd-form"
+        id="permissions"
+        enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="permission" id="permission_user_box">
+        <label for="permission_user">
+          <input type="radio" id="permission_user" name="class" value="User" hidden/>
+          <span>{% trans 'User' %}</span>
+        </label>
+        <select id="user_permission_options" name="type">
+          <option value="{{ permission_none }}">{% trans 'None' %}</option>
+          <option value="{{ permission_read }}">{% trans 'Read' %}</option>
+          <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+        </select>
+        <button id="set_user_permission">{% trans 'Set Permission' %}</button>
+      </div>
+      <div class="permission" id="permission_group_box">
+        <label for="permission_group">
+          <input type="radio" id="permission_group" name="class" value="Group" hidden/>
+          <span>{% trans 'Group' %}</span>
+        </label>
+        <select id="group_permission_options" name="type">
+          <option value="{{ permission_none }}">{% trans 'None' %}</option>
+          <option value="{{ permission_read }}">{% trans 'Read' %}</option>
+          <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+        </select>
+        <button id="set_group_permission">{% trans 'Set Permission' %}</button>
+      </div>
+      <div class="permission" id="permission_public_box">
+        <input type="radio" id="permission_public" name="class" value="Public" hidden/>
+        <label for="permission_public">
+          <span>{% trans 'Everyone' %}</span>
+        </label>
+        <select name="type">
+          <option value="{{ permission_none }}">{% trans 'None' %}</option>
+          <option value="{{ permission_read }}">{% trans 'Read' %}</option>
+          <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+        </select>
+        <button id="set_everyone_permission">{% trans 'Set Permission' %}</button>
+      </div>
+    </form>
+  </div>
 </div>
+{% endif %}
+
 {% endblock content %}

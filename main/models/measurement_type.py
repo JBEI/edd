@@ -1,6 +1,4 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 """
 Models describing measurement types.
 """
@@ -9,7 +7,6 @@ import logging
 import re
 import requests
 
-from builtins import str
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -270,7 +267,7 @@ class Metabolite(MeasurementType):
             response = requests.post(url, data={'cid': pubchem_cid})
             record = response.json()['PC_Compounds'][0]
             properties = {
-                item['urn']['label']: item['value'].values()[0]
+                item['urn']['label']: list(item['value'].values())[0]
                 for item in record['props']
             }
             datasource = Datasource.objects.create(name='PubChem', url=url)
@@ -279,13 +276,13 @@ class Metabolite(MeasurementType):
                 short_name=pubchem_cid,
                 type_source=datasource,
                 charge=record.get('charge', 0),
-                carbon_count=len(filter(lambda a: a == 6, record['atoms']['element'])),
+                carbon_count=len([a for a in record['atoms']['element'] if a == 6]),
                 molar_mass=properties['Molecular Weight'],
                 molecular_formula=properties['Molecular Formula'],
                 smiles=properties['SMILES'],
                 pubchem_cid=pubchem_cid,
             )
-        except:
+        except Exception:
             logger.exception('Failed loading PubChem %s', pubchem_cid)
             raise ValidationError(
                 _u('Could not load information on %s from PubChem') % pubchem_cid
@@ -301,7 +298,7 @@ class Metabolite(MeasurementType):
                 return cls.objects.get(pubchem_cid=cid)
             except cls.DoesNotExist:
                 return cls._load_pubchem(cid)
-            except:
+            except Exception:
                 logger.exception('Error loading Metabolite with cid %s', pubchem_cid)
                 raise ValidationError(_u('There was a problem looking up %s') % pubchem_cid)
         raise ValidationError(
@@ -350,7 +347,7 @@ class GeneIdentifier(MeasurementType):
                 link.gene = gene
                 link.save()
                 return gene
-        except:
+        except Exception:
             pass  # fall through to raise ValidationError
         raise ValidationError(_u('Could not load gene "%s"') % identifier)
 
@@ -361,7 +358,7 @@ class GeneIdentifier(MeasurementType):
         except cls.DoesNotExist:
             datasource = Datasource.objects.create(name=user.username)
             return cls.objects.create(type_name=identifier, type_source=datasource)
-        except:
+        except Exception:
             logger.exception('Failed to load GeneIdentifier "%s"', identifier)
             raise ValidationError(_u('Could not load gene "%s"') % identifier)
 
@@ -466,7 +463,7 @@ class ProteinIdentifier(MeasurementType):
                 defaults=values,
             )
             return protein
-        except:
+        except Exception:
             logger.exception('Failed to read UniProt: %s', uniprot_id)
             raise ValidationError(_u('Could not load information on %s from UniProt') % uniprot_id)
 
@@ -708,7 +705,6 @@ class MeasurementUnit(models.Model):
         'uM': lambda y, metabolite: y / 1000,
         'mol/L/hr': lambda y, metabolite: 1000 * y,
         'mM': lambda y, metabolite: y,
-        'mol/L/hr': lambda y, metabolite: 1000 * y,
     }
 
     def to_json(self):

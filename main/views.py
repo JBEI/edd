@@ -1,26 +1,25 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
 import collections
 import json
 import logging
 import re
 
-from builtins import str
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.postgres.aggregates import ArrayAgg
-from django.core.exceptions import PermissionDenied, SuspiciousOperation, ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse, QueryDict
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
+from future.utils import viewvalues
 from messages_extends import constants as msg_constants
 from requests import codes
 from rest_framework.exceptions import MethodNotAllowed
@@ -37,29 +36,46 @@ from main.importer.experiment_desc.constants import (
     UNPREDICTED_ERROR,
     UNSUPPORTED_FILE_TYPE,
 )
-from main.importer.experiment_desc.importer import (_build_response_content, ImportErrorSummary,
-                                                    ExperimentDescriptionOptions)
+from main.importer.experiment_desc.importer import (
+    _build_response_content,
+    ExperimentDescriptionOptions,
+    ImportErrorSummary,
+)
 from . import autocomplete, models as edd_models, redis
 from .export.forms import ExportOptionForm, ExportSelectionForm, WorklistForm
 from .export.sbml import SbmlExport
 from .export.table import ExportSelection, TableExport, WorklistExport
-from .forms import (AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, LineForm,
-                    MeasurementForm, MeasurementValueFormSet, )
+from .forms import (
+    AssayForm,
+    CreateAttachmentForm,
+    CreateCommentForm,
+    CreateStudyForm,
+    LineForm,
+    MeasurementForm,
+    MeasurementValueFormSet,
+)
 from .importer.experiment_desc import CombinatorialCreationImporter
-from .importer.parser import find_parser
-from .models import (Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue,
-                     Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
-                     StudyPermission, Update, )
+from .importer import parser
+from .models import (
+    Assay,
+    Line,
+    Measurement,
+    MeasurementType,
+    MeasurementValue,
+    Metabolite,
+    MetaboliteSpecies,
+    Protocol,
+    SBMLTemplate,
+    Study,
+    StudyPermission,
+    Update,
+)
 from .models.common import qfilter
 from .solr import StudySearch
 from .tasks import import_table_task
 from .utilities import (
-    get_edddata_carbon_sources,
-    get_edddata_measurement,
     get_edddata_misc,
-    get_edddata_strains,
     get_edddata_study,
-    get_edddata_users,
 )
 from edd import utilities
 
@@ -186,7 +202,7 @@ class StudyIndexView(generic.edit.CreateView):
         # and a mapping of lvs to retain order
         latest = map(lambda pk: latest_by_pk.get(pk, None), lvs)
         # filter out the Nones
-        context['latest_viewed_studies'] = filter(bool, latest)
+        context['latest_viewed_studies'] = list(filter(bool, latest))
         context['can_create'] = Study.user_can_create(self.request.user)
         return context
 
@@ -312,14 +328,14 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         return False
 
     def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
+        instance = self.object = self.get_object()
         action = request.POST.get('action', None)
-        context = self.get_context_data(object=self.object, action=action, request=request)
-        can_write = self.object.user_can_write(request.user)
+        context = self.get_context_data(object=instance, action=action, request=request)
+        can_write = instance.user_can_write(request.user)
         action_lookup = self.get_actions(can_write=can_write)
         action_fn = action_lookup[action]
         view_or_valid = action_fn(request, context, *args, **kwargs)
-        if type(view_or_valid) == bool:
+        if isinstance(view_or_valid, bool):
             # boolean means a response to same page, with flag noting whether form was valid
             return self.post_response(request, context, view_or_valid)
         elif isinstance(view_or_valid, HttpResponse):
@@ -336,8 +352,66 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         return self.render_to_response(context)
 
     def _check_write_permission(self, request):
-        if not self.object.user_can_write(request.user):
+        if not self.get_object().user_can_write(request.user):
             raise PermissionDenied(_("You do not have permission to modify this study."))
+
+
+class StudyAttachmentView(generic.DetailView):
+    model = edd_models.Attachment
+    pk_url_kwarg = 'file_id'
+    slug_url_kwarg = None
+    template_name = 'main/confirm_delete.html'
+
+    def _get_studyview(self):
+        # keep a StudyDetailView instance to re-use the code there to find a Study
+        if hasattr(self, '_studyview'):
+            return self._studyview
+        self._studyview = StudyDetailView()
+        self._studyview.request = self.request
+        self._studyview.args = self.args
+        self._studyview.kwargs = self.kwargs
+        # SingleObjectMixin depends on an object property being set on views
+        self._studyview.object = self._studyview.get_object()
+        return self._studyview
+
+    def get_context_data(self, **kwargs):
+        context = super(StudyAttachmentView, self).get_context_data(**kwargs)
+        attachment = self.get_object()
+        study = self._get_studyview().get_object()
+        context['cancel_link'] = reverse('main:overview', kwargs={'slug': study.slug})
+        context['confirm_action'] = 'delete'
+        context['delete_select'] = None
+        context['item_names'] = [attachment.filename]
+        context['measurement_count'] = 0
+        context['typename'] = _('Attachment')
+        return context
+
+    def get_queryset(self):
+        # get the default Attachment queryset
+        qs = super(StudyAttachmentView, self).get_queryset()
+        # use the _studyview to find the Study referenced in the URL
+        study = self._get_studyview().get_object()
+        # filter on only Attachments on the Study from the URL
+        return qs.filter(object_ref=study)
+
+    def get(self, request, *args, **kwargs):
+        model = self.object = self.get_object()
+        response = HttpResponse(model.file.read(), content_type=model.mime_type)
+        response['Content-Disposition'] = 'attachment; filename="%s"' % model.filename
+        return response
+
+    def post(self, request, *args, **kwargs):
+        instance = self.object = self.get_object()
+        action = request.POST.get('action', None)
+        studyview = self._get_studyview()
+        studyview._check_write_permission(request)
+        study = studyview.get_object()
+        if 'delete' == action:
+            name = instance.filename
+            instance.delete()
+            messages.success(request, _('Deleted attachment %(filename)s.') % {'filename': name})
+            return HttpResponseRedirect(reverse('main:overview', kwargs={'slug': study.slug}))
+        return self.render_to_response(self.get_context_data(**kwargs))
 
 
 class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
@@ -368,6 +442,7 @@ class StudyUpdateView(StudyObjectMixin, generic.edit.BaseUpdateView):
         return kwargs
 
     def form_valid(self, form):
+        # save should update the cached value of object
         self.object = form.save()
         return JsonResponse(
             {
@@ -456,7 +531,8 @@ class StudyOverviewView(StudyDetailBaseView):
         study = self.get_object()
         form = CreateStudyForm(request.POST or None, instance=study, prefix='study')
         if form.is_valid():
-            self.object = form.save()  # make sure we're updating the view object
+            # save should update the cached value of object
+            self.object = form.save()
             return True
         context['edit_study'] = form
         return False
@@ -479,7 +555,6 @@ class StudyLinesView(StudyDetailBaseView):
                 'enable': self.handle_enable,
                 'disable': self.handle_delete_line,
                 'disable_confirm': self.handle_disable,
-                'group': self.handle_group,
                 'line': self.handle_line,
                 'measurement': self.handle_measurement,
             })
@@ -518,7 +593,7 @@ class StudyLinesView(StudyDetailBaseView):
 
     def handle_assay_action(self, request, context, *args, **kwargs):
         assay_action = request.POST.get('assay_action', None)
-        can_write = self.object.user_can_write(request.user)
+        can_write = self.get_object().user_can_write(request.user)
         form_valid = False
         # allow any who can view to export
         if assay_action == 'export':
@@ -546,10 +621,13 @@ class StudyLinesView(StudyDetailBaseView):
         ids = request.POST.getlist('assayId', [])
         form = MeasurementForm(request.POST, assays=ids, prefix='measurement')
         if len(ids) == 0:
-            form.add_error(None, ValidationError(
-                _('Must select at least one assay to add Measurement'),
-                code='no-assays-selected'
-                ))
+            form.add_error(
+                None,
+                ValidationError(
+                    _('Must select at least one assay to add Measurement'),
+                    code='no-assays-selected'
+                ),
+            )
         if form.is_valid():
             form.save()
             return True
@@ -596,20 +674,6 @@ class StudyLinesView(StudyDetailBaseView):
         #   trying to use normal form errors
         return HttpResponseRedirect(request.path)
 
-    def handle_group(self, request, context, *args, **kwargs):
-        self._check_write_permission(request)
-        ids = request.POST.getlist('lineId', [])
-        study = self.get_object()
-        if len(ids) > 1:
-            first = ids[0]
-            count = Line.objects.filter(study=study, pk__in=ids).update(replicate_id=first)
-            messages.success(request, 'Grouped %s Lines' % count)
-            return True
-        messages.error(request, _('Must select more than one Line to group.'))
-        # forms involved here are built dynamically by Typescript, should redirect instead of
-        #   trying to use normal form errors
-        return HttpResponseRedirect(request.path)
-
     def handle_line(self, request, context, *args, **kwargs):
         self._check_write_permission(request)
         ids = [v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '']
@@ -620,7 +684,7 @@ class StudyLinesView(StudyDetailBaseView):
         return self.handle_line_bulk(request, ids)
 
     def handle_line_action(self, request, context, *args, **kwargs):
-        can_write = self.object.user_can_write(request.user)
+        can_write = self.get_object().user_can_write(request.user)
         line_action = request.POST.get('line_action', None)
         # allow any who can view to export
         if line_action == 'export':
@@ -648,7 +712,7 @@ class StudyLinesView(StudyDetailBaseView):
                     form.save()
                     saved += 1
                 else:
-                    for error in form.errors.values():
+                    for error in viewvalues(form.errors):
                         messages.warning(request, error)
         messages.success(
             request,
@@ -717,6 +781,7 @@ class StudyDetailView(StudyDetailBaseView):
         action_lookup = super(StudyDetailView, self).get_actions(can_write=can_write)
         action_lookup.update({
             'assay_action': self.handle_assay_action,
+            'assay_confirm_delete': self.handle_assay_confirm_delete,
         })
         if can_write:
             action_lookup.update({
@@ -755,7 +820,7 @@ class StudyDetailView(StudyDetailBaseView):
 
     def handle_assay_action(self, request, context, *args, **kwargs):
         assay_action = request.POST.get('assay_action', None)
-        can_write = self.object.user_can_write(request.user)
+        can_write = self.get_object().user_can_write(request.user)
         form_valid = False
         # allow any who can view to export
         if assay_action == 'export':
@@ -782,6 +847,39 @@ class StudyDetailView(StudyDetailBaseView):
             )
         return form_valid
 
+    def handle_assay_confirm_delete(self, request, context, *args, **kwargs):
+        self._check_write_permission(request)
+        form = ExportSelectionForm(data=request.POST, user=request.user, exclude_disabled=False)
+        if form.is_valid():
+            formdata = form.clean()
+            assay_ids = formdata.get('assayId', [])
+            if assay_ids:
+                # cannot directly use form.selection.assays because it will include parent assay
+                #   for any selected measurements, which will not be intended delete behavior
+                selection = ExportSelection(
+                    request.user,
+                    exclude_disabled=False,
+                    assayId=assay_ids,
+                )
+                assay_count = selection.assays.update(active=False)
+            else:
+                assay_count = 0
+            # can directly use form.selection for measurements, and will include measurements
+            #   under any selected assays automatically
+            measurement_count = form.selection.measurements.update(active=False)
+            messages.success(
+                request,
+                _('Deleted %(assay)d Assays and %(measurement)d Measurements.') % {
+                    'assay': assay_count,
+                    'measurement': measurement_count,
+                }
+            )
+            return True
+        messages.error(request, _('Failed to validate selection.'))
+        # forms involved here are built dynamically by Typescript, should redirect instead of
+        #   trying to use normal form errors
+        return HttpResponseRedirect(request.path)
+
     def handle_measurement(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('assayId', [])
         form = MeasurementForm(request.POST, assays=ids, prefix='measurement')
@@ -800,36 +898,8 @@ class StudyDetailView(StudyDetailBaseView):
         return False
 
     def handle_measurement_delete(self, request):
-        assay_ids = request.POST.getlist('assayId', [])
-        measure_ids = request.POST.getlist('measurementId', [])
-        # define base querysets first
-        assays = Assay.objects.filter(pk__in=assay_ids)
-        assays_counted = assays.annotate(v_count=Count('measurement__measurementvalue'))
-        measures = Measurement.objects.filter(Q(assay_id__in=assay_ids) | Q(pk__in=measure_ids))
-        measures_counted = measures.annotate(v_count=Count('measurementvalue'))
-        # start counts at zero
-        assay_count = 0
-        measurement_count = 0
-        try:
-            # real deletion for anything without measurement values
-            foo, info = measures_counted.filter(v_count=0).delete()
-            measurement_count += info.get(Measurement._meta.label, 0)
-            foo, info = assays_counted.filter(v_count=0).delete()
-            measurement_count += info.get(Measurement._meta.label, 0)
-            assay_count += info.get(Assay._meta.label, 0)
-            # "deleting" the rest by setting active to False
-            assay_count += assays.update(active=False)
-            measurement_count += measures.update(active=False)
-            messages.success(
-                request,
-                _('Deleted %(assay)d Assays and %(measurement)d Measurements.') % {
-                    'assay': assay_count,
-                    'measurement': measurement_count,
-                }
-            )
-        except Exception as e:
-            logger.exception('Failed to do measurement deletion')
-        return True
+        self._check_write_permission(request)
+        return StudyDeleteView.as_view()
 
     def handle_measurement_edit(self, request):
         assay_ids = request.POST.getlist('assayId', [])
@@ -847,8 +917,7 @@ class StudyDetailView(StudyDetailBaseView):
         lines = {}
         for m in measures:
             a = m.assay
-            l = a.line
-            line_dict = lines.setdefault(l.id, {'line': l, 'assays': {}, })
+            line_dict = lines.setdefault(a.line.id, {'line': a.line, 'assays': {}, })
             assay_dict = line_dict['assays'].setdefault(a.id, {
                 'assay': a,
                 'measures': collections.OrderedDict(),
@@ -870,7 +939,7 @@ class StudyDetailView(StudyDetailBaseView):
             context={
                 'lines': lines,
                 'measures': ','.join(['%s' % m.pk for m in measures]),
-                'study': self.object,
+                'study': self.get_object(),
             },
         )
 
@@ -890,8 +959,7 @@ class StudyDetailView(StudyDetailBaseView):
         lines = {}
         for m in measures:
             a = m.assay
-            l = a.line
-            line_dict = lines.setdefault(l.id, {'line': l, 'assays': {}, })
+            line_dict = lines.setdefault(a.line.id, {'line': a.line, 'assays': {}, })
             assay_dict = line_dict['assays'].setdefault(
                 a.id,
                 {
@@ -918,16 +986,16 @@ class StudyDetailView(StudyDetailBaseView):
         return True
 
     def get(self, request, *args, **kwargs):
-        self.object = self.get_object()
+        instance = self.object = self.get_object()
         # redirect to overview page if there are no lines or assays
-        if self.object.line_set.count() == 0:
+        if instance.line_set.count() == 0:
             return HttpResponseRedirect(
-                reverse('main:overview', kwargs={'slug': self.object.slug})
+                reverse('main:overview', kwargs={'slug': instance.slug})
             )
         # redirect to lines page if there are no assays
-        if Assay.objects.filter(line__study=self.object).count() == 0:
+        if Assay.objects.filter(line__study=instance).count() == 0:
             return HttpResponseRedirect(
-                reverse('main:lines', kwargs={'slug': self.object.slug})
+                reverse('main:lines', kwargs={'slug': instance.slug})
             )
         return super(StudyDetailView, self).get(request, *args, **kwargs)
 
@@ -942,13 +1010,14 @@ class StudyDetailView(StudyDetailBaseView):
 
 class StudyDeleteView(StudyLinesView):
     """ Confirmation view for deleting objects from a Study. """
-    template_name = 'main/study-delete-confirm.html'
+    template_name = 'main/confirm_delete.html'
 
     def get_actions(self, can_write=False):
         """ Return a dict mapping action names to functions performing the action. """
         action_lookup = collections.defaultdict(lambda: self.handle_unknown)
         if can_write:
             action_lookup.update({
+                'assay_action': self.handle_assay_measurement_delete,
                 'disable': self.handle_line_delete,
                 'study_delete': self.handle_study_delete,
             })
@@ -958,19 +1027,40 @@ class StudyDeleteView(StudyLinesView):
         context = super(StudyDeleteView, self).get_context_data(**kwargs)
         request = kwargs.get('request')
         form = ExportSelectionForm(data=request.POST, user=request.user, exclude_disabled=False)
-        context['select_form'] = form
+        context['delete_select'] = form
+        context['measurement_count'] = form.selection.measurements.count()
         context['cancel_link'] = request.path
         return context
 
+    def handle_assay_measurement_delete(self, request, context, *args, **kwargs):
+        assay_action = request.POST.get('assay_action', None)
+        print(f'assay_action = {assay_action}')
+        if 'delete' != assay_action:
+            return self.handle_unknown(request, context, *args, **kwargs)
+        form = context['delete_select']
+        formdata = form.clean()
+        if len(formdata.get('assayId', [])) > 0:
+            context['typename'] = _('Assay')
+            context['item_names'] = [a.name for a in form.selection.assays[:10]]
+        else:
+            context['typename'] = _('Measurement')
+            context['item_names'] = [
+                m.measurement_type.type_name
+                for m in form.selection.measurements[:10]
+            ]
+        context['confirm_action'] = 'assay_confirm_delete'
+        return False
+
     def handle_line_delete(self, request, context, *args, **kwargs):
+        form = context['delete_select']
         context['typename'] = _('Line')
-        context['item_names'] = [l.name for l in context['select_form'].selection.lines]
+        context['item_names'] = [l.name for l in form.selection.lines[:10]]
         context['confirm_action'] = 'disable_confirm'
         return False
 
     def handle_study_delete(self, request, context, *args, **kwargs):
         context['typename'] = _('Study')
-        context['item_names'] = [self.object.name]
+        context['item_names'] = [self.get_object().name]
         context['confirm_action'] = 'delete_confirm'
         return False
 
@@ -1195,7 +1285,7 @@ def study_assay_measurements(request, pk=None, slug=None, protocol=None, assay=N
             x['assay_id']: x.get('count', 0) for x in total_measures if 'assay_id' in x
         },
         'types': {t.pk: t.to_json() for t in measure_types},
-        'measures': map(lambda m: m.to_json(), measure_list),
+        'measures': [m.to_json() for m in measure_list],
         'data': value_dict,
     }
     return JsonResponse(payload, encoder=utilities.JSONEncoder)
@@ -1277,10 +1367,10 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
     """ Implements a REST-style view for /study/<id-or-slug>/permissions/ """
 
     def get(self, request, *args, **kwargs):
-        self.object = self.get_object()
+        instance = self.object = self.get_object()
         return JsonResponse([
             permission.to_json()
-            for permission in self.object.get_combined_permission()
+            for permission in instance.get_combined_permission()
         ])
 
     def head(self, request, *args, **kwargs):
@@ -1288,7 +1378,7 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
         return HttpResponse(status=200)
 
     def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
+        instance = self.object = self.get_object()
         self._check_write_permission(request)
         try:
             perms = json.loads(request.POST.get('data', '[]'))
@@ -1297,7 +1387,7 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
                 for permission_def in perms:
                     self._handle_permission_update(permission_def)
         except Exception as e:
-            logger.exception('Error modifying study (%s) permissions: %s', self.object, e)
+            logger.exception('Error modifying study (%s) permissions: %s', instance, e)
             return HttpResponse(status=500)
         return HttpResponse(status=204)
 
@@ -1305,35 +1395,36 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
     put = post
 
     def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
+        instance = self.object = self.get_object()
         self._check_write_permission(request)
         try:
             # make requested changes as a group, or not at all
             with transaction.atomic():
-                self.object.everyonepermission_set.all().delete()
-                self.object.grouppermission_set.all().delete()
-                self.object.userpermission_set.all().delete()
+                instance.everyonepermission_set.all().delete()
+                instance.grouppermission_set.all().delete()
+                instance.userpermission_set.all().delete()
         except Exception as e:
-            logger.exception('Error deleting study (%s) permissions: %s', self.object, e)
+            logger.exception('Error deleting study (%s) permissions: %s', instance, e)
             return HttpResponse(status=500)
         return HttpResponse(status=204)
 
     def _check_write_permission(self, request):
-        if not self.object.user_can_write(request.user):
+        if not self.get_object().user_can_write(request.user):
             raise PermissionDenied(_("You do not have permission to modify this study."))
 
     def _handle_permission_update(self, permission_def):
+        instance = self.get_object()
         ptype = permission_def.get('type', None)
-        kwargs = dict(study=self.object)
+        kwargs = dict(study=instance)
         defaults = dict(permission_type=ptype)
         if 'group' in permission_def:
             kwargs.update(group_id=permission_def['group'].get('id', 0))
-            manager = self.object.grouppermission_set
+            manager = instance.grouppermission_set
         elif 'user' in permission_def:
             kwargs.update(user_id=permission_def['user'].get('id', 0))
-            manager = self.object.userpermission_set
+            manager = instance.userpermission_set
         elif 'public' in permission_def:
-            manager = self.object.everyonepermission_set
+            manager = instance.everyonepermission_set
 
         if manager is None or ptype is None:
             logger.warning('Invalid permission type for add')
@@ -1420,7 +1511,6 @@ def study_describe_experiment(request, pk=None, slug=None):
     stream = request
     file = request.FILES.get('file', None)
     file_name = None
-    print('file = %s, content_type=%s' % (file, file.content_type if file else None))
     if file:
         stream = file
         file_name = file.name
@@ -1440,8 +1530,11 @@ def study_describe_experiment(request, pk=None, slug=None):
     importer = CombinatorialCreationImporter(study, user)
     try:
         with transaction.atomic(savepoint=False):
-            status_code, reply_content = (
-                importer.do_import(stream, options, excel_filename=file_name))
+            status_code, reply_content = importer.do_import(
+                stream,
+                options,
+                excel_filename=file_name,
+            )
         logger.debug('Reply content: %s' % json.dumps(reply_content))
         return JsonResponse(reply_content, status=status_code)
 
@@ -1469,25 +1562,10 @@ def utilities_parse_import_file(request):
     Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and extract a
     table of data automatically.
     """
-    # These are embedded by Utl.FileDropZone. Here for reference.
-    # file_name = request.POST['HTTP_X_FILE_NAME']
-    # file_size = request.POST['HTTP_X_FILE_SIZE']
-    # file_type = request.POST['HTTP_X_FILE_TYPE']
-    # file_date = request.POST['HTTP_X_FILE_DATE']
-
-    # In requests from OS X clients, we can use the file_type value. For example, a modern Excel
-    # document is reported as "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    # and it's consistent across Safari, Firefox, and Chrome. However, on Windows XP, file_type is
-    # always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
-
-    # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and
-    # that guess is sent along in a custom header:
     file = request.FILES.get('file')
-    # TODO these do not need to be named with X_ prefix anymore
-    edd_file_type = request.POST['X_EDD_FILE_TYPE']
-    edd_import_mode = request.POST['X_EDD_IMPORT_MODE']
+    import_mode = request.POST.get('import_mode', parser.ImportModeFlags.STANDARD)
 
-    parse_fn = find_parser(edd_import_mode, edd_file_type)
+    parse_fn = parser.find_parser(import_mode, file.content_type)
     if parse_fn:
         try:
             result = parse_fn(file)
@@ -1506,24 +1584,6 @@ def utilities_parse_import_file(request):
         },
         status=500
     )
-
-
-# /data/users/
-def data_users(request):
-    return JsonResponse({"EDDData": get_edddata_users()}, encoder=utilities.JSONEncoder)
-
-
-# /data/misc/
-def data_misc(request):
-    return JsonResponse({"EDDData": get_edddata_misc()}, encoder=utilities.JSONEncoder)
-
-
-# /data/measurements/
-def data_measurements(request):
-    data_meas = get_edddata_measurement()
-    data_misc = get_edddata_misc()
-    data_meas.update(data_misc)
-    return JsonResponse({"EDDData": data_meas}, encoder=utilities.JSONEncoder)
 
 
 # /data/sbml/
@@ -1648,51 +1708,6 @@ def data_sbml_compute(request, sbml_id, rxn_id):
     raise Http404("Could not find reaction")
 
 
-# /data/strains/
-def data_strains(request):
-    return JsonResponse({"EDDData": get_edddata_strains()}, encoder=utilities.JSONEncoder)
-
-
-# /data/metadata/
-def data_metadata(request):
-    return JsonResponse(
-        {
-            "EDDData": {
-                "MetadataTypes":
-                    {m.id: m.to_json() for m in MetadataType.objects.all()},
-            }
-        },
-        encoder=utilities.JSONEncoder)
-
-
-# /data/carbonsources/
-def data_carbonsources(request):
-    return JsonResponse({"EDDData": get_edddata_carbon_sources()}, encoder=utilities.JSONEncoder)
-
-
-# /download/<file_id>/
-def download(request, file_id):
-    model = Attachment.objects.get(pk=file_id)
-    if not model.user_can_read(request.user):
-        raise PermissionDenied(_("You do not have access to data associated with this study."))
-    response = HttpResponse(model.file.read(), content_type=model.mime_type)
-    response['Content-Disposition'] = 'attachment; filename="%s"' % model.filename
-    return response
-
-
-# TODO should only delete on POST, write a confirm delete page with a form to resubmit as POST
-def delete_file(request, file_id):
-    redirect_url = request.GET.get("redirect", None)
-    if redirect_url is None:
-        raise SuspiciousOperation(_("Missing redirect URL."))
-    model = Attachment.objects.get(pk=file_id)
-    if not model.user_can_delete(request.user):
-        raise PermissionDenied(_("You do not have permission to remove files associated with "
-                                 "this study."))
-    model.delete()
-    return redirect(redirect_url)
-
-
 meta_pattern = re.compile(r'(\w*)MetadataType$')
 
 
@@ -1721,7 +1736,6 @@ AUTOCOMPLETE_VIEW_LOOKUP = {
 # /search/<model_name>/
 def model_search(request, model_name):
     searcher = AUTOCOMPLETE_VIEW_LOOKUP.get(model_name, None)
-
     try:
         if searcher:
             return searcher(request)
@@ -1733,3 +1747,8 @@ def model_search(request, model_name):
 
     except ValidationError as v:
         return JsonResponse(v.message, status=400)
+
+
+# /demo/
+def websocket_demo(request):
+    return render(request, 'main/websocket_demo.html')

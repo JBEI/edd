@@ -1,7 +1,6 @@
 # coding: utf-8
-from __future__ import unicode_literals
+# flake8: noqa
 
-from builtins import str
 from django.conf import settings
 from django.contrib.postgres.fields import HStoreField
 from django.db import models

@@ -1,6 +1,4 @@
 # coding: utf-8
-from __future__ import division, unicode_literals
-
 """
 Reformat CSV output from the program Skyline to consolidate MS peak areas for
 individual peptides or proteins.
@@ -10,7 +8,7 @@ import re
 
 from collections import defaultdict, namedtuple
 from decimal import Decimal
-from itertools import ifilter, imap, product
+from itertools import product
 
 from .util import RawImportRecord
 
@@ -90,12 +88,12 @@ class SkylineParser(object):
         if isinstance(input_data, list):
             return (
                 self._row_to_record(item)
-                for item in ifilter(self._header_or_blank, input_data)
+                for item in filter(self._header_or_blank, input_data)
             )
         # or input_data could be a file with lines of CSV text
         return (
             self._row_to_record(cols)
-            for cols in ifilter(self._header_or_blank, imap(self._split_to_columns, input_data))
+            for cols in filter(self._header_or_blank, map(self._split_to_columns, input_data))
         )
 
     def _header_or_blank(self, row):

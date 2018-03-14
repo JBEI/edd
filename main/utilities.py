@@ -1,11 +1,10 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
-from builtins import str
 from collections import defaultdict, Iterable
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.sites.models import Site
+from future.utils import viewitems
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
@@ -42,12 +41,12 @@ def flatten_json(source):
     # convert lists/tuples to a dict
     if not isinstance(source, dict) and isinstance(source, Iterable):
         source = dict(enumerate(source))
-    for key, value in source.iteritems():
+    for key, value in viewitems(source):
         key = str(key)
         if isinstance(value, string_types):
             output[key] = value
         elif isinstance(value, (dict, Iterable)):
-            for sub, item in flatten_json(value).iteritems():
+            for sub, item in viewitems(flatten_json(value)):
                 output['.'.join((key, sub, ))] = item
         else:
             output[key] = value
@@ -127,36 +126,7 @@ def get_edddata_misc():
     }
 
 
-def get_edddata_carbon_sources():
-    """All available CarbonSource records."""
-    carbon_sources = models.CarbonSource.objects.all()
-    return {
-        "MediaTypes": media_types,
-        "CSourceIDs": [cs.id for cs in carbon_sources],
-        "EnabledCSourceIDs": [cs.id for cs in carbon_sources if cs.active],
-        "CSources": {cs.id: cs.to_json() for cs in carbon_sources},
-    }
-
-
-# TODO unit test
-def get_edddata_measurement():
-    """All data not associated with a study or related objects."""
-    metab_types = models.Metabolite.objects.all()
-    return {
-        "MetaboliteTypeIDs": [mt.id for mt in metab_types],
-        "MetaboliteTypes": {mt.id: mt.to_json() for mt in metab_types},
-    }
-
-
-def get_edddata_strains():
-    strains = models.Strain.objects.all().select_related("created", "updated")
-    return {
-        "StrainIDs": [s.id for s in strains],
-        "EnabledStrainIDs": [s.id for s in strains if s.active],
-        "Strains": {s.id: s.to_json() for s in strains},
-    }
-
-
+# TODO: eliminate uses of this data in front-end; should not be sending all user info
 def get_edddata_users(active_only=False):
     User = auth.get_user_model()
     users = User.objects.select_related(

@@ -4,306 +4,288 @@
 
 
 {% block js_css %}
-    {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static 'main/study-lines.css' %}" />
-    <script type="text/javascript" src="{% static 'dist/StudyLines.js' %}"></script>
-    {% if new_line.errors %}
-    <script type="text/javascript">
-        var options = {
-            autoOpen: false,
-            minWidth: 500,
-            title: 'Add New Line'
-        };
-        $(document).ready(function() {
-            $('.errorlist').remove();
-            $("#editLineModal").removeClass('off').dialog(options).dialog("open");
-        });
-    </script>
-    {% endif %}
+  {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="{% static 'main/study-lines.css' %}" />
+  <script type="text/javascript" src="{% static 'dist/StudyLines.js' %}"></script>
+  {% if new_line.errors %}
+  <script type="text/javascript">
+    var options = {
+      autoOpen: false,
+      minWidth: 500,
+      title: 'Add New Line'
+    };
+    $(document).ready(function() {
+      $('.errorlist').remove();
+      $("#editLineModal").removeClass('off').dialog(options).dialog("open");
+    });
+  </script>
+  {% endif %}
 {% endblock js_css %}
 
 {% block head_title %}
-    {{ block.super }}
+  {{ block.super }}
 {% endblock head_title %}
 
 {% block body_title %}
-    {{ block.super }}
+  {{ block.super }}
 {% endblock body_title %}
 
 
 {% block content %}
-    {{ block.super }}
-    <form action="" method="POST">
-    {% csrf_token %}
-    <div style="flex-grow:1">
-        {% if edit_study.errors %}
-        <div class="alert alert-danger alert-dismissible" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-            <p>{{ edit_study.name.errors.as_text }}</p>
-        </div>
-        <div class="alert alert-danger alert-dismissible" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-            <p>{{ edit_study.non_field_errors.as_text }}</p>
-        </div>
-        {% endif %}
-        <div id="linesAdded" class="alert alert-success alert-dismissible" role="alert" hidden>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
-        <div id="dismissAll">
-            <button class="btn btn-info dismissAll" style="display: none;">Dismiss</button>
-        </div>
-        <div id="acceptWarnings">
-            <button type="button" class="acceptWarnings btn btn-primary" style="display: none;">Acknowledge Warnings</button>
-        </div>
-        <div id="alert_placeholder">
-            <div class="alert alert-danger alert-dismissible" hidden>
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <h4 class="alertSubject"></h4>
-                <p class="alertWarning"></p>
-            </div>
-            <div class="alert alert-warning alert-dismissible" hidden>
-                <button type="button" class="close" data-dismiss="alert">&times;</button><h4 class="alertSubject"></h4>
-            </div>
-            <div id="actionWarningBar">
-            <div id="duplicateError" role="alert" class="alert alert-warning alert-dismissible " hidden>
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <h4 class="alertSubject"></h4>
-                <p class="alertWarning"></p>
-                <button type="button" class="btn btn-warning yesAlertInput allowDuplicates" >Allow Duplicates</button>
-                <button type="button" class="btn btn-danger dontAllowError noDuplicates">Cancel</button>
-            </div>
-            <div id="iceError" role="alert" class="alert alert-warning alert-dismissible" hidden>
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <h4 class="alertSubject"></h4>
-                <p class="alertWarning"></p>
-                <button type="button" class="btn btn-warning yesAlertInput omitStrains">Omit Strains</button>
-                <button type="button" class="btn btn-danger dontAllowError noOmitStrains">Cancel</button>
-            </div>
-            </div>
-        </div>
-    <div class="linesDropZone off">
-        <div class="fd-zone excel linesZone" id="addToLinesDropZone">
-            <div class="dz-preview dz-file-preview">
-              <div class="dz-details">
-                <div class="dz-filename"><span data-dz-name></span></div>
-              </div>
-              <div class="dz-progress"><span class="dz-upload" data-dz-uploadprogress></span></div>
-              <div class="dz-error-message"><span data-dz-errormessage></span></div>
-            </div>
-        </div>
-    </div>
-        <div id="noLinesDiv" class="hide">
-            <h3 style="margin-bottom:12px">{% trans 'This study has no lines.' %}</h3>
-        </div>
-        <div id="loadingLinesDiv">
-            <h3 style="margin-bottom:12px">{% trans 'Loading study lines...'%}
-                <span class="waitbadge wait"></span></h3>
-        </div>
-        <div id="edUploadDirectionsDiv" class="hide">
-            <img src="{% static 'main/images/upload-file.png' %}"
-                 alt="Drag-and-drop files below">
-            <span>{% trans 'Drag-and-drop an Experiment Description file below to add more lines' %}
-            </span>
-            <br>
-            <a href="{% static 'main/example/sample_experiment_description.xlsx' %}"
-               class="sampleFileDownloadLink">
-                Example File <span class="glyphicon glyphicon-download-alt"></span>
-            </a>
+  {{ block.super }}
 
-            <a href="{% url 'main:experiment_description_help' %}">
-                <div class="helpBadgeDiv helpBadgeLines">
-                    {% trans 'help' %}
-                    <div class="helpContent">
-                        {% trans 'Click for help on Experiment Description files.' %}
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="helpBadgeDiv helpBadgeLines move off">
+<form action=""
+    class="edd-form"
+    enctype="multipart/form-data"
+    id="general"
+    method="POST"
+    style="clear:both;">
+  {% csrf_token %}
+
+  <div>
+    <div>
+      {% if writable %}
+      {% include 'main/include/dropzone_messages.html' %}
+      <div class="linesDropZone off">
+        <div class="fd-zone excel linesZone" id="addToLinesDropZone"></div>
+      </div>
+      {% endif %}
+      <div id="noLinesDiv" class="hide">
+        <h3 style="margin-bottom:12px">{% trans 'This study has no lines.' %}</h3>
+      </div>
+      <div id="loadingLinesDiv">
+        <h3 style="margin-bottom:12px">
+          {% trans 'Loading study lines...'%}
+          <span class="waitbadge wait"></span>
+        </h3>
+      </div>
+      {% if writable %}
+      <div id="edUploadDirectionsDiv" class="hide">
+        <img src="{% static 'main/images/upload-file.png' %}"
+            alt="{% trans 'Drag-and-drop files below' %}" />
+        <span>
+          {% blocktrans trimmed %}
+          Drag-and-drop an Experiment Description file below to add more lines
+          {% endblocktrans %}
+        </span>
+        <br />
+        <a href="{% static 'main/example/sample_experiment_description.xlsx' %}"
+            class="sampleFileDownloadLink">
+          {% trans 'Example File' %}
+          <span class="glyphicon glyphicon-download-alt"></span>
+        </a>
+        <a href="{% url 'main:experiment_description_help' %}">
+          <div class="helpBadgeDiv helpBadgeLines">
             {% trans 'help' %}
             <div class="helpContent">
-                <p>
-                {% blocktrans trimmed %}
-                A line describes the experimental details of the biological elements of your
-                study. It defines the experimental conditions and associated metadata for, i.e.
-                a single flask. Some examples that might be defined in a line are strain, carbon
-                source, part id, or shaking speed. Users may manually add lines one at a time, or
-                download the study template for bulk uploads.
-                {% endblocktrans %}
-                </p>
+              {% trans 'Click for help on Experiment Description files.' %}
             </div>
+          </div>
+        </a>
+      </div>
+      {% endif %}
+      <div class="helpBadgeDiv helpBadgeLines move off">
+        {% trans 'help' %}
+        <div class="helpContent">
+          <p>
+          {% blocktrans trimmed %}
+          A line describes the experimental details of the biological elements of your
+          study. It defines the experimental conditions and associated metadata for, i.e.
+          a single flask. Some examples that might be defined in a line are strain, carbon
+          source, part id, or shaking speed. Users may manually add lines one at a time, or
+          download the study template for bulk uploads.
+          {% endblocktrans %}
+          </p>
         </div>
-        {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-        <table id="studyLinesTable" class="linesRequiredControls"></table>
-        <div id="actionsBar" class="actionsBar sectionActions lineFlex">
-            <div>
-            <span class="linesSelectedCell linesRequiredControls">
-                {# TODO: this gets replaced in Typescript, figure out i18n there #}
-                {% blocktrans count counter=0 %}
-                {{ counter }} selected
-                {% plural %}
-                {{ counter }} selected
-                {% endblocktrans %}
-            </span>
-            <span class="disablableButtons linesRequiredControls">
-                <button id="editButton"
-                        class="editButton actionButton {% if not writable or not lines %}off{% endif %}"
-                        disabled="true">
-                    <span class="glyphicon glyphicon-pencil"></span>
-                    {% trans 'Edit' %}
-                </button>
-                <button id="cloneButton"
-                        class="cloneButton actionButton {% if not writable or not lines %}off{% endif %}"
-                        type="submit"
-                        name="action"
-                        disabled="true"
-                        value="clone">
-                    <span class="glyphicon glyphicon-duplicate"></span>
-                    {% trans 'Clone' %}
-                </button>
-                <button id="groupButton"
-                        class="groupButton actionButton {% if not writable or not lines %}off{% endif %}"
-                        type="submit"
-                        disabled="true"
-                        name="action"
-                        value="group">
-                    {% trans 'Group' %}
-                </button>
-                <button id="addAssayButton"
-                        class="addAssayButton actionButton {% if not writable or not lines %}off{% endif %}"
-                        type="button"
-                        disabled="true">
-                    <span class="glyphicon glyphicon-plus"></span>
-                    {% trans 'Add Assay' %}
-                </button>
-                <button id="disableButton"
-                        class="disableButton actionButton {% if not writable or not lines %}off{% endif %}"
-                        type="submit"
-                        name="action"
-                        value="disable"
-                        disabled="true">
-                    <span class="glyphicon glyphicon-trash"></span>
-                    {% trans 'Delete' %}
-                </button>
-                <button id="enableButton"
-                        class="enableButton actionButton off"
-                        type="submit"
-                        name="action"
-                        value="enable"
-                        disabled="true">
-                    {% trans 'Restore' %}
-                </button>
-            </span>
-            <span id="newLinesSpan">
-               <button id="addNewLineButton"
-                     class="addNewLineButton actionButton primary {% if not writable %}
-                   off{% endif %}"><span class="glyphicon glyphicon-plus"></span>
-                   {% trans 'Add Line' %}
-               </button>
-                <a href="{% url 'main:combos' slug=study.slug %}">
-                    <button id="combosButton" class="combosButton actionButton primary"
-                                  type="button"
-                                  name="action">
-                    <span class="glyphicon glyphicon-random"></span> {% trans "Add Line Combo's" %}
-                    </button>
-                </a>
-            </span>
-            </div>
-            <div style="flex-shrink:0;padding-left:auto;" class="{% if not lines %}off{% endif %}">
-                <button style="margin-right:30px" type="button" id="worklistButton"
-                        class="worklistButton actionButton primary">
-                    <span class="glyphicon glyphicon-save"></span> {% trans 'Generate Worklist' %}
-                </button>
-                <button type="button" id="exportLineButton"
-                        class="exportLineButton actionButton primary">
-                    <span class="glyphicon glyphicon-cloud-download"></span>
-                    {% trans 'Export Data' %}
-                </button>
-            </div>
-        </div>
-    </div>
-    </form>
-
-    <div id="editLineModal" title="{% trans 'Add new line' %}"
-            class="{% if not new_line.is_editing and not new_line.errors %}off{% endif %}">
-        {% if new_line.errors %}
-        <div class="alert alert-danger alert-dismissible" style="width:313px" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
+      </div>
+      {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+      <table id="studyLinesTable" class="linesRequiredControls"></table>
+      <div id="actionsBar" class="actionsBar sectionActions lineFlex">
+        <div>
+          <span class="linesSelectedCell linesRequiredControls">
+            {# TODO: this gets replaced in Typescript, figure out i18n there #}
+            {% blocktrans count counter=0 %}
+            {{ counter }} selected
+            {% plural %}
+            {{ counter }} selected
+            {% endblocktrans %}
+          </span>
+          <span class="disablableButtons linesRequiredControls">
+            {% if writable and lines %}
+            <button id="editButton"
+                class="editButton actionButton"
+                disabled="true">
+              <span class="glyphicon glyphicon-pencil"></span>
+              {% trans 'Edit' %}
             </button>
-            <p>{{ new_line.errors.as_text  }}</p>
+            <button id="cloneButton"
+                class="cloneButton actionButton"
+                type="submit"
+                name="action"
+                disabled="true"
+                value="clone">
+              <span class="glyphicon glyphicon-duplicate"></span>
+              {% trans 'Clone' %}
+            </button>
+            <button id="addAssayButton"
+                class="addAssayButton actionButton"
+                type="button"
+                disabled="true">
+              <span class="glyphicon glyphicon-plus"></span>
+              {% trans 'Add Assay' %}
+            </button>
+            <button id="disableButton"
+                class="disableButton actionButton"
+                type="submit"
+                name="action"
+                value="disable"
+                disabled="true">
+              <span class="glyphicon glyphicon-trash"></span>
+              {% trans 'Delete' %}
+            </button>
+            <button id="enableButton"
+                class="enableButton actionButton off"
+                type="submit"
+                name="action"
+                value="enable"
+                disabled="true">
+              {% trans 'Restore' %}
+            </button>
+            {% endif %}
+          </span>
+          {% if writable %}
+          <span id="newLinesSpan">
+            <button id="addNewLineButton"
+                class="addNewLineButton actionButton primary">
+              <span class="glyphicon glyphicon-plus"></span>
+              {% trans 'Add Line' %}
+            </button>
+            <a href="{% url 'main:combos' slug=study.slug %}">
+              <button id="combosButton"
+                  class="combosButton actionButton primary"
+                  type="button"
+                  name="action">
+                <span class="glyphicon glyphicon-random"></span>
+                {% trans "Add Line Combo's" %}
+              </button>
+            </a>
+          </span>
+          {% endif %}
+        </div>
+        {% if lines %}
+        <div>
+          <button style="margin-right:30px"
+              id="worklistButton"
+              type="button"
+              class="worklistButton actionButton primary">
+            <span class="glyphicon glyphicon-save"></span>
+            {% trans 'Generate Worklist' %}
+          </button>
+          <button
+              id="exportLineButton"
+              type="button"
+              class="exportLineButton actionButton primary">
+            <span class="glyphicon glyphicon-cloud-download"></span>
+            {% trans 'Export Data' %}
+          </button>
         </div>
         {% endif %}
-        <form action="" method="POST">
-            {% csrf_token %}
-            <div class="modal-body">
-                <div class="bulkNoteGroup">
-                    <p class="bulkNote">Any fields modified will update corresponding lines</p>
-                    <p class="bulkNote">Any fields left blank will remain unchanged</p>
-                    <p class="bulkNote">Any checked fields left blank will delete contents</p>
-                </div>
-            {{ new_line.as_p }}
-            <div class="line-edit-meta form-group">
-                <span class="edd-label">
-                    <input type="text" size="14"
-                            autocomplete="off"
-                            class="autocomp autocomp_ltype form-control-meta ui-autocomplete-input"
-                            eddautocompletetype="LineMetadataType"
-                            placeholder="{% trans 'Metadata Type' %}" />
-                    <input type="hidden" class="line-meta-type" value="" />
-                </span>
-                <button class="line-meta-add btn btn-default">{% trans 'Add Field' %}</button>
-            </div>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-primary" name="action" value="line">
-                    {% trans 'Save changes' %}</button>
-            </div>
-        </form>
+      </div>
     </div>
+  </div>
+</form>
 
-    {% if new_assay.is_editing %}
-        {% trans 'Edit Assay' context 'modal title' as add_assay_modal_title %}
-        {% trans 'Edit Assay' context 'button' as add_assay_button %}
-    {% else %}
-        {% trans 'Add Assays To Selected Lines' as add_assay_modal_title %}
-        {% trans 'Add Assay' context 'button' as add_assay_button %}
-    {% endif %}
-    <div id="addAssayModal" class="off" title="{{ add_assay_modal_title}}">
-        <form action="" method="POST">
-            {% csrf_token %}
-            <div class="modal-body">
-            {{ new_assay.as_p }}
-            </div>
-            <div class="modal-footer">
-                <button type="submit" name="action" class="btn btn-primary" value="assay">
-                    {{ add_assay_button }}</button>
-            </div>
-        </form>
+{% if writable %}
+<div id="editLineModal"
+    title="{% trans 'Add new line' %}"
+    class="{% if not new_line.is_editing and not new_line.errors %}off{% endif %}">
+  {% if new_line.errors %}
+  <div class="alert alert-danger alert-dismissible" style="width:313px" role="alert">
+    <button type="button" class="close" data-dismiss="alert" aria-label="{% trans 'Close' %}">
+      <span aria-hidden="true">&times;</span>
+    </button>
+    <p>{{ new_line.errors.as_text  }}</p>
+  </div>
+  {% endif %}
+  <form action="" method="POST">
+    {% csrf_token %}
+    <div class="modal-body">
+      <div class="bulkNoteGroup">
+        <p class="bulkNote">{% trans 'Any fields modified will update corresponding lines' %}</p>
+        <p class="bulkNote">{% trans 'Any fields left blank will remain unchanged' %}</p>
+        <p class="bulkNote">{% trans 'Any checked fields left blank will delete contents' %}</p>
+      </div>
+    {{ new_line.as_p }}
+    <div class="line-edit-meta form-group">
+      <span class="edd-label">
+        <input type="text"
+            size="14"
+            autocomplete="off"
+            class="autocomp autocomp_ltype form-control-meta ui-autocomplete-input"
+            eddautocompletetype="LineMetadataType"
+            placeholder="{% trans 'Metadata Type' %}" />
+        <input type="hidden" class="line-meta-type" value="" />
+      </span>
+      <button class="line-meta-add btn btn-default">{% trans 'Add Field' %}</button>
     </div>
+    </div>
+    <div class="modal-footer">
+      <button type="submit" class="btn btn-primary" name="action" value="line">
+        {% trans 'Save changes' %}
+      </button>
+    </div>
+  </form>
+</div>
 
-    <div id="exportModal" class="off" title="{% trans 'Export as' %}">
-        <form action="" method="POST" id="exportForm">
-            {% csrf_token %}
-            <input type="radio" id="line_action_export" checked="checked" name="line_action"
-                    value="export" hidden="hidden" />
-            <label for="line_action_export">
-                <span>{% trans 'Export Lines' %}</span>
-                <select name="export">
-                    <option value="csv">{% trans 'as CSV/etc' %}</option>
-                    <option value="sbml">{% trans 'as SBML' %}</option>
-                    <option value="worklist">{% trans 'as Worklist' %}</option>
-                    <option value="study">{% trans 'to New Study' %}</option>
-                </select>
-            </label>
-            <button type="submit" name="action"
-                    value="line_action">{% trans 'Take Action' %}</button>
-        </form>
+{% if new_assay.is_editing %}
+  {% trans 'Edit Assay' context 'modal title' as add_assay_modal_title %}
+  {% trans 'Edit Assay' context 'button' as add_assay_button %}
+{% else %}
+  {% trans 'Add Assays To Selected Lines' as add_assay_modal_title %}
+  {% trans 'Add Assay' context 'button' as add_assay_button %}
+{% endif %}
+<div id="addAssayModal" class="off" title="{{ add_assay_modal_title}}">
+  <form action="" method="POST">
+    {% csrf_token %}
+    <div class="off hidden-line-inputs"></div>
+    <div class="modal-body">
+      {{ new_assay.as_p }}
     </div>
+    <div class="modal-footer">
+      <button type="submit"
+          name="action"
+          class="btn btn-primary"
+          value="assay">
+        {{ add_assay_button }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div id="exportModal" class="off" title="{% trans 'Export as' %}">
+  <form action="" method="POST" id="exportForm">
+    {% csrf_token %}
+    <input type="radio"
+        id="line_action_export"
+        checked="checked"
+        name="line_action"
+        value="export"
+        hidden="hidden" />
+    <label for="line_action_export">
+      <span>{% trans 'Export Lines' %}</span>
+      <select name="export">
+        <option value="csv">{% trans 'as CSV/etc' %}</option>
+        <option value="sbml">{% trans 'as SBML' %}</option>
+        <option value="worklist">{% trans 'as Worklist' %}</option>
+        <option value="study">{% trans 'to New Study' %}</option>
+      </select>
+    </label>
+    <button type="submit"
+        name="action"
+        value="line_action">
+      {% trans 'Take Action' %}
+    </button>
+  </form>
+</div>
 {% endblock content %}

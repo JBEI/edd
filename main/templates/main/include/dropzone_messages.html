@@ -1,0 +1,66 @@
+{% load i18n %}
+
+{% if edit_study.errors %}
+<div class="alert alert-danger alert-dismissible" role="alert">
+  <button type="button" class="close" data-dismiss="alert" aria-label="{% trans 'Close' %}">
+    <span aria-hidden="true">&times;</span>
+  </button>
+  <p>{{ edit_study.name.errors.as_text }}</p>
+</div>
+<div class="alert alert-danger alert-dismissible" role="alert">
+  <button type="button" class="close" data-dismiss="alert" aria-label="{% trans 'Close' %}">
+    <span aria-hidden="true">&times;</span>
+  </button>
+  <p>{{ edit_study.non_field_errors.as_text }}</p>
+</div>
+{% endif %}
+<div id="linesAdded" class="alert alert-success alert-dismissible off" role="alert">
+  <button type="button" class="close" data-dismiss="alert" aria-label="{% trans 'Close' %}">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div id="dismissAll" class="off">
+  <button class="btn btn-info dismissAll">
+    {% trans 'Dismiss' %}
+  </button>
+</div>
+<div id="acceptWarnings" class="off">
+  <button type="button" class="acceptWarnings btn btn-primary">
+    {% trans 'Acknowledge Warnings' %}
+  </button>
+</div>
+<div id="alert_placeholder">
+  <div class="alert alert-danger alert-dismissible off">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <h4 class="alertSubject"></h4>
+    <p class="alertWarning"></p>
+  </div>
+  <div class="alert alert-warning alert-dismissible off">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <h4 class="alertSubject"></h4>
+  </div>
+  <div id="actionWarningBar">
+    <div id="duplicateError" role="alert" class="alert alert-warning alert-dismissible off">
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+      <h4 class="alertSubject"></h4>
+      <p class="alertWarning"></p>
+      <button type="button" class="btn btn-warning yesAlertInput allowDuplicates">
+        {% trans 'Allow Duplicates' %}
+      </button>
+      <button type="button" class="btn btn-danger dontAllowError noDuplicates">
+        {% trans 'Cancel' %}
+      </button>
+    </div>
+    <div id="iceError" role="alert" class="alert alert-warning alert-dismissible off">
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+      <h4 class="alertSubject"></h4>
+      <p class="alertWarning"></p>
+      <button type="button" class="btn btn-warning yesAlertInput omitStrains">
+        {% trans 'Omit Strains' %}
+      </button>
+      <button type="button" class="btn btn-danger dontAllowError noOmitStrains">
+        {% trans 'Cancel' %}
+      </button>
+    </div>
+  </div>
+</div>

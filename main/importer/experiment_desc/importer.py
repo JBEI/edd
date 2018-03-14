@@ -1,5 +1,4 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
 import copy
 import json
@@ -7,15 +6,13 @@ import logging
 import requests
 import traceback
 
-from builtins import str
 from collections import defaultdict, OrderedDict
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.core.mail import mail_admins
 from django.core.urlresolvers import reverse
 from django.db import transaction
-from django.db.models import Q
 from django.utils.translation import ugettext as _
+from future.utils import viewitems, viewvalues
 from io import BytesIO
 from openpyxl import load_workbook
 from pprint import pformat
@@ -23,26 +20,50 @@ from requests import codes
 
 from jbei.rest.clients.ice.api import Strain as IceStrain
 from jbei.rest.clients.ice.utils import build_entry_ui_url
-from main.models import Protocol, MetadataType, Strain, Assay, Line
-from main.signals.solr import UserSearch
+from main.models import Strain, Assay, Line
 from main.tasks import create_ice_connection
 # avoiding loading a ton of names to the module by only loading the namespace to constants
 from . import constants
-from .constants import (EMPTY_RESULTS, NON_STRAINS_CATEGORY, FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
-                        NON_STRAIN_ICE_ENTRY,
-                        PART_NUMBER_NOT_FOUND, BAD_REQUEST, INTERNAL_SERVER_ERROR, OK, FORBIDDEN,
-                        FORBIDDEN_PART_KEY, GENERIC_ICE_RELATED_ERROR,
-                        IGNORE_ICE_ACCESS_ERRORS_PARAM, ALLOW_DUPLICATE_NAMES_PARAM, NO_INPUT,
-                        DUPLICATE_INPUT_LINE_NAMES, DUPLICATE_INPUT_ASSAY_NAMES, ZERO_REPLICATES,
-                        EXISTING_LINE_NAMES, EXISTING_ASSAY_NAMES, SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
-                        INTERNAL_EDD_ERROR_CATEGORY, MISSING_REQUIRED_NAMING_INPUT,
-                        INVALID_RELATED_FIELD_REFERENCE, SINGLE_PART_ACCESS_ERROR_CATEGORY,
-                        NAMING_OVERLAP_CATEGORY, ERROR_PRIORITY_ORDER, WARNING_PRIORITY_ORDER,
-                        UNPREDICTED_ERROR,
-                        BAD_GENERIC_INPUT_CATEGORY, DRY_RUN_PARAM, STRAINS_REQUIRED_FOR_NAMES)
+from .constants import (
+    ALLOW_DUPLICATE_NAMES_PARAM,
+    BAD_GENERIC_INPUT_CATEGORY,
+    BAD_REQUEST,
+    DRY_RUN_PARAM,
+    DUPLICATE_INPUT_ASSAY_NAMES,
+    DUPLICATE_INPUT_LINE_NAMES,
+    EMPTY_RESULTS,
+    ERROR_PRIORITY_ORDER,
+    EXISTING_ASSAY_NAMES,
+    EXISTING_LINE_NAMES,
+    FORBIDDEN,
+    FORBIDDEN_PART_KEY,
+    FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
+    GENERIC_ICE_RELATED_ERROR,
+    IGNORE_ICE_ACCESS_ERRORS_PARAM,
+    INTERNAL_EDD_ERROR_CATEGORY,
+    INTERNAL_SERVER_ERROR,
+    MISSING_REQUIRED_NAMING_INPUT,
+    NAMING_OVERLAP_CATEGORY,
+    NON_STRAINS_CATEGORY,
+    NON_STRAIN_ICE_ENTRY,
+    NO_INPUT,
+    OK,
+    PART_NUMBER_NOT_FOUND,
+    SINGLE_PART_ACCESS_ERROR_CATEGORY,
+    STRAINS_REQUIRED_FOR_NAMES,
+    STRAINS_ACCESS_REQUIRED_FOR_NAMES,
+    SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
+    UNPREDICTED_ERROR,
+    WARNING_PRIORITY_ORDER,
+    ZERO_REPLICATES,
+)
 from .parsers import ExperimentDescFileParser, JsonInputParser, _ExperimentDescriptionFileRow
-from .utilities import (CombinatorialCreationPerformance, ExperimentDescriptionContext,
-                        find_existing_strains, ALLOWED_RELATED_OBJECT_FIELDS)
+from .utilities import (
+    ALLOWED_RELATED_OBJECT_FIELDS,
+    CombinatorialCreationPerformance,
+    ExperimentDescriptionContext,
+    find_existing_strains,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -111,7 +132,7 @@ def _build_prioritized_issue_list(src_dict, priority_reference):
     unprioritized_src = copy.deepcopy(src_dict)
 
     # loop over defined priority order, including issues in the defined order
-    for category, title_priority_order in priority_reference.iteritems():
+    for category, title_priority_order in viewitems(priority_reference):
         title_to_summaries = unprioritized_src.get(category, None)
 
         if not title_to_summaries:
@@ -128,8 +149,8 @@ def _build_prioritized_issue_list(src_dict, priority_reference):
 
     # review any items that didn't were missing from the defined order (likely due to code
     # maintenance. Add them at the top to attract attention, then print a warning log message
-    for category, unprioritized_titles in unprioritized_src.iteritems():
-        for title, err_summary in unprioritized_titles.iteritems():
+    for category, unprioritized_titles in viewitems(unprioritized_src):
+        for title, err_summary in viewitems(unprioritized_titles):
             result.insert(0, err_summary.to_json_dict())
             logger.warning('Including un-prioritized issue (category="%(category)s", '
                            'title="%(title)s") at the top of the list. This issue '
@@ -263,7 +284,7 @@ class IcePartResolver(object):
         ###########################################################################################
         self.create_missing_strains(non_existent_edd_strains, edd_strains_by_ice_id,
                                     options.use_ice_part_numbers)
-        strains_by_pk = {strain.pk: strain for strain in edd_strains_by_ice_id.itervalues()}
+        strains_by_pk = {strain.pk: strain for strain in viewvalues(edd_strains_by_ice_id)}
         performance.end_edd_strain_creation(len(non_existent_edd_strains))
 
         ###########################################################################################
@@ -378,7 +399,11 @@ class IcePartResolver(object):
                 # explicitly. Also note that 404 is handled above in get_entry().
                 if http_err.response.status_code == FORBIDDEN:
                     # aggregate errors that are helpful to detect on a per-part basis
-                    if not ignore_ice_access_errors:
+                    if self.strains_required_for_naming:
+                        importer.add_error(SINGLE_PART_ACCESS_ERROR_CATEGORY,
+                                           STRAINS_ACCESS_REQUIRED_FOR_NAMES, part_id)
+
+                    elif not ignore_ice_access_errors:
                         importer.add_error(SINGLE_PART_ACCESS_ERROR_CATEGORY,
                                            FORBIDDEN_PART_KEY, part_id)
                     continue
@@ -390,7 +415,10 @@ class IcePartResolver(object):
                 part_id_to_part[part_id] = found_entry
 
                 if fail_for_non_strains and not isinstance(found_entry, IceStrain):
-                    importer.add_error(NON_STRAINS_CATEGORY, NON_STRAIN_ICE_ENTRY, found_entry.part_id)
+                    importer.add_error(
+                        NON_STRAINS_CATEGORY, NON_STRAIN_ICE_ENTRY,
+                        found_entry.part_id
+                    )
 
                 # double-check for a coding error that occurred during testing. initial test
                 # parts had "JBX_*" part numbers that matched their numeric ID, but this isn't
@@ -469,17 +497,14 @@ class IcePartResolver(object):
                 unique_part_number_count = len(part_numbers)
                 if found_entries_count:
                     percent_found = 100 * (float(found_entries_count) / unique_part_number_count)
-                    warn_msg = ("Lines were added to your study, but some won't be associated with "
-                                "ICE strains. %(found)d of %(total)d unique strains (%(percent)0.2f) "
-                                "were found before the error occurred. The rest will need to be "
-                                "added later after the problem is fixed. EDD administrators have "
-                                "been notified of the problem." % {
-                                    'found': found_entries_count,
-                                    'total': unique_part_number_count,
-                                    'percent': percent_found,
-                                })
-                    importer.add_warning(SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY, GENERIC_ICE_RELATED_ERROR,
-                                         warn_msg)
+                    importer.add_warning(
+                        SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY, GENERIC_ICE_RELATED_ERROR,
+                        "Lines were added to your study, but some will not be associated with "
+                        f"ICE strains. {found_entries_count} of {unique_part_number_count} "
+                        f"unique strains ({percent_found:.2f}%) were found before the error "
+                        "occurred. The rest will need to be added later after the problem is "
+                        "fixed. EDD administrators have been notified of the problem."
+                    )
 
     def _notify_admins_of_systemic_ice_access_errors(self, options, unique_part_numbers,
                                                      ice_parts_by_number):
@@ -597,14 +622,14 @@ class CombinatorialCreationImporter(object):
         self._append_summary(self.warnings, category_title, subtitle, occurrence_detail)
 
     def has_error(self, subtitle):
-        for category_title, errors_by_subtitle in self.errors.iteritems():
+        for category_title, errors_by_subtitle in viewitems(self.errors):
             if subtitle in errors_by_subtitle:
                 return True
 
         return False
 
     def has_warning(self, subtitle):
-        for category_title, warnings_by_subtitle in self.warnings.iteritems():
+        for category_title, warnings_by_subtitle in viewitems(self.warnings):
             if subtitle in warnings_by_subtitle:
                 return True
 
@@ -666,9 +691,8 @@ class CombinatorialCreationImporter(object):
         required_naming_meta_pks = self._query_related_object_context(line_def_inputs)
         strains_required_for_naming = self.cache.strains_mtype.pk in required_naming_meta_pks
 
-        # if there were any file parse errors, return helpful output before
-        # attempting any database insertions. Note: returning normally causes the transaction to
-        # commit, but that is ok here since no DB changes have occurred yet
+        # if there were any related object lookup errors, return helpful output before
+        # attempting any database insertions
         if self.errors:
             return BAD_REQUEST, _build_response_content(self.errors, self.warnings)
 
@@ -705,7 +729,7 @@ class CombinatorialCreationImporter(object):
         required_naming_meta_pks = set()
         for line_def_input in line_def_inputs:
 
-            # get metadata types pks required for naming
+            # get line metadata types pks required for naming
             pks = line_def_input.get_required_naming_meta_pks()
             required_naming_meta_pks.update(pks)
             required_meta_pks.update(pks)
@@ -713,7 +737,7 @@ class CombinatorialCreationImporter(object):
             # find other unique value identifiers for related objects, even if they aren't needed
             # for computing line names. It's still helpful to look them up and cache them in
             # advance of line creation.
-            for line_meta_pk, line_meta_type in cache.related_object_mtypes.iteritems():
+            for line_meta_pk, line_meta_type in viewitems(cache.related_object_mtypes):
                 if line_meta_pk == cache.strains_mtype.pk:
                     # skip strains! Strain lookup in ICE is a special case handled separately
                     continue
@@ -748,6 +772,13 @@ class CombinatorialCreationImporter(object):
 
                 line_meta_type = line_meta_types[line_meta_pk]
                 line_attr_name = line_meta_type.type_field
+
+                # if this metadata is required as input to computing the line name, but isn't
+                # a line attribute, then the stored value isn't a pk, it's just a value (e.g. Media
+                # in EDD 2.2.0)
+                if line_attr_name is None:
+                    continue
+
                 line_attr = Line._meta.get_field(line_attr_name)
                 related_model_class = line_attr.related_model
 
@@ -768,16 +799,15 @@ class CombinatorialCreationImporter(object):
 
                 if len(found_context) != len(required_value_ids):
                     missing_pks = [str(pk) for pk in required_value_ids if pk not in found_context]
-                    logger.error('Unable to locate %(missing)d of %(required)s required inputs '
-                                 'for metadata %(type)s' % {
-                                    'missing': len(missing_pks),
-                                    'required': len(required_value_ids),
-                                    'type': line_meta_type.type_name,
-                    })
-                    self.add_error(INTERNAL_EDD_ERROR_CATEGORY, MISSING_REQUIRED_NAMING_INPUT,
-                                   '%(meta_type)s: %(pks)s' % {
-                                       'meta_type': line_meta_type.type_name,
-                                       'pks': ', '.join(missing_pks)})
+                    logger.error(
+                        f'Unable to locate {len(missing_pks)} of {len(required_value_ids)} '
+                        f'required inputs for metadata {line_meta_type.type_name}'
+                    )
+                    pk_str = ', '.join(missing_pks)
+                    self.add_error(
+                        INTERNAL_EDD_ERROR_CATEGORY, MISSING_REQUIRED_NAMING_INPUT,
+                        f'{line_meta_type.type_name}: {pk_str}'
+                    )
 
             logger.debug('Found related object values: %s' % related_objects)
 
@@ -876,9 +906,9 @@ class CombinatorialCreationImporter(object):
 
             creation_visitor = input_set.populate_study(study, cache, options)
             created_lines_list.extend(creation_visitor.lines_created)
-            items = creation_visitor.line_to_protocols_to_assays_list.iteritems()
+            items = viewitems(creation_visitor.line_to_protocols_to_assays_list)
             for line_pk, protocol_to_assays_list in items:
-                for protocol, assays_list in protocol_to_assays_list.iteritems():
+                for protocol, assays_list in viewitems(protocol_to_assays_list):
                     total_assay_count += len(assays_list)
 
         ###########################################################################################
@@ -964,7 +994,7 @@ class CombinatorialCreationImporter(object):
                 # defaultdict, so side effect is assignment
                 all_protocol_to_assay_names = all_planned_names[line_name]
 
-                for protocol_pk, assay_names in protocol_to_assay_names.iteritems():
+                for protocol_pk, assay_names in viewitems(protocol_to_assay_names):
                     all_planned_assay_names = all_protocol_to_assay_names[protocol_pk]
 
                     for assay_name in assay_names:
@@ -976,7 +1006,7 @@ class CombinatorialCreationImporter(object):
 
                         unique_assay_names = protocol_to_unique_input_assay_names[protocol_pk]
 
-                        if assay_name in unique_assay_names.keys():
+                        if assay_name in unique_assay_names:
                             duplicate_names = protocol_to_duplicate_new_assay_names[protocol_pk]
                             duplicate_names.append(assay_name)
                         else:
@@ -995,8 +1025,7 @@ class CombinatorialCreationImporter(object):
             # e.g. this is an Experiment Description file build a bettor error message
             if int_row_nums and int_row_nums is not None:
                 # TODO: consider extracting column number too
-                sorted_rows = list(int_row_nums)
-                sorted_rows.sort()
+                sorted_rows = sorted(int_row_nums)
                 str_row_nums = [str(row_num) for row_num in sorted_rows]
                 if str_row_nums:
                     message = '%(line_name)s (row %(rows_list)s)' % {
@@ -1010,7 +1039,7 @@ class CombinatorialCreationImporter(object):
         # intermediate data in two ways: one for convenient display in the current UI, the other
         # for eventual JSON generation for the following one...see comments in EDD-626.
         duplicate_input_assay_to_cells = defaultdict(set)
-        for protocol_pk, duplicates in protocol_to_duplicate_new_assay_names.iteritems():
+        for protocol_pk, duplicates in viewitems(protocol_to_duplicate_new_assay_names):
             for duplicate_name in duplicates:
                 message = duplicate_name
                 row_nums = [str(row_num) for row_num in
@@ -1018,9 +1047,8 @@ class CombinatorialCreationImporter(object):
                 if row_nums:
                     duplicate_input_assay_to_cells[duplicate_name].update(row_nums)  # TODO: cells!
 
-        for assay_name, cells in duplicate_input_assay_to_cells.iteritems():
-            sorted_cells = list(cells)
-            sorted_cells.sort()
+        for assay_name, cells in viewitems(duplicate_input_assay_to_cells):
+            sorted_cells = sorted(cells)
             message = '%(assay_name)s (%(cells_list)s)' % {
                 'assay_name': assay_name,
                 'cells_list': ', '.join(sorted_cells),
@@ -1043,7 +1071,7 @@ class CombinatorialCreationImporter(object):
         # TODO: we can do some additional work to provide better (e.g. cell-number based) feedback,
         # but this should be a good stopgap.
         duplicate_existing_assay_names = set()
-        for protocol_pk, assay_names_list in protocol_to_unique_input_assay_names.iteritems():
+        for protocol_pk, assay_names_list in viewitems(protocol_to_unique_input_assay_names):
             existing_assays = Assay.objects.filter(
                 name__in=assay_names_list,
                 line__study__pk=study.pk,

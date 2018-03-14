@@ -179,15 +179,13 @@ export module EDDEditable {
 
 
         showValue() {
-            var e = this.element;
+            var v = this.getDisplayValue(),
+                bl = this.blankLabel();
             this.elementJQ.children().detach();
-            var v = this.getDisplayValue();
-            var bl = this.blankLabel();
-
-            if (bl && ((v === undefined) || (v == null) || (v == ''))) {
-                e.innerHTML = '<span style="color:#888">' + bl + '</span>';
-            } else {
-                e.appendChild(document.createTextNode(v));
+            if (bl && !v) {
+                this.elementJQ.html('<span style="color:#888">' + bl + '</span>');
+            } else if (v) {
+                this.elementJQ.html(v);
             }
         }
 

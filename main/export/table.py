@@ -1,12 +1,11 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
 import logging
 
-from builtins import str
 from collections import OrderedDict
 from django.db.models import Prefetch, Q
 from django.utils.translation import ugettext_lazy as _
+from future.utils import viewitems
 
 
 logger = logging.getLogger(__name__)
@@ -307,21 +306,21 @@ class TableExport(object):
             return table_separator.join([
                 row_separator.join([
                     cell_separator.join(map(cell_format.quote, rrow))
-                    for rkey, rrow in ttable.items()
-                ]) for tkey, ttable in tables.items()
+                    for rkey, rrow in viewitems(ttable)
+                ]) for tkey, ttable in viewitems(tables)
             ])
         # both LINE_COLUMN_BY_DATA and DATA_COLUMN_BY_LINE are constructed similarly
         # each table in LINE_COLUMN_BY_DATA is transposed
         out = []
-        for tkey, table in tables.items():
+        for tkey, table in viewitems(tables):
             # sort x values by original numeric values
-            all_x = sorted(self._x_values.get(tkey, {}).items(), key=lambda a: a[1])
+            all_x = sorted(list(self._x_values.get(tkey, {}).items()), key=lambda a: a[1])
             # generate header row
-            rows = [map(str, table['header'] + map(lambda x: x[0], all_x))]
+            rows = [list(map(str, table['header'] + [x[0] for x in all_x]))]
             # go through non-header rows; unsquash final column
-            for rkey, row in table.items()[1:]:
+            for rkey, row in list(table.items())[1:]:
                 unsquash = self._output_unsquash(all_x, row[-1:][0])
-                rows.append(map(str, row[:-1] + unsquash))
+                rows.append(list(map(str, row[:-1] + unsquash)))
             # do the transpose here if needed
             if layout == ExportOption.LINE_COLUMN_BY_DATA:
                 rows = zip(*rows)
@@ -340,7 +339,6 @@ class TableExport(object):
             Prefetch('assay__line__strains'),
             Prefetch('assay__line__carbon_source'),
         )
-        print("-----|||||----- Queried Measurement 2")
         for measurement in measures:
             assay = measurement.assay
             protocol = assay.protocol
@@ -429,7 +427,7 @@ class TableExport(object):
     def _output_unsquash(self, all_x, squashed):
         # all_x is list of 2-tuple from dict.items()
         if isinstance(squashed, dict):
-            return map(lambda x: squashed.get(x[0], ''), all_x)
+            return [squashed.get(x[0], '') for x in all_x]
         # expecting a list to be returned
         return [squashed]
 

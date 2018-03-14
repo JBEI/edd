@@ -1,37 +1,59 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
-import itertools
 import json
-import jsonschema
 import logging
 import re
 
-from builtins import str
 from collections import Sequence
-from itertools import ifilter
+from future.utils import viewitems, viewvalues
 from jsonschema import Draft4Validator
 from openpyxl.utils.cell import get_column_letter
 from six import string_types
 
-from .constants import (DUPLICATE_ASSAY_METADATA, INVALID_CELL_TYPE, INVALID_REPLICATE_COUNT,
-                        MISSING_REQUIRED_LINE_NAME, PARSE_ERROR, REPLICATE_COUNT_ELT,
-                        PART_NUMBER_PATTERN_UNMATCHED_WARNING, ROWS_MISSING_REPLICATE_COUNT,
-                        INVALID_COLUMN_HEADER, UNMATCHED_ASSAY_COL_HEADERS_KEY,
-                        MULTIPLE_WORKSHEETS_FOUND, UNSUPPORTED_LINE_METADATA, EMPTY_WORKBOOK,
-                        ZERO_REPLICATES, INCORRECT_TIME_FORMAT, UNPARSEABLE_COMBINATORIAL_VALUE,
-                        INTERNAL_EDD_ERROR_CATEGORY, BAD_FILE_CATEGORY, POSSIBLE_USER_ERROR_CATEGORY,
-                        IGNORED_INPUT_CATEGORY, INVALID_FILE_VALUE_CATEGORY,
-                        BAD_GENERIC_INPUT_CATEGORY, INCONSISTENT_COMBINATORIAL_VALUE,
-                        ELEMENTS_SECTION, ABBREVIATIONS_SECTION, NAME_ELEMENTS_SECTION,
-                        PROTOCOL_TO_COMBINATORIAL_METADATA_SECTION,
-                        PROTOCOL_TO_ASSAY_METADATA_SECTION, COMBINATORIAL_LINE_METADATA_SECTION,
-                        COMMON_LINE_METADATA_SECTION, BASE_NAME_ELT,
-                        DELIMETER_NOT_ALLOWED_VALUE, INVALID_JSON)
-from .utilities import (ALLOWED_RELATED_OBJECT_FIELDS, AutomatedNamingStrategy,
-                        CombinatorialDescriptionInput, NamingStrategy)
+from .constants import (
+    ABBREVIATIONS_SECTION,
+    BAD_FILE_CATEGORY,
+    BAD_GENERIC_INPUT_CATEGORY,
+    BASE_NAME_ELT,
+    COMBINATORIAL_LINE_METADATA_SECTION,
+    COMMON_LINE_METADATA_SECTION,
+    DELIMETER_NOT_ALLOWED_VALUE,
+    DUPLICATE_ASSAY_METADATA,
+    ELEMENTS_SECTION,
+    EMPTY_WORKBOOK,
+    IGNORED_INPUT_CATEGORY,
+    INCONSISTENT_COMBINATORIAL_VALUE,
+    INCORRECT_TIME_FORMAT,
+    INTERNAL_EDD_ERROR_CATEGORY,
+    INVALID_CELL_TYPE,
+    INVALID_COLUMN_HEADER,
+    INVALID_FILE_VALUE_CATEGORY,
+    INVALID_JSON,
+    INVALID_REPLICATE_COUNT,
+    MISSING_REQUIRED_LINE_NAME,
+    MULTIPLE_WORKSHEETS_FOUND,
+    NAME_ELEMENTS_SECTION,
+    PARSE_ERROR,
+    PART_NUMBER_PATTERN_UNMATCHED_WARNING,
+    POSSIBLE_USER_ERROR_CATEGORY,
+    PROTOCOL_TO_ASSAY_METADATA_SECTION,
+    PROTOCOL_TO_COMBINATORIAL_METADATA_SECTION,
+    REPLICATE_COUNT_ELT,
+    ROWS_MISSING_REPLICATE_COUNT,
+    UNMATCHED_ASSAY_COL_HEADERS_KEY,
+    UNPARSEABLE_COMBINATORIAL_VALUE,
+    UNSUPPORTED_LINE_METADATA,
+    ZERO_REPLICATES,
+)
+from .utilities import (
+    ALLOWED_RELATED_OBJECT_FIELDS,
+    AutomatedNamingStrategy,
+    CombinatorialDescriptionInput,
+    NamingStrategy
+)
 from jbei.utils import TYPICAL_JBEI_ICE_PART_NUMBER_REGEX
 from main.importer.experiment_desc.validators import SCHEMA as JSON_SCHEMA
+
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +90,7 @@ _OPT_UNIT_SUFFIX = r'(?:\s*(?:\(%(units)s\)|%(units)s))?'
 _TYPE_NAME_REGEX = r'^%(type_name)s' + _OPT_UNIT_SUFFIX + '$'
 _PLURALIZED_REGEX = r'^%(type_name)s(?:S|\(S\))' + _OPT_UNIT_SUFFIX + '$'
 
-_CONSECUTIVE_WHITESPACE_PATTERN = re.compile('\s+')
+_WHITESPACE_PATTERN = re.compile(r'\s+')
 
 
 class _AssayMetadataValueParser(object):
@@ -105,6 +127,7 @@ class _DecimalTimeParser(_AssayMetadataValueParser):
         raise ValueError(
             'Value "%s" did not match the expected time pattern (e.g. "4.0h")' % raw_value_str
         )
+
 
 # stateless value parsing strategies for metadata input (time is treated specially by the file
 # format)
@@ -144,7 +167,7 @@ class ColumnLayout:
         :param metadata_pk:
         :return:
         """
-        items = self.col_index_to_assay_data.iteritems()
+        items = viewitems(self.col_index_to_assay_data)
         for col_index, (existing_protocol, existing_assay_meta_type) in items:
             if ((upper_protocol_name == existing_protocol.name.upper()) and
                     (metadata_pk == existing_assay_meta_type.pk)):
@@ -152,15 +175,15 @@ class ColumnLayout:
         return False
 
     def combinatorial_line_col_order(self):
-        return itertools.ifilter(
-                lambda x: x in self.col_index_to_line_meta_pk,
-                self.combinatorial_col_indices
+        return filter(
+            lambda x: x in self.col_index_to_line_meta_pk,
+            self.combinatorial_col_indices
         )
 
     def combinatorial_assay_col_order(self):
-        return itertools.ifilter(
-                lambda x: x in self.col_index_to_assay_data,
-                self.combinatorial_col_indices
+        return filter(
+            lambda x: x in self.col_index_to_assay_data,
+            self.combinatorial_col_indices
         )
 
     def register_assay_meta_column(self, col_index, upper_protocol_name, protocol, assay_meta_type,
@@ -198,9 +221,24 @@ class ColumnLayout:
     def get_line_meta_pk(self, col_index):
         return self.col_index_to_line_meta_pk.get(col_index, None)
 
+    def get_meta_pk(self, col_index):
+        """
+        Gets the integer primary key of the Line OR Assay MetadataType the specified ED file column
+        :param col_index: the column index
+        :return: the MetadataType primary key
+        """
+        pk = self.get_line_meta_pk(col_index)
+        if pk:
+            return pk
+        assay_mtype = self.get_assay_metadata_type(col_index)
+        if not assay_mtype:
+            return None
+        return assay_mtype.pk
+
+
     @property
     def unique_protocols(self):
-        return self.unique_assay_protocols.keys()
+        return set(self.unique_assay_protocols)
 
     def set_line_metadata_type(self, col_index, line_metadata_type, is_combinatorial=False):
         logger.debug(
@@ -306,17 +344,21 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
         name = self.section_separator.join(name_elts)
         return name
 
-    def get_required_related_obj_meta_pks(self):
+    def get_required_naming_meta_pks(self):
+        """
+        Gets the Line MetadataTypes that represent categories of data required for computing
+        line names during the automated line creation process.  E.g. any data specified
+        combinatorially.
+        :return: set of integer primary keys for Line MetadataTypes
+        """
         col_layout = self.col_layout
         meta_pks = set()
 
-        for col_index, meta_pk in col_layout.col_index_to_line_meta_pk.iteritems():
-            if meta_pk in self.cache.related_object_mtypes:
-                meta_pks.add(meta_pk)
+        for col in col_layout.combinatorial_col_indices:
+            line_meta_pk = col_layout.col_index_to_line_meta_pk.get(col)
+            if line_meta_pk:
+                meta_pks.add(line_meta_pk)
         return meta_pks
-
-    def names_contain_strains(self):
-        return self.col_layout.strain_ids_col in self.col_layout.combinatorial_col_indices
 
     def _get_time_format_string(self):
         if self.fractional_time_digits:
@@ -412,16 +454,12 @@ def _standardize_label(label):
     """
     Standardizes labeling to enable fast / flexible matching of Experiment Description column
     headers against the Protocol and MetadataType names defined in EDD's database.
+
     :param label: the original label.
     :return: the input text, capitalized, trimmed, and with consecutive whitespace characters
-    collapsed to a single space.
+        collapsed to a single space.
     """
-
-    def _collapse_whitespace(match):
-        if match:
-            return ' '
-
-    return re.sub(_CONSECUTIVE_WHITESPACE_PATTERN, _collapse_whitespace, label).strip().upper()
+    return _WHITESPACE_PATTERN.sub(' ', label).strip().upper()
 
 
 class ExperimentDescFileParser(CombinatorialInputParser):
@@ -436,23 +474,34 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # build a dict of Protocol name -> Protocol to simplify parsing
         self.protocols_by_name = {
             protocol.name.upper(): protocol
-            for protocol_pk, protocol in cache.protocols.iteritems()
+            for protocol_pk, protocol in viewitems(cache.protocols)
         }
 
         # build dicts that map each metadata type name -> MetaDataType to simplify parsing.
         line_meta_types = cache.line_meta_types
-        self.line_mtypes_by_name = {_standardize_label(meta.type_name): meta
-                                    for pk, meta in line_meta_types.iteritems()}
+        self.line_mtypes_by_name = {
+            _standardize_label(meta.type_name): meta
+            for pk, meta in viewitems(line_meta_types)
+        }
 
-        self.assay_metadata_types_by_name = {_standardize_label(meta.type_name): meta
-                                             for pk, meta in cache.assay_meta_types.iteritems()}
+        self.assay_metadata_types_by_name = {
+            _standardize_label(meta.type_name): meta
+            for pk, meta in viewitems(cache.assay_meta_types)
+        }
 
         # build a list of line metadata types whose parsing isn't supported pending resolution of
         # EDD-438. Note that these *are* supported via JSON pk input, we just aren't supporting
         # lookup for now since it may be done for us, or will at least be impacted by EDD-438
+        unsupported_names = [
+            'Control',
+            'Carbon Source(s)',
+            'Line Contact',
+            'Line Experimenter',
+        ]
         self.unsupported_line_meta_types_by_pk = {
-            pk: meta for pk, meta in line_meta_types.iteritems() if meta.type_name in
-            ['Control', 'Carbon Source(s)', 'Line Contact', 'Line Experimenter', ]
+            pk: meta
+            for pk, meta in viewitems(line_meta_types)
+            if meta.type_name in unsupported_names
         }
 
         # print a warning for unlikely case-sensitivity-only metadata naming differences that
@@ -474,11 +523,14 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # and not print a warning here.
 
         # get specific metadata references needed by current parsing code
-        self.ctrl_meta_type = next(ifilter(lambda x: x.type_name == 'Control',
-                                   cache.line_meta_types.itervalues()))
-
-        self.name_meta_type = next(ifilter(lambda x: x.type_name == 'Line Name',
-                                   cache.line_meta_types.itervalues()))
+        self.ctrl_meta_type = next(
+            (x for x in viewvalues(cache.line_meta_types) if x.type_name == 'Control'),
+            None  # default value
+        )
+        self.name_meta_type = next(
+            (x for x in viewvalues(cache.line_meta_types) if x.type_name == 'Line Name'),
+            None  # default value
+        )
 
         self.column_layout = None
 
@@ -507,9 +559,10 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         if len(wb.worksheets) > 1:
             sheet_name = wb.get_sheet_names()[0]
-            importer.add_warning(IGNORED_INPUT_CATEGORY, MULTIPLE_WORKSHEETS_FOUND,
-                                 'All but the first sheet in your workbook, "%(sheet_name)s", '
-                                 'were ignored' % { 'sheet_name': sheet_name, })
+            importer.add_warning(
+                IGNORED_INPUT_CATEGORY, MULTIPLE_WORKSHEETS_FOUND,
+                f'All but the first sheet in your workbook, "{sheet_name}", were ignored'
+            )
         worksheet = wb.worksheets[0]
 
         # loop over columns
@@ -526,8 +579,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             else:
                 #  remove
                 row_num = row_index + 1
-                row_inputs = self.read_row(cols_list, row_num)
-                if row_inputs:
+                row_inputs = self.parse_row(cols_list, row_num)
+                if row_inputs:  # skip empty rows
                     parsed_row_inputs.append(row_inputs)
 
             row_index += 1
@@ -542,25 +595,57 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         # provide a good user-facing warning message as a reminder of line metadata types that
         # aren't supported, but were found in the input file
-        unsupported_value_columns = [col_index for col_index, meta_pk in
-                                     column_layout.col_index_to_line_meta_pk.iteritems()
-                                     if meta_pk in self.unsupported_line_meta_types_by_pk]
-        line_meta_types = self.cache.line_meta_types
+        unsupported_value_columns = [
+            col_index
+            for col_index, meta_pk in viewitems(column_layout.col_index_to_line_meta_pk)
+            if meta_pk in self.unsupported_line_meta_types_by_pk
+        ]
         if unsupported_value_columns:
+            line_meta_types = self.cache.line_meta_types
             unsupported_values = []
             for col_index in unsupported_value_columns:
                 meta_pk = column_layout.get_line_meta_pk(col_index)
                 meta_type = line_meta_types[meta_pk]
-                value = '"%(name)s" (column %(col)s)' % {
-                            'name': meta_type.type_name,
-                            'col': get_column_letter(col_index+1)}
-                unsupported_values.append(value)
+                column_letter = get_column_letter(col_index + 1)
+                unsupported_values.append(f'{meta_type.type_name} (column {column_letter})')
 
             importer.add_warning(IGNORED_INPUT_CATEGORY, UNSUPPORTED_LINE_METADATA,
                                  ', '.join(unsupported_values))
 
         for combinatorial_input in parsed_row_inputs:
             combinatorial_input.fractional_time_digits = self.max_fractional_time_digits
+
+
+        # after reading all rows in the file, loop over combinatorially-defined columns (as
+        # defined by column headers) and remove any from our tracking that were completely empty
+        # or that only contain a single value per row. This resolves a boundary condition where
+        # the NamingStrategy defines these values as required for computing line names
+        # combinatorially, but the lack of combinatorial values allows us to safely ignore the
+        # column(s)
+        for col_index in column_layout.combinatorial_col_indices:
+            meta_values = set()
+            multivalued_row = False
+
+            line_mtype_pk = column_layout.col_index_to_line_meta_pk.get(col_index)
+
+            # ignore columns that contain assay metadata, since it's not required for computing
+            # line names. TODO: this creates similar boundary conditions for assay meta columns as
+            # this code block attempts to resolve for lines (poor detection of empty or completely
+            # single-valued columns).  Doing all the analogous introspection, caching,
+            # etc for assay-related data is a more comprehensive code change we'll make later on.
+            if not line_mtype_pk:
+                continue
+
+            for combinatorial_input in parsed_row_inputs:
+                line_values = combinatorial_input.get_related_object_ids(line_mtype_pk)
+                meta_values.update(line_values)
+
+                if len(line_values) > 1:
+                    multivalued_row = True
+                    break
+
+            if not meta_values or not multivalued_row:
+                column_layout.combinatorial_col_indices.remove(col_index)
 
         return parsed_row_inputs
 
@@ -661,7 +746,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         ########################################################################################
         # loop over protocol names, testing for a protocol prefix in the column header
         ########################################################################################
-        for upper_protocol_name, protocol in self.protocols_by_name.items():
+        for upper_protocol_name, protocol in viewitems(self.protocols_by_name):
             if upper_content.startswith(upper_protocol_name):
 
                 # pull out the column header suffix following the protocol.
@@ -676,8 +761,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # loop over assay metadata types, testing for an assay metadata suffix in the
                 # column header
                 ################################################################################
-                for upper_type_name, assay_metadata_type in \
-                        self.assay_metadata_types_by_name.items():
+                assay_items = viewitems(self.assay_metadata_types_by_name)
+                for upper_type_name, assay_metadata_type in assay_items:
 
                     # if this type has units, check whether column header matches the type name
                     # with an optional unit suffix
@@ -757,7 +842,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         # if we didn't find the singular form of the column header as line metadata, look
         # for a pluralized version that we'll treat as combinatorial line creation input
-        for std_type_name, meta_type in self.line_mtypes_by_name.items():
+        for std_type_name, meta_type in viewitems(self.line_mtypes_by_name):
 
             # check whether column header matches the type name with an optional unit suffix
             if meta_type.postfix:
@@ -795,7 +880,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         return None
 
-    def read_row(self, cols_list, row_num):
+    def parse_row(self, cols_list, row_num):
         """
         Reads a single spreadsheet row to find line creation inputs. The row is read even if errors
         occur, logging errors in the 'errors' parameter so that multiple user input errors can be
@@ -821,15 +906,22 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # otherwise, track error state, but keep going so we can try to detect all the
         # errors with a single pass
         else:
-            logger.debug(
-                'Parse error: Cell %(row_num)d%(col)s was empty, but was expected '
-                'to contain a name for the EDD line.' % {
-                    'row_num': row_num,
-                    'col': get_column_letter(layout.line_name_col + 1),
-                }
-            )
-            self.importer.add_error(INVALID_FILE_VALUE_CATEGORY, MISSING_REQUIRED_LINE_NAME,
-                                    occurrence_detail=row_num)
+            # detect whether the row is completely empty...if not, raise an error. Note that a
+            # completely empty row is the only case where we can safely ignore the missing
+            # required value.
+            for col_index, cell in enumerate(cols_list):
+                if cell.value is not None and str(cell.value).strip():
+                    name_col_letter = get_column_letter(layout.line_name_col + 1)
+                    name_cell_num = f'{row_num}{name_col_letter}'
+                    logger.info(f'Parse error: Cell {name_cell_num} was empty, but was expected '
+                                'to contain a name for the EDD line. This error only occurs for '
+                                'non-empty rows. ')
+                    self.importer.add_error(INVALID_FILE_VALUE_CATEGORY, MISSING_REQUIRED_LINE_NAME,
+                                            occurrence_detail=name_cell_num)
+                    break
+
+            logger.info(f'Ignored empty row {row_num}.')
+            return None
 
         ###################################################
         # Line description
@@ -900,7 +992,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # line metadata
         ###################################################
         if layout.col_index_to_line_meta_pk:
-            for col_index, line_metadata_pk in layout.col_index_to_line_meta_pk.items():
+            for col_index, line_metadata_pk in viewitems(layout.col_index_to_line_meta_pk):
                 # skip values for metadata types we've specifically disabled (with a warning)
                 # earlier in the parsing process
                 if line_metadata_pk in self.unsupported_line_meta_types_by_pk:
@@ -946,8 +1038,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         if layout.col_index_to_assay_data:
 
             # loop over per-protocol assay metadata columns
-            for col_index, (protocol, assay_metadata_type) in \
-                    layout.col_index_to_assay_data.items():
+            columns = viewitems(layout.col_index_to_assay_data)
+            for col_index, (protocol, assay_metadata_type) in columns:
 
                 cell_content = self._get_string_cell_content(
                     cols_list,
@@ -1013,7 +1105,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         if not cell_content:
             return
-
 
         # Extract comma-delimited tokens from the cell, for fault tolerance, casting to string in
         # case user entered something else (e.g. long).
@@ -1114,7 +1205,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 row_inputs.common_line_metadata[strains_pk] = individual_strain_ids
             elif combinatorial_strain_id_groups:
                 row_inputs.common_line_metadata[strains_pk] = combinatorial_strain_id_groups
-
 
     def _check_part_id_pattern(self, part_id, input_location=''):
         # test whether the strain's part number matched the expected pattern.
@@ -1241,13 +1331,10 @@ class JsonInputParser(CombinatorialInputParser):
         for err in validation_errors:
             path_str = ('.'.join(str(elt) for elt in err.relative_path) if err.relative_path else
                         'root')
-            importer.add_error(BAD_GENERIC_INPUT_CATEGORY, INVALID_JSON,
-                               '%(path)s: %(cause)s' % {
-                                   # 'path': err.relative_schema_path,
-                                   'path': path_str,
-                                   'cause': err.message,
-                                   # 'bad_value': err.validator_value,
-            })
+            importer.add_error(
+                BAD_GENERIC_INPUT_CATEGORY, INVALID_JSON,
+                f'{path_str}: {err.message}'
+            )
         if importer.errors:
             logger.error('Aborting parsing due to JSON validation errors: %s' % validation_errors)
             return None
@@ -1305,7 +1392,7 @@ class JsonInputParser(CombinatorialInputParser):
                 # inspect JSON input to find the maximum number of decimal digits in the user input
                 assay_time_pk = self.cache.assay_time_mtype.pk
                 if assay_time_pk:
-                    for protocol, assay_metadata in protocol_to_assay_metadata.items():
+                    for protocol, assay_metadata in viewitems(protocol_to_assay_metadata):
                         time_values = assay_metadata.get(assay_time_pk, [])
                         for time_value in time_values:
                             str_value = str(time_value)
@@ -1351,7 +1438,7 @@ def _copy_to_numeric_elts(input_list):
 
 def _copy_to_numeric_keys(input_dict):
     converted_dict = {}
-    for key, value in input_dict.iteritems():
+    for key, value in viewitems(input_dict):
 
         # if value is a nested dict, do the same work on it
         if isinstance(value, dict):
@@ -1371,8 +1458,7 @@ def _process_abbrev_keys(input_dict):
     as strings, even if they're actually numeric.
     """
     converted_dict = {}
-    for key, value in input_dict.iteritems():
-
+    for key, value in viewitems(input_dict):
         try:
             int_value = int(key)
             converted_dict[int_value] = value

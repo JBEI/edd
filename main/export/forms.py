@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import logging
 
-from builtins import str
 from collections import OrderedDict
 from django import forms
 from django.db.models import Prefetch
 from django.http import QueryDict
 from django.utils.translation import ugettext_lazy as _
+from future.utils import viewitems
 
 from . import table
 from ..models import (
@@ -178,7 +177,7 @@ class WorklistDefaultsForm(forms.Form):
         #   to muck with the source data, by poking the undocumented _mutable property of QueryDict
         self.data._mutable = True
         # if no incoming data for field, fall back to default (initial) instead of empty string
-        for name, field in self._created_fields.items():
+        for name, field in viewitems(self._created_fields):
             key = self.add_prefix(name)
             value = field.widget.value_from_datadict(self.data, self.files, key)
             if not value:
@@ -230,35 +229,35 @@ class ExportOptionForm(forms.Form):
         required=False,
     )
     study_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Study.export_columns()),
+        choices=list(map(table.ColumnChoice.get_field_choice, Study.export_columns())),
         coerce=table.ColumnChoice.coerce(Study.export_columns()),
         label=_('Study fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     line_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Line.export_columns()),
+        choices=list(map(table.ColumnChoice.get_field_choice, Line.export_columns())),
         coerce=table.ColumnChoice.coerce(Line.export_columns()),
         label=_('Line fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     protocol_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Protocol.export_columns()),
+        choices=list(map(table.ColumnChoice.get_field_choice, Protocol.export_columns())),
         coerce=table.ColumnChoice.coerce(Protocol.export_columns()),
         label=_('Protocol fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     assay_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Assay.export_columns()),
+        choices=list(map(table.ColumnChoice.get_field_choice, Assay.export_columns())),
         coerce=table.ColumnChoice.coerce(Assay.export_columns()),
         label=_('Assay fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     measure_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Measurement.export_columns()),
+        choices=list(map(table.ColumnChoice.get_field_choice, Measurement.export_columns())),
         coerce=table.ColumnChoice.coerce(Measurement.export_columns()),
         label=_('Measurement fields to include'),
         required=False,
@@ -325,7 +324,8 @@ class ExportOptionForm(forms.Form):
         # update available choices based on instances in self._selection
         if self._selection and hasattr(self._selection, 'lines'):
             columns = self._selection.line_columns
-            self.fields['line_meta'].choices = map(table.ColumnChoice.get_field_choice, columns)
+            choices = map(table.ColumnChoice.get_field_choice, columns)
+            self.fields['line_meta'].choices = list(choices)
             self.fields['line_meta'].coerce = table.ColumnChoice.coerce(columns)
         # set all _meta options if no list of options was passed in
         for meta in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']:

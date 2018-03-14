@@ -6,9 +6,6 @@ import { DataGrid, DataGridSpecBase, DataGridDataCell, DataGridColumnSpec,
         DGSearchWidget } from "../modules/DataGrid"
 import { Utl } from "../modules/Utl"
 import { FileDropZone } from "../modules/FileDropZone"
-import { StudyMetabolicMapChooser, MetabolicMapChooserResult, FullStudyBiomassUI,
-        FullStudyBiomassUIResultsCallback } from "../modules/BiomassCalculationUI"
-import { CarbonBalance } from "../modules/StudyCarbonBalance"
 import { StudyBase } from "../modules/Study"
 import * as _ from "underscore"
 import "bootstrap-loader"
@@ -40,15 +37,6 @@ module StudyLines {
     var attachmentsByID:any;
     var prevDescriptionEditElement:any;
 
-    // We can have a valid metabolic map but no valid biomass calculation.
-    // If they try to show carbon balance in that case, we'll bring up the UI to
-    // calculate biomass for the specified metabolic map.
-    export var metabolicMapID:any;
-    export var metabolicMapName:any;
-    export var biomassCalculation:number;
-    var carbonBalanceData:any;
-    var carbonBalanceDisplayIsFresh:boolean;
-
     var cSourceEntries:any;
     var mTypeEntries:any;
 
@@ -60,20 +48,14 @@ module StudyLines {
     export var actionPanelIsInBottomBar;
     export var actionPanelIsCopied = false;
 
+    let studyBaseUrl: URL = Utl.relativeURL('../');
 
     // Called when the page loads.
     export function prepareIt() {
 
-        carbonBalanceData = null;
-        carbonBalanceDisplayIsFresh = false;
-
         attachmentIDs = null;
         attachmentsByID = null;
         prevDescriptionEditElement = null;
-
-        metabolicMapID = -1;
-        metabolicMapName = null;
-        biomassCalculation = -1;
 
         cSourceEntries = [];
         mTypeEntries = [];
@@ -93,7 +75,7 @@ module StudyLines {
 
         Utl.FileDropZone.create({
             elementId: "addToLinesDropZone",
-            url: '/study/' + EDDData.currentStudyID + '/describe/',
+            url: Utl.relativeURL('describe/', studyBaseUrl).toString(),
             processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
             processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
             processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
@@ -106,41 +88,11 @@ module StudyLines {
             $(".linesDropZone").removeClass('off');
         });
         $('#content').on('dragend, dragleave, mouseleave', function(e:any) {
-           $(".linesDropZone").addClass('off');
+            $(".linesDropZone").addClass('off');
         });
 
         //set up editable study name
         new StudyBase.EditableStudyName($('#editable-study-name').get()[0]);
-
-        $('#content').tooltip({
-            content: function () {
-                return $(this).find('.popupmenu').clone(true).removeClass('off');
-            },
-            items: '.has-popupmenu',
-            position: {
-                my: "left-10 top-20",
-                at: "right bottom",
-                collision: "none none",
-                using: function (position, ui) {
-                    setTimeout(() => {
-                        // default positioning API keeps flipping the menu, fix it here
-                        position.top = ui.element.top + ui.target.height - $(document).height();
-                        $(this).css(position);
-                    }, 100);
-                }
-            },
-            open: function (event, ui: {tooltip: JQuery}) {
-                // remove other tooltips when opening a new one
-                $('div.ui-tooltip').not(ui.tooltip).remove();
-            },
-            close: function (event, ui: {tooltip: JQuery}) {
-                // prevent close when hovering over the tooltip itself
-                ui.tooltip.hover(
-                    function () { ui.tooltip.stop(true).show(); },
-                    function () { ui.tooltip.remove(); }
-                );
-            }
-        });
 
         $(window).on('resize', queuePositionActionsBar);
 
@@ -209,7 +161,15 @@ module StudyLines {
         });
 
         parent.find(".addAssayButton").click(function() {
-            $("#addAssayModal").removeClass('off').dialog( "open" );
+            // copy inputs to the modal form
+            let inputs = $('#studyLinesTable').find('input[name=lineId]:checked').clone();
+            $('#addAssayModal')
+                .find('.hidden-line-inputs')
+                    .empty()
+                    .append(inputs)
+                .end()
+                .removeClass('off')
+                .dialog('open');
             return false;
         });
 
@@ -334,14 +294,7 @@ module StudyLines {
                 'count': checkedBoxLen,
                 'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
             });
-            if (checkedBoxLen) {
-                $('.disablableButtons > button').prop('disabled', false);
-                if (checkedBoxLen < 2) {
-                    $('.groupButton').prop('disabled', true);
-                }
-            } else {
-                $('.disablableButtons > button').prop('disabled', true);
-            }
+            $('.disablableButtons > button').prop('disabled', !checkedBoxLen);
         }
     }
 
@@ -366,7 +319,8 @@ module StudyLines {
             copy = original.clone().appendTo('#bottomBar').hide();
             // forward click events on copy to the original button
             copy.on('click', 'button', (e) => {
-                original.find('#' + e.target.id).trigger(e);
+                // this is super gross, but checking button label is easiest way to match
+                original.find('button:contains(' + e.target.textContent.trim() + ')').trigger(e);
             });
             actionPanelIsCopied = true;
         }
@@ -740,12 +694,6 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridDataCell(gridSpec, index, {
                 'checkboxName': 'lineId',
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
-                'sideMenuItems': [
-                    '<a href="#" dataIndex="' + index + '" id="lineEditLink' + index +
-                        '" class="line-edit-link">Edit Line </a>',
-                    '<a href="/export?lineId=' + index + '">Export Data as CSV/Excel</a>',
-                    '<a href="/sbml?lineId=' + index + '">Export Data as SBML</a>'
-                ],
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
@@ -949,10 +897,6 @@ class DataGridSpecLines extends DataGridSpecBase {
     // will be the order they are displayed in the menu. Empty array = OK.
     createCustomOptionsWidgets(dataGrid:DataGrid):DataGridOptionWidget[] {
         var widgetSet:DataGridOptionWidget[] = [];
-
-        // Create a single widget for showing disabled Lines
-        var groupLinesWidget = new DGGroupStudyReplicatesWidget(dataGrid, this);
-        widgetSet.push(groupLinesWidget);
         var disabledLinesWidget = new DGDisabledLinesWidget(dataGrid, this);
         widgetSet.push(disabledLinesWidget);
         return widgetSet;
@@ -1015,31 +959,6 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
         if (!EDDData.Lines[rowID].active) {
             $.each(dataRowObjects, (x, row) => { $(row.getElement()).addClass('disabledRecord') });
         }
-    }
-}
-
-// A widget to toggle replicate grouping on and off
-class DGGroupStudyReplicatesWidget extends DataGridOptionWidget {
-
-    createElements(uniqueID:any):void {
-        var pThis = this;
-        var cbID:string = 'GroupStudyReplicatesCB';
-        var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
-        $(cb).click(
-            function(e) {
-                if (pThis.checkBoxElement.checked) {
-                    pThis.dataGridOwnerObject.turnOnRowGrouping();
-                } else {
-                    pThis.dataGridOwnerObject.turnOffRowGrouping();
-                }
-            }
-        );
-        if (this.isEnabledByDefault()) {
-            cb.setAttribute('checked', 'checked');
-        }
-        this.checkBoxElement = cb;
-        this.labelElement = this._createLabel('Group Replicates', cbID);
-        this._createdElements = true;
     }
 }
 

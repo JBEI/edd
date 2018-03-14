@@ -1448,7 +1448,6 @@
     "contact": 1,
     "experimenter": 1,
     "updates": [],
-    "replicate": null,
     "contact_extra": ""
   },
   "model": "main.line",
@@ -1465,7 +1464,6 @@
     "contact": 1,
     "experimenter": 1,
     "updates": [],
-    "replicate": null,
     "contact_extra": ""
   },
   "model": "main.line",

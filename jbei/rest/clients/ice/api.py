@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, unicode_literals
-
 """
 Defines classes and utility methods used to communicate with the Index of Composable Elements
 (ICE), a.k.a. the "registry of parts". This API is designed to minimize dependencies on other
@@ -18,15 +16,14 @@ import os
 import re
 import requests
 
-from builtins import object, str
-from requests.compat import urlparse
-from urllib import urlencode
-from urlparse import urlunparse, ParseResult, parse_qs
+from future.utils import viewitems
+from requests.compat import urlparse, urlencode, urlunparse
+from six.moves.urllib.parse import ParseResult, parse_qs
 
 from jbei.rest.api import RestApiClient
 from jbei.rest.sessions import PagedResult, PagedSession, Session
 
-
+# FIXME: do not use star imports
 from .constants import *
 from .utils import build_entry_ui_url
 
@@ -88,7 +85,6 @@ _IDENTIFIER = (
 _ICE_ENTRY_URL_REGEX = '(%(protocol)s)://(%(base_url)s)/entry/(%(identifier)s)/?' % {
     'protocol': _PROTOCOL, 'base_url': _BASE_ICE_URL_REGEX, 'identifier': _IDENTIFIER, }
 ICE_ENTRY_URL_PATTERN = re.compile('^%s$' % _ICE_ENTRY_URL_REGEX, re.IGNORECASE)
-
 
 
 ###################################################################################################
@@ -254,7 +250,7 @@ class Entry(object):
             'parameters'
         ]
 
-        for json_keyword, json_value in json_dict.iteritems():
+        for json_keyword, json_value in viewitems(json_dict):
             # skip data that translate to custom Python objects rather than builtin data types
             if json_keyword in nontrivial_conversion_keywords:
                 continue
@@ -295,7 +291,7 @@ class Entry(object):
         json_dict = self.__dict__.copy()
 
         # reverse the json -> python keyword changes performed during deserialization
-        for json_keyword, python_keyword in PART_KEYWORD_CHANGES.iteritems():
+        for json_keyword, python_keyword in viewitems(PART_KEYWORD_CHANGES):
             value = json_dict.pop(python_keyword)
             if value:
                 json_dict[json_keyword] = value
@@ -324,6 +320,7 @@ class ExperimentLink(object):
             json_dict['created'],
             label=json_dict.get('label'),
         )
+
 
 ###################################################################################################
 # ICE Sample Location Types. See org.jbei.ice.lib.dto.sample.SampleType
@@ -412,7 +409,7 @@ class Sample(object):
         }
 
         translated_dict = {}
-        for java_keyword, value in json_dict.items():
+        for java_keyword, value in viewitems(json_dict):
             python_keyword = json_to_python_keyword_changes.get(java_keyword, java_keyword)
             translated_dict[python_keyword] = value
 
@@ -433,7 +430,7 @@ def _construct_part(python_object_params, part_type, class_data_keyword, convers
 
     class_data = python_object_params.pop(class_data_keyword, None)
     if class_data:
-        for keyword, value in class_data.items():
+        for keyword, value in viewitems(class_data):
             python_keyword = keyword
             if keyword in conversion_dict:
                 python_keyword = conversion_dict[keyword]
@@ -467,6 +464,7 @@ def _convert_json_keywords(json_dict, conversion_dict):
             python_keyword = keyword
         converted_dict[python_keyword] = value
     return converted_dict
+
 
 NORMAL_ACCOUNT_TYPE = 'NORMAL'
 ADMIN_ACCOUNT_TYPE = 'ADMIN'
@@ -509,7 +507,7 @@ class User(object):
         }
 
         translated_dict = {}
-        for java_keyword, value in json_dict.items():
+        for java_keyword, value in viewitems(json_dict):
             python_keyword = json_to_python_keyword_changes.get(java_keyword, java_keyword)
             translated_dict[python_keyword] = value
 
@@ -543,7 +541,7 @@ class EntrySearchResult(object):
         }
 
         translated_dict = {}
-        for java_keyword, value in json_dict.iteritems():
+        for java_keyword, value in viewitems(json_dict):
             python_keyword = keyword_dict.get(java_keyword, java_keyword)
 
             # read the part into a Part object
@@ -723,7 +721,7 @@ class IceApi(RestApiClient):
             self._add_page_number_param(query_params, page_number)
             response = self.session.get(url, params=query_params)
         if response.status_code == requests.codes.ok:
-            return IcePagedResult.of(response.content, User, results_key='users',
+            return IcePagedResult.of(response.text, User, results_key='users',
                                      query_url=response.url)
         response.raise_for_status()
 
@@ -753,7 +751,7 @@ class IceApi(RestApiClient):
             )
             query_url = response.url
         if response.status_code == requests.codes.ok:
-            return IcePagedResult.of(response.content, ExperimentLink, query_url=query_url)
+            return IcePagedResult.of(response.text, ExperimentLink, query_url=query_url)
         else:
             # NOTE: we purposefully DON'T return None for 404, since that would remove the clients'
             # ability to distinguish between a non-existent entry and an entry with no experiments
@@ -783,7 +781,7 @@ class IceApi(RestApiClient):
             )
             query_url = response.url
         if response.status_code == requests.codes.ok:
-            return IcePagedResult.of(response.content, Sample, query_url=query_url)
+            return IcePagedResult.of(response.text, Sample, query_url=query_url)
         else:
             # NOTE: we purposefully DON'T return None for 404, since that would remove the clients'
             # ability to distinguish between a non-existent entry and and entry with no samples
@@ -809,7 +807,7 @@ class IceApi(RestApiClient):
         try:
             response = self.session.get(url=rest_url)
             response.raise_for_status()
-            json_dict = json.loads(response.content)
+            json_dict = json.loads(response.text)
             if json_dict:
                 return Entry.of(json_dict, False)
         except requests.exceptions.Timeout as e:
@@ -916,7 +914,7 @@ class IceApi(RestApiClient):
         query_json = json.dumps({'queryString': search_terms})
         response = self.session.post(url, data=query_json, headers=_JSON_CONTENT_TYPE_HEADER)
         response.raise_for_status()
-        results = json.loads(response.content)
+        results = json.loads(response.text)
         return [record['entryInfo'] for record in results['results']]
 
     # TODO: doesn't support field filters yet, though ICE's API does
@@ -992,7 +990,7 @@ class IceApi(RestApiClient):
                 #     query_url = urlunparse(query_temp)
                 query_url = response.url
                 return IcePagedResult.of(
-                    response.content, EntrySearchResult,
+                    response.text, EntrySearchResult,
                     query_url=query_url, result_limit=self.result_limit, offset=offset
                 )
             elif suppress_errors:

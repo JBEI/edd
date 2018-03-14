@@ -1,5 +1,4 @@
 # coding: utf-8
-from __future__ import unicode_literals
 
 from django import template
 from django.conf import settings
@@ -29,7 +28,7 @@ def logo(context):
         request = context['request']
         site = get_current_site(request)
         logo_url = site.page.branding.logo_file.url
-    except:
+    except Exception:
         # if there is no branding, show default letters
         logo_url = static("main/images/edd_letters.png")
     return logo_url
@@ -41,7 +40,7 @@ def stylesheet(context):
         request = context['request']
         site = get_current_site(request)
         stylesheet_url = site.page.branding.style_sheet.url
-    except:
+    except Exception:
         # if there is no branding..do not show a logo
         stylesheet_url = ""
     return stylesheet_url
@@ -49,6 +48,8 @@ def stylesheet(context):
 
 @register.simple_tag()
 def edd_version_number():
+    if hasattr(settings, 'EDD_VERSION_HASH') and settings.EDD_VERSION_HASH:
+        return f'{settings.EDD_VERSION_NUMBER} ({settings.EDD_VERSION_HASH})'
     return settings.EDD_VERSION_NUMBER
 
 

@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, unicode_literals
-
 """ Backend for exporting SBML files. """
 # FIXME need to track intracellular and extracellular measurements separately
 # (and assign to SBML species differently)
@@ -23,6 +21,7 @@ from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from functools import partial, reduce
+from future.utils import viewitems, viewvalues
 from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
@@ -170,7 +169,7 @@ class SbmlExport(object):
         # if payload does not have keys for some fields, make sure form uses default initial
         replace_data = QueryDict(mutable=True)
         # loop the fields
-        for key, field in self._match_fields.iteritems():
+        for key, field in self._match_fields.items():
             base_name = match.add_prefix(key)
             # then loop the values in the field
             for i0, value in enumerate(field.initial):
@@ -220,7 +219,7 @@ class SbmlExport(object):
                 **kwargs
             ),
         }
-        for m_form in m_forms.itervalues():
+        for m_form in m_forms.values():
             if self._from_study_page:
                 m_form.update_bound_data_with_defaults()
             if m_form.is_valid() and self._sbml_template:
@@ -240,7 +239,7 @@ class SbmlExport(object):
             :param payload: the QueryDict from POST attribute of a request
             :param kwargs: any additional kwargs to pass to ALL forms; see Django Forms
                 documentation. """
-        if all(map(lambda f: f.is_valid(), self._forms.itervalues())):
+        if all(map(lambda f: f.is_valid(), self._forms.values())):
             match_form = self.create_match_form(payload, prefix='match', **kwargs)
             time_form = self.create_time_select_form(payload, prefix='time', **kwargs)
             self._forms.update({
@@ -308,7 +307,7 @@ class SbmlExport(object):
         # map species / reaction IDs to measurement IDs
         our_species = {}
         our_reactions = {}
-        for mtype, match in matches.iteritems():
+        for mtype, match in matches.items():
             if match:  # when not None, match[0] == species and match[1] == reaction
                 if match[0] and match[0] not in our_species:
                     our_species[match[0]] = mtype
@@ -328,8 +327,8 @@ class SbmlExport(object):
             :param context: the view context object, for passing information to templates
             :return: an updated context """
         # collect all the warnings together for counting
-        forms = [f for f in self._forms.itervalues() if isinstance(f, SbmlForm)]
-        sbml_warnings = chain(*map(lambda f: f.sbml_warnings if f else [], forms))
+        forms = [f for f in self._forms.values() if isinstance(f, SbmlForm)]
+        sbml_warnings = chain(*[f.sbml_warnings if f else [] for f in forms])
         context.update(self._forms)
         context.update(sbml_warnings=list(sbml_warnings))
         return context
@@ -405,7 +404,7 @@ class SbmlExport(object):
 
     def _update_biomass(self, builder, time):
         biomass = self._sbml_template.biomass_exchange_name
-        reaction = self._sbml_model.getReaction(biomass.encode('utf-8'))
+        reaction = self._sbml_model.getReaction(biomass)
         flux = 0
         try:
             times = [p.x[0] for p in self._density]
@@ -430,8 +429,8 @@ class SbmlExport(object):
             flux = math.log(y_next / y_0) / time_delta
             kinetic_law = reaction.getKineticLaw()
             # NOTE: libsbml calls require use of 'bytes' CStrings
-            upper_bound = kinetic_law.getParameter(b"UPPER_BOUND")
-            lower_bound = kinetic_law.getParameter(b"LOWER_BOUND")
+            upper_bound = kinetic_law.getParameter("UPPER_BOUND")
+            lower_bound = kinetic_law.getParameter("LOWER_BOUND")
             upper_bound.setValue(flux)
             lower_bound.setValue(flux)
         except Exception as e:
@@ -439,12 +438,10 @@ class SbmlExport(object):
 
     def _update_carbon_ratio(self, builder, time):
         notes = defaultdict(list)
-        for mlist in self._measures.itervalues():
+        for mlist in viewvalues(self._measures):
             for m in mlist:
                 if m.is_carbon_ratio():
-                    points = models.MeasurementValue.objects.filter(
-                        measurement=m, x__0=time,
-                    )
+                    points = models.MeasurementValue.objects.filter(measurement=m, x__0=time)
                     if points.exists():
                         # only get first value object, unwrap values_list tuple to get y-array
                         magnitudes = points.values_list('y')[0][0]
@@ -501,9 +498,9 @@ class SbmlExport(object):
             max_t=Max('measurementvalue__x'), min_t=Min('measurementvalue__x'),
         )
         if trange['max_t']:
-            self._max = min(trange['max_t'][0], self._max or sys.maxint)
+            self._max = min(trange['max_t'][0], self._max or sys.maxsize)
         if trange['min_t']:
-            self._min = max(trange['min_t'][0], self._min or -sys.maxint)
+            self._min = max(trange['min_t'][0], self._min or -sys.maxsize)
         # iff no interpolation, capture intersection of t values bounded by max & min
         m_inter = measurement_qs.exclude(assay__protocol__in=interpolate).prefetch_related(
             Prefetch('measurementvalue_set', queryset=values_qs, to_attr='values'),
@@ -527,9 +524,9 @@ class SbmlExport(object):
 
     def _update_reaction(self, builder, our_reactions, time):
         # loop over all template reactions, if in our_reactions set bounds, notes, etc
-        for reaction_sid, mtype in our_reactions.iteritems():
+        for reaction_sid, mtype in viewitems(our_reactions):
             type_key = '%s' % mtype
-            reaction = self._sbml_model.getReaction(reaction_sid.encode('utf-8'))
+            reaction = self._sbml_model.getReaction(reaction_sid)
             if reaction is None:
                 logger.warning(
                     'No reaction found in %(template)s with ID %(id)s' % {
@@ -575,8 +572,8 @@ class SbmlExport(object):
                     flux_end = (y_delta / time_delta) / density
                 kinetic_law = reaction.getKineticLaw()
                 # NOTE: libsbml calls require use of 'bytes' CStrings
-                upper_bound = kinetic_law.getParameter(b"UPPER_BOUND")
-                lower_bound = kinetic_law.getParameter(b"LOWER_BOUND")
+                upper_bound = kinetic_law.getParameter("UPPER_BOUND")
+                lower_bound = kinetic_law.getParameter("LOWER_BOUND")
                 upper_bound.setValue(max(flux_start, flux_end))
                 lower_bound.setValue(min(flux_start, flux_end))
             except Exception as e:
@@ -585,14 +582,14 @@ class SbmlExport(object):
     def _update_species(self, builder, our_species, time):
         # loop over all template species, if in our_species set the notes section
         # TODO: keep MeasurementType in match_form, remove need to re-query Metabolite
-        for species_sid, mtype in our_species.iteritems():
+        for species_sid, mtype in viewitems(our_species):
             type_key = '%s' % mtype
             metabolite = None
             try:
                 metabolite = models.Metabolite.objects.get(pk=type_key)
-            except:
+            except models.Metabolite.DoesNotExist:
                 logger.warning('Type %s is not a Metabolite', type_key)
-            species = self._sbml_model.getSpecies(species_sid.encode('utf-8'))
+            species = self._sbml_model.getSpecies(species_sid)
             if species is None:
                 logger.warning(
                     'No species found in %(template)s with ID %(id)s' % {
@@ -877,7 +874,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
     def _clean_check_for_curve(self, data):
         """ Ensures that each unique selected line has at least two points to calculate a
             growth curve. """
-        for line in self._clean_collect_data_lines(data).itervalues():
+        for line in viewvalues(self._clean_collect_data_lines(data)):
             count = 0
             for m in self._measures_by_line[line.pk]:
                 count += len(m.measurementvalue_set.all())
@@ -894,7 +891,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
     def _clean_check_for_gcdw(self, data, gcdw_default, conversion_meta):
         """ Ensures that each unique selected line has a gCDW/L/OD factor. """
         # warn for any lines missing the selected metadata type
-        for line in self._clean_collect_data_lines(data).itervalues():
+        for line in viewvalues(self._clean_collect_data_lines(data)):
             factor = line.metadata_get(conversion_meta)
             # TODO: also check that the factor in metadata is a valid value
             if factor is None:
@@ -925,8 +922,8 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             prefs = request.user.profile.prefs
             try:
                 return models.MetadataType.objects.get(pk=prefs[self.PREF_GCDW_META])
-            except:
-                pass
+            except models.MetadataType.DoesNotExist:
+                return None
         # TODO: load preferences from the system user if no request user
         return None
 
@@ -1050,10 +1047,10 @@ class SbmlBuilder(object):
 
             :return: an empty notes XMLNode """
         notes_node = libsbml.XMLNode()
-        body_tag = libsbml.XMLTriple(b"body", b"", b"")
+        body_tag = libsbml.XMLTriple("body", "", "")
         attributes = libsbml.XMLAttributes()
         namespace = libsbml.XMLNamespaces()
-        namespace.add(b"http://www.w3.org/1999/xhtml", b"")
+        namespace.add("http://www.w3.org/1999/xhtml", "")
         body_token = libsbml.XMLToken(body_tag, attributes, namespace)
         body_node = libsbml.XMLNode(body_token)
         notes_node.addChild(body_node)
@@ -1068,7 +1065,7 @@ class SbmlBuilder(object):
         if node is None:
             return notes
         note_body = node
-        if note_body.hasChild(b'body'):
+        if note_body.hasChild('body'):
             note_body = note_body.getChild(0)
         # API not very pythonic, cannot just iterate over children
         for index in range(note_body.getNumChildren()):
@@ -1109,12 +1106,12 @@ class SbmlBuilder(object):
             :return: the notes element passed in """
         # ensure adding to the <body> node
         body = _note_node
-        if _note_node.hasChild(b'body'):
+        if _note_node.hasChild('body'):
             body = _note_node.getChild(0)
         notes = self.parse_note_body(body)
         notes.update(**kwargs)
         body.removeChildren()
-        for key, value in notes.iteritems():
+        for key, value in viewitems(notes):
             if isinstance(value, string_types):
                 self._add_p_tag(body, '%s: %s' % (key, value))
             else:
@@ -1138,9 +1135,9 @@ class SbmlBuilder(object):
     def _add_p_tag(self, body, text):
         attributes = libsbml.XMLAttributes()
         namespace = libsbml.XMLNamespaces()
-        p_tag = libsbml.XMLTriple(b"p", b"", b"")
+        p_tag = libsbml.XMLTriple("p", "", "")
         p_token = libsbml.XMLToken(p_tag, attributes, namespace)
-        text_token = libsbml.XMLToken(text.encode('utf-8'))
+        text_token = libsbml.XMLToken(text)
         text_node = libsbml.XMLNode(text_token)
         p_node = libsbml.XMLNode(p_token)
         p_node.addChild(text_node)
@@ -1152,6 +1149,7 @@ def compose(*args):
     """ Composes argument functions and returns resulting function;
         e.g. compose(f, g)(x) == f(g(x)) """
     return reduce(lambda f, g: lambda x: f(g(x)), args, lambda x: x)
+
 
 # functions to substitute character sequences in a string
 dash_sub = partial(re.compile(r'-').sub, '_DASH_')

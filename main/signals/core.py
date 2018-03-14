@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
 
 import functools
 import logging
@@ -26,8 +25,15 @@ def set_file_info(sender, instance, raw, using, **kwargs):
     if not raw and instance.file is not None:
         instance.filename = instance.file.name
         instance.file_size = instance.file.size
-        # instance.file is the db field; instance.file.file is the actual file
-        instance.mime_type = instance.file.file.content_type
+        # set the mime_type if it is not already set
+        if not instance.mime_type:
+            # if there is a content_type from the uploaded file, use that
+            # instance.file is the db field; instance.file.file is the actual uploaded file
+            if hasattr(instance.file.file, 'content_type'):
+                instance.mime_type = instance.file.file.content_type
+            else:
+                # if there is no upload, give up and guess that it's a bunch of bytes
+                instance.mime_type = 'application/octet-stream'
 
 
 # ----- common signal handlers -----

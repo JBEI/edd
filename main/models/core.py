@@ -1,6 +1,4 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 """
 The core models: Study, Line, Assay, Measurement, MeasurementValue.
 """
@@ -9,7 +7,6 @@ import arrow
 import json
 import os
 
-from builtins import str
 from collections import defaultdict
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
@@ -24,6 +21,7 @@ from six import string_types
 from .common import EDDSerialize, qfilter
 from .measurement_type import MeasurementType, MeasurementUnit, Metabolite
 from .metadata import EDDMetadata, MetadataType
+from .permission import StudyPermission
 from .update import Update
 from main.export import table  # TODO remove
 
@@ -394,6 +392,62 @@ class Study(EDDObject):
         return metatype.for_context == MetadataType.STUDY
 
     @staticmethod
+    def access_filter(user, access=StudyPermission.CAN_VIEW, via=[]):
+        """
+        Creates a filter expression to limit queries to objects where a user has a given access
+        level to the study containing the objects under query. Note that in nearly all cases, this
+        call should be used in concert with a .distinct() on the queryset using the filter, as it
+        uses a JOIN, and will return multiple copies of an object if the user in the argument has
+        multiple permission routes to the parent Study. This is an updated API, preferred over the
+        older user_permission_q method.
+
+        Examples:
+
+            Study.objects.filter(Study.access_filter(user), slug='my-study').distinct()
+
+            Line.objects.distinct().filter(
+                Study.access_filter(user, via='study'),
+                contact=user,
+            )
+
+            Measurement.objects.distinct().filter(
+                Study.access_filter(user, via=('assay', 'line', 'study')),
+                measurement_type__type_name='Bisabolene',
+            )
+
+        :param user: the user
+        :param access: access level for permission; should be StudyPermission.CAN_VIEW or
+            StudyPermission.CAN_EDIT; defaults to StudyPermission.CAN_VIEW
+        :param via: an iterable of field names to traverse to get to the parent study
+        """
+        if isinstance(access, string_types):
+            access = (access, )
+        # enforce list type to via, and ensure that we work with a copy of argument
+        if isinstance(via, string_types):
+            via = [via]
+        elif via:
+            via = list(via)
+        else:
+            via = []
+
+        def filter_key(*args):
+            return '__'.join(via + list(args))
+
+        return (
+            Q(**{
+                filter_key('userpermission', 'user'): user,
+                filter_key('userpermission', 'permission_type', 'in'): access,
+            }) |
+            Q(**{
+                filter_key('grouppermission', 'group', 'user'): user,
+                filter_key('grouppermission', 'permission_type', 'in'): access,
+            }) |
+            Q(**{
+                filter_key('everyonepermission', 'permission_type', 'in'): access,
+            })
+        )
+
+    @staticmethod
     def user_permission_q(user, permission, keyword_prefix=''):
         """
         Constructs a django Q object for testing whether the specified user has the required
@@ -639,20 +693,8 @@ class Protocol(EDDObject):
         return super(Protocol, self).save(*args, **kwargs)
 
 
-class LineProperty(object):
-    """ Base class for EDDObject instances tied to a Line. """
-    @property
-    def n_lines(self):
-        return self.line_set.count()
-
-    @property
-    def n_studies(self):
-        lines = self.line_set.all()
-        return len(set([l.study_id for l in lines]))
-
-
 @python_2_unicode_compatible
-class Strain(EDDObject, LineProperty):
+class Strain(EDDObject):
     """ A link to a strain/part in the JBEI ICE Registry. """
     class Meta:
         db_table = 'strain'
@@ -699,7 +741,7 @@ class Strain(EDDObject, LineProperty):
 
 
 @python_2_unicode_compatible
-class CarbonSource(EDDObject, LineProperty):
+class CarbonSource(EDDObject):
     """ Information about carbon sources, isotope labeling. """
     class Meta:
         db_table = 'carbon_source'
@@ -743,14 +785,6 @@ class Line(EDDObject):
         default=False,
         help_text=_('Flag indicating whether the sample for this Line is a control.'),
         verbose_name=_('Control'),
-    )
-    replicate = models.ForeignKey(
-        'self',
-        blank=True,
-        help_text=_('Indicates that this Line is a (biological) replicate of another Line.'),
-        null=True,
-        on_delete=models.PROTECT,
-        verbose_name=_('Replicate'),
     )
 
     object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
@@ -847,7 +881,6 @@ class Line(EDDObject):
             contact = {'user_id': contact, 'extra': self.contact_extra}
         json_dict.update({
             'control': self.control,
-            'replicate': self.replicate_id,
             'contact': contact,
             'experimenter': self.get_attr_depth('experimenter', depth),
             'strain': [s.pk for s in self.strains.all()],
@@ -1111,7 +1144,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         if defined_only:
             qs = qs.exclude(Q(y=None) | Q(y__len=0))
         # first index unpacks single value from tuple; second index unpacks first value from X
-        return map(lambda x: x[0][0], qs.values_list('x'))
+        return [x[0][0] for x in qs.values_list('x')]
 
     # this shouldn't need to handle vectors
     def interpolate_at(self, x):

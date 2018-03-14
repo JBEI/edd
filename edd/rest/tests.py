@@ -10,7 +10,6 @@ Note that tests here purposefully hard-code simple object serialization that's a
 seperately in EDD's REST API.  This should help to detect when REST API code changes in EDD
 accidentally affect client code.
 """
-from __future__ import unicode_literals
 
 import logging
 
@@ -77,7 +76,7 @@ class EddApiTestCaseMixin(object):
         self.unauthenticated_client = Client()
 
     def _check_status(self, response, expected_code):
-        self.assertEquals(
+        self.assertEqual(
             response.status_code,
             expected_code,
             'Wrong response status code (%(code)s instead of %(expected)s) %(method)s %(url)s '
