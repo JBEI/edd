@@ -28,8 +28,10 @@ class SkylineParser(object):
         self.col_index = col_index
 
     def export(self, input_data):
-        """ This "export" takes a two-dimensional array of input data and creates a data structure
-            used by the old proteomics skyline conversion tool. """
+        """
+        This "export" takes a two-dimensional array of input data and creates a data structure
+        used by the old proteomics skyline conversion tool.
+        """
         samples = set()
         proteins = set()
         summed_areas = defaultdict(Decimal)
@@ -66,9 +68,11 @@ class SkylineParser(object):
         }
 
     def getRawImportRecordsAsJSON(self, spreadsheet):
-        """ Create RawImportRecord objects from a spreadsheet input.
+        """
+        Create RawImportRecord objects from a spreadsheet input.
 
-            :param spreadsheet: 2D spreadsheet data
+        :param spreadsheet: 2D spreadsheet data
+        :return: list of RawImportRecord objects
         """
         rows = self.export(spreadsheet)['rows']
         return [
@@ -84,25 +88,33 @@ class SkylineParser(object):
         ]
 
     def _input_to_generator(self, input_data):
+        """
+        Convert some input data into a generator of Record tuples.
+
+        :param input_data: either a 2D list-of-lists (e.g. parsed from Excel), or a file-like
+            object to be parsed as a CSV input.
+        :return: a generator yielding Record tuples for Skyline records in the input.
+        """
         # the input_data could be a 2D array parsed from excel or CSV
         if isinstance(input_data, list):
             return (
                 self._row_to_record(item)
-                for item in filter(self._header_or_blank, input_data)
+                for item in filter(self._real_values, input_data)
             )
         # or input_data could be a file with lines of CSV text
         return (
             self._row_to_record(cols)
-            for cols in filter(self._header_or_blank, map(self._split_to_columns, input_data))
+            for cols in filter(self._real_values, map(self._split_to_columns, input_data))
         )
 
-    def _header_or_blank(self, row):
+    def _real_values(self, row):
         """
         Function should evaluate to True if the row has a numeric value in the value column.
         """
         return bool(decimal_pattern.match(row[self.col_index.value]))
 
     def _row_to_record(self, row):
+        """ Converting array of spreadsheet cells to a Record tuple. """
         return Record(
             row[self.col_index.sample],
             row[self.col_index.measurement],
@@ -110,4 +122,8 @@ class SkylineParser(object):
         )
 
     def _split_to_columns(self, line):
+        if isinstance(line, bytes):
+            # the chunks returned from Django UploadFile could be bytes instead of str
+            # convert it here
+            line = line.decode('utf-8')
         return line.split(',')
