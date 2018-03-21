@@ -102,96 +102,6 @@
   {
     "fields": {
       "default_value": "",
-      "for_context": "A",
-      "group": null,
-      "input_size": 14,
-      "input_type": null,
-      "postfix": "",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Assay.Column_Type",
-      "type_name": "Column Type",
-      "uuid": "4f7a15a7-7e2d-4070-81f1-bc524e442b52"
-    },
-    "model": "main.metadatatype",
-    "pk": 5
-  },
-  {
-    "fields": {
-      "default_value": "",
-      "for_context": "A",
-      "group": null,
-      "input_size": 5,
-      "input_type": null,
-      "postfix": "min",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Assay.Retention_Time",
-      "type_name": "Retention Time",
-      "uuid": "ec23bc38-7878-4adf-8bcd-5c6e416b4154"
-    },
-    "model": "main.metadatatype",
-    "pk": 6
-  },
-  {
-    "fields": {
-      "default_value": "",
-      "for_context": "A",
-      "group": null,
-      "input_size": 10,
-      "input_type": null,
-      "postfix": "",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Assay.Detect_Type",
-      "type_name": "Detect Type",
-      "uuid": "e3f29168-b4ab-4747-8c5b-a194494479f9"
-    },
-    "model": "main.metadatatype",
-    "pk": 7
-  },
-  {
-    "fields": {
-      "default_value": "",
-      "for_context": "A",
-      "group": null,
-      "input_size": 6,
-      "input_type": null,
-      "postfix": "g/L",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Assay.Std_Conc",
-      "type_name": "Std Conc",
-      "uuid": "2f8aacdb-a838-472f-9be6-c7cf79674abc"
-    },
-    "model": "main.metadatatype",
-    "pk": 8
-  },
-  {
-    "fields": {
-      "default_value": "",
-      "for_context": "A",
-      "group": null,
-      "input_size": 10,
-      "input_type": null,
-      "postfix": "",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Assay.Std_Peak_Area",
-      "type_name": "Std Peak Area",
-      "uuid": "51958339-66e4-4c50-b96b-10ae23508bd8"
-    },
-    "model": "main.metadatatype",
-    "pk": 9
-  },
-  {
-    "fields": {
-      "default_value": "",
       "for_context": "L",
       "group": null,
       "input_size": 10,
@@ -224,24 +134,6 @@
     },
     "model": "main.metadatatype",
     "pk": 11
-  },
-  {
-    "fields": {
-      "default_value": "",
-      "for_context": "A",
-      "group": null,
-      "input_size": 5,
-      "input_type": null,
-      "postfix": "",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Assay.gCDW_L_OD600",
-      "type_name": "gCDW/L/OD600",
-      "uuid": "ba5cf778-fa44-461b-8135-0711400ad851"
-    },
-    "model": "main.metadatatype",
-    "pk": 12
   },
   {
     "fields": {
@@ -300,60 +192,6 @@
   {
     "fields": {
       "default_value": "",
-      "for_context": "A",
-      "group": null,
-      "input_size": 5,
-      "input_type": null,
-      "postfix": "\u00b0C",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Assay.Well_reaction_temperature",
-      "type_name": "Well reaction temperature",
-      "uuid": "40aa3b1f-c6c7-47eb-a81e-c27ef940087d"
-    },
-    "model": "main.metadatatype",
-    "pk": 20
-  },
-  {
-    "fields": {
-      "default_value": "",
-      "for_context": "A",
-      "group": null,
-      "input_size": 5,
-      "input_type": null,
-      "postfix": "\u00b0C",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Assay.Machine_internal_temperature",
-      "type_name": "Machine internal temperature",
-      "uuid": "3f1e6034-73b7-458d-bc2d-0b5a41fb1aef"
-    },
-    "model": "main.metadatatype",
-    "pk": 21
-  },
-  {
-    "fields": {
-      "default_value": "",
-      "for_context": "A",
-      "group": null,
-      "input_size": 120,
-      "input_type": null,
-      "postfix": "",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Assay.Device_Name",
-      "type_name": "Device Name",
-      "uuid": "56912e2b-f11e-408e-8bd3-19b3b1081ecf"
-    },
-    "model": "main.metadatatype",
-    "pk": 22
-  },
-  {
-    "fields": {
-      "default_value": "",
       "for_context": "L",
       "group": null,
       "input_size": 5,
@@ -368,42 +206,6 @@
     },
     "model": "main.metadatatype",
     "pk": 23
-  },
-  {
-    "fields": {
-      "default_value": "bsa-fast-13min-cold.m",
-      "for_context": "L",
-      "group": null,
-      "input_size": 30,
-      "input_type": null,
-      "postfix": "",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Line.Method_QQQ",
-      "type_name": "Method-QQQ",
-      "uuid": "fcabe51d-874d-4ef2-8318-7881f75ce091"
-    },
-    "model": "main.metadatatype",
-    "pk": 24
-  },
-  {
-    "fields": {
-      "default_value": "1",
-      "for_context": "L",
-      "group": null,
-      "input_size": 5,
-      "input_type": null,
-      "postfix": "",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Line.Inj_Vol__ul_",
-      "type_name": "Inj Vol (ul)",
-      "uuid": "d1621deb-590b-406c-b266-a04d82d7a387"
-    },
-    "model": "main.metadatatype",
-    "pk": 25
   },
   {
     "fields": {
@@ -422,24 +224,6 @@
     },
     "model": "main.metadatatype",
     "pk": 26
-  },
-  {
-    "fields": {
-      "default_value": "Vial 1",
-      "for_context": "L",
-      "group": null,
-      "input_size": 10,
-      "input_type": null,
-      "postfix": "",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": "main.models.Line.Sample_Position",
-      "type_name": "Sample Position",
-      "uuid": "c3852637-9cd8-498d-be9e-36eeea10895b"
-    },
-    "model": "main.metadatatype",
-    "pk": 27
   },
   {
     "fields": {
@@ -692,24 +476,6 @@
     },
     "model": "main.metadatatype",
     "pk": 41
-  },
-  {
-    "fields": {
-      "default_value": "",
-      "for_context": "L",
-      "group": null,
-      "input_size": 64,
-      "input_type": null,
-      "postfix": "",
-      "prefix": "",
-      "type_class": null,
-      "type_field": null,
-      "type_i18n": null,
-      "type_name": "Stressor",
-      "uuid": "07c16093-541e-4a25-a66f-e3894a421ea0"
-    },
-    "model": "main.metadatatype",
-    "pk": 42
   },
   {
     "fields": {
