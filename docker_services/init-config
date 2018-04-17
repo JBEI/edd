@@ -239,6 +239,13 @@ elif [ "$NOINPUT" != "1" ]; then
     echo
 fi
 
+read -p "Open public ports? (y/n)" yn
+case $yn in
+    [Yy]* ) sed -i 's/127.0.0.1:80:80/0.0.0.0:80:80/g' $DIR/docker-compose.override.yml; sed -i 's/127.0.0.1:443:443/0.0.0.0:443:443/g' $DIR/docker-compose.override.yml; break;;
+    [Nn]* ) break;;
+    * ) echo "Please answer yes or no.";;
+esac
+
 # basic replacement script for sed
 REPLACEMENT="$(cat <<EOT
     s/#EDD_USER: "Alice Liddell"/EDD_USER: "${EDD_USER}"/;
