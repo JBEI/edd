@@ -34,7 +34,7 @@ running in the development environment.
           your `docker-compose.override.yml`
         * restart your containers
 
-* __Rebuild Solr indexes:___
+* __Rebuild Solr indexes:__
   `docker-compose exec edd /code/manage.py edd_index`
 
 

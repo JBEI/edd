@@ -7,10 +7,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.core.validators import RegexValidator
 from django.db import connection
-from django.core.urlresolvers import reverse
 from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _

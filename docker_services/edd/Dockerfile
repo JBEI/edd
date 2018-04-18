@@ -48,6 +48,7 @@ RUN apt-get clean \
     && apt-get autoremove -y \
     && ln -s /usr/bin/python3 /usr/local/bin/python \
     && ln -s /usr/bin/pip3 /usr/local/bin/pip \
+    && pip install --upgrade pip setuptools wheel \
     && pip install --no-cache-dir virtualenv \
     && rm -rf /var/lib/apt/lists/*
 

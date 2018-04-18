@@ -2,7 +2,6 @@ import "../src/EDDDataInterface"
 import * as jQuery from "jquery"
 import "jquery.cookie"
 import { EDDAuto } from "../modules/EDDAutocomplete"
-import "bootstrap-loader"
 
 declare function require(name: string): any;
 //load dropzone module

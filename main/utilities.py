@@ -4,8 +4,8 @@ from collections import defaultdict, Iterable
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.sites.models import Site
-from future.utils import viewitems
 from six import string_types
+from threadlocals.middleware import ThreadLocalMiddleware
 from threadlocals.threadlocals import get_current_request
 
 from . import models
@@ -16,10 +16,29 @@ logger = logging.getLogger(__name__)
 
 
 class EDDSettingsMiddleware(object):
-    """ Adds an `edd_deployment` attribute to requests passing through the middleware with a value
-        of the current deployment environment. """
-    def process_request(self, request):
+    """
+    Adds an `edd_deployment` attribute to requests passing through the middleware with a value
+    of the current deployment environment.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
         request.edd_deployment = settings.EDD_DEPLOYMENT_ENVIRONMENT
+        return self.get_response(request)
+
+
+class EDDThreadLocalMiddleware(ThreadLocalMiddleware):
+    """
+    Alternate version of threadlocals.middleware.ThreadLocalMiddleware that will work with
+    Django 2.0+.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.process_request(request)
+        return response or self.get_response(request)
 
 
 media_types = {
@@ -41,12 +60,12 @@ def flatten_json(source):
     # convert lists/tuples to a dict
     if not isinstance(source, dict) and isinstance(source, Iterable):
         source = dict(enumerate(source))
-    for key, value in viewitems(source):
+    for key, value in source.items():
         key = str(key)
         if isinstance(value, string_types):
             output[key] = value
         elif isinstance(value, (dict, Iterable)):
-            for sub, item in viewitems(flatten_json(value)):
+            for sub, item in flatten_json(value.items()):
                 output['.'.join((key, sub, ))] = item
         else:
             output[key] = value

@@ -3,10 +3,16 @@
 import arrow
 import logging
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from collections import namedtuple
-from uuid import uuid4
+from django_redis import get_redis_connection
+from uuid import UUID, uuid4
+
+from edd.utilities import JSONDecoder, JSONEncoder
 
 
+channel_layer = get_channel_layer()
 logger = logging.getLogger(__name__)
 
 
@@ -16,6 +22,8 @@ NotificationBase = namedtuple('NotificationBase', (
     'time',
     'uuid',
 ))
+
+
 class Notification(NotificationBase):
     """
     A notification message to be stored in a notification backend and delivered to users.
@@ -67,8 +75,11 @@ class BaseBroker(object):
     def _remove(self, uuid, *args, **kwargs):
         raise NotImplementedError("Subclasses of BaseBroker must provide a _remove() method")
 
-    def _store(self, notifications, *args, **kwargs):
+    def _store(self, notification, *args, **kwargs):
         raise NotImplementedError("Subclasses of BaseBroker must provide a _store() method")
+
+    def count(self):
+        raise NotImplementedError("This broker does not support count() method")
 
     def group_names(self):
         return [f'edd.notify.{self.user.username}']
@@ -77,29 +88,92 @@ class BaseBroker(object):
         last = self._load(uuid)
         for note in self:
             if last is None or note.time < last.time:
-                self.remove(note.uuid)
+                self.mark_read(note.uuid)
+        # send update to Channel Group
+        self.send_to_groups({
+            'type': 'notification.reset',
+        })
 
     def mark_read(self, uuid):
         self._remove(uuid)
+        # send update to Channel Group
+        self.send_to_groups({
+            'type': 'notification.dismiss',
+            'uuid': JSONEncoder.dumps(uuid),
+        })
 
-    def notify(self, message, tags=[]):
-        note = Notification(message, tags)
+    def notify(self, message, tags=[], uuid=None):
+        note = Notification(message, tags=tags, uuid=uuid)
         # _store notification to self
-        self._store(tuple(note))
-        # send notification to Channel Group
+        self._store(note)
+        # send notification to Channel Groups
+        self.send_to_groups({
+            'type': 'notification',
+            'notice': JSONEncoder.dumps(note.prepare()),
+        })
+
+    def send_to_groups(self, payload):
+        for group in self.group_names():
+            async_to_sync(channel_layer.group_send)(group, payload)
 
 
-class DefaultBroker(BaseBroker):
-    # TODO
+class RedisBroker(BaseBroker):
+    """
+    RedisBroker uses a redis backend to store notifications.
+    """
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(user, *args, **kwargs)
+        self._redis = get_redis_connection('default')
+
+    def _convert(self, payload):
+        if isinstance(payload, bytes):
+            return Notification(*JSONDecoder.loads(payload.decode('utf-8')))
+        return None
+
+    def _key_notification(self, uuid):
+        if isinstance(uuid, bytes):
+            uuid = uuid.decode('utf-8')
+        elif isinstance(uuid, UUID):
+            uuid = str(uuid)
+        return f'{self._key_user()}:{uuid}'
+
+    def _key_user(self):
+        return f'{__name__}.{self.__class__.__name__}:{self.user.username}'
 
     def _load(self, uuid, *args, **kwargs):
-        return None
+        payload = self._redis.get(self._key_notification(uuid))
+        return self._convert(payload)
 
     def _loadAll(self, *args, **kwargs):
-        return []
+        # fetch 10 at a time; range is exclusive of end, zrevrange is inclusive of end
+        psize = 10
+        for page in range(0, self.count(), psize):
+            ids = self._redis.zrevrange(self._key_user(), page, page + psize - 1)
+            keys = [self._key_notification(uuid) for uuid in ids]
+            for payload in self._redis.mget(keys):
+                if payload is not None:
+                    yield self._convert(payload)
 
     def _remove(self, uuid, *args, **kwargs):
-        return None
+        # remove from set of notifications
+        self._redis.zrem(self._key_user(), uuid)
+        # remove notification
+        self._redis.delete(self._key_notification(uuid))
 
-    def _store(self, notifications, *args, **kwargs):
-        return None
+    def _store(self, notification, *args, **kwargs):
+        # save the notification itself
+        key = self._key_notification(notification.uuid)
+        self._redis.set(key, JSONEncoder.dumps(notification), nx=True)
+        # store the uuid in a sorted set of all user's notifications
+        self._redis.zadd(self._key_user(), notification.time, notification.uuid)
+
+    def count(self):
+        return self._redis.zcard(self._key_user())
+
+    def mark_all_read(self, uuid=None):
+        if uuid is None:
+            # shortcut for redis when not marking read from a given point: delete everything
+            self._redis.delete(self._key_user(), f'{self._key_user()}:*')
+        # parent will loop over all and remove anything older than uuid; then send reset message
+        super().mark_all_read(uuid=uuid)

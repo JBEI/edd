@@ -7,7 +7,6 @@ from collections import defaultdict, OrderedDict, Sequence
 
 from arrow import utcnow
 from django.db.models import Q
-from future.utils import viewitems, viewvalues
 from six import string_types
 
 from main.models import Assay, Line, MetadataType, Protocol, Strain
@@ -198,7 +197,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         # defined
         hstore_compliant_dict = {
             str(pk): cache.line_meta_types.get(pk).encode_value(value)
-            for pk, value in viewitems(line_metadata_dict)
+            for pk, value in line_metadata_dict.items()
             if value and pk not in cache.related_objects
         }
 
@@ -210,7 +209,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         }
 
         # add in values for single-valued relations captured by specialized MetadataTypes
-        for meta_type_pk, meta_type in viewitems(cache.related_object_mtypes):
+        for meta_type_pk, meta_type in cache.related_object_mtypes.items():
             value_pks = line_metadata_dict.get(meta_type_pk)
 
             if not value_pks or meta_type_pk in cache.many_related_mtypes:
@@ -230,7 +229,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
 
         # save M2M and 1-to-M relations. Note: This MUST be done after Line is saved to the
         # database and has a primary key to use in relation tables
-        for pk, meta_type in viewitems(self.cache.many_related_mtypes):
+        for pk, meta_type in self.cache.many_related_mtypes.items():
             value_pks = line_metadata_dict.get(pk)
             if not value_pks:
                 continue
@@ -265,7 +264,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         # make sure everything gets cast to str to comply with Postgres' hstore field
         hstore_compliant_dict = {
             str(pk): str(value)
-            for pk, value in viewitems(assay_metadata_dict) if value
+            for pk, value in assay_metadata_dict.items() if value
         }
 
         assay = Assay.objects.create(
@@ -395,7 +394,7 @@ class ExperimentDescriptionContext(object):
         """
         many_related_mtypes = {}
         related_object_mtypes = {}
-        for meta_pk, meta_type in viewitems(line_meta_types):
+        for meta_pk, meta_type in line_meta_types.items():
             if meta_type.type_field:
                 line_attr = Line._meta.get_field(meta_type.type_field)
 
@@ -883,7 +882,7 @@ class CombinatorialDescriptionInput(object):
             INVALID_PROTOCOL_META_PK,
         )
 
-        for protocol_pk, input_assay_metadata_dict in viewitems(self.protocol_to_assay_metadata):
+        for protocol_pk, input_assay_metadata_dict in self.protocol_to_assay_metadata.items():
             self._verify_pk_keys(
                 input_assay_metadata_dict,
                 assay_metadata_types_by_pk,
@@ -901,7 +900,7 @@ class CombinatorialDescriptionInput(object):
             INVALID_PROTOCOL_META_PK,
         )
 
-        for protocol_pk, metadata_dict in viewitems(self.protocol_to_combinatorial_metadata_dict):
+        for protocol_pk, metadata_dict in self.protocol_to_combinatorial_metadata_dict.items():
             self._verify_pk_keys(
                 metadata_dict,
                 assay_metadata_types_by_pk,
@@ -1009,12 +1008,12 @@ class CombinatorialDescriptionInput(object):
                 combo = self.protocol_to_combinatorial_metadata_dict[protocol_pk]
                 visited_pks = set()
                 # outer loop for combinatorial
-                for metadata_pk, values in viewitems(combo):
+                for metadata_pk, values in combo.items():
                     visited_pks.add(metadata_pk)
                     for value in values:
                         assay_metadata[metadata_pk] = value
                         # inner loop for combinatorial
-                        for k, v in viewitems(combo):
+                        for k, v in combo.items():
                             if k in visited_pks:
                                 continue
                             for value in v:
@@ -1162,7 +1161,7 @@ def find_existing_strains(parts_by_ice_id, importer):
     if parts_by_ice_id:
         logger.info(f'Searching EDD for {len(parts_by_ice_id)} strains...')
 
-    for ice_entry in viewvalues(parts_by_ice_id):
+    for ice_entry in parts_by_ice_id.values():
         # search for the strain by registry ID. Note we use search instead of .get() until the
         # database consistently contains/requires ICE UUID's and enforces uniqueness
         # constraints for them (EDD-158).

@@ -1,6 +1,5 @@
 import { EddRest } from "../modules/EDDRest"
 import * as $ from "jquery"
-import "bootstrap-loader"
 
 // This module contains code for dynamically loading lists of metadata types into the help page
 // for Experiment Description files.

@@ -63,7 +63,7 @@
 }
 
 #refresh-summary-div {
-    float: right;
+    margin-left: auto;
 }
 
 .bulk_lines_table_cell {
@@ -260,7 +260,7 @@ div.sectionContent {
 }
 
 .stepBorder {
-	background: #fcfcfc;
+    background: #fcfcfc;
     margin: 10px 8px 3px 8px;
     border-width: 1px;
     border-style: solid;
@@ -268,8 +268,8 @@ div.sectionContent {
 }
 
 .stepSeparator {
-	border-top:1px solid #6CA5E9;
-	padding:0em 1em 3px 3em;
+    border-top:1px solid #6CA5E9;
+    padding:0em 1em 3px 3em;
 }
 
 /* TODO: consider altering common.cs where this came from. Doesnt work here!*/

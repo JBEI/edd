@@ -191,7 +191,7 @@ services:
       - attachdata:/var/www/uploads
       - staticdata:/var/www/static
     restart: always
-    command: [-A, -w, edd, -p, '8000', websocket]
+    command: [-A, -w, edd, -p, '8000', channel, http, websocket]
     links:
       - edd
       - postgres

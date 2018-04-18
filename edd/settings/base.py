@@ -47,6 +47,9 @@ REQUIRE_UNIPROT_ACCESSION_IDS = True
 # a secure network because of known security problems in the first version.
 PUBLISH_REST_API = False
 
+# external scripts to add to all rendered pages; e.g. JIRA issue collector, Google Analytics
+EDD_EXTERNAL_SCRIPTS = []
+
 ##############################
 # ICE configuration used in multiple places, or that we want to be able to override in local.py
 ##############################
@@ -140,14 +143,12 @@ INSTALLED_APPS = (
     'edd.branding',
     'edd.rest',
 )
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.RemoteUserMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
-    'threadlocals.middleware.ThreadLocalMiddleware',
+    'main.utilities.EDDThreadLocalMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'main.utilities.EDDSettingsMiddleware',
@@ -257,10 +258,11 @@ SWAGGER_SETTINGS = {
 # WebSockets / Channels
 ###################################################################################################
 
+ASGI_APPLICATION = 'edd.notify.routing.application'
+
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'asgi_redis.RedisChannelLayer',
-        'ROUTING': 'main.routing.channel_routing',
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             'hosts': [
                 'redis://redis:6379/2',
@@ -298,9 +300,10 @@ LOGGING = {
         },
     },
     'loggers': {
-        # specify formatting for Django log messages, and also force tracebacks for uncaught
-        # exceptions to be logged. Without this, django only logs cryptic 1-liners for uncaught
-        # exceptions...see SYNBIO-1262 for an example where this was very misleading.
+        'daphne': {
+            'level': 'INFO',
+            'handlers': ['console', ],
+        },
         'django': {
             'level': 'DEBUG',
             'handlers': ['console', ],
@@ -309,14 +312,19 @@ LOGGING = {
             'level': 'WARNING',
             'handlers': ['console', ],
         },
-        'main': {
-            'level': 'INFO',
-            'handlers': ['console', ],
-        },
         'edd': {
             'level': 'INFO',
             'handlers': ['console', ],
         },
+        'main': {
+            'level': 'INFO',
+            'handlers': ['console', ],
+        },
+        # for everything else, display warnings and above
+        '': {
+            'level': 'WARNING',
+            'handlers': ['console', ],
+        }
     },
 }
 

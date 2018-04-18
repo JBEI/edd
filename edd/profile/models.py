@@ -25,7 +25,7 @@ class UserProfile(models.Model):
     """
     class Meta:
         db_table = 'profile_user'
-    user = models.OneToOneField(settings.AUTH_USER_MODEL)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     initials = models.CharField(max_length=10, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     institutions = models.ManyToManyField(Institution, through='InstitutionID')
@@ -41,8 +41,8 @@ class InstitutionID(models.Model):
     """
     class Meta:
         db_table = 'profile_institution_user'
-    institution = models.ForeignKey(Institution)
-    profile = models.ForeignKey(UserProfile)
+    institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
+    profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     identifier = models.CharField(max_length=255, blank=True, null=True)
 
 
@@ -50,7 +50,7 @@ class UserTask(models.Model):
     """ Recording of celery tasks started by a user. """
     class Meta:
         db_table = 'profile_task'
-    profile = models.ForeignKey(UserProfile, related_name='tasks')
+    profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='tasks')
     uuid = models.UUIDField(editable=False, unique=True)
     add_time = models.DateTimeField(auto_now_add=True, editable=False)
     notified = models.BooleanField(default=False)

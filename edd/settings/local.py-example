@@ -39,9 +39,9 @@ INTERNAL_IPS = ['127.0.0.1', '::1', ]
 # Add the Django Debug Toolbar to local instance
 if DEBUG:  # noqa: F405
     INSTALLED_APPS = INSTALLED_APPS + ('debug_toolbar', )  # noqa: F405
-    MIDDLEWARE_CLASSES = (
+    MIDDLEWARE = (
         'debug_toolbar.middleware.DebugToolbarMiddleware',
-    ) + MIDDLEWARE_CLASSES  # noqa: F405
+    ) + MIDDLEWARE  # noqa: F405
     DEBUG_TOOLBAR_CONFIG = {
         'JQUERY_URL': '',
     }
@@ -118,6 +118,10 @@ LOGGING = {
         },
     },
     'loggers': {
+        'daphne': {
+            'level': 'INFO',
+            'handlers': ['console', ],
+        },
         'django.db.backends': {
             'level': 'DEBUG',
             'handlers': ['console', 'queryfile', ],
@@ -134,7 +138,7 @@ LOGGING = {
             'propagate': False,
         },
         '': {
-            'level': 'DEBUG',
+            'level': 'WARNING',
             'handlers': ['console', ],
         }
     },

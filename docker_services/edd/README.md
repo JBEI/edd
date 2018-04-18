@@ -76,6 +76,10 @@ of commands is provided below, or can be found by executing `docker run --rm -it
             Execute the EDD unit tests.
         worker
             Start a Celery worker node.
+        daphne
+            Start a Django Channels webserver (daphne).
+        channel [... [name]]
+            Start a Django Channels worker listening on listed channel names (runworker).
 
 To run a container without going through the entrypoint script, use a command similar to
 `docker run --rm -it --entrypoint /bin/bash edd-core`.

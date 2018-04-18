@@ -1,15 +1,15 @@
 """
-Defines settings used by scripts in this package.  Clients may override settings defined here in a 
+Defines settings used by scripts in this package.  Clients may override settings defined here in a
 custom local.py in the same package.
 
 Note that because of the development history of scripts within this package, settings defined here
 may not be universally read/applied by all of the scripts.  When overriding a setting, it's best
-to double-check the script of interest, which may need updates to use more recently-defined 
+to double-check the script of interest, which may need updates to use more recently-defined
 settings.
 """
 
 from jbei.rest.clients.edd.api import DEFAULT_PAGE_SIZE as DEFAULT_EDD_PAGE_SIZE
-from jbei.rest.clients.ice.api import DEFAULT_RESULT_LIMIT as DEFAULT_ICE_PAGE_SIZE
+from jbei.rest.clients.ice.constants import DEFAULT_RESULT_LIMIT as DEFAULT_ICE_PAGE_SIZE
 
 ###################################################################################################
 # Application URL's.

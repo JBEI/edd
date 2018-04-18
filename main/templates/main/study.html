@@ -9,9 +9,6 @@
     // TODO: should not need this script block
     var EDDData = EDDData || {};
     EDDData.currentStudyID = {{ study.id }};
-    EDDData.currentStudyWritable = {% if writable %}true{% else %}false{% endif %};
-    EDDData.Studies = EDDData.Studies || {};
-    EDDData.Studies[{{ study.id }}] = {{ study.to_json_str|safe }};
   </script>
 {% endblock js_css %}
 
@@ -22,10 +19,7 @@
 
 
 {% block body_title %}
-<div class="editable-field inactive editableStudyName" id="editable-study-name">
   {{ study.name }}
-  {{ edit_study.name }}
-</div>
 {% endblock body_title %}
 
 

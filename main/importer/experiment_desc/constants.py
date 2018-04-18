@@ -2,8 +2,6 @@
 
 from collections import OrderedDict
 
-from requests import codes
-
 # error conditions that are detected / handled during Experiment Description upload process.
 # These values must remain unique, and are used both as dictionary keys within the back-end code
 # and for user display in the front end
@@ -124,20 +122,6 @@ IGNORE_ICE_ACCESS_ERRORS_PARAM = 'IGNORE_ICE_ACCESS_ERRORS'
 ALLOW_NON_STRAIN_PARTS = 'ALLOW_NON_STRAIN_PARTS'
 ALLOW_DUPLICATE_NAMES_PARAM = 'ALLOW_DUPLICATE_NAMES'
 DRY_RUN_PARAM = 'DRY_RUN'
-
-###################################################################################################
-# Http error codes used / considered in this package.
-###################################################################################################
-OK = codes.ok
-INTERNAL_SERVER_ERROR = codes.internal_server_error
-BAD_REQUEST = codes.bad_request
-NOT_FOUND = codes.not_found
-METHOD_NOT_ALLOWED = codes.method_not_allowed
-NOT_ACCEPTABLE = codes.not_acceptable
-TOO_MANY_REQUESTS = codes.too_many_requests
-SERVICE_UNAVAILABLE = codes.service_unavailable
-FORBIDDEN = codes.forbidden
-CONFLICT = codes.conflict
 
 ###################################################################################################
 # Categorization and display priority order for predicted errors / warnings

@@ -4,118 +4,133 @@
 {% load i18n %}
 <html>
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>
-        {% block head_title %}
-        {% trans 'Experiment Data Depot' context 'HTML Title' %}
-        {% endblock head_title %}
-    </title>
-    <script type="text/javascript" src="{% static 'dist/vendor.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'dist/styles.css' %}" />
-    <script type="text/javascript" src="https://support.jbei.org/s/d3a33d14666229eeb44aa891f5cfdb9a-T/en_US2qlmkc/70120/555786f388e7417b872cf1ceee812d89/2.0.8/_/download/batch/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector.js?locale=en-US&amp;collectorId=0c7d3216"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
-    {% stylesheet as branding_css %}
-    {% if branding_css %}
-    <link rel="stylesheet" type="text/css" href="{{ branding_css }}" />
-    {% endif %}
-    {% block js_css %}
-    {% if user.is_authenticated %}
-    <script type="text/javascript">
-        window.EDDData = window.EDDData || {};
-        EDDData.currentUserID = {{ user.id }};
-        $(document).on('click', '.statusMessage a.close', function (ev) {
-            var link = $(this),
-                href = link.attr('close-href'),
-                token = $('.statusMessage [name=csrfmiddlewaretoken]').first().val();
-            ev.preventDefault();
-            if (href) {
-                $.post(href, {'csrfmiddlewaretoken': token}, function () {
-                    link.parent().fadeOut();
-                });
-            } else {
-                link.parent().fadeOut();
-            }
-        });
-    </script>
-    {% endif %}
-    {% endblock js_css%}
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>
+    {% block head_title %}
+    {% trans 'Experiment Data Depot' context 'HTML Title' %}
+    {% endblock head_title %}
+  </title>
+  <script type="text/javascript" src="{% static 'dist/vendor.js' %}"></script>
+  <link rel="stylesheet" type="text/css" href="{% static 'dist/styles.css' %}" />
+  <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
+  {% stylesheet as branding_css %}
+  {% if branding_css %}
+  <link rel="stylesheet" type="text/css" href="{{ branding_css }}" />
+  {% endif %}
+  <script type="text/javascript" src="{% static 'dist/Common.js' %}"></script>
+  {% block js_css %}
+  {% endblock js_css%}
 </head>
 <body style="background-color:{% env_background_color %};">
-<div class="mainFlex">
-    <div id="content" class="content">
-        <div class="topBanner">
-            <div class="siteLogo">
-                <a href="{% url 'main:index' %}">
-                    <img class="eddLogo" src="{% static 'main/images/edd_logo.png' %}"
-                            alt="{% trans 'EDD Logo' %}" />
-                    <img class="companyLogo" src="{% logo %}"
-                            alt="{% trans 'Branding Logo' %}" />
-                </a>
-            </div>
-            <div class="pageName">
-                {% block body_title %}
-                {% trans 'Experiment Data Depot' context 'Top of page title' %}
-                {% endblock body_title %}
-            </div>
-            <div class="userMenu">
-                {% if user.is_authenticated %}
-                    <div>
-                        <div class="user_welcome">{{ user.first_name }} {{ user.last_name }}</div>
-                        <a href="{% url 'account_logout' %}">{% trans 'Logout' %}</a>
-                    </div>
-                {% else %}
-                    <div>
-                        <a href="{% url 'account_login' %}">{% trans 'Login' %}</a>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-        <div class="statusMessage">
-        {% env_label %}
-        {% block status %}
-            {% if messages %}
-                {% csrf_token %}
-                {% for message in messages %}
-                <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>
-                    {% if message.pk %}
-                    <a class="close"
-                            data-dismiss="alert"
-                            close-href="{% url message_mark_read message.pk %}">×</a>
-                    {% else %}
-                    <a class="close" data-dismiss="alert">×</a>
-                    {% endif %}
-                    {{ message }}
-                </p>
-                {% endfor %}
-            {% endif %}
-        {% endblock status %}
-        </div>
+  <nav class="navbar navbar-default navbar-static-top">
+    <div class="container-fluid">
+      <!-- mobile-friendly -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed"
+            data-toggle="collapse"
+            data-target="#bs-example-navbar-collapse-1"
+            aria-expanded="false">
+          <span class="sr-only">{% trans 'Toggle navigation' %}</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="{% url 'main:index' %}">
+          <img class="eddLogo" src="{% static 'main/images/edd_logo.png' %}"
+              alt="{% trans 'EDD Logo' %}" />
+          <img class="companyLogo" src="{% logo %}" alt="{% logo_title %}" />
+        </a>
+      </div>
+      <div class="collapse navbar-collapse">
+        <ul class="nav navbar-nav navbar-left">
+          <li>
+            <p class="navbar-text">
+              {% block body_title %}
+              {% trans 'Experiment Data Depot' context 'Top of page title' %}
+              {% endblock body_title %}
+            </p>
+          </li>
+          <li>
+            <p class="navbar-text">{% env_label %}</p>
+          </li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+          <li>
+            <a href="{% url 'flatpage' url='tutorials' %}">
+              {% trans 'Tutorials' %}
+            </a>
+          </li>
+          <li>
+            <a href="https://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204">
+              {% trans 'EDD Publication'%}
+            </a>
+          </li>
+          {% if user.is_authenticated %}
+          <li class="dropdown" id="notification-dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
+                aria-haspopup="true" aria-expanded="false">
+              <span class="glyphicon glyphicon-inbox"></span>
+              <span class="badge"></span>
+            </a>
+            <ul class="dropdown-menu" id="notification-list">
+              <li class="message-empty">{% trans 'No new notifications.' %}</li>
+            </ul>
+          </li>
+          <li>
+            <p class="navbar-text">{{ user.first_name }} {{ user.last_name }}</p>
+          </li>
+          <li>
+            <a href="{% url 'account_logout' %}">{% trans 'Logout' %}</a>
+          </li>
+          {% else %}
+          <li>
+            <a href="{% url 'account_login' %}">{% trans 'Login' %}</a>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <div id="content" class="content">
+    <div class="statusMessage">
+    {% block status %}
+      {% if messages %}
+        {% csrf_token %}
+        {% for message in messages %}
+        <p class="{{ message.tags }}">
+          {% if message.pk %}
+          <a class="close"
+              aria-label="{% trans 'Close' %}"
+              data-dismiss="alert"
+              close-href="{% url message_mark_read message.pk %}">×</a>
+          {% else %}
+          <a class="close"
+              aria-label="{% trans 'Close' %}"
+              data-dismiss="alert">×</a>
+          {% endif %}
+          {{ message }}
+        </p>
+        {% endfor %}
+      {% endif %}
+    {% endblock status %}
+    </div>
     {% block content %}
     {% endblock content %}
-    </div>
-    <div id="bottomBar" class="bottomBar">
-    </div>
-</div>
-<div class="footer-text">
+  </div>
+  <div id="bottomBar" class="bottomBar">
+  </div>
+  <div class="footer-text">
     {% edd_version_number as version %}
     <span class="footer-text-app">
-        {% blocktrans trimmed with version=version %}
-        Experiment Data Depot {{ version }}
-        {% endblocktrans %}
-    </span>
-    <span class="footer-text-contact">
-        <a href="mailto:jbei-help@lbl.gov?subject=EDD">{% trans 'Contact' %}</a>
+      {% blocktrans trimmed with version=version %}
+      Experiment Data Depot {{ version }}
+      {% endblocktrans %}
     </span>
     {% if user.is_staff %}
     <span><a href="{% url 'admin:index' %}">{% trans 'Administration' %}</a></span>
     {% endif %}
     <span><a href="{% url 'edd_utils:index' %}">{% trans 'Utilities' %}</a></span>
-    <span><a href="{% url 'flatpage' url='tutorials' %}">{% trans 'Tutorials' %}</a></span>
-    <span>
-        <a href="http://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204">
-            {% trans 'EDD Publication' %}
-        </a>
-    </span>
-</div>
+  </div>
 </body>
+{% external_scripts %}
 </html>

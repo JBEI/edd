@@ -23,11 +23,7 @@ class LatestViewedStudies(object):
         return map(self._decode, iter(self._redis.lrange(self._key(), 0, self._end)))
 
     def _key(self):
-        return '%(module)s.%(klass)s:%(user)s' % {
-            'module': __name__,
-            'klass': self.__class__.__name__,
-            'user': self._user.username,
-        }
+        return f'{__name__}.{self.__class__.__name__}:{self._user.username}'
 
     def _decode(self, value):
         return value.decode('utf-8')
@@ -56,11 +52,8 @@ class ScratchStorage(object):
         self._redis = get_redis_connection(settings.EDD_LATEST_CACHE)
 
     def _key(self, name=None):
-        return '%(module)s.%(klass)s:%(name)s' % {
-            'module': __name__,
-            'klass': self.__class__.__name__,
-            'name': uuid4() if name is None else name,
-        }
+        name = uuid4() if name is None else name
+        return f'{__name__}.{self.__class__.__name__}:{name}'
 
     def delete(self, key):
         self._redis.delete(key)

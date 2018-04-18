@@ -288,12 +288,16 @@ class LineTests(TestCase):  # XXX also Strain, CarbonSource
         set_thread_variable('request', request)
 
     def test_line_metadata(self):
+        # 'media' is a MetadataType for Lines
         media = MetadataType.objects.get(type_name="Media")
-        rt = MetadataType.objects.get(type_name="Retention Time")
+        # 'original name' is a MetadataType for Assays
+        orig_name = MetadataType.objects.get(type_name="Original Name")
+        # adding line metadata to a line should work fine
         self.line1.metadata_add(media, "M9")
         self.assertEqual(self.line1.metadata_get(media), "M9")
+        # adding assay metadata to a line should raise a ValueError
         with self.assertRaises(ValueError):
-            self.line1.metadata_add(rt, 1.5)
+            self.line1.metadata_add(orig_name, "ABC13")
 
     def test_line_form(self):
         self.assertFalse(self.line1.control)

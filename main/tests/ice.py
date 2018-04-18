@@ -3,8 +3,8 @@
 Integration tests for ICE.
 """
 
-from django.core.urlresolvers import reverse
 from django.test import tag
+from django.urls import reverse
 from io import BytesIO
 from openpyxl.workbook import Workbook
 from requests import codes

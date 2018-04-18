@@ -2,10 +2,11 @@
     background-position-y: 65px;
 }
 
-#helpExperimentDescription {
-    float: none;
+#experimentDescDropZone > #dz-title {
+    display: flex;
 }
 
-#dz-title {
-    margin-left: auto;
+#experimentDescDropZone > #dz-title > span {
+    margin: 0 auto;
+    padding-left: 3em;  /* compensate for width of help button */
 }

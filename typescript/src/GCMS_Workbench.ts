@@ -1,7 +1,6 @@
 import * as $ from "jquery"
 import "jquery.cookie"
 import * as d3 from "d3"
-import "bootstrap-loader"
 import Handsontable from "handsontable"
 
 declare function require(name: string): any;  // avoiding warnings for require calls below

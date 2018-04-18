@@ -13,7 +13,7 @@ rest_urlpatterns = [
 ]
 
 urlpatterns = [
-    url(r'^admin/', include(admin.site.urls)),
+    url(r'^admin/', admin.site.urls),
     url(r'^', include('main.urls', namespace='main')),
     url(r'^accounts/', include('allauth.urls')),  # allauth does not support namespacing
     url(r'^messages/', include('messages_extends.urls')),
@@ -28,5 +28,5 @@ if settings.PUBLISH_REST_API:
 if settings.DEBUG:
     import debug_toolbar
     urlpatterns += [
-        url(r'^__debug__/', include(debug_toolbar.urls)),
+        url(r'^__debug__/', include(debug_toolbar.urls, namespace='djdt')),
     ]

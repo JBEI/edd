@@ -109,6 +109,7 @@ is a one-to-one relationship from images to services. The two exceptions both ma
 
 * __edd__: runs initial startup tasks and prepares the other services, and runs the EDD webapp
 * __worker__: long-running and background tasks are run here with Celery
+* __websocket__: handles processing HTTP and WebSocket messages
 * __postgres__: provides EDD's database
 * __redis__: provides the cache back-end for EDD
 * __solr__: provides a search index for EDD

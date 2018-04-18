@@ -8,7 +8,6 @@ import { Utl } from "../modules/Utl"
 import { FileDropZone } from "../modules/FileDropZone"
 import { StudyBase } from "../modules/Study"
 import * as _ from "underscore"
-import "bootstrap-loader"
 
 
 declare function require(name: string): any;  // avoiding warnings for require calls below
@@ -25,7 +24,6 @@ require('jquery-ui/ui/widgets/button');
 require('jquery-ui/ui/widgets/draggable');
 require('jquery-ui/ui/widgets/resizable');
 require('jquery-ui/ui/widgets/dialog');
-require('jquery-ui/ui/widgets/tooltip');
 
 
 module StudyLines {
@@ -67,6 +65,17 @@ module StudyLines {
 
         linesActionPanelRefreshTimer = null;
         positionActionsBarTimer = null;
+
+        let lineHelp = $('#line-help-content').dialog({
+            'title': 'What is a line?',
+            'autoOpen': false,
+            'position': {
+                'my': 'left top',
+                'at': 'left bottom+10',
+                'of': '#line-help-btn'
+            }
+        });
+        $('#line-help-btn').on('click', () => lineHelp.dialog('open'));
 
         var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
            pageRedirect: '',
@@ -114,7 +123,7 @@ module StudyLines {
                 StudyLines.linesDataGrid = new LineResults(this.linesDataGridSpec);
 
                 // Show controls that depend on having some lines present to be useful
-                hasLines = _.keys(EDDData.Lines).length !== 0;
+                hasLines = Object.keys(EDDData.Lines).length !== 0;
                 $('#loadingLinesDiv').addClass('hide');
                 $('#edUploadDirectionsDiv').removeClass('hide');
                 $('.linesRequiredControls').toggleClass('hide', !hasLines);
@@ -258,10 +267,9 @@ module StudyLines {
     function includeAllLinesIfEmpty() {
         if ($('#studyLinesTable').find('input[name=lineId]:checked').length === 0) {
             //append study id to form
-            var study = _.keys(EDDData.Studies)[0];
             $('<input>').attr({
                 type: 'hidden',
-                value: study,
+                value: EDDData.currentStudyID,
                 name: 'studyId',
             }).appendTo('form');
         }
@@ -283,7 +291,7 @@ module StudyLines {
         if (this.linesDataGrid) {
             checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
-        if (_.keys(EDDData.Lines).length === 0) {
+        if (Object.keys(EDDData.Lines).length === 0) {
             $('.lineExplanation').css('display', 'block');
             $('.actionsBar').addClass('off');
         } else {
@@ -936,7 +944,7 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
             checked = true;
         }
         // If the box is checked, return the set of IDs unfiltered
-        if (checked && rowIDs && EDDData.currentStudyWritable) {
+        if (checked && rowIDs) {
             $(".enableButton").removeClass('off');
             return rowIDs;
         } else {

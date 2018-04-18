@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('identifier', models.CharField(max_length=255, null=True, blank=True)),
-                ('institution', models.ForeignKey(to='profile.Institution')),
+                ('institution', models.ForeignKey(on_delete=models.deletion.CASCADE, to='profile.Institution')),
             ],
             options={
                 'db_table': 'profile_institution_user',
@@ -55,7 +55,7 @@ class Migration(migrations.Migration):
                 ('initials', models.CharField(max_length=10, null=True, blank=True)),
                 ('description', models.TextField(null=True, blank=True)),
                 ('institutions', models.ManyToManyField(to='profile.Institution', through='profile.InstitutionID')),
-                ('user', models.OneToOneField(to=settings.AUTH_USER_MODEL)),
+                ('user', models.OneToOneField(on_delete=models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'db_table': 'profile_user',
@@ -65,13 +65,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='userpreference',
             name='profile',
-            field=models.ForeignKey(to='profile.UserProfile'),
+            field=models.ForeignKey(on_delete=models.deletion.CASCADE, to='profile.UserProfile'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='institutionid',
             name='profile',
-            field=models.ForeignKey(to='profile.UserProfile'),
+            field=models.ForeignKey(on_delete=models.deletion.CASCADE, to='profile.UserProfile'),
             preserve_default=True,
         ),
     ]

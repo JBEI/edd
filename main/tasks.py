@@ -7,16 +7,20 @@ from celery import shared_task
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
 from django.db.models import F
 from django.http import QueryDict
+from django.urls import reverse
 from django.utils.translation import ugettext as _
 from requests.exceptions import RequestException
 
 from . import models
+from .export import forms as export_forms
+from .export.broker import ExportBroker
+from .export.table import TableExport, WorklistExport
 from .importer.table import TableImport
 from .redis import ScratchStorage
 from .utilities import get_absolute_url
+from edd.notify.backend import RedisBroker
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
 
@@ -63,8 +67,114 @@ def delay_calculation(task):
     return task.default_retry_delay + (2 ** (task.request.retries + 1))
 
 
-@shared_task
-def import_table_task(study_id, user_id, data_path):
+@shared_task(bind=True)
+def export_table_task(self, user_id, param_path):
+    """
+    Task runs the code for creating an export, from form data validated by a view.
+
+    :param user_id: the primary key of the user running the export
+    :param param_path: the key returned from main.redis.ScratchStorage.save() used to access
+        saved export parameters
+    :returns: the key used to access exported data from main.redis.ScratchStorage.load()
+    :throws RuntimeError: on any errors occuring while running the export
+    """
+    try:
+        # load info needed to build export
+        User = get_user_model()
+        user = User.objects.get(id=user_id)
+        notifications = RedisBroker(user)
+        broker = ExportBroker(user_id)
+        export_id = self.request.id[:8]
+        # execute the export
+        try:
+            export_name = execute_export_table(broker, user, export_id, param_path)
+            url = f'{reverse("main:export")}?download={export_id}'
+            message = _(
+                'Your export for "{name}" is ready. '
+                '<a href="{url}" class="download">Download the file here</a>.'
+            ).format(name=export_name, url=url)
+            notifications.notify(message, tags=('download', ))
+        except Exception as e:
+            logger.exception('Failure in export_table_task: %s', e)
+            message = _(
+                'Export failed. EDD encountered this problem: {ex}'
+            ).format(ex=e)
+            notifications.notify(message)
+        notifications.mark_read(self.request.id)
+    except Exception as e:
+        logger.exception('Failure in export_table_task: %s', e)
+        raise RuntimeError(_('Failed export, EDD encountered this problem: {e}').format(e=e))
+
+
+def execute_export_table(broker, user, export_id, param_path):
+    params = broker.load_params(param_path)
+    selection = export_forms.ExportSelectionForm(data=params, user=user).selection
+    init_options = export_forms.ExportOptionForm.initial_from_user_settings(user)
+    options = export_forms.ExportOptionForm(
+        data=params,
+        initial=init_options,
+        selection=selection
+    ).options
+    # create and persist the export object
+    export = TableExport(selection, options)
+    broker.save_export(export_id, selection.studies[0].name, export)
+    # no longer need the param data
+    broker.clear_params(param_path)
+    return selection.studies[0].name
+
+
+@shared_task(bind=True)
+def export_worklist_task(self, user_id, param_path):
+    """
+    Task runs the code for creating a worklist export, from form data validated by a view.
+
+    :param user_id: the primary key of the user running the worklist
+    :param param_path: the key returned from main.redis.ScratchStorage.save() used to access
+        saved worklist parameters
+    :returns: the key used to access worklist data from main.redis.ScratchStorage.load()
+    :throws RuntimeError: on any errors occuring while running the export
+    """
+    try:
+        # load info needed to build worklist
+        User = get_user_model()
+        user = User.objects.get(id=user_id)
+        notifications = RedisBroker(user)
+        broker = ExportBroker(user_id)
+        export_id = self.request.id[:8]
+        try:
+            export_name = execute_export_worklist(broker, user, export_id, param_path)
+            url = f'{reverse("main:worklist")}?download={export_id}'
+            message = _(
+                'Your worklist for "{name}" is ready. '
+                '<a href="{url}" class="download">Download the file here</a>.'
+            ).format(name=export_name, url=url)
+            notifications.notify(message, tags=('download', ))
+        except Exception as e:
+            logger.exception(f'Failure in export_worklist_task: {e}')
+            message = _(
+                'Export failed. EDD encountered this problem: {ex}'
+            ).format(ex=e)
+            notifications.notify(message)
+        notifications.mark_read(self.request.id)
+    except Exception as e:
+        logger.exception('Failure in export_worklist_task: %s', e)
+        raise RuntimeError(_('Failed export, EDD encountered this problem: {e}').format(e=e))
+
+
+def execute_export_worklist(broker, user, export_id, param_path):
+    params = broker.load_params(param_path)
+    selection = export_forms.ExportSelectionForm(data=params, user=user).selection
+    worklist_def = export_forms.WorklistForm(data=params)
+    # create worklist object
+    export = WorklistExport(selection, worklist_def.options, worklist_def.worklist)
+    broker.save_export(export_id, selection.studies[0].name, export)
+    # no longer need the param data
+    broker.clear_params(param_path)
+    return selection.studies[0].name
+
+
+@shared_task(bind=True)
+def import_table_task(self, study_id, user_id, data_path):
     """
     Task runs the code for importing a table of data.
 
@@ -79,26 +189,32 @@ def import_table_task(study_id, user_id, data_path):
         storage = ScratchStorage()
         study = models.Study.objects.get(pk=study_id)
         user = User.objects.get(pk=user_id)
+        notifications = RedisBroker(user)
         data = storage.load(data_path)
         importer = TableImport(study, user)
-        # data stored as urlencoded string, convert back to QueryDict
-        (added, updated) = importer.import_data(QueryDict(data))
-        storage.delete(data_path)
+        try:
+            # data stored as urlencoded string, convert back to QueryDict
+            (added, updated) = importer.import_data(QueryDict(data))
+            storage.delete(data_path)
+            message = _(
+                'Finished import to {study}: {added} added and {updated} updated measurements.'
+            ).format(study=study.name, added=added, updated=updated)
+            notifications.notify(message)
+        except Exception as e:
+            logger.exception(f'Failure in import_table_task: {e}')
+            message = _(
+                'Failed import to {study}, EDD encountered this problem: {ex}'
+            ).format(study=study.name, ex=e)
+            notifications.notify(message)
+        notifications.mark_read(self.request.id)
     except Exception as e:
-        logger.exception('Failure in import_table_task: %s', e)
+        logger.exception(f'Failure in import_table_task: {e}')
         raise RuntimeError(
             _('Failed import to %(study)s, EDD encountered this problem: %(problem)s') % {
                 'problem': e,
                 'study': study.name,
             }
         )
-    return _(
-        'Finished import to %(study)s: %(added)d added, %(updated)d updated measurements.' % {
-            'added': added,
-            'study': study.name,
-            'updated': updated,
-        }
-    )
 
 
 @shared_task(bind=True)

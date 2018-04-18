@@ -1,8 +1,8 @@
 # coding: utf-8
 
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
 from django.test import TestCase
+from django.urls import reverse
 from requests import codes
 
 from main.tests.factory import UserFactory
@@ -43,4 +43,3 @@ class UserProfileTest(TestCase):
         target_kwargs = {'key': 'testkey'}
         response = self.client.get(reverse('profile:settings_key', kwargs=target_kwargs))
         self.assertEqual(response.json(), 'testvalue')
-

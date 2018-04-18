@@ -16,15 +16,13 @@ import os
 import re
 import requests
 
-from future.utils import viewitems
 from requests.compat import urlparse, urlencode, urlunparse
 from six.moves.urllib.parse import ParseResult, parse_qs
 
 from jbei.rest.api import RestApiClient
 from jbei.rest.sessions import PagedResult, PagedSession, Session
 
-# FIXME: do not use star imports
-from .constants import *
+from . import constants
 from .utils import build_entry_ui_url
 
 logger = logging.getLogger(__name__)
@@ -122,7 +120,7 @@ PART_KEYWORD_CHANGES = {
 
 GENOTYPE_PHENOTYPE_JSON_PARAM = 'genotypePhenotype'
 STRAIN_KEYWORD_CHANGES = {
-    GENOTYPE_PHENOTYPE_JSON_PARAM: GENOTYPE_PHENOTYPE_PYTHON_PARAM
+    GENOTYPE_PHENOTYPE_JSON_PARAM: constants.GENOTYPE_PHENOTYPE_PYTHON_PARAM
 }
 
 PLASMID_KEYWORD_CHANGES = {
@@ -250,7 +248,7 @@ class Entry(object):
             'parameters'
         ]
 
-        for json_keyword, json_value in viewitems(json_dict):
+        for json_keyword, json_value in json_dict.items():
             # skip data that translate to custom Python objects rather than builtin data types
             if json_keyword in nontrivial_conversion_keywords:
                 continue
@@ -263,22 +261,25 @@ class Entry(object):
 
         part_type = python_object_params.pop('type')  # Note: don't shadow Python builtin 'type'!
 
-        if PLASMID == part_type:
+        if constants.PLASMID == part_type:
             return _construct_part(
-                python_object_params, part_type, PLASMID_DATA_JSON_KEYWORD,
+                python_object_params, part_type, constants.PLASMID_DATA_JSON_KEYWORD,
                 PLASMID_KEYWORD_CHANGES, Plasmid, silence_type_specific_warnings
             )
 
-        if STRAIN == part_type:
-            return _construct_part(python_object_params, part_type, STRAIN_DATA_JSON_KEYWORD,
-                                   STRAIN_KEYWORD_CHANGES, Strain, silence_type_specific_warnings)
+        if constants.STRAIN == part_type:
+            return _construct_part(
+                python_object_params, part_type, constants.STRAIN_DATA_JSON_KEYWORD,
+                STRAIN_KEYWORD_CHANGES, Strain, silence_type_specific_warnings
+            )
 
-        if ARABIDOPSIS == part_type:
-            return _construct_part(python_object_params, part_type, ARABIDOPSIS_DATA_JSON_KEYWORD,
-                                   ARABIDOPSIS_KEYWORD_CHANGES, Arabidopsis,
-                                   silence_type_specific_warnings)
+        if constants.ARABIDOPSIS == part_type:
+            return _construct_part(
+                python_object_params, part_type, constants.ARABIDOPSIS_DATA_JSON_KEYWORD,
+                ARABIDOPSIS_KEYWORD_CHANGES, Arabidopsis, silence_type_specific_warnings
+            )
 
-        if PART == part_type:
+        if constants.PART == part_type:
             return Entry(**python_object_params)
 
         raise Exception('Unsupported type "%s"' % part_type)
@@ -291,7 +292,7 @@ class Entry(object):
         json_dict = self.__dict__.copy()
 
         # reverse the json -> python keyword changes performed during deserialization
-        for json_keyword, python_keyword in viewitems(PART_KEYWORD_CHANGES):
+        for json_keyword, python_keyword in PART_KEYWORD_CHANGES.items():
             value = json_dict.pop(python_keyword)
             if value:
                 json_dict[json_keyword] = value
@@ -409,7 +410,7 @@ class Sample(object):
         }
 
         translated_dict = {}
-        for java_keyword, value in viewitems(json_dict):
+        for java_keyword, value in json_dict.items():
             python_keyword = json_to_python_keyword_changes.get(java_keyword, java_keyword)
             translated_dict[python_keyword] = value
 
@@ -430,7 +431,7 @@ def _construct_part(python_object_params, part_type, class_data_keyword, convers
 
     class_data = python_object_params.pop(class_data_keyword, None)
     if class_data:
-        for keyword, value in viewitems(class_data):
+        for keyword, value in class_data.items():
             python_keyword = keyword
             if keyword in conversion_dict:
                 python_keyword = conversion_dict[keyword]
@@ -507,7 +508,7 @@ class User(object):
         }
 
         translated_dict = {}
-        for java_keyword, value in viewitems(json_dict):
+        for java_keyword, value in json_dict.items():
             python_keyword = json_to_python_keyword_changes.get(java_keyword, java_keyword)
             translated_dict[python_keyword] = value
 
@@ -541,7 +542,7 @@ class EntrySearchResult(object):
         }
 
         translated_dict = {}
-        for java_keyword, value in viewitems(json_dict):
+        for java_keyword, value in json_dict.items():
             python_keyword = keyword_dict.get(java_keyword, java_keyword)
 
             # read the part into a Part object
@@ -564,17 +565,17 @@ class Strain(Entry):
         json_dict = super(Strain, self).to_json_dict()
 
         # remove strain-specific data from the dictionary and re-package it as in ICE's JSON
-        host_value = json_dict.pop(HOST_PYTHON_PARAM)
-        geno_value = json_dict.pop(GENOTYPE_PHENOTYPE_PYTHON_PARAM)
+        host_value = json_dict.pop(constants.HOST_PYTHON_PARAM)
+        geno_value = json_dict.pop(constants.GENOTYPE_PHENOTYPE_PYTHON_PARAM)
 
         strain_data = {}
         if host_value:
-            strain_data[HOST_JSON_PARAM] = host_value
+            strain_data[constants.HOST_JSON_PARAM] = host_value
         if geno_value:
             strain_data[GENOTYPE_PHENOTYPE_JSON_PARAM]
 
         if strain_data:
-            json_dict[STRAIN_DATA_JSON_KEYWORD] = strain_data
+            json_dict[constants.STRAIN_DATA_JSON_KEYWORD] = strain_data
 
         return json_dict
 
@@ -640,7 +641,7 @@ class IceApi(RestApiClient):
     # TODO: when returning model objects, prevent database changes via partially-populated model
     # object instances. See draft code in edd.py
 
-    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT,
+    def __init__(self, auth, base_url=ICE_URL, result_limit=constants.DEFAULT_RESULT_LIMIT,
                  verify_ssl_cert=VERIFY_SSL_DEFAULT):
         """
         Creates a new instance of IceApi
@@ -654,7 +655,7 @@ class IceApi(RestApiClient):
         """
         if not auth:
             raise ValueError("A valid authentication mechanism must be provided")
-        session = PagedSession(RESULT_LIMIT_PARAMETER, result_limit, auth=auth,
+        session = PagedSession(constants.RESULT_LIMIT_PARAMETER, result_limit, auth=auth,
                                verify_ssl_cert=verify_ssl_cert)
         super(IceApi, self).__init__('ICE', base_url, session, result_limit)
 
@@ -670,7 +671,7 @@ class IceApi(RestApiClient):
                 return result_limit * (page_number - 1)
         return None
 
-    def _add_page_number_param(self, dict, page_number):
+    def _add_page_number_param(self, lookup, page_number):
         if page_number:
             if not self.result_limit:
                 if page_number != 1:
@@ -680,17 +681,17 @@ class IceApi(RestApiClient):
                     )
             else:
                 offset = self.session.result_limit * (page_number - 1)
-                dict[RESULT_OFFSET_PARAMETER] = offset
+                lookup[constants.RESULT_OFFSET_PARAMETER] = offset
 
     def _extract_pagination_params(self, query_url):
         query_params_string = urlparse(query_url).query
         query_dict = parse_qs(query_params_string) if query_params_string else None
-        offset = query_dict.get[RESULT_OFFSET_PARAMETER]
+        offset = query_dict.get[constants.RESULT_OFFSET_PARAMETER]
         if offset:
             offset = offset[0]
 
     def search_users(self, search_string=None, sort=None, asc=None,
-                     page_number=DEFAULT_PAGE_NUMBER, query_url=None, ):
+                     page_number=constants.DEFAULT_PAGE_NUMBER, query_url=None, ):
         """
         Searches for users known to this instance of ICE, if the authenticated user has the
         appropriate access privileges in ICE.
@@ -725,7 +726,8 @@ class IceApi(RestApiClient):
                                      query_url=response.url)
         response.raise_for_status()
 
-    def get_entry_experiments(self, entry_id, query_url=None, page_number=DEFAULT_PAGE_NUMBER):
+    def get_entry_experiments(self, entry_id, query_url=None,
+                              page_number=constants.DEFAULT_PAGE_NUMBER):
         """
         Retrieves ICE's experiments links for the specified entry, using any of the unique
         identifiers: part id, synthetic id, or UUID.
@@ -757,7 +759,8 @@ class IceApi(RestApiClient):
             # ability to distinguish between a non-existent entry and an entry with no experiments
             response.raise_for_status()
 
-    def get_entry_samples(self, entry_id, query_url=None, page_number=DEFAULT_PAGE_NUMBER):
+    def get_entry_samples(self, entry_id, query_url=None,
+                          page_number=constants.DEFAULT_PAGE_NUMBER):
         """
         Retrieves ICE's samples for the specified entry, using any of the unique
         identifiers: part id, local integer primary key, or UUID.
@@ -831,10 +834,10 @@ class IceApi(RestApiClient):
 
     def _process_query_blast(self, query_dict, blast_program, blast_sequence):
         if blast_program:
-            if blast_program not in BLAST_PROGRAMS:
+            if blast_program not in constants.BLAST_PROGRAMS:
                 raise KeyError(
                     'Blast program %s is not one of the recognized programs: %s' %
-                    (blast_program, str(BLAST_PROGRAMS))
+                    (blast_program, str(constants.BLAST_PROGRAMS))
                 )
             if blast_sequence:
                 query_dict['blastQuery'] = {
@@ -893,7 +896,7 @@ class IceApi(RestApiClient):
             if search_terms:
                 query_dict['queryString'] = search_terms
             if entry_types:
-                if not set(entry_types).issubset(set(ICE_ENTRY_TYPES)):
+                if not set(entry_types).issubset(set(constants.ICE_ENTRY_TYPES)):
                     raise KeyError('')
                 query_dict['entryTypes'] = entry_types
             self._process_query_blast(query_dict, blast_program, blast_sequence)
@@ -920,7 +923,7 @@ class IceApi(RestApiClient):
     # TODO: doesn't support field filters yet, though ICE's API does
     def search_entries(self, search_terms=None, entry_types=None, blast_program=None,
                        blast_sequence=None, search_web=False, sort_field=None,
-                       sort_ascending=False, page_number=DEFAULT_PAGE_NUMBER,
+                       sort_ascending=False, page_number=constants.DEFAULT_PAGE_NUMBER,
                        suppress_errors=False):
         # TODO: consider removing suppress_errors and forcing client code to support that function,
         # when/if needed
@@ -1253,8 +1256,8 @@ def extract_int_parameter(dictionary, key):
 
 def construct_page_url(elements, params, index, limit):
     if params and index is not None:
-        params[RESULT_LIMIT_PARAMETER] = limit
-        params[RESULT_OFFSET_PARAMETER] = index * limit
+        params[constants.RESULT_LIMIT_PARAMETER] = limit
+        params[constants.RESULT_OFFSET_PARAMETER] = index * limit
         query = urlencode(params, True)
         inputs = ParseResult(
             elements.scheme,
@@ -1323,9 +1326,15 @@ class IcePagedResult(PagedResult):
             url_elts, query_params_dict = parse_query_url(query_url)
             # if paging parameters aren't already defined, try extracting them from query_url
             if not result_limit:
-                result_limit = extract_int_parameter(query_params_dict, RESULT_LIMIT_PARAMETER)
+                result_limit = extract_int_parameter(
+                    query_params_dict,
+                    constants.RESULT_LIMIT_PARAMETER
+                )
             if offset is None:
-                offset = extract_int_parameter(query_params_dict, RESULT_OFFSET_PARAMETER)
+                offset = extract_int_parameter(
+                    query_params_dict,
+                    constants.RESULT_OFFSET_PARAMETER
+                )
 
             # if required inputs are available, attempt to compute next/prev URLs similar
             # to those included in EDD's JSON so we can provide a standard client-side interface

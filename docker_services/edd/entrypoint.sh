@@ -94,6 +94,10 @@ function print_help() {
     echo "        Execute the EDD unit tests."
     echo "    worker"
     echo "        Start a Celery worker node."
+    echo "    daphne"
+    echo "        Start a Django Channels webserver (daphne)."
+    echo "    channel [... [name]]"
+    echo "        Start a Django Channels worker listening on listed channel names (runworker)."
 }
 
 short="adhimp:qsw:ADIMS"
@@ -381,11 +385,11 @@ case "$COMMAND" in
         ;;
     daphne)
         banner "Starting daphne"
-        exec daphne -b 0.0.0.0 -p 8000 edd.asgi:channel_layer
+        exec daphne -b 0.0.0.0 -p 8000 edd.asgi:application
         ;;
-    websocket)
-        banner "Starting WebSocket worker"
-        exec python manage.py runworker --threads 6
+    channel)
+        banner "Starting Channels worker with: [$@]"
+        exec python manage.py runworker $@
         ;;
     *)
         output "Unrecognized command: $COMMAND"

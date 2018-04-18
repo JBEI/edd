@@ -12,7 +12,6 @@ from django.db.models import F, Func
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from functools import reduce
-from future.utils import viewitems
 from six import string_types
 from uuid import uuid4
 
@@ -269,7 +268,7 @@ class EDDMetadata(models.Model):
             string representations of the corresponding MetadataType records. """
         metadata_types = {'%s' % mt.id: mt for mt in self.get_metadata_types()}
         metadata = {}
-        for pk, value in viewitems(self.meta_store):
+        for pk, value in self.meta_store.items():
             metadata_type = metadata_types[pk]
             if metadata_type.prefix:
                 value = metadata_type.prefix + " " + value

@@ -5,7 +5,6 @@ import logging
 from collections import OrderedDict
 from django.db.models import Prefetch, Q
 from django.utils.translation import ugettext_lazy as _
-from future.utils import viewitems
 
 
 logger = logging.getLogger(__name__)
@@ -127,8 +126,12 @@ class ExportSelection(object):
             'assay__line__study__contact',
         )
         # TODO: use Prefetch for measurement_type with django-model-utils
-        # type_queryset = models.MeasurementType.objects.select_subclasses(models.ProteinIdentifier)
-        # self._measures.prefetch_related(Prefetch('measurement_type', queryset=type_queryset))
+        # type_queryset = models.MeasurementType.objects.select_subclasses(
+        #     models.ProteinIdentifier
+        # )
+        # self._measures.prefetch_related(
+        #     Prefetch('measurement_type', queryset=type_queryset)
+        # )
         self._assays = models.Assay.objects.filter(
             Q(line__study__in=self._allowed_study),
             (Q(line__in=lineId) & Q_active(line__active=True)) |
@@ -306,13 +309,13 @@ class TableExport(object):
             return table_separator.join([
                 row_separator.join([
                     cell_separator.join(map(cell_format.quote, rrow))
-                    for rkey, rrow in viewitems(ttable)
-                ]) for tkey, ttable in viewitems(tables)
+                    for rkey, rrow in ttable.items()
+                ]) for tkey, ttable in tables.items()
             ])
         # both LINE_COLUMN_BY_DATA and DATA_COLUMN_BY_LINE are constructed similarly
         # each table in LINE_COLUMN_BY_DATA is transposed
         out = []
-        for tkey, table in viewitems(tables):
+        for tkey, table in tables.items():
             # sort x values by original numeric values
             all_x = sorted(list(self._x_values.get(tkey, {}).items()), key=lambda a: a[1])
             # generate header row

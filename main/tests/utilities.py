@@ -5,7 +5,6 @@ import os
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from future.utils import viewitems
 from jsonschema import Draft4Validator
 from openpyxl import load_workbook
 
@@ -217,7 +216,7 @@ class CombinatorialCreationTests(TestCase):
         for line_name in expected_line_names:
             protocol_to_assay_to_meta = {}
             expected_assay_metadata[line_name] = protocol_to_assay_to_meta
-            for protocol_pk, assay_meta in viewitems(assay_metadata):
+            for protocol_pk, assay_meta in assay_metadata.items():
                 assay_to_meta = {}
                 protocol_to_assay_to_meta[protocol_pk] = assay_to_meta
                 for meta in assay_meta:
@@ -291,7 +290,7 @@ class CombinatorialCreationTests(TestCase):
 
         for line_name in expected_line_names:
             if expected_protocols_to_assay_suffixes:
-                for protocol_pk, exp_suffixes in viewitems(expected_protocols_to_assay_suffixes):
+                for protocol_pk, exp_suffixes in expected_protocols_to_assay_suffixes.items():
                     self._test_assay_names(
                         line_name,
                         naming_results,
@@ -343,7 +342,7 @@ class CombinatorialCreationTests(TestCase):
                     'found': found_protocol_count
                 })
 
-            for protocol_pk, assays_list in viewitems(protocol_to_assays_list):
+            for protocol_pk, assays_list in protocol_to_assays_list.items():
                 planned_assay_names = protocol_to_planned_assay_names.get(protocol_pk)
                 self.assertEquals(
                     len(assays_list),
@@ -377,9 +376,9 @@ class CombinatorialCreationTests(TestCase):
             # TODO: reorganize this test to be driven by expected results rather than actual..
             # also add size checks for intermediate storage levels and move it back under
             # the larger line-based loop above
-            line_items = viewitems(creation_results.line_to_protocols_to_assays_list)
+            line_items = creation_results.line_to_protocols_to_assays_list.items()
             for line_name, protocol_to_assay in line_items:
-                for protocol, assays_list in viewitems(protocol_to_assay):
+                for protocol, assays_list in protocol_to_assay.items():
                     for assay in assays_list:
                         expected_metadata = exp_assay_metadata[line_name][protocol][assay.name]
                         self.assertEqual(expected_metadata, assay.meta_store)
@@ -421,7 +420,7 @@ class CombinatorialCreationTests(TestCase):
         # TODO: also consider collapsing much of this experimental-but-functional code together
 
         # loop over expected metadata for this line
-        for meta_pk, exp_meta_val in viewitems(exp_metadata):
+        for meta_pk, exp_meta_val in exp_metadata.items():
             # work around string encoding used to facilitate hstore comparison
             meta_pk = meta_pk if isinstance(meta_pk, int) else int(meta_pk)
             meta_type = cache.line_meta_types[meta_pk]
@@ -694,7 +693,7 @@ class CombinatorialCreationTests(TestCase):
         expected_assay_metadata = {}  # maps line name -> protocol pk -> assay name -> metadata
         for line_name in expected_line_names:
             expected_assay_metadata[line_name] = {}
-            for protocol_pk, assay_suffixes in viewitems(expected_assay_suffixes):
+            for protocol_pk, assay_suffixes in expected_assay_suffixes.items():
                 for assay_suffix in assay_suffixes:
                     assay_name = "%s-%s" % (line_name, assay_suffix)
                     time_str = str(float(assay_suffix[0:-1]))  # re/cast to get the decimal

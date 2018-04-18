@@ -4,6 +4,8 @@ from django.contrib.auth.decorators import login_required
 from . import views
 
 
+app_name = 'edd.profile'
+
 urlpatterns = [
     url(r'^$', login_required(views.index), name='index'),
     url(r'^~(?P<username>[\w.-]+)/$', login_required(views.profile), name='profile'),

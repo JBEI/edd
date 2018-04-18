@@ -28,8 +28,8 @@ export module StudyBase {
             super(inputElement, style);
         }
 
-        editAllowed(): boolean { return EDDData.currentStudyWritable; }
-        canCommit(value): boolean { return EDDData.currentStudyWritable; }
+        editAllowed(): boolean { return true; }
+        canCommit(value): boolean { return true; }
     }
 
 
@@ -40,7 +40,7 @@ export module StudyBase {
         }
 
         canCommit(value): boolean {
-            return EDDData.currentStudyWritable && (this.getEditedValue() != '');
+            return '' !== value.trim();
         }
 
         getValue():string {

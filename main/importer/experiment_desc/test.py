@@ -1,10 +1,11 @@
 import logging
 
+from requests import codes
 from requests.packages.urllib3 import HTTPResponse
 
 from jbei.rest.clients import IceApi
-from jbei.rest.clients.ice.api import (VERIFY_SSL_DEFAULT, DEFAULT_RESULT_LIMIT, ICE_URL)
-from .constants import FORBIDDEN
+from jbei.rest.clients.ice.api import VERIFY_SSL_DEFAULT, ICE_URL
+from jbei.rest.clients.ice.constants import DEFAULT_RESULT_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ class IceTestStub(IceApi):
         #    B) User error message specifically mentions ICE permission problems
         #    C) 403 "forbidden" response (use Chrome's "network" develop tool)
         message = 'Forbidden'
-        status = FORBIDDEN
+        status = codes.forbidden
 
         ###########################################################################################
         # Supporting error-generation code for test conditions 3-5 above

@@ -3,7 +3,6 @@ import { EDDAuto } from "../modules/EDDAutocomplete"
 import { EddRest } from "../modules/EDDRest"
 import { Utl } from "../modules/Utl"
 import * as $ from "jquery"
-import "bootstrap-loader"
 
 declare function require(name: string): any;  // avoiding warnings for require calls below
 

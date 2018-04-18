@@ -5,7 +5,8 @@ from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.template import Node
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
+from django.utils.translation import ugettext as _
 
 register = template.Library()
 
@@ -22,6 +23,16 @@ class EnvironmentLabelNode(Node):
         return format_html('')
 
 
+class ExternalScriptsNode(Node):
+    def render(self, context):
+        # expects an iterator of iterables; generator wraps script strings in a 1-tuple
+        return format_html_join(
+            '\n',
+            '<script type="text/javascript" src="{}"></script>',
+            ((url, ) for url in getattr(settings, 'EDD_EXTERNAL_SCRIPTS', []))
+        )
+
+
 @register.simple_tag(takes_context=True)
 def logo(context):
     try:
@@ -29,9 +40,21 @@ def logo(context):
         site = get_current_site(request)
         logo_url = site.page.branding.logo_file.url
     except Exception:
-        # if there is no branding, show default letters
+        # if there is no branding, show default image
         logo_url = static("main/images/edd_letters.png")
     return logo_url
+
+
+@register.simple_tag(takes_context=True)
+def logo_title(context):
+    try:
+        request = context['request']
+        site = get_current_site(request)
+        title = site.page.branding.logo_name
+    except Exception:
+        # if there is no branding, show default title
+        title = _('EDD')
+    return title
 
 
 @register.simple_tag(takes_context=True)
@@ -68,3 +91,8 @@ def env_background_color():
 @register.tag
 def env_label(parser, token):
     return EnvironmentLabelNode()
+
+
+@register.tag
+def external_scripts(parser, token):
+    return ExternalScriptsNode()

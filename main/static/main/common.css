@@ -316,28 +316,17 @@ div.statusMessage > p.success, .success {
 
 
 /* Main content section */
-
-div.mainFlex > div.content {
-    flex: 1;
-    overflow: auto;
+div.content {
     padding-left: 15px;
     padding-right: 15px;
 }
 
-div.mainFlex > div.bottomBar {
-
-}
-
 /* Footer area */
-
-div.mainFlex > div.footer {
-
-}
 div.footer-text {
     border-top: 1px solid #CCC;
     color: #CCC;
     font-size: 0.85em;
-    margin: 20px 15px 0px 15px;
+    margin-top: 20px;
     padding: 20px;
     text-align: center;
 }
@@ -349,12 +338,11 @@ div.footer-text > span {
 /* Mouseover help boxes for the various steps */
 
 div.helpBadgeDiv {
-    float:left;
     cursor: pointer;
     font-weight: bold;
     display:inline-block;
     padding:1px 5px;
-    margin:0px 10px 0px 6px;
+    margin:0 10px 0 auto;
     color:#44D;
     font-size:9px;
     text-align:center;
@@ -363,41 +351,17 @@ div.helpBadgeDiv {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
-div.helpBadgeDiv.helpLeft {
-    float: left;
-}
 div.helpBadgeDiv:hover {
     background-color:#CECEFF;
 }
-div.helpBadgeDiv div.helpContent {
-    display:none;
-    z-index:10;
-    width:350px;
-    position:absolute;
-    border:1px solid #606060;
-    padding:3px 6px;
-    margin:0px;
-    background-color:white;
-    color:black;
-    font-weight:normal;
-    font-size:14px;
-    text-align:left;
-    transform: translate(-15px,9px);
-    -ms-transform: translate(-15px,9px);
-    -webkit-transform: translate(-15px,9px);
-    -o-transform: translate(-15px,9px);
-    -moz-transform: translate(-15px,9px);
+div.helpContent {
+    display: none;
 }
-
 div.helpContent li {
     margin-left: 20px;
 }
-div.helpBadgeDiv:hover div.helpContent {
-    display:block;
-}
-
-div.helpBadgeLines {
-    float: none;
+div.helpContent h1 {
+    font-size: 150%;
 }
 
 /* Page sections */
@@ -407,6 +371,7 @@ div.newPageSection {
 }
 div.pageSection div.sectionHead {
     color: #606060;
+    display: flex;
     font-size: 16px;
     font-weight: bold;
     padding: 4px 4px 4px 6px;
@@ -449,6 +414,9 @@ div.sectionActions {
     /* border-top:1px solid rgba(164,164,164,0.7); */
     margin: 10px 0px 10px 0px;
     padding:0;
+}
+div.pageSection div.sectionHead span.sectionTitle {
+    margin-right: auto;
 }
 
 div.lineFlex {
@@ -695,9 +663,8 @@ span.tableControl > select {
 }
 
 span.tableControlImport {
-    float:right;
     font-weight:normal;
-    margin:0px 1px 0px 16px;
+    margin:10px 1px 0px 16px;
     padding:0px;
     height:15px;
     color:#444444;
@@ -720,12 +687,10 @@ span.tableControlImport > select {
 }
 
 span.tableHeader {
-/*    float: left;  */
     margin-right: 10px;
 }
 
 input[type="button"].tableControl {
-/*    float:left;   */
     margin:10px 5px 10px 0px;
     font-size:10px;
 }
@@ -1070,7 +1035,7 @@ table.formTable {
     margin:10px 3px 20px 3px;
     border:none;
     font-size:16px;
-    width: 90%;
+    width: 100%;
 }
 table.formTable tr > td {
     text-align:left;
@@ -1419,6 +1384,9 @@ div.editable-field span.icon.icon-cancel {
     background-position: 4px 3px;
     background-image: url(images/edit-cancel.png);
 }
+div.editable-field.editable-inline {
+    display: inline-block;
+}
 td.editable-field span.icon.icon-edit {
     background-position: 4px 1px;
     background-image: url(images/edit-pencil.png);
@@ -1433,8 +1401,10 @@ td.editable-field span.icon.icon-cancel {
 }
 
 .editableStudyName {
+    font-size: 150%;
+    margin: auto;
+    text-align: center;
     width: 700px;
-    margin:auto;
 }
 
 div.errorMessage {
@@ -1620,9 +1590,14 @@ form.comments textarea {
 .fd-zone.text.over {
     background-image: url(images/dropzone-text-over.png);
 }
-
 .fd-zone input[type="file"] {
     opacity:0;
+}
+.fd-zone > .dz-default.dz-message {
+    margin-top: 9em !important;  /* leaving space for the background icon */
+}
+.fd-zone .dz-details > .dz-filename {
+    margin-top: 3.5em;  /* adding space to make upload filename visible */
 }
 
 div.fileDropInfoArea {
@@ -1866,6 +1841,51 @@ div.tooltip2 {
     text-align: center;
 }
 
+body > .navbar {
+    margin-bottom: inherit;
+}
+.navbar-brand {
+    padding: 0 !important;
+}
+.navbar-brand > img.eddLogo, .navbar-brand > img.companyLogo {
+    display: inline-block;
+    height: 50px;
+    width: auto;
+}
+.navbar-nav > li > .navbar-text {
+    /* reset; otherwise text on navbar looks offset vs links */
+    line-height: 1;
+}
+
+#notification-dropdown > a.dropdown-toggle > .badge {
+    /* display badge floating over inbox icon */
+    background-color: red;
+    font-size: 60%;
+    left: 3em;
+    padding-left: 5px;
+    padding-right: 5px;
+    position: absolute;
+    top: 3em;
+    z-index: 10;
+}
+#notification-list {
+    width: 30em;
+}
+#notification-list > li {
+    display: flex;
+    padding: 0 1em;
+}
+#notification-list > li.message {
+    border-bottom: 1px solid #eee;
+}
+#notification-list .message-close {
+    cursor: pointer;
+    margin-left: auto;
+}
+#notification-list > .message-empty {
+    text-align: center;
+}
+
 .eddLogo {
     width:50px;
 }
@@ -1942,7 +1962,7 @@ div.tooltip2 {
 .studyNav .nav>li {
     position: relative;
     display: block;
-    margin: 0px 15px 30px 15px;
+    margin: 0px 15px 0px 15px;
 }
 
 .studyNav .nav>li>a {
@@ -1965,7 +1985,7 @@ div.tooltip2 {
 
 .studyNav .nav>li>a:hover, .nav>li>a:focus {
     text-decoration: none;
-    background-color: transparent;
+    background-color: rgba(0,0,0,.1);
     border-bottom: 2px solid grey;
     border-radius: 0px;
     color: black;
@@ -1984,7 +2004,6 @@ div.tooltip2 {
     display: inline-block;
     float: none;
     vertical-align: top;
-    background-color: white;
 }
 
 .studyNav .nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {

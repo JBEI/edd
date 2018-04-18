@@ -6,9 +6,9 @@ import logging
 import re
 
 from django.contrib import messages
-from django.core.urlresolvers import reverse
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from functools import partial
 from io import BytesIO

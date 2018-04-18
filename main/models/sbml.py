@@ -22,7 +22,12 @@ class SBMLTemplate(EDDObject):
     """ Container for information used in SBML export. """
     class Meta:
         db_table = "sbml_template"
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(
+        EDDObject,
+        on_delete=models.CASCADE,
+        parent_link=True,
+        related_name='+',
+    )
     biomass_calculation = models.DecimalField(
         decimal_places=5,
         default=-1,

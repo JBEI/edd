@@ -15,13 +15,13 @@ var css_extract = new ExtractTextPlugin({
 module.exports = {
   entry: {
     Admin: "./code/typescript/src/Admin.ts",
+    Common: "./code/typescript/src/Common.ts",
     Cytometry: "./code/typescript/src/Cytometry.ts",
     ExperimentDescHelp: "./code/typescript/src/Experiment-Desc-Help.ts",
     Export: "./code/typescript/src/Export.ts",
     GCMS_Workbench: "./code/typescript/src/GCMS_Workbench.ts",
     Import: "./code/typescript/src/Import.ts",
     index: "./code/typescript/src/index.ts",
-    Notification: "./code/typescript/src/Notification.ts",
     RNASeq: "./code/typescript/src/RNASeq.ts",
     Skyline_Convert: "./code/typescript/src/Skyline_Convert.ts",
     StudyData: "./code/typescript/src/Study-Data.ts",

@@ -18,7 +18,6 @@ from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from functools import partial
-from future.utils import viewitems
 
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
@@ -559,7 +558,7 @@ class LineForm(forms.ModelForm):
         super(LineForm, self).__init__(*args, **kwargs)
         # alter all fields to include a "bulk-edit" checkbox in label
         # initially hidden via "off" class
-        for fieldname, field in viewitems(self.fields):
+        for fieldname, field in self.fields.items():
             field.label = mark_safe(
                 '<input type="checkbox" class="off bulk" name="%s" checked="checked" '
                 'value/>%s' % (self.add_prefix('_bulk_%s' % fieldname), field.label)
@@ -619,7 +618,7 @@ class LineForm(forms.ModelForm):
         # go through and delete any keys with None values
         meta = self.cleaned_data['meta_store']
         none_keys = []
-        for key, value in viewitems(meta):
+        for key, value in meta.items():
             if value is None:
                 none_keys.append(key)
         for key in none_keys:

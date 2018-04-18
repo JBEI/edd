@@ -11,7 +11,6 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils.translation import ugettext as _
-from future.utils import viewitems, viewvalues
 from six import string_types
 
 from .. import models
@@ -238,7 +237,7 @@ class TableImport(object):
                 self._process_metadata(assay, meta)
                 # force refresh of Assay's Update (also saves any changed metadata)
                 assay.save()
-        for line in viewvalues(self._line_lookup):
+        for line in self._line_lookup.values():
             # force refresh of Update (also saves any changed metadata)
             line.save()
         self._study.save()
@@ -289,7 +288,7 @@ class TableImport(object):
             if self._replace():
                 # would be simpler to do assay.meta_store.clear()
                 # but we only want to replace types included in import data
-                for label, metatype in viewitems(self._meta_lookup):
+                for label, metatype in self._meta_lookup.items():
                     if metatype.pk in assay.meta_store:
                         del assay.meta_store[metatype.pk]
                     elif metatype.pk in assay.line.meta_store:

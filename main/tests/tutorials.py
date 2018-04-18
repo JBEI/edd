@@ -7,8 +7,8 @@ import codecs
 import json
 
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
 from django.http import QueryDict
+from django.urls import reverse
 from io import BytesIO
 from mock import MagicMock, patch
 from requests import codes

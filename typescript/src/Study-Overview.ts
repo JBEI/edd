@@ -4,7 +4,6 @@ import { EDDEditable } from "../modules/EDDEditableElement"
 import { FileDropZone } from "../modules/FileDropZone"
 import { StudyBase } from "../modules/Study"
 import { EDDAuto } from "../modules/EDDAutocomplete"
-import "bootstrap-loader"
 
 
 declare function require(name: string): any;  // avoiding warnings for require calls below
@@ -150,14 +149,8 @@ module StudyOverview {
             this.formURL(Utl.relativeURL('setcontact/', studyBaseUrl).toString());
         }
 
-        // Have to reproduce these here rather than using EditableStudyElement because the
-        //     inheritance is different
-        editAllowed(): boolean {
-            return EDDData.currentStudyWritable;
-        }
-
         canCommit(value): boolean {
-            return EDDData.currentStudyWritable;
+            return '' !== value.trim();
         }
 
         getValue(): string {

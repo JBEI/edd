@@ -8,6 +8,8 @@ from edd.branding.views import favicon as favicon_view
 from main import views
 
 
+app_name = 'main'
+
 # These are the URL endpoints nested under a link to a specific Study, for use with include() in
 #   the two URL paths for study below. Because this list is included twice, there should be no
 #   URL with the name kwarg here, as that will result in conflicts looking up URLs by name.

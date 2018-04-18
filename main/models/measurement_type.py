@@ -564,10 +564,12 @@ class ProteinStrainLink(models.Model):
     protein = models.OneToOneField(
         ProteinIdentifier,
         related_name='strainlink',
+        on_delete=models.CASCADE,
     )
     strain = models.OneToOneField(
         'main.Strain',
         related_name='proteinlink',
+        on_delete=models.CASCADE,
     )
 
     def check_ice(self, user_token, name):
@@ -598,10 +600,12 @@ class GeneStrainLink(models.Model):
     gene = models.OneToOneField(
         GeneIdentifier,
         related_name='strainlink',
+        on_delete=models.CASCADE,
     )
     strain = models.OneToOneField(
         'main.Strain',
         related_name='genelink',
+        on_delete=models.CASCADE,
     )
 
     def check_ice(self, user_token, name):

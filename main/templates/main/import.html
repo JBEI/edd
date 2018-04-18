@@ -1,18 +1,10 @@
 {% extends "main/study.html" %}
+{% load i18n %}
 {% load staticfiles %}
 
 {% block js_css %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
-  <script type="text/javascript">
-
-  //remove main flex layout. work around til garret fixes main flex layout.
-    $(document).ready(function() {
-      $('.mainFlex').removeClass();
-    });
-    var ATData = {}; // this needs to be declared before loading Import.js!
-
-  </script>
   <script type="text/javascript" src="{% static 'dist/Import.js' %}"></script>
 {% endblock js_css %}
 
@@ -36,24 +28,25 @@
 <!-- Step 1 -->
 <div class="pageSection stepBorder" id="selectMajorKindStep">
   <div class="sectionHead">
-    <span>Step 1 : Choose what type of data to import (view Examples for how to format your data)</span>
-    <div class="helpBadgeDiv">Help
-      <div class="helpContent">
-        <p>In this step, EDD needs to know three things that dictate how it treats your file:</p>
-        <ol>
-          <li>What format it's captured in: i.e. how the file is laid out.</li>
-          <li>What information it contains: e.g. protein measurements, metabolite measurements,
-            etc. This is often implied by the file format.</li>
-          <li>What measurement protocol resulted in this data</li>
-        </ol>
-        <p>In many cases, the file's format implies its content (e.g. Proteomics), but some more
-          generic file formats will need additional clarification on the content. Also note that
-          EDD may not support all input file  formats for all measurement types. Please take a look
-          at the Examples to get a better sense of how to format your data.</p>
-        <p>EDD uses the "protocol" provided here to organize data captured using the same
-          experimental protocol. Though this entry may not affect what you see on the import
-          page, it may dictate how information is grouped within your study.</p>
-      </div>
+    <span class="sectionTitle">{% trans 'Step 1 : Choose what type of data to import' %}</span>
+    <div>
+      <div id="step1-help-btn" class="helpBadgeDiv">{% trans 'Help' %}</div>
+    </div>
+    <div id="step1-help-content" class="helpContent">
+      <p>In this step, EDD needs to know three things that dictate how it treats your file:</p>
+      <ol>
+        <li>What format it's captured in: i.e. how the file is laid out.</li>
+        <li>What information it contains: e.g. protein measurements, metabolite measurements,
+          etc. This is often implied by the file format.</li>
+        <li>What measurement protocol resulted in this data</li>
+      </ol>
+      <p>In many cases, the file's format implies its content (e.g. Proteomics), but some more
+        generic file formats will need additional clarification on the content. Also note that
+        EDD may not support all input file  formats for all measurement types. Please take a look
+        at the Examples to get a better sense of how to format your data.</p>
+      <p>EDD uses the "protocol" provided here to organize data captured using the same
+        experimental protocol. Though this entry may not affect what you see on the import
+        page, it may dictate how information is grouped within your study.</p>
     </div>
   </div>
 
@@ -272,10 +265,39 @@
 <!-- Step 2 -->
 <div class="pageSection stepBorder" id="rawInputStep">
   <div class="sectionHead" style="padding-right:7px;">
-    <span>Step 2 : Drag a file, or type in your raw data.</span>
-
-    <div class="helpBadgeDiv">Help
-      <div class="helpContent">
+    <span class="sectionTitle">Step 2 : Drag a file, or type in your raw data.
+      <span id="gcmsSampleFile">
+        Or upload edited <a href="{% static 'main/example/GC-MS_example.xlsx' %}">Example File</a>
+      </span>
+      <span id="biolectorFile" hidden>
+        Or upload edited <a href="{% static 'main/example/Biolector.xml' %}">Example File</a>
+      </span>
+      <span id="skylineSample" hidden>
+        Or upload edited <a href="{% static 'main/example/skyline_example.csv' %}">Example File</a>
+      </span>
+      <span id="hplcExample" hidden>
+        Or upload edited <a href="{% static 'main/example/HPLC_example.txt' %}">Example File</a>
+      </span>
+    </span>
+    <div class="step2-controls">
+      <span class="tableControlImport">
+        <input type="checkbox" name="ignoreGaps" id="ignoreGaps" value="1" />
+        <label for="ignoreGaps">Ignore gaps</label>
+      </span>
+      <span class="tableControlImport" >
+        <input type="checkbox" name="transpose" id="transpose" value="1" />
+        <label for="transpose">Transpose</label>
+      </span>
+      <span class="tableControlImport">
+        <label for="rawdataformatp">Column Separator:</label>
+        <select name="rawdataformat" id="rawdataformatp">
+          <option value="tab" selected="selected">Tab</option>
+          <option value="csv">Comma</option>
+        </select>
+      </span>
+      <div class="resetButtonDiv" id="resetstep2">Reset</div>
+      <div id="step2-help-btn" class="helpBadgeDiv">Help</div>
+      <div id="step2-help-content" class="helpContent">
         <p>Enter your data by dragging a file from the file system, by typing it in, or by
           cutting-and-pasting from a text editor. EDD will do its best to make an educated guess
           about the file content based on your entries in Step 1, but you may need to help the
@@ -286,37 +308,6 @@
           steps.</p>
       </div>
     </div>
-    <span id="gcmsSampleFile">
-      Or upload edited <a href="{% static 'main/example/GC-MS_example.xlsx' %}">Example File</a>
-    </span>
-    <span id="biolectorFile" hidden>
-      Or upload edited <a href="{% static 'main/example/Biolector.xml' %}">Example File</a>
-    </span>
-    <span id="skylineSample" hidden>
-      Or upload edited <a href="{% static 'main/example/skyline_example.csv' %}">Example File</a>
-    </span>
-    <span id="hplcExample" hidden>
-      Or upload edited <a href="{% static 'main/example/HPLC_example.txt' %}">Example File</a>
-    </span>
-    <div class="resetButtonDiv" id="resetstep2">Reset</div>
-
-    <span class="tableControlImport">
-      <input type="checkbox" name="ignoreGaps" id="ignoreGaps" value="1" />
-      <label for="ignoreGaps">Ignore gaps</label>
-    </span>
-
-    <span class="tableControlImport" >
-      <input type="checkbox" name="transpose" id="transpose" value="1" />
-      <label for="transpose">Transpose</label>
-    </span>
-
-    <span class="tableControlImport">
-      <label for="rawdataformatp">Column Separator:</label>
-      <select name="rawdataformat" id="rawdataformatp">
-        <option value="tab" selected="selected">Tab</option>
-        <option value="csv">Comma</option>
-      </select>
-    </span>
   </div>
 
   <div class="sectionContent" style="padding:2px;text-align:center;">
@@ -331,10 +322,11 @@
 <!-- Step 3 -->
 <div class="pageSection stepBorder " id="identifyStructuresStep">
   <div class="sectionHead">
-    <span>Step 3 : Verify the data has been interpreted correctly</span>
-
-    <div class="helpBadgeDiv">Help
-      <div class="helpContent">
+    <span class="sectionTitle">Step 3 : Verify the data has been interpreted correctly</span>
+    <div class="step3-controls">
+      <div class="resetButtonDiv" id="resetstep3">Reset</div>
+      <div id="step3-help-btn" class="helpBadgeDiv">Help</div>
+      <div id="step3-help-content" class="helpContent">
         <p>Configure the pulldown menus on the left of the table to tell EDD how to interpret each
           row and column of your data.</p>
         <p>EDD will make an educated guess at how the pulldowns should be set, but you may need to
@@ -350,8 +342,6 @@
         </ul>
       </div>
     </div>
-
-    <div class="resetButtonDiv" id="resetstep3" style="float:right;">Reset</div>
   </div>
   <div id="waitingForServerLabel" class="disabledStepLabel off">Waiting for server to respond with
     existing data for this study...</div>
@@ -381,10 +371,11 @@
 <!-- Step 4 -->
 <div class="pageSection stepBorder " id="typeDisambiguationStep">
   <div class="sectionHead">
-    <span>Step 4 : Help to disambiguate some of the detected values.</span>
-
-    <div class="helpBadgeDiv">Help
-      <div class="helpContent">
+    <span class="sectionTitle">Step 4 : Help to disambiguate some of the detected values.</span>
+    <div class="step4-controls">
+      <div class="resetButtonDiv" id="resetstep4">Reset</div>
+      <div id="step4-help-btn" class="helpBadgeDiv">Help</div>
+      <div id="step4-help-content" class="helpContent">
         <p>In this step, EDD needs to know how to relate the imported data to existing information
           in your study and in EDD's database.</p>
         <p>EDD will do its best to  pre-set these values for you based on data already present in
@@ -406,8 +397,6 @@
           automatically interpret what you've measured with minimal input from you.</p>
       </div>
     </div>
-
-    <div class="resetButtonDiv" id="resetstep4" style="float:right;">Reset</div>
   </div>
 
   <div class="disabledStepLabel" id="emptyDisambiguationLabel">Complete the preceding steps
@@ -609,9 +598,10 @@
 <!-- Step 5 -->
 <div class="pageSection stepBorder " id="reviewImportStep">
   <div class="sectionHead">
-    <span>Step 5 : Review your changes and submit.</span>
-    <div class="helpBadgeDiv">Help
-      <div class="helpContent">
+    <span class="sectionTitle">Step 5 : Review your changes and submit.</span>
+    <div>
+      <div id="step5-help-btn" class="helpBadgeDiv">Help</div>
+      <div id="step5-help-content" class="helpContent">
         <p>In this section you should review summary information to make sure EDD has understood
           your data, and to double-check the results of your entries to help catch mistakes.</p>
         <p>You'll need to knowledge warnings regarding the content of your import, or else

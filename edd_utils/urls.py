@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 
 from . import views
 
+app_name = 'edd_utils'
+
 urlpatterns = [
     url(r'^$', views.utilities_index, name='index'),
     url(r'^gc_ms$', views.gcms_home, name='gc_ms_home'),

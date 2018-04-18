@@ -1,31 +1,34 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
+
 
 {% block js_css %}
   {{ block.super }}
   <script type="text/javascript" src="{% static 'dist/Export.js' %}"></script>
 {% endblock js_css %}
 
+
 {% block head_title %}
-  {% if selection.studies|length == 1 %}
-    Data Export For {{ selection.studies.0.name }}
-  {% else %}
-    Data Export For {{ selection.studies|length }} Studies
-  {% endif %}
+  {% blocktrans with name=primary_study.name count count=selection.studies|length %}
+  Data Export for {{ name }}
+  {% plural %}
+  Data Export for {{ count }} Studies
+  {% endblocktrans %}
 {% endblock head_title %}
 
+
 {% block body_title %}
-  Data Export For {% for study in selection.studies %}
-   <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
-  {% endfor %}
+  {% url 'main:detail' slug=primary_study.slug as study_url %}
+  {% blocktrans with name=primary_study.name url=study_url count count=selection.studies|length %}
+  Data Export for <a href="{{ url }}">{{ name }}</a>
+  {% plural %}
+  Data Export for {{ count }} Studies, including <a href="{{ url }}">{{ name }}</a>
+  {% endblocktrans %}
 {% endblock body_title %}
 
+
 {% block content %}
-
-{% if error_message %}
-<h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
-{% endif %}
-
 <!-- Line info section -->
 {% include "main/include/export/linetable.html" %}
 
@@ -33,24 +36,18 @@
 <form method="post" id="exportForm" action="{% url 'main:export' %}">
   {% csrf_token %}
   <div class="pageSection">
-    <div class="sectionHead">Specify the layout of the data you wish to export.</div>
+    <div class="sectionHead">{% trans 'Choose the export layout.' %}</div>
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
       {{ option_form.as_p }}
-      <button type="submit" name="action" value="apply">Apply</button>
-      <button type="submit" name="action" value="download">Download</button>
+      <button type="submit"
+          class="actionButton primary larger"
+          name="action"
+          value="download">
+        <span class="glyphicon gliphicon-cloud-download"></span>
+        {% trans 'Request Download' %}
+      </button>
     </div>
   </div>
 </form>
-
-<!-- display section -->
-<div class="pageSection">
-  <div class="sectionHead">View the current output here</div>
-  <div class="sectionContent exportDisplay">
-    <p>
-      <textarea class="dataTextArea" rows="32" id="textData" name="textData">{{ output }}</textarea>
-    </p>
-  </div>
-</div>
-
 {% endblock content %}

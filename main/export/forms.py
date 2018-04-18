@@ -7,7 +7,6 @@ from django import forms
 from django.db.models import Prefetch
 from django.http import QueryDict
 from django.utils.translation import ugettext_lazy as _
-from future.utils import viewitems
 
 from . import table
 from ..models import (
@@ -177,7 +176,7 @@ class WorklistDefaultsForm(forms.Form):
         #   to muck with the source data, by poking the undocumented _mutable property of QueryDict
         self.data._mutable = True
         # if no incoming data for field, fall back to default (initial) instead of empty string
-        for name, field in viewitems(self._created_fields):
+        for name, field in self._created_fields.items():
             key = self.add_prefix(name)
             value = field.widget.value_from_datadict(self.data, self.files, key)
             if not value:

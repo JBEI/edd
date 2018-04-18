@@ -8,6 +8,8 @@ from jbei.rest.clients.edd import constants
 from . import views
 
 
+app_name = 'edd.rest'
+
 ###################################################################################################
 # Define a router for base REST API methods & views
 ###################################################################################################

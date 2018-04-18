@@ -9,15 +9,22 @@ from edd import celery_app
 
 
 class TaskNotification(object):
-    """ Checks for any pending tasks for the user, and displays a message if any tasks
-        completed or failed. """
+    """
+    Checks for any pending tasks for the user, and displays a message if any tasks
+    completed or failed.
+    """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, get_response):
+        self.get_response = get_response
         self._fake_task = celery_app.Task()
+
+    def __call__(self, request):
+        response = self.process_request(request)
+        return response or self.get_response(request)
 
     def process_request(self, request):
         # nothing to do if there is no user or user is not authenticated
-        if not request.user or not request.user.is_authenticated():
+        if not request.user or not request.user.is_authenticated:
             return
         if hasattr(request.user, 'userprofile'):
             tasks = request.user.userprofile.tasks

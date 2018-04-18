@@ -2,8 +2,21 @@ import { EDDATDGraphing } from "../modules/AssayTableDataGraphing"
 import { Utl } from "../modules/Utl"
 import { EDDAuto } from "../modules/EDDAutocomplete"
 import { EDDGraphingTools } from "../modules/EDDGraphingTools"
-import "bootstrap-loader"
 declare var ATData: any; // Setup by the server.
+
+declare function require(name: string): any;  // avoiding warnings for require calls below
+
+// as of JQuery UI 1.12, need to require each dependency individually
+require('jquery-ui/themes/base/core.css');
+require('jquery-ui/themes/base/button.css');
+require('jquery-ui/themes/base/draggable.css');
+require('jquery-ui/themes/base/resizable.css');
+require('jquery-ui/themes/base/dialog.css');
+require('jquery-ui/themes/base/theme.css');
+require('jquery-ui/ui/widgets/button');
+require('jquery-ui/ui/widgets/draggable');
+require('jquery-ui/ui/widgets/resizable');
+require('jquery-ui/ui/widgets/dialog');
 
 // Doing this bullshit because TypeScript/InternetExplorer do not recognize static methods
 // on Number
@@ -23,6 +36,9 @@ interface RawInputStat {
     input: RawInput;
     columns: number;
 }
+
+// make sure this is initialized at least to an empty object.
+var ATData = ATData || {};
 
 // This module encapsulates all the custom code for the data import page.
 // It consists primarily of a series of classes, each corresponding to a step in the import
@@ -120,10 +136,29 @@ module EDDTableImport {
         previousStepChanged():void;
     }
 
+    function setupHelp(helpId: string): void {
+        let buttonSelector: string = ['#step', '-help-btn'].join(helpId);
+        let contentSelector: string = ['#step', '-help-content'].join(helpId);
+        let title: string = ['Step ', ' Help'].join(helpId);
+        let dialog = $(contentSelector).dialog({
+            'title': title,
+            'autoOpen': false,
+            'position': {
+                'my': 'right top',
+                'at': 'right bottom+10',
+                'of': buttonSelector
+            }
+        });
+        $(buttonSelector).on('click', () => dialog.dialog('open'));
+    }
+
     // As soon as the window load signal is sent, call back to the server for the set of reference
     // records that will be used to disambiguate labels in imported data.
     export function onWindowLoad(): void {
         var atdata_url:string;
+
+        // turn on dialogs for the help buttons in each section
+        ['1', '2', '3', '4', '5'].forEach(setupHelp);
 
         atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata/";
 
@@ -136,7 +171,7 @@ module EDDTableImport {
 
         $('.disclose').find('a.discloseLink').on('click', EDDTableImport.disclose);
         // Populate ATData and EDDData objects via AJAX calls
-        jQuery.ajax(atdata_url, {
+        $.ajax(atdata_url, {
             "success": function(data) {
                 $.extend(ATData, data.ATData);
                 $.extend(EDDData, data.EDDData);

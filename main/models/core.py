@@ -305,7 +305,12 @@ class Study(EDDObject):
     class Meta:
         db_table = 'study'
         verbose_name_plural = 'Studies'
-    object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
+    object_ref = models.OneToOneField(
+        EDDObject,
+        on_delete=models.CASCADE,
+        parent_link=True,
+        related_name='+',
+    )
     # contact info has two fields to support:
     # 1. linking to a specific user in EDD
     # 2. "This is data I got from 'Improving unobtanium production in Bio-Widget using foobar'
@@ -634,7 +639,12 @@ class Protocol(EDDObject):
         (CATEGORY_TPOMICS, _('Transcriptomics / Proteomics')),
     )
 
-    object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
+    object_ref = models.OneToOneField(
+        EDDObject,
+        on_delete=models.CASCADE,
+        parent_link=True,
+        related_name='+',
+    )
     owned_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         help_text=_('Owner / maintainer of this Protocol'),
@@ -698,7 +708,12 @@ class Strain(EDDObject):
     """ A link to a strain/part in the JBEI ICE Registry. """
     class Meta:
         db_table = 'strain'
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(
+        EDDObject,
+        on_delete=models.CASCADE,
+        parent_link=True,
+        related_name='+',
+    )
     registry_id = models.UUIDField(
         blank=True,
         help_text=_('The unique ID of this strain in the ICE Registry.'),
@@ -745,7 +760,12 @@ class CarbonSource(EDDObject):
     """ Information about carbon sources, isotope labeling. """
     class Meta:
         db_table = 'carbon_source'
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(
+        EDDObject,
+        on_delete=models.CASCADE,
+        parent_link=True,
+        related_name='+',
+    )
     # Labeling is description of isotope labeling used in carbon source
     labeling = models.TextField(
         help_text=_('Description of labeling isotopes in this Carbon Source.'),
@@ -787,7 +807,12 @@ class Line(EDDObject):
         verbose_name=_('Control'),
     )
 
-    object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
+    object_ref = models.OneToOneField(
+        EDDObject,
+        on_delete=models.CASCADE,
+        parent_link=True,
+        related_name='+',
+    )
     contact = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         blank=True,
@@ -912,7 +937,12 @@ class Assay(EDDObject):
     """ An examination of a Line, containing the Protocol and set of Measurements. """
     class Meta:
         db_table = 'assay'
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(
+        EDDObject,
+        on_delete=models.CASCADE,
+        parent_link=True,
+        related_name='+',
+    )
     line = models.ForeignKey(
         Line,
         help_text=_('The Line used for this Assay.'),

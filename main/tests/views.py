@@ -3,8 +3,8 @@
 Tests used to validate the tutorial screencast functionality.
 """
 
-from django.core.urlresolvers import reverse
 from django.test import Client, TestCase
+from django.urls import reverse
 from requests import codes
 
 from .. import models

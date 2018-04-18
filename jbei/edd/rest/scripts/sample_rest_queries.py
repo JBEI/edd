@@ -28,7 +28,6 @@ import imp
 import logging
 
 from logging.config import dictConfig
-from future.utils import viewitems, viewvalues
 from os import path
 from requests import HTTPError, codes
 from six.moves.urllib.parse import urlparse
@@ -343,15 +342,19 @@ class ResultCache(object):
 
             if (self.global_search_parameters.filter_by_measurement_types() and
                     measurement.measurement_type not in self.context_cache.meas_types_by_pk):
-                    raise RuntimeError('Measurement search returned a measurement with type %d, '
-                                       'which was not included in results from initial '
-                                       'measurement type filtering.' % measurement.measurement_type)
+                raise RuntimeError(
+                    'Measurement search returned a measurement with type %d, '
+                    'which was not included in results from initial '
+                    'measurement type filtering.' % measurement.measurement_type
+                )
 
-            if (self.global_search_parameters.filter_by_units() and measurement.y_units not in
-                self.context_cache.units_by_pk):
-                raise RuntimeError('Measurement search returned a measurement with y_units %d, '
-                                   'which was not included in results from initial '
-                                   'MeasurementUnit filtering.' % measurement.y_units)
+            if (self.global_search_parameters.filter_by_units() and
+                    measurement.y_units not in self.context_cache.units_by_pk):
+                raise RuntimeError(
+                    'Measurement search returned a measurement with y_units %d, '
+                    'which was not included in results from initial '
+                    'MeasurementUnit filtering.' % measurement.y_units
+                )
 
     def process_values(self, values):
 
@@ -582,7 +585,7 @@ def parse_search_settings(args):
             search_settings, 'MEASUREMENT_NAME_REGEXES', [])
         global_search_params.ice_part_ids = getattr(search_settings, _ICE_PARTS_CONFIG, [])
         global_search_params.protocol_name_regexes = getattr(search_settings,
-                                                             'PROTOCOL_NAME_REGEXES',[])
+                                                             'PROTOCOL_NAME_REGEXES', [])
         global_search_params.measurement_type_name_regexes = getattr(
             search_settings, 'MEASUREMENT_TYPE_NAME_REGEXES', [])
         global_search_params.unit_name_regexes = getattr(search_settings, 'UNIT_NAME_REGEXES', [])
@@ -616,8 +619,10 @@ def parse_search_settings(args):
         global_search_params.unit_name_regexes = getattr(args, _UNITS_ARG, [])
 
     if not global_search_params.has_filters():
-        logger.info('No search-narrowing parameters were found in the settings file. At least '
-              'one filter must be applied to limit the expense of querying EDD')
+        logger.info(
+            'No search-narrowing parameters were found in the settings file. At least '
+            'one filter must be applied to limit the expense of querying EDD'
+        )
         return None
 
     return global_search_params
@@ -724,8 +729,8 @@ class SampleQuery:
         execution time.
 
         :param edd: the EddApi instance to use in querying EDD for contextual data
-        :return: a Context instance that contains results from the API queries, or None if one or more
-        predicted errors occurred during attempts to query ICE for part numbers
+        :return: a Context instance that contains results from the API queries, or None if one or
+            more predicted errors occurred during attempts to query ICE for part numbers
         """
 
         ###########################################################################################
@@ -809,11 +814,13 @@ class SampleQuery:
 
             logger.indent_level -= 1
             if len(name_regexes) != len(cache.protocols_by_pk):
-                logger.error('Number of protocols found (%(found)s) does not match the number '
-                             'requested (%(requested)s)' % {
-                                'found': len(cache.protocols_by_pk),
-                                'requested': len(name_regexes),
-                })
+                logger.error(
+                    'Number of protocols found (%(found)s) does not match the number '
+                    'requested (%(requested)s)' % {
+                        'found': len(cache.protocols_by_pk),
+                        'requested': len(name_regexes),
+                    }
+                )
                 return False
             logger.info('Found all %d requested protocols' % len(name_regexes))
 
@@ -856,10 +863,13 @@ class SampleQuery:
                 self.do_units_query(unit_name_regex=unit_name_regex)
 
             if len(unit_name_regexes) != len(cache.units_by_pk):
-                logger.error('The number of MeasurementUnits found (%(found)d) does not match '
-                             'the number requested (%(input)d)' % {
-                                'found': len(cache.units_by_pk),
-                                'input': len(unit_name_regexes),})
+                logger.error(
+                    'The number of MeasurementUnits found (%(found)d) does not match '
+                    'the number requested (%(input)d)' % {
+                        'found': len(cache.units_by_pk),
+                        'input': len(unit_name_regexes),
+                    }
+                )
                 return False
 
             logger.info('Found all %d MeasurementUnits' % len(unit_name_regexes))
@@ -1019,9 +1029,9 @@ class SampleQuery:
 
     def query_measurement_types(self):
         """
-        Queries EDD for measurement types with names that match the requested regular expressions. Note
-        that name is used to keep this example simple, but production code should probably use UUID
-        to look up measurement types for repetitive use.
+        Queries EDD for measurement types with names that match the requested regular expressions.
+        Note that name is used to keep this example simple, but production code should probably
+        use UUID to look up measurement types for repetitive use.
         """
         type_name_regexes = self.global_search_params.measurement_type_name_regexes,
         if not type_name_regexes:
@@ -1241,7 +1251,7 @@ class SampleQuery:
                         'strains of interest...' % {
                             'study_id': study_pk,
                             'strain_count': len(global_search_params.ice_part_ids)})
-            strain_uuids = [strain.uuid for strain in viewvalues(cache.ice_entries_by_url)]
+            strain_uuids = [strain.uuid for strain in cache.ice_entries_by_url.values()]
             line_search_params['strains'] = strain_uuids
         else:
             logger.info('Searching for all lines in study %s...' % study_pk)
@@ -1270,22 +1280,29 @@ class SampleQuery:
                     if (not known_strain) and global_search_params.filter_by_strains():
                         logger.error('Inconsistent strain results!')
                         logger.indent_level += 1
-                        logger.error("Line %(line_pk)d has a strain that wasn't found during "
-                                     "lookup of ICE parts specified by the %(ice_parts_filter)s "
-                                     "configuration data (%(strain_url)s)." % {
-                                        'line_pk': line.pk,
-                                        'ice_parts_filter': _ICE_PARTS_ARG,
-                                        'strain_url': strain_url,
-                        })
-                        logger.error("This can occur when multiple strains are used in "
-                                     "co-culture, in which case you can turn off this check by "
-                                     "setting the --%(co_culture_param)s parameter." % {
-                                        'co_culture_param': _ALLOW_CO_CULTURE_ARG,
-                        })
-                        logger.error("For testing purposes only, consider using the --%(param)s "
-                                     "parameter to avoid mismatches between EDD's strain URLs "
-                                     "and the ICE instance contacted by this script." % {
-                                        'param': _TARGET_ICE_INSTANCE_ARG})
+                        logger.error(
+                            "Line %(line_pk)d has a strain that wasn't found during "
+                            "lookup of ICE parts specified by the %(ice_parts_filter)s "
+                            "configuration data (%(strain_url)s)." % {
+                                'line_pk': line.pk,
+                                'ice_parts_filter': _ICE_PARTS_ARG,
+                                'strain_url': strain_url,
+                            }
+                        )
+                        logger.error(
+                            "This can occur when multiple strains are used in "
+                            "co-culture, in which case you can turn off this check by "
+                            "setting the --%(co_culture_param)s parameter." % {
+                                'co_culture_param': _ALLOW_CO_CULTURE_ARG,
+                            }
+                        )
+                        logger.error(
+                            "For testing purposes only, consider using the --%(param)s "
+                            "parameter to avoid mismatches between EDD's strain URLs "
+                            "and the ICE instance contacted by this script." % {
+                                'param': _TARGET_ICE_INSTANCE_ARG
+                            }
+                        )
                         logger.indent_level -= 1
                         raise RuntimeError('Inconsistent strain results!')
 
@@ -1302,8 +1319,8 @@ class SampleQuery:
 
     def query_and_process_measurements(self, study_pk, assay_pks=[]):
         """
-        Queries EDD for measurements within the specified assay, subject to result filtering already
-        applied.
+        Queries EDD for measurements within the specified assay, subject to result filtering
+        already applied.
         """
         meas_search_params = {'active': True, 'assays': assay_pks}
         if assay_pks:
@@ -1465,7 +1482,7 @@ class SampleQuery:
 
             writer.writerow(col_headers)
 
-            for study_pk, study in viewitems(self.result_cache.studies_by_pk):
+            for study_pk, study in self.result_cache.studies_by_pk.items():
 
                 if not hasattr(study, 'lines'):
                     continue

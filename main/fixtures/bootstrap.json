@@ -210,7 +210,7 @@
   {
     "fields": {
       "default_value": "flush",
-      "for_context": "L",
+      "for_context": "A",
       "group": null,
       "input_size": 30,
       "input_type": null,
@@ -766,9 +766,9 @@
   {
     "fields": {
       "default_value": "",
-      "heading": "",
+      "heading": "Sample Position",
       "help_text": "",
-      "meta_type": 27,
+      "meta_type": null,
       "ordering": 2,
       "template": 4
     },
@@ -778,9 +778,9 @@
   {
     "fields": {
       "default_value": "",
-      "heading": "",
+      "heading": "Method-QQQ",
       "help_text": "",
-      "meta_type": 24,
+      "meta_type": null,
       "ordering": 3,
       "template": 4
     },
@@ -802,9 +802,9 @@
   {
     "fields": {
       "default_value": "",
-      "heading": "",
+      "heading": "Inj Vol (ul)",
       "help_text": "",
-      "meta_type": 25,
+      "meta_type": null,
       "ordering": 5,
       "template": 4
     },

@@ -9,18 +9,16 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse, QueryDict
 from django.shortcuts import render, get_object_or_404
 from django.template.defaulttags import register
+from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from future.utils import viewvalues
-from messages_extends import constants as msg_constants
 from requests import codes
 from rest_framework.exceptions import MethodNotAllowed
 
@@ -31,7 +29,6 @@ from main.importer.experiment_desc.constants import (
     DRY_RUN_PARAM,
     IGNORE_ICE_ACCESS_ERRORS_PARAM,
     INTERNAL_EDD_ERROR_CATEGORY,
-    INTERNAL_SERVER_ERROR,
     OMIT_STRAINS,
     UNPREDICTED_ERROR,
     UNSUPPORTED_FILE_TYPE,
@@ -42,9 +39,10 @@ from main.importer.experiment_desc.importer import (
     ImportErrorSummary,
 )
 from . import autocomplete, models as edd_models, redis
+from .export.broker import ExportBroker
 from .export.forms import ExportOptionForm, ExportSelectionForm, WorklistForm
 from .export.sbml import SbmlExport
-from .export.table import ExportSelection, TableExport, WorklistExport
+from .export.table import ExportSelection
 from .forms import (
     AssayForm,
     CreateAttachmentForm,
@@ -72,12 +70,13 @@ from .models import (
 )
 from .models.common import qfilter
 from .solr import StudySearch
-from .tasks import import_table_task
+from .tasks import export_table_task, export_worklist_task, import_table_task
 from .utilities import (
     get_edddata_misc,
     get_edddata_study,
 )
 from edd import utilities
+from edd.notify.backend import RedisBroker
 
 
 logger = logging.getLogger(__name__)
@@ -712,7 +711,7 @@ class StudyLinesView(StudyDetailBaseView):
                     form.save()
                     saved += 1
                 else:
-                    for error in viewvalues(form.errors):
+                    for error in form.errors.values():
                         messages.warning(request, error)
         messages.success(
             request,
@@ -1069,7 +1068,7 @@ class EDDExportView(generic.TemplateView):
     """ Base view for exporting EDD information. """
     def __init__(self, *args, **kwargs):
         super(EDDExportView, self).__init__(*args, **kwargs)
-        self._export = None
+        self._export_ok = False
         self._selection = ExportSelection(None)
 
     def get(self, request, *args, **kwargs):
@@ -1096,44 +1095,61 @@ class EDDExportView(generic.TemplateView):
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
         return {
-            'download': payload.get('action', None) == 'download',
+            'download': payload.get('download', None),
+            'primary_study': self.selection.studies[0] if len(self.selection.studies) else None,
             'select_form': select_form,
             'selection': self.selection,
+            'user_id': request.user.id,
         }
 
     def post(self, request, *args, **kwargs):
         context = self.get_context_data(**kwargs)
         context.update(self.init_forms(request, request.POST))
+        if 'download' == request.POST.get('action', None):
+            self.submit_export(request, context)
         return self.render_to_response(context)
 
     def render_to_response(self, context, **kwargs):
-        if context.get('download', False) and self._export:
-            response = HttpResponse(self._export.output(), content_type='text/csv')
-            # set download filename as the first name in the exported studies
-            study = self._export.selection.studies[0]
-            response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
+        download = context.get('download', False)
+        if download:
+            broker = ExportBroker(context['user_id'])
+            name = broker.load_export_name(download)
+            response = HttpResponse(broker.load_export(download), content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="{name}.csv"'
             return response
         return super(EDDExportView, self).render_to_response(context, **kwargs)
+
+    def submit_export(self, request, context):
+        raise NotImplementedError('Override submit_export in EDDExportView-derived classes')
 
 
 class ExportView(EDDExportView):
     """ View to export EDD information in a table/CSV format. """
     def init_forms(self, request, payload):
         context = super(ExportView, self).init_forms(request, payload)
-        context.update(
-            option_form=None,
-            output='',
-        )
+        context.update(option_form=None)
         try:
             initial = ExportOptionForm.initial_from_user_settings(request.user)
             option_form = ExportOptionForm(data=payload, initial=initial, selection=self.selection)
             context.update(option_form=option_form)
             if option_form.is_valid():
-                self._export = TableExport(self.selection, option_form.options, None)
-                context.update(output=self._export.output())
+                self._export_ok = True
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
         return context
+
+    def submit_export(self, request, context):
+        if self._export_ok:
+            broker = ExportBroker(request.user.id)
+            notifications = RedisBroker(request.user)
+            path = broker.save_params(request.POST)
+            result = export_table_task.delay(request.user.id, path)
+            # use task ID as notification ID; may replace message when export is complete
+            notifications.notify(
+                _('Your export request is submitted. Another message with a download link will '
+                  'appear when the export processing is complete.'),
+                uuid=result.id,
+            )
 
 
 class WorklistView(EDDExportView):
@@ -1148,7 +1164,6 @@ class WorklistView(EDDExportView):
         context.update(
             defaults_form=worklist_form.defaults_form,
             flush_form=worklist_form.flush_form,
-            output='',
             worklist_form=worklist_form,
         )
         try:
@@ -1159,15 +1174,23 @@ class WorklistView(EDDExportView):
                 worklist_form=worklist_form,
             )
             if worklist_form.is_valid():
-                self._export = WorklistExport(
-                    self.selection,
-                    worklist_form.options,
-                    worklist_form.worklist,
-                )
-                context.update(output=self._export.output())
+                self._export_ok = True
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
         return context
+
+    def submit_export(self, request, context):
+        if self._export_ok:
+            broker = ExportBroker(request.user.id)
+            notifications = RedisBroker(request.user)
+            path = broker.save_params(request.POST)
+            result = export_worklist_task.delay(request.user.id, path)
+            # use task ID as notification ID; may replace message when export is complete
+            notifications.notify(
+                _('Your worklist request is submitted. Another message with a download link will '
+                  'appear when the worklist processing is complete.'),
+                uuid=result.id,
+            )
 
 
 class SbmlView(EDDExportView):
@@ -1455,17 +1478,16 @@ def study_import_table(request, pk=None, slug=None):
                 for key in sorted(request.POST)
             ]))
         try:
+            notifications = RedisBroker(request.user)
             storage = redis.ScratchStorage()
             # save POST to scratch space as urlencoded string
             key = storage.save(request.POST.urlencode())
             result = import_table_task.delay(study.pk, request.user.pk, key)
-            # save task ID for notification later
-            request.user.profile.tasks.create(uuid=result.id)
-            messages.add_message(
-                request,
-                msg_constants.SUCCESS_PERSISTENT,
+            # notify that import is processing
+            notifications.notify(
                 _('Data is submitted for import. You may continue to use EDD, another message '
-                  'will appear once the import is complete.')
+                  'will appear once the import is complete.'),
+                uuid=result.id,
             )
         except RuntimeError as e:
             logger.exception('Data import failed: %s', e.message)
@@ -1551,7 +1573,7 @@ def study_describe_experiment(request, pk=None, slug=None):
 
         return JsonResponse(
             _build_response_content(importer.errors, importer.warnings),
-            status=INTERNAL_SERVER_ERROR
+            status=codes.internal_server_error
         )
 
 

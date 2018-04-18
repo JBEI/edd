@@ -5,7 +5,6 @@ import logging
 import re
 
 from collections import Sequence
-from future.utils import viewitems, viewvalues
 from jsonschema import Draft4Validator
 from openpyxl.utils.cell import get_column_letter
 from six import string_types
@@ -167,7 +166,7 @@ class ColumnLayout:
         :param metadata_pk:
         :return:
         """
-        items = viewitems(self.col_index_to_assay_data)
+        items = self.col_index_to_assay_data.items()
         for col_index, (existing_protocol, existing_assay_meta_type) in items:
             if ((upper_protocol_name == existing_protocol.name.upper()) and
                     (metadata_pk == existing_assay_meta_type.pk)):
@@ -234,7 +233,6 @@ class ColumnLayout:
         if not assay_mtype:
             return None
         return assay_mtype.pk
-
 
     @property
     def unique_protocols(self):
@@ -474,19 +472,19 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # build a dict of Protocol name -> Protocol to simplify parsing
         self.protocols_by_name = {
             protocol.name.upper(): protocol
-            for protocol_pk, protocol in viewitems(cache.protocols)
+            for protocol_pk, protocol in cache.protocols.items()
         }
 
         # build dicts that map each metadata type name -> MetaDataType to simplify parsing.
         line_meta_types = cache.line_meta_types
         self.line_mtypes_by_name = {
             _standardize_label(meta.type_name): meta
-            for pk, meta in viewitems(line_meta_types)
+            for pk, meta in line_meta_types.items()
         }
 
         self.assay_metadata_types_by_name = {
             _standardize_label(meta.type_name): meta
-            for pk, meta in viewitems(cache.assay_meta_types)
+            for pk, meta in cache.assay_meta_types.items()
         }
 
         # build a list of line metadata types whose parsing isn't supported pending resolution of
@@ -500,7 +498,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         ]
         self.unsupported_line_meta_types_by_pk = {
             pk: meta
-            for pk, meta in viewitems(line_meta_types)
+            for pk, meta in line_meta_types.items()
             if meta.type_name in unsupported_names
         }
 
@@ -524,11 +522,11 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         # get specific metadata references needed by current parsing code
         self.ctrl_meta_type = next(
-            (x for x in viewvalues(cache.line_meta_types) if x.type_name == 'Control'),
+            (x for x in cache.line_meta_types.values() if x.type_name == 'Control'),
             None  # default value
         )
         self.name_meta_type = next(
-            (x for x in viewvalues(cache.line_meta_types) if x.type_name == 'Line Name'),
+            (x for x in cache.line_meta_types.values() if x.type_name == 'Line Name'),
             None  # default value
         )
 
@@ -597,7 +595,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # aren't supported, but were found in the input file
         unsupported_value_columns = [
             col_index
-            for col_index, meta_pk in viewitems(column_layout.col_index_to_line_meta_pk)
+            for col_index, meta_pk in column_layout.col_index_to_line_meta_pk.items()
             if meta_pk in self.unsupported_line_meta_types_by_pk
         ]
         if unsupported_value_columns:
@@ -614,7 +612,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         for combinatorial_input in parsed_row_inputs:
             combinatorial_input.fractional_time_digits = self.max_fractional_time_digits
-
 
         # after reading all rows in the file, loop over combinatorially-defined columns (as
         # defined by column headers) and remove any from our tracking that were completely empty
@@ -746,7 +743,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         ########################################################################################
         # loop over protocol names, testing for a protocol prefix in the column header
         ########################################################################################
-        for upper_protocol_name, protocol in viewitems(self.protocols_by_name):
+        for upper_protocol_name, protocol in self.protocols_by_name.items():
             if upper_content.startswith(upper_protocol_name):
 
                 # pull out the column header suffix following the protocol.
@@ -761,7 +758,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # loop over assay metadata types, testing for an assay metadata suffix in the
                 # column header
                 ################################################################################
-                assay_items = viewitems(self.assay_metadata_types_by_name)
+                assay_items = self.assay_metadata_types_by_name.items()
                 for upper_type_name, assay_metadata_type in assay_items:
 
                     # if this type has units, check whether column header matches the type name
@@ -842,7 +839,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         # if we didn't find the singular form of the column header as line metadata, look
         # for a pluralized version that we'll treat as combinatorial line creation input
-        for std_type_name, meta_type in viewitems(self.line_mtypes_by_name):
+        for std_type_name, meta_type in self.line_mtypes_by_name.items():
 
             # check whether column header matches the type name with an optional unit suffix
             if meta_type.postfix:
@@ -992,7 +989,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # line metadata
         ###################################################
         if layout.col_index_to_line_meta_pk:
-            for col_index, line_metadata_pk in viewitems(layout.col_index_to_line_meta_pk):
+            for col_index, line_metadata_pk in layout.col_index_to_line_meta_pk.items():
                 # skip values for metadata types we've specifically disabled (with a warning)
                 # earlier in the parsing process
                 if line_metadata_pk in self.unsupported_line_meta_types_by_pk:
@@ -1038,7 +1035,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         if layout.col_index_to_assay_data:
 
             # loop over per-protocol assay metadata columns
-            columns = viewitems(layout.col_index_to_assay_data)
+            columns = layout.col_index_to_assay_data.items()
             for col_index, (protocol, assay_metadata_type) in columns:
 
                 cell_content = self._get_string_cell_content(
@@ -1392,7 +1389,7 @@ class JsonInputParser(CombinatorialInputParser):
                 # inspect JSON input to find the maximum number of decimal digits in the user input
                 assay_time_pk = self.cache.assay_time_mtype.pk
                 if assay_time_pk:
-                    for protocol, assay_metadata in viewitems(protocol_to_assay_metadata):
+                    for protocol, assay_metadata in protocol_to_assay_metadata.items():
                         time_values = assay_metadata.get(assay_time_pk, [])
                         for time_value in time_values:
                             str_value = str(time_value)
@@ -1438,7 +1435,7 @@ def _copy_to_numeric_elts(input_list):
 
 def _copy_to_numeric_keys(input_dict):
     converted_dict = {}
-    for key, value in viewitems(input_dict):
+    for key, value in input_dict.items():
 
         # if value is a nested dict, do the same work on it
         if isinstance(value, dict):
@@ -1458,7 +1455,7 @@ def _process_abbrev_keys(input_dict):
     as strings, even if they're actually numeric.
     """
     converted_dict = {}
-    for key, value in viewitems(input_dict):
+    for key, value in input_dict.items():
         try:
             int_value = int(key)
             converted_dict[int_value] = value

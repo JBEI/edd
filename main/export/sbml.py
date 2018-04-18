@@ -21,7 +21,6 @@ from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from functools import partial, reduce
-from future.utils import viewitems, viewvalues
 from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
@@ -438,7 +437,7 @@ class SbmlExport(object):
 
     def _update_carbon_ratio(self, builder, time):
         notes = defaultdict(list)
-        for mlist in viewvalues(self._measures):
+        for mlist in self._measures.values():
             for m in mlist:
                 if m.is_carbon_ratio():
                     points = models.MeasurementValue.objects.filter(measurement=m, x__0=time)
@@ -524,7 +523,7 @@ class SbmlExport(object):
 
     def _update_reaction(self, builder, our_reactions, time):
         # loop over all template reactions, if in our_reactions set bounds, notes, etc
-        for reaction_sid, mtype in viewitems(our_reactions):
+        for reaction_sid, mtype in our_reactions.items():
             type_key = '%s' % mtype
             reaction = self._sbml_model.getReaction(reaction_sid)
             if reaction is None:
@@ -582,7 +581,7 @@ class SbmlExport(object):
     def _update_species(self, builder, our_species, time):
         # loop over all template species, if in our_species set the notes section
         # TODO: keep MeasurementType in match_form, remove need to re-query Metabolite
-        for species_sid, mtype in viewitems(our_species):
+        for species_sid, mtype in our_species.items():
             type_key = '%s' % mtype
             metabolite = None
             try:
@@ -874,7 +873,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
     def _clean_check_for_curve(self, data):
         """ Ensures that each unique selected line has at least two points to calculate a
             growth curve. """
-        for line in viewvalues(self._clean_collect_data_lines(data)):
+        for line in self._clean_collect_data_lines(data.values()):
             count = 0
             for m in self._measures_by_line[line.pk]:
                 count += len(m.measurementvalue_set.all())
@@ -891,7 +890,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
     def _clean_check_for_gcdw(self, data, gcdw_default, conversion_meta):
         """ Ensures that each unique selected line has a gCDW/L/OD factor. """
         # warn for any lines missing the selected metadata type
-        for line in viewvalues(self._clean_collect_data_lines(data)):
+        for line in self._clean_collect_data_lines(data.values()):
             factor = line.metadata_get(conversion_meta)
             # TODO: also check that the factor in metadata is a valid value
             if factor is None:
@@ -1111,7 +1110,7 @@ class SbmlBuilder(object):
         notes = self.parse_note_body(body)
         notes.update(**kwargs)
         body.removeChildren()
-        for key, value in viewitems(notes):
+        for key, value in notes.items():
             if isinstance(value, string_types):
                 self._add_p_tag(body, '%s: %s' % (key, value))
             else:

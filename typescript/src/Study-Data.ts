@@ -9,7 +9,6 @@ import { StudyBase } from "../modules/Study"
 import * as $ from "jquery"
 import * as d3 from "d3"
 import * as _ from "underscore"
-import "bootstrap-loader"
 
 
 declare function require(name: string): any;  // avoiding warnings for require calls below
@@ -1620,10 +1619,9 @@ export namespace StudyDataPage {
     function includeAllLinesIfEmpty() {
         if ($('#studyAssaysTable').find('tbody input[type=checkbox]:checked').length === 0) {
             //append study id to form
-            var study = _.keys(EDDData.Studies)[0];
             $('<input>').attr({
                 type: 'hidden',
-                value: study,
+                value: EDDData.currentStudyID,
                 name: 'studyId',
             }).appendTo('form');
         }
@@ -3245,7 +3243,7 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
 
         var checked:boolean = !!(this.checkBoxElement.checked);
         // If the box is checked, return the set of IDs unfiltered
-        if (checked && rowIDs && EDDData.currentStudyWritable) {
+        if (checked && rowIDs) {
             $("#enableButton").removeClass('off');
         } else {
             $("#enableButton").addClass('off');

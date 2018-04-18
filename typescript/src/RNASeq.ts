@@ -1,6 +1,5 @@
 import { Utl } from "../modules/Utl"
 import { FileDropZone } from "../modules/FileDropZone"
-import "bootstrap-loader"
 
 module RNASeq {
   'use strict';
