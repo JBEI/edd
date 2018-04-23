@@ -7,6 +7,14 @@ version 17.09.0-ce and Docker Compose version 1.16.1; these instructions are not
 work for any older versions of Docker or Docker Compose. Also have the contents of
 the `docker_services` directory of the EDD codebase copied to the target host.
 
+Optionally, have [virtualenvwrapper][8] installed on the target host. This will simplify the shell
+setup to run EDD. The simplest way to install `virtualenvwrapper` is via `pip`, using
+`pip install virtualenvwrapper`; then, add the following lines to your shell startup file
+(e.g. `.bashrc`):
+
+    export WORKON_HOME=/usr/local/virtualenvs
+    source /usr/local/bin/virtualenvwrapper.sh
+
 ## Initial configuration
 
 There are many configuration options that can be set before launching EDD. The `init-config`
@@ -235,3 +243,4 @@ Once configured, EDD is launched with a simple command, `./start-edd.sh`. To sto
 [5]:    http://django-allauth.readthedocs.org/en/latest/index.html
 [6]:    https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
 [7]:    http://ice.jbei.org/
+[8]:    http://virtualenvwrapper.readthedocs.io/en/latest/index.html

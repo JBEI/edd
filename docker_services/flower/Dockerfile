@@ -6,7 +6,7 @@ RUN set -ex \
     # update package index from base file
     && apk update \
     # image needs netcat
-    && apk --update add --no-cache netcat-openbsd \
+    && apk --update add --no-cache bash curl netcat-openbsd \
     # need build tools to compile gevent and greenlet
     # (just copying build-deps from python Dockerfile)
     && apk add --virtual .build-deps \
