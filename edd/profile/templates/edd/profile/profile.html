@@ -1,47 +1,42 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
-
-
-{% block js_css %}
-    {{ block.super }}
-    {# TODO put any additional scripts or styles here #}
-{% endblock js_css %}
+{% load i18n %}
 
 
 {% block head_title %}
-    Profile: {{ profile_user.first_name }} {{ profile_user.last_name }} - Experiment Data Depot
+  Profile: {{ profile_user.first_name }} {{ profile_user.last_name }} - Experiment Data Depot
 {% endblock head_title %}
 
 
 {% block body_title %}
-    <h1>{{ profile_user.first_name }} {{ profile_user.last_name }}</h1>
+  {{ profile_user.first_name }} {{ profile_user.last_name }}
 {% endblock body_title %}
 
 
 {% block content %}
-    <div class="pageSection">
-        <div class="sectionHead">Information</div>
-        <div class="sectionContent">
-            <dl class="infolist">
-                <dt>Bio</dt>
-                <dd>{{ profile.description }}</dd>
-                <dt>EDD Initials</dt>
-                <dd>{{ profile.initials }}</dd>
-                <dt>Institutions</dt>
-                <dd><ul style="list-style: none;">
-                    {% for institution in profile.institutions.all %}
-                    <li>{{ institution.institution_name }}</li>
-                    {% endfor %}
-                </ul></dd>
-            </dl>
-        </div>
+  <div class="pageSection">
+    <div class="sectionHead">Information</div>
+    <div class="sectionContent">
+      <dl class="infolist">
+        <dt>Bio</dt>
+        <dd>{{ profile.description }}</dd>
+        <dt>EDD Initials</dt>
+        <dd>{{ profile.initials }}</dd>
+        <dt>Institutions</dt>
+        <dd><ul style="list-style: none;">
+          {% for institution in profile.institutions.all %}
+          <li>{{ institution.institution_name }}</li>
+          {% endfor %}
+        </ul></dd>
+      </dl>
     </div>
-    <div class="pageSection">
-        <div class="sectionHead">Studies</div>
-        <div class="sectionContent">
-            {% for study in profile.studies %}
-            <p><a href="{% url 'main:detail' study.pk %}">{{ study.name }}</a></p>
-            {% endfor %}
-        </div>
+  </div>
+  <div class="pageSection">
+    <div class="sectionHead">Studies</div>
+    <div class="sectionContent">
+      {% for study in profile.studies %}
+      <p><a href="{% url 'main:detail' study.pk %}">{{ study.name }}</a></p>
+      {% endfor %}
     </div>
+  </div>
 {% endblock content %}

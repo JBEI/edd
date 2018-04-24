@@ -1,6 +1,7 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
+
 {% block js_css %}
   {{ block.super }}
   <script type="text/javascript" src="{% static 'dist/Skyline_Convert.js' %}"></script>
@@ -8,12 +9,14 @@
 
 
 {% block head_title %}
-Skyline conversion
+Skyline conversion &mdash; {{ block.super }}
 {% endblock head_title %}
+
 
 {% block body_title %}
 Skyline conversion
 {% endblock body_title %}
+
 
 {% block content %}
 <div class="dropzone-wrapper dz-default" style="padding: 20px;">
@@ -57,5 +60,4 @@ Skyline conversion
     </div>
   </div>
 </div>
-
 {% endblock content %}

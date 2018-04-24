@@ -2,18 +2,22 @@
 {% load staticfiles %}
 {% load i18n %}
 
+
 {% block js_css %}
   {{ block.super }}
   <script type="text/javascript" src="{% static 'dist/StudyData.js' %}"></script>
 {% endblock js_css %}
 
+
 {% block head_title %}
   {{ block.super }}
 {% endblock head_title %}
 
+
 {% block body_title %}
   {{ block.super }}
 {% endblock body_title %}
+
 
 {% block content %}
   {{ block.super }}
@@ -205,5 +209,4 @@
     </div>
   </form>
 </div>
-
 {% endblock content %}

@@ -1,32 +1,37 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
+
 
 {% block js_css %}
   {{ block.super }}
   <script type="text/javascript" src="{% static 'dist/Export.js' %}"></script>
 {% endblock js_css %}
 
+
 {% block head_title %}
-  {% if selection.studies|length == 1 %}
-    Worklist Export For {{ selection.studies.0.name }}
-  {% else %}
-    Worklist Export for {{ selection.studies|length }} Studies
-  {% endif %}
+  {% blocktrans with name=primary_study.name count count=selection.studies|length %}
+  Worklist Export for {{ name }}
+  {% plural %}
+  Worklist Export for {{ count }} Studies
+  {% endblocktrans %}
 {% endblock head_title %}
 
+
 {% block body_title %}
-  Worklist Export For {% for study in selection.studies %}
-   <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
-  {% endfor %}
+  {% url 'main:detail' slug=primary_study.slug as study_url %}
+  {% blocktrans with name=primary_study.name url=study_url count count=selection.studies|length %}
+  Worklist Export for <a href="{{ url }}">{{ name }}</a>
+  {% plural %}
+  Worklist Export for {{ count }} Studies, including <a href="{{ url }}">{{ name }}</a>
+  {% endblocktrans %}
 {% endblock body_title %}
 
-{% block content %}
 
+{% block content %}
 {% if error_message %}
 <h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
 {% endif %}
-
-
 <!-- Line info section -->
 {% include "main/include/export/linetable.html" %}
 
@@ -34,14 +39,14 @@
 <form method="post" id="worklistForm" action="{% url 'main:worklist' %}">
   {% csrf_token %}
   <div class="pageSection">
-    <div class="sectionHead">Select a worklist template and options.</div>
+    <div class="sectionHead">{% trans 'Choose a worklist template and options.' %}</div>
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
       {{ worklist_form.as_p }}
       <input type="hidden" id="id_separator" value=","/>
       {% if defaults_form %}
       <div class="disclose discloseHide">
-        <a href="#" class="discloseLink">Modify Column Default Values</a>
+        <a href="#" class="discloseLink">{% trans 'Modify Column Default Values' %}</a>
         <div class="discloseBody">
           {{ defaults_form.as_p }}
         </div>
@@ -49,26 +54,20 @@
       {% endif %}
       {% if flush_form %}
       <div class="disclose discloseHide">
-        <a href="#" class="discloseLink">Add Flush Rows</a>
+        <a href="#" class="discloseLink">{% trans 'Add Flush Rows' %}</a>
         <div class="discloseBody">
           {{ flush_form.as_p }}
         </div>
       </div>
       {% endif %}
-      <button type="submit" name="action" value="apply" id="apply">Apply</button>
-      <button type="submit" name="action" value="download">Download</button>
+      <button type="submit"
+          class="actionButton primary larger"
+          name="action"
+          value="download">
+        <span class="glyphicon gliphicon-cloud-download"></span>
+        {% trans 'Request Download' %}
+      </button>
     </div>
   </div>
 </form>
-
-<!-- display section -->
-<div class="pageSection">
-  <div class="sectionHead">View the current output here</div>
-  <div class="sectionContent exportDisplay">
-    <p>
-      <textarea class="dataTextArea" rows="32" id="textData" name="textData">{{ output }}</textarea>
-    </p>
-  </div>
-</div>
-
 {% endblock content %}

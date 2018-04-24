@@ -1,6 +1,7 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
+
 {% block js_css %}
     {{ block.super }}
     <script type="text/javascript" src="{% static 'dist/index.js' %}"></script>
@@ -18,11 +19,6 @@
     </script>
     {% endif %}
 {% endblock js_css %}
-
-
-{% block status %}
-    {{ block.super }}
-{% endblock status %}
 
 
 {% block content %}
@@ -70,5 +66,4 @@
             </div>
         </form>
     </div>
-
 {% endblock content %}

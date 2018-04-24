@@ -110,7 +110,6 @@ urlpatterns = [
     url(r'^search/(?P<model>\w+)/$', login_required(views.model_search)),
 
     url(r'^health/$', lambda request: HttpResponse()),
-    url(r'^demo/$', login_required(views.websocket_demo)),
 
     # Call-out for the favicon, which would normally only be accessible via a URL like:
     #   https://edd.example.org/static/favicon.ico

@@ -1,14 +1,18 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
+
 
 {% block head_title %}
-    EDD - {{ flatpage.title }}
+  {{ flatpage.title }} &mdash; {{ block.super }}
 {% endblock head_title %}
 
+
 {% block body_title %}
-    {{ flatpage.title }}
+  {{ flatpage.title }}
 {% endblock body_title %}
 
+
 {% block content %}
-    {{ flatpage.content }}
+  {{ flatpage.content }}
 {% endblock content %}

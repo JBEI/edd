@@ -1,61 +1,66 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
 
 
 {% block js_css %}
-    {{ block.super }}
-    <style type="text/css">
-    ul.edd-measurement-edit, ul.edd-measurement-edit * {
-        list-style: none;
-    }
-    ul.edd-measurement-edit li {
-        padding-left: 4em;
-    }
-    </style>
+  {{ block.super }}
+  <style type="text/css">
+  ul.edd-measurement-edit, ul.edd-measurement-edit * {
+    list-style: none;
+  }
+  ul.edd-measurement-edit li {
+    padding-left: 4em;
+  }
+  </style>
 {% endblock js_css %}
 
 
 {% block head_title %}
-    Edit Measurements &ndash; {{ study.name }} &ndash; Experiment Data Depot
+  {% blocktrans with study_name=study.name site_name=block.super %}
+  Edit Measurements &ndash; {{ study_name }} &ndash; {{ site_name }}
+  {% endblocktrans %}
 {% endblock head_title %}
 
 
 {% block body_title %}
-    {% url 'main:detail' slug=study.slug as study_link %}
-    <h4>Edit Measurements &ndash; <a href="{{ study_link }}">{{ study.name }}</a></h4>
+  {% url 'main:detail' slug=study.slug as study_link %}
+  {% blocktrans with study_name=study.name study_link=study_link %}
+  Edit Measurements &ndash; <a href="{{ study_link }}">{{ study_name }}</a>
+  {% endblocktrans %}
 {% endblock body_title %}
 
 
 {% block content %}
-    <form action="" method="POST" style="margin-bottom:70px">
-        {% csrf_token %}
-        <input type="hidden" name="measureId" value="{{ measures }}"/>
-        {% for l in lines.values %}
-        <fieldset>
-            <legend>{{ l.line.name }}</legend>
-            <ul class="edd-measurement-edit">
-            {% for a in l.assays.values %}
-                <li>
-                    <span>{{ a.assay.protocol.name }} &ndash; {{ a.assay.name }}</span>
-                    <ul>
-                    {% for m in a.measures.values %}
-                        <li>
-                            <span>{{ m.measure.measurement_type.type_name }}</span>
-                            {{ m.form.management_form }}
-                            <ul>
-                            {% for mf in m.form %}
-                                <li>{{ mf.id }} X: {{ mf.x }} Y: {{ mf.y }}</li>
-                            {% endfor %}
-                            </ul>
-                        </li>
-                    {% endfor %}
-                    </ul>
-                </li>
-            {% endfor %}
-            </ul>
-        </fieldset>
-        {% endfor %}
-        <input type="hidden" name="action" value="assay_action"/>
-        <button type="submit" name="assay_action" value="update">Update</button>
-    </form>
+  <form action="" method="POST" style="margin-bottom:70px">
+    {% csrf_token %}
+    <input type="hidden" name="measureId" value="{{ measures }}"/>
+    {% for l in lines.values %}
+    <fieldset>
+      <legend>{{ l.line.name }}</legend>
+      <ul class="edd-measurement-edit">
+      {% for a in l.assays.values %}
+        <li>
+          <span>{{ a.assay.protocol.name }} &ndash; {{ a.assay.name }}</span>
+          <ul>
+          {% for m in a.measures.values %}
+            <li>
+              <span>{{ m.measure.measurement_type.type_name }}</span>
+              {{ m.form.management_form }}
+              <ul>
+              {% for mf in m.form %}
+                <li>{{ mf.id }} X: {{ mf.x }} Y: {{ mf.y }}</li>
+              {% endfor %}
+              </ul>
+            </li>
+          {% endfor %}
+          </ul>
+        </li>
+      {% endfor %}
+      </ul>
+    </fieldset>
+    {% endfor %}
+    <input type="hidden" name="action" value="assay_action"/>
+    <button type="submit" name="assay_action" value="update">{% trans 'Update' %}</button>
+  </form>
 {% endblock content %}

@@ -1,15 +1,19 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
 
 {% block head_title %}
-    EDD Error - Page Not Found
+  {% trans 'EDD - Error: Forbidden' %}
 {% endblock head_title %}
 
 {% block body_title %}
-    Page Not Found
+  {% trans 'Error: Forbidden' %}
 {% endblock body_title %}
 
 {% block content %}
-    <p>EDD has encountered an error and cannot show this page. The site administrators have been
-                notified of the problem, please check back later.</p>
+  {% blocktrans trimmed as error_message %}
+  Your request could not be validated. The site administrators have been notified of the problem,
+  please check back later.
+  {% endblocktrans %}
+  <p>{{ error_message }}</p>
 {% endblock content %}

@@ -229,40 +229,6 @@ div.mainFlex {
 }
 
 
-/* Top banner styling */
-
-div.topBanner {
-    display: flex;
-    flex-wrap: nowrap;
-    flex-direction: row;
-    justify-content: space-between;
-    padding-bottom: 10px;
-}
-div.topBanner > div.siteLogo {
-    flex-shrink: 0;
-    padding: 10px 0 0 5px;
-}
-div.topBanner > div.pageName {
-    color: #6c6c6c;
-    font-size: 27px;
-    line-height: 1.1;   /* Multiple of font size */
-    margin: auto 20px auto 20px;
-    flex-grow:1;
-    border: 0;
-    padding: 5px 0 0 0;
-    text-align: center;
-}
-div.topBanner > div.userMenu {
-    flex-shrink: 0;
-    padding: 10px;
-    margin-right: 30px;
-    white-space: nowrap;
-}
-div.topBanner > div.userMenu > div {
-    padding: 0 0 3px 0;
-}
-
-
 /* A section near the top of the page for reporting the result of attempted operations */
 
 div.statusMessage {
@@ -976,8 +942,7 @@ div.buttonBar {
     align-items:center;
     flex-wrap: nowrap;
     flex-direction: row;
-    padding:0px 10px 0px 10px;
-    margin:5px 0px 5px 0px;
+    padding:10px;
 }
 div.buttonBar > span {
     display: inline-block;
@@ -1402,9 +1367,6 @@ td.editable-field span.icon.icon-cancel {
 
 .editableStudyName {
     font-size: 150%;
-    margin: auto;
-    text-align: center;
-    width: 700px;
 }
 
 div.errorMessage {
@@ -1855,6 +1817,11 @@ body > .navbar {
 .navbar-nav > li > .navbar-text {
     /* reset; otherwise text on navbar looks offset vs links */
     line-height: 1;
+}
+.navbar-text.edd-nav-title {
+    font-weight: bold;
+    font-size: 18px;
+    margin-top: 10px;
 }
 
 #notification-dropdown > a.dropdown-toggle > .badge {

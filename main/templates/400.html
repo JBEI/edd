@@ -1,16 +1,19 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
 
 {% block head_title %}
-    EDD - Error: Bad request
+  {% trans 'EDD - Error: Bad Request' %}
 {% endblock head_title %}
 
 {% block body_title %}
-    Error - Bad Request
+  {% trans 'Error: Bad Request' %}
 {% endblock body_title %}
 
 {% block content %}
-    <p> The request cannot be fulfilled do to a bad syntax error or server issues.
-        The site administrators have been notified of the problem, please check back later.
-    </p>
+  {% blocktrans trimmed as error_message %}
+  The received request is malformed, and cannot be fulfilled. The site administrators have been
+  notified of the problem, please check back later.
+  {% endblocktrans %}
+  <p>{{ error_message }}</p>
 {% endblock content %}

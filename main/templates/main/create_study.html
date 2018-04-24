@@ -1,24 +1,22 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
 
-{% block js_css %}
-    {{ block.super }}
-{% endblock js_css %}
 
 {% block head_title %}
-    {{ block.super }} &mdash; Create Study
+  {% trans 'Create Study' %} &mdash; {{ block.super }}
 {% endblock head_title %}
 
+
 {% block body_title %}
-    {{ block.super }} &mdash; Create Study
+  {% trans 'Create Study' %}
 {% endblock body_title %}
 
-{% block content %}
 
+{% block content %}
 <form action="{% url 'main:create_study' %}"  class="edd-form" method="POST">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit">Add Study</button>
+    <button type="submit">{% trans 'Add Study' %}</button>
 </form>
-
 {% endblock content %}

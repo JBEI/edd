@@ -1,36 +1,38 @@
 <!doctype html>
 <html>
+  <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <script type="text/javascript" src="/static/dist/vendor.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/dist/styles.css" />
     <link rel="stylesheet" type="text/css" href="/static/main/common.css" />
-    <head>
-        <title>EDD - Error: Unavailable</title>
-    </head>
-    <body>
-        <div class="topBanner">
-            <div class="siteLogo">
-                <a href="/">
-                    <img style="width:50px" src="/static/main/images/edd_logo.png" alt="EDD Logo - Home"/>
-                </a>
-            </div>
-            <div class="pageName">Experiment Data Depot</div>
+    <script type="text/javascript" src="/static/dist/Common.js"></script>
+    <title>EDD - Error: Unavailable</title>
+  </head>
+  <body>
+    <nav class="navbar navbar-default navbar-static-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="/">
+            <img class="eddLogo" src="/static/main/images/edd_logo.png" alt="EDD Logo" />
+          </a>
         </div>
-        <div class="content">
-            <h1>  Page Unavailable</h1>
-            <p>EDD has encountered an error and cannot show this page. The site administrators have been
-                notified of the problem, please check back later.</p>
-            {% if messages %}
-            {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-            {% endfor %}
-        {% endif %}
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav navbar-left">
+            <li>
+              <p class="navbar-text edd-nav-title">Page Unavailable</p>
+            </li>
+          </ul>
         </div>
-        <div class="footer">
-            <div class="footer-text">
-                <span class="footer-text-app">JBEI Experiment Data Depot</span>
-                <span class="footer-text-contact">
-                    <a href="mailto:jbei-edd-admin@lbl.gov?subject=EDD">Contact</a>
-                </span>
-            </div>
-        </div>
-    </body>
+      </div>
+    </nav>
+    <div class="content">
+      <h1>Page Unavailable</h1>
+      <p>EDD has encountered an error and cannot show this page. The site administrators have been
+        notified of the problem, please check back later.</p>
+    </div>
+    <div id="bottomBar" class="bottomBar"></div>
+    <div class="footer-text">
+      <span class="footer-text-app">Experiment Data Depot</span>
+    </div>
+  </body>
 </html>

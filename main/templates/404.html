@@ -1,14 +1,15 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
 
 {% block head_title %}
-    EDD - Page Not Found
+  {% trans 'EDD - Page Not Found' %}
 {% endblock head_title %}
 
 {% block body_title %}
-    Page Not Found
+  {% trans 'Page Not Found' %}
 {% endblock body_title %}
 
 {% block content %}
-    <p>The page at this address could not be found.</p>
+  <p>{% trans 'The page at this address could not be found.' %}</p>
 {% endblock content %}

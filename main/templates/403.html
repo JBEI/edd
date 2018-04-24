@@ -1,15 +1,19 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
 
 {% block head_title %}
-    EDD - Error: Forbidden
+  {% trans 'EDD - Error: Forbidden' %}
 {% endblock head_title %}
 
 {% block body_title %}
-    Forbidden
+  {% trans 'Error: Forbidden' %}
 {% endblock body_title %}
 
 {% block content %}
-    <p>The requested operation is forbidden and cannot be completed. Please reload.
-        The site administrators have been notified of the problem, please check back later.</p>
+  {% blocktrans trimmed as error_message %}
+  You do not have correct permissions, and your request cannot be fulfilled. The site
+  administrators have been notified of the problem, please check back later.
+  {% endblocktrans %}
+  <p>{{ error_message }}</p>
 {% endblock content %}

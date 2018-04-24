@@ -2,6 +2,7 @@
 {% load staticfiles %}
 {% load i18n %}
 
+
 {% block js_css %}
   {{ block.super }}
   <script type="text/javascript">
@@ -13,19 +14,23 @@
   {{ od_select_form.media }}
 {% endblock js_css %}
 
+
 {% block head_title %}
-  {% if selection.studies|length == 1 %}
-    SBML Export For {{ selection.studies.0.name }} - Experiment Data Depot
-  {% else %}
-    SBML Export For {{ selection.studies|length }} Studies - Experiment Data Depot
-  {% endif %}
+  {% blocktrans with name=primary_study.name count count=selection.studies|length %}
+  SBML Export for {{ name }}
+  {% plural %}
+  SBML Export for {{ count }} Studies
+  {% endblocktrans %}
 {% endblock head_title %}
 
 
 {% block body_title %}
-  SBML Export For {% for study in selection.studies %}
-   <a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
-  {% endfor %}
+  {% url 'main:detail' slug=primary_study.slug as study_url %}
+  {% blocktrans with name=primary_study.name url=study_url count count=selection.studies|length %}
+  SBML Export for <a href="{{ url }}">{{ name }}</a>
+  {% plural %}
+  SBML Export for {{ count }} Studies, including <a href="{{ url }}">{{ name }}</a>
+  {% endblocktrans %}
 {% endblock body_title %}
 
 
@@ -106,7 +111,7 @@
       </div>
       {% endwith %}<!-- #step1 -->
       <!--
-      Step 3 (HPLC) 
+      Step 3 (HPLC)
       This is more complicated than the previous section, because it is designed to handle multiple
       protocols, and there is an additional "input" checkbox for each measurement.
       -->
@@ -278,5 +283,4 @@
     {% endif %}
 
   </form><!-- #exportForm -->
-
 {% endblock content %}

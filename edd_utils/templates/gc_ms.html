@@ -1,6 +1,7 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
+
 {% block js_css %}
   {{ block.super }}
   <script type="text/javascript" src="{% static 'dist/GCMS_Workbench.js' %}"></script>
@@ -8,63 +9,65 @@
 
 
 {% block head_title %}
-GC-MS data reduction
+  GC-MS data reduction
 {% endblock head_title %}
 
+
 {% block body_title %}
-GC-MS data reduction
-<a id="show-help-1" href="#" onclick="Workbench.showHelp(1);">[show help]</a>
+  GC-MS data reduction
 {% endblock body_title %}
+
 
 {% block content %}
 <div id="controls-and-plot" style="width: 1300px;">
   <div style="display: inline-block; width: 640px; align: top; float: left; overflow: auto;">
     <div class="dropzone-wrapper dz-default" style="width: 640px; height: 480px;">
       <form action="/utilities/gc_ms/parse" class="dropzone" enctype="multipart/form-data"
-        id="gcmsDropzone" method="POST">
+          id="gcmsDropzone" method="POST">
         {% csrf_token %}
         <center>
           <h3>Input data and parameters</h3>
-        <div class="dz-message">
-          <span class="status-go">Drag files here to upload</span>
-        </div>
-        <div id="file-preview"></div>
-        <div id="file-status"></div>
+          <a id="show-help-1" href="#" onclick="Workbench.showHelp(1);">[show help]</a>
+          <div class="dz-message">
+            <span class="status-go">Drag files here to upload</span>
+          </div>
+          <div id="file-preview"></div>
+          <div id="file-status"></div>
 
-        <span>
-          <input type="checkbox" name="auto_peaks" checked="yes" value="auto" id="auto-peaks"/>
-          Automatically identify and extract peak retention times
-        </span>
-        <div id="hidden-options">
-          <table class="form-input-clear" id="molecule-entry">
-          <tr>
-            <td class="form-label-clear">Molecule:</td>
-            <td class="form-label-clear">Standard</td>
-            <td class="form-content-clear">
-              Retention times:
-              <input type="number" name="rt_standard_min" class="text-rt-input"/> to
-              <input type="number" name="rt_standard_max" class="text-rt-input"/>
-            </td>
-          </tr>
-          <tr id="molecule-0">
-            <td class="form-label-clear">Molecule:</td>
-            <td class="form-label-clear">
-              <input type="text" name="mol_name_0" class="text-mol-name" id="mol-name"/>
-            </td>
-            <td class="form-content-clear">
-              Retention times:
-              <input type="number" name="rt_min_mol_0" class="text-rt-input" id="rt-min-mol"/> to
-              <input type="number" name="rt_max_mol_0" class="text-rt-input" id="rt-max-mol"/>
-            </td>
-          </tr>
-        </table>
-        <span id="table-control-buttons">
-          <button type="button" id="add-molecule" class="workbench-button"/>Add molecule</button>
-          <button type="button" id="del-molecule" class="workbench-button"/>Delete last</button>
-          <button type="submit" class="workbench-button">Re-submit data</button>
-        </span>
-        <input type="hidden" name="n_mols" value="1" id="n-molecules"/>
-        </div><!-- #hidden-options -->
+          <span>
+            <input type="checkbox" name="auto_peaks" checked="yes" value="auto" id="auto-peaks"/>
+            Automatically identify and extract peak retention times
+          </span>
+          <div id="hidden-options">
+            <table class="form-input-clear" id="molecule-entry">
+              <tr>
+                <td class="form-label-clear">Molecule:</td>
+                <td class="form-label-clear">Standard</td>
+                <td class="form-content-clear">
+                  Retention times:
+                  <input type="number" name="rt_standard_min" class="text-rt-input"/> to
+                  <input type="number" name="rt_standard_max" class="text-rt-input"/>
+                </td>
+              </tr>
+              <tr id="molecule-0">
+                <td class="form-label-clear">Molecule:</td>
+                <td class="form-label-clear">
+                  <input type="text" name="mol_name_0" class="text-mol-name" id="mol-name"/>
+                </td>
+                <td class="form-content-clear">
+                  Retention times:
+                  <input type="number" name="rt_min_mol_0" class="text-rt-input" id="rt-min-mol"/> to
+                  <input type="number" name="rt_max_mol_0" class="text-rt-input" id="rt-max-mol"/>
+                </td>
+              </tr>
+            </table>
+            <span id="table-control-buttons">
+              <button type="button" id="add-molecule" class="workbench-button"/>Add molecule</button>
+              <button type="button" id="del-molecule" class="workbench-button"/>Delete last</button>
+              <button type="submit" class="workbench-button">Re-submit data</button>
+            </span>
+            <input type="hidden" name="n_mols" value="1" id="n-molecules"/>
+          </div><!-- #hidden-options -->
         </center>
 
         <hr class="break"/>

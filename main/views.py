@@ -1769,8 +1769,3 @@ def model_search(request, model_name):
 
     except ValidationError as v:
         return JsonResponse(v.message, status=400)
-
-
-# /demo/
-def websocket_demo(request):
-    return render(request, 'main/websocket_demo.html')
