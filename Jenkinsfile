@@ -77,64 +77,75 @@ try {
                 sudo docker build \
                     --build-arg 'GIT_URL=${git_url}' \
                     --build-arg 'GIT_BRANCH=${git_branch}' \
-                    --build-arg 'EDD_VERSION=2.1.0b${BUILD_NUMBER}' \
+                    --build-arg 'EDD_VERSION=${image_version}' \
                     -t jbei/edd-core:${image_version} .
             /$
             sh build_script
         }
 
+        stage('Prepare') {
+            // modify configuration files to prepare for launch
+            def prepare_script = $/#!/bin/bash -xe
+                cd docker_services
+
+                # generate HMAC secret
+                RANDOM_HMAC="$$(openssl rand -base64 64 | tr -d '\n')"
+                # rewrite docker-compose.override.yml with built image version
+                sed -i.bak \
+                    -e "s/#image: tagname/image: jbei\/edd-core:${image_version}/" \
+                    docker-compose.override.yml
+                rm docker-compose.override.yml.bak
+
+                # rewrite secrets.env with HMAC secret
+                sed -i.bak -e "s:ICE_HMAC_KEY=:ICE_HMAC_KEY=$$RANDOM_HMAC:" secrets.env
+                rm secrets.env.bak
+                cat secrets.env
+
+                # check configs and write out a combined config file
+                sudo docker-compose -p '${project_name}' \
+                    -f docker-compose.yml \
+                    -f docker-compose.override.yml \
+                    -f ice.yml \
+                    config > combined.yml
+                cat combined.yml
+            /$
+            sh prepare_script
+        }
+
         try {
 
             stage('Launch') {
-                def sql_script = $/UPDATE configuration SET value = '/usr/local/tomcat/' WHERE key = 'DATA_DIRECTORY';/$
-                // NOTE: using -T flag to docker-compose-exec per https://github.com/docker/compose/issues/3352
+                def sql_script = $/UPDATE configuration
+                    SET value = '/usr/local/tomcat/'
+                    WHERE key = 'DATA_DIRECTORY';/$
+                // NOTE: using -T flag to docker-compose-exec per:
+                //  https://github.com/docker/compose/issues/3352
                 def launch_script = $/#!/bin/bash -xe
                     cd docker_services
-                    # generate HMAC secret
-                    RANDOM_HMAC="$$(openssl rand -base64 64 | tr -d '\n')"
-                    # rewrite docker-compose.override.yml with built image version
-                    sed -i.bak \
-                        -e "s/#image: tagname/image: jbei\/edd-core:${image_version}/" \
-                        docker-compose.override.yml
-                    rm docker-compose.override.yml.bak
-                    # rewrite secrets.env with HMAC secret
-                    sed -i.bak \
-                        -e "s:ICE_HMAC_KEY=:ICE_HMAC_KEY=$$RANDOM_HMAC:" \
-                        secrets.env
-                    rm secrets.env.bak
-                    cat secrets.env
+
                     # launch
-                    sudo docker-compose -p '${project_name}' \
-                        -f docker-compose.yml \
-                        -f docker-compose.override.yml \
-                        -f ice.yml \
-                        up -d
+                    sudo docker-compose -p '${project_name}' -f combined.yml up -d
+
                     # inject the HMAC key to ICE
-                    sudo docker-compose -p '${project_name}' \
-                        -f docker-compose.yml \
-                        -f docker-compose.override.yml \
-                        -f ice.yml \
+                    sudo docker-compose -p '${project_name}' -f combined.yml \
                         exec -T ice \
                         bash -c "mkdir rest-auth; echo $$RANDOM_HMAC > rest-auth/edd"
+
                     # wait until everything reports healthy
                     CONTAINER="$$(sudo docker-compose -p '${project_name}' ps -q edd | head -1)"
                     until [ "$$(sudo docker inspect --format "{{json .State.Health.Status }}" $$CONTAINER)" = '"healthy"' ]; do
                         echo "Waiting for EDD to report healthy"
                         sleep 10
                     done
+
                     # correct the default DATA_DIRECTORY in ICE database
-                    sudo docker-compose -p '${project_name}' \
-                        -f docker-compose.yml \
-                        -f docker-compose.override.yml \
-                        -f ice.yml \
+                    sudo docker-compose -p '${project_name}' -f combined.yml \
                         exec -T ice_db \
                         psql -U iceuser \
                         -c "${sql_script}" ice
+
                     # restart ICE so config change sticks
-                    sudo docker-compose -p '${project_name}' \
-                        -f docker-compose.yml \
-                        -f docker-compose.override.yml \
-                        -f ice.yml \
+                    sudo docker-compose -p '${project_name}' -f combined.yml \
                         restart ice
                 /$
                 // only try to launch for 10 minutes before bugout (takes under 3 min on JBEI vm)
@@ -148,11 +159,14 @@ try {
                 // NOTE: using -T flag to docker-compose per https://github.com/docker/compose/issues/3352
                 def test_script = $/#!/bin/bash -xe
                     cd docker_services
-                    sudo docker-compose -p '${project_name}' \
+                    sudo docker-compose -p '${project_name}' -f combined.yml \
                         exec -T edd \
                         python manage.py test --exclude-tag=known-broken
                 /$
-                sh test_script
+                // only try to test for 30 minutes before bugout
+                timeout(30) {
+                    sh test_script
+                }
             }
 
             // TODO: more stages
@@ -169,10 +183,7 @@ try {
             stage('Teardown') {
                 def teardown_script = $/#!/bin/bash -xe
                     cd docker_services
-                    sudo docker-compose -p '${project_name}' \
-                        -f docker-compose.yml \
-                        -f docker-compose.override.yml \
-                        -f ice.yml \
+                    sudo docker-compose -p '${project_name}' -f combined.yml \
                         down
                     sudo docker ps -qf 'name=${project_name}_*' | xargs \
                         sudo docker rm || true
