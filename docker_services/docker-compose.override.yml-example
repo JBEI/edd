@@ -274,11 +274,13 @@ services:
     # Below are some options for exposing HTTP/HTTPS ports from nginx to outside the container
     ports:
       # Make the http/https ports available on the Docker host IPv4 loopback interface
+      # START EXPOSE
       - '127.0.0.1:80:80'
       - '127.0.0.1:443:443'
       # Make the http/https ports available on ALL Docker host IPv4 interfaces
       #- '0.0.0.0:80:80'
       #- '0.0.0.0:443:443'
+      # END EXPOSE
       # Make the http/https ports available on a private IP like 10.20.17.100
       #- '10.20.17.100:80:80'
       #- '10.20.17.100:443:443'

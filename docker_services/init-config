@@ -4,9 +4,8 @@
 #   copied from the examples. The script is only tested with BASH. It probably will not work in
 #   alternate shells.
 
-COMPLETE="false"
-BOLD="\033[1m"
-RESET="\033[0m"
+BOLD="$(tput bold)"
+RESET="$(tput sgr0)"
 SEPARATOR="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 GETOPT="$(which getopt)"
@@ -16,10 +15,8 @@ VENV="$(which virtualenvwrapper.sh)"
 function check_brew() {
     if [ ! -x "$(which brew)" ]; then
         # Install brew if missing
-
-        /usr/bin/ruby -e \
-            "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-        if [ ! $? -eq 0 ]; then
+        BREW="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+        if ! /usr/bin/ruby -e "${BREW}"; then
             return 1
         fi
     fi
@@ -64,6 +61,10 @@ function print_help() {
     echo "    --novenv"
     echo "        Runs the initialization without attempting to create a project virtualenv."
     echo
+    echo "    -e, --expose"
+    echo "        Expose HTTP/HTTPS ports to all network interfaces. The default is to only open "
+    echo "        to the loopback interface. This flag has no effect if --nonginx is set."
+    echo
     echo "    --split-nginx"
     echo "        Generates configuration to use a split Compose file for running Nginx. This will"
     echo "        create a Docker virtual network to connect containers in both Compose files, and"
@@ -79,21 +80,27 @@ function print_help() {
     echo "    --split-static name"
     echo "        Specifies the Docker volume name used for the EDD static directory. If omitted,"
     echo "        a generated volume name will be used. Must be used with --split-nginx"
+    echo
+    echo "    --seed secret"
+    echo "        This script generates some random secret values based on the current time and "
+    echo "        known text. Set this flag to add some extra entropy to generated values."
 }
 
 EDD_EMAIL=
 EDD_USER=
 PROJECT=edd
+RANDOM_SEED="$(date | shasum | cut -c 1-32)"
 if [ ! $# -eq 0 ]; then
     check_gnu_getopt
-    short='p:u:m:d:'
+    short='p:u:m:d:he'
     long='help,project:,user:,mail:,noinput,domain:,nonginx,novenv'
     long="${long},split-nginx,split-media:,split-network:,split-static:"
+    long="${long},expose,seed"
     params="$($GETOPT -o "$short" -l "$long" --name "$0" -- "$@")"
     eval set -- "$params"
     while [ ! $# -eq 0 ]; do
         case "$1" in
-            --help)
+            --help | -h)
                 print_help
                 shift
                 return 0 2>/dev/null || exit 0
@@ -126,6 +133,10 @@ if [ ! $# -eq 0 ]; then
                 shift
                 MAKE_VIRTUALENV="n"
                 ;;
+            --expose | -e)
+                shift
+                EXPOSE_PORTS=1
+                ;;
             --split-nginx)
                 shift
                 NONGINX=1
@@ -141,6 +152,10 @@ if [ ! $# -eq 0 ]; then
                 ;;
             --split-static)
                 STATIC_NAME="$2"
+                shift 2
+                ;;
+            --seed)
+                RANDOM_SEED="$(echo "${RANDOM_SEED}:${2}" | shasum | cut -c 1-32)"
                 shift 2
                 ;;
             *)
@@ -160,15 +175,15 @@ if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
         echo "Could not detect git user. Please re-run this script with your name and email,"
         echo "or after configuring your git install with commands like these:"
         echo ""
-        echo -e "\t${BOLD}git config --global user.name 'Alice Liddell'${RESET}"
-        echo -e "\t${BOLD}git config --global user.email 'aliddell@example.net'${RESET}"
+        echo -e "\\t${BOLD}git config --global user.name 'Alice Liddell'${RESET}"
+        echo -e "\\t${BOLD}git config --global user.email 'aliddell@example.net'${RESET}"
         echo ""
         return 1 2>/dev/null || exit 1
     fi
 fi
 
 # the "project" will default to parent folder name with all non-alphanum characters stripped
-DEFAULT_PROJECT="$(basename "$DIR" | tr -cd '[[:alnum:]]')"
+DEFAULT_PROJECT="$(basename "$DIR" | tr -cd '[:alnum:]')"
 if [ "$MAKE_VIRTUALENV" == "n" ]; then
     echo "Skipping virtualenv creation"
     PROJECT="$DEFAULT_PROJECT"
@@ -215,21 +230,28 @@ fi
 
 if [ "$WRITE_SECRETS" == "y" ]; then
     COUNTER=1
+    EXT=".bak"
     echo "Copying example secrets.env and generating secrets …"
-    cp "$DIR/secrets.env-example" "$DIR/secrets.env"
+    cp "${DIR}/secrets.env-example" "${DIR}/secrets.env"
+    # make sure to not overwrite existing backups
+    while [ -f "${DIR}/secrets.env${EXT}" ]; do
+        EXT=".bak${COUNTER}"
+        (( COUNTER++ ))
+    done
     # replacing the secret{n} values
+    COUNTER=1
     while [ $COUNTER -lt 5 ]; do
-        EDD_SECRET="$(echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32)"
+        EDD_SECRET="$(echo "secret${COUNTER}:${RANDOM_SEED}" | shasum | cut -c 1-32)"
         # in-place edit, save backup to .bak file
-        sed -i.bak -e "s/secret${COUNTER}/${EDD_SECRET}/" "$DIR/secrets.env"
-        let COUNTER=COUNTER+1
+        sed "-i${EXT}" -e "s/secret${COUNTER}/${EDD_SECRET}/" "${DIR}/secrets.env"
+        (( COUNTER++ ))
     done
     # replace Django secret
-    EDD_SECRET="$(echo "secret${COUNTER} $(date)" | shasum | cut -c 1-32)"
+    EDD_SECRET="$(echo "secret${COUNTER}:${RANDOM_SEED}" | shasum | cut -c 1-32)"
     # in-place edit, save backup to .bak file
-    sed -i.bak -e "s/put some random secret text here/${EDD_SECRET}/" "$DIR/secrets.env"
+    sed "-i${EXT}" -e "s/put some random secret text here/${EDD_SECRET}/" "$DIR/secrets.env"
     # remove backup file
-    rm "$DIR/secrets.env.bak"
+    rm "$DIR/secrets.env${EXT}"
 fi
 
 if [ ! -f "$DIR/docker-compose.override.yml" ]; then
@@ -258,14 +280,28 @@ fi
 
 if [ "$WRITE_OVERRIDE" == "y" ]; then
     echo "Copying example docker-compose.override.yml settings …"
-    cp "$DIR/docker-compose.override.yml-example" "$DIR/docker-compose.override.yml"
-    sed -i.bak -e "${REPLACEMENT}" "$DIR/docker-compose.override.yml"
-    rm "$DIR/docker-compose.override.yml.bak"
+    cp "${DIR}/docker-compose.override.yml-example" "${DIR}/docker-compose.override.yml"
+    # make sure to not overwrite existing backups
+    COUNTER=1
+    EXT=".bak"
+    while [ -f "${DIR}/docker-compose.override.yml${EXT}" ]; do
+        EXT=".bak${COUNTER}"
+        (( COUNTER++ ))
+    done
+    sed "-i${EXT}" -e "${REPLACEMENT}" "${DIR}/docker-compose.override.yml"
     if [ "$NONGINX" == "1" ]; then
         # comment out section in in override
         awk '/# START LET/,/# END LET/ { sub(/^/, "#"); }{ print }' \
-            "$DIR/docker-compose.override.yml" > "$DIR/docker-compose.replace.yml" \
-            && mv "$DIR/docker-compose.replace.yml" "$DIR/docker-compose.override.yml"
+            "${DIR}/docker-compose.override.yml" > "${DIR}/docker-compose.override.yml${EXT}" \
+            && mv "${DIR}/docker-compose.override.yml${EXT}" "${DIR}/docker-compose.override.yml"
+    elif [ "$EXPOSE_PORTS" == "1" ]; then
+        awk '/# START EXPOSE/,/# END EXPOSE/ { sub(/-/, "#-"); sub(/##-/, "-"); }{ print }' \
+            "${DIR}/docker-compose.override.yml" > "${DIR}/docker-compose.override.yml${EXT}" \
+            && mv "${DIR}/docker-compose.override.yml${EXT}" "${DIR}/docker-compose.override.yml"
+    fi
+    # remove temp file
+    if [ -f "${DIR}/docker-compose.override.yml${EXT}" ]; then
+        rm "${DIR}/docker-compose.override.yml${EXT}"
     fi
 fi
 
@@ -311,7 +347,7 @@ if [ "$DOSPLIT" == "1" ]; then
     # Write nginx/docker-compose.override.yml; de-indented because of HEREDOC use
 cat <<EOF > "${DIR}/nginx/docker-compose.override.yml"
 ---
-version: '2.1'
+version: '3.6'
 networks:
   proxynet:
     external:
@@ -326,5 +362,3 @@ volumes:
 EOF
 
 fi
-
-COMPLETE="true"
