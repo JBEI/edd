@@ -147,7 +147,7 @@ services:
     build: ./edd/
     image: jbei/edd-core:latest
     restart: always
-    command: ['daphne']
+    command: ['application']
     env_file: secrets.env
     environment:
       EDD_DEBUG: "false"
@@ -185,13 +185,19 @@ services:
     environment:
       EDD_DEBUG: "false"
       SEARCH_URL: "solr://solr:8983/solr/"
+      # These will not do anything without VIRTUAL_HOST set in override file
+      VIRTUAL_NETWORK: "edd_proxynet"
+      VIRTUAL_PATH_GROUP: "/ws"
+      VIRTUAL_PORT: "8000"
+    expose:
+      - '8000'
     networks:
       - backnet
     volumes:
       - attachdata:/var/www/uploads
       - staticdata:/var/www/static
     restart: always
-    command: [-A, -w, edd, -p, '8000', channel, http, websocket]
+    command: [-A, -w, edd, -p, '8000', daphne]
     links:
       - edd
       - postgres

@@ -39,7 +39,10 @@ change the `entrypoint` of the `nginx-gen` service to point to a different file.
 The included template will find all containers with a `VIRTUAL_HOST` environment, and create nginx
 `upstream` and `server` blocks to proxy incoming requests for those domains to the appropriate
 container. If the container also has a `VIRTUAL_STATIC` environment, nginx will attempt to serve
-static files mounted to `/usr/share/nginx/html/` before proxying to the container.
+static files mounted to `/usr/share/nginx/html/` before proxying to the container. If the
+container has a `VIRTUAL_PATH_GROUP` environment, nginx will group that container under that path
+for each hostname; e.g. any requests to `example.org/custom` will go to containers with `/custom`
+as the value of `VIRTUAL_PATH_GROUP`.
 
 Any extra configuration for the `server` block of an nginx virtual host can be set by adding files
 for each domain inside the `vhost.d` directory inside the nginx service directory, or modifying

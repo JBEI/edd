@@ -30,7 +30,7 @@ class Command(BaseCommand):
         # get ICE authentication configured via EDD's config files (secrets.env and / or
         # settings/local.py)
         auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=username)
-        ice = IceApi(auth, verify_ssl_cert=settings.VERIFY_ICE_CERT)
+        ice = IceApi(auth, verify_ssl_cert=settings.ICE_VERIFY_CERT)
         ice.timeout = settings.ICE_REQUEST_TIMEOUT
 
         try:

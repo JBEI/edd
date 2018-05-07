@@ -141,7 +141,7 @@ class RegistryValidator(object):
         user_email = update.mod_by.email
         try:
             ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email),
-                         verify_ssl_cert=settings.VERIFY_ICE_CERT)
+                         verify_ssl_cert=settings.ICE_VERIFY_CERT)
             ice.timeout = settings.ICE_REQUEST_TIMEOUT
             self.entry = ice.get_entry(registry_id)
             self.entry.url = ''.join((ice.base_url, '/entry/', str(self.entry.id),))

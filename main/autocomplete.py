@@ -190,7 +190,7 @@ def search_sbml_species(request):
 def search_strain(request):
     """ Autocomplete delegates to ICE search API. """
     auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=request.user.email)
-    ice = IceApi(auth=auth, verify_ssl_cert=settings.VERIFY_ICE_CERT)
+    ice = IceApi(auth=auth, verify_ssl_cert=settings.ICE_VERIFY_CERT)
     ice.timeout = settings.ICE_REQUEST_TIMEOUT
     term = request.GET.get('term', '')
     results = ice.search(term)

@@ -44,7 +44,7 @@ def create_ice_connection(user_token):
     # Use getattr to load settings without raising AttributeError
     key_id = getattr(settings, 'ICE_KEY_ID', None)
     url = getattr(settings, 'ICE_URL', None)
-    verify = getattr(settings, 'VERIFY_ICE_CERT', False)
+    verify = getattr(settings, 'ICE_VERIFY_CERT', False)
     timeout = getattr(settings, 'ICE_REQUEST_TIMEOUT', None)
     if key_id and url:
         try:

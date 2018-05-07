@@ -240,7 +240,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Assay',
             fields=[
-                ('object_ref', models.OneToOneField(on_delete=CASCADE, parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
+                ('object_ref', models.OneToOneField(on_delete=CASCADE, parent_link=True, primary_key=True, related_name='+', serialize=False, to='main.EDDObject')),
                 ('experimenter', models.ForeignKey(blank=True, help_text='EDD User that set up the experimental conditions of this Assay.', null=True, on_delete=PROTECT, related_name='assay_experimenter_set', to=settings.AUTH_USER_MODEL, verbose_name='Experimenter')),
             ],
             options={
@@ -251,7 +251,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CarbonSource',
             fields=[
-                ('object_ref', models.OneToOneField(on_delete=CASCADE, parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
+                ('object_ref', models.OneToOneField(on_delete=CASCADE, parent_link=True, primary_key=True, related_name='+', serialize=False, to='main.EDDObject')),
                 ('labeling', models.TextField(help_text='Description of labeling isotopes in this Carbon Source.', verbose_name='Labeling')),
                 ('volume', models.DecimalField(decimal_places=5, help_text='Volume of solution added as a Carbon Source.', max_digits=16, verbose_name='Volume')),
             ],
@@ -347,7 +347,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='SBMLTemplate',
             fields=[
-                ('object_ref', models.OneToOneField(on_delete=CASCADE, parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
+                ('object_ref', models.OneToOneField(on_delete=CASCADE, parent_link=True, primary_key=True, related_name='+', serialize=False, to='main.EDDObject')),
                 ('biomass_calculation', models.DecimalField(decimal_places=5, default=-1, help_text='The calculated multiplier converting OD to weight of biomass.', max_digits=16, verbose_name='Biomass Factor')),
                 ('biomass_calculation_info', models.TextField(default='', help_text='Additional information on biomass calculation.', verbose_name='Biomass Calculation')),
                 ('biomass_exchange_name', models.TextField(help_text='The reaction name in the model for Biomass.', verbose_name='Biomass Reaction')),
@@ -360,7 +360,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Strain',
             fields=[
-                ('object_ref', models.OneToOneField(on_delete=CASCADE, parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
+                ('object_ref', models.OneToOneField(on_delete=CASCADE, parent_link=True, primary_key=True, related_name='+', serialize=False, to='main.EDDObject')),
                 ('registry_id', models.UUIDField(blank=True, help_text='The unique ID of this strain in the ICE Registry.', null=True, verbose_name='Registry UUID')),
                 ('registry_url', models.URLField(blank=True, help_text='The URL of this strain in the ICE Registry.', max_length=255, null=True, verbose_name='Registry URL')),
             ],

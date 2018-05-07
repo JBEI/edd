@@ -135,19 +135,28 @@ application.
 
 The following configuration options are specific to EDD and may be overridden in a `local.py`.
 
-  * `EDD_DEPLOYMENT_ENVIRONMENT`
-  * `REQUIRE_UNIPROT_ACCESSION_IDS`
-  * `PUBLISH_REST_API`
-  * `ICE_KEY_ID`
-  * `ICE_SECRET_HMAC_KEY`
-  * `ICE_URL`
-  * `ICE_REQUEST_TIMEOUT`
-  * `TYPICAL_ICE_PART_NUMBER_PATTERN`
-  * `VERIFY_ICE_CERT`
-  * `EDD_MAIN_SOLR`
-  * `EDD_LATEST_CACHE`
-  * `EDD_ONLY_SUPERUSER_CREATE`
-  * `EDD_ICE_FAIL_MODE`
+  * `EDD_ALLOW_SIGNUP` -- boolean flag; if True, self-registration of accounts is enabled.
+  * `EDD_DEPLOYMENT_ENVIRONMENT` -- string value, changes background color and adds a visual
+    environment label to assist in telling apart testing vs production instances. A None value
+    will result in no visual changes added to the interface.
+  * `EDD_ENABLE_GRAPHQL` -- boolean flag; if True, publish a GraphQL endpoint for EDD.
+  * `EDD_EXTERNAL_SCRIPTS` -- iterable of URL strings; these will be scripts added to the default
+    EDD page template. Put links for any external scripts here, to avoid creating custom
+    HTML templates.
+  * `EDD_LATEST_CACHE` -- string value; the name of the Django cache to use for storing a user's
+    latest viewed studies.
+  * `EDD_ONLY_SUPERUSER_CREATE` -- boolean flag; if True, only superuser accounts may create
+    new studies.
+  * `ICE_KEY_ID` -- string value, the identifier of the shared key used to communicate with ICE.
+  * `ICE_SECRET_HMAC_KEY` -- string value, base64-encoded key used to sign requests to ICE.
+  * `ICE_URL` -- URL of the ICE instance associated with EDD.
+  * `ICE_REQUEST_TIMEOUT` -- 2-tuple of integers, for the seconds to set connection and read
+    timeouts in communication with ICE.
+  * `ICE_VERIFY_CERT` -- boolean flag; if True, use strict certificate verification when
+    connecting to ICE. _Note_: older versions of EDD used the name `VERIFY_ICE_CERT` instead. EDD
+    will check for this name and emit a warning; the old name will be removed at a future date.
+  * `REQUIRE_UNIPROT_ACCESSION_IDS` -- boolean flag; if True, protein measurement IDs must conform
+    to the pattern of UniProt identifiers. Otherwise, arbitrary text may label a protein.
 
 ## Entrypoint options
 
@@ -227,6 +236,10 @@ This output can be recreated with `docker-compose exec edd entrypoint.sh --help`
             Execute the EDD unit tests.
         worker
             Start a Celery worker node.
+        daphne
+            Start a Django Channels webserver (daphne).
+        channel [... [name]]
+            Start a Django Channels worker listening on listed channel names (runworker).
 
 
 ## Starting EDD

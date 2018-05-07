@@ -215,6 +215,7 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
 
   For quick reference, the provided services are:
     * __edd__: WSGI server that runs the EDD webapp
+    * __websocket__: ASGI server that runs asynchronous parts of EDD
     * __worker__: long-running and background tasks are run here with Celery
     * __postgres__: provides EDD's database
     * __redis__: provides the cache back-end for EDD
@@ -241,10 +242,6 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
   similar listing, though it will include all containers running on your host, not just those
   defined by EDD.
 
-* __Starting and Stopping__
-    * Recommended to use the `start-edd.sh` and `stop-edd.sh` scripts, rather than directly running
-      `docker-compose` commands.
-
 * __`docker-compose` commands__
     * View logs: `docker-compose logs [service]`
     * See more in the [Docker Compose documentation][8]
@@ -262,6 +259,7 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
   If using a Linux host or Docker for Mac, use the hostname `edd.lvh.me`.
     * __EDD:__ `http://edd.lvh.me/`
     * __EDD's REST API:__ `http://edd.lvh.me/rest/` (if enabled)
+    * __EDD's GraphQL API:__ `http://edd.lvh.me/graphql/` (if enabled)
     * __Solr:__ `http://solr.lvh.me/` (if configured in `docker-compose.override.yml`)
     * __Flower:__ `http://flower.lvh.me/` (if configured in `docker-compose.override.yml`)
     * __RabbitMQ Management Plugin:__ `http://rabbitmq.lvh.me/` (if configured in

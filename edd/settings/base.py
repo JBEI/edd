@@ -67,7 +67,7 @@ ICE_REQUEST_TIMEOUT = (10, 10)
 # directed to registry.jbei.lbl.gov.
 # WARNING: Use in any context other than local testing can expose user credentials to a
 # third party!
-VERIFY_ICE_CERT = True
+ICE_VERIFY_CERT = True
 
 # specify the name of the JSON serializer in use
 EDD_SERIALIZE_NAME = 'edd-json'

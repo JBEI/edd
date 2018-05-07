@@ -182,10 +182,22 @@ services:
       # The following is not strictly necessary, just here so there is not an empty dictionary
       EDD_CONTAINER: "websocket"
 
+      # Set these variables to control proxy through nginx
+      # NOTE: IP addresses not accepted for VIRTUAL_HOST. For local testing, create an entry in
+      # /etc/hosts, e.g. 192.168.99.100 local-development, then add the host name you chose to
+      # ALLOWED_HOSTS in your local.py
+      VIRTUAL_HOST: "localhost,edd.lvh.me"
+      VIRTUAL_NETWORK: "edd_proxynet"
+      VIRTUAL_PORT: "8000"
+
       # The websocket container has its own environment; there could be a different administrative
       #   user for the websocket processes than the main web processes.
       #EDD_USER: "Alice Liddell"
       #EDD_EMAIL: "aliddell@example.net"
+
+    # Add in the 'proxynet' network if using the nginx/docker-gen/letsencrypt containers
+    networks:
+      - proxynet
 
     # Mount a development copy of code, rather than using the code in the image, using volumes.
     #volumes:
