@@ -142,58 +142,47 @@ class Entry(object):
     that's deprecated.
     """
 
-    def __init__(
-            self, id=None, visible=None, parents=[], index=None, uuid=None,
-            name=None, owner=None, owner_email=None, owner_id=None, creator=None,
-            creator_email=None, creator_id=None, status=None, short_description=None,
-            long_description=None,
-            creation_time=None, mod_time=None, biosafety_level=None, part_id=None, links=[],
-            pi_name=None, pi_email=None, pi_id=None, selection_markers=None, bp_count=None,
-            feature_count=None, view_count=None, has_attachment=None, has_sample=None,
-            has_sequence=None, has_original_sequence=None, can_edit=None,
-            access_permissions=[], public_read=False, linked_parts=[], alias=None, keywords=[],
-            intellectual_property=None, references=None, funding_source=None):
-        self.id = id
-        self.visible = visible
-        self.parents = []
-        self.index = index
-        self.uuid = uuid
-        self.name = name
-        self.owner = owner
-        self.owner_email = owner_email
-        self.owner_id = owner_id
-        self.creator = creator
-        self.creator_email = creator_email
-        self.creator_id = creator_id
-        self.status = status
-        self.short_description = short_description
-        self.long_description = long_description
-        self.creation_time = creation_time
-        self.mod_time = mod_time
-        self.biosafety_level = biosafety_level
-        self.part_id = part_id
-        self.links = links
-        self.pi_name = pi_name
-        self.pi_email = pi_email
-        self.pi_id = pi_id
-        self.selection_markers = selection_markers
-        self.bp_count = bp_count
-        self.feature_count = feature_count
-        self.view_count = view_count
-        self.has_attachment = has_attachment
-        self.has_sample = has_sample
-        self.has_sequence = has_sequence
-        self.has_original_sequence = has_original_sequence
-        self.can_edit = can_edit
-        self.access_permissions = access_permissions
-        self.public_read = public_read
-        self.linked_parts = linked_parts
-        self.alias = alias
-        self.keywords = keywords
-        self.intellectual_property = intellectual_property
-        self.references = references
-        self.funding_source = funding_source
-        self.parents = parents
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id', None)
+        self.visible = kwargs.get('visible', None)
+        self.parents = kwargs.get('parents', [])
+        self.index = kwargs.get('index', None)
+        self.uuid = kwargs.get('uuid', None)
+        self.name = kwargs.get('name', None)
+        self.owner = kwargs.get('owner', None)
+        self.owner_email = kwargs.get('owner_email', None)
+        self.owner_id = kwargs.get('owner_id', None)
+        self.creator = kwargs.get('creator', None)
+        self.creator_email = kwargs.get('creator_email', None)
+        self.creator_id = kwargs.get('creator_id', None)
+        self.status = kwargs.get('status', None)
+        self.short_description = kwargs.get('short_description', None)
+        self.long_description = kwargs.get('long_description', None)
+        self.creation_time = kwargs.get('creation_time', None)
+        self.mod_time = kwargs.get('mod_time', None)
+        self.biosafety_level = kwargs.get('biosafety_level', None)
+        self.part_id = kwargs.get('part_id', None)
+        self.links = kwargs.get('links', [])
+        self.pi_name = kwargs.get('pi_name', None)
+        self.pi_email = kwargs.get('pi_email', None)
+        self.pi_id = kwargs.get('pi_id', None)
+        self.selection_markers = kwargs.get('selection_markers', None)
+        self.bp_count = kwargs.get('bp_count', None)
+        self.feature_count = kwargs.get('feature_count', None)
+        self.view_count = kwargs.get('view_count', None)
+        self.has_attachment = kwargs.get('has_attachment', None)
+        self.has_sample = kwargs.get('has_sample', None)
+        self.has_sequence = kwargs.get('has_sequence', None)
+        self.has_original_sequence = kwargs.get('has_original_sequence', None)
+        self.can_edit = kwargs.get('can_edit', None)
+        self.access_permissions = kwargs.get('access_permissions', [])
+        self.public_read = kwargs.get('public_read', False)
+        self.linked_parts = kwargs.get('linked_parts', [])
+        self.alias = kwargs.get('alias', None)
+        self.keywords = kwargs.get('keywords', [])
+        self.intellectual_property = kwargs.get('intellectual_property', None)
+        self.references = kwargs.get('references', None)
+        self.funding_source = kwargs.get('funding_source', None)
 
     @staticmethod
     def of(json_dict, silence_type_specific_warnings):
@@ -207,30 +196,30 @@ class Entry(object):
         if not json_dict:
             return None
 
-        # build up a list of keyword arguments to use in constructing the Part.
+        # build up a list of keyword arguments to use in constructing the Entry.
         python_object_params = {}
 
         # linked parts
-        LINKED_PARTS_JSON_KEYWORD = 'linkedParts'
-        linked_parts_temp = json_dict.get(LINKED_PARTS_JSON_KEYWORD)
+        _LINKED_PARTS_JSON_KEYWORD = 'linkedParts'
+        linked_parts_temp = json_dict.get(_LINKED_PARTS_JSON_KEYWORD)
         linked_parts = (Entry.of(linked_part_dict) for linked_part_dict in linked_parts_temp) if \
             linked_parts_temp else []
         python_object_params['linked_parts'] = linked_parts
 
         # parents
-        PARENTS_JSON_KEYWORD = 'parents'
-        PARENTS_PYTHON_KEYWORD = 'parents'
-        parents_list = json_dict.get(PARENTS_JSON_KEYWORD)
+        _PARENTS_JSON_KEYWORD = 'parents'
+        _PARENTS_PYTHON_KEYWORD = 'parents'
+        parents_list = json_dict.get(_PARENTS_JSON_KEYWORD)
         parents_list = (Entry.of(parent_dict) for parent_dict in parents_list) if parents_list \
             else []
-        python_object_params[PARENTS_PYTHON_KEYWORD] = parents_list
+        python_object_params[_PARENTS_PYTHON_KEYWORD] = parents_list
 
         # set/replace object parameters in the dictionary
-        LINKED_PARTS_PYTHON_KEYWORD = 'linked_parts'
+        _LINKED_PARTS_PYTHON_KEYWORD = 'linked_parts'
 
         nontrivial_conversion_keywords = {
-            LINKED_PARTS_JSON_KEYWORD: LINKED_PARTS_PYTHON_KEYWORD,
-            PARENTS_JSON_KEYWORD: PARENTS_PYTHON_KEYWORD,
+            _LINKED_PARTS_JSON_KEYWORD: _LINKED_PARTS_PYTHON_KEYWORD,
+            _PARENTS_JSON_KEYWORD: _PARENTS_PYTHON_KEYWORD,
         }
         ###########################################################################################
         # set objects that have a trivial conversion from JSON to Python,
@@ -244,7 +233,7 @@ class Entry(object):
 
         # TODO: investigate JSON data in this dictionary that we don't currently understand /
         # support.
-        IGNORED_PART_KEYWORDS = [
+        _IGNORED_PART_KEYWORDS = [
             'parameters'
         ]
 
@@ -253,7 +242,7 @@ class Entry(object):
             if json_keyword in nontrivial_conversion_keywords:
                 continue
 
-            if json_keyword in IGNORED_PART_KEYWORDS:
+            if json_keyword in _IGNORED_PART_KEYWORDS:
                 continue
 
             python_keyword = PART_KEYWORD_CHANGES.get(json_keyword, json_keyword)
@@ -261,31 +250,35 @@ class Entry(object):
 
         part_type = python_object_params.pop('type')  # Note: don't shadow Python builtin 'type'!
 
-        if constants.PLASMID == part_type:
+        if constants.ENTRY_TYPE_PLASMID == part_type:
             return _construct_part(
                 python_object_params, part_type, constants.PLASMID_DATA_JSON_KEYWORD,
                 PLASMID_KEYWORD_CHANGES, Plasmid, silence_type_specific_warnings
             )
 
-        if constants.STRAIN == part_type:
+        if constants.ENTRY_TYPE_STRAIN == part_type:
             return _construct_part(
                 python_object_params, part_type, constants.STRAIN_DATA_JSON_KEYWORD,
                 STRAIN_KEYWORD_CHANGES, Strain, silence_type_specific_warnings
             )
 
-        if constants.ARABIDOPSIS == part_type:
+        if constants.ENTRY_TYPE_ARABIDOPSIS == part_type:
             return _construct_part(
                 python_object_params, part_type, constants.ARABIDOPSIS_DATA_JSON_KEYWORD,
                 ARABIDOPSIS_KEYWORD_CHANGES, Arabidopsis, silence_type_specific_warnings
             )
 
-        if constants.PART == part_type:
+        if constants.ENTRY_TYPE_PART == part_type:
             return Entry(**python_object_params)
+
+        # TODO: implement (EDD-543)
+        # if constants.ENTRY_TYPE_PROTEIN == part_type:
+        #     return Protein(**python_object_params)
 
         raise Exception('Unsupported type "%s"' % part_type)
 
     def __str__(self):
-        return '%s / "%s"' % (self.part_id, self.name)
+        return f'{self.part_id} / "{self.name}" / ({self.uuid})'
 
     def to_json_dict(self):
         # copy all data members into a dictionary
@@ -580,6 +573,55 @@ class Strain(Entry):
         return json_dict
 
 
+class Folder(object):
+    # build a dict of keywords for translating field names from Java-based conventions used in
+    # ICE's JSON to Python style names
+    keyword_changes_dict = {
+        'folderName': 'name',
+        'count': 'entry_count',
+        'propagatePermission': 'propagate_permission',
+        'canEdit': 'can_edit',
+        'creationTime': 'creation_time',
+    }
+
+    def __init__(self, **kwargs):
+        self.name = kwargs.pop('name')
+        self.id = kwargs.pop('id')
+        self.entry_count = kwargs.pop('entry_count')
+        self.propagate_permission = kwargs.pop('propagate_permission')
+        self.type = kwargs.pop('type')
+        self.can_edit = kwargs.pop('can_edit')
+        self.creation_time = kwargs.pop('creation_time')
+        self.entries = []
+        for entry_dict in kwargs.pop('entries'):
+            self.entries.append(Entry.of(entry_dict, silence_type_specific_warnings=True))
+
+    @staticmethod
+    def of(json_dict):
+
+        python_object_params = {}
+        for json_key, value in json_dict.items():
+            python_keyword = Folder.keyword_changes_dict.get(json_key, json_key)
+            python_object_params[python_keyword] = value
+
+        return Folder(**python_object_params)
+
+    def to_json_dict(self):
+        json_dict = {}
+
+        for java_kword, python_keyword in self.keyword_changes_dict.items():
+            json_dict[java_kword] = getattr(self, python_keyword)
+
+        entries_temp = []
+        for entry in self.entries:
+            entries_temp.append(entry.to_json_dict())
+
+        json_dict['id'] = self.id
+        json_dict['entries'] = entries_temp
+
+        return json_dict
+
+
 # Design note: all part-specific params are currently optional so that we can still at least
 # capture the part type when the part gets returned from a search without any of its type-specific
 # data. TODO: confirm with Hector P. that this is intentional, then make them non-optional if
@@ -626,6 +668,14 @@ def parse_entry_id(ice_entry_url):
 
 
 DEFAULT_HMAC_KEY_ID = 'edd'
+
+ENTRY_CLASS_TO_JSON_TYPE = {
+    Arabidopsis.__name__: constants.ENTRY_TYPE_ARABIDOPSIS,
+    Plasmid.__name__: constants.ENTRY_TYPE_PLASMID,
+    #  Protein.__class__.__name__: ENTRY_TYPE_PROTEIN,  TODO: not yet implemented
+    Strain.__name__: constants.ENTRY_TYPE_STRAIN,
+    Entry.__name__: constants.ENTRY_TYPE_ENTRY,
+}
 
 
 class IceApi(RestApiClient):
@@ -831,6 +881,66 @@ class IceApi(RestApiClient):
                 }
             )
         return None
+
+    def get_folder(self, folder_id, partner_id=None):
+        """
+        Retrieves an ICE folder using its unique identifier
+        :param id: the ICE ID for this entry (either the UUID, part number,
+            locally-unique integer primary  key)
+        :return: A Part object representing the response from ICE, or None if an an Exception
+            occurred but suppress_errors was true.
+        """
+        params = {}
+
+        base_url = self.base_url
+        if not partner_id:
+            rest_url = f'{base_url}/rest/folders/{folder_id}'
+        else:
+            # TODO: this is the observed pattern from the ICE UI, but maybe a more standard,
+            # URL-only scheme is also supported?
+            rest_url = f'{base_url}/rest/partners/{partner_id}/folders'
+            params['folderId'] = folder_id
+
+        response = self.session.get(url=rest_url)
+        if response.status_code == requests.codes.not_found:
+            return None
+        response.raise_for_status()
+        json_dict = json.loads(response.text)
+        return Folder.of(json_dict)
+
+    def get_folder_entries(self, folder_id, page_num, partner_id=None, sort=None):
+        """
+        Retrieves an ICE folder using its unique identifier
+        :param id: the ICE ID for this entry (either the UUID, part number,
+            locally-unique integer primary  key)
+        :return: A Part object representing the response from ICE, or None if an an Exception
+            occurred but suppress_errors was true.
+        """
+        params = {}
+
+        base_url = self.base_url
+        if not partner_id:
+            rest_url = f'{base_url}/rest/folders/{folder_id}/entries'
+        else:
+            # TODO: this is the observed pattern from the ICE UI, but maybe a more standard,
+            # URL-only scheme is also supported?
+            rest_url = f'{base_url}/rest/partners/{partner_id}/folders/entries'
+            params['folderId'] = folder_id
+
+        self._add_page_number_param(params, page_num)
+
+        if sort:
+            descending = sort.startswith('-')
+            params['sort'] = sort[1:] if descending else sort
+            params['asc'] = str(not descending).lower()  # cast to lower case for Java ICE
+
+        response = self.session.get(url=rest_url, params=params)
+        if response.status_code == requests.codes.not_found:
+            return None
+        response.raise_for_status()
+
+        json_dict = json.loads(response.text)
+        return Folder.of(json_dict)
 
     def _process_query_blast(self, query_dict, blast_program, blast_sequence):
         if blast_program:

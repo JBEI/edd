@@ -59,6 +59,18 @@ SCHEMA = {
 
             },
         },
+        'ice_folder_to_filters': {
+            'type': 'object',
+            'additionalProperies': {
+                'type': 'array',
+                'items': {'type': 'string',
+                          'enum': ['STRAIN', 'PLASMID', 'ENTRY', 'PROTEIN', 'SEED']}
+            }
+
+        },
+        'email_when_finished': {
+            'type': 'boolean'
+        }
     },
     'additionalProperties': False,
     'required': ['combinatorial_line_metadata', 'common_line_metadata',

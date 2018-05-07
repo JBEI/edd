@@ -59,6 +59,7 @@ ICE_ADMIN_ACCOUNT = env('ICE_ADMIN_USER', default='Administrator')
 ICE_URL = env('ICE_URL', default='https://registry-test.jbei.org/')
 # HTTP request connection and read timeouts, respectively (seconds)
 ICE_REQUEST_TIMEOUT = (10, 10)
+ICE_FOLDER_SEARCH_PAGE_SIZE = 100
 
 # Be very careful in changing this value!! Useful to avoid heachaches in *LOCAL* testing against a
 # non-TLS ICE deployment. Also barring another solution, useful as a temporary/risky workaround for

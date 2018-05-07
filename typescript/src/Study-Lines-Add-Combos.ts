@@ -17,46 +17,86 @@ require('jquery-ui/ui/widgets/selectable');
 require('jquery-ui/ui/widgets/sortable');
 require('jquery-ui/ui/widgets/dialog');
 require('jquery-ui/ui/widgets/spinner');
+require('jquery-ui/ui/effects/effect-bounce');
 
 module StudyLinesAddCombos {
 
-    //TODO: relocate, e.g. to EDDRest.ts.  Initial attempts compiled but failed to run in
-    // strange ways.
-    /* Default metadata names that may have to be explicitly-referenced in the UI */
-    export const LINE_NAME_META_NAME:string = 'Line Name';
-    export const LINE_EXPERIMENTER_META_NAME:string = 'Line Experimenter';
-    export const LINE_DESCRIPTION_META_NAME:string = 'Line Description';
-    export const LINE_CONTACT_META_NAME:string = 'Line Contact';
-    export const CARBON_SOURCE_META_NAME:string = 'Carbon Source(s)';
-    export const STRAINS_META_NAME:string = 'Strain(s)';
-
     // names of line metadata types that should use an autocomplete to gather user input
-    export const AUTOCOMPLETE_META_NAMES: string[] = [LINE_EXPERIMENTER_META_NAME,
-                                                      LINE_CONTACT_META_NAME,
-                                                      CARBON_SOURCE_META_NAME,
-                                                      STRAINS_META_NAME];
+    import STRAINS_META_NAME = EddRest.STRAINS_META_NAME;
+    export const AUTOCOMPLETE_META_NAMES: string[] = [EddRest.LINE_EXPERIMENTER_META_NAME,
+                                                      EddRest.LINE_CONTACT_META_NAME,
+                                                      EddRest.CARBON_SOURCE_META_NAME,
+                                                      EddRest.STRAINS_META_NAME];
 
     // names of line metadata types which represent a user and should use the user autocomplete
-    export const USER_META_TYPE_NAMES: string[] = [LINE_CONTACT_META_NAME,
-                                                   LINE_EXPERIMENTER_META_NAME];
+    export const USER_META_TYPE_NAMES: string[] = [EddRest.LINE_CONTACT_META_NAME,
+                                                   EddRest.LINE_EXPERIMENTER_META_NAME];
 
     // names of line metadata types that support multiple values for a single line
-    export const MULTIVALUED_LINE_META_TYPES = [STRAINS_META_NAME, CARBON_SOURCE_META_NAME];
+    export const MULTIVALUED_LINE_META_TYPES = [EddRest.STRAINS_META_NAME,
+                                                EddRest.CARBON_SOURCE_META_NAME];
 
     // Metadata types present in the database that should be omitted from user-displayed lists in
     // contexts where separate display is available for line attributes.
-    export const LINE_PROPERTY_META_TYPES = [LINE_NAME_META_NAME, LINE_DESCRIPTION_META_NAME,
-        LINE_CONTACT_META_NAME, LINE_EXPERIMENTER_META_NAME, STRAINS_META_NAME];
+    export const LINE_PROPERTY_META_TYPES = [EddRest.LINE_NAME_META_NAME,
+        EddRest.LINE_DESCRIPTION_META_NAME, EddRest.LINE_CONTACT_META_NAME,
+        EddRest.LINE_EXPERIMENTER_META_NAME, EddRest.STRAINS_META_NAME];
+
+    export interface ErrorSummary {
+        category: string,
+        summary: string,
+        details?: string[],
+        resolution?: string
+    }
+
+    interface IceFolder {
+        id: number,
+        url: string,
+        name: string,
+        entryTypes: string[],
+    }
+
+    interface MultiValueInputOptions {
+        maxRows?: number,
+        minEntries?: number,
+    }
+
+    interface LinePropertyInputOptions extends MultiValueInputOptions {
+        lineProperty: LinePropertyDescriptor,
+        supportsCombinations?: boolean,
+    }
 
     // special case JSON identifier for replicate count, which has no direct association to a line
     // metadata type
     const REPLICATE_COUNT_JSON_ID = 'replicate_count';
-
     const REPLICATE_NUM_NAME_ID = 'replicate_num';
+
+    const ICE_FOLDER_JSON_ID = 'ice_folder';
+
+    const STRAIN_NAME_ELT_LABEL = 'ICE Entry Name(s)';
+
+    // back-end error messages associated with specific conditions that the UI has to handle
+    const NON_STRAINS_ERR_CATEGORY = 'Non-Strains';
+    const NON_UNIQUE_NAMES_ERR_CATEGORY = 'Non-unique line names';
+    const ICE_ACCESS_ERROR_CATEGORIES = ['ICE part access problem', 'ICE access error'];
+    const UNRESOLVABLE_ACCESS_ERR = 'ICE strains are required for combinatorial line creation';
+
+    // back-end parameters used by the UI to configure the line creation process
+    const ALLOW_NON_STRAIN_PARTS_PARAM = 'ALLOW_NON_STRAIN_PARTS';
+    const IGNORE_ICE_ACCESS_ERRORS_PARAM = 'IGNORE_ICE_ACCESS_ERRORS';
+    const EMAIL_WHEN_FINISHED_PARAM = 'EMAIL_WHEN_FINISHED';
 
     const SCROLL_DURATION_MS = 2000;
 
-    const LINES_PER_ROW = 5;
+    // # of line names displayed per row in the step 3 preview
+    const LINES_PER_ROW = 4;
+
+    // max # of line name previews displayed on the page
+    const MAX_PREVIEW_LINE_NAMES: number = 51;
+
+    // animation parameters to help users understand when duplicate controls are triggered
+    const BOUNCES = 5;
+    const BOUNCE_SPEED = 'slow';
 
     function loadAllLineMetadataTypes():void {
         $('#addPropertyButton').prop('disabled', true);
@@ -65,41 +105,64 @@ module StudyLinesAddCombos {
                 'success': creationManager.setLineMetaTypes.bind(creationManager),
                 'error': showMetaLoadFailed,
                 'request_all': true, // get all result pages
-                'wait': showWaitMessage,
+                'wait': showMetaWaitMessage,
                 'context': EddRest.LINE_METADATA_CONTEXT,
                 'ordering': 'type_name',
             });
     }
 
-    function showWaitMessage(): void {
-        var div: JQuery, span;
-        div = $('#step2_status_div');
-        div.empty();
+    function addRetryButton(container: JQuery, retryFunction): JQuery {
+        let btn, iconSpan, textSpan;
+        btn = $("<button type='button'>")
+            .addClass('retry-btn')
+            .addClass('btn btn-secondary')
+            .on('click', (event:  Event) => {
+                $(event.target).prop('disabled', true);
+                retryFunction();
+            });
 
-        span = $("<span>")
+        // set button icon in a span, per Bootstrap suggestion
+        $('<span>')
+            .addClass('glyphicon')
+            .addClass('glyphicon-refresh')
+            .appendTo(btn)
+            .after(' ');
+
+        // set button text
+        $('<span>')
+            .text('Retry')
+            .appendTo(btn);
+
+        btn.appendTo(container);
+
+        return btn;
+    }
+
+    function showMetaWaitMessage(): void {
+        var div: JQuery;
+        div = $('#step1_loading_metadata_status_div').empty();
+
+        $("<span>")
             .text('Loading line metadata types...')
-            .addClass('errorMessage')
+            .addClass('loading-resource-message')
+            .appendTo(div);
+
+        $('<span>')
+            .addClass('wait waitbadge-new')
             .appendTo(div);
     }
 
     function showMetaLoadFailed(jqXHR, textStatus:string, errorThrown:string): void {
-        var div: JQuery, span;
-        div = $('#step2_status_div');
-        div.empty();
+        var div: JQuery, span, button;
+        div = $('#step1_loading_metadata_status_div')
+            .empty();
 
         span = $("<span>")
             .text('Unable to load line metadata from EDD. Property selection is disabled.')
-            .addClass('errorMessage')
+            .addClass('alert alertDanger')
             .appendTo(div);
 
-        $('<button type="button">')
-            .text(' Retry')
-            .addClass('glyphicon')
-            .addClass('glyphicon-refresh')
-            .on('click', () => {
-                loadAllLineMetadataTypes();
-            })
-            .appendTo(span);
+        addRetryButton(span, loadAllLineMetadataTypes);
     }
 
     class NameElement {
@@ -108,22 +171,37 @@ module StudyLinesAddCombos {
         nameEltJsonId: any; // string for special-cases, integer pk for metadata
 
         // used to generate a unique ID for each naming element used within the UI. This lets us
-        // easily distiguish custom user additions, which have no representation in the database,
+        // easily distinguish custom user additions, which have no representation in the database,
         // from line metadata types which do. No need to worry about naming overlaps, etc.
         static nameElementCounter: number = 0;
+
+        static strainNameGuiId = -1;
 
         constructor(label:string, nameEltJsonId:any) {
             this.nameEltLabel = label;
             this.nameEltJsonId = nameEltJsonId;
-            this.nameEltGuiId = ++NameElement.nameElementCounter;
+
+            // prevent duplicate GUI IDs from being generated for strains, which can originate with
+            // with either an ICE folder or a direct entry...otherwise name elts from each can
+            // interfere with the other
+            if(nameEltJsonId == creationManager.strainNameEltJsonId) {
+                if(NameElement.strainNameGuiId < 0) {
+                    NameElement.strainNameGuiId = ++NameElement.nameElementCounter;
+                }
+                this.nameEltGuiId = NameElement.strainNameGuiId;
+            } else {
+                this.nameEltGuiId = ++NameElement.nameElementCounter;
+            }
         }
     }
 
     class LinePropertyDescriptor extends NameElement {
-        jsonId: any; // string for special-cases, integer pk for metadata
+        jsonId: any; // integer pk for line metadata, string for special cases (e.g.
+                     // replicates, ICE collections)
         inputLabel: string;
 
-        constructor(jsonId, inputLabel:string, nameEltLabel:string =null, nameEltJsonId:any =null) {
+        constructor(jsonId, inputLabel:string, nameEltLabel:string =null,
+                    nameEltJsonId:any =null) {
             super(nameEltLabel || inputLabel, nameEltJsonId || jsonId);
             this.jsonId = jsonId;
             this.inputLabel = inputLabel;
@@ -148,11 +226,14 @@ module StudyLinesAddCombos {
 
     class ErrSummary {
         iceAccessErrors: boolean;
-        nonStrainErrors; boolean;
+        nonStrainErrors: boolean;
+        nonUniqueLineNames: boolean;
 
-        constructor(iceAccessErrors: boolean, nonStrainErrors: boolean) {
+        constructor(iceAccessErrors: boolean, nonStrainErrors: boolean,
+                    nonUniqueLineNames: boolean) {
             this.iceAccessErrors = iceAccessErrors;
             this.nonStrainErrors = nonStrainErrors;
+            this.nonUniqueLineNames = nonUniqueLineNames;
         }
     }
 
@@ -164,7 +245,7 @@ module StudyLinesAddCombos {
         rows: JQuery[] = [];
         addButton: JQuery;
 
-        constructor(label:string, options:any) {
+        constructor(label:string, options:MultiValueInputOptions) {
 
             this.uiLabel = $('<label>')
                 .text(label)
@@ -209,8 +290,10 @@ module StudyLinesAddCombos {
                 btn = $('<button>')
                     .addClass('removeButton')
                     .appendTo(container);
-                $('<span>').addClass('ui-icon')
-                    .addClass('ui-icon-trash').appendTo(btn);
+                $('<span>')
+                    .addClass('ui-icon')
+                    .addClass('ui-icon-trash')
+                    .appendTo(btn);
                 this.registerRemoveRowEvtHandler(btn, rowIndex);
                 return btn;
             }
@@ -222,7 +305,7 @@ module StudyLinesAddCombos {
             // TODO: inspect implementations....appears inconsistent use WRT postremovecallback
         }
 
-        buildAddControl(container: JQuery) {
+        buildAddBtn(container: JQuery) {
             // only add the control to the first row
             if ((this.getRowCount() == 1) && (this.getRowCount() < this.maxRows)) {
                 this.addButton = $('<button>')
@@ -243,14 +326,14 @@ module StudyLinesAddCombos {
              return this.rows.length;
         }
 
-        appendRow(): void {
+        appendRow(initialInput?: any): void {
             var newRow: JQuery, parent: JQuery, atMax: boolean, prevRow: JQuery;
             prevRow = this.rows[this.rows.length-1];
 
             newRow = $('<div>')
                 .addClass('table-row')
                 .insertAfter(prevRow);
-            this.fillRow(newRow);
+            this.fillRowControls(newRow, initialInput);
 
             this.updateInputState();
         }
@@ -326,7 +409,7 @@ module StudyLinesAddCombos {
             // empty default implementation for children to override
         }
 
-        fillRow(row: JQuery): void {
+        fillRowControls(row: JQuery, initialValue?: any): void {
             // empty default implementation for children to override
         }
 
@@ -339,7 +422,7 @@ module StudyLinesAddCombos {
          lineProperty: LinePropertyDescriptor;
          supportsCombinations: boolean;
 
-         constructor(options: any) {
+         constructor(options: LinePropertyInputOptions) {
              super(options.lineProperty.inputLabel + ':', options);
              this.lineProperty = options.lineProperty;
              if (!this.lineProperty) {
@@ -398,10 +481,48 @@ module StudyLinesAddCombos {
              return this.rows.length > 1;
         }
 
+        /**
+         * Tests whether valid user inputs define combinatorial line creation. Note
+         * that this may differ from the status of the "combinatorial" radio button, which
+         * reflects the intention of multiple rows (some of which may be blank)
+         * @returns {boolean}
+         */
+        hasValidCombinations(): boolean {
+            // for starters, assume multiple inputs (e.g. even for potentially
+            // multivalued) inputs should result in creation of a combinatorial group of lines.
+            // later on we can add complexity, e.g. to support co-culture.
+            let nValidInputs: number = this.validInputCount();
+            if(nValidInputs > 1) {
+                return true;
+            } else if(nValidInputs == 0) {
+                return false;
+            }
+
+            if(EddRest.STRAINS_META_NAME == this.lineProperty.inputLabel) {
+                // do special-case processing for single-entry strains so they show as
+                // combinatorial if an ICE folder is also specified
+
+                let iceFolderInput = creationManager.getPropertyInput(ICE_FOLDER_JSON_ID);
+                if(iceFolderInput && iceFolderInput.hasValidCombinations()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Auto-updates display indicators for this input to show whether they're *intended* as
+         * common or combinatorial input. Note that this means, for example:
+         * A) When a new, empty row is added, the indicator will flip to show the intended effect
+         *    of adding a valid entry in the row.
+         * B) If the newly-added row remains unfilled, the indicator will may not match the way the
+         * value is actually treated
+         */
         autoUpdateCombinations() {
-            var hasMultipleInputs: boolean, hasComboValues: boolean, combosButton:JQuery,
-                noCombosButton:JQuery, namingElt:JQuery, supportsMultivalue: boolean;
-            hasMultipleInputs = this.hasMultipleInputs();
+            var comboInputIntended: boolean, aggregateComboIntended, nameInputRequired: boolean,
+                combosButton:JQuery, noCombosButton:JQuery, namingElt:JQuery,
+                supportsMultivalue: boolean, isIceFolder: boolean, isStrains: boolean;
+
             noCombosButton = this.rows[0].find('input:radio[value=No]');
             namingElt = $('#'+this.lineProperty.nameEltGuiId);
 
@@ -422,11 +543,31 @@ module StudyLinesAddCombos {
             // update the state of the radio buttons to reflect whether valid inputs will result
             // in combinatorial line creation...inputs may not be provided yet, but best to give
             // feedback right away re: intention when a new row is added
-            if(hasMultipleInputs) {
-                combosButton.attr('checked', 'checked');
+            isIceFolder = this.lineProperty.jsonId == ICE_FOLDER_JSON_ID;
+            isStrains = this.lineProperty.inputLabel == STRAINS_META_NAME;
+            aggregateComboIntended = (isIceFolder ||
+                (isStrains && creationManager.getPropertyInput(ICE_FOLDER_JSON_ID)));
+            comboInputIntended = this.hasMultipleInputs() || aggregateComboIntended;
+
+            let wasChecked: boolean, btn: JQuery;
+            if(comboInputIntended) {
+                wasChecked = combosButton.prop('checked');
+                combosButton.prop('checked', true);
+                btn = combosButton;
             }
             else {
-                noCombosButton.attr('checked', 'checked');
+                wasChecked = noCombosButton.prop('checked');
+                noCombosButton.prop('checked', true);
+                btn = noCombosButton;
+            }
+
+            // if the selection is auto-updated, animate the newly selected button to call
+            // the user's attention to it
+            if(!wasChecked) {
+                btn.effect('bounce',
+                    {
+                        times: BOUNCES,
+                    }, BOUNCE_SPEED);
             }
 
             noCombosButton.prop('disabled', true);
@@ -434,19 +575,17 @@ module StudyLinesAddCombos {
             // update step 2 naming elements for this line property... if valid values are provided
             // for combinatorial input, style the step 2 naming element to reflect that its
             // required to produce unique line names
-            hasComboValues = this.validInputCount() > 1; // TODO: note assumption re: multivalued
-                                                         // inputs!
             if(this.lineProperty.jsonId === REPLICATE_COUNT_JSON_ID) {
                 // do special-case processing for replicate count input...though it's displayed
                 // in step 1 as "apply to all lines", if > 1, then it's "combinatorial" from the
                 // standpoint that replicate # is required input to computing unique line names
-                console.log('Replicates = ' + this.getInput(0));
                 namingElt.toggleClass('required-name-elt', this.getInput(0) > 1);
                 return;
             }
 
-            namingElt.toggleClass('required-name-elt', hasComboValues);
-            noCombosButton.attr('disabled', String(hasComboValues || this.supportsCombinations));
+            nameInputRequired = this.hasValidCombinations();
+            namingElt.toggleClass('required-name-elt', nameInputRequired);
+            noCombosButton.attr('disabled', String(nameInputRequired || this.supportsCombinations));
         }
 
         getValueJson(): any {
@@ -457,14 +596,16 @@ module StudyLinesAddCombos {
                 }
             });
 
-            // if there's only one valid value, don't package it in an array
-            if(values.length == 1) {
+            // if there's only one valid value, don't package it in an array, unless there's
+            // some special reason to treat a single value as combinatorial (e.g. a single strain
+            // when an ICE folder is also present).
+            if(values.length == 1 && !this.hasValidCombinations()) {
                 return values[0];
             }
             return values;
         }
 
-        fillRow(row: JQuery):void {
+        fillRowControls(row: JQuery, initialValue?: any):void {
             var firstRow: boolean, row: JQuery, inputCell: JQuery, addCell: JQuery,
                 applyAllCell: JQuery, makeComboCell: JQuery, labelCell: JQuery,
                 noComboButton: JQuery, yesComboButton: JQuery, flewGrowWrapper: JQuery;
@@ -482,7 +623,7 @@ module StudyLinesAddCombos {
 
             firstRow = this.getRowCount() == 1;
             if(firstRow) {
-                this.buildAddControl(addCell);
+                this.buildAddBtn(addCell);
                 this.getLabel()
                     .appendTo(labelCell);
             }
@@ -494,7 +635,7 @@ module StudyLinesAddCombos {
 
             flewGrowWrapper = $('<div>').addClass('inputContent').appendTo(inputCell);
 
-            this.fillInputControls(flewGrowWrapper);
+            this.fillInputControls(flewGrowWrapper, initialValue);
 
             applyAllCell = $('<div>')
                 .addClass('bulk_lines_table_cell')
@@ -518,21 +659,19 @@ module StudyLinesAddCombos {
             this.updateInputState();
         }
 
-        fillInputControls(inputCell: JQuery): void {
+        fillInputControls(inputCell: JQuery, initialValue?:any): void {
              // by default, just fill in a single text box.  child classes may override with
             // alternate user inputs
-            var text: JQuery, hidden: JQuery, self: LinePropertyInput;
-            self = this;
+            var self: LinePropertyInput = this;
 
-            text = $('<input type="text">')
-                .addClass('columnar-text-input');
-            text.on('change', function () {
-                self.updateInputState();
-                creationManager.updateNameEltChoices();
-            });
+            $('<input type="text">')
+                .addClass('columnar-text-input')
+                .on('change', function () {
+                    self.updateInputState();
+                    creationManager.updateNameEltChoices(false);
+                })
+                .appendTo(inputCell);
 
-            inputCell.append(text)
-                .append(hidden);
             this.buildRemoveBtn(inputCell);
         }
 
@@ -551,7 +690,7 @@ module StudyLinesAddCombos {
 
         postRemoveCallback(rowIndex: number, hadValidInput:boolean):void {
             if(hadValidInput) {
-                creationManager.updateNameEltChoices();
+                creationManager.updateNameEltChoices(hadValidInput);
             }
         }
 
@@ -604,7 +743,7 @@ module StudyLinesAddCombos {
             return values;
         }
 
-        fillRow(row: JQuery):void {
+        fillRowControls(row: JQuery, initialValue?: any):void {
             var row: JQuery, valCell: JQuery, nameCell: JQuery,
                 self: CustomElementInput, rowIndex: number;
             self = this;
@@ -629,15 +768,14 @@ module StudyLinesAddCombos {
                         // update labeling for list item in the 'name element order' subsection
                         $('#name_elt' +self.element.nameEltGuiId).text(self.element.nameEltLabel);
 
-                        creationManager.updateNameEltChoices();
+                        creationManager.updateNameEltChoices(true);
                 });
             valCell = this.addCustomNameInput(row, 'custom-val-cell', 'custom-val-input')
                 .on('change', null, {'rowIndex': rowIndex, 'elementInput': this},
                     (ev:JQueryMouseEventObject) => {
                         // TODO: cache previous hasValidInput() state and use here to avoid extra
                         // processing / back end requests
-                        creationManager.updateNameEltChoices();
-                        creationManager.queuePreviewUpdate();
+                        creationManager.updateNameEltChoices(true);
                 });
 
             this.buildRemoveBtn(valCell);
@@ -701,8 +839,7 @@ module StudyLinesAddCombos {
         }
 
         postRemoveCallback(): void {
-            creationManager.updateNameEltChoices();
-            creationManager.queuePreviewUpdate();
+            creationManager.updateNameEltChoices(true);
         }
 
         removeFromForm() {
@@ -712,7 +849,7 @@ module StudyLinesAddCombos {
 
     export class AbbreviationInput extends LinePropertyInput {
 
-        constructor(options:any) {
+        constructor(options:LinePropertyInputOptions) {
             super(options);
 
             // override default labeling from the parent
@@ -760,7 +897,7 @@ module StudyLinesAddCombos {
             return values;
         }
 
-        fillRow(row: JQuery):void {
+        fillRowControls(row: JQuery, initialValue?: any):void {
             var firstRow: boolean, row: JQuery, valCell: JQuery, addCell: JQuery,
                 abbrevCell: JQuery, labelCell: JQuery, self: AbbreviationInput;
             self = this;
@@ -778,7 +915,7 @@ module StudyLinesAddCombos {
 
             firstRow = this.getRowCount() == 1;
             if(firstRow) {
-                this.buildAddControl(addCell);
+                this.buildAddBtn(addCell);
                 this.getLabel()
                     .appendTo(labelCell);
             }
@@ -850,7 +987,7 @@ module StudyLinesAddCombos {
 
         autoInput: EDDAuto.BaseAuto;
 
-        constructor(options) {
+        constructor(options: LinePropertyInputOptions) {
             super(options);
         }
 
@@ -871,7 +1008,7 @@ module StudyLinesAddCombos {
 
             hidden.on('change', function() {
                 self.updateInputState();
-                creationManager.updateNameEltChoices();
+                creationManager.updateNameEltChoices(true);
             });
 
             inputCell.append(visible)
@@ -885,7 +1022,7 @@ module StudyLinesAddCombos {
                     'hiddenInput': hidden,
                 });
             }
-            else if(CARBON_SOURCE_META_NAME === this.lineProperty.inputLabel) {
+            else if(EddRest.CARBON_SOURCE_META_NAME === this.lineProperty.inputLabel) {
                 visible.attr('eddautocompletetype', "CarbonSource");
                 this.autoInput = new EDDAuto.CarbonSource({
                     'container': inputCell,
@@ -893,13 +1030,12 @@ module StudyLinesAddCombos {
                     'hiddenInput': hidden,
                 });
             }
-            else if(STRAINS_META_NAME === this.lineProperty.inputLabel) {
+            else if(EddRest.STRAINS_META_NAME === this.lineProperty.inputLabel) {
                 visible.attr('eddautocompletetype', "Registry");
                 this.autoInput = new EDDAuto.Registry({
                     'container': inputCell,
                     'visibleInput': visible,
                     'hiddenInput': hidden,
-                    //'searchExtra': ,  TODO: reconsider strain filtering
                 });
             }
             this.buildRemoveBtn(inputCell);
@@ -909,7 +1045,7 @@ module StudyLinesAddCombos {
             var stringVal: string;
             stringVal = this.rows[rowIndex].find('input[type=hidden]').first().val();
 
-            if(this.lineProperty.inputLabel == STRAINS_META_NAME) {
+            if(this.lineProperty.inputLabel == EddRest.STRAINS_META_NAME) {
                 // strain autocomplete uses UUID
                 return stringVal;
             }
@@ -922,7 +1058,7 @@ module StudyLinesAddCombos {
         yesCheckbox: JQuery;
         noCheckbox: JQuery;
 
-        constructor(options:any) {
+        constructor(options:LinePropertyInputOptions) {
             super(options);
         }
 
@@ -935,7 +1071,7 @@ module StudyLinesAddCombos {
             this.yesCheckbox = $('<input type="checkbox">')
                 .on('change', function() {
                     self.updateInputState();
-                    creationManager.updateNameEltChoices();
+                    creationManager.updateNameEltChoices(true);
                 })
                 .appendTo(buttonsDiv);
             $('<label>')
@@ -945,7 +1081,7 @@ module StudyLinesAddCombos {
                 .addClass('noCheckBox')
                 .on('change', function() {
                     self.updateInputState();
-                    creationManager.updateNameEltChoices();
+                    creationManager.updateNameEltChoices(true);
                 })
                 .appendTo(buttonsDiv);
             $('<label>')
@@ -985,23 +1121,34 @@ module StudyLinesAddCombos {
     }
 
     export class NumberInput extends LinePropertyInput {
-        constructor(options:any) {
+        constructor(options:LinePropertyInputOptions) {
             options.maxRows = 1;
-            options.minRows = 1;
             options.supportsCombinations = false;
             super(options);
         }
 
-        hasValidInput(rowIndex: number):boolean {
-            return $('#spinner').val() > 1;
-        }
+        fillInputControls(inputCell: JQuery): void {
+            // overrides the default behavior of providing a simple text input, instead creating
+            // a numeric spinner for controling combinatorial replicate creation
+            let spinner: JQuery, self: NumberInput;
+            self = this;
 
-        fillInputControls(rowContainer: JQuery): void {
-            $('<input id="spinner">')
-                .val(1)
-                .addClass('columnar-text-input')
-                .addClass('step2-value-input')
-                .appendTo(rowContainer);
+            // add spinner to the DOM first so spinner() function will work
+            spinner = $('<input id="replicate_spinner">');
+            spinner.addClass('columnar-text-input')
+                   .addClass('step2-value-input')
+                    .appendTo(inputCell);
+
+            // add spinner styling
+            spinner.spinner({
+                        min: 1,
+                            change: function(event, ui) {
+                                self.updateInputState();
+                                creationManager.updateNameEltChoices(true);
+                            }})
+                    .val(1);
+
+            this.buildRemoveBtn(inputCell);
         }
 
         getInput(rowIndex: number): any {
@@ -1010,8 +1157,149 @@ module StudyLinesAddCombos {
         }
     }
 
+    export class IceFolderInput extends LinePropertyInput {
+
+        constructor(options:LinePropertyInputOptions) {
+            super(options);
+            this.supportsCombinations = true;
+        }
+
+        hasValidInput(rowIndex: number):boolean {
+            // inputs are pre-checked when provided in a popup dialog.  Invalid input impossible.
+            return true;
+        }
+
+        hasValidCombinations(): boolean {
+            // any valid folder input should result in combinatorial line creation
+            return !!this.validInputCount();
+        }
+
+        // overrides behavior in the parent class, whose default is to automatically add a row each
+        // time the button is clicked.  In this case, we want to launch a dialog and force the user
+        // to choose input first, then the row added to the form will be read-only feedback of
+        // user selections made in the dialog.
+        buildAddBtn(container: JQuery) {
+            var self = this;
+            // only add the control to the first row
+            if ((this.getRowCount() == 1) && (this.getRowCount() < this.maxRows)) {
+                this.addButton = $('<button>')
+                    .addClass('addButton')
+                    .on('click', () => {self.appendRow();})
+                    .appendTo(container);
+
+                $('<span>').addClass('ui-icon')
+                    .addClass('ui-icon-plus').appendTo(this.addButton);
+            }
+        }
+
+        fillInputControls(inputCell: JQuery, folder: IceFolder): void {
+            var filtersDiv: JQuery;
+
+            this.rows[this.rows.length-1].data(folder);
+            $('<a>')
+                .prop('href', folder.url)
+                .prop('target', '_blank')
+                .text(folder.name)
+                .addClass('ice-folder-name')
+                .appendTo(inputCell);
+
+            filtersDiv = $('<div>')
+                .addClass('ice-folder-filters-div')
+                .appendTo(inputCell);
+
+            folder.entryTypes.forEach(entryType => {
+                $('<span>')
+                    .text(entryType.toLowerCase())
+                    .addClass('badge badge-default entry-filter-value')
+                    .appendTo(filtersDiv)
+            });
+
+            this.buildRemoveBtn(inputCell);
+        }
+
+        /**
+         * Overrides the superclass to prompt the user with a dialog, requiring validated
+         * input before inserting a read-only row into the main form.
+         */
+        appendRow(initialInput?: IceFolder): void {
+
+            if(!initialInput) {
+                creationManager.showIceFolderDialog();
+                return;
+            }
+            var newRow: JQuery, parent: JQuery, atMax: boolean, prevRow: JQuery;
+
+            prevRow = this.rows[this.rows.length-1];
+
+            newRow = $('<div>')
+                .addClass('table-row')
+                .insertAfter(prevRow);
+            this.fillRowControls(newRow, initialInput);
+
+            this.updateInputState();
+
+            // unlike other inputs, addition of a row to the main form indicates a new, valid
+            // user input. force an update to the preview
+            creationManager.updateNameEltChoices(true);
+        }
+
+        getValueJson(): any {
+            var folders: number[] = [];
+            this.rows.forEach(row => {
+                let folder = <IceFolder> row.data();
+                folders.push(folder.id);
+            });
+            return folders;
+        }
+
+        getFiltersJson(): any {
+            var filters = {};
+            this.rows.forEach(row => {
+                let folder = <IceFolder> row.data();
+                filters[folder.id] = folder.entryTypes;
+            });
+            return filters;
+        }
+
+        getInput(rowIndex: number): any {
+            var textInput = super.getInput(rowIndex);
+            return +textInput;
+        }
+
+        autoUpdateCombinations() {
+            var hasMultipleInputs: boolean, hasComboValues: boolean, combosButton:JQuery,
+                noCombosButton:JQuery, namingElt:JQuery, supportsMultivalue: boolean;
+
+            // get references to the buttons used to indicate whether this ICE folder results
+            // in combinatorial line creation.
+            noCombosButton = this.rows[0].find('input:radio[value=No]');
+            combosButton = this.rows[0].find('input:radio[value=Yes]');
+
+            // Note: this control depends on guarantee that the controller will create the same
+            // GUI id for strain name, regardless of whether it origiated w/ an ICE folder or
+            // direct strain entry
+            namingElt = $('#'+this.lineProperty.nameEltGuiId);
+            namingElt.toggleClass('required-name-elt', hasComboValues);
+
+            // Set static state associated with this input.  Though other inputs may eventually
+            // allow users to choose whether to treat inputs as multivalued or combinatorial,
+            // the existence of an ICE folder in the form requires that combinatorial line
+            // creation be performed
+            combosButton.attr('checked', 'checked');
+            combosButton.prop('disabled', true);
+            noCombosButton.prop('disabled', true);
+        }
+    }
+
     export class CreationManager {
-        replicateInput: LinePropertyInput;
+        // line metadata type info that drives the whole UI
+        allLineMetaTypes: any = {};
+        nonAutocompleteLineMetaTypes: any[] = [];
+        autocompleteLineMetaTypes: any = {};
+        userMetaTypePks: number[];
+        multivaluedMetaTypePks: number[] = [];
+        strainMetaPk: number = -1;
+        strainNameEltJsonId: string = null;
 
         // step 1 : line property inputs (one per line property, regardless of row count)
         lineProperties:LinePropertyInput[] = [];
@@ -1023,28 +1311,17 @@ module StudyLinesAddCombos {
         // user-selected name elements from step 2, refreshed shortly *after* user input
         lineNameElements:any[] = [];
 
-        nonAutocompleteLineMetaTypes: any[] = [];
-        autocompleteLineMetaTypes: any = {};
-        allLineMetaTypes: any = {};
-        userMetaTypePks: number[];
-        multivaluedMetaTypePks: number[] = [];
-
         previewUpdateTimerID:number = null;
 
+        // step 3 state
         plannedLineCount = 0;
 
         constructor() {
-            this.replicateInput = new NumberInput({
-                    'lineProperty': new LinePropertyDescriptor(REPLICATE_COUNT_JSON_ID,
-                                                                 'Replicates', 'Replicate #',
-                                                                  REPLICATE_NUM_NAME_ID)});
-            this.lineProperties = [this.replicateInput];
         }
 
         // Start a timer to wait before calling updating the line name preview, which requires
         // an AJAX call to the back end
         queuePreviewUpdate(): void {
-            $('#step3Label').addClass('wait');
             if (this.previewUpdateTimerID) {
                 clearTimeout(this.previewUpdateTimerID);
             }
@@ -1052,7 +1329,12 @@ module StudyLinesAddCombos {
             // 250 in import
         }
 
-        addInput(lineProperty: LinePropertyDescriptor): void {
+        /*
+         * Adds an empty input into the form.  Most form elements are added this way, with the
+         * exception of ICE folders, which must first have a valid value in order to be added to
+         * the form.
+        */
+        addEmptyInput(lineProperty: LinePropertyDescriptor): void {
             var newInput: LinePropertyInput, autocompleteMetaItem:any;
 
             autocompleteMetaItem = this.autocompleteLineMetaTypes[lineProperty.jsonId];
@@ -1060,18 +1342,20 @@ module StudyLinesAddCombos {
                 newInput = new LinePropertyAutoInput({'lineProperty': lineProperty});
             }
             else if(EddRest.CONTROL_META_NAME == lineProperty.inputLabel) {
-                newInput = new BooleanInput({'lineProperty': lineProperty, 'maxRows': 1})
+                newInput = new BooleanInput({'lineProperty': lineProperty, 'maxRows': 1});
+            }
+            else if(REPLICATE_COUNT_JSON_ID == lineProperty.jsonId) {
+                newInput = new NumberInput({'lineProperty': lineProperty});
             }
             else {
                 newInput = new LinePropertyInput({'lineProperty': lineProperty});
             }
 
-            this.lineProperties.push(newInput);
             this.addLineProperty(newInput);
         }
 
         removeLineProperty(lineProperty: LinePropertyDescriptor): void {
-            var foundIndex = -1;
+            var foundIndex = -1, propertyInput: LinePropertyInput;
             this.lineProperties.forEach(function(property, index:number) {
                 if(property.lineProperty.jsonId === lineProperty.jsonId) {
                     foundIndex = index;
@@ -1080,15 +1364,22 @@ module StudyLinesAddCombos {
             });
 
             // remove the property from our tracking and from the DOM
-            this.lineProperties.splice(foundIndex, 1);
-            $('#line-properties-table')
-                .children('.line_attr_' + lineProperty.jsonId)
-                .remove();
+            if(foundIndex >= 0) {
+                propertyInput = this.lineProperties[foundIndex];
+                this.lineProperties.splice(foundIndex, 1);
+                $('#line-properties-table')
+                    .children('.line_attr_' + lineProperty.jsonId)
+                    .remove();
+
+                this.updateLinkedStrainInputs(propertyInput, false);
+            }
 
             // restore user's ability to choose this option via the "add property" dialog
             $('#lineProp' + lineProperty.jsonId).removeClass('hide');
 
-            this.updateNameEltChoices();
+            //TODO: optimize by detecting whether the remaining row was non-blank...this always
+            // forces a preview update, which is sometimes unnecessary
+            this.updateNameEltChoices(true);
         }
 
         removeAbbrev(lineProperty: LinePropertyDescriptor): void {
@@ -1132,11 +1423,34 @@ module StudyLinesAddCombos {
             this.queuePreviewUpdate();
         }
 
-        addLineProperty(input:LinePropertyInput): void {
+        addLineProperty(input:LinePropertyInput, initialValue?: any): void {
+            this.lineProperties.push(input);
             var parentDiv: JQuery, rowClass: string;
             parentDiv = $('#line-properties-table');
             rowClass = 'line_attr_' + input.lineProperty.nameEltJsonId;
-            this.insertRow(input, parentDiv, rowClass);
+            this.insertRow(input, parentDiv, rowClass, initialValue);
+
+            this.updateLinkedStrainInputs(input, true);
+
+            // if new input has a valid initial value, update state, e.g. enabling the "next"
+            // button to proceed to step 2
+            if(input.hasValidInput(0)) {
+                this.updateNameEltChoices(true);
+            }
+        }
+
+        updateLinkedStrainInputs(input: LinePropertyInput, adding: boolean): void {
+            // do special-case processing to link single strain and ICE folder inputs.
+            // Single-strain input must be treated as combinatorial if there's also an ICE folder
+            // present, since the input strains will be merged and used for combinatorial creation
+            if(input.lineProperty.jsonId == ICE_FOLDER_JSON_ID) {
+                let strainInput = this.getPropertyInput(this.strainMetaPk);
+                if(strainInput) {
+                    strainInput.autoUpdateCombinations();
+                }
+            } else if(adding && input.lineProperty.jsonId == this.strainMetaPk) {
+                input.autoUpdateCombinations();
+            }
         }
 
         addAbbreviation(lineAttr:LinePropertyDescriptor): void {
@@ -1161,18 +1475,17 @@ module StudyLinesAddCombos {
             this.updateHasCustomNameElts();
         }
 
-        insertRow(input:MultiValueInput, parentDiv:JQuery, rowClass:string): void {
+        insertRow(input:MultiValueInput, parentDiv:JQuery, rowClass:string,
+                  initialValue?: any): void {
             var row: JQuery;
             row = $('<div>')
                     .addClass(rowClass)
                     .addClass('table-row')
                     .appendTo(parentDiv);
-            input.fillRow(row);
+            input.fillRowControls(row, initialValue);
         }
 
         buildStep2Inputs(): void {
-
-
             // set up connected lists for naming elements
             $( "#line_name_elts, #unused_line_name_elts" ).sortable({
               connectWith: ".connectedSortable",
@@ -1199,51 +1512,81 @@ module StudyLinesAddCombos {
             // set up selectable list for abbreviations dialog
             $('#line-name-abbrev-list').selectable();
 
-            $('#create-lines-btn').on('click', this.createLines.bind(this));
+            $('#add-lines-btn').on('click', this.createLines.bind(this));
 
             // set up behavior for supported error workarounds
             // 1) De-emphasize related error messages when workaround is in place
-            // 2) Show any additional text describing the resulting behavior
-            nonStrainsChbx = $('#non-strains-opts-chkbx');
-            nonStrainsChbx.on('change', ()=> {
-                var checked:boolean = nonStrainsChbx.prop('checked');
-                $('.non-strains-err-message').toggleClass('errorMessage', !checked)
-                    .toggleClass('disabledErrMsg', checked);
-                creationManager.queuePreviewUpdate();
-            });
+            $('#non-strains-opts-chkbx')
+                .on('change', {
+                alertClass: '.non-strains-err-message',
+                chkbxClass: '.non-strains-chkbx',
+            }, creationManager.duplicateCheckboxChecked);
 
-            ignoreIceAccessErrsChkbx = $('#ignore-ice-access-errors-opts-chkbx');
-            ignoreIceAccessErrsChkbx.on('change', () => {
-                var checked:boolean = ignoreIceAccessErrsChkbx.prop('checked');
-                $('.ice-access-err-message').toggleClass('errorMessage', !checked)
-                    .toggleClass('disabledErrMsg', checked);
-                $('#strains-omitted-span').toggleClass('hide', !checked);
-                creationManager.queuePreviewUpdate();
-            });
+            $('#ignore-ice-access-errors-opts-chkbx')
+                .on('change', {
+                alertClass: '.ice-access-err-message',
+                chkbxClass: '.ignore-ice-errors-chkbx',
+                showWhenCheckedSelector: '#strains-omitted-span',
+            }, creationManager.duplicateCheckboxChecked);
+
+            $('#completion-email-opt-chkbx')
+                .on('change', {
+                alertClass: '.timeout-error-alert',
+                chkbxClass: '.completion-email-chkbx',
+            }, (evt) => creationManager.duplicateCheckboxChecked(evt, false));
+        }
+
+        duplicateCheckboxChecked(event, updatePreview?:boolean): void {
+            var chxbx: JQuery, checked:boolean, targetId: string, otherChkbx: JQuery,
+                alertClass: string, chkboxClass: string, updatePreview: boolean, completeFunction;
+            chxbx = $(event.target);
+            checked = chxbx.prop('checked');
+            targetId = chxbx.prop('id');
+
+            alertClass = event.data.alertClass;
+            chkboxClass = event.data.chkbxClass;
+
+            // if visible, change styling on the related Step 3 alert to show it's been aknowleged
+            $(alertClass)
+                .toggleClass('alert-danger', !checked)
+                .toggleClass('alert-warning', checked);
+
+            completeFunction = () => creationManager.queuePreviewUpdate();
+            updatePreview = updatePreview !== false;  // true except when param is explicitly false
+            if(!updatePreview) {
+                completeFunction = () => {};
+            }
+
+            // animate, then auto-check the other (duplicate) checkbox in the form,
+            // then resubmit the back-end preview request
+            otherChkbx = $(chkboxClass)
+                .filter((idx: number, elt: Element) => {
+                    return $(elt).prop('id') != targetId;
+                })
+                .prop('checked', checked)
+                .effect('bounce',
+                    {
+                        times: BOUNCES,
+                        complete: completeFunction,
+                    }, BOUNCE_SPEED);
+
+            // if there is no other checkbox (e.g. 'options' variant was UN-checked in absence of
+            // an error), still do the preview update
+            if(!otherChkbx.length) {
+                completeFunction();
+            }
+
+            if(event.data.showWhenCheckedSelector) {
+                $(event.data.showWhenCheckedSelector).toggleClass('hide', !checked);
+            }
         }
 
         buildStep1Inputs(): void {
-
             creationManager.buildAddPropDialog();
+            creationManager.buildAddIceFolderDialog();
 
             // set up selectable list for abbreviations dialog
             $('#line-properties-list').selectable();
-
-            // add options for any naming elements that should be available by default
-            this.lineProperties.forEach((input: LinePropertyInput, i: number): void => {
-                this.addLineProperty(input);
-            });
-
-            // style the replicates spinner
-            $("#spinner").spinner({
-                min: 1,
-                change: function(event, ui) {
-                        creationManager.replicateInput.updateInputState();
-                        creationManager.updateNameEltChoices();
-                    }});
-
-            // update step 3 choices based on step 2 defaults
-            this.updateNameEltChoices();
 
             $('#step1-next-btn').on('click', this.showStep2.bind(this));
         }
@@ -1265,17 +1608,30 @@ module StudyLinesAddCombos {
             }, SCROLL_DURATION_MS);
         }
 
-        updateNameEltChoices(): boolean {
+        updateNameEltChoices(forcePreviewUpdate: boolean): boolean {
             var availableElts: any[], prevNameElts: LinePropertyDescriptor[],
                 newElts: LinePropertyDescriptor[], unusedList: JQuery, unusedChildren: JQuery,
-                nameEltsChanged:boolean, self:CreationManager;
-            console.log('updating available naming elements');
+                nameEltsChanged:boolean, self:CreationManager, step2Disabled: boolean,
+                step3Disabled: boolean, step2: JQuery, step3: JQuery, prevEltCount: number;
 
-            //build an updated list of available naming elements based on user entries in step 1
+            prevEltCount = this.lineNameElements.length;
+            this.lineNameElements = [];
+
+            //build an updated list of available/unique naming elements based on user entries in
+            // step 1.
             availableElts = [];
             this.lineProperties.forEach((input: LinePropertyInput): void => {
                 var elts: LinePropertyDescriptor[] = input.getNameElements();
-                availableElts = availableElts.concat(elts);
+
+                // append only unique name elements... Strain properties, for example can be
+                // options for Step 1 input of either ICE folders or strains
+                elts.forEach(newElt => {
+                    if(availableElts.filter(elt => {
+                            return elt.nameEltJsonId == newElt.nameEltJsonId;
+                        }).length == 0) {
+                        availableElts.push(newElt);
+                    }
+                });
             });
             this.customNameAdditions.forEach((input: CustomElementInput): void => {
                 var elt: CustomNameElement = input.getNamingElement();
@@ -1288,29 +1644,27 @@ module StudyLinesAddCombos {
             // 2 so they can be appended at the end of the step 3 list without altering
             // previous user entries into WIP line name ordering
             newElts = availableElts.slice();
-            self = this;
             $('#line_name_elts').children().each((childIndex:number, childElt) => {
-                var element:any, nameElement:NameElement, newEltIndex:number, child:any;
+                var nameElement:NameElement, child:any;
 
                 // start to build up a list of newly-available selections. we'll clear out more of
                 // them from the list of unavailable ones
                 child = $(childElt);
                 nameElement = child.data();
 
-                for(newEltIndex = 0; newEltIndex < newElts.length; newEltIndex++) {
-                    element = newElts[newEltIndex];
+                for(let newEltIndex = 0; newEltIndex < newElts.length; newEltIndex++) {
+                    let element = newElts[newEltIndex];
 
                     if(element.nameEltGuiId == nameElement.nameEltGuiId) {
-                        self.lineNameElements.push(nameElement);
-                            newElts.splice(newEltIndex, 1);
-                            return true;  // continue outer loop
+                        creationManager.lineNameElements.push(nameElement);
+                        newElts.splice(newEltIndex, 1);
+                        return true;  // continue outer loop
                     }
                 }
                 child.remove();
                 return true;  // continue looping
              });
 
-            console.log('Available name elements: ' + availableElts);
 
             unusedList = $('#unused_line_name_elts');
             unusedChildren = unusedList.children();
@@ -1329,9 +1683,8 @@ module StudyLinesAddCombos {
                             return true; // continue outer loop
                         }
                     }
-                    console.log('Removing ' + listElement.textContent + ' from unused list');
                     listElement.remove();
-                    return true;
+                    return true; // continue looping
                 });
             }
 
@@ -1368,28 +1721,43 @@ module StudyLinesAddCombos {
                     .addClass('ui-icon-arrowthick-2-n-s')
                     .addClass('name-elt-icon')
                     .appendTo(li);
-                    //.css('height', '100%');
             });
 
+            // enable / disable "next" buttons based on user actions in earlier steps
+            step2Disabled = availableElts.length === 0;
+            step3Disabled = this.lineNameElements.length === 0;
+            $('#step1-next-btn').prop('disabled', step2Disabled);
+            $('#step2-next-btn').prop('disabled', step3Disabled);
+
+            // auto-hide steps 2 and 3 if user went back to an earlier step and removed their
+            // required inputs.  Note we purposefully *don't* auto-show them, since we want user to
+            // confirm completion of the previous step by clicking "next". Note we hide step 3
+            // first to prevent "jumping" behavior
+            step2 = $('#step2');
+            step3 = $('#step3');
+
+            if(step3Disabled && !step3.hasClass('hide')) {
+                step3.addClass('hide');
+            }
+
+            if(step2Disabled && !step2.hasClass('hide')) {
+                step2.addClass('hide');
+            }
             // TODO: skip JSON reconstruction / resulting server request if selected naming
             // elements are the same as before preceding changes added additional unselected
             // options. Note that since the form will never add a naming element automatically,
             // comparing array dimensions is enough
-            nameEltsChanged = this.lineNameElements.length != $('#line_name_elts').children().length;
-            if(nameEltsChanged) {
+            nameEltsChanged = this.lineNameElements.length != prevEltCount;
+            if(nameEltsChanged || forcePreviewUpdate) {
                 this.queuePreviewUpdate();
                 return true;
             }
-
-            $('#step1-next-btn').prop('disabled', availableElts.length === 0);
-            $('#step2-next-btn').prop('disabled', this.lineNameElements.length === 0);
 
             return false;
         }
 
         updatePreview(): void {
-            var self: CreationManager, json: string, csrfToken: string, statusDiv: JQuery,
-                allowNonStrains: boolean, isIgnoreIceErrors: boolean, url:string, step3Allowed: boolean;
+            var self: CreationManager, json: string, url:string, step3Allowed: boolean;
             self = this;
             //build an updated list of naming elements based on user entries in step 2. Note
             // that events from the connected lists don't give us enough info to know which element
@@ -1402,7 +1770,7 @@ module StudyLinesAddCombos {
 
             step3Allowed =  $('#unused_line_name_elts')
                                 .children('.required-name-elt')
-                                .length === 0;
+                                .length === 0 && (this.lineNameElements.length > 0);
             $('#step2-next-btn').prop('disabled', !step3Allowed);
 
             // if user went back up and added combinatorial data to step 1, hide step 3 until
@@ -1412,16 +1780,10 @@ module StudyLinesAddCombos {
                  return;
             }
 
-            // clear preview and return early if insufficient inputs available
-            if(!this.lineNameElements.length) {
-                $('#step3-status-div').empty().text('Select at least one line name element' +
-                    ' above').removeClass('errorMessage');
-                $('#line-preview-table').addClass('hide');
-                $('create-lines-btn').prop('disabled', true);
-                return;
-            } else {
-                $('#step3-status-div').empty();
-            }
+            // before submitting the potentially long-running AJAX request, disable all Step 3
+            // inputs and show a basic progress indicator
+            creationManager.setStep3InputsEnabled(false);
+            $('#step3-waiting-div').removeClass('hide');
 
             json = this.buildJson();
 
@@ -1444,25 +1806,38 @@ module StudyLinesAddCombos {
             $('#step3Label').removeClass('wait');
         }
 
+        setStep3InputsEnabled(enabled: boolean) {
+            $('#step3 :input').prop('disabled', !enabled);
+            $('#step3').toggleClass('disabledStep3', !enabled);
+            $('#step3 #step3-waiting-div').removeClass('disabledStep3');
+        }
+
         buildRequestUrl(dryRun: boolean): string {
             var url: string, params: string[], allowNonStrains: boolean,
-                isIgnoreIceErrors: boolean;
+                isIgnoreIceErrors: boolean, sendEmail: boolean;
 
             params = [];
             url = '../../describe/';
 
+            // aggregate GET parameters to include with the request.  Though these could be
+            // included in the JSON, they're purposefully separate so they can also be used in the
+            // ED file upload.
             if(dryRun) {
                 params.push('DRY_RUN=True');
             }
 
             allowNonStrains = $('#non-strains-opts-chkbx').prop('checked');
             isIgnoreIceErrors = $('#ignore-ice-access-errors-opts-chkbx').prop('checked');
+            sendEmail = $('#completion-email-opt-chkbx').is(':checked');
+            if(sendEmail) {
+                params.push(EMAIL_WHEN_FINISHED_PARAM + '=True');
+            }
 
             if(allowNonStrains) {
-                params.push(this.ALLOW_NON_STRAIN_PARTS_PARAM + '=True');
+                params.push(ALLOW_NON_STRAIN_PARTS_PARAM + '=True');
             }
             if(isIgnoreIceErrors) {
-                params.push( this.IGNORE_ICE_ACCESS_ERRORS_PARAM + '=True');
+                params.push( IGNORE_ICE_ACCESS_ERRORS_PARAM + '=True');
             }
 
             params.forEach((param: string, index: number) => {
@@ -1499,145 +1874,229 @@ module StudyLinesAddCombos {
         }
 
         lineCreationSuccess(responseJson): void {
-            $('#creation-status-div').text('Success!');
+            $('#creation-wait-spinner').addClass('hide');
+            $('<span>')
+                .text('Success')
+                .addClass('alert alert-success')
+                .appendTo('#creation-status-div');
             $('#return-to-study-btn').prop('disabled', false);
             $('#create-more-btn').prop('disabled', false);
         }
 
         lineCreationError(jqXHR, textStatus: string, errorThrown: string): void {
             var statusDiv, json, error, errors;
-            statusDiv = $('#creation-status-div');
+            $('#creation-wait-spinner').addClass('hide');
+            statusDiv = $('#creation-status-div').empty();
             json = jqXHR.responseJSON;
 
-            this.showErrorMessages(statusDiv, json);
-
-            //TODO: update text of the "create more" button to reflect that it'll return you to
-            // the form to make adjustments
-
-            //TODO: provide a "retry" button user can click to just repeat the request
+            this.showErrorMessages(statusDiv, json,  jqXHR.status, false,() => creationManager.createLines());
         }
-
-        NON_STRAINS_ERR_CATEGORY = 'Non-Strains';
-        ICE_ACCESS_ERROR_CATEGORIES = ['ICE part access problem', 'ICE access error'];
-
-        ALLOW_NON_STRAIN_PARTS_PARAM = 'ALLOW_NON_STRAIN_PARTS';
-        IGNORE_ICE_ACCESS_ERRORS_PARAM = 'IGNORE_ICE_ACCESS_ERRORS';
 
         updateStep3Error(jqXHR, textStatus: string, errorThrown: string): void {
-            var statusDiv:JQuery, json = jqXHR.responseJSON, errSummary: ErrSummary,
-                optionsDiv:JQuery, ignoreIceErrorsDiv:JQuery, nonStrainsDiv: JQuery;
+            var errsDiv:JQuery, json = jqXHR.responseJSON,
+                ignoreIceErrorsDiv:JQuery, nonStrainsDiv: JQuery, summary: ErrSummary, enableAddLines: boolean;
 
-            statusDiv = $('#step3-status-div')
-                            .empty()
-                            .removeClass('bulk-line-table');
+            $('#line-preview-div').addClass('hide');
 
-            errSummary = this.showErrorMessages(statusDiv, json);
+            errsDiv = $('#step3-errors-div')
+                .empty()
+                .removeClass('hide');
+            summary = this.showErrorMessages(errsDiv, json, jqXHR.status, true,
+                () => creationManager.queuePreviewUpdate());
+            enableAddLines = ($('#non-strains-opts-chkbx').prop('checked') ||
+                !summary.nonStrainErrors) && !summary.nonUniqueLineNames;
 
-            // If any ICE-related error has occurred, show options for supported workarounds.
-            // Once workarounds have been displayed, they should stay visible so user inputs don't
-            // get lost, even as other earlier form entries are altered
-            optionsDiv = $('#options-div');
-            if(optionsDiv.hasClass('hide') && (errSummary.iceAccessErrors ||
-                                               errSummary.nonStrainErrors)) {
-                optionsDiv.removeClass('hide');
-            }
+            $('#step3-waiting-div').addClass('hide');
 
-            if(!optionsDiv.hasClass('hide')) {
-                ignoreIceErrorsDiv = $('#ignore-ice-errors-opts-div');
-                if(ignoreIceErrorsDiv.hasClass('hide') && errSummary.iceAccessErrors) {
-                    ignoreIceErrorsDiv.removeClass('hide');
-                }
-
-                nonStrainsDiv = $('#non-strains-opts-div');
-                if(nonStrainsDiv.hasClass('hide') && errSummary.nonStrainErrors) {
-                    nonStrainsDiv.removeClass('hide');
-                }
-            }
-
-            $('#line-preview-table').empty()
-                .addClass('hide');
+            $('#add-lines-btn')
+                .prop('disabled', !enableAddLines);
         }
 
-        showErrorMessages(parentDiv: JQuery, json: any): ErrSummary
+        showErrorMessages(parentDiv: JQuery, json: any, httpStatus: number, preview: boolean,
+                          retryFunction): ErrSummary
         {
-            var errors, tableDiv: JQuery, cell:JQuery, anyNonStrainErr:boolean,
-                anyIceAccessError: boolean;
+            var errors, tableDiv: JQuery, anyNonStrainErr:boolean,
+                anyIceAccessError: boolean, nonUniqueLineNames: boolean, div;
+
+            creationManager.setStep3InputsEnabled(true);
+
+            div = $('<div>')
+                .addClass('add-combos-subsection')
+                .appendTo(parentDiv);
+
+            $('<label>')
+                .text('Error(s):')
+                .appendTo(div);
+
+            tableDiv = $('<div>')
+                .addClass('bulk-line-table')
+                .appendTo(parentDiv);
+
+            nonUniqueLineNames = false;
+
             if(json) {
                 errors = json['errors'];
 
                 if(errors) {
-                    $('<div>')
-                        .text('Error(s):')
-                        .addClass('step2_subsection')
-                        .appendTo(parentDiv);
-
-                    tableDiv = $('<div>')
-                        .addClass('bulk-line-table')
-                        .appendTo(parentDiv);
-
                     errors.forEach((error, index:number) =>
                     {
-                        var row: JQuery, cell: JQuery, isIceAccessErr: boolean,
-                            isNonStrainErr: boolean;
+                        var row: JQuery, isIceAccessErr: boolean, isNonStrainErr: boolean;
 
-                        row = $('<div>')
-                            .addClass('table-row')
-                            .addClass('errorMessage')
-                            .appendTo(tableDiv);
+                        isNonStrainErr = NON_STRAINS_ERR_CATEGORY === error.category;
+                        isIceAccessErr = ICE_ACCESS_ERROR_CATEGORIES.indexOf(error.category) >=0;
 
-                        isNonStrainErr = this.NON_STRAINS_ERR_CATEGORY === error.category;
-                        isIceAccessErr = this.ICE_ACCESS_ERROR_CATEGORIES.indexOf(error.category) >=0;
-
-
-                        if(isNonStrainErr) {
-                            row.addClass('non-strains-err-message');
-                        }
-                        if(isIceAccessErr) {
-                            row.addClass('ice-access-err-message');
-                        }
-
-                        // blank cell to keep things nested under the major heading
-                        cell = $('<div>')
-                            .addClass('bulk_lines_table_cell');
                         anyNonStrainErr = anyNonStrainErr ||  isNonStrainErr;
                         anyIceAccessError = anyIceAccessError || isIceAccessErr;
+                        nonUniqueLineNames = NON_UNIQUE_NAMES_ERR_CATEGORY === error.category;
 
-                        // category
-                        cell = $('<div>')
-                                .text(error.category + ": ")
-                                .addClass('bulk_lines_table_cell')
-                                .addClass('err-summary-label')
-                                .appendTo(row);
+                        row = this.appendAlert(tableDiv, error);
 
-                        cell = $('<div>')
-                                .text(error.summary)
-                                .addClass('bulk_lines_table_cell')
-                                .appendTo(row);
+                        if(isNonStrainErr) {
+                            creationManager.addAlertChkbx(row,'non-strains-alert-chkbx',
+                                'non-strains-opts-chkbx','non-strains-chkbx',
+                                'non-strains-err-message')
 
-                        cell = $('<div>')
-                                .text(error.details)
-                                .addClass('bulk_lines_table_cell')
-                                .appendTo(row);
+                        }
+                        if(isIceAccessErr) {
+                            if(error.summary && !error.summary.startsWith(UNRESOLVABLE_ACCESS_ERR)) {
+                                creationManager.addAlertChkbx(row, 'ignore-ice-access-errs-alert-chkbx',
+                                    'ignore-ice-access-errors-opts-chkbx', 'ignore-ice-errors-chkbx',
+                                    'ice-access-err-message', '#strains-omitted-span');
+                            }
+                        }
                     });
+
+                    // If any ICE-related error has occurred, show options for supported workarounds.
+                    // Once workarounds have been displayed, they should stay visible so user inputs don't
+                    // get lost, even as other earlier form entries are altered
+                    let ignoreIceErrorsDiv = $('#ignore-ice-errors-opts-div');
+                    let nonStrainsDiv = $('#non-strains-opts-div');
+                    if(anyIceAccessError && ignoreIceErrorsDiv.hasClass('hide')) {
+                        ignoreIceErrorsDiv.removeClass('hide');
+                    }
+                    if(anyNonStrainErr && nonStrainsDiv.hasClass('hide')) {
+                        nonStrainsDiv.removeClass('hide');
+                    }
                 } else {
-                    this.addUnexpectedErrResult(parentDiv);
+                    this.addUnexpectedErrResult(parentDiv, retryFunction);
                 }
-            } else {
-                this.addUnexpectedErrResult(parentDiv);
+            }
+            else if (httpStatus == 503) {
+                //provide a special-case error message to help users work around timeouts until
+                // the back-end is migrated to a Celery task with Websocket notifications.
+                let row: JQuery, details: string[];
+
+                if(preview) {
+                    details = ["This can occur when you ask EDD to create a" +
+                        " very large number of lines, e.g. from a large ICE folder.  You can try" +
+                        " again, or attempt to create lines anyway, then have EDD email you" +
+                        " when line creation succeeds or fails. It's unlikely that EDD will be" +
+                        " able to preview the results for you, so we only suggest proceeding" +
+                        " if this is an empty study, or you're experienced in using this tool." +
+                        " It's very likely that EDD will time out again during line creation, so" +
+                        " consider using email to monitor success."];
+                } else {
+                    details = ["This can occur when you ask EDD to create a" +
+                        " very large number of lines, e.g. from a large ICE folder.  EDD may" +
+                    " still succeed in creating your lines after a delay, but it won't be able" +
+                    " to display a success message here.  Check your study after a few minutes," +
+                    " then consider trying again, perhaps using email notification to" +
+                    " monitor progress."];
+                }
+                row = this.appendAlert(tableDiv, {
+                    category: 'Request timed out',
+                    summary: "EDD is unavailable or took too long to respond",
+                    details: details,
+                });
+
+                if(preview) {
+                    let btnDiv: JQuery, retryButton: JQuery, forceBtn: JQuery;
+                    creationManager.addAlertChkbx(row, 'completion-email-alert-chkbx',
+                        'completion-email-opt-chkbx', 'completion-email-chkbx',
+                        'timeout-error-alert', null, false);
+
+                    btnDiv = $('<div>');
+                    retryButton = addRetryButton(btnDiv, retryFunction);
+                    retryButton.removeClass('btn-secondary')
+                        .addClass('btn-primary');
+
+                    forceBtn = $("<button type='button'>")
+                        .prop('id', 'force-creation-btn')
+                        .addClass('btn btn-secondary')
+                        .on('click', (event:  Event) => {
+                            $(event.target).prop('disabled', true);
+                            creationManager.createLines();
+                        });
+
+                    $('<span>')
+                        .addClass('glyphicon')
+                        .addClass('glyphicon-warning-sign')
+                        .appendTo(forceBtn)
+                        .after(' ');
+
+                    $('<span>')
+                        .text('Force Line Creation')
+                        .appendTo(forceBtn);
+
+                    forceBtn.appendTo(btnDiv);
+                    btnDiv.appendTo(row);
+                }
+            }
+            else {
+                this.addUnexpectedErrResult(parentDiv, retryFunction);
             }
 
-            return new ErrSummary(anyIceAccessError, anyNonStrainErr);
+            return new ErrSummary(anyIceAccessError, anyNonStrainErr, nonUniqueLineNames);
         }
 
-        addUnexpectedErrResult(statusDiv: JQuery): void {
-            statusDiv.text('Unexpected error computing line names. ')
-                    .addClass('errorMessage');
-                $("<button type='button'>")
-                    .text(" Retry")
-                    .addClass('glyphicon')
-                    .addClass('glyphicon-refresh')
-                    .on('click', creationManager.queuePreviewUpdate.bind(creationManager))
-                    .appendTo(statusDiv);
+        // insert a checkbox into the alert error message matching the one under the Step 3
+        // "Options" section. Also copy the label text from the baked-in Step 3 checkbox so labels
+        // match. This puts user input for problem workarounds in context in the error message, but
+        // also makes the stateful controls visible across AJAX requests.
+        addAlertChkbx(alert: JQuery, alertChkbxId: string, optsChkbxId: string,
+                      checkboxClass: string, alertClass: string, showWhenCheckedSelector?: string,
+                      updatePreview?: boolean
+        ) {
+            var optLabel, alertLbl, alertChkbx, div;
+
+            updatePreview = updatePreview !== false; // true except when param is explicitly false
+
+            // make a new checkbox to put in the alert, linking it with the "options" checkbox
+            alertChkbx = $('<input type="checkbox">')
+                                .attr('id', alertChkbxId)
+                                .addClass(checkboxClass)
+                                .on('click', {
+                                    alertClass: '.' + alertClass,
+                                    chkbxClass: '.' + checkboxClass,
+                                    showWhenCheckedSelector: showWhenCheckedSelector,
+                                }, (evt) => {
+                                    creationManager.duplicateCheckboxChecked(evt, updatePreview)
+                                });
+
+            // copy the "options" label into the alert
+            optLabel = $('label[for="' + optsChkbxId +'"]');
+            alertLbl = $('<label>')
+                .text(optLabel.text())
+                .attr('for', alertChkbxId);
+
+            $('<div>')
+                .append(alertChkbx)
+                .append(' ')
+                .append(alertLbl)
+            .appendTo(alert);
+
+            // add a class that allows us to locate and restyle the alert later if the
+            // workaround is selected
+            alert.addClass(alertClass);
+        }
+
+        addUnexpectedErrResult(statusDiv: JQuery, retryFunction): void {
+            let alertDiv = this.appendAlert(statusDiv, {
+                category: 'Error',
+                summary: 'An unexpected error occurred. Sorry about that!',
+            });
+
+            addRetryButton(alertDiv, retryFunction)
         }
 
         updateStep3Summary(responseJson): void {
@@ -1648,74 +2107,65 @@ module StudyLinesAddCombos {
 
             if(responseJson.hasOwnProperty('lines')) {
                 lines = responseJson['lines'];
-            } else {
-
             }
 
             this.plannedLineCount = count;
 
-            $('#step3-status-div')
+            $('#step3-errors-div')
                 .empty()
-                .removeClass('errorMessage')
-                .removeClass('bulk-line-table');
-
-            table = $('#line-preview-table').empty();
+                .addClass('hide');
 
             // show # lines to be created
-            row = $('<div>').addClass('table-row')
-                .appendTo(table);
-            cell = $('<div>')
-                .addClass('bulk_lines_table_cell')
-                .addClass('step2_table_heading')
-                .appendTo(row);
-            $('<label>').text('Lines to create:')
-                .appendTo(cell);
-            cell = $('<div>').addClass('bulk_lines_table_cell')
-                .appendTo(row);
-            $('<label>').text(count)
-                .appendTo(cell);
+            $('#line-count-div').text(count);
 
-            this.addLineNamesToTable(table, lines, 'Sample line names:');
+            this.addLineNamesToTable(lines);
 
-            table.removeClass('hide');
-            $('#create-lines-btn').prop('disabled', false);
+            creationManager.setStep3InputsEnabled(true);
+            $('#add-lines-btn').prop('disabled', false);
+            $('#step3-waiting-div').addClass('hide');
         }
 
-        addLineNamesToTable(table:JQuery, lines, lineNamesTitle:string) {
-            var i:number, row:JQuery, cell:JQuery;
+        addLineNamesToTable(lines) {
+            var i:number, table: JQuery, row:JQuery, cell:JQuery;
 
-            // print label for the listing of lines
-            row = $('<div>').addClass('table-row')
-                .appendTo(table);
-            cell = $('<div>')
-                .addClass('bulk_lines_table_cell')
-                .addClass('step2_table_heading')
-                .appendTo(row);
-            $('<label>').text(lineNamesTitle)
-                .addClass('step2_table_heading')
-                .appendTo(cell);
+            // remove any earlier previews
+            $('.line-names-preview-row')
+                .remove();
+
+            table = $('#line-preview-table');
 
             i = 0;
             for (var lineName in lines) {
 
-                if(i > 0 && i % LINES_PER_ROW === 0) {
-                    row = $('<div>').addClass('table-row').appendTo(table);
-                    cell = $('<div>').addClass('bulk_lines_table_cell')
-                                .appendTo(row);
+                if(i == 0 || (i % LINES_PER_ROW === 0)) {
+                    row = $('<div>').addClass('table-row line-names-preview-row').appendTo(table);
                 }
 
                 cell = $('<div>').addClass('bulk_lines_table_cell')
                     .text(lineName)
                     .appendTo(row);
+
+                if(i == MAX_PREVIEW_LINE_NAMES) {
+                    let remainder = Object.keys(lines).length - MAX_PREVIEW_LINE_NAMES;
+                    if(remainder > 0) {
+                        cell.text('... (' + remainder + ' more)');
+                    }
+                    break;
+                }
+
                 i++;
             }
+
+            $('#line-preview-div').removeClass('hide');
         }
 
         setLineMetaTypes(metadataTypes:any[]) {
             var self: CreationManager = this,
                 lineProps: LinePropertyDescriptor[],
-                propertyDescriptor: LinePropertyDescriptor;
-            $('#step2_status_div').empty();
+                propertyDescriptor: LinePropertyDescriptor,
+                strainNameEltLabel: string,
+                strainNameEltJsonId: string;
+            $('#step1_loading_metadata_status_div').empty();
             $('#addPropertyButton').prop('disabled', false);
 
             self.userMetaTypePks = [];
@@ -1723,6 +2173,7 @@ module StudyLinesAddCombos {
             this.nonAutocompleteLineMetaTypes = [];
             this.autocompleteLineMetaTypes = {};
             this.multivaluedMetaTypePks = [];
+            this.strainMetaPk = -1;
 
             lineProps = [];
             metadataTypes.forEach((meta) => {
@@ -1732,8 +2183,8 @@ module StudyLinesAddCombos {
                 // options would be confusing for users, since the normal case for this
                 // GUI should be to compute line names from combinatorial metadata values, and
                 // combinatorial entry of line descriptions isn't really possible
-                if (LINE_NAME_META_NAME === meta.type_name ||
-                    LINE_DESCRIPTION_META_NAME === meta.type_name) {
+                if (EddRest.LINE_NAME_META_NAME === meta.type_name ||
+                    EddRest.LINE_DESCRIPTION_META_NAME === meta.type_name) {
                     return true; // keep looping!
                 }
 
@@ -1772,10 +2223,19 @@ module StudyLinesAddCombos {
                     propertyDescriptor = new LinePropertyDescriptor(meta.pk, uiLabel,
                                                                     nameEltLabel, nameEltJsonId);
                     self.userMetaTypePks.push(meta.pk);
-                } else if (STRAINS_META_NAME === meta.type_name ||
-                           CARBON_SOURCE_META_NAME === meta.type_name) {
-                    nameEltLabel = meta.type_name.substring(0, meta.type_name.indexOf('(s)')) + ' Name(s)';
+                } else if (EddRest.STRAINS_META_NAME === meta.type_name ||
+                           EddRest.CARBON_SOURCE_META_NAME === meta.type_name) {
                     nameEltJsonId = meta.pk + '__name';
+
+                    if(EddRest.STRAINS_META_NAME === meta.type_name) {
+                        nameEltLabel = STRAIN_NAME_ELT_LABEL;
+                        this.strainNameEltJsonId = nameEltJsonId;
+                        this.strainMetaPk = meta.pk;
+                    } else {
+                        nameEltLabel = meta.type_name.substring(0,
+                            meta.type_name.indexOf('(s)')) + ' Name(s)';
+                    }
+
                     propertyDescriptor = new LinePropertyDescriptor(meta.pk, uiLabel,
                                                                     nameEltLabel, nameEltJsonId);
                 } else {
@@ -1785,6 +2245,16 @@ module StudyLinesAddCombos {
                 lineProps.push(propertyDescriptor);
                 self.allLineMetaTypes[meta.pk] = meta;  // TODO: still need this?
             });
+
+            // add in special-case hard-coded items that make sense to put in this list, but
+            // aren't actually represented by line metadata types in the database. Since line
+            // metadata types will all have a unique integer pk identifier, we can use
+            // non-integer alphanumeric strings for our special-case additions.
+            lineProps.push(new LinePropertyDescriptor(REPLICATE_COUNT_JSON_ID, 'Replicates',
+                                         'Replicate #', REPLICATE_NUM_NAME_ID));
+
+            lineProps.push(new LinePropertyDescriptor(ICE_FOLDER_JSON_ID,
+            'Strain(s) - ICE folder', STRAIN_NAME_ELT_LABEL, this.strainNameEltJsonId));
 
             // after removing the "Line " prefix from labels for this context, sort the list so
             // it appears in alphabetic order *as displayed*a
@@ -1818,46 +2288,249 @@ module StudyLinesAddCombos {
                 maxWidth: 750,
                 modal: true,
                 autoOpen: false,
-                buttons: {
-                    'Add Selected': function() {
-                        var propsList: JQuery, selectedItems: JQuery;
+                buttons: [
+                    {
+                        text: 'Add Selected',
+                        class: 'btn btn-primary',
+                        click: function () {
+                            var propsList: JQuery, selectedItems: JQuery;
 
-                        propsList = $('#line-properties-list');
-                        selectedItems = propsList.children('.ui-selected');
-                        selectedItems.removeClass('ui-selected').addClass('hide');
-                        selectedItems.each((index: number, elt: Element) => {
-                            var descriptor: LinePropertyDescriptor = $(elt).data();
-                            creationManager.addInput(descriptor);
-                        });
+                            propsList = $('#line-properties-list');
+                            selectedItems = propsList.children('.ui-selected');
+                            selectedItems.removeClass('ui-selected').addClass('hide');
+                            selectedItems.each((index: number, elt: Element) => {
+                                var descriptor: LinePropertyDescriptor = $(elt).data();
+
+                                if(descriptor.jsonId === ICE_FOLDER_JSON_ID) {
+                                    // show folder dialog, which will control whether the folder
+                                    // eventually gets added as an input (once validated)
+                                    creationManager.showIceFolderDialog();
+                                    return true;  // keep iterating
+                                }
+                                creationManager.addEmptyInput(descriptor);
+                            });
+                        },
                     },
-                    'Close': function() {
-                        $(this).dialog('close');
+                    {
+                        text: 'Close',
+                        class: 'btn btn-secondary',
+                        click: function () {
+                            $(this).dialog('close');
 
-                        // de-select anything user left selected
-                        $('#line-properties-list')
-                            .children('.ui-selected')
-                            .removeClass('ui-selected');
+                            // de-select anything user left selected
+                            $('#line-properties-list')
+                                .children('.ui-selected')
+                                .removeClass('ui-selected');
+                        }
                     }
-                }
-            });
+                ]
+            })
+                .removeClass('hide'); // remove class that hides it during initial page load
 
             // add click behavior to the "add property" button
             $('#addPropertyButton')
                 .on('click', creationManager.showAddProperty.bind(this));
         }
 
-        showCreatingLinesDialog(): void {
-            var dialog: JQuery;
-            // disable buttons and set styling to match the rest of EDD
-            $('#return-to-study-btn').prop('disabled', true).addClass('actionButton');
-            $('#create-more-btn').prop('disabled', true).addClass('actionButton');
+        showIceFolderDialog(): void {
+            // reset form defaults
+            $('#ice-folder-url-input').val('');
+            $('#folder-lookup-status-div').empty();
+            $('type-strain').attr('checked', 'checked');
 
+            // show the dialog
+            $('#add-ice-folder-dialog').dialog('open');
+        }
+
+        buildAddIceFolderDialog(): void {
+            var self: CreationManager = this;
+
+            $('#add-ice-folder-dialog').dialog({
+                resizable: true,
+                height: 405,
+                width: 572,
+                minWidth: 345,
+                maxWidth: 750,
+                modal: true,
+                autoOpen: false,
+                buttons: [
+                    {
+                        text: 'Add Folder',
+                        class: 'btn btn-primary',
+                        click: function () {
+                            let url: string;
+
+                            url = $('#ice-folder-url-input').val();
+
+                            //submit a query to the back end to compute line / assay names and
+                            // detect errors before actually making any changes
+                            $.ajax('/ice_folder/',
+                                {
+                                    headers: {'Content-Type': 'application/json'},
+                                    method: 'GET',
+                                    dataType: 'json',
+                                    data: { url: url, },
+                                    success: self.iceFolderLookupSuccess.bind(self),
+                                    error: self.iceFolderLookupError.bind(self),
+                                }
+                            );
+                        },
+                    },
+                    {
+                        text: 'Cancel',
+                        class: 'btn btn-secondary',
+                        click: function () {
+                            $(this).dialog('close');
+
+                            // de-select anything user left selected
+                            $('#line-properties-list')
+                                .children('.ui-selected')
+                                .removeClass('ui-selected');
+
+                            // if no corresponding rows exist yet in the main form,  restore
+                            // this option to the line properties dialag so it can be added later
+                            var folderInput: any = self.getPropertyInput(ICE_FOLDER_JSON_ID);
+                            if(!folderInput) {
+                                $('#lineProp' + ICE_FOLDER_JSON_ID)
+                                    .removeClass('hide')
+                                    .addClass('ui-selected');
+                            }
+                        }
+                    }
+                ],
+            })
+                .removeClass('hide'); // remove class that hides it during initial page load
+
+            // add click behavior to the "add property" button
+            $('#addPropertyButton')
+                .on('click', creationManager.showAddProperty.bind(this));
+        }
+
+        getPropertyInput(jsonId: any) {
+            var result: LinePropertyInput = null;
+            this.lineProperties.forEach(function(input) {
+                if(input.lineProperty.jsonId === jsonId) {
+                    result = input;
+                    return false;  //stop looping
+                }
+            });
+            return result;
+        }
+
+        iceFolderLookupSuccess(folder_json: any, textStatus: string, jqXHR: JQueryXHR): void {
+
+            // look for any existing form input for ICE folders. If there is one,
+            // we'll just add a row to it for the newly validated folder
+            var iceInput: IceFolderInput = <IceFolderInput> this.getPropertyInput(ICE_FOLDER_JSON_ID);
+
+            $('#add-ice-folder-dialog').dialog('close');
+
+            let toggleIds = ['#type-strain', '#type-protein',
+                                '#type-plasmid', '#type-part',
+                                '#type-seed'];
+
+            // gather all the relevant inputs for displaying user entry in the main form
+            let filterTypes = [];
+            toggleIds.forEach(idSelector => {
+                let btn = $(idSelector);
+                if (btn.is(':checked')) {
+                    filterTypes.push(btn.val());
+                }
+            });
+
+            let folder = {
+                id: folder_json.id,
+                name: folder_json.folderName,
+                url: $('#ice-folder-url-input').val(),
+                entryTypes: filterTypes,
+            };
+
+            if(iceInput != null) {
+                iceInput.appendRow(folder);
+                return;
+            }
+
+            // grab the "LineProperty" entry from the 'Add property" dialog's list, then use it to
+            // create a new input, including the validated folder in the first row
+            $('#line-properties-list')
+                .children()
+                .each((index: number, elt: Element) => {
+                    let descriptor: LinePropertyDescriptor = $(elt).data();
+                    if(descriptor.jsonId === ICE_FOLDER_JSON_ID) {
+                        let input = new IceFolderInput({
+                            'lineProperty': descriptor,
+                        });
+                        creationManager.addLineProperty(input, folder);
+                        return false; // stop looping
+                    }
+                });
+        }
+
+        iceFolderLookupError(jqXHR, textStatus:string, errorThrown:string): void {
+            let contentType, statusDiv, genericErrorMsg, self;
+            self = this;
+            contentType = jqXHR.getResponseHeader('Content-Type');
+            statusDiv = $('#folder-lookup-status-div')
+                            .empty();
+            genericErrorMsg = {
+                'category': 'ICE lookup error',
+                'summary': 'An unknown error has occurred while resolving the' +
+                ' folder with ICE.  Please try again.'
+            };
+
+            if (contentType === 'application/json') {
+                let json, errors;
+                json = jqXHR.responseJSON;
+                errors = json['errors'];
+                if (errors) {
+                    errors.forEach(error => {
+                        self.appendAlert(statusDiv, error);
+                    });
+                } else {
+                    this.appendAlert(statusDiv,
+                                             genericErrorMsg)
+                }
+            } else {
+                this.appendAlert(statusDiv, genericErrorMsg);
+            }
+        }
+
+        appendAlert(statusDiv: JQuery, message:ErrorSummary): JQuery {
+            let div = $('<div>')
+                .addClass('alert alert-danger')
+                .appendTo(statusDiv);
+            $('<h4>').text(message.category).appendTo(div);
+
+            if(message.details) {
+                $('<p>')
+                    .text(message.summary + ': ' + message.details)
+                    .appendTo(div);
+            } else {
+                $('<p>')
+                    .text(message.summary)
+                    .appendTo(div);
+            }
+            return div;
+        }
+
+        showCreatingLinesDialog(): void {
+
+            // disable buttons and set styling to match the rest of EDD
+            $('#return-to-study-btn')
+                .prop('disabled', true)
+                .addClass('actionButton');
+            $('#create-more-btn')
+                .prop('disabled', true)
+                .addClass('actionButton');
+
+            $('#creation-wait-spinner')
+                .removeClass('hide');
             $('#creation-status-div')
-                .removeClass('errorMessage')
-                .removeClass('successMessage')
                 .empty();
-            $('#line-count-span').text(this.plannedLineCount);
-            $('#creating-lines-dialog').dialog('option', 'title', 'Creating ' + this.plannedLineCount + ' Lines...')
+            $('#line-count-span')
+                .text(this.plannedLineCount);
+            $('#creating-lines-dialog')
+                .dialog('option', 'title', 'Creating ' + this.plannedLineCount + ' Lines...')
                 .dialog('open');
         }
 
@@ -1885,7 +2558,7 @@ module StudyLinesAddCombos {
                             window.location.href = '../';
                         }
                     }]
-            });
+            }).removeClass('hide'); // remove the class that hides it during page load
         }
 
         showAddAbbreviation(): void {
@@ -1933,7 +2606,8 @@ module StudyLinesAddCombos {
                         $(this).dialog('close');
                     }
                 }
-            });
+            })
+                .removeClass('hide'); //remove class that hides it during initial page load
         }
 
         addSelectedAbbreviations() {
@@ -1995,6 +2669,8 @@ module StudyLinesAddCombos {
             var result: any, json: string, nameElts: any, elts: string[], customElts: any,
                 combinatorialValues: any, commonValues: any, abbrevs: any;
 
+            let iceFolderInput: IceFolderInput;
+
             // name element ordering
             nameElts = {};
             elts = [];
@@ -2051,16 +2727,13 @@ module StudyLinesAddCombos {
                     return true; // keep looping
                 }
 
-                // TODO: both front and back end need to allow for non-combinatorial
-                // manyrelatedfields!
+                // do special-case processing of multivalued inputs (e.g. strain, carbon source).
+                // for now, we'll assume that multiple entries for either results in combinatorial
+                // line creation.  later on, we may add support for non-combinatorial multiples
+                // (e.g. co-culture \ multiple carbon sources)
                 multiValuedInput = (MULTIVALUED_LINE_META_TYPES.indexOf(
                                                 input.lineProperty.inputLabel) >= 0);
                 if(multiValuedInput && validInputCount > 1) {
-                    // for starters, assume each strain or carbon source specified should result in
-                    // creation of a combinatorial group of lines.  later on we can add complexity
-                    // to support co-culture.  here we package the list of provided strains in
-                    // the format supported by the back end, which should already support
-                    // co-cultures.
                     value = input.getValueJson();
                     if(value.constructor === Array) {
                        for(v=0; v<value.length; v++) {
@@ -2071,10 +2744,10 @@ module StudyLinesAddCombos {
                     }
                     combinatorialValues[input.lineProperty.jsonId] = value;
 
-                    return true
+                    return true;
                 }
 
-                if(validInputCount > 1) {
+                if(input.hasValidCombinations()) {
                     combinatorialValues[input.lineProperty.jsonId] = input.getValueJson();
                 }
                 else {
@@ -2084,6 +2757,11 @@ module StudyLinesAddCombos {
 
             result['combinatorial_line_metadata'] = combinatorialValues;
             result['common_line_metadata'] = commonValues;
+
+            iceFolderInput = <IceFolderInput> this.getPropertyInput(ICE_FOLDER_JSON_ID);
+            if(iceFolderInput) {
+                result['ice_folder_to_filters'] = iceFolderInput.getFiltersJson();
+            }
 
             json = JSON.stringify(result);
             return json;
@@ -2095,26 +2773,41 @@ module StudyLinesAddCombos {
     // As soon as the window load signal is sent, call back to the server for the set of reference
     // records that will be used to disambiguate labels in imported data.
     export function onDocumentReady(): void {
-        creationManager.buildLineCreationDialog();
+        var forms, validation;
 
+        creationManager.buildLineCreationDialog();
         creationManager.buildStep1Inputs();
         creationManager.buildStep2Inputs();
         creationManager.buildStep3Inputs();
 
-
         // load line metadata types from the REST API. This allows us to display them more
         // responsively if there are many, and also to show them in the
         loadAllLineMetadataTypes();
+
+        // TODO: uncomment/fix or remove
+        //$('#ice-folder-form').validator().on('submit', ()=> {event.preventDefault(); });
+
+        // TODO: after upgrading to Bootstrap 4, uncomment and retry this validation experiment
+        // add custom bootstrap validation styles to the form
+        // forms = document.getElementsByClassName('needs-validation');
+        // validation = Array.prototype.filter.call(forms, (form) => {
+        //     form.addEventListener('submit', function (event) {
+        //         if (form.checkValidity() === false) {
+        //             event.preventDefault();
+        //             event.stopPropagation();
+        //         }
+        //         form.classList.add('was-validated');
+        //     }, false);
+        // });
+
+        // send CSRF header on each AJAX request from this page
+        $.ajaxSetup({
+            beforeSend: function (xhr) {
+                var csrfToken = Utl.EDD.findCSRFToken();
+                xhr.setRequestHeader('X-CSRFToken', csrfToken);
+            }
+        });
     }
-
-    // send CSRF header on each AJAX request from this page
-    $.ajaxSetup({
-        beforeSend: function(xhr) {
-            var csrfToken = Utl.EDD.findCSRFToken();
-            xhr.setRequestHeader('X-CSRFToken', csrfToken);
-        }
-    });
-
 }
 
 $(window).on('load', function() {

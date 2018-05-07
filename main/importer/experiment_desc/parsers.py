@@ -20,7 +20,10 @@ from .constants import (
     DUPLICATE_ASSAY_METADATA,
     ELEMENTS_SECTION,
     EMPTY_WORKBOOK,
+    ICE_FOLDERS_KEY,
     IGNORED_INPUT_CATEGORY,
+    INCONSISTENT_FILTERS,
+    INCONSISTENT_FOLDERS,
     INCONSISTENT_COMBINATORIAL_VALUE,
     INCORRECT_TIME_FORMAT,
     INTERNAL_EDD_ERROR_CATEGORY,
@@ -644,6 +647,23 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             if not meta_values or not multivalued_row:
                 column_layout.combinatorial_col_indices.remove(col_index)
 
+        # Enforce consistency of folder contents and filtering across all inputs.
+        # This allows us to make simplifying assumptions later on when processing ICE folders
+        unique_folder_ids = set()
+        for index, combo in enumerate(parsed_row_inputs):
+
+            input_folders = combo.get_related_object_ids(ICE_FOLDERS_KEY)
+            if index > 0:
+                for folder_id in input_folders:
+                    if folder_id not in unique_folder_ids:
+                        importer.add_error(INVALID_FILE_VALUE_CATEGORY, INCONSISTENT_FOLDERS,
+                                           f'{folder_id} (row {combo.row_number})')
+                    else:
+                        current_filters = combo.folder_id_to_folders[folder_id]
+                        if (set(current_filters) != set(self.folder_id_to_filters[folder_id])):
+                            importer.add_error(INVALID_FILE_VALUE_CATEGORY, INCONSISTENT_FILTERS,
+                                               f'row {combo.row_number}')
+
         return parsed_row_inputs
 
     def read_column_layout(self, row):
@@ -913,7 +933,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     logger.info(f'Parse error: Cell {name_cell_num} was empty, but was expected '
                                 'to contain a name for the EDD line. This error only occurs for '
                                 'non-empty rows. ')
-                    self.importer.add_error(INVALID_FILE_VALUE_CATEGORY, MISSING_REQUIRED_LINE_NAME,
+                    self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
+                                            MISSING_REQUIRED_LINE_NAME,
                                             occurrence_detail=name_cell_num)
                     break
 
@@ -1347,8 +1368,8 @@ class JsonInputParser(CombinatorialInputParser):
             # work around reserved 'description' keyword in JSON schema
             description = value.pop('desc', None)
 
-            # convert string-based keys required by JSON into their numeric equivalents
-            # TODO: consider casting values too
+            # convert string-based keys required by JSON into their numeric equivalents to simplify
+            # primary key dict lookups later on
             common_line_metadata = _copy_to_numeric_keys(value.pop(COMMON_LINE_METADATA_SECTION,
                                                                    {}))
             combinatorial_line_metadata = _copy_to_numeric_keys(
@@ -1357,6 +1378,7 @@ class JsonInputParser(CombinatorialInputParser):
                     value.pop(PROTOCOL_TO_ASSAY_METADATA_SECTION, {}))
             protocol_to_combinatorial_metadata = _copy_to_numeric_keys(
                     value.pop(PROTOCOL_TO_COMBINATORIAL_METADATA_SECTION, {}))
+            ice_folder_to_filters = _copy_to_numeric_keys(value.pop('ice_folder_to_filters', {}))
             custom_name_elts = value.pop('custom_name_elts', {})
 
             naming_elements = value.pop(NAME_ELEMENTS_SECTION, None)
@@ -1383,7 +1405,8 @@ class JsonInputParser(CombinatorialInputParser):
                     common_line_metadata=common_line_metadata,
                     combinatorial_line_metadata=combinatorial_line_metadata,
                     protocol_to_assay_metadata=protocol_to_assay_metadata,
-                    protocol_to_combinatorial_metadata=protocol_to_combinatorial_metadata)
+                    protocol_to_combinatorial_metadata=protocol_to_combinatorial_metadata,
+                    ice_folder_to_filters=ice_folder_to_filters)
                 combo_input.replicate_count = value.get(REPLICATE_COUNT_ELT, 1)
 
                 # inspect JSON input to find the maximum number of decimal digits in the user input

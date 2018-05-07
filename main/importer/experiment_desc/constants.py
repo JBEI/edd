@@ -1,6 +1,8 @@
 # coding: utf-8
 
 from collections import OrderedDict
+from enum import Enum
+from requests import codes
 
 # error conditions that are detected / handled during Experiment Description upload process.
 # These values must remain unique, and are used both as dictionary keys within the back-end code
@@ -23,6 +25,8 @@ EXISTING_ASSAY_NAMES = 'Inputs would duplicate existing assay names'
 NON_STRAINS_CATEGORY = 'Non-Strains'
 NON_STRAIN_ICE_ENTRY = 'Non-strain ICE entries'
 PART_NUMBER_NOT_FOUND = 'Part number(s) not found in ICE'
+FOLDER_NOT_FOUND = ("Folder(s) weren't found found in ICE, or your account doesn't have "
+                    "permission to read them")
 
 
 # Experiment Description file-specific errors
@@ -56,7 +60,15 @@ POSSIBLE_USER_ERROR_CATEGORY = 'Possible User Error'
 # either user input error in Experiment Description/ICE part permissions, or an ICE error (known
 # ICE errors exist in ICE 5.2.2 as of 3-1-17)
 SINGLE_PART_ACCESS_ERROR_CATEGORY = 'ICE part access problem'
+SINGLE_FOLDER_ACCESS_ERROR_CATEGORY = 'ICE folder access problem'
+EMPTY_FOLDER_ERROR_CATEGORY = 'Empty ICE folder(s)'
+EMPTY_FOLDER_ERROR_TITLE = ''
+NO_FILTERED_ENTRIES_ERROR_CATEGORY = 'Folder contents filtered out'
+NO_ENTRIES_TITLE = 'No entries passed filtering for folders'
 FORBIDDEN_PART_KEY = 'Missing ICE read permission for part number(s)'
+FORBIDDEN_FOLDER_KEY = ("Unable to determine how many lines to create, since folder "
+                        "contents can't be read.  ICE read permission is missing for folder(s)")
+WEB_FOLDER_TITLE = "EDD doesn't yet support using folders or parts from remote ICE instances"
 
 # Experiment Description file-specific warnings
 MULTIPLE_WORKSHEETS_FOUND = 'Multiple worksheets were found in the document'
@@ -94,8 +106,7 @@ MISSING_REQUIRED_NAMING_INPUT = 'Missing required input for line names'
 # anticipated systemic (e.g. communication) error or error that isn't otherwise planned for /
 # handled separately (e.g. EDD/ICE configuration errors or ICE bugs)
 SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY = 'ICE access error'
-GENERIC_ICE_RELATED_ERROR = ("ICE couldn't be contacted to find strains referenced in your "
-                             "file")
+GENERIC_ICE_RELATED_ERROR = ("ICE couldn't be contacted to find strains")
 
 # Proactively check for part numbers that don't match EDD's part number pattern. This will help
 # users detect bad data entry when diagnosing other parsing-related errors, and will also help
@@ -112,7 +123,6 @@ UNSUPPORTED_FILE_TYPE = 'Unsupported file type'  # TODO RESOLVE WITH incorrect f
 # Errors caused by outstanding curation work in JBEI's database / resulting lack of constraints in
 # EDD's DB schema...see EDD-158
 NON_UNIQUE_STRAIN_UUIDS = 'Non-unique strain uuids'
-SUSPECTED_MATCH_STRAINS = 'Suspected match strain(s)'
 
 ###################################################################################################
 # Request parameters
@@ -122,6 +132,10 @@ IGNORE_ICE_ACCESS_ERRORS_PARAM = 'IGNORE_ICE_ACCESS_ERRORS'
 ALLOW_NON_STRAIN_PARTS = 'ALLOW_NON_STRAIN_PARTS'
 ALLOW_DUPLICATE_NAMES_PARAM = 'ALLOW_DUPLICATE_NAMES'
 DRY_RUN_PARAM = 'DRY_RUN'
+EMAIL_WHEN_FINISHED = 'EMAIL_WHEN_FINISHED'
+
+INCONSISTENT_FOLDERS = 'Inconsistent ICE folders.  Folders must be the same for all rows'
+INCONSISTENT_FILTERS = 'Inconsistint filters.  Filters must be the same for all rows'
 
 ###################################################################################################
 # Categorization and display priority order for predicted errors / warnings
@@ -157,6 +171,8 @@ ERROR_PRIORITY_ORDER[INVALID_FILE_VALUE_CATEGORY] = (
     INCORRECT_TIME_FORMAT,
     UNPARSEABLE_COMBINATORIAL_VALUE,
     DELIMETER_NOT_ALLOWED_VALUE,
+    INCONSISTENT_FOLDERS,
+    INCONSISTENT_FILTERS,
 )
 
 INVALID_JSON = 'Invalid JSON format'
@@ -171,36 +187,59 @@ ERROR_PRIORITY_ORDER[BAD_GENERIC_INPUT_CATEGORY] = (
         NO_INPUT,
         INVALID_RELATED_FIELD_REFERENCE,
         ILLEGAL_RELATED_FIELD_REFERENCE,
+        ILLEGAL_RELATED_FIELD_REFERENCE,
         INVALID_LINE_ATTRIBUTE,
         INVALID_REPLICATE_COUNT,
         ZERO_REPLICATES,
-        INVALID_JSON
+        INVALID_JSON,
+
 )
 
-##################################
-# User-created ICE errors
-##################################
+STRAINS_REQUIRED_TITLE = ("ICE strains are required for combinatorial line creation, but couldn't "
+                          "be found in ICE")
+STRAINS_ACCESS_REQUIRED_FOR_COMBO = ('Missing ICE read permission for parts required as input '
+                                     'for combinatorial line creation')
+
+STRAINS_REQUIRED_FOR_COMBO = ('ICE lookup failed for one or more entries, but entries are '
+                              'required for combinatorial line creation')
+STRAINS_REQUIRED_FOR_NAMES = ('ICE lookup failed for one or more entries, but entry names are '
+                              'required as input to computing line names')
+
+STRAINS_ACCESS_REQUIRED_FOR_NAMES = ('Missing ICE read permission for part(s) required as input '
+                                     'to computing EDD line names')
+
+###################################################################################################
+# User-created ICE part access errors
+###################################################################################################
 USER_CREATED_ICE_PART_ERRORS = (
     PART_NUMBER_NOT_FOUND,
     FORBIDDEN_PART_KEY,)
 ERROR_PRIORITY_ORDER[SINGLE_PART_ACCESS_ERROR_CATEGORY] = USER_CREATED_ICE_PART_ERRORS
 
+###################################################################################################
+# User-created ICE folder access errors
+###################################################################################################
+ERROR_PRIORITY_ORDER[EMPTY_FOLDER_ERROR_CATEGORY] = EMPTY_FOLDER_ERROR_TITLE
+ERROR_PRIORITY_ORDER[NO_FILTERED_ENTRIES_ERROR_CATEGORY] = NO_ENTRIES_TITLE
+USER_CREATED_ICE_FOLDER_ERRORS = (
+    FOLDER_NOT_FOUND,
+    FORBIDDEN_FOLDER_KEY,
+)
+ERROR_PRIORITY_ORDER[SINGLE_FOLDER_ACCESS_ERROR_CATEGORY] = USER_CREATED_ICE_FOLDER_ERRORS
+
+
 ################################
 # ICE-related software/configuration/communication errors
 ################################
+ICE_CONNECTION_ERROR = 'A problem occurred while trying to connect to ICE.'
 ERROR_PRIORITY_ORDER[SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY] = (ICE_NOT_CONFIGURED,
+                                                            ICE_CONNECTION_ERROR,
+                                                            STRAINS_REQUIRED_FOR_NAMES,
                                                             GENERIC_ICE_RELATED_ERROR,)
-
 
 ERROR_PRIORITY_ORDER[NON_STRAINS_CATEGORY] = (NON_STRAIN_ICE_ENTRY,)
 
-NAMING_OVERLAP_CATEGORY = 'Naming overlap'
-
-STRAINS_REQUIRED_FOR_NAMES = ('ICE lookup failed for one or more parts, but part names are '
-                              'required as input to computing line names')
-
-STRAINS_ACCESS_REQUIRED_FOR_NAMES = ('Missing ICE read permission for part(s) '
-                                     'required as input to computing EDD line names')
+NON_UNIQUE_LINE_NAMES_CATEGORY = 'Non-unique line names'
 
 # User-created naming overlaps (depend on prior ICE communication since strain names could be used
 # in line/assay naming)
@@ -214,7 +253,7 @@ _NAMING_OVERLAPS = (
     EXISTING_ASSAY_NAMES,
     STRAINS_REQUIRED_FOR_NAMES,
 )
-ERROR_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
+ERROR_PRIORITY_ORDER[NON_UNIQUE_LINE_NAMES_CATEGORY] = _NAMING_OVERLAPS
 
 ################################
 # Generic errors... users can't help with these
@@ -227,7 +266,6 @@ ERROR_PRIORITY_ORDER[INTERNAL_EDD_ERROR_CATEGORY] = (
     # Errors caused by outstanding curation work in JBEI's database / resulting lack of constraints
     # in EDD's DB schema...see EDD-158
     NON_UNIQUE_STRAIN_UUIDS,
-    SUSPECTED_MATCH_STRAINS,
 
     ##################################
     # EDD self/client consistency checks
@@ -252,8 +290,47 @@ WARNING_PRIORITY_ORDER[IGNORED_INPUT_CATEGORY] = (
 WARNING_PRIORITY_ORDER[POSSIBLE_USER_ERROR_CATEGORY] = (PART_NUMBER_PATTERN_UNMATCHED_WARNING,)
 
 WARNING_PRIORITY_ORDER[SINGLE_PART_ACCESS_ERROR_CATEGORY] = USER_CREATED_ICE_PART_ERRORS
-WARNING_PRIORITY_ORDER[NAMING_OVERLAP_CATEGORY] = _NAMING_OVERLAPS
+WARNING_PRIORITY_ORDER[NON_UNIQUE_LINE_NAMES_CATEGORY] = _NAMING_OVERLAPS
 WARNING_PRIORITY_ORDER[SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY] = (GENERIC_ICE_RELATED_ERROR,)
+
+
+class IceErrCondition(Enum):
+    COMBINATORIAL_STRAINS = 1
+    STRAIN_NAMES_REQUIRED = 2
+    GENERIC_ERR = 3
+
+
+SINGLE_ENTRY_LOOKUP_ERRS = {
+    codes.forbidden: {
+        IceErrCondition.COMBINATORIAL_STRAINS: (SINGLE_PART_ACCESS_ERROR_CATEGORY,
+                                                STRAINS_REQUIRED_TITLE),
+        IceErrCondition.STRAIN_NAMES_REQUIRED: (SINGLE_PART_ACCESS_ERROR_CATEGORY,
+                                                STRAINS_ACCESS_REQUIRED_FOR_NAMES),
+        IceErrCondition.GENERIC_ERR: (SINGLE_PART_ACCESS_ERROR_CATEGORY, FORBIDDEN_PART_KEY),
+    },
+    codes.not_found: {
+        IceErrCondition.STRAIN_NAMES_REQUIRED: (NON_UNIQUE_LINE_NAMES_CATEGORY,
+                                                STRAINS_REQUIRED_FOR_NAMES),
+        IceErrCondition.COMBINATORIAL_STRAINS: (NON_UNIQUE_LINE_NAMES_CATEGORY,
+                                                STRAINS_REQUIRED_FOR_COMBO),
+        IceErrCondition.GENERIC_ERR: (SINGLE_PART_ACCESS_ERROR_CATEGORY, PART_NUMBER_NOT_FOUND),
+    }
+}
+
+SINGLE_FOLDER_LOOKUP_ERRS = {
+    codes.forbidden: {
+        IceErrCondition.COMBINATORIAL_STRAINS: (SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
+                                                FORBIDDEN_FOLDER_KEY),
+        IceErrCondition.STRAIN_NAMES_REQUIRED: None,  # case is unique to single-entry query
+        IceErrCondition.GENERIC_ERR: (SINGLE_FOLDER_ACCESS_ERROR_CATEGORY, FORBIDDEN_FOLDER_KEY),
+    },
+    codes.not_found: {
+        IceErrCondition.COMBINATORIAL_STRAINS: (SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
+                                                FOLDER_NOT_FOUND),
+        IceErrCondition.STRAIN_NAMES_REQUIRED: None,  # case is unique to single-entry query
+        IceErrCondition.GENERIC_ERR: (SINGLE_FOLDER_ACCESS_ERROR_CATEGORY, FOLDER_NOT_FOUND),
+    }
+}
 
 
 ###################################################################################################
@@ -263,6 +340,7 @@ WARNING_PRIORITY_ORDER[SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY] = (GENERIC_ICE_RELATE
 NAME_ELT_STRAIN_NAME = 'strain__name'
 NAME_ELT_REPLICATE_NUM = 'replicate_num'
 REPLICATE_COUNT_ELT = 'replicate_count'
+ICE_FOLDERS_KEY = 'ice_folder'
 BASE_NAME_ELT = 'base_name'
 ELEMENTS_SECTION = 'elements'
 CUSTOM_ADDITIONS_SECTION = 'custom_additions'

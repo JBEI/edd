@@ -55,7 +55,7 @@ def create_ice_connection(user_token):
             ice.write_enabled = True
             return ice
         except Exception as e:
-            logger.error('Failed to create connection: %s', e)
+            logger.error('Failed to create ICE connection: %s', e)
     return None
 
 

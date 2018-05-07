@@ -6,12 +6,12 @@ import logging
 from collections import defaultdict, OrderedDict, Sequence
 
 from arrow import utcnow
-from django.db.models import Q
 from six import string_types
 
 from main.models import Assay, Line, MetadataType, Protocol, Strain
 from .constants import (
     BAD_GENERIC_INPUT_CATEGORY,
+    ICE_FOLDERS_KEY,
     ILLEGAL_RELATED_FIELD_REFERENCE,
     INTERNAL_EDD_ERROR_CATEGORY,
     INVALID_ASSAY_META_PK,
@@ -20,7 +20,6 @@ from .constants import (
     INVALID_RELATED_FIELD_REFERENCE,
     NAME_ELT_REPLICATE_NUM,
     NON_UNIQUE_STRAIN_UUIDS,
-    SUSPECTED_MATCH_STRAINS,
     UNMATCHED_PART_NUMBER,
     ZERO_REPLICATES,
 )
@@ -632,19 +631,13 @@ class CombinatorialDescriptionInput(object):
     Defines the set of inputs required to combinatorially create Lines and Assays for a Study.
     """
 
-    def __init__(self, naming_strategy, importer, description=None, replicate_count=1,
-                 common_line_metadata={}, combinatorial_line_metadata=defaultdict(list),
-                 protocol_to_assay_metadata={}, protocol_to_combinatorial_metadata={}):
+    def __init__(self, naming_strategy, importer, **kwargs):
         """
         :param naming_strategy: a NamingStrategy instance used to compute line/assay names from a
             combination of user input and information from the database (e.g. protocol names).
         :param description: an optional string to use as the description for all lines created.
         :param replicate_count: an integer number of replicate lines to create for each unique
             combination of line properties / metadata.
-        :param common_line_metadata:
-        :param combinatorial_line_metadata:
-        :param protocol_to_assay_metadata:
-        :param protocol_to_combinatorial_metadata:
         """
         self.importer = importer
 
@@ -658,28 +651,36 @@ class CombinatorialDescriptionInput(object):
         # line-specific metadata
         ###########################################################################################
         # only a single value is supported -- doesn't make sense to do this combinatorially
-        self.description = description
+        self.description = kwargs.pop('description', None)
 
         # sequences of ICE part ID's readable by users
-        self.replicate_count = replicate_count
-        self.common_line_metadata = copy.copy(common_line_metadata)
+        self.replicate_count = kwargs.pop('replicate_count', 1)
+        self.common_line_metadata = kwargs.pop('common_line_metadata', {})
 
         # maps MetadataType pk -> []
-        self.combinatorial_line_metadata = copy.copy(combinatorial_line_metadata)
+        self.combinatorial_line_metadata = defaultdict(list)
+        self.combinatorial_line_metadata.update(kwargs.pop('combinatorial_line_metadata', {}))
 
         ###########################################################################################
         # protocol-specific metadata
         ###########################################################################################
-        self.unique_protocols = set(protocol_to_assay_metadata)
-        self.unique_protocols.update(protocol_to_combinatorial_metadata)
+        protocol_to_assay_meta = kwargs.pop('protocol_to_assay_metadata', {})
+        self.unique_protocols = set(protocol_to_assay_meta)
+        self.unique_protocols.update(protocol_to_assay_meta)
 
         # optional. maps protocol pk -> { MetadataType.pk -> [values] }
         self.protocol_to_assay_metadata = defaultdict(lambda: defaultdict(list))
-        self.protocol_to_assay_metadata.update(protocol_to_assay_metadata)
+
+        if protocol_to_assay_meta:
+            self.protocol_to_assay_metadata.update(protocol_to_assay_meta)
 
         # maps protocol_pk -> assay metadata pk -> list of values
+        p_to_combo = kwargs.pop('protocol_to_combinatorial_metadata', {})
         self.protocol_to_combinatorial_metadata_dict = defaultdict(lambda: defaultdict(list))
-        self.protocol_to_combinatorial_metadata_dict.update(protocol_to_combinatorial_metadata)
+        if p_to_combo:
+            self.protocol_to_combinatorial_metadata_dict.update(p_to_combo)
+
+        self.ice_folder_to_filters = kwargs.pop('ice_folder_to_filters', {})
 
     @property
     def fractional_time_digits(self):
@@ -729,6 +730,10 @@ class CombinatorialDescriptionInput(object):
             result.add(values)
 
         return result
+
+    def combinatorial_strains(self, strains_mtype_pk, ice_folders_key):
+        return (strains_mtype_pk in self.combinatorial_line_metadata or
+                ice_folders_key in self.combinatorial_line_metadata)
 
     def replace_ice_ids_with_edd_pks(self, edd_strains_by_ice_id, ice_parts_by_id,
                                      strains_mtype_pk):
@@ -911,7 +916,7 @@ class CombinatorialDescriptionInput(object):
     @staticmethod
     def _verify_pk_keys(input_dict, reference_dict, importer, err_key):
         for id in input_dict:
-            if id not in reference_dict:
+            if id not in reference_dict and id != ICE_FOLDERS_KEY:
                 importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, err_key, id)
 
     def compute_line_and_assay_names(self, study, cache, options):
@@ -1089,22 +1094,26 @@ class CombinatorialCreationPerformance(object):
         logger.info('Done with input parsing in %0.3f seconds' %
                     self.input_parse_delta.total_seconds())
 
-    def end_ice_search(self, found_count, total_count):
+    def end_ice_search(self, folders_by_ice_id, total_folder_count,
+                       filtered_entry_count, found_indiv_entry_count,
+                       total_entry_count):
         now = utcnow()
         self.ice_search_delta = now - self._subsection_start_time
         self._subsection_start_time = now
-        logger.info('Done with ICE search. Found %(found_count)d of %(total_count)d entries in '
-                    '%(seconds)0.3f seconds' % {
-                        'found_count': found_count,
-                        'total_count': total_count,
-                        'seconds': self.ice_search_delta.total_seconds(), })
+        duration_s = self.ice_search_delta.total_seconds()
+        found_folder_count = len(folders_by_ice_id)
+        folder_entries = sum([folder.entry_count for folder in folders_by_ice_id.values()])
+        logger.info(f'Done with ICE search. Found {found_folder_count}/{total_folder_count} '
+                    f'folders ({folder_entries} entries / {filtered_entry_count} filtered). Found '
+                    f'{found_indiv_entry_count}/{total_entry_count} individual entries. Total '
+                    f'search time {duration_s:0.3f} seconds')
 
     def end_edd_strain_search(self, search_strain_count, found_strain_count):
         now = utcnow()
         self.edd_strain_search_delta = now - self._subsection_start_time
         self._subsection_start_time = now
-        logger.info('Done with EDD search.  Found local cache for %(found_count)d of '
-                    '%(search_count)d ICE strains in %(seconds)0.3f seconds' %
+        logger.info('Done with EDD search.  Found local cache for %(found_count)d/'
+                    '%(search_count)d ICE entries in %(seconds)0.3f seconds' %
                     {
                         'found_count': found_strain_count,
                         'search_count': search_strain_count,
@@ -1135,7 +1144,7 @@ class CombinatorialCreationPerformance(object):
                     self.total_time_delta.total_seconds())
 
 
-def find_existing_strains(parts_by_ice_id, importer):
+def find_existing_edd_strains(entries_by_ice_id, importer):
     """
     Directly queries EDD's database for existing Strains that match the UUID in each ICE entry.
     To help with database curation, for unmatched strains, the database is also searched for
@@ -1146,7 +1155,7 @@ def find_existing_strains(parts_by_ice_id, importer):
     which this one is derived uses EDD's REST API to avoid having to have database credentials.
 
     :param edd: an authenticated EddApi instance
-    :param parts_by_ice_id: a list of Ice Entry objects for which matching EDD Strains should
+    :param entries_by_ice_id: a list of Ice Entry objects for which matching EDD Strains should
     be located
     :return: two collections; the first is a dict mapping ICE identifiers to existing EDD Strains,
     the second is a list of ICE strains not found to have EDD Strain entries
@@ -1158,10 +1167,10 @@ def find_existing_strains(parts_by_ice_id, importer):
     existing = OrderedDict()
     not_found = []
 
-    if parts_by_ice_id:
-        logger.info(f'Searching EDD for {len(parts_by_ice_id)} strains...')
+    if entries_by_ice_id:
+        logger.info(f'Searching EDD for {len(entries_by_ice_id)} strains...')
 
-    for ice_entry in parts_by_ice_id.values():
+    for ice_entry in entries_by_ice_id.values():
         # search for the strain by registry ID. Note we use search instead of .get() until the
         # database consistently contains/requires ICE UUID's and enforces uniqueness
         # constraints for them (EDD-158).
@@ -1176,50 +1185,8 @@ def find_existing_strains(parts_by_ice_id, importer):
             else:
                 importer.add_error(INTERNAL_EDD_ERROR_CATEGORY, NON_UNIQUE_STRAIN_UUIDS,
                                    ice_entry.uuid, '')
-        # if no EDD strains were found with this UUID, look for candidate strains by URL.
-        # Code from here forward is attempted workarounds for EDD-158
         else:
-            logger.debug(
-                "ICE entry %(part_id)s (pk=%(pk)d) couldn't be located in EDD's database by "
-                "UUID. Searching by name and URL to help avoid strain curation problems." % {
-                    'part_id': ice_entry.part_id,
-                    'pk': ice_entry.id
-                }
-            )
             not_found.append(ice_entry)
-            url_regex = r'.*/parts/%(id)s(?:/?)'
-            # look for candidate strains by pk-based URL (if present: more static / reliable
-            # than name)
-            found_strains_qs = Strain.objects.filter(
-                registry_url__iregex=url_regex % {'id': str(ice_entry.id)},
-            )
-            if found_strains_qs:
-                importer.add_warning(INTERNAL_EDD_ERROR_CATEGORY, SUSPECTED_MATCH_STRAINS,
-                                     _build_suspected_match_msg(ice_entry, found_strains_qs))
-                continue
-            # look for candidate strains by UUID-based URL
-            found_strains_qs = Strain.objects.filter(
-                registry_url__iregex=(url_regex % {'id': str(ice_entry.uuid)})
-            )
-            if found_strains_qs:
-                importer.add_warning(
-                        INTERNAL_EDD_ERROR_CATEGORY, SUSPECTED_MATCH_STRAINS,
-                        _build_suspected_match_msg(ice_entry, found_strains_qs))
-                continue
-            # if no strains were found by URL, search by name
-            empty_or_whitespace_regex = r'$\s*^'
-            no_registry_id = (
-                Q(registry_id__isnull=True) |
-                Q(registry_id__regex=empty_or_whitespace_regex)
-            )
-            found_strains_qs = Strain.objects.filter(
-                no_registry_id,
-                name__icontains=ice_entry.name,
-            )
-            if found_strains_qs:
-                importer.add_warning(INTERNAL_EDD_ERROR_CATEGORY, SUSPECTED_MATCH_STRAINS,
-                                     _build_suspected_match_msg(ice_entry, found_strains_qs))
-                continue
     return existing, not_found
 
 

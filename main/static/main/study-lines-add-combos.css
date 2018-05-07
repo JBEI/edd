@@ -39,11 +39,15 @@
     vertical-align: bottom;
 }
 
-.step2_subsection {
+.add-combos-subsection {
     margin-top: 15px;
 }
 
-.step2_subsection, .step2_subsection label {
+#step3 .add-combos-subsection {
+    margin-top: 25px;
+}
+
+.add-combos-subsection label {
     /*font-size: 110%;*/
     font-weight: bold;
     text-decoration: underline;
@@ -119,6 +123,10 @@
     padding-bottom: 8px;
 }
 
+#step1_loading_metadata_status_div {
+    margin-left: 30px;
+}
+
 .centered_radio_btn_parent {
     text-align: center;
 }
@@ -165,7 +173,7 @@ input[type="radio"] {
     min-width: 210px;  /* prevents cells from resizing when new rows are added */
 }
 
-.inputCell input, .inputCell button{
+.inputCell input, .inputCell button, .inputCell .ice-folder-name{
     margin-left: 5px;
 }
 
@@ -218,18 +226,15 @@ input[type="radio"] {
 }
 
 .removeButton {
-    /*float: right;*/
-}
-
-.controlRemoveBtn {
-
+    margin-left: auto;
+    margin-right: 0px;
 }
 
 .noCheckBox {
     margin-left: 20px;
 }
 
-#no-custom-elts-div,#no-abbrevs-div {
+#no-custom-elts-div,#no-abbrevs-div, .loading-resource-message, .disabledStep3 {
     color:#BBB;
 }
 
@@ -247,10 +252,18 @@ input[type="radio"] {
     margin-bottom: 20px;
 }
 
-.next-btn {
+.next-btn, #add-lines-btn {
     margin-top: 20px;
     margin-left: 500px;
     margin-bottom: 10px
+}
+
+#add-lines-btn {
+    margin-left: 427px;
+}
+
+#force-creation-btn {
+    margin-left: 334px;
 }
 
 
@@ -287,4 +300,47 @@ div.sectionContent {
 
 #strains-omitted-span {
     color: red;
+}
+
+#entry-types-div {
+    display: inline-block;
+}
+
+.ice-folder-filters-div {
+    display: inline-block;
+    margin-left: auto;
+    margin-right: 10px;
+}
+
+.ice-folder-name {
+    font-style: italic;
+    flex-grow: 1;
+}
+
+.retry-btn {
+    padding-left: 5px;
+    padding-right: 8px;
+    text-align: center;
+}
+
+.entry-filter-value {
+    text-transform:capitalize;
+}
+
+#step3-waiting-div {
+    text-align: center;
+}
+
+.preview-wait-lg {
+    height: 60px;
+    width: 60px;
+    display:inline-block;
+}
+
+.waitbadge-new {
+    margin:0px 2px 0px 2px;
+    padding:0px 2px 0px 2px;
+    display:inline-block;
+    width:16px;
+    height:16px;
 }

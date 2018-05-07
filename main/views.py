@@ -4,6 +4,7 @@ import collections
 import json
 import logging
 import re
+import requests
 
 from django.conf import settings
 from django.contrib import messages
@@ -19,20 +20,23 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
+from main.tasks import create_ice_connection
 from requests import codes
 from rest_framework.exceptions import MethodNotAllowed
+from urllib.parse import urlparse
 
 from main.importer.experiment_desc.constants import (
-    ALLOW_DUPLICATE_NAMES_PARAM,
-    ALLOW_NON_STRAIN_PARTS,
     BAD_FILE_CATEGORY,
-    DRY_RUN_PARAM,
-    IGNORE_ICE_ACCESS_ERRORS_PARAM,
+    FOLDER_NOT_FOUND,
+    ICE_CONNECTION_ERROR,
     INTERNAL_EDD_ERROR_CATEGORY,
-    OMIT_STRAINS,
     UNPREDICTED_ERROR,
     UNSUPPORTED_FILE_TYPE,
+    SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
+    SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
+    WEB_FOLDER_TITLE,
 )
+
 from main.importer.experiment_desc.importer import (
     _build_response_content,
     ExperimentDescriptionOptions,
@@ -1523,11 +1527,7 @@ def study_describe_experiment(request, pk=None, slug=None):
 
     # parse request parameter input to keep subsequent code relatively format-agnostic
     user = request.user
-    dry_run = request.GET.get(DRY_RUN_PARAM, False)
-    allow_duplicate_names = request.GET.get(ALLOW_DUPLICATE_NAMES_PARAM, False)
-    ignore_ice_access_errors = request.GET.get(IGNORE_ICE_ACCESS_ERRORS_PARAM, False)
-    allow_non_strains = request.GET.get(ALLOW_NON_STRAIN_PARTS, False)
-    omit_strains = request.GET.get(OMIT_STRAINS, False)
+    options = ExperimentDescriptionOptions.of(request)
 
     # detect the input format
     stream = request
@@ -1542,12 +1542,6 @@ def study_describe_experiment(request, pk=None, slug=None):
             errors = {BAD_FILE_CATEGORY: {UNSUPPORTED_FILE_TYPE: summary}}
             return JsonResponse(_build_response_content(errors, {}), status=codes.bad_request)
 
-    options = ExperimentDescriptionOptions(allow_duplicate_names=allow_duplicate_names,
-                                           allow_non_strains=allow_non_strains, dry_run=dry_run,
-                                           ignore_ice_access_errors=ignore_ice_access_errors,
-                                           use_ice_part_numbers=file_name,
-                                           omit_strains=omit_strains)
-
     # attempt the import
     importer = CombinatorialCreationImporter(study, user)
     try:
@@ -1557,7 +1551,15 @@ def study_describe_experiment(request, pk=None, slug=None):
                 options,
                 excel_filename=file_name,
             )
-        logger.debug('Reply content: %s' % json.dumps(reply_content))
+
+        if options.email_when_finished and not options.dry_run:
+            if status_code == codes.ok:
+                importer.send_user_success_email(reply_content)
+            else:
+                importer.send_user_err_email()
+
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            logger.debug('Reply content: %s' % json.dumps(reply_content))
         return JsonResponse(reply_content, status=status_code)
 
     except RuntimeError as e:
@@ -1567,10 +1569,12 @@ def study_describe_experiment(request, pk=None, slug=None):
 
         logger.exception('Unpredicted exception occurred during experiment description processing')
 
-        importer.send_unexpected_err_email(dry_run,
-                                           ignore_ice_access_errors,
-                                           allow_duplicate_names)
+        if options.email_when_finished and not options.dry_run:
+            importer.send_user_err_email()
 
+        importer.send_unexpected_err_email(options.dry_run,
+                                           options.ignore_ice_access_errors,
+                                           options.allow_duplicate_names)
         return JsonResponse(
             _build_response_content(importer.errors, importer.warnings),
             status=codes.internal_server_error
@@ -1731,6 +1735,118 @@ def data_sbml_compute(request, sbml_id, rxn_id):
 
 
 meta_pattern = re.compile(r'(\w*)MetadataType$')
+
+LOCAL_ICE_FOLDER_PATH_PATTERN = re.compile(r'^/folders/(\d+)/?$')
+ICE_WEB_FOLDER_PATH_PATTERN = re.compile(r'^/partners/(\d+)/folders/(\d+)/?$')
+
+
+#  /ice_folder
+def ice_folder_lookup(request):
+    """
+    A stopgap view to support UI for looking up an ICE folder by browser URL and confirming it
+    exists and has been entered correctly.  Final solution should likely tie into a
+    not-yet-implemented ICE REST resource for searching for folders by name.
+
+    Most of the code here is to test user input and provide helpful UI-level output.
+    """
+    if request.method != "GET":
+        raise MethodNotAllowed(request.method)
+
+    _ICE_NOT_CONFIGURED = 'ICE connection not configured'
+    _ICE_NOT_CONFIGURED_SUMMARY = 'EDD is not configured to interface with ICE'
+
+    browser_url = request.GET.get('url', None)
+    user_email = request.user.email
+    ice = create_ice_connection(user_email)
+
+    # build a helpful error message if ICE isn't configured
+    ice_url = getattr(settings, 'ICE_URL', '')
+    ice_netloc = urlparse(ice_url).netloc
+    if not ice or not ice_netloc:
+        return _build_simple_err_response(_ICE_NOT_CONFIGURED, _ICE_NOT_CONFIGURED_SUMMARY,
+                                          status=500)
+
+    ###############################################################################################
+    # test for presence required browser URL parameter
+    ###############################################################################################
+    if not browser_url:
+        return _build_simple_err_response('Missing required input', 'url', codes.bad_request)
+
+    ###############################################################################################
+    # test that user entered a URL that matches the configured ICE instance
+    ###############################################################################################
+    browser_url = browser_url.lower().strip()
+    parts = urlparse(browser_url)
+    _BAD_URL_CATEGORY = 'Unacceptable Folder URL'
+    if (not parts.netloc) or (not parts.path):
+        return _build_simple_err_response(_BAD_URL_CATEGORY,
+                                          'Folder URL does not match the expected format',
+                                          codes.bad_request,
+                                          f'Copy-and-paste the URL from {settings.ICE_URL}')
+    if parts.netloc != ice_netloc:
+        return _build_simple_err_response(_BAD_URL_CATEGORY,
+                                          'Folder is in the wrong ICE instance',
+                                          codes.bad_request,
+                                          f'Only folders from {ice_netloc} are allowed')
+
+    ###############################################################################################
+    # test that we can extract useful information from the user-provided URL
+    ###############################################################################################
+    match = LOCAL_ICE_FOLDER_PATH_PATTERN.match(parts.path)
+    folder_id = None
+    partner_id = None
+
+    if match:
+        folder_id = match.group(1)
+    else:
+        match = ICE_WEB_FOLDER_PATH_PATTERN.match(parts.path)
+        if match:
+            partner_id = match.group(1)
+            folder_id = match.group(2)
+
+    if not folder_id:
+        return _build_simple_err_response(
+            _BAD_URL_CATEGORY, 'Unable to process this URL', codes.bad_request,
+            f'URL must be of the form {settings.ICE_URL}/folders/123 or '
+            f'{settings.ICE_URL}/partners/X/folders/123')
+
+    elif partner_id:
+        return _build_simple_err_response(_BAD_URL_CATEGORY, WEB_FOLDER_TITLE, codes.bad_request,
+                                          browser_url)
+
+    ###############################################################################################
+    # contact ICE to get information about the folder
+    ###############################################################################################
+    try:
+        folder = ice.get_folder(folder_id, partner_id)
+        if not folder:
+            return _build_simple_err_response(
+                SINGLE_FOLDER_ACCESS_ERROR_CATEGORY, FOLDER_NOT_FOUND, codes.not_found, folder_id)
+        return JsonResponse(folder.to_json_dict(), status=codes.ok)
+
+    except requests.exceptions.HTTPError as http_err:
+        logger.exception(f'Exception querying ICE for folder {browser_url}')
+        if http_err.response.status_code == codes.FORBIDDEN:
+            return _build_simple_err_response(
+                'Folder permissions error',
+                'Folder access is not allowed for your account. Please contact the folder owner '
+                'or the ICE administrator.', codes.forbidden)
+        else:
+            return _build_simple_err_response(
+                'ICE access error', 'A problem occurred while attempting to access ICE',
+                http_err.response.status_code)
+    except requests.exceptions.ConnectionError as conn_err:
+        logger.exception('Error connecting to ICE')
+        return _build_simple_err_response(SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
+                                          ICE_CONNECTION_ERROR,
+                                          codes.internal_server_error)
+
+
+def _build_simple_err_response(category, title, status, detail=None):
+    err = ImportErrorSummary(category, title)
+    if detail:
+        err.add_occurrence(detail)
+    return JsonResponse(data={'errors': [err.to_json_dict()]}, status=status)
 
 
 # /search

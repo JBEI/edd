@@ -111,6 +111,9 @@ urlpatterns = [
 
     url(r'^health/$', lambda request: HttpResponse()),
 
+    # a stopgap view that looks up an ICE folder by deconstructing its URL
+    url(r'^ice_folder/$', login_required(views.ice_folder_lookup), name='folder'),
+
     # Call-out for the favicon, which would normally only be accessible via a URL like:
     #   https://edd.example.org/static/favicon.ico
     # This way, browsers can load the favicon from the standard link.
