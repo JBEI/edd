@@ -2,7 +2,6 @@ import { EDDATDGraphing } from "../modules/AssayTableDataGraphing"
 import { Utl } from "../modules/Utl"
 import { EDDAuto } from "../modules/EDDAutocomplete"
 import { EDDGraphingTools } from "../modules/EDDGraphingTools"
-declare var ATData: any; // Setup by the server.
 
 declare function require(name: string): any;  // avoiding warnings for require calls below
 
@@ -37,6 +36,7 @@ interface RawInputStat {
     columns: number;
 }
 
+declare var ATData: any; // Setup by the server.
 // make sure this is initialized at least to an empty object.
 var ATData = ATData || {};
 
@@ -160,6 +160,26 @@ module EDDTableImport {
         // turn on dialogs for the help buttons in each section
         ['1', '2', '3', '4', '5'].forEach(setupHelp);
 
+        $('#submission-dialog').dialog({
+            'resizable': true,
+            'height': 230,
+            'minWidth': 188,
+            'maxWidth': 750,
+            'modal': true,
+            'autoOpen': false,
+            'buttons': [{
+                'text': 'Retry',
+                'id': 'retry-btn',
+                'class': 'actionButton secondary',
+                'click': () => EDDTableImport.reviewStep.retryImport()
+            }, {
+                'text': 'Return to Study',
+                'id': 'return-to-study-btn',
+                'class': 'actionButton primary',
+                'click': () => window.location.href = '../'
+            }]
+        }).removeClass('off');
+
         atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata/";
 
         EDDAuto.BaseAuto.initPreexisting();
@@ -214,7 +234,7 @@ module EDDTableImport {
         EDDTableImport.reviewStep = step5;
 
         // Wire up the function that submits the page
-        $('#submitForImport').on('click', EDDTableImport.submitForImport);
+        $('#submit-btn').on('click', () => step5.startImport());
 
         // We need to manually trigger this, after all our steps are constructed.
         // This will cascade calls through the rest of the steps and configure them too.
@@ -267,22 +287,6 @@ module EDDTableImport {
     export function reviewStepCallback(): void {
         // nothing to do! no subsequent steps
     }
-
-
-    // When the submit button is pushed, fetch the most recent record sets from our
-    // IdentifyStructuresStep instance, and embed them in the hidden form field that will be
-    // submitted to the server.
-    // Note that this is not all that the server needs, in order to successfully process an
-    // import. It also reads other form elements from the page, created by SelectMajorKindStep
-    // and TypeDisambiguationStep.
-    export function submitForImport(): void {
-        var json: string, resolvedSets;
-        resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
-        json = JSON.stringify(resolvedSets);
-        $('#jsonoutput').val(json);
-        $('#jsondebugarea').val(json);
-    }
-
 
     // The usual click-to-disclose callback.  Perhaps this should be in Utl.ts?
     export function disclose(): boolean {
@@ -677,6 +681,7 @@ module EDDTableImport {
                 fileInitFn: this.fileDropped.bind(this),
                 url: "/utilities/parsefile/",
                 processResponseFn: this.fileReturnedFromServer.bind(this),
+                processErrorFn: this.fileUploadError.bind(this),
                 clickable: false
             });
 
@@ -880,6 +885,25 @@ module EDDTableImport {
             }
         }
 
+        fileUploadError(dropZone: Utl.FileDropZone, file, msg, xhr): void {
+            let text: string;
+            $('.dz-error-mark').removeClass('off');
+
+            text = 'File Upload Error';
+            if(xhr.status === 413) {
+                text = 'File is too large';
+            } else if(xhr.status === 504) {
+                text = 'Time out uploading file.  Please try again.';
+            }
+            $('.dz-error-message')
+                .text(text)
+                .removeClass('off');
+
+            // update step 2 feedback so it no longer looks like we're waiting on the file upload
+            $('#processingStep2ResultsLabel').addClass('off');
+            $('#enterDataInStep2').removeClass('off');
+        }
+
         updateInputVisible():void {
             var missingStep1Inputs = !this.selectMajorKindStep.requiredInputsProvided();
 
@@ -888,7 +912,6 @@ module EDDTableImport {
             $('#step2textarea').toggleClass('off', missingStep1Inputs);
         }
 
-
         // Reset and hide the info box that appears when a file is dropped,
         // and reveal the text entry area
         // This also clears the "processedSetsAvailable" flag because it assumes that
@@ -896,6 +919,9 @@ module EDDTableImport {
         clearDropZone(): void {
 
             this.updateInputVisible();
+
+            $('#dz-error-mark').addClass('off');
+            $('#dz-error-message').addClass('off');
 
             $('#fileDropInfoArea').addClass('off');
             $('#fileDropInfoSending').addClass('off');
@@ -1468,7 +1494,9 @@ module EDDTableImport {
                     var targ: JQuery = $(ev.target),
                         i: any = parseInt(targ.attr('i'), 10),
                         val: any = parseInt(targ.val(), 10);
+                    $('body').addClass('waitCursor');
                     that.changedRowDataTypePulldown(i, val);
+                    $('body').removeClass('waitCursor');
                 })[0];
             // One of the objects here will be a column group, with col objects in it.
             // This is an interesting twist on DOM behavior that you should probably google.
@@ -1800,11 +1828,14 @@ module EDDTableImport {
 
         toggleTableColumn(box: Element): void {
             var value: number | string, input: JQuery;
+            $('body').addClass('waitCursor');
             input = $(box);
             value = parseInt(input.val(), 10);
             this.activeColFlags[value] = input.prop('checked');
             this.interpretDataTable();
             this.redrawEnabledFlagMarkers();
+            $('body').removeClass('waitCursor');
+
             // Resetting a disabled column may change the rows listed in the Info table.
             this.queueGraphRemake();
             this.nextStepCallback();
@@ -2293,6 +2324,7 @@ module EDDTableImport {
         }
 
         remakeGraphArea():void {
+            $('body').addClass('waitCursor');
             let eddGraphing = new EDDGraphingTools(),
                 mode = this.selectMajorKindStep.interpretationMode,
                 sets = this.graphSets,
@@ -2319,6 +2351,7 @@ module EDDTableImport {
                 graph.addClass('off');
             }
 
+            $('body').removeClass('waitCursor');
             $('#processingStep2ResultsLabel').addClass('off');
         }
 
@@ -2433,19 +2466,6 @@ module EDDTableImport {
             $('#resetstep4').on('click', this.resetDisambiguationFields.bind(this));
             $(masterInputSelectors).addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
 
-            // mark all the "master" inputs (or for autocompletes, their paired hidden input) as
-            // required input for this step. Note that some of the controls referenced here are
-            // hidden inputs that are different from "masterInputSelectors" specified above.
-            // Also note that the 'required input' marking will be ignored when each is
-            // marked as invisible (even the type="hidden" ones)
-            $('#masterTimestamp').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            $("#masterLine").addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterAssay').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterAssayLine').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterMCompValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterMTypeValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterMUnitsValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-
             // enable autocomplete on statically defined fields
             EDDAuto.BaseAuto.initPreexisting($('#typeDisambiguationStep'));
 
@@ -2531,6 +2551,7 @@ module EDDTableImport {
             if (this.thisStepInputTimerID) {
                 clearTimeout(this.thisStepInputTimerID);
             }
+            $('body').addClass('waitCursor');
             this.thisStepInputTimerID = setTimeout(this.reparseThisStep.bind(this), 500);
         }
 
@@ -2560,16 +2581,7 @@ module EDDTableImport {
             hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
 
             // Hide all the subsections by default
-            $('#masterTimestampDiv').addClass('off');
-            $('#masterLineDiv').addClass('off');
-            $('#masterAssayLineDiv').addClass('off');
-            $('#masterMTypeDiv').addClass('off');
-            $('#masterUnitDiv').addClass('off');
-            $('#disambiguateLinesSection').addClass('off');
-            $('#disambiguateAssaysSection').addClass('off');
-            $('#matchedAssaysSection').addClass('off');
-            $('#disambiguateMeasurementsSection').addClass('off');
-            $('#disambiguateMetadataSection').addClass('off');
+            $('.disambiguationSections > .sectionContent').addClass('off');
 
             // remove toggle buttons and labels dynamically added for some subsections
             // (easier than leaving them in place)
@@ -2578,8 +2590,8 @@ module EDDTableImport {
 
             // If parsed data exists, but we haven't seen a single timestamp, show the "master
             // timestamp" input.
-            hideMasterTimestamp = !hasRequiredInitialInput || seenAnyTimestamps;
-            $('#masterTimestampDiv').toggleClass('off', hideMasterTimestamp);
+            this.remakeTimestampSection();
+
             // Call subroutines for each of the major sections
             if (mode === "biolector") {
                 this.remakeLineSection();
@@ -2592,7 +2604,7 @@ module EDDTableImport {
 
             // add a listener to all the required input fields so we can detect when they are
             // changed and know whether or not to allow continuation to the subsequent step
-            $('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS).on('input', ()=> {
+            $('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS).on('input', () => {
                this.queueReparseThisStep();
             });
 
@@ -2601,6 +2613,20 @@ module EDDTableImport {
             this.setAllInputsEnabled(true);
 
             this.reparseThisStep();
+        }
+
+
+        static requireInput(input: JQuery, required: boolean) {
+            input.toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, required);
+        }
+
+
+        private remakeTimestampSection() {
+            let seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
+            let hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
+            let showMasterTimestamp = hasRequiredInitialInput && !seenAnyTimestamps;
+            $('#masterTimestampDiv').toggleClass('off', !showMasterTimestamp);
+            TypeDisambiguationStep.requireInput($('#masterTimestamp'), showMasterTimestamp);
         }
 
 
@@ -2683,6 +2709,7 @@ module EDDTableImport {
             if (uniqueLineNames.length === 0) {
                 hasRequiredInitialInputs = this.identifyStructuresStep.requiredInputsProvided();
                 $('#masterLineDiv').toggleClass('off', !hasRequiredInitialInputs);
+                TypeDisambiguationStep.requireInput($('#masterLine'), hasRequiredInitialInputs);
                 return;
             }
 
@@ -2773,18 +2800,20 @@ module EDDTableImport {
                 return;
             }
 
-            parentDivMatched = $('#matchedAssaysSection');
-            childDivMatched = $('#matchedAssaysSectionBody');
-
-            if (uniqueAssayNames.length === 0) {
-                $('#masterAssayLineDiv').removeClass('off');
+            let showMasterAssays = uniqueAssayNames.length === 0;
+            $('#masterAssayLineDiv').toggleClass('off', !showMasterAssays);
+            TypeDisambiguationStep.requireInput($('#masterAssay'), showMasterAssays);
+            if (showMasterAssays) {
                 return;
             }
+
+            parentDivMatched = $('#matchedAssaysSection');
+            childDivMatched = $('#matchedAssaysSectionBody');
 
             requiredInputText = 'At least one valid assay / line combination is required.';
             this.addRequiredInputLabel(childDivMatched, requiredInputText);
 
-            if(uniqueAssayNames.length > this.TOGGLE_ALL_THREASHOLD) {
+            if (uniqueAssayNames.length > this.TOGGLE_ALL_THREASHOLD) {
                 this.addToggleAllButton(childDivMatched, 'Assays');
             }
 
@@ -2909,39 +2938,23 @@ module EDDTableImport {
             }
 
             // If using the implicit IDs for measurements, need to specify units
-            var needUnits: boolean = this.identifyStructuresStep.uniquePubchem.length > 0 ||
+            let needUnits: boolean = this.identifyStructuresStep.uniquePubchem.length > 0 ||
                     this.identifyStructuresStep.uniqueUniprot.length > 0 ||
                     this.identifyStructuresStep.uniqueGenbank.length > 0;
             // If using pubchem IDs, need to specify compartment
-            var needComp: boolean = this.identifyStructuresStep.uniquePubchem.length > 0;
+            let needComp: boolean = this.identifyStructuresStep.uniquePubchem.length > 0;
+            let showMasterType = seenAnyTimestamps && uniqueMeasurementNames.length === 0;
             if (hasRequiredInitialInput) {
-                if (needUnits) {
-                    $('#masterUnitDiv').removeClass('off')
-                        .find('[name=masterUnits]')
-                            .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
-                        .end()
-                        .find('[name=masterUnitsValue]')
-                            .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS)
-                        .end();
-                    if (needComp) {
-                        $('#masterCompDiv').removeClass('off')
-                            .find('[name=masterComp]')
-                                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
-                            .end()
-                            .find('[name=masterCompValue]')
-                                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS)
-                            .end();
-                    }
-                    return;
-                } else if (uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
-                    // No measurements for disambiguation, have timestamp data: That means we
-                    // need to choose one measurement. You might think that we should display
-                    // this even without timestamp data, to handle the case where we are
-                    // importing a single measurement type  for a single timestamp... But
-                    // that would be a 1-dimensional import, since there is only one other
-                    // object with multiple types to work with (lines/assays). We are not
-                    // going to bother supporting that.
-                    $('#masterMTypeDiv').removeClass('off');
+                $('#masterUnitDiv').toggleClass('off', !needUnits);
+                TypeDisambiguationStep.requireInput($('#masterUnitsValue'), needUnits);
+                $('#masterCompDiv').toggleClass('off', !needComp);
+                TypeDisambiguationStep.requireInput($('#masterCompValue'), needComp);
+                $('#masterMTypeDiv').toggleClass('off', !showMasterType);
+                TypeDisambiguationStep.requireInput($('#masterMCompValue'), showMasterType);
+                TypeDisambiguationStep.requireInput($('#masterMTypeValue'), showMasterType);
+                TypeDisambiguationStep.requireInput($('#masterMUnitsValue'), showMasterType);
+                // skip initializing everything else if master valus are shown
+                if (showMasterType || needUnits || needComp) {
                     return;
                 }
             }
@@ -2955,7 +2968,7 @@ module EDDTableImport {
             body = <HTMLTableElement>(bodyJq[0]);
             this.currentlyVisibleMeasurementObjSets = [];   // For use in cascading user settings
             uniqueMeasurementNames.forEach((name: string, i: number): void => {
-                var disam: any;
+                var disam: MeasurementDisambiguationRow;
                 var isMdv: boolean;
                 var cls: string;
                 disam = this.measurementObjSets[name];
@@ -2973,10 +2986,9 @@ module EDDTableImport {
                 disam.unitsAuto.hiddenInput.toggleClass('off', isMdv);
 
                 // Set required inputs as required
-                cls = TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS;
-                disam.compAuto.hiddenInput.addClass(cls);
-                disam.typeAuto.hiddenInput.addClass(cls);
-                disam.unitsAuto.hiddenInput.toggleClass(cls, !isMdv);
+                TypeDisambiguationStep.requireInput(disam.compAuto.hiddenInput, true);
+                TypeDisambiguationStep.requireInput(disam.typeAuto.hiddenInput, true);
+                TypeDisambiguationStep.requireInput(disam.unitsAuto.hiddenInput, !isMdv);
 
                 this.currentlyVisibleMeasurementObjSets.push(disam);
             });
@@ -3166,7 +3178,7 @@ module EDDTableImport {
          * isn't required).
          * @returns {ResolvedImportSet[]}
          */
-        createSetsForSubmission():ResolvedImportSet[] {
+        createSetsForSubmission(): ResolvedImportSet[] {
             var mode: string,
                 masterProtocol: number,
                 seenAnyTimestamps: boolean,
@@ -3391,24 +3403,18 @@ module EDDTableImport {
             return this.errorMessages;
         }
 
-        requiredInputsProvided():boolean {
-            var subsection: JQuery, requiredInputSubsectionSelectors: string[];
-            // test that all required inputs currently visible / enabled on the form have a valid
-            // value. Note: this check is very similar to, but distinct from, the one above.
-            var allRequiredInputs = $('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            for (let input_id of allRequiredInputs.toArray()) {
-                var input = $(input_id);
-
-                // if the input has no value, but wasn't hidden from the display by the 'off'
-                // class, it's missing required data. Note that the "hidden" check below
-                // will still allow <input type="hidden">, but will ignore inputs that have been
-                // "hidden" by the "off" class directly to the input or one of its parents.
-                if((!input.val()) && !(input.prop('disabled') || input.hasClass('off')
-                    || input.parents('.off').length > 0) ) {
-                    return false;
-                }
-            }
-            return allRequiredInputs.length > 0;
+        requiredInputsProvided(): boolean {
+            // check all required/enabled inputs have a valid value
+            let requiredClass = '.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS;
+            // required inputs have the required class and are not disabled
+            let allRequiredInputs = $(requiredClass).not(':disabled');
+            // cannot filter on value attributes because SELECT element value is on child options
+            let missing = false;
+            allRequiredInputs.each((i, input) => {
+                missing = $(input).val() === '';
+                return !missing;
+            });
+            return allRequiredInputs.length > 0 && !missing;
         }
     }
 
@@ -3478,18 +3484,14 @@ module EDDTableImport {
             // iterate over cells in the row
             checkbox.parent().nextAll().each((index: number, elt: Element): void => {
                 var tableCell: JQuery = $(elt);
-                var cls: string = TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS;
                 tableCell.toggleClass('disabledTextLabel', !enabled);
-
                 // manage text input(s)
                 // clear / disable the visible input so it doesn't get submitted with the form
                 tableCell.find(':input').prop('disabled', !enabled);
-
                 // manage hidden input(s)
-                tableCell.find(':hidden').toggleClass(cls, enabled);
-
+                TypeDisambiguationStep.requireInput(tableCell.find(':hidden'), enabled);
                 // manage dropdowns
-                tableCell.find('select').toggleClass(cls, enabled);
+                TypeDisambiguationStep.requireInput(tableCell.find('select'), enabled);
             });
         }
     }
@@ -3610,8 +3612,8 @@ module EDDTableImport {
 
             // create a hidden form field to store the selected value
             this.lineAuto.hiddenInput.attr('id', 'disamLine' + this.visibleIndex)
-                .attr('name', 'disamLine' + this.visibleIndex)
-                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+                .attr('name', 'disamLine' + this.visibleIndex);
+            TypeDisambiguationStep.requireInput(this.lineAuto.hiddenInput, true);
         }
 
 
@@ -3693,8 +3695,8 @@ module EDDTableImport {
                     .data({ 'setByUser': false })
                     .attr('name', 'disamAssay' + i)
                     .attr('id', 'disamAssay' + i)
-                    .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
-                    .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+                    .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
+                TypeDisambiguationStep.requireInput(aSelect, true);
                 this.selectAssayJQElement = aSelect;
                 $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
                     .prop('selected', !defaultSel.assayID);
@@ -3725,6 +3727,9 @@ module EDDTableImport {
         step3: IdentifyStructuresStep;
         step4: TypeDisambiguationStep;
         prevSteps: ImportStep[];
+
+        beginSubmitTimerId: number;
+        submitPageTimerId: number;
         nextStepCallback: any;
 
         warningMessages: ImportMessage[][];
@@ -3756,7 +3761,7 @@ module EDDTableImport {
             this.prevSteps.forEach((prevStep, stepIndex:number): void => {
                 this.warningMessages[stepIndex] = [].concat(prevStep.getUserWarnings());
                 this.errorMessages[stepIndex] = [].concat(prevStep.getUserErrors());
-                this.warningInputs[stepIndex] =[];
+                this.warningInputs[stepIndex] = [];
             });
 
             // build up a short summary section to describe the (potentially large) number of
@@ -3767,8 +3772,7 @@ module EDDTableImport {
             var totalWarningsCount = this.getMessageCount(this.warningMessages);
             var totalMessagesCount = totalErrorsCount + totalWarningsCount;
 
-            var summaryDiv=$('#summaryContentDiv');
-            summaryDiv.empty();
+            var summaryDiv = $('#summaryContentDiv').empty();
 
             var hasRequiredInitialInputs = this.arePrevStepRequiredInputsProvided();
 
@@ -3777,7 +3781,7 @@ module EDDTableImport {
                 $('<p>').text('No errors or warnings! Go ahead and import!').appendTo(summaryDiv);
             }
             $('#completeAllStepsFirstLabel').toggleClass('off', hasRequiredInitialInputs);
-            $('#submitForImport').toggleClass('off', !hasRequiredInitialInputs);
+            $('#submit-div').toggleClass('off', !hasRequiredInitialInputs);
 
             // remake error / warning subsections based on input from previous steps
             var errorsWrapperDiv = $('#reviewErrorsSection');
@@ -3793,13 +3797,8 @@ module EDDTableImport {
             this.updateSubmitEnabled();
         }
 
-        arePrevStepRequiredInputsProvided():boolean {
-            for(let prevStep of this.prevSteps) {
-                if(!prevStep.requiredInputsProvided()) {
-                    return false;
-                }
-            }
-            return true;
+        arePrevStepRequiredInputsProvided(): boolean {
+            return this.prevSteps.every((step) => step.requiredInputsProvided());
         }
 
         // enable / disable the submit button, depending on whether submission is expected
@@ -3809,7 +3808,7 @@ module EDDTableImport {
             var allWarningsAcknowledged = this.areAllWarningsAcknowledged();
             var totalErrorsCount = this.getMessageCount(this.errorMessages);
 
-            var submitButton = $('#submitForImport');
+            var submitButton = $('#submit-btn');
             var wasDisabled = submitButton.prop('disabled');
 
             var disableSubmit = !(allPrevStepInputsProvided
@@ -3826,22 +3825,15 @@ module EDDTableImport {
         }
 
         areAllWarningsAcknowledged(): boolean {
-            for(let stepWarningInputs of this.warningInputs) {
-                for(let warningChkbx of stepWarningInputs) {
-                    if(!warningChkbx.is(':checked')) {
-                        return false;
-                    }
-                }
-            }
-            return true;
+            return this.warningInputs.every(
+                (warningInput) => warningInput.every(
+                    (checkbox) => checkbox.prop('checked')
+                )
+            );
         }
 
-        getMessageCount(messagesByStep:ImportMessage[][]):number {
-            var messageCount = 0;
-            for (let stepMessages of messagesByStep) {
-                messageCount += stepMessages.length;
-            }
-            return messageCount;
+        getMessageCount(messagesByStep: ImportMessage[][]): number {
+            return messagesByStep.map((messages) => messages.length).reduce((a, b) => a + b);
         }
 
         remakeErrorOrWarningSection(wrapperDivSelector:JQuery,
@@ -3970,10 +3962,105 @@ module EDDTableImport {
 
             this.updateSubmitEnabled();
         }
+
+        // When the submit button is pushed, fetch the most recent record sets from our
+        // IdentifyStructuresStep instance, and construct JSON to send to the server
+        startImport(): void {
+            $('#submit-btn').prop('disabled', true);
+
+            // configure and show the submission dialog before starting to send data
+            $('#importWaitingDiv').removeClass('off');
+            $('#importSubmitSuccessDiv').addClass('off');
+            $('#importSubmitErrorDiv').addClass('off');
+            $('#retry-btn').prop('disabled', true);
+            $('#return-to-study-btn').prop('disabled', true);
+            $('#submission-dialog').dialog('open');
+
+            let resolvedSets = this.step4.createSetsForSubmission();
+            let pageSizeLimit = $('#pageSizeLimit').val() || 1000;
+            let pageCount = Math.ceil(resolvedSets.length / pageSizeLimit);
+            let begin = 0, currentPage = 0;
+            let requests = []
+            while (begin < resolvedSets.length) {
+                let payload = {
+                    'importId': $('#importId').val(),
+                    'page': ++currentPage,
+                    'totalPages': pageCount,
+                    'series': resolvedSets.slice(begin, (begin += pageSizeLimit))
+                }
+                // include import context parameters in the first page
+                if (begin === 0) {
+                    $.extend(payload, {
+                        'writemode': $('input[name=writemode]:checked').val(),
+                        'datalayout': $('input[name=datalayout]:checked').val(),
+                        'masterMCompValue': $('#masterMCompValue').val(),
+                        'masterMTypeValue': $('#masterMTypeValue').val(),
+                        'masterMUnitsValue': $('#masterMUnitsValue').val(),
+                        'emailWhenComplete': $('#emailChkbx').prop("checked")
+                    });
+                }
+                requests.push($.ajax({
+                    'headers': {'Content-Type': 'application/json'},
+                    'method': 'POST',
+                    'dataType': 'json',
+                    'data': JSON.stringify(payload),
+                    'processData': false,
+                }));
+            }
+            // await all the POST requests finishing
+            $.when.apply($, requests).always(() => {
+                $('#importWaitingDiv').addClass('off');
+                $('#return-to-study-btn').prop('disabled', false);
+                $('#submit-btn').prop('disabled', false);
+            }).done(() => {
+                $('#importSubmitSuccessDiv').removeClass('off');
+                $('#retry-btn').prop('disabled', true);
+            }).fail(() => {
+                $('#importSubmitErrorDiv').removeClass('off');
+                $('#retry-btn').prop('disabled', false);
+            });
+        }
+
+        retryImport(): void {
+            // disable buttons that shouldn't be used while import is being retried
+            $('#retry-btn').prop('disabled', true);
+            $('#return-to-study-btn').prop('disabled', true);
+            $('#submit-btn').prop('disabled', true);
+
+            $('#importSubmitErrorDiv').addClass('off');
+            $('#importWaitingDiv').removeClass('off');
+
+            // first attempt to delete any state cached during the previous import
+            // attempt.
+            $.ajax({
+                'headers': {'Content-Type': 'application/json'},
+                'method': 'DELETE',
+                'data': $('#importId').val(),
+                'processData': false,
+            }).done(() => {
+                $('#submission-dialog').dialog('close');
+                setTimeout(() => this.startImport(), 0);
+            }).fail(() => {
+                $('#importWaitingDiv').addClass('off');
+                $('#importSubmitErrorDiv').removeClass('off');
+                $('#retry-btn').prop('disabled', false);
+                $('#return-to-study-btn').prop('disabled', false);
+                $('#importSubmitErrorDiv').removeClass('off');
+                $('#submit-btn').prop('disabled', false);
+            });
+        }
     }
 }
 
 
 $(window).on('load', function() {
     EDDTableImport.onWindowLoad();
+});
+
+// send CSRF header on each AJAX request from this page
+$.ajaxSetup({
+    beforeSend: function(xhr) {
+        var csrfToken = Utl.EDD.findCSRFToken();
+        xhr.setRequestHeader('X-CSRFToken', csrfToken);
+    }
 });

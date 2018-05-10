@@ -73,6 +73,15 @@ ICE_VERIFY_CERT = True
 # specify the name of the JSON serializer in use
 EDD_SERIALIZE_NAME = 'edd-json'
 
+# the max # of data items in a single page of import data
+EDD_IMPORT_PAGE_SIZE = 10000
+
+# the max # of pages allowed in a single import
+EDD_IMPORT_PAGE_LIMIT = 1000
+
+# expiration time in seconds of data submitted for import (24 hrs)
+EDD_IMPORT_CACHE_LENGTH = 60 * 60 * 24
+
 ##############################
 # Solr/Haystack Configuration
 ##############################

@@ -512,66 +512,60 @@ class ImportTests(TestCase):
         self.request.user = self.user1
         set_thread_variable('request', self.request)
 
-    def get_form(self):
+    def get_json_data(self):
         p_id = str(Protocol.objects.get(name="GC-MS").pk)
         l_id = str(Line.objects.get(name="L1").pk)
         m_id_a = str(Metabolite.objects.get(short_name="ac").pk)
         m_id_b = str(Metabolite.objects.get(short_name="glc__D").pk)
         u_id = str(MeasurementUnit.objects.get(unit_name="mM").pk)
-        # breaking up big text blob
-        json = (
-            '[{'
-            '"kind":"std",'
-            '"protocol_name":"GC-MS",'
-            '"protocol_id":"%(protocol_id)s",'
-            '"line_name":"",'
-            '"line_id":"%(line_id)s",'
-            '"assay_name":"Column 0",'
-            '"assay_id":"named_or_new",'
-            '"measurement_name":"ac",'
-            '"measurement_id":"%(measurement_id_a)s",'
-            '"comp_name":"ic",'
-            '"comp_id":"1",'
-            '"units_name":"units",'
-            '"units_id":"%(units_id)s",'
-            '"metadata":{  },'
-            '"data":[[0,"0.1"],[1,"0.2"],[2,"0.4"],[4,"1.7"],[8,"5.9"]]'
-            '},{'
-            '"kind":"std",'
-            '"protocol_name":"GC-MS",'
-            '"protocol_id":"%(protocol_id)s",'
-            '"line_name":"",'
-            '"line_id":"%(line_id)s",'
-            '"assay_name":"Column 0",'
-            '"assay_id":"named_or_new",'
-            '"measurement_name":"glc__D",'
-            '"measurement_id":"%(measurement_id_b)s",'
-            '"comp_name":"ic",'
-            '"comp_id":"1",'
-            '"units_name":"units",'
-            '"units_id":"%(units_id)s",'
-            '"metadata":{  },'
-            '"data":[[0,"0.2"],[1,"0.4"],[2,"0.6"],[4,"0.8"],[8,"1.2"]]}]'
-        ) % {
-            'line_id': l_id,
-            'measurement_id_a': m_id_a,
-            'measurement_id_b': m_id_b,
-            'protocol_id': p_id,
-            'units_id': u_id,
-        }
+
+        series = [
+            {
+                "protocol_name": "GC-MS",
+                "protocol_id": p_id,
+                "line_name": "",
+                "line_id": l_id,
+                "assay_name": "Column 0",
+                "assay_id": "named_or_new",
+                "measurement_name": "ac",
+                "measurement_id": m_id_a,
+                "comp_name": "ic",
+                "comp_id": "1",
+                "units_name": "units",
+                "units_id": u_id,
+                "metadata": {},
+                "data": [[0, "0.1"], [1, "0.2"], [2, "0.4"], [4, "1.7"], [8, "5.9"]]},
+            {
+                "kind": "std",
+                "protocol_name": "GC-MS",
+                "protocol_id": "5",
+                "line_name": "",
+                "line_id": l_id,
+                "assay_name": "Column 0",
+                "assay_id": "named_or_new",
+                "measurement_name": "glc__D",
+                "measurement_id": m_id_b,
+                "comp_name": "ic",
+                "comp_id": "1",
+                "units_name": "units",
+                "units_id": u_id,
+                "metadata": {},
+                "data": [[0, "0.2"], [1, "0.4"], [2, "0.6"], [4, "0.8"], [8, "1.2"]]
+            }
+        ]
+
         # XXX not proud of this, but we need actual IDs in here
-        return {
-            'action': "Submit Import",
-            'datalayout': "std",
-            'jsonoutput': json,
-            'rawdataformat': "csv",
-            'studyID': Study.objects.get(name="Test Study 1").pk,
-            'writemode': "m",
+        import_context = {
+            'kind': 'std',
+            'writemode': 'm',
         }
+        return import_context, series
 
     def test_import_gc_ms_metabolites(self):
         table = TableImport(self.study1, self.user1)
-        (added, updated) = table.import_data(self.get_form())
+        context, series_data = self.get_json_data()
+        table.parse_context(context)
+        (added, updated) = table.import_series_data(series_data)
         self.assertEqual(added, 10)
         self.assertEqual(updated, 0)
         data_literal = ("""[[(0.0, 0.1), (1.0, 0.2), (2.0, 0.4), (4.0, 1.7), (8.0, 5.9)], """
@@ -589,7 +583,9 @@ class ImportTests(TestCase):
         # failed user permissions check
         with self.assertRaises(PermissionDenied):
             table = TableImport(self.study1, self.user2)
-            table.import_data(self.get_form())
+            context, series = self.get_json_data()
+            table.parse_context(context)
+            table.import_series_data(series)
 
 
 class SBMLUtilTests(TestCase):

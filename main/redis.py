@@ -47,22 +47,105 @@ class LatestViewedStudies(object):
 class ScratchStorage(object):
     """ Interfaces with Redis to keep scratch storage """
 
-    def __init__(self, *args, **kwargs):
-        super(ScratchStorage, self).__init__(*args, **kwargs)
+    def __init__(self, key_prefix=None, **kwargs):
+        """
+        :param key_prefix: an optional prefix to prepend to all cache entries created by this
+            ScratchStorage instance.
+        """
+        super(ScratchStorage, self).__init__(**kwargs)
+        self._key_prefix = key_prefix
+        if self._key_prefix is None:
+            self._key_prefix = f'{__name__}.{self.__class__.__name__}'
         self._redis = get_redis_connection(settings.EDD_LATEST_CACHE)
 
-    def _key(self, name=None):
-        name = uuid4() if name is None else name
-        return f'{__name__}.{self.__class__.__name__}:{name}'
+    def _key(self, name):
+        return f'{self._key_prefix}:{name}'
 
-    def delete(self, key):
-        self._redis.delete(key)
+    def check_name(self, name):
+        """
+        Checks if a name is suitable to use; generates a name if not.
 
-    def load(self, key):
-        return self._redis.get(key)
+        :param name: proposed name
+        :returns: the name to use
+        """
+        return str(uuid4()) if name is None else name
+
+    def delete(self, *names):
+        """
+        Deletes data having keys with the specified names.
+
+        :param ...names: one or more names to delete from storage
+        :returns: the number of keys actually deleted
+        """
+        return self._redis.delete(self._key(name) for name in names)
+
+    def load(self, name):
+        """
+        Loads data from the named key.
+
+        :param name: name of the value returned from ScratchStorage.save()
+        :returns: the data stored at the named key.
+        """
+        return self._redis.get(self._key(name))
 
     def save(self, data, name=None, expires=None):
-        key = self._key(name)
+        """
+        Saves data to storage, with optional name and expiration.
+
+        :param data: the object to save
+        :param name: (optional) the name to use for looking up the saved data later
+        :param expires: (optional) number of seconds until the saved data will expire/delete;
+            defaults to one day
+        :returns: the name under which the data was saved
+        """
         expires = 60 * 60 * 24 if expires is None else expires
-        self._redis.set(key, data, nx=True, ex=expires)
-        return key
+        name = self.check_name(name)
+        self._redis.set(self._key(name), data, nx=True, ex=expires)
+        return name
+
+    def expire(self, name, seconds):
+        """
+        Sets an expiration time on a named value, after which the stored data will be deleted.
+
+        :param name: name of the value returned from ScratchStorage.save()
+            or ScratchStorage.append()
+        :param seconds: number of seconds until the saved data will expire/delete
+        """
+        self._redis.expire(self._key(name), seconds)
+
+    def page_count(self, name):
+        """
+        Fetches the number of stored pages under the given name.
+
+        :param name: name of the value returned from ScratchStorage.append()
+        :returns: the number of pages stored under the name
+        """
+        return self._redis.llen(self._key(name))
+
+    def load_pages(self, name):
+        """
+        Fetches the pages stored under the given name.
+
+        :param name: name of the value returned from ScratchStorage.append()
+        :returns: a generator of the stored values
+        """
+        for page in self._redis.lrange(self._key(name), 0, -1):
+            yield page
+
+    def append(self, data, name=None, expires=None):
+        """
+        Adds a page of data to storage, with optional name and expiration.
+
+        :param data: the object to save
+        :param name: (optional) the name to use for looking up the saved page later
+        :param expires: (optional) number of seconds until the saved data will expire/delete;
+            defaults to one day
+        :returns: the name under which the data was saved
+        """
+        expires = 60 * 60 * 24 if expires is None else expires
+        name = self.check_name(name)
+        with self._redis.pipeline() as pipe:
+            pipe.rpush(self._key(name), data)
+            pipe.expire(self._key(name), expires)
+            result = pipe.execute()
+        return name, result[0]  # (name, # of cache pages)

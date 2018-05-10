@@ -3,16 +3,19 @@ import { Utl } from "./Utl"
 
 export module FileDropZone {
 
+    /**
+     * Common handling code for Dropzone events in both the Overview and Lines (aka Experiment
+     * Description) pages.
+     */
     export class FileDropZoneHelpers {
 
-        haveInputData:boolean;
-        pageRedirect:string;
+        private pageRedirect: string;
+        private actionPanelIsCopied: boolean;
 
-        actionPanelIsCopied:boolean;
-
-        constructor(options:any) {
-            this.haveInputData = options.haveInputData;
-            this.pageRedirect = options.pageRedirect;
+        constructor(options?: any) {
+            options = options || {};
+            this.pageRedirect = options.pageRedirect || '';
+            this.actionPanelIsCopied = false;
         }
 
         // This is called upon receiving a response from a file upload operation, and unlike
@@ -53,15 +56,14 @@ export module FileDropZone {
             this.generateAcceptWarning();
         }
 
-        successfulRedirect(linesPathName): void {
+        private successfulRedirect(linesPathName): void {
             //redirect to lines page
             setTimeout(function () {
                 window.location.pathname = linesPathName;
             }, 1000);
         };
 
-
-        copyActionButtons(): void {
+        private copyActionButtons(): void {
             let original:JQuery, copy:JQuery, originalDismiss:JQuery, copyDismiss:JQuery,
                 originalAcceptWarnings:JQuery, copyAcceptWarnings:JQuery;
             if (!this.actionPanelIsCopied) {
@@ -90,7 +92,7 @@ export module FileDropZone {
         // This is called upon receiving an error in a file upload operation, and
         // is passed an unprocessed result from the server as a second argument.
 
-        fileErrorReturnedFromServer(fileContainer, xhr): void {
+        fileErrorReturnedFromServer(dropZone: Utl.FileDropZone, file, msg, xhr): void {
 
             this.copyActionButtons();
 
@@ -99,31 +101,58 @@ export module FileDropZone {
                 baseUrl: URL = Utl.relativeURL('../');
             // reset the drop zone here
             // parse xhr.response
-            var obj, error, id;
-            try {
-                if (xhr.status === 504) {
-                    this.generate504Error();
+            var obj, error, id, contentType;
+            contentType = xhr.getResponseHeader('Content-Type');
+
+            if (xhr.status === 504) {
+                this.generate504Error();
+            } else if (xhr.status === 413) {
+                this.generate413Error();
+            } else if(contentType === 'application/json') {
+                let json = JSON.parse(xhr.response);
+                if (json.errors) {
+                    if (json.errors[0].category.indexOf('ICE') > -1) {
+                        // first remove all files in upload
+                        dropZone.dropzone.removeAllFiles();
+                        file.status = undefined;
+                        file.accepted = undefined;
+                        // create alert notification
+                        this.processICEerror(json.errors);
+
+                        // click handler for omit strains
+                        $('#alert_placeholder').find('.omitStrains').on('click', (ev): void => {
+                            var parsedUrl: URL = new URL(
+                                dropZone.dropzone.options.url,
+                                window.location.toString()
+                            );
+                            $(ev.target).parent().remove();
+                            parsedUrl.searchParams.append('IGNORE_ICE_ACCESS_ERRORS', 'true');
+                            dropZone.dropzone.options.url = parsedUrl.toString();
+                            dropZone.dropzone.addFile(file);
+                        });
+                    } else {
+                        this.generateMessages('error', json.errors)
+                    }
                 }
-                obj = JSON.parse(xhr.response);
-                if (obj.errors) {
-                    this.generateMessages('error', obj.errors)
+
+                // Note: there may be warnings in addition to errors displayed above
+                if (json.warnings) {
+                    this.generateMessages('warnings', json.warnings)
                 }
-                if (obj.warnings) {
-                    this.generateMessages('warnings', obj.warnings)
-                }
-            } catch (e) {
-                // if there is no backend error message or error (html response), show this
+            } else {
+                //if there is a back end or proxy error (likely html response), show this
                 let defaultError = {
                     category: "",
                     summary: "There was an error",
-                    details: "EDD administrators have been notified. Please try again later."
+                    details: "Please try again later or contact support."
                 };
                 this.alertError(defaultError);
             }
-            // add a dismiss all alerts button
-            if ($('.alert').length > 8) {
-                dismissAll.removeClass('off');
-            }
+
+            // remove the unhelpful DZ default err message ("object")
+            $('.dz-error-message').text('File errors (see above)');
+
+            dismissAll.toggleClass('off', ($('.alert').length <= 2));
 
             //set up click handler events
             parent.find('.omitStrains').on('click', (ev:JQueryMouseEventObject): boolean => {
@@ -134,7 +163,7 @@ export module FileDropZone {
             });
 
             parent.find('.allowDuplicates').on('click', (ev:JQueryMouseEventObject): boolean => {
-                let f = fileContainer.file,
+                let f = file.file,
                     targetUrl = new URL('describe', baseUrl.toString());
                 ev.preventDefault();
                 ev.stopPropagation();
@@ -168,7 +197,7 @@ export module FileDropZone {
             });
         }
 
-        generateMessages(type, response) {
+        private generateMessages(type, response) {
             var responseMessages = this.organizeMessages(response);
             for (var key in responseMessages) {
                 let div;
@@ -181,7 +210,7 @@ export module FileDropZone {
             }
         };
 
-        processICEerror(dropzone, type, responses): void {
+        private processICEerror(responses): void {
             $('.noDuplicates, .noOmitStrains').on('click', (ev): boolean => {
                 ev.preventDefault();
                 ev.stopPropagation();
@@ -195,7 +224,7 @@ export module FileDropZone {
         };
 
 
-        generateAcceptWarning(): void {
+        private generateAcceptWarning(): void {
             var warningAlerts:JQuery, acceptWarningDiv:JQuery;
             warningAlerts = $('.alert-warning:visible');
             acceptWarningDiv = $('#acceptWarnings').find('.acceptWarnings');
@@ -207,7 +236,7 @@ export module FileDropZone {
             acceptWarningDiv.show();
         };
 
-        organizeMessages(responses) {
+        private organizeMessages(responses) {
             var obj = {};
             for (var response of responses) {
                 var message = response.summary + ": " + response.details;
@@ -221,28 +250,37 @@ export module FileDropZone {
             return obj;
         };
 
-        generate504Error(): void {
+        private generate504Error(): void {
             let response = {
                 category: "",
                 summary: "EDD timed out",
-                details: "Please reload page and reupload file or try again later"
+                details: "Please reload page and re-upload file"
             };
-            this.alertError(response)
+            this.alertError(response);
         };
 
-        alertIceWarning(response): void {
+        private generate413Error(): void {
+            let response = {
+                category: "",
+                summary: "File too large",
+                details: "Please contact system administrators or break your file into parts."
+            };
+            this.alertError(response)
+        }
+
+        private alertIceWarning(response): void {
             let iceError = $('#iceError');
             response.category = "Warning! " + response.category;
             this.createAlertMessage(iceError, response);
         };
 
-        alertError(response): void {
+        private alertError(response): void {
             var newErrorAlert = $('.alert-danger').eq(0).clone();
             this.createAlertMessage(newErrorAlert, response);
             this.clearDropZone();
         };
 
-        createAlertMessage(alertClone, response) {
+        private createAlertMessage(alertClone, response) {
             $(alertClone).children('h4').text(response.category);
             $(alertClone).children('p').text(response.summary + ": " + response.details);
             $('#alert_placeholder').append(alertClone);
@@ -250,7 +288,7 @@ export module FileDropZone {
         };
 
 
-        alertMessage(subject, messages, newAlert, type): void {
+        private alertMessage(subject, messages, newAlert, type): void {
             if (type === "warnings") {
                 $(newAlert).children('h4').text("Warning! " + subject);
             } else {
@@ -268,7 +306,7 @@ export module FileDropZone {
             $(newAlert).removeClass('off').show();
         };
 
-        clearDropZone(): void {
+        private clearDropZone(): void {
             $('#experimentDescDropZone').removeClass('off');
             $('#fileDropInfoIcon').addClass('off');
             $('#fileDropInfoName').addClass('off');

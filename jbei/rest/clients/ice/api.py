@@ -136,6 +136,12 @@ ARABIDOPSIS_KEYWORD_CHANGES = {
 }
 
 
+class IceApiException(Exception):
+    def __init__(self, message='', code=requests.codes.internal_server_error):
+        self.message = message
+        self.code = code
+
+
 class Entry(object):
     """
     The Python representation of an ICE entry. Note that in ICE, Part has only one unique field
@@ -275,7 +281,7 @@ class Entry(object):
         # if constants.ENTRY_TYPE_PROTEIN == part_type:
         #     return Protein(**python_object_params)
 
-        raise Exception('Unsupported type "%s"' % part_type)
+        raise IceApiException('Unsupported type "%s"' % part_type)
 
     def __str__(self):
         return f'{self.part_id} / "{self.name}" / ({self.uuid})'
@@ -672,7 +678,7 @@ DEFAULT_HMAC_KEY_ID = 'edd'
 ENTRY_CLASS_TO_JSON_TYPE = {
     Arabidopsis.__name__: constants.ENTRY_TYPE_ARABIDOPSIS,
     Plasmid.__name__: constants.ENTRY_TYPE_PLASMID,
-    #  Protein.__class__.__name__: ENTRY_TYPE_PROTEIN,  TODO: not yet implemented
+    # Protein.__class__.__name__: ENTRY_TYPE_PROTEIN,  TODO: not yet implemented
     Strain.__name__: constants.ENTRY_TYPE_STRAIN,
     Entry.__name__: constants.ENTRY_TYPE_ENTRY,
 }
@@ -690,6 +696,8 @@ class IceApi(RestApiClient):
     # JSON data as a view in its rest API rather than here.
     # TODO: when returning model objects, prevent database changes via partially-populated model
     # object instances. See draft code in edd.py
+    local_folder_pattern = re.compile(r'^/folders/(\d+)/?$')
+    web_folder_pattern = re.compile(r'^/partners/(\d+)/folders/(\d+)/?$')
 
     def __init__(self, auth, base_url=ICE_URL, result_limit=constants.DEFAULT_RESULT_LIMIT,
                  verify_ssl_cert=VERIFY_SSL_DEFAULT):
@@ -941,6 +949,54 @@ class IceApi(RestApiClient):
 
         json_dict = json.loads(response.text)
         return Folder.of(json_dict)
+
+    def folder_from_url(self, url):
+        try:
+            url_parts = self._check_matching_base_url(url)
+            folder_id, partner_id = self._extract_folder_id(url_parts.path)
+            return self.get_folder(folder_id, partner_id)
+        except IceApiException:
+            raise
+        except Exception:
+            raise IceApiException(f'Failed to load ICE Folder at {url}')
+
+    def _check_matching_base_url(self, url):
+        url_parts = urlparse(str(url).lower().strip())
+        if not (url_parts.netloc and url_parts.path):
+            raise IceApiException(
+                'URL does not match the expected format.',
+                code=requests.codes.bad_request,
+            )
+        my_url_parts = urlparse(self.base_url)
+        if url_parts.netloc != my_url_parts.netloc:
+            raise IceApiException(
+                'URL is in the wrong ICE instance.',
+                code=requests.codes.bad_request,
+            )
+        return url_parts
+
+    def _extract_folder_id(self, path):
+        match = self.local_folder_pattern.match(path)
+        folder_id = None
+        partner_id = None
+        if match:
+            folder_id = match.group(1)
+        else:
+            match = self.web_folder_pattern.match(path)
+            if match:
+                partner_id = match.group(1)
+                folder_id = match.group(2)
+        if folder_id is None:
+            raise IceApiException(
+                f'Unable to process the URL; must be of the form `{self.base_url}/folders/123`',
+                code=requests.codes.bad_request,
+            )
+        elif partner_id is not None:
+            raise IceApiException(
+                'Folders from Web of Registries are not yet supported.',
+                code=requests.codes.bad_request,
+            )
+        return folder_id, partner_id
 
     def _process_query_blast(self, query_dict, blast_program, blast_sequence):
         if blast_program:

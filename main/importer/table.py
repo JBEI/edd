@@ -1,19 +1,17 @@
 # coding: utf-8
 
-import json
 import logging
 import re
 import warnings
 
-from celery import shared_task
 from collections import namedtuple
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils.translation import ugettext as _
 from six import string_types
 
-from .. import models
+from .. import models, redis
 
 
 logger = logging.getLogger(__name__)
@@ -26,33 +24,66 @@ MODE_SKYLINE = 'skyline'
 MODE_TRANSCRIPTOMICS = 'tr'
 
 
-@shared_task
-def import_task(study_id, user_id, data):
-    study = models.Study.objects.get(pk=study_id)
-    user = get_user_model().objects.get(pk=user_id)
-    try:
-        importer = TableImport(study, user)
-        (added, updated) = importer.import_data(data)
-    except Exception as e:
-        logger.exception('Failure in import_task: %s', e)
-        raise RuntimeError(
-            _('Failed import to %(study)s, EDD encountered this problem: %(problem)s') % {
-                'problem': e,
-                'study': study.name,
-            }
-        )
-    return _(
-        'Finished import to %(study)s: %(added)d added, %(updated)d updated measurements.' % {
-            'added': added,
-            'study': study.name,
-            'updated': updated,
-        }
-    )
+class ImportException(Exception):
+    pass
+
+
+class ImportTooLargeException(ImportException):
+    pass
+
+
+class ImportBoundsException(ImportException):
+    pass
+
+
+class ImportBroker(object):
+    def __init__(self):
+        self.storage = redis.ScratchStorage(key_prefix=f'{__name__}.{self.__class__.__name__}')
+
+    def _import_name(self, import_id):
+        return f'{import_id}'
+
+    def add_context(self, import_id, context):
+        name = self._import_name(import_id)
+        self.storage.save(context, name=name, expires=settings.EDD_IMPORT_CACHE_LENGTH)
+
+    def add_page(self, import_id, page):
+        name = f'{self._import_name(import_id)}:pages'
+        _, count = self.storage.append(page, name=name, expires=settings.EDD_IMPORT_CACHE_LENGTH)
+        return count
+
+    def check_bounds(self, import_id, page, expected_count):
+        if len(page) > settings.EDD_IMPORT_PAGE_SIZE:
+            raise ImportTooLargeException(
+                f'Page size is greater than maximum {settings.EDD_IMPORT_PAGE_SIZE}'
+            )
+        if expected_count > settings.EDD_IMPORT_PAGE_LIMIT:
+            raise ImportTooLargeException(
+                'Total number of pages is greater than allowed '
+                f'maximum {settings.EDD_IMPORT_PAGE_LIMIT}'
+            )
+        name = f'{self._import_name(import_id)}:pages'
+        if self.storage.page_count(name) >= expected_count:
+            raise ImportBoundsException('Data is already cached for import')
+
+    def clear_pages(self, import_id):
+        name = f'{self._import_name(import_id)}*'
+        self.storage.delete(name)
+
+    def load_context(self, import_id):
+        name = self._import_name(import_id)
+        return self.storage.load(name)
+
+    def load_pages(self, import_id):
+        name = f'{self._import_name(import_id)}:pages'
+        return self.storage.load_pages(name)
 
 
 class TableImport(object):
-    """ Object to handle processing of data POSTed to /study/{id}/import view and add
-        measurements to the database. """
+    """
+    Object to handle processing of data POSTed to /study/{id}/import view and add
+    measurements to the database.
+    """
 
     def __init__(self, study, user, request=None):
         """
@@ -62,6 +93,14 @@ class TableImport(object):
         :param request: (optional) if provided, can add messages using Django messages framework
         :raises: PermissionDenied if the user does not have write access to the study
         """
+
+        # context for how import data are processed
+        self.mode = None
+        self.master_compartment = models.Measurement.Compartment.UNKNOWN
+        self.master_mtype_id = None
+        self.master_unit_id = None
+        self.replace = False
+
         self._study = study
         self._user = user
         self._line_assay_lookup = {}
@@ -76,19 +115,27 @@ class TableImport(object):
                 '%s does not have write access to study "%s"' % (user.username, study.name)
             )
 
+    def parse_context(self, context):
+        self.mode = context.get('datalayout', None)
+        self.master_compartment = context.get('masterMCompValue',
+                                              models.Measurement.Compartment.UNKNOWN)
+        if not self.master_compartment:
+            self.master_compartment = models.Measurement.Compartment.UNKNOWN
+        self.master_mtype_id = context.get('masterMTypeValue', None)
+        self.master_unit_id = context.get('masterMUnitsValue', None)
+        self.replace = context.get('writemode', None) == 'r'
+
     @transaction.atomic(savepoint=False)
-    def import_data(self, data):
+    def import_series_data(self, series_data):
         """
-        Performs the import
-        :param data:
-        :return:
-        :raises: ValidationError if no data are provided to import
+        Imports data into the study.  Assumption is that parse_context() has already been run or
+        that a client has directly set related importer attributes.
+        :param series_data: series data to import into the study.
+        :return: a tuple with a summary of measurement counts in the form (added, updated)
         """
-        self._data = data
-        series = json.loads(data.get('jsonoutput', '[]'))
-        self.check_series_points(series)
-        self.init_lines_and_assays(series)
-        return self.create_measurements(series)
+        self.check_series_points(series_data)
+        self.init_lines_and_assays(series_data)
+        return self.create_measurements(series_data)
 
     def check_series_points(self, series):
         """
@@ -261,7 +308,7 @@ class TableImport(object):
         records = assay.measurement_set.filter(**find)
 
         if records.count() > 0:
-            if self._replace():
+            if self.replace:
                 records.delete()
             else:
                 record = records[0]
@@ -285,10 +332,10 @@ class TableImport(object):
 
     def _process_metadata(self, assay, meta):
         if len(meta) > 0:
-            if self._replace():
+            if self.replace:
                 # would be simpler to do assay.meta_store.clear()
                 # but we only want to replace types included in import data
-                for label, metatype in self._meta_lookup.items():
+                for metatype in self._meta_lookup.values():
                     if metatype.pk in assay.meta_store:
                         del assay.meta_store[metatype.pk]
                     elif metatype.pk in assay.line.meta_store:
@@ -312,36 +359,29 @@ class TableImport(object):
     def _load_compartment(self, item):
         compartment = item.get('compartment_id', None)
         if not compartment:
-            compartment = self._data.get('masterMCompValue', None)
-            # master value could be set to null, want to still default to UNKNOWN
-            if not compartment:
-                compartment = models.Measurement.Compartment.UNKNOWN
+            compartment = self.master_compartment
         return compartment
 
     def _load_hint(self, item):
-        mode = self._mode()
         hint = item.get('hint', None)
         if hint:
             return hint
-        return mode
+        return self.mode
 
     def _load_type_id(self, item):
         type_id = item.get('measurement_id', None)
         if type_id is None:
-            type_id = self._data.get('masterMTypeValue', None)
+            return self.master_mtype_id
         return type_id
 
     def _load_unit(self, item):
         unit = item.get('units_id', None)
         if not unit:
-            unit = self._data.get('masterMUnitsValue', None)
+            unit = self.master_unit_id
             # TODO: get rid of magic number fallback; every EDD will have n/a as Unit #1?
             if not unit:
                 unit = 1
         return unit
-
-    def _mode(self):
-        return self._data.get('datalayout', None)
 
     def _metatype(self, meta_id):
         if meta_id not in self._meta_lookup:
@@ -357,7 +397,6 @@ class TableImport(object):
         specified in the input / in Step 1 of the import GUI.
         :param item: a dictionary containing the JSON data for a single measurement item sent
             from the front end
-        :param default: the default value to return if no better one can be inferred
         :return: the measurement type, or the specified default if no better one is found
         """
         mtype_fn_lookup = {
@@ -420,10 +459,9 @@ class TableImport(object):
         return MType(compartment, gene.pk, units_id)
 
     def _mtype_guess_format(self, points):
-        mode = self._mode()
-        if mode == 'mdv':
+        if self.mode == 'mdv':
             return models.Measurement.Format.VECTOR    # carbon ratios are vectors
-        elif mode in (MODE_TRANSCRIPTOMICS, MODE_PROTEOMICS):
+        elif self.mode in (MODE_TRANSCRIPTOMICS, MODE_PROTEOMICS):
             return models.Measurement.Format.SCALAR    # always single values
         elif len(points):
             # if first value looks like carbon ratio (vector), treat all as vector
@@ -434,6 +472,3 @@ class TableImport(object):
             elif y is not None and isinstance(y, string_types) and ('/' in y or ':' in y):
                 return models.Measurement.Format.VECTOR
         return models.Measurement.Format.SCALAR
-
-    def _replace(self):
-        return self._data.get('writemode', None) == 'r'

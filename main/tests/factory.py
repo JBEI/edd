@@ -11,11 +11,11 @@ from django.contrib.auth import get_user_model
 from .. import models
 
 
-def load_test_file(name):
+def load_test_file(name, mode='rb'):
     "Opens test files saved in the `files` directory."
     cwd = environ.Path(__file__) - 1
     filepath = cwd('files', name)
-    return open(filepath, 'rb')
+    return open(filepath, mode)
 
 
 class StudyFactory(factory.django.DjangoModelFactory):

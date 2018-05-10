@@ -15,6 +15,7 @@ require('jquery-ui/themes/base/button.css');
 require('jquery-ui/themes/base/draggable.css');
 require('jquery-ui/themes/base/resizable.css');
 require('jquery-ui/themes/base/dialog.css');
+require('jquery-ui/themes/base/tooltip.css');
 require('jquery-ui/themes/base/theme.css');
 require('jquery-ui/ui/widgets/button');
 require('jquery-ui/ui/widgets/draggable');
@@ -168,11 +169,18 @@ module StudyOverview {
         new EditableStudyContact($('#editable-study-contact').get()[0]);
         new EditableStudyDescription($('#editable-study-description').get()[0]);
 
-        $('#helpExperimentDescription').tooltip();
+        $('#helpExperimentDescription').tooltip({
+            'content': () => $('#helpExperimentDescription > .helpContent').html(),
+            'items': '#helpExperimentDescription',
+            'position': {
+                'my': "right top",
+                'at': "right bottom",
+                'of': "#helpExperimentDescription"
+            }
+        });
 
         var helper = new FileDropZone.FileDropZoneHelpers({
            pageRedirect: 'experiment-description',
-           haveInputData: false,
         });
 
         Utl.FileDropZone.create({
@@ -183,7 +191,6 @@ module StudyOverview {
             'processResponseFn': helper.fileReturnedFromServer.bind(helper),
             'processErrorFn': helper.fileErrorReturnedFromServer.bind(helper),
             'processWarningFn': helper.fileWarningReturnedFromServer.bind(helper),
-            'processICEerror': helper.processICEerror.bind(helper),
         });
 
         Utl.Tabs.prepareTabs();

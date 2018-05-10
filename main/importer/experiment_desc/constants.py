@@ -68,7 +68,6 @@ NO_ENTRIES_TITLE = 'No entries passed filtering for folders'
 FORBIDDEN_PART_KEY = 'Missing ICE read permission for part number(s)'
 FORBIDDEN_FOLDER_KEY = ("Unable to determine how many lines to create, since folder "
                         "contents can't be read.  ICE read permission is missing for folder(s)")
-WEB_FOLDER_TITLE = "EDD doesn't yet support using folders or parts from remote ICE instances"
 
 # Experiment Description file-specific warnings
 MULTIPLE_WORKSHEETS_FOUND = 'Multiple worksheets were found in the document'

@@ -22,8 +22,20 @@
 {% endblock body_title %}
 
 {% block content %}
-<form method="post" id="assayTableForm" action="{% url 'main:table-import' slug=study.slug %}">
-{% csrf_token %}
+
+<div id="submission-dialog" title="Submitting Import" class="off">
+    <div id="importWaitingDiv">Please wait while your import is submitted.
+      <span class="waitbadge wait"></span>
+    </div>
+  <div id="importSubmitSuccessDiv">
+    <p><span id="successBanner" class="successMessage">Submitted!</span></p>
+  <p>Your import is submitted! You can continue to use EDD, and you'll see a message when your
+    import has been processed.</p></div>
+  <div id="importSubmitErrorDiv">
+    <p><span id="errorBanner" class="errorMessage">Error</span></p>
+    There was an error submitting your import.  Please try again.
+  </div>
+</div>
 
 <!-- Step 1 -->
 <div class="pageSection stepBorder" id="selectMajorKindStep">
@@ -320,7 +332,7 @@
 </div>
 
 <!-- Step 3 -->
-<div class="pageSection stepBorder " id="identifyStructuresStep">
+<div class="pageSection stepBorder" id="identifyStructuresStep">
   <div class="sectionHead">
     <span class="sectionTitle">Step 3 : Verify the data has been interpreted correctly</span>
     <div class="step3-controls">
@@ -626,12 +638,23 @@
     <p>You must resolve or acknowledge all warnings before import is allowed.</p>
     <div id="reviewWarningsContentDiv"></div>
   </div>
-  <input type="submit" id="submitForImport" name="action" value="Submit Import" disabled="disabled"
-    class="off"/>
+  <div class="sectionContent off" id="submit-div">
+    <form method="post" id="assayTableForm" action="{% url 'main:table-import' slug=study.slug %}">
+      {% csrf_token %}
+      <input type="hidden" name="studyID" value="{{ study.id }}"/>
+      <input type="hidden" id="importId" value="{{ import_id }}"/>
+      <input type="hidden" id="pageSizeLimit" value="{{ page_size_limit }}"/>
+      <input type="hidden" id="pageCountLimit" value="{{page_count_limit}}"/>
+      <div>
+        <input type="checkbox" id="emailChkbx">
+        <label for="emailChkbx">Email me when finished</label>
+      </div>
+      <input type="button" id="submit-btn" name="action" value="Submit Import"
+             disabled="disabled"/>
+    </form>
+    </div>
 </div>
 
-<input type="hidden" id="jsonoutput" name="jsonoutput" />
-<input type="hidden" name="studyID" value="{{ study.id }}"/>
 
-</form>
+
 {% endblock content %}

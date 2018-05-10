@@ -580,7 +580,6 @@ export module Utl {
     //  processResponseFn: process success return from server
     //  processErrorFn: process error result return from server for experiment description
     //  processWarningFn: process warning result return from server for experiment description
-    //  processICEerror: process ice connectivity problem for experiment description
     //  fileInitFn: preprocess for import
     //  clickable: value to pass to dropzone clickable parameter
     // }
@@ -626,31 +625,8 @@ export module Utl {
                 }
             });
             this.dropzone.on('error', (file, msg, xhr) => {
-                var response;
-                if (xhr) {
-                    response = JSON.parse(xhr.response);
-                    if (response.errors && response.errors[0].category.indexOf('ICE') > -1) {
-                        // first remove all files in upload
-                        this.dropzone.removeAllFiles();
-                        file.status = undefined;
-                        file.accepted = undefined;
-                        // create alert notification
-                        this.options.processICEerror(this, file, response.errors);
-                        // click handler for omit strains
-                        $('#alert_placeholder').find('.omitStrains').on('click', (ev):void => {
-                            var parsedUrl: URL = new URL(
-                                this.dropzone.options.url,
-                                window.location.toString()
-                            );
-                            $(ev.target).parent().remove();
-                            parsedUrl.searchParams.append('IGNORE_ICE_ACCESS_ERRORS', 'true');
-                            this.dropzone.options.url = parsedUrl.toString();
-                            this.dropzone.addFile(file);
-                        });
-                    } else if (typeof this.options.processErrorFn === 'function') {
-                        this.options.processErrorFn(file, xhr);
-                    }
-                    this.dropzone.removeAllFiles();
+                if (typeof this.options.processErrorFn === 'function') {
+                    this.options.processErrorFn(this, file, msg, xhr);
                 }
             });
             this.dropzone.on('success', (file) => {

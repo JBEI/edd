@@ -47,7 +47,7 @@ study_url_patterns = [
         # NOTE: leaving off the $ end-of-string regex is important! Further matching in include()
         r'^import/',
         include([
-            url(r'^$', login_required(views.study_import_table), name='table-import'),
+            url(r'^$', login_required(views.ImportTableView.as_view()), name='table-import'),
         ])
     ),
     url(r'^rename/$',
@@ -112,7 +112,7 @@ urlpatterns = [
     url(r'^health/$', lambda request: HttpResponse()),
 
     # a stopgap view that looks up an ICE folder by deconstructing its URL
-    url(r'^ice_folder/$', login_required(views.ice_folder_lookup), name='folder'),
+    url(r'^ice_folder/$', login_required(views.ICEFolderView.as_view()), name='folder'),
 
     # Call-out for the favicon, which would normally only be accessible via a URL like:
     #   https://edd.example.org/static/favicon.ico

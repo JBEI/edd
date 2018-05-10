@@ -4,7 +4,7 @@ import collections
 import json
 import logging
 import re
-import requests
+import uuid
 
 from django.conf import settings
 from django.contrib import messages
@@ -18,30 +18,13 @@ from django.template.defaulttags import register
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
-from django.views import generic
+from django.views import generic, View
 from django.views.decorators.csrf import ensure_csrf_cookie
 from main.tasks import create_ice_connection
 from requests import codes
+
 from rest_framework.exceptions import MethodNotAllowed
-from urllib.parse import urlparse
 
-from main.importer.experiment_desc.constants import (
-    BAD_FILE_CATEGORY,
-    FOLDER_NOT_FOUND,
-    ICE_CONNECTION_ERROR,
-    INTERNAL_EDD_ERROR_CATEGORY,
-    UNPREDICTED_ERROR,
-    UNSUPPORTED_FILE_TYPE,
-    SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
-    SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
-    WEB_FOLDER_TITLE,
-)
-
-from main.importer.experiment_desc.importer import (
-    _build_response_content,
-    ExperimentDescriptionOptions,
-    ImportErrorSummary,
-)
 from . import autocomplete, models as edd_models, redis
 from .export.broker import ExportBroker
 from .export.forms import ExportOptionForm, ExportSelectionForm, WorklistForm
@@ -57,7 +40,19 @@ from .forms import (
     MeasurementValueFormSet,
 )
 from .importer.experiment_desc import CombinatorialCreationImporter
-from .importer import parser
+from .importer.experiment_desc.constants import (
+    BAD_FILE_CATEGORY,
+    INTERNAL_EDD_ERROR_CATEGORY,
+    SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
+    UNPREDICTED_ERROR,
+    UNSUPPORTED_FILE_TYPE,
+)
+from .importer.experiment_desc.importer import (
+    _build_response_content,
+    ExperimentDescriptionOptions,
+    ImportErrorSummary,
+)
+from .importer import parser, table
 from .models import (
     Assay,
     Line,
@@ -1147,6 +1142,7 @@ class ExportView(EDDExportView):
             broker = ExportBroker(request.user.id)
             notifications = RedisBroker(request.user)
             path = broker.save_params(request.POST)
+            logger.debug(f'Saved export params to path {path}')
             result = export_table_task.delay(request.user.id, path)
             # use task ID as notification ID; may replace message when export is complete
             notifications.notify(
@@ -1463,60 +1459,128 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
 
 
 # /study/<study_id>/import/
-@ensure_csrf_cookie
-def study_import_table(request, pk=None, slug=None):
-    """
-    View for importing tabular data (replaces AssayTableData.cgi).
-    :raises: Exception if an error occurrs during the import attempt
-    """
-    study = load_study(request, pk=pk, slug=slug, permission_type=StudyPermission.CAN_EDIT)
-    user_can_write = study.user_can_write(request.user)
+class ImportTableView(StudyObjectMixin, generic.DetailView):
 
-    # FIXME protocol display on import page should be an autocomplete
-    protocols = Protocol.objects.order_by('name')
+    def delete(self, request, *args, **kwargs):
+        study = self.object = self.get_object()
+        if not study.user_can_write(request.user):
+            return HttpResponse(status=codes.forbidden)
 
-    if request.method == "POST":
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug('\n'.join([
-                '%(key)s : %(value)s' % {'key': key, 'value': request.POST[key]}
-                for key in sorted(request.POST)
-            ]))
+        # Note: we validate the input UUID to avoid exposing the capability to delete any
+        # arbitrary cache entry from redis. As a stopgap, we'll allow any authenticated user to
+        # delete the temporary cache for the import.  we should revisit this when re-casting
+        # imports as REST resources. Low risk ATM for a user to delete someone else's WIP import,
+        # since they'd have to both catch it before it's processed AND have its UUID.
+        import_id = request.body.decode('utf-8')
         try:
-            notifications = RedisBroker(request.user)
-            storage = redis.ScratchStorage()
-            # save POST to scratch space as urlencoded string
-            key = storage.save(request.POST.urlencode())
-            result = import_table_task.delay(study.pk, request.user.pk, key)
-            # notify that import is processing
-            notifications.notify(
-                _('Data is submitted for import. You may continue to use EDD, another message '
-                  'will appear once the import is complete.'),
-                uuid=result.id,
-            )
-        except RuntimeError as e:
-            logger.exception('Data import failed: %s', e.message)
+            uuid.UUID(import_id)
+        except ValueError:
+            return HttpResponse(f'Invalid import id "{import_id}"', status=codes.bad_request)
 
-            # show the first error message to the user. continuing the import attempt to collect
-            # more potentially-useful errors makes the code too complex / hard to maintain.
+        try:
+            broker = table.ImportBroker()
+            broker.clear_pages(import_id)
+            return HttpResponse(status=codes.ok)
+        except Exception as e:
+            logger.exception(f'Import delete failed: {e}')
+
+            # return error synchronously so it can be displayed right away in context.
+            # no need for a separate notification here
+            messages.error(request, str(e))
+
+    def get(self, request, *args, **kwargs):
+        study = self.object = self.get_object()
+        user_can_write = study.user_can_write(request.user)
+        # FIXME protocol display on import page should be an autocomplete
+        protocols = Protocol.objects.order_by('name')
+        return render(
+            request,
+            "main/import.html",
+            context={
+                "study": study,
+                "protocols": protocols,
+                "writable": user_can_write,
+                "import_id": uuid.uuid4(),
+                "page_size_limit": settings.EDD_IMPORT_PAGE_SIZE,
+                "page_count_limit": settings.EDD_IMPORT_PAGE_LIMIT,
+            },
+        )
+
+    def post(self, request, *args, **kwargs):
+        study = self.object = self.get_object()
+        try:
+            #######################################################################################
+            # Extract & verify data from the request
+            #######################################################################################
+            body = json.loads(request.body)  # TODO: add JSON validation
+            page_index = body['page'] - 1
+            total_pages = body['totalPages']
+            import_id = body['importId']
+            series = body['series']
+
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('\n'.join([
+                    '%(key)s : %(value)s' % {'key': key, 'value': body[key]}
+                    for key in sorted(body)
+                ]))
+
+            broker = table.ImportBroker()
+            notifications = RedisBroker(request.user)
+
+            # test result limits to prevent erroneous or malicious clients from abusing resources
+            broker.check_bounds(import_id, series, total_pages)
+
+            #######################################################################################
+            # Cache this page of data
+            #######################################################################################
+            logger.debug(f'Caching import page {page_index+1} of {total_pages}: ({import_id})')
+
+            cached_pages = broker.add_page(import_id, json.dumps(series))
+            # if this is the initial page of data, store the context
+            if page_index == 0:
+                # cache the context for the whole import (only sent with this page)
+                del body['series']
+                broker.add_context(import_id, json.dumps(body))
+
+            # Test whether all result pages are received.
+            all_received = (cached_pages == total_pages)
+
+            #######################################################################################
+            # If all the data are received, schedule a background task to process them
+            #######################################################################################
+            if all_received:
+                logger.debug(f'Submitting Celery task for import {import_id}')
+                result = import_table_task.delay(study.pk, request.user.pk, import_id)
+
+                # notify that import is processing
+                notifications.notify(
+                    _('Data is submitted for import. You may continue to use EDD, another message '
+                      'will appear once the import is complete.'),
+                    uuid=result.id,
+                )
+
+            return JsonResponse(data={}, status=codes.accepted)
+
+        except table.ImportTooLargeException as e:
+            return HttpResponse(str(e), status=codes.request_entity_too_large)
+        except table.ImportBoundsException as e:
+            return HttpResponse(str(e), status=codes.bad_request)
+        except table.ImportException as e:
+            return HttpResponse(str(e), status=codes.internal_server_error)
+        except RuntimeError as e:
+            logger.exception(f'Data import failed: {e}')
+
+            # return error synchronously so it can be displayed right away in context.
+            # no need for a separate notification here
             messages.error(request, e)
-            # redirect to study page
-        return HttpResponseRedirect(reverse('main:detail', kwargs={'slug': study.slug}))
-    return render(
-        request,
-        "main/import.html",
-        context={
-            "study": study,
-            "protocols": protocols,
-            "writable": user_can_write,
-        },
-    )
 
 
 # /study/<study_id>/describe/
 @ensure_csrf_cookie
 def study_describe_experiment(request, pk=None, slug=None):
     """
-    View for defining a study's lines / assays from an Experiment Description file.
+    View for defining a study's lines / assays from an Experiment Description file or from the
+    "Add Line Combo's" GUI.
     """
 
     # load the study first to detect any permission errors / fail early
@@ -1529,7 +1593,7 @@ def study_describe_experiment(request, pk=None, slug=None):
     user = request.user
     options = ExperimentDescriptionOptions.of(request)
 
-    # detect the input format
+    # detect the input format (either Experiment Description file or JSON)
     stream = request
     file = request.FILES.get('file', None)
     file_name = None
@@ -1734,119 +1798,43 @@ def data_sbml_compute(request, sbml_id, rxn_id):
     raise Http404("Could not find reaction")
 
 
-meta_pattern = re.compile(r'(\w*)MetadataType$')
-
-LOCAL_ICE_FOLDER_PATH_PATTERN = re.compile(r'^/folders/(\d+)/?$')
-ICE_WEB_FOLDER_PATH_PATTERN = re.compile(r'^/partners/(\d+)/folders/(\d+)/?$')
-
-
-#  /ice_folder
-def ice_folder_lookup(request):
+# /ice_folder
+class ICEFolderView(View):
     """
     A stopgap view to support UI for looking up an ICE folder by browser URL and confirming it
-    exists and has been entered correctly.  Final solution should likely tie into a
-    not-yet-implemented ICE REST resource for searching for folders by name.
-
-    Most of the code here is to test user input and provide helpful UI-level output.
+    exists and has been entered correctly. Final solution should likely tie into a
+    not-yet-implemented ICE REST resource for searching for folders by name. Most of the code
+    here is to test user input and provide helpful UI-level output.
     """
-    if request.method != "GET":
-        raise MethodNotAllowed(request.method)
 
-    _ICE_NOT_CONFIGURED = 'ICE connection not configured'
-    _ICE_NOT_CONFIGURED_SUMMARY = 'EDD is not configured to interface with ICE'
+    def get(self, request, *args, **kwargs):
+        try:
+            ice = create_ice_connection(request.user.email)
+            folder = ice.folder_from_url(request.GET.get('url', None))
+            if folder is None:
+                return self._build_simple_err_response(
+                    SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
+                    'Folder was not found',
+                    status=codes.not_found,
+                )
+            return JsonResponse(folder.to_json_dict())
+        except Exception as e:
+            return self._build_simple_err_response(
+                SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
+                'Failed to load ICE Folder',
+                detail=str(e),
+            )
 
-    browser_url = request.GET.get('url', None)
-    user_email = request.user.email
-    ice = create_ice_connection(user_email)
-
-    # build a helpful error message if ICE isn't configured
-    ice_url = getattr(settings, 'ICE_URL', '')
-    ice_netloc = urlparse(ice_url).netloc
-    if not ice or not ice_netloc:
-        return _build_simple_err_response(_ICE_NOT_CONFIGURED, _ICE_NOT_CONFIGURED_SUMMARY,
-                                          status=500)
-
-    ###############################################################################################
-    # test for presence required browser URL parameter
-    ###############################################################################################
-    if not browser_url:
-        return _build_simple_err_response('Missing required input', 'url', codes.bad_request)
-
-    ###############################################################################################
-    # test that user entered a URL that matches the configured ICE instance
-    ###############################################################################################
-    browser_url = browser_url.lower().strip()
-    parts = urlparse(browser_url)
-    _BAD_URL_CATEGORY = 'Unacceptable Folder URL'
-    if (not parts.netloc) or (not parts.path):
-        return _build_simple_err_response(_BAD_URL_CATEGORY,
-                                          'Folder URL does not match the expected format',
-                                          codes.bad_request,
-                                          f'Copy-and-paste the URL from {settings.ICE_URL}')
-    if parts.netloc != ice_netloc:
-        return _build_simple_err_response(_BAD_URL_CATEGORY,
-                                          'Folder is in the wrong ICE instance',
-                                          codes.bad_request,
-                                          f'Only folders from {ice_netloc} are allowed')
-
-    ###############################################################################################
-    # test that we can extract useful information from the user-provided URL
-    ###############################################################################################
-    match = LOCAL_ICE_FOLDER_PATH_PATTERN.match(parts.path)
-    folder_id = None
-    partner_id = None
-
-    if match:
-        folder_id = match.group(1)
-    else:
-        match = ICE_WEB_FOLDER_PATH_PATTERN.match(parts.path)
-        if match:
-            partner_id = match.group(1)
-            folder_id = match.group(2)
-
-    if not folder_id:
-        return _build_simple_err_response(
-            _BAD_URL_CATEGORY, 'Unable to process this URL', codes.bad_request,
-            f'URL must be of the form {settings.ICE_URL}/folders/123 or '
-            f'{settings.ICE_URL}/partners/X/folders/123')
-
-    elif partner_id:
-        return _build_simple_err_response(_BAD_URL_CATEGORY, WEB_FOLDER_TITLE, codes.bad_request,
-                                          browser_url)
-
-    ###############################################################################################
-    # contact ICE to get information about the folder
-    ###############################################################################################
-    try:
-        folder = ice.get_folder(folder_id, partner_id)
-        if not folder:
-            return _build_simple_err_response(
-                SINGLE_FOLDER_ACCESS_ERROR_CATEGORY, FOLDER_NOT_FOUND, codes.not_found, folder_id)
-        return JsonResponse(folder.to_json_dict(), status=codes.ok)
-
-    except requests.exceptions.HTTPError as http_err:
-        logger.exception(f'Exception querying ICE for folder {browser_url}')
-        if http_err.response.status_code == codes.FORBIDDEN:
-            return _build_simple_err_response(
-                'Folder permissions error',
-                'Folder access is not allowed for your account. Please contact the folder owner '
-                'or the ICE administrator.', codes.forbidden)
-        else:
-            return _build_simple_err_response(
-                'ICE access error', 'A problem occurred while attempting to access ICE',
-                http_err.response.status_code)
-    except requests.exceptions.ConnectionError as conn_err:
-        logger.exception('Error connecting to ICE')
-        return _build_simple_err_response(SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
-                                          ICE_CONNECTION_ERROR,
-                                          codes.internal_server_error)
+    def _build_simple_err_response(self, category, title,
+                                   status=codes.internal_server_error,
+                                   detail=None):
+        err = ImportErrorSummary(category, title)
+        if detail:
+            err.add_occurrence(detail)
+        return JsonResponse({'errors': [err.to_json_dict()]}, status=status)
 
 
-def _build_simple_err_response(category, title, status, detail=None):
-    err = ImportErrorSummary(category, title)
-    if detail:
-        err.add_occurrence(detail)
-    return JsonResponse(data={'errors': [err.to_json_dict()]}, status=status)
+meta_pattern = re.compile(r'(\w*)MetadataType$')
 
 
 # /search
@@ -1884,4 +1872,4 @@ def model_search(request, model_name):
             return autocomplete.search_generic(request, model_name)
 
     except ValidationError as v:
-        return JsonResponse(v.message, status=400)
+        return JsonResponse(str(v), status=400)

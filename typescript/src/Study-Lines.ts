@@ -50,6 +50,7 @@ module StudyLines {
 
     // Called when the page loads.
     export function prepareIt() {
+        setupHelp();
 
         attachmentIDs = null;
         attachmentsByID = null;
@@ -77,18 +78,14 @@ module StudyLines {
         });
         $('#line-help-btn').on('click', () => lineHelp.dialog('open'));
 
-        var fileDropZoneHelper = new FileDropZone.FileDropZoneHelpers({
-           pageRedirect: '',
-           haveInputData: false,
-        });
+        var helper = new FileDropZone.FileDropZoneHelpers();
 
         Utl.FileDropZone.create({
             elementId: "addToLinesDropZone",
             url: Utl.relativeURL('describe/', studyBaseUrl).toString(),
-            processResponseFn: fileDropZoneHelper.fileReturnedFromServer.bind(fileDropZoneHelper),
-            processErrorFn: fileDropZoneHelper.fileErrorReturnedFromServer.bind(fileDropZoneHelper),
-            processWarningFn: fileDropZoneHelper.fileWarningReturnedFromServer.bind(fileDropZoneHelper),
-            processICEerror: fileDropZoneHelper.processICEerror.bind(fileDropZoneHelper),
+            processResponseFn: helper.fileReturnedFromServer.bind(helper),
+            processErrorFn: helper.fileErrorReturnedFromServer.bind(helper),
+            processWarningFn: helper.fileWarningReturnedFromServer.bind(helper),
         });
 
         $('#content').on('dragover', function(e:any) {
@@ -130,6 +127,27 @@ module StudyLines {
                 $('#noLinesDiv').toggleClass('hide', hasLines);
             }
         });
+    }
+
+    function setupHelp() {
+        // for consistency with other pages, use JQuery UI to set tool tip, even though it will
+        // actually launch a new tab
+        $('#ed-help-btn').tooltip();
+
+         // launch a dialog instead of tool-tip to be more mobile-friendly
+        let linesHelp = $('#line-help-content').dialog({
+            'title': "What is a line?",
+            'autoOpen': false,
+            'modal': true,
+            'resizable': true,
+            'position': {
+                'my': "left top",
+                'at': "left bottom",
+                'of': "#line-help-btn"
+            }
+        });
+
+        $('#line-help-btn').on('click', () => linesHelp.dialog('open'));
     }
 
 

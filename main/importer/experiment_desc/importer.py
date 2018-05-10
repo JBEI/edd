@@ -29,9 +29,8 @@ from main.tasks import create_ice_connection
 # avoiding loading a ton of names to the module by only loading the namespace to constants
 from . import constants
 from .constants import (
-    ALLOW_NON_STRAIN_PARTS,
-    OMIT_STRAINS,
     ALLOW_DUPLICATE_NAMES_PARAM,
+    ALLOW_NON_STRAIN_PARTS,
     BAD_GENERIC_INPUT_CATEGORY,
     DRY_RUN_PARAM,
     DUPLICATE_INPUT_ASSAY_NAMES,
@@ -45,17 +44,18 @@ from .constants import (
     EXISTING_LINE_NAMES,
     FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
     GENERIC_ICE_RELATED_ERROR,
-    IceErrCondition,
     ICE_FOLDERS_KEY,
+    IceErrCondition,
     IGNORE_ICE_ACCESS_ERRORS_PARAM,
     INTERNAL_EDD_ERROR_CATEGORY,
     MISSING_REQUIRED_NAMING_INPUT,
-    NON_UNIQUE_LINE_NAMES_CATEGORY,
     NO_ENTRIES_TITLE,
     NO_FILTERED_ENTRIES_ERROR_CATEGORY,
-    NON_STRAINS_CATEGORY,
-    NON_STRAIN_ICE_ENTRY,
     NO_INPUT,
+    NON_STRAIN_ICE_ENTRY,
+    NON_STRAINS_CATEGORY,
+    NON_UNIQUE_LINE_NAMES_CATEGORY,
+    OMIT_STRAINS,
     PART_NUMBER_NOT_FOUND,
     SINGLE_ENTRY_LOOKUP_ERRS,
     SINGLE_FOLDER_LOOKUP_ERRS,
@@ -550,25 +550,24 @@ class IcePartResolver(object):
             return entry
 
         entry = ice.get_entry(entry_id)
-        self._process_entry(entry_id, entry)
-
         if entry:
+            self._process_entry(entry_id, entry)
             self.individual_entries_found += 1
 
-        # double-check for a coding error that occurred during testing. initial test
-        # parts had "JBX_*" part numbers that matched their numeric ID, but this isn't
-        # always the case!
-        use_part_numbers = self.options.use_ice_part_numbers
-        if (use_part_numbers and entry.part_id != entry_id) or (
-                (not use_part_numbers) and entry.uuid != str(entry_id)):
-            actual_id = entry.part_id if use_part_numbers else entry.uuid
-            logger.error(
-                f"Couldn't locate ICE entry \"{entry_id}\" An ICE entry was "
-                f"found by searching for ID {entry_id}, but its returned identifier "
-                f"({entry.id}) didn't match the input")
-            self.importer.add_error(INTERNAL_EDD_ERROR_CATEGORY,
-                                    FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
-                                    actual_id)
+            # double-check for a coding error that occurred during testing. initial test
+            # parts had "JBX_*" part numbers that matched their numeric ID, but this isn't
+            # always the case!
+            use_part_numbers = self.options.use_ice_part_numbers
+            if (use_part_numbers and entry.part_id != entry_id) or (
+                    (not use_part_numbers) and entry.uuid != str(entry_id)):
+                actual_id = entry.part_id if use_part_numbers else entry.uuid
+                logger.error(
+                    f"Couldn't locate ICE entry \"{entry_id}\" An ICE entry was "
+                    f"found by searching for ID {entry_id}, but its returned identifier "
+                    f"({entry.id}) didn't match the input")
+                self.importer.add_error(INTERNAL_EDD_ERROR_CATEGORY,
+                                        FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
+                                        actual_id)
         return entry
 
     def _process_entry(self, entry_id, entry):

@@ -5,16 +5,23 @@ Tests used to validate the tutorial screencast functionality.
 
 import codecs
 import json
+import math
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import QueryDict
 from django.urls import reverse
+from django.test import override_settings
 from io import BytesIO
-from mock import MagicMock, patch
+from mock import patch
 from requests import codes
 
 from .. import models, tasks
 from . import factory, TestCase
+
+_CONTEXT_FILENAME = '%s.post.context.json'
+_PAGED_CONTEXT_FILENAME = '%s.post.paged.context.json'
+_SERIES_FILENAME = '%s.post.series.json'
 
 
 class ExperimentDescriptionTests(TestCase):
@@ -94,7 +101,7 @@ class ExperimentDescriptionTests(TestCase):
         messages = response.json()
         self.assertIn('errors', messages)
         self.assertEqual(len(messages['errors']), 1)
-        self.assertEqual(messages['errors'][0]['category'], 'Naming overlap')
+        self.assertEqual(messages['errors'][0]['category'], 'Non-unique line names')
 
     def test_bad_headers(self):
         name = 'ExperimentDescription_bad_headers.xlsx'
@@ -145,23 +152,56 @@ class ImportDataTestsMixin(object):
     def _view_url(self):
         return reverse('main:detail', kwargs={'slug': self.target_study.slug})
 
-    def _run_import_view(self, postfile):
-        with factory.load_test_file(postfile) as poststring:
-            POST = QueryDict(poststring.read())
+    # future proof the test against local changes to settings that control its behavior
+    @override_settings(EDD_IMPORT_CACHE_LENGTH=1, EDD_IMPORT_PAGE_LIMIT=1000,
+                       EDD_IMPORT_PAGE_SIZE=1000)
+    def _run_import_view(self, file, import_id):
+        return self._run_paged_import_view(file, import_id, page_count=1)
+
+    def _run_paged_import_view(self, file, import_id, page_count=1):
+        # load post data broken up across multiple files
+        context_file_name = _CONTEXT_FILENAME % file
+        if page_count > 1:
+            context_file_name = _PAGED_CONTEXT_FILENAME % file
+        with factory.load_test_file(context_file_name, 'rt') as context_file:
+            context_str = context_file.read()
+
+        # load series data, slicing it up into pages if requested
+        with factory.load_test_file(_SERIES_FILENAME % file, 'rt') as series_file:
+            series_pages = self._slice_series_pages(series_file, page_count)
+
         # mocking redis and celery task, to only test the view itself
         with patch('main.views.redis.ScratchStorage') as MockStorage:
             with patch('main.views.import_table_task.delay') as mock_task:
                 storage = MockStorage.return_value
-                storage.save.return_value = 'randomkey'
-                result = MagicMock()
-                result.id = '00000000-0000-0000-0000-000000000001'
-                mock_task.return_value = result
-                # fake the request
-                response = self.client.post(self._import_url(), data=POST)
-                # assert calls to redis and celery
-                storage.save.assert_called()
-                mock_task.assert_called_with(self.target_study.pk, self.user.pk, 'randomkey')
-        self.assertEqual(self._assay_count(), 0)  # view does not change assays
+                storage.page_count.return_value = 0
+                storage.save.return_value = import_id
+                storage.append.side_effect = ((import_id, i+1) for i in range(0, page_count))
+
+                with patch('celery.result.AsyncResult') as MockResult:
+                    mock_result = MockResult.return_value
+                    mock_result.id = '00000000-0000-0000-0000-000000000001'
+                    mock_task.return_value = mock_result
+
+                    # fake the request(s)
+                    for i, page in enumerate(series_pages):
+                        # stitch POST data together for simulating a client request. The first
+                        # request has both context and series data. Subsequent requests will
+                        # only contain series data.
+                        if i == 0:
+                            post_data = context_str[0:-1]  # strip off the closing bracket
+                            post_data = f'{post_data}, "series": {series_pages[0]} }}'
+                        else:
+                            post_data = (f'{{ "importId": "{import_id}", "page": {i+1}, '
+                                         f'"totalPages": {page_count}, "series": {page}}}')
+                        response = self.client.post(self._import_url(), data=post_data,
+                                                    content_type='application/json')
+                        self.assertEqual(response.status_code, codes.accepted)
+
+                    # assert calls to celery
+                    mock_task.assert_called_once_with(self.target_study.pk, self.user.pk,
+                                                      import_id)
+        self.assertEquals(self._assay_count(), 0)  # view does not change assays
         return response
 
     def _run_parse_view(self, filename, filetype, mode):
@@ -187,18 +227,72 @@ class ImportDataTestsMixin(object):
         )
         return response
 
-    def _run_task(self, filename):
-        storage_key = 'randomkey'
-        with factory.load_test_file(filename + '.post') as post:
-            data = post.read()
+    def _run_task(self, base_filename, import_id, page_count=1):
+        # load post data broken up across multiple files
+        filename = ((_CONTEXT_FILENAME if page_count == 1 else _PAGED_CONTEXT_FILENAME) %
+                    base_filename)
+        with factory.load_test_file(filename, 'rt') as context_file:
+            context_str = context_file.read()
+
+        with factory.load_test_file(_SERIES_FILENAME % base_filename) as series_file:
+            series_pages = self._slice_series_pages(series_file, page_count)
+
         # mocking redis, so test provides the data instead of real redis
         with patch('main.tasks.ScratchStorage') as MockStorage:
             storage = MockStorage.return_value
-            storage.load.return_value = data
-            tasks.import_table_task(self.target_study.pk, self.user.pk, storage_key)
-            # assertions
-            storage.load.assert_called_with(storage_key)
-            storage.delete.assert_called_with(storage_key)
+            storage.load.return_value = context_str
+            storage.load_pages.return_value = series_pages
+            tasks.import_table_task(self.target_study.pk, self.user.pk, import_id)
+
+            storage.load.assert_called_once()
+            storage.load_pages.assert_called_once()
+
+    def _slice_series_pages(self, series_file, page_count):
+        """ Read the aggregated series data from file and if configured to test multiple pages,
+            break it up into chunks for insertion into the simulated cache. Clients of this
+            method must override EDD_IMPORT_PAGE_SIZE to get predictable results.
+        """
+
+        # if import can be completed in a single page, just return the series data directly from
+        # file
+        series_str = series_file.read()
+        if page_count == 1:
+            return [series_str]
+
+        # since we have to page the data, parse the json and break it up into pages of the
+        # requested size
+        series = json.loads(series_str)
+        item_count = len(series)
+        page_size = settings.EDD_IMPORT_PAGE_SIZE
+
+        pages = []
+        for i in range(0, int(math.ceil(item_count / page_size))):
+            end_index = min((i+1) * page_size, item_count)
+            page_series = series[i * page_size:end_index]
+            pages.append(json.dumps(page_series))
+            self.assertTrue(page_series)
+
+        self.assertEquals(len(pages), page_count)  # verify that data file content matches
+
+        return pages
+
+
+def derive_cache_values(post_str):
+    """
+    Extracts parts from the post request to be inserted into or extracted from the import cache.
+    This requires parsing the request multiple times during the test, but it should be the
+    succinct way to avoid duplicating the post data in test inputs, or breaking it up into even
+    more files.
+    """
+    parsed_json = json.loads(post_str)
+
+    # extract series data first.  everything else is context
+    series = parsed_json['series']
+
+    del parsed_json['series']
+    context = json.dumps(parsed_json)
+    series = json.dumps(series)
+    return context, series
 
 
 class FBAImportDataTests(ImportDataTestsMixin, TestCase):
@@ -219,19 +313,14 @@ class FBAImportDataTests(ImportDataTestsMixin, TestCase):
         self.assertEqual(response.status_code, codes.ok)
 
     def test_hplc_import_task(self):
-        self._run_task('ImportData_FBA_HPLC.xlsx')
+        self._run_task('ImportData_FBA_HPLC.xlsx', 'random_key')
         self.assertEqual(self._assay_count(), 2)
         self.assertEqual(self._measurement_count(), 4)
         self.assertEqual(self._value_count(), 28)
 
     def test_hplc_import_view(self):
-        response = self._run_import_view('ImportData_FBA_HPLC.xlsx.post')
-        self.assertRedirects(
-            response,
-            self._view_url(),
-            # because no assays exist yet, there is another redirect to the lines view
-            target_status_code=codes.found,
-        )
+        response = self._run_import_view('ImportData_FBA_HPLC.xlsx', 'random_key')
+        self.assertEqual(response.status_code, codes.accepted)
 
     def test_od_import_parse(self):
         name = 'ImportData_FBA_OD.xlsx'
@@ -239,19 +328,84 @@ class FBAImportDataTests(ImportDataTestsMixin, TestCase):
         self.assertEqual(response.status_code, codes.ok)
 
     def test_od_import_task(self):
-        self._run_task('ImportData_FBA_OD.xlsx')
+        self._run_task('ImportData_FBA_OD.xlsx', 'random_key')
         self.assertEqual(self._assay_count(), 2)
         self.assertEqual(self._measurement_count(), 2)
         self.assertEqual(self._value_count(), 14)
 
     def test_od_import_view(self):
-        response = self._run_import_view('ImportData_FBA_OD.xlsx.post')
-        self.assertRedirects(
-            response,
-            self._view_url(),
-            # because no assays exist yet, there is another redirect to the lines view
-            target_status_code=codes.found,
-        )
+        response = self._run_import_view('ImportData_FBA_OD.xlsx', 'randomkey')
+        self.assertEqual(response.status_code, codes.accepted)
+
+
+class PagedImportTests(ImportDataTestsMixin, TestCase):
+    """
+    Executes a set of tests that verify multi-page import using a subset of data from Tutorial
+    #5 (Principal Component Analysis of Proteomics).
+    """
+    fixtures = ['main/tutorial_pcap']
+
+    def setUp(self):
+        super(PagedImportTests, self).setUp()
+        self.user = get_user_model().objects.get(pk=2)
+        self.target_study = models.Study.objects.get(pk=20)
+        self.client.force_login(self.user)
+        self.import_id = '3f775231-e380-42eb-a693-cf0d88e133ba'  # same as the paged context file
+
+    # override settings to force the import to be multi-paged, and also to future proof the
+    # test against local settings changes. Otherwise, exactly the same test here as in
+    # PCAPImportDataTests
+    @override_settings(EDD_IMPORT_PAGE_SIZE=3, EDD_IMPORT_PAGE_LIMIT=1000,
+                       EDD_IMPORT_CACHE_LENGTH=1)
+    def test_od_import_view(self):
+        response = self._run_paged_import_view('ImportData_PCAP_OD.xlsx', self.import_id,
+                                               page_count=10)
+        self.assertEqual(response.status_code, codes.accepted)
+
+    # override settings to force the import to be multi-paged, and also to future proof the
+    # test against local settings changes. Otherwise, exactly the same test here as in
+    # PCAPImportDataTests
+    @override_settings(EDD_IMPORT_PAGE_SIZE=3, EDD_IMPORT_PAGE_LIMIT=1000,
+                       EDD_IMPORT_CACHE_LENGTH=1)
+    def test_od_import_task(self):
+        self._run_task('ImportData_PCAP_OD.xlsx', self.import_id, page_count=10)
+        self.assertEqual(self._assay_count(), 30)
+        self.assertEqual(self._measurement_count(), 30)
+        self.assertEqual(self._value_count(), 30)
+
+    # override settings to force the import to be multi-paged, and also to future proof the
+    # test against local settings changes. Otherwise, exactly the same test here as in
+    # PCAPImportDataTests
+    @override_settings(EDD_IMPORT_PAGE_SIZE=3, EDD_IMPORT_PAGE_LIMIT=1000,
+                       EDD_IMPORT_CACHE_LENGTH=1)
+    def test_import_retry_view(self):
+        """
+        Tests the HTTP DELETE functionality that enables the import retry feature.
+        """
+        # mocking redis and celery task, to only test the view itself
+        with patch('main.views.redis.ScratchStorage') as MockStorage:
+            # get a mock redis cache...ordinarily it'd have data in it to delete, but no need
+            # for it here
+            storage = MockStorage.return_value
+
+            # test attempted cache deletion with a non-uuid import key. this must always fail,
+            # or else we've exposed the capability for users to delete arbitrary pages from
+            # our redis cache
+            response = self.client.delete(self._import_url(),
+                                          data=bytes('non-uuid-import-id', encoding='UTF-8'),
+                                          content_type='application/json')
+            self.assertEquals(response.status_code, codes.bad_request)
+            storage.delete.assert_not_called()
+
+            # fake a valid DELETE request
+            response = self.client.delete(self._import_url(),
+                                          data=bytes(self.import_id, encoding='UTF-8'),
+                                          content_type='application/json')
+            self.assertEquals(response.status_code, codes.ok)
+            storage.delete.assert_called_once()
+
+        self.assertEquals(self._assay_count(), 0)  # view does not change assays
+        return response
 
 
 class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
@@ -273,57 +427,42 @@ class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
         self.assertEqual(response.status_code, codes.ok)
 
     def test_gcms_import_task(self):
-        self._run_task('ImportData_PCAP_GCMS.csv')
+        self._run_task('ImportData_PCAP_GCMS.csv', 'random_key')
         self.assertEqual(self._assay_count(), 30)
         self.assertEqual(self._measurement_count(), 30)
         self.assertEqual(self._value_count(), 30)
 
     def test_gcms_import_view(self):
-        response = self._run_import_view('ImportData_PCAP_GCMS.csv.post')
-        self.assertRedirects(
-            response,
-            self._view_url(),
-            # because no assays exist yet, there is another redirect to the lines view
-            target_status_code=codes.found,
-        )
+        response = self._run_import_view('ImportData_PCAP_GCMS.csv', 'randomkey')
+        self.assertEqual(response.status_code, codes.accepted)
 
     def test_od_import_parse(self):
         response = self._run_parse_view('ImportData_PCAP_OD.xlsx', 'xlsx', 'std')
         self.assertEqual(response.status_code, codes.ok)
 
     def test_od_import_task(self):
-        self._run_task('ImportData_PCAP_OD.xlsx')
+        self._run_task('ImportData_PCAP_OD.xlsx', 'random_key')
         self.assertEqual(self._assay_count(), 30)
         self.assertEqual(self._measurement_count(), 30)
         self.assertEqual(self._value_count(), 30)
 
     def test_od_import_view(self):
-        response = self._run_import_view('ImportData_PCAP_OD.xlsx.post')
-        self.assertRedirects(
-            response,
-            self._view_url(),
-            # because no assays exist yet, there is another redirect to the lines view
-            target_status_code=codes.found,
-        )
+        response = self._run_import_view('ImportData_PCAP_OD.xlsx', 'randomkey')
+        self.assertEqual(response.status_code, codes.accepted)
 
     def test_proteomics_import_parse(self):
         response = self._run_parse_view('ImportData_PCAP_Proteomics.csv', 'csv', 'std')
         self.assertEqual(response.status_code, codes.ok)
 
     def test_proteomics_import_task(self):
-        self._run_task('ImportData_PCAP_Proteomics.csv')
+        self._run_task('ImportData_PCAP_Proteomics.csv', 'random_key')
         self.assertEqual(self._assay_count(), 30)
         self.assertEqual(self._measurement_count(), 270)
         self.assertEqual(self._value_count(), 270)
 
     def test_proteomics_import_view(self):
-        response = self._run_import_view('ImportData_PCAP_Proteomics.csv.post')
-        self.assertRedirects(
-            response,
-            self._view_url(),
-            # because no assays exist yet, there is another redirect to the lines view
-            target_status_code=codes.found,
-        )
+        response = self._run_import_view('ImportData_PCAP_Proteomics.csv', 'randomkey')
+        self.assertEqual(response.status_code, codes.accepted)
 
 
 class FBAExportDataTests(TestCase):
