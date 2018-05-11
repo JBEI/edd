@@ -11,11 +11,13 @@ require('jquery-ui/themes/base/button.css');
 require('jquery-ui/themes/base/draggable.css');
 require('jquery-ui/themes/base/resizable.css');
 require('jquery-ui/themes/base/dialog.css');
+require('jquery-ui/themes/base/progressbar.css');
 require('jquery-ui/themes/base/theme.css');
 require('jquery-ui/ui/widgets/button');
 require('jquery-ui/ui/widgets/draggable');
 require('jquery-ui/ui/widgets/resizable');
 require('jquery-ui/ui/widgets/dialog');
+require('jquery-ui/ui/widgets/progressbar');
 
 // Doing this bullshit because TypeScript/InternetExplorer do not recognize static methods
 // on Number
@@ -159,26 +161,6 @@ module EDDTableImport {
 
         // turn on dialogs for the help buttons in each section
         ['1', '2', '3', '4', '5'].forEach(setupHelp);
-
-        $('#submission-dialog').dialog({
-            'resizable': true,
-            'height': 230,
-            'minWidth': 188,
-            'maxWidth': 750,
-            'modal': true,
-            'autoOpen': false,
-            'buttons': [{
-                'text': 'Retry',
-                'id': 'retry-btn',
-                'class': 'actionButton secondary',
-                'click': () => EDDTableImport.reviewStep.retryImport()
-            }, {
-                'text': 'Return to Study',
-                'id': 'return-to-study-btn',
-                'class': 'actionButton primary',
-                'click': () => window.location.href = '../'
-            }]
-        }).removeClass('off');
 
         atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata/";
 
@@ -3753,6 +3735,11 @@ module EDDTableImport {
             this.prevSteps.forEach((step:ImportStep, stepIndex:number):void => {
                 this.warningInputs[stepIndex] =[];
             });
+
+            $('#retry-button').on('click', () => {
+                this.retryImport();
+                return false;  // prevent following link to #
+            });
         }
 
         previousStepChanged(): void {
@@ -3772,14 +3759,10 @@ module EDDTableImport {
             var totalWarningsCount = this.getMessageCount(this.warningMessages);
             var totalMessagesCount = totalErrorsCount + totalWarningsCount;
 
-            var summaryDiv = $('#summaryContentDiv').empty();
-
             var hasRequiredInitialInputs = this.arePrevStepRequiredInputsProvided();
+            let showComplete = hasRequiredInitialInputs && totalMessagesCount === 0;
 
-            var summaryWrapperDiv = $('#reviewSummarySection');
-            if (hasRequiredInitialInputs && !totalMessagesCount) {
-                $('<p>').text('No errors or warnings! Go ahead and import!').appendTo(summaryDiv);
-            }
+            $('#reviewSummaryNoWarnings').toggleClass('off', !showComplete);
             $('#completeAllStepsFirstLabel').toggleClass('off', hasRequiredInitialInputs);
             $('#submit-div').toggleClass('off', !hasRequiredInitialInputs);
 
@@ -3968,25 +3951,22 @@ module EDDTableImport {
         startImport(): void {
             $('#submit-btn').prop('disabled', true);
 
-            // configure and show the submission dialog before starting to send data
-            $('#importWaitingDiv').removeClass('off');
-            $('#importSubmitSuccessDiv').addClass('off');
-            $('#importSubmitErrorDiv').addClass('off');
-            $('#retry-btn').prop('disabled', true);
-            $('#return-to-study-btn').prop('disabled', true);
-            $('#submission-dialog').dialog('open');
-
+            let progressbar = $('#submit-progress-bar').progressbar({'value': false});
+            $('#submit-div').addClass('off');
+            $('#importWaitingDiv, #submit-result').removeClass('off');
             let resolvedSets = this.step4.createSetsForSubmission();
             let pageSizeLimit = $('#pageSizeLimit').val() || 1000;
             let pageCount = Math.ceil(resolvedSets.length / pageSizeLimit);
             let begin = 0, currentPage = 0;
             let requests = []
+            progressbar.progressbar({'max': resolvedSets.length, 'value': 0});
             while (begin < resolvedSets.length) {
+                let series = resolvedSets.slice(begin, (begin += pageSizeLimit));
                 let payload = {
                     'importId': $('#importId').val(),
                     'page': ++currentPage,
                     'totalPages': pageCount,
-                    'series': resolvedSets.slice(begin, (begin += pageSizeLimit))
+                    'series': series
                 }
                 // include import context parameters in the first page
                 if (begin === 0) {
@@ -4005,48 +3985,36 @@ module EDDTableImport {
                     'dataType': 'json',
                     'data': JSON.stringify(payload),
                     'processData': false,
+                }).done(() => {
+                    let current = progressbar.progressbar('option', 'value');
+                    progressbar.progressbar('option', 'value', current + series.length);
                 }));
             }
             // await all the POST requests finishing
             $.when.apply($, requests).always(() => {
                 $('#importWaitingDiv').addClass('off');
-                $('#return-to-study-btn').prop('disabled', false);
-                $('#submit-btn').prop('disabled', false);
             }).done(() => {
                 $('#importSubmitSuccessDiv').removeClass('off');
-                $('#retry-btn').prop('disabled', true);
             }).fail(() => {
                 $('#importSubmitErrorDiv').removeClass('off');
-                $('#retry-btn').prop('disabled', false);
             });
         }
 
         retryImport(): void {
-            // disable buttons that shouldn't be used while import is being retried
-            $('#retry-btn').prop('disabled', true);
-            $('#return-to-study-btn').prop('disabled', true);
-            $('#submit-btn').prop('disabled', true);
-
+            let progressbar = $('#submit-progress-bar')
             $('#importSubmitErrorDiv').addClass('off');
             $('#importWaitingDiv').removeClass('off');
-
-            // first attempt to delete any state cached during the previous import
-            // attempt.
+            progressbar.progressbar('option', 'value', false);
+            // first attempt to delete any state cached during the previous import attempt.
             $.ajax({
                 'headers': {'Content-Type': 'application/json'},
                 'method': 'DELETE',
                 'data': $('#importId').val(),
                 'processData': false,
             }).done(() => {
-                $('#submission-dialog').dialog('close');
                 setTimeout(() => this.startImport(), 0);
             }).fail(() => {
-                $('#importWaitingDiv').addClass('off');
                 $('#importSubmitErrorDiv').removeClass('off');
-                $('#retry-btn').prop('disabled', false);
-                $('#return-to-study-btn').prop('disabled', false);
-                $('#importSubmitErrorDiv').removeClass('off');
-                $('#submit-btn').prop('disabled', false);
             });
         }
     }

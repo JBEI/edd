@@ -23,20 +23,6 @@
 
 {% block content %}
 
-<div id="submission-dialog" title="Submitting Import" class="off">
-    <div id="importWaitingDiv">Please wait while your import is submitted.
-      <span class="waitbadge wait"></span>
-    </div>
-  <div id="importSubmitSuccessDiv">
-    <p><span id="successBanner" class="successMessage">Submitted!</span></p>
-  <p>Your import is submitted! You can continue to use EDD, and you'll see a message when your
-    import has been processed.</p></div>
-  <div id="importSubmitErrorDiv">
-    <p><span id="errorBanner" class="errorMessage">Error</span></p>
-    There was an error submitting your import.  Please try again.
-  </div>
-</div>
-
 <!-- Step 1 -->
 <div class="pageSection stepBorder" id="selectMajorKindStep">
   <div class="sectionHead">
@@ -626,7 +612,6 @@
   <div class="sectionContent" id="reviewSummarySection">
     <div class="disabledStepLabel" id="completeAllStepsFirstLabel">Complete the preceding steps
       first!</div>
-    <div id="summaryContentDiv"></div>
   </div>
   <div class="sectionContent step5Subsection off" id="reviewErrorsSection">
     <h1>Errors</h1>
@@ -639,22 +624,46 @@
     <div id="reviewWarningsContentDiv"></div>
   </div>
   <div class="sectionContent off" id="submit-div">
-    <form method="post" id="assayTableForm" action="{% url 'main:table-import' slug=study.slug %}">
+    <p id="reviewSummaryNoWarnings" class="off">No errors or warnings! Go ahead and import!</p>
+    <input type="hidden" id="importId" value="{{ import_id }}"/>
+    <input type="hidden" id="pageSizeLimit" value="{{ page_size_limit }}"/>
+    <input type="hidden" id="pageCountLimit" value="{{page_count_limit}}"/>
+    <form method="POST" id="assayTableForm" action="{% url 'main:table-import' slug=study.slug %}">
       {% csrf_token %}
-      <input type="hidden" name="studyID" value="{{ study.id }}"/>
-      <input type="hidden" id="importId" value="{{ import_id }}"/>
-      <input type="hidden" id="pageSizeLimit" value="{{ page_size_limit }}"/>
-      <input type="hidden" id="pageCountLimit" value="{{page_count_limit}}"/>
       <div>
         <input type="checkbox" id="emailChkbx">
         <label for="emailChkbx">Email me when finished</label>
       </div>
       <input type="button" id="submit-btn" name="action" value="Submit Import"
-             disabled="disabled"/>
+          disabled="disabled" />
     </form>
+  </div>
+  <div id="submit-result" class="off">
+    <div id="importWaitingDiv" class="off">
+      <span>Please wait while your import is submitted.</span>
+      <div id="submit-progress-bar"></div>
     </div>
+    <div id="submit-end">
+      <div id="importSubmitSuccessDiv" class="off alert alert-success" role="alert">
+        <strong>Submitted!</strong>
+        <span>Your import is submitted! You can continue to use EDD, and
+          will receive a message when your import has been processed.</span>
+        <a class="return-link" href="{% url 'main:detail' slug=study.slug %}">
+          <button type="button" class="actionButton primary">Return to Study</button>
+        </a>
+      </div>
+      <div id="importSubmitErrorDiv" class="off alert alert-danger" role="alert">
+        <strong>Error!</strong>
+        <span>There was an error submitting your import. Please try again.</span>
+        <a id="retry-button" href="#">
+          <button type="button" class="actionButton secondary">Retry Import</button>
+        </a>
+        <a class="return-link" href="{% url 'main:detail' slug=study.slug %}">
+          <button type="button" class="actionButton primary">Return to Study</button>
+        </a>
+      </div>
+    </div>
+  </div>
 </div>
-
-
 
 {% endblock content %}
