@@ -11,9 +11,8 @@
 {% endblock body_title %}
 
 {% block content %}
-  {% blocktrans trimmed as error_message %}
+  <p>{% blocktrans trimmed %}
   Your request could not be validated. The site administrators have been notified of the problem,
   please check back later.
-  {% endblocktrans %}
-  <p>{{ error_message }}</p>
+  {% endblocktrans %}</p>
 {% endblock content %}
