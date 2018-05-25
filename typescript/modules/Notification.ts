@@ -71,7 +71,7 @@ export module Notification {
 
         private buildWebsocketURL(path: string): URL {
             let relativeURL = Utl.relativeURL(path, new URL(window.location.origin));
-            relativeURL.protocol = ('https' === relativeURL.protocol ? 'wss' : 'ws');
+            relativeURL.protocol = ('https:' === relativeURL.protocol ? 'wss:' : 'ws:');
             return relativeURL;
         }
 
