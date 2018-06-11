@@ -1,0 +1,13 @@
+[{
+  "line_name": "A",
+  "assay_name": null,
+  "measurement_name": "Limonene",
+  "metadata_by_name": null,
+  "data": [8,1]
+}, {
+  "line_name": "B",
+  "assay_name": null,
+  "measurement_name": "Mevalonate",
+  "metadata_by_name": null,
+  "data": [24, 2]
+}]

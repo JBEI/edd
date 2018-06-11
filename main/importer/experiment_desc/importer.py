@@ -174,6 +174,8 @@ def _build_prioritized_issue_list(src_dict, priority_reference):
     return result
 
 
+# TODO: after we have some unit tests for this code and can refactor, replace with the newer
+# variant in Import 2 (ErrorAggregator & related classes)
 class ImportErrorSummary(object):
     """
     Defines error/warning information captured during an actual or attempted import attempt.
