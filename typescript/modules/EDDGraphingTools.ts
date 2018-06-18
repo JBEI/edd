@@ -373,12 +373,7 @@ export class GraphView {
             .key((v: GraphValue) => v.y_unit)
             .entries(values)
             .forEach((grouping: Nested<GraphValue>, index: number) => {
-                let y_extent: [number, number] = d3.extent(
-                    grouping.values,
-                    (d: GraphValue): number => d.y
-                );
-                // forcing bottom of y domain to 0
-                y_extent[0] = Math.min(y_extent[0], 0);
+                let y_extent: [number, number] = this.yExtent(grouping);
                 let y_scale = d3.scaleLinear().rangeRound([params.height, 0]).domain(y_extent);
                 // nest values using the same units by the value fullName (line name + measurement)
                 // TODO: this should nest by Measurement ID for existing data OR
@@ -422,7 +417,7 @@ export class GraphView {
             .forEach((nest: Nested<GraphValue>, index: number) => {
                 // scale y values so maxima goes to top of graph, and minima goes to bottom
                 let y_scale = d3.scaleLinear()
-                    .domain(d3.extent(nest.values, (v: GraphValue) => v.y))
+                    .domain(this.yExtent(nest))
                     .range([params.height, 0]);
                 // attach the computed scale to every value
                 nest.values.forEach((v: GraphValue) => (<ScaledValue>v).scaled_y = y_scale(v.y));
@@ -459,7 +454,7 @@ export class GraphView {
             .enter().append('rect')
                 .attr("class", "rect graphValue")
                 .attr("width", tertiary_scale.bandwidth())
-                .attr("x", (d, i: number) => i * tertiary_scale.bandwidth())
+                .attr("x", (d) => tertiary_scale(grouping.tertiary(d)))
                 .attr("y", (v: ScaledValue) => v.scaled_y)
                 .attr("height", (v: ScaledValue) => params.height - v.scaled_y)
                 .on('mouseover', this.tooltip_over.bind(this))
@@ -468,6 +463,23 @@ export class GraphView {
                 .style("opacity", 1);
         // switch off the loading indicator
         $('#graphLoading').addClass('off');
+    }
+
+    private yExtent(grouping: Nested<GraphValue>): [number, number] {
+        let y_extent: [number, number] = d3.extent(
+            grouping.values,
+            (d: GraphValue): number => d.y
+        );
+        // forcing bottom of y domain to 0, otherwise single-item graphs will not show
+        y_extent[0] = Math.min(y_extent[0], 0);
+        if (y_extent[0] < 0) {
+            // if bottom of domain is negative, force top of domain to be at least 0
+            y_extent[1] = Math.max(y_extent[1], 0);
+        } else if (y_extent[0] === y_extent[1]) {
+            // if bottom is same as top, make top 1 unit more than bottom
+            y_extent[1] = y_extent[0] + 1;
+        }
+        return y_extent;
     }
 
     private sortOnX(values: GraphValue[]): GraphValue[] {
