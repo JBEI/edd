@@ -22,6 +22,14 @@ export module Utl {
     }
 
 
+    /**
+     * Takes an array-of-arrays, and returns a joined array of the concatenated sub-arrays.
+     */
+    export function chainArrays<T>(a: T[][]): T[] {
+        return [].concat.apply([], a);
+    }
+
+
     export class EDD {
 
         static resolveMeasurementRecordToName(measurementRecord:AssayMeasurementRecord):string {

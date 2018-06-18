@@ -1,7 +1,12 @@
 import { EDDATDGraphing } from "../modules/AssayTableDataGraphing"
 import { Utl } from "../modules/Utl"
 import { EDDAuto } from "../modules/EDDAutocomplete"
-import { EDDGraphingTools } from "../modules/EDDGraphingTools"
+import {
+    EDDGraphingTools,
+    GraphingSet,
+    MeasurementValueSequence,
+    XYPair,
+} from "../modules/EDDGraphingTools"
 
 declare function require(name: string): any;  // avoiding warnings for require calls below
 
@@ -66,17 +71,6 @@ module EDDTableImport {
     }
 
 
-    export interface MeasurementValueSequence {
-        data: (string | number)[][];  // may be received as string, should insert as number
-    }
-
-    export interface GraphingSet extends MeasurementValueSequence {
-        label: string;
-        name: string;
-        units: string;
-        color?: string;
-        tags?: any;
-    }
     // These are returned by the server after parsing a dropped file
     export interface RawImportSet extends MeasurementValueSequence {
         kind: string;  // the type of import selected in step 1
@@ -1928,7 +1922,7 @@ module EDDTableImport {
                         this.uniqueMeasurementNames.push(mn);
                     }
 
-                    var reassembledData = [];
+                    var reassembledData: [number, number][] = [];
 
                     // Slightly different procedure for metadata, but same idea:
                     Object.keys(rawSet.metadata_by_name).forEach((key): void => {
@@ -2307,7 +2301,7 @@ module EDDTableImport {
 
         remakeGraphArea():void {
             $('body').addClass('waitCursor');
-            let eddGraphing = new EDDGraphingTools(),
+            let eddGraphing = new EDDGraphingTools(EDDData),
                 mode = this.selectMajorKindStep.interpretationMode,
                 sets = this.graphSets,
                 graph = $('#graphDiv'),
@@ -2324,11 +2318,9 @@ module EDDTableImport {
             // If we're not in either of these modes, drawing a graph is nonsensical.
             if ((mode === "std" || mode === 'biolector' || mode === 'hplc') && (sets.length > 0)) {
                 graph.removeClass('off');
-                sets.forEach(function(set) {
-                    var singleAssayObj = eddGraphing.transformNewLineItem(EDDData, set);
-                    dataSets.push(singleAssayObj);
-                });
-                atdGraphing.addNewSet(dataSets);
+                atdGraphing.addNewSet(sets.map(
+                    (gs: GraphingSet) => eddGraphing.transformNewLineItem(gs))
+                );
             } else {
                 graph.addClass('off');
             }
@@ -3214,7 +3206,7 @@ module EDDTableImport {
                     metaDisam: any,
                     measurementTypeId: string,
                     unitsId: string,
-                    resolvedData: (string | number)[][],
+                    resolvedData: XYPair[],
                     metaDataById: {[id:string]: string},
                     metaDataByName: {[name:string]: string},
                     metaDataPresent: boolean,

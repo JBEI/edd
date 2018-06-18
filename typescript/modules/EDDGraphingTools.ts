@@ -1,84 +1,122 @@
 import * as d3 from "d3"
 import * as _ from "underscore"
+import "../src/EDDDataInterface"
+
+
+export interface GraphParams {
+    height: number;
+    width: number;
+    values: GraphValue[];
+}
+
+
+export interface GraphValue {
+    x: number;
+    y: number;
+    x_unit: string;
+    y_unit: string;
+    name: string;
+    color: string;
+    measurement: string;
+    fullName: string;
+    newLine: boolean;
+}
+interface ScaledValue extends GraphValue {
+    scaled_y: number;
+}
+
+
+// creating a simple interface for result of d3.nest().entries(T[]) *without* a .rollup() call
+interface Nested<T> {
+    key: string;
+    values: T[];
+}
+// creating a type for keying function for GraphValue nests
+export type GroupingKey = (v: GraphValue) => string;
+interface GroupingMode {
+    primary: GroupingKey;
+    secondary: GroupingKey;
+    tertiary: GroupingKey;
+}
+
+
+export type Color = string;
+export type XYPair = [(string | number), (string | number)];
+export type ViewingMode = 'linegraph' | 'bargraph' | 'table';
+export type BarGraphMode = 'time' | 'line' | 'measurement';
+export type GenericSelection = d3.Selection<d3.BaseType, any, HTMLElement, any>;
+
+
+export interface MeasurementValueSequence {
+    // may be received as string, should insert as number
+    data: XYPair[];
+}
+export interface GraphingSet extends MeasurementValueSequence {
+    label: string;
+    name: string;
+    units: string;
+}
+
 
 export class EDDGraphingTools {
 
     nextColor: string;
-    labels: any;
-    colors: any;
+    labels: JQuery[];
     remakeGraphCalls: number;
+    globalInfo: EDDData;
 
-    constructor() {
+    static readonly colors: Color[] = [
+        '#0E6FA4',   //dark teal
+        '#51BFD8',   //teal
+        '#2A2056',   //navy
+        '#FCA456',   //light orange
+        '#2B7B3D',   //green
+        '#97D37D',   //light pastel green
+        '#CF5030',   //orange red
+        '#FFB6C1',   //light pink
+        '#6F2F8C',   //royal purple
+        '#B97DD3',   //light purple
+        '#7E0404',   //burgandy red
+        '#765667',   //grey pink
+        '#F279BA',   //pink
+        '#993F6C',   //maroon
+        '#919191',   //dark grey
+        '#BFBFBD',   //grey
+        '#ECDA3A',   //yellow
+        '#B2B200',   //mustard yellow
+        '#006E7E',   //grey blue
+        '#B2F2FB',   //light blue
+        '#0715CD',   //royal blue
+        '#E8C2F3',   //light lavender
+        '#7A5230'    //brown
+    ];
 
-            this.nextColor = null;
-            this.labels = [];
-            this.remakeGraphCalls = 0;
-
-            this.colors = {
-                0: '#0E6FA4',   //dark teal
-                1: '#51BFD8',   //teal
-                2: '#2a2056',   //navy
-                3: '#FCA456',   //light orange
-                4: '#2b7b3d',   //green
-                5: '#97d37d',   //light pastel green
-                6: '#CF5030',   //orange red
-                7: '#FFB6C1',   //light pink
-                8: '#6f2f8c',   //royal purple
-                9: '#b97dd3',   //light purple
-                10: '#7e0404',  //burgandy red
-                11: '#765667',  //grey pink
-                12: '#F279BA',  //pink
-                13: '#993f6c',  //maroon
-                14: '#919191',  //dark grey
-                15: '#BFBFBD',  //grey
-                16: '#ecda3a',  //yellow
-                17: '#b2b200',  //mustard yellow
-                18: '#006E7E',  //grey blue
-                19: '#b2f2fb',  //light blue
-                20: '#0715CD',  //royal blue
-                21: '#e8c2f3',  //light lavender
-                22: '#7a5230'   //brown
-            }
+    constructor(globalInfo: EDDData) {
+        this.nextColor = null;
+        this.labels = [];
+        this.remakeGraphCalls = 0;
+        this.globalInfo = globalInfo;
     }
-
-
-
-    /**
-     *  This function takes an array of arrays of arrays and flattens it into one array of arrays.
-    **/
-    concatAssays(assays): any {
-        return [].concat.apply([], assays);
-    };
 
     /**
      *  This function takes a unit id and unit type json and returns the unit name
-    **/
-    unitName(unitId, unitTypes):string {
-        return unitTypes[unitId].name;
+     */
+    private unitName(unitId: number): string {
+        return this.globalInfo.UnitTypes[unitId].name;
     }
-
 
     /**
      *  This function takes a measurement id and measurement type json and returns the
      *  measurement name
-    **/
-    measurementName(measurementId, measurementTypes):string {
-      return measurementTypes[measurementId].name;
+     */
+    private measurementName(measurementId: number, compId?: string): string {
+        let name = this.globalInfo.MeasurementTypes[measurementId].name;
+        if (!!compId) {
+            let comp = this.globalInfo.MeasurementTypeCompartments[compId];
+            return [comp.code, name].join(' ').trim();
+        }
+        return name;
     }
-
-
-    /**
-     *  This function takes a selector element and returns an svg element
-    **/
-    createSvg(selector):any {
-      var svg = d3.select(selector).append("svg")
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .attr("viewBox", "-55 -30 960 300")
-        .classed("svg-content", true);
-
-      return svg;
-    }
-
 
     /**
      *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
@@ -89,858 +127,618 @@ export class EDDGraphingTools {
      *    name"}
      *    ...
      *    ]
-    **/
-    transformSingleLineItem(dataObj):any[] {
-        // unit types
-        var unitTypes = dataObj['data'].UnitTypes;
-        // measurement types
-        var measurementTypes = dataObj['data'].MeasurementTypes;
+     */
+    transformSingleLineItem(item: AssayMeasurementRecord, color: Color): GraphValue[] {
         // array of x and y values for sorting
-        var xAndYValues = [];
-        //data for one line entry
-        var singleDataValues = dataObj['measure'].values;
-
-        _.each(singleDataValues, (dataValue: number[][], index) => {
-            let dataset = {};
-            // skip adding any invalid values
-            if (dataValue.length !== 2 || dataValue[0].length <= 0 || dataValue[1].length <= 0
-                    || !isFinite(dataValue[0][0]) || !isFinite(dataValue[1][0])) {
+        let assay: AssayRecord = this.globalInfo.Assays[item.assay];
+        let line: LineRecord = this.globalInfo.Lines[assay.lid];
+        let x_units: string = this.unitName(item.x_units);
+        let y_units: string = this.unitName(item.y_units);
+        let measurementName = this.measurementName(item.type, item.comp);
+        let values = item.values.map((dataValue: number[][], index): GraphValue => {
+            let dataset: GraphValue = {} as GraphValue;
+            // abort if dataValue is not a 2-item array for x and y
+            if (dataValue.length !== 2) {
                 return;
             }
-            dataset['label'] = 'dt' + dataObj['measure'].assay;
-            dataset['x'] = parseFloat(dataValue[0].join());
-            dataset['y'] = parseFloat(dataValue[1].join());
-            dataset['x_unit'] = this.unitName(dataObj['measure'].x_units, unitTypes);
-            dataset['y_unit'] = this.unitName(dataObj['measure'].y_units, unitTypes);
-            dataset['name'] = dataObj['name'];
-            dataset['color'] = dataObj['color'];
-            dataset['nameid'] = dataObj['names'] + index;
-            dataset['lineName'] = dataObj['lineName'];
-            dataset['measurement'] = this.measurementName(dataObj['measure'].type, measurementTypes);
-            dataset['fullName'] = dataObj['lineName'] + ' ' + dataset['measurement'];
-
-            xAndYValues.push(dataset);
+            let x = dataValue[0];
+            let y = dataValue[1];
+            // skip adding any invalid values
+            if (x.length === 0 || y.length === 0 || !isFinite(x[0]) || !isFinite(y[0])) {
+                return;
+            }
+            dataset.x = x[0];
+            dataset.y = y[0];
+            dataset.x_unit = x_units;
+            dataset.y_unit = y_units;
+            dataset.name = line.name;
+            dataset.color = color;
+            dataset.measurement = measurementName;
+            dataset.fullName = line.name + ' ' + measurementName;
+            return dataset;
         });
-        xAndYValues.sort(function(a, b) {
-              return a.x - b.x;
-            });
-        return xAndYValues;
+        values.sort((a, b) => a.x - b.x);
+        return values;
     }
-
 
     /**
      * this function is the same as above but more simple as it is for the import section.
-     **/
-    transformNewLineItem(data, singleData):any [] {
-
+     */
+    transformNewLineItem(singleData: GraphingSet): GraphValue[] {
         // array of x and y values for sorting
-        var xAndYValues = [];
-        //data for one line entry
-        var singleDataValues = singleData.data;
-        var fullName = singleData.label;
-
-        _.each(singleDataValues, function(dataValue) {
-             var dataset = {};
-            //can also change to omit data point with null which was done before..
-            if (dataValue[0] == null) {
-                dataValue[0] = ["0"];
-            } else if (dataValue[1] == null) {
-                dataValue[1] = ["0"];
+        let values = singleData.data.map((value: XYPair): GraphValue => {
+            let dataset: GraphValue = {} as GraphValue;
+            // can also change to omit data point with null which was done before..
+            if (value[0] === null) {
+                value[0] = 0;
+            } else if (value[1] === null) {
+                value[1] = 0;
             }
-            dataset['newLine'] = true;
-            dataset['x'] = dataValue[0];
-            dataset['y'] = parseFloat(dataValue[1]);
-            dataset['name'] = singleData.name;
-            dataset['fullName'] = fullName;
-            xAndYValues.push(dataset);
+            dataset.newLine = true;
+            // if the values are numbers, parseFloat just returns as-is
+            dataset.x = parseFloat(value[0] as string);
+            dataset.y = parseFloat(value[1] as string);
+            dataset.y_unit = singleData.units;
+            dataset.name = singleData.name;
+            dataset.fullName = singleData.label;
+            return dataset;
         });
-        xAndYValues.sort(function(a, b) {
-              return a.x - b.x;
-            });
-        return xAndYValues;
+        values.sort((a, b) => a.x - b.x);
+        return values;
     }
 
 
     /**
-     * this function takes in a single line name and study's lines and returns an object of
-     * color values with lid keys
+     * Takes a listing of lines and maps each to a color value.
      * loosely based on d3 category20 in following link:
      * http://bl.ocks.org/aaizemberg/78bd3dade9593896a59d
-    **/
-    renderColor(lines):any {
-
-        //new color object with assay ids and color hex
+     */
+    renderColor(lines: RecordList<LineRecord>): any {
+        // new color object with assay ids and color hex
         var lineColors = {};
-        //how many lines
-        var lineCount = _.range(Object.keys(lines).length);
-        //values of line obj
-        var lineValues = _.values(lines);
-        //new object with numbers for ids
-        var indexLines:any = {};
-        // color obj values
-        var colorKeys = _.values(this.colors);
-        //create index obj with numbers for ids and assay ids as values
-        for (var i = 0; i < lineCount.length; i++ ) {
-            indexLines[i] = lineValues[i].id;
-        }
-        //if there are more than 22 lines, create a bigger color obj
-        if (lineValues.length > colorKeys.length) {
-            var multiplier = Math.ceil(lineValues.length/ colorKeys.length) * 22;
-            this.colorMaker(this.colors, colorKeys, multiplier)
-        }
-        //combine assay ids as keys with hex colors as values
-        _.each(indexLines, (value, key) => {
-            lineColors[indexLines[key]] = this.colors[key];
+        // values of line obj
+        var lineValues: LineRecord[] = _.values(lines);
+        // new object with numbers for ids
+        var indexLines: number[] = lineValues.map((line: LineRecord) => line.id);
+        lineValues.forEach((line, index) => {
+            let color = EDDGraphingTools.colors[index % EDDGraphingTools.colors.length];
+            // adding color values to existing interface
+            let lineExtra: any = line as any;
+            lineExtra.color = color;
+            lineColors[line.id] = color;
         });
-        for (var key in lines) { lines[key]['color'] = lineColors[key]}
-        return lineColors
+        return lineColors;
     }
 
 
     /**
      * this function takes in the selected color and returns the color that comes after.
-    **/
-    colorQueue(selectedColor):void {
-        var reverseColors = this.reverseMap(this.colors);
-        var selectedKey = reverseColors[selectedColor];
-        if (parseInt(selectedKey) === 21) {
-             selectedKey = -1;
-         }
-        this.nextColor = this.colors[parseInt(selectedKey) + 1];
-    }
-
-
-    /**
-     * this function takes in an object and value and returns a new object with keys as values
-     * and values as keys.
-    **/
-    reverseMap (obj):any {
-        var reverseMap = {};
-        for (var key in obj) {
-            if (obj.hasOwnProperty(key)) {
-                reverseMap[obj[key]] = key;
-            }
-        }
-        return reverseMap;
-    }
-
-
-    /**
-     * this function takes in the color object, colorKeys array, and multiplier to determine how
-     * many new colors we need and return and bigger Color object
-    **/
-    colorMaker(colors, colorKeys, multiplier) {
-        var i = 23;
-        var j = 0;
-        while (i < multiplier) {
-            colors[i] = colorKeys[j];
-            if (j === 21) {
-                j = -1;
-            }
-            j++;
-            i++;
-        }
-        return colors
-    }
-
-
-    /**
-     * This function returns object size
-    **/
-    objectSize(object):{} {
-        var size = 0, key;
-        for (key in object) {
-            if (object.hasOwnProperty(key)) size++;
-        }
-        return size;
-    }
-
-
-    /**
-     *  This function takes in the unit type for each array and returns the text to display on
-     *  the axis
-    **/
-    createXAxis(graphSet, x, svg, type):void {
-
-        if (type === 'x') {
-            type = "Time"
-        } else if (type === 'measurement') {
-            type = "Measurement"
-        } else if (type === "name") {
-            type = "Line"
-        } else {
-            type = 'Hours'
-        }
-
-        var xAxis = graphSet.x_axis(x);
-
-        if (graphSet.x_unit == undefined) {
-            graphSet.x_unit = 'n/a'
-        }
-
-        svg.append("g")
-            .attr("class", "x axis")
-            .style("font-size","12px")
-            .attr("transform", "translate(0," + graphSet.height + ")")
-            .call(xAxis)
-          .append('text')
-            .attr("y", 40)
-            .attr("x", graphSet.width/2)
-            .style("text-anchor", "middle")
-            .text(type);
-        //Draw the x Grid lines
-        svg.append("g")
-            .attr("class", "grid")
-            .attr("transform", "translate(0," + graphSet.height + ")")
-            .call(xAxis.tickSize(-graphSet.height).tickFormat(""));
-    }
-
-
-    /**
-     *  This function creates the left y axis svg object
-    **/
-    createLeftYAxis(graphSet, label, y, svg):void {
-
-        var yAxis = d3.axisLeft(y).ticks(5).tickFormat(d3.format(".2s"));
-
-        if (label === 'undefined') {
-            label = 'n/a'
-        }
-
-        svg
-          .append("g")
-            .attr("class", "y axis")
-            .style("font-size","12px")
-            .call(yAxis)
-          .append("text")
-            .attr('class', 'axis-text')
-            .attr("transform", "rotate(-90)")
-            .attr("y", -55)
-            .attr("x", 0 - (graphSet.height/2))
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .text(label);
-
-        // Draw the y Grid lines
-        let gridLines = d3.axisLeft(y)
-            .ticks(5)
-            .tickSize(-graphSet.width)
-            .tickFormat(d3.format(""));
-        let axes = svg.append("g")
-            .attr("class", "grid")
-          .call(gridLines);
-        // the empty tickFormat does not seem to apply; remove the extra labels here
-        axes.selectAll("text").remove();
-    }
-
-
-    /**
-     *  This function creates the right y axis svg object
-    **/
-    createRightYAxis(label, y, svg, spacing):void {
-
-        var yAxis = d3.axisRight(y).ticks(5).tickFormat(d3.format(".2s"));
-
-        svg.append("g")
-            .attr("class", "y axis")
-            .attr("transform", "translate(" + spacing + " ,0)")
-            .style("font-size","12px")
-            .style("fill", "black")
-            .call(yAxis)
-          .append('text')
-            .attr("transform", "rotate(-90)")
-            .attr('class', 'text')
-            .attr('x', -110)
-            .attr("dy", ".32em")
-            .attr('y', 43)
-            .style('text-anchor', 'middle')
-            .text(label)
-    }
-
-
-    /**
-     *  This function creates the y axis tick marks for grid
-    **/
-    make_right_y_axis(y):any {
-        return d3.axisRight(y);
-    }
-
-
-    /**
-     *  This function creates the x axis tick marks for grid
-    **/
-    make_x_axis(x):any {
-        return d3.axisBottom(x);
-    }
-
-
-
-    /**
-     *  function takes in nested data by unit type and returns how many units are in data
      */
-    howManyUnits(data):number {
-        if (data === {}) {
-            return 1
+    colorQueue(selectedColor: Color): void {
+        // normalize input
+        let foundIndex = EDDGraphingTools.colors.indexOf(selectedColor.toUpperCase());
+        // when not found, start at beginning; loop around at end
+        let nextIndex = (foundIndex + 1) % EDDGraphingTools.colors.length;
+        this.nextColor = EDDGraphingTools.colors[nextIndex];
+    }
+
+}
+
+
+class Positioning {
+    x_scale: d3.AxisScale<number>;
+    y_scale: d3.AxisScale<number>;
+
+    constructor(x_scale: d3.AxisScale<number>, y_scale: d3.AxisScale<number>) {
+        this.x_scale = x_scale;
+        this.y_scale = y_scale;
+    }
+
+    x(offset?: number): (v: GraphValue) => number {
+        offset = offset || 0;
+        return (v: GraphValue) => this.x_scale(v.x) + offset;
+    }
+
+    y(offset?: number): (v: GraphValue) => number {
+        offset = offset || 0;
+        return (v: GraphValue) => this.y_scale(v.y) + offset;
+    }
+}
+
+
+type GraphDecorator = (svg: GenericSelection, positioning: Positioning) => GenericSelection;
+
+
+export class GraphView {
+
+    svg: GenericSelection;
+    tooltip: GenericSelection;
+
+    // commented old values are absolute positioning of axis icons
+    private static readonly lineIcons: GraphDecorator[] = [
+        // circle icon
+        (plot: GenericSelection, pos: Positioning): GenericSelection => {
+            return plot.append('svg:circle')
+                .attr('class', 'icon')
+                .attr('cx', pos.x())  // old: -46
+                .attr('cy', pos.y())  // old: 80
+                .attr('r', 3);
+        },
+        // triangle icon
+        (plot: GenericSelection, pos: Positioning): GenericSelection => {
+            let left = pos.x(-4), middle = pos.x()
+            return plot.append('svg:polygon')
+                .attr('class', 'icon')
+                .attr('points', (v: GraphValue): string => [
+                    [pos.x()(v), pos.y(-4)(v)],  // top: [789, 75]
+                    [pos.x(4)(v), pos.y(4)(v)],  // bottom-right: [796, 80]
+                    [pos.x(-4)(v), pos.y(4)(v)],  // bottom-left: [796, 70]
+                ].join(','));
+        },
+        // square icon
+        (plot: GenericSelection, pos: Positioning): GenericSelection => {
+            let squareSize = 6;
+            return plot.append('svg:rect')
+                .attr('class', 'icon')
+                .attr('x', pos.x(-squareSize / 2))  // old: 843
+                .attr('y', pos.y(-squareSize / 2))  // old: 70
+                .attr('width', squareSize)
+                .attr('height', squareSize);
+        },
+        // cross icon
+        (plot: GenericSelection, pos: Positioning): GenericSelection => {
+            let squareSize = 5;
+            let narrow = squareSize * 0.4;
+            let wide = squareSize * 1.6;
+            let icon = plot.append('g')
+                .attr('class', 'icon');
+            // horizontal bar
+            icon.append('svg:rect')
+                .attr('x', pos.x(-wide / 2))
+                .attr('y', pos.y(-narrow / 2))
+                .attr('width', wide)
+                .attr('height', narrow);
+            // vertical bar
+            icon.append('svg:rect')
+                .attr('x', pos.x(-narrow / 2))
+                .attr('y', pos.y(-wide / 2))
+                .attr('width', narrow)
+                .attr('height', wide);
+            return icon;
         }
-         var y_units =  d3.nest()
-            .key(function (d:any) {
-                return d.y_unit;
-            })
-            .entries(data);
-        return y_units.length;
+    ];
+    // map BarGraphMode to a human-friendly title (TODO: i18n)
+    private static readonly titleLookup: {[k: string]: string} = {
+        'line': 'Line',
+        'time': 'Hours',
+        'measurement': 'Measurement',
+    };
+    // map BarGraphMode to a GroupingKey function
+    private static readonly keyingLookup: {[k: string]: GroupingKey} = {
+        'line': (v) => v.name,
+        'time': (v) => '' + v.x,
+        'measurement': (v) => v.measurement,
+    };
+    // map BarGraphMode to a GroupingMode priority of groupings
+    private static readonly groupingLookup: {[k: string]: GroupingMode} = {
+        'line': {
+            primary: GraphView.keyingLookup['line'],
+            secondary: GraphView.keyingLookup['time'],
+            tertiary: GraphView.keyingLookup['measurement']
+        },
+        'time': {
+            primary: GraphView.keyingLookup['time'],
+            secondary: GraphView.keyingLookup['line'],
+            tertiary: GraphView.keyingLookup['measurement']
+        },
+        'measurement': {
+            primary: GraphView.keyingLookup['measurement'],
+            secondary: GraphView.keyingLookup['time'],
+            tertiary: GraphView.keyingLookup['line']
+        },
+    };
+
+    constructor(selector: d3.BaseType) {
+        this.svg = d3.select(selector).append('svg')
+            .attr('preserveAspectRatio', 'xMinYMin meet')
+            .attr('viewBox', '-55 -30 960 300')
+            .classed('svg-content', true);
+        this.tooltip = d3.select('body').append('div')
+            .attr('class', 'tooltip2')
+            .style('opacity', 0);
     }
 
-
     /**
-     *  function takes in rect attributes and creates rect hover svg object
+     * this function creates the line graph
      */
-    rectHover(x,y,rect, color, div):any {
+    buildLineGraph(params: GraphParams): void {
 
-        var squareSize = 5;
+        var values = this.sortOnX(params.values),
+            x_extent: [number, number] = d3.extent(values, (v: GraphValue) => v.x);
 
-        rect
-            .enter()
-            .append('svg:rect')
-            .attr('x', function (d) {
-                return x(d.x) - squareSize/2;
-            })
-            .attr('y', function (d) {
-                return y(d.y) - squareSize/2;
-            })
-            .attr('width', squareSize)
-            .attr('height', squareSize)
-            .style("fill", color)
-            .on("mouseover", (d) => {
-                this.lineOnHover(div, d)
-            })
-            .on("mouseout", () => {
-                this.lineOnMouseOut(div)
-            });
-    }
-
-
-    /**
-     *  function takes in circle attributes and creates circle hover svg object
-     */
-    circleHover(x, y, circles, color, div):void {
-        circles
-            .enter()
-            .append('svg:circle')
-            .attr('class', 'dot')
-            .attr('fill', 'grey')
-            .attr('cx', function (d) {
-                return x(d.x);
-            })
-            .attr('cy', function (d) {
-                return y(d.y);
-            })
-            .attr('r', function () {
-                return 3;
-            })
-            .style("fill", color)
-            .on("mouseover", (d) => {
-                this.lineOnHover(div, d)
-            })
-            .on("mouseout", () => {
-                this.lineOnMouseOut(div)
-            });
-    }
-
-
-    /**
-     *  function takes in square attributes and creates a plus hover svg object
-     */
-    plusHover(x, y, plus, color, div):void {
-        var squareSize = 5;
-        plus
-            .enter()
-            .append('svg:rect')
-            .attr('x', function (d) {
-                return x(d.x) - squareSize/2;
-            })
-            .attr('y', function (d) {
-                return y(d.y);
-            })
-            .attr('width', squareSize + 3)
-            .attr('height', squareSize - 3)
-            .style("fill", color);
-
-        plus
-            .enter()
-            .append('svg:rect')
-            .attr('x', function (d) {
-                return x(d.x);
-            })
-            .attr('y', function (d) {
-                return y(d.y) - squareSize/2;
-            })
-            .attr('width', squareSize - 3)
-            .attr('height', squareSize + 3)
-            .style("fill", color)
-            .on("mouseover", (d) => {
-                this.lineOnHover(div, d)
-            })
-            .on("mouseout", () => {
-                this.lineOnMouseOut(div)
-            });
-    }
-
-
-    /**
-     *  function takes in triangle attributes and creates a triangle hover svg object
-     */
-    triangleHover(x, y, triangle, color, div):any {
-        triangle
-            .enter()
-            .append('svg:polygon')
-            .attr('points', (d) => {
-                return [[x(d.x), y(d.y) - 4], [x(d.x) + 4, y(d.y) + 4], [x(d.x) - 4, y(d.y) + 4]];
-            })
-            .style("fill", color)
-            .on("mouseover", (d) => {
-                this.lineOnHover(div, d)
-            })
-            .on("mouseout", () => {
-                this.lineOnMouseOut(div)
-            });
-    }
-
-
-    /**
-     *  function takes in path attributes and creates an svg path
-     */
-    createLine(svg, data, line, color):any {
-        return svg.append('path')
-            .attr('d', line(data))
-            .attr('stroke', color)
-            .attr('stroke-width', 2)
-            .attr("class", 'lineClass')
-            .attr('fill', 'none')
-            .on('mouseover', (d) => {
-                d3.selectAll('.lineClass').style('opacity', 0.1);
-                $(event.target).css('opacity', 1);
-                d3.selectAll('circle').style('opacity', 0.1);
-                d3.selectAll('rect').style('opacity', 0.1);
-                d3.selectAll('polygon').style('opacity', 0.1);
-                $(event.target).next().children().css('opacity', 1);
-                $('.icon').css('opacity', 1);
-            })
-            .on('mouseout', () => {
-                d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
-                d3.selectAll('circle').style('opacity', 1);
-                d3.selectAll('rect').style('opacity', 1);
-                d3.selectAll('polygon').style('opacity', 1)
-            })
-    }
-
-
-    /**
-     *  function takes in the svg shape type, div and returns the tooltip and hover elements for each
-     *  shape
-     */
-    lineOnHover(div, d):void {
-        var hoverSvg = event.target;
-        div.transition()
-            .duration(200)
-            .style("opacity", 0.9);
-        if (d.y_unit === undefined) {
-            var unit = 'n/a';
-        } else {
-            unit = d.y_unit;
-        }
-
-        d3.selectAll('.lineClass').style('opacity', 0.1);
-        $(hoverSvg).parent().prev().css('opacity', 1).css('stroke-width', 3) ;
-
-        //reduce opacity for all shapes besides shapes on the same line as hovered svg shape
-        d3.selectAll('rect').style('opacity', 0.1);
-        d3.selectAll('circle').style('opacity', 0.1);
-        d3.selectAll('polygon').style('opacity', 0.1);
-        $('.icon').css('opacity', 1);
-        $(hoverSvg).siblings().css('opacity', 1);
-        $(hoverSvg).css('opacity', 1);
-        //tool tip
-        if (d.newLine) {
-           div.html('<strong>' + d.name + '</strong>' + ": "
-                + '</br>' + d.y + " units" + "</br> " + " @ " + d.x + " hours")
-            .style("left", ((<any>d3.event).pageX) + "px")
-            .style("top", ((<any>d3.event).pageY - 30) + "px");
-        } else {
-            div.html('<strong>' + d.name + '</strong>' + ": "
-                    + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
-                .style("left", ((<any>d3.event).pageX) + "px")
-                .style("top", ((<any>d3.event).pageY - 30) + "px");
-        }
-    }
-
-
-    /**
-     *  function returns the mouseout tooltip options
-     */
-    lineOnMouseOut(div):void {
-        div.transition()
-            .duration(300)
-            .style("opacity", 0);
-        d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
-        d3.selectAll('circle').style('opacity', 1);
-        d3.selectAll('rect').style('opacity', 1);
-        d3.selectAll('polygon').style('opacity', 1)
-    }
-
-    /**
-    * this function creates the line graph
-    **/
-    createMultiLineGraph(graphSet, svg):void {
-
-        var assayMeasurements = graphSet.assayMeasurements,
-            numUnits = this.howManyUnits(assayMeasurements),
-            yRange = [],
-            unitMeasurementData = [],
-            yMin = [];
-
-        //get x values
-        var xDomain = assayMeasurements.map((assayMeasurement) => { return assayMeasurement.x; });
-
-        //sort x values
-        xDomain.sort((a, b) => {
-            return a - b;
-        });
-
-        //tool tip svg
+        // tool tip svg
         var div = d3.select("body").append("div")
             .attr("class", "tooltip2")
             .style("opacity", 0);
 
-        //y and x axis ranges
-        var y = d3.scaleLinear().rangeRound([graphSet.height, 0]);
-        var x = d3.scaleLinear().domain([xDomain[0] - 1, xDomain[xDomain.length -1]]).range([0, graphSet.width]);
-
-        //nest data based off y_unit. ie g/l, cmol, n/a
-        var meas = d3.nest()
-            .key((d:any) => {
-                return d.y_unit;
-            })
-            .entries(assayMeasurements);
-
-        //iterate through the different unit groups getting min y value, data, and range.
-        for (var i = 0; i < numUnits; i++) {
-            yRange.push(d3.scaleLinear().rangeRound([graphSet.height, 0]));
-            unitMeasurementData.push(d3.nest()
-                .key(function (d:any) {
-                    return d.y;
-                })
-                .entries(meas[i].values));
-            yMin.push(d3.min(unitMeasurementData[i], (d:any) => {
-                return d3.min(d.values, (d:any) => {
-                    return d.y;
-                });
-            }))
-        }
+        // x axis range
+        let x_scale = d3.scaleLinear().domain(x_extent).range([0, params.width]);
+        let ordinalColors = d3.scaleOrdinal(EDDGraphingTools.colors);
 
         // create x axis svg
-        graphSet.create_x_axis(graphSet, x, svg, 'hours');
+        let x_axis = this.buildXAxis(params, x_scale, 'time');
 
-        //iterate through different unit groups and add lines according to unit type and y axis.
-        for (var index = 0; index<numUnits; index++) {
-
-            if (yMin[index] > 0) {
-                yMin[index] = 0
-            }
-
-            //y axis domain for specific unit group
-            y.domain([yMin[index], d3.max(unitMeasurementData[index], (d:any)  => {
-                return d3.max(d.values, (d:any) => {
-                    return d.y;
+        // iterate through the different unit groups getting min y value, data, and range.
+        d3.nest<GraphValue>()
+            .key((v: GraphValue) => v.y_unit)
+            .entries(values)
+            .forEach((grouping: Nested<GraphValue>, index: number) => {
+                let y_extent: [number, number] = d3.extent(
+                    grouping.values,
+                    (d: GraphValue): number => d.y
+                );
+                // forcing bottom of y domain to 0
+                y_extent[0] = Math.min(y_extent[0], 0);
+                let y_scale = d3.scaleLinear().rangeRound([params.height, 0]).domain(y_extent);
+                // nest values using the same units by the value fullName (line name + measurement)
+                // TODO: this should nest by Measurement ID for existing data OR
+                //   by Line/Assay ID + measurement label for importing data
+                let curves: Nested<GraphValue>[] = d3.nest<GraphValue>()
+                    .key((d: GraphValue): string => d.fullName)
+                    .entries(grouping.values);
+                // define axes and icons for this unit grouping
+                let icon = this.buildUnitAxis(params, index, y_scale, grouping.key);
+                // plot lines for each assay name
+                curves.forEach((unitData) => {
+                    let firstPoint = unitData.values[0];
+                    let color = firstPoint.color;
+                    if (firstPoint.newLine) {
+                        color = ordinalColors(firstPoint.fullName);
+                    }
+                    this.drawLine(unitData.values, x_scale, y_scale, color, icon);
                 });
-            })]);
+            });
 
-            //nest data by line name and the nest data again based on y-unit.
-            var data = d3.nest()
-                .key(function (d:any) {
-                    return d.fullName;
-                })
-                .key(function (d:any) {
-                    return d.y_unit;
-                })
-                .entries(meas[index].values);
-
-            //nest data by line name
-            var proteinNames = d3.nest()
-                .key(function (d:any) {
-                    return d.name;
-                })
-                .entries(assayMeasurements);
-
-            //spacing for y-axis labels
-            var spacing = {
-                     1: graphSet.width,
-                     2: graphSet.width + 54,
-                     3: graphSet.width + 105
-                 };
-
-            if (index === 0) {
-                //create left y-axis label
-                graphSet.create_y_axis(graphSet, meas[index].key, y, svg);
-                //add circle image to y axis label
-                svg.append('svg:circle')
-                    .attr('class', 'icon')
-                    .attr('cx', -46)
-                    .attr('cy', 80)
-                    .attr('r', 5);
-            } else if (index === 1) {
-                //create first right axis
-                graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);
-                //add triangle shape to y-axis label
-                svg.append('svg:polygon')
-                    .attr('class', 'icon')
-                    .attr('points', [[789, 75], [796, 80], [796, 70]])
-            } else if (index === 2) {
-                //create second right axis
-                graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);
-                var squareSize = 8;
-                //add square image to y-axis label
-                svg.append('svg:rect')
-                    .attr('class', 'icon')
-                    .attr('x', 843)
-                    .attr('y', 70)
-                    .attr('width', squareSize)
-                    .attr('height', squareSize);
-            } else if (index === 3) {
-                //create third right y-axis
-                graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);
-                //add plus image to y-axis label
-                svg.append('svg:rect')
-                    .attr('class', 'icon')
-                    .attr('x', 894)
-                    .attr('y', 73)
-                    .attr('width', 8)
-                    .attr('height', 2);
-
-                svg.append('svg:rect')
-                    .attr('class', 'icon')
-                    .attr('x', 897)
-                    .attr('y', 70)
-                    .attr('width', 2)
-                    .attr('height', 8);
-            }
-            else {
-                // group rest of unit types on another axis that is now shown
-                graphSet.create_right_y_axis(meas[index].key, y, svg, graphSet.width + 1000);
-            }
-
-            _.each(data, (unitData) => {
-                // lines for each name
-                for (var j = 0; j < unitData.values.length; j++) {
-
-                var individualDataSet = unitData.values[j].values[0],
-                    color;
-                // create line svg
-
-                var lineGen = d3.line()
-                    .x(function (d:any) {
-                        return x(d.x);
-                    })
-                    .y(function (d:any) {
-                        return y(d.y);
-                    });
-
-                if (individualDataSet.newLine) {
-                   color = graphSet.color(individualDataSet.fullName);
-                } else {
-                    // color of line according to name
-                    color = unitData.values[j].values[0].color;
-                }
-
-                if (index === 0) {
-                    this.createLine(svg, unitData.values[j].values, lineGen, color);
-                    //svg object for data points
-                    var dataCirclesGroup = svg.append('svg:g');
-                    // data point circles
-                    var circles = dataCirclesGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    //circle hover svg
-                    this.circleHover(x, y, circles, color, div)
-                } else if (index === 1) {
-                    this.createLine(svg, unitData.values[j].values, lineGen, color);
-                    //svg object for data points
-                    var dataRectGroup = svg.append('svg:g');
-                    // data point circles
-                    var triangle = dataRectGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    this.triangleHover(x, y, triangle, color, div);
-                }  else if (index === 2) {
-                   this.createLine(svg, unitData.values[j].values, lineGen, color);
-                    //svg object for data points
-                    var dataRectGroup = svg.append('svg:g');
-                    // data point circles
-                    var rect = dataRectGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    this.rectHover(x, y, rect, color, div);
-                } else if (index === 3) {
-                   this.createLine(svg, unitData.values[j].values, lineGen, color);
-                    //svg object for data points
-                    var dataRectGroup = svg.append('svg:g');
-                    // data point circles
-                    var plus = dataRectGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    this.plusHover(x, y, plus, color, div);
-                } else {
-                    this.createLine(svg, unitData.key.split(' ').join('_'), lineGen, color);
-                    //svg object for data points
-                    var dataCirclesGroup = svg.append('svg:g');
-                    // data point circles
-                    var circles = dataCirclesGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    //circle hover svg
-                    this.circleHover(x, y, circles, color, div)
-                }
-            }
-          });
-        }
         $('#graphLoading').addClass('off');
     }
 
-
-    /**
-     * this function takes in input a protein's line values and inserts a y id key for
-     * each x, y object.
-     **/
-     addYIdentifier(data):any {
-        return _.each(data, (d:any, i) => {
-            d.key = 'y' + i;
-        });
-    }
-
-
-    /**
-     *  function takes in nested assayMeasurements and inserts a y id key for each value object
-     *  returns data
-     */
-    getXYValues(nested):any {
-        return _.each(nested, (nameValues:any) => {
-            return _.each(nameValues.values, (xValue:any) => {
-                this.addYIdentifier(xValue.values);
+    buildGroupedBarGraph(params: GraphParams, mode: BarGraphMode) {
+        let values: GraphValue[] = this.sortOnX(params.values);
+        let grouping: GroupingMode = GraphView.groupingLookup[mode];
+        // define the x-axis primary scale; d3.set() keeps items in insertion order
+        let primary_scale = d3.scaleBand()
+            .domain(d3.set(values, grouping.primary).values())
+            .rangeRound([0, params.width]).padding(0.1);
+        // define the x-axis itself
+        let x_axis = this.buildXAxis(params, primary_scale, mode);
+        // function used later to set translation offsets for groupings
+        let translate = (scale: d3.ScaleBand<string>) => {
+            return (d: Nested<any>) => 'translate(' + scale(d.key) + ')';
+        };
+        // set y-axis scaling on all measurements
+        d3.nest<GraphValue>()
+            .key((v: GraphValue) => v.y_unit)
+            .entries(values)
+            .forEach((nest: Nested<GraphValue>, index: number) => {
+                // scale y values so maxima goes to top of graph, and minima goes to bottom
+                let y_scale = d3.scaleLinear()
+                    .domain(d3.extent(nest.values, (v: GraphValue) => v.y))
+                    .range([params.height, 0]);
+                // attach the computed scale to every value
+                nest.values.forEach((v: GraphValue) => (<ScaledValue>v).scaled_y = y_scale(v.y));
+                // define axes and icons for this unit grouping
+                this.buildUnitAxis(params, index, y_scale, nest.key);
             });
-        });
+        // nest the values again based on BarGraphMode groupings
+        let subnest: Nested<Nested<ScaledValue>>[] = d3.nest<ScaledValue>()
+            .key(grouping.primary)
+            .key(grouping.secondary)
+            .entries(<ScaledValue[]>values);  // values is converted in y_unit nest
+        // define x-axis secondary scale; d3.set() keeps items in insertion order
+        let secondary_scale = d3.scaleBand()
+            .domain(d3.set(values, grouping.secondary).values())
+            .range([0, primary_scale.bandwidth()]);
+        let tertiary_scale = d3.scaleBand()
+            .domain(d3.set(values, grouping.tertiary).values())
+            .range([0, secondary_scale.bandwidth()]);
+        // insert SVG group tags for every grouping key in the subnest
+        let primary_group = this.svg.selectAll('.pgroup')
+            .data(subnest)
+            .enter().append('g')
+                .attr('class', 'pgroup')
+                .attr('transform', translate(primary_scale));
+        // insert SVG group tags for time offsets for every time in the grouping key
+        let secondary_group = primary_group.selectAll('.sgroup')
+            .data((d: Nested<Nested<GraphValue>>) => d.values)
+            .enter().append('g')
+                .attr('class', 'sgroup')
+                .attr('transform', translate(secondary_scale));
+        // insert SVG rect tags for every value in the subnest values array
+        secondary_group.selectAll('rect')
+            .data((d: Nested<GraphValue>) => d.values)
+            .enter().append('rect')
+                .attr("class", "rect graphValue")
+                .attr("width", tertiary_scale.bandwidth())
+                .attr("x", (d, i: number) => i * tertiary_scale.bandwidth())
+                .attr("y", (v: ScaledValue) => v.scaled_y)
+                .attr("height", (v: ScaledValue) => params.height - v.scaled_y)
+                .on('mouseover', this.tooltip_over.bind(this))
+                .on('mouseout', this.tooltip_out.bind(this))
+                .style("fill", (v: GraphValue) => v.color)
+                .style("opacity", 1);
+        // switch off the loading indicator
+        $('#graphLoading').addClass('off');
     }
 
-
-    /**
-     *  function takes in nested keys and returns total length of keys
-     */
-    getSum(labels):number {
-        var totalLength = 0;
-
-       _.each(labels, (label:any) => {
-            totalLength += label.length
-        });
-        return totalLength;
+    private sortOnX(values: GraphValue[]): GraphValue[] {
+        return values.sort((a, b) => a.x - b.x);
     }
 
-    /**
-     * This function takes in data nested by type (ie 'x') and returns and obj with time points as keys and
-     * how many values correspond to this key as values
-     * @param values
-     * @returns ie {6: 6, 7: 6, 8: 6}
-     */
-    findAllTime(values):{} {
-        var times = {};
-        _.each(values, (value:any) => {
-            times[value.key] = value.values.length;
-        });
-        return times;
+    private buildUnitAxis(
+        params: GraphParams,
+        index: number,
+        y_scale: d3.AxisScale<number>,
+        label: string
+    ): GraphDecorator {
+        // define axes and icons for this unit grouping
+        let icon: GraphDecorator = null;
+        // create the y-axis, up to 4 total; further axes are not displayed
+        if (index === 0) {
+            // first axis goes on left
+            icon = GraphView.lineIcons[index];
+            this.buildLeftYAxis(params, y_scale, label, icon);
+        } else if (index < 4) {
+            // next three axes go on right
+            let offset = params.width + (52 * (index - 1));
+            icon = GraphView.lineIcons[index];
+            this.buildRightYAxis(params, y_scale, label, offset, icon);
+        }
+        return icon;
     }
 
-
-    /**
-     * this function takes in the object created by findAllTime. Takes the difference between how many values are present
-     * versus the max value. Returns new obj with difference as values and time points as keys.
-     * @param obj
-     * @returns {*}
-     */
-    findMaxTimeDifference(obj) {
-        var values = _.values(obj);
-        var max = Math.max.apply(null, values);
-        $.each(obj, (key, value) => {
-            obj[key] = max - value;
-        });
-        return obj;
-    }
-
-
-    /**
-     * this function takes in the entries obj with 1 nested data set based on type,
-     * the difference obj created by findMaxTimeDifference, and the original data structure array. Inserts values for
-     * missing values.
-     * @param obj
-     * @param differenceObj
-     * @param assayMeasurements
-     * @param type
-     */
-    insertFakeValues(obj, differenceObj, assayMeasurements):void {
-        var count = 0;
-         _.each(obj, (d:any) => {
-            var howMany = differenceObj[d.key];
-            while (count < howMany) {
-                this.insertFakeTime(assayMeasurements, d.key, d.values[0].y_unit);
-                count++;
+    private buildXAxis<T>(
+        params: GraphParams,
+        scale: d3.AxisScale<T>,
+        mode: BarGraphMode
+    ): d3.Axis<T> {
+        // define the x-axis itself
+        let x_axis: d3.Axis<T> = d3.axisBottom(scale);
+        let domain: T[] = scale.domain();
+        let max_show: number = 20;
+        if (domain.length === 2 && domain[0] instanceof Number) {
+            // in a numeric domain, just use normal formatting
+            (<d3.Axis<number>><any> x_axis).ticks(10).tickFormat(d3.format('.2s'));
+        } else if (domain.length <= max_show) {
+            // non-numeric domain with 20 or fewer items, display everything
+            x_axis = x_axis.tickFormat((v: T): string => this.truncateLabel(v));
+        } else {
+            // non-numeric domain with more than 20 items, choose at most 20 items to display
+            let chosen: number[] = [];
+            // select the indices to show
+            for (let i = 0; i < max_show; ++i) {
+                chosen[i] = Math.ceil(i * domain.length / max_show);
             }
+            // format axis so only chosen indices are displayed
+            x_axis = x_axis.tickFormat((v: T, i): string => {
+                return (chosen.indexOf(i) !== -1) ? this.truncateLabel(v) : '';
+            });
+        }
+        // add group containing axis elements
+        let axis_group = this.svg.append('g')
+            .attr('class', 'x axis')
+            .style('font-size', '12px')
+            .attr('transform', 'translate(0,' + params.height + ')')
+            .call(x_axis);
+        // adding grid-lines to the plot
+        this.svg.append('g')
+            .attr('class', 'grid')
+            .attr('transform', 'translate(0,' + params.height + ')')
+            .call(x_axis.tickSize(-params.height).tickFormat(() => ''));
+        // slightly angle labels when there are more than 5
+        if (domain.length > 5) {
+            axis_group.selectAll('text')
+                .attr('transform', 'rotate(15)')
+                .style('text-anchor', 'start');
+        }
+        // add overall label to axis
+        axis_group.append('text')
+            .attr('x', params.width / 2)
+            .attr('y', 40)
+            .attr('fill', '#000')
+            .style('text-anchor', 'middle')
+            .text(GraphView.titleLookup[mode]);
+        return x_axis;
+    }
+
+    private truncateLabel<T>(value: T): string {
+        // coerce to string
+        let label: string = '' + value;
+        // truncate if necessary
+        if (label.length > 21) {
+            label = label.substring(0, 20) + '…';
+        }
+        return label;
+    }
+
+    private addAxisTickFormat<T>(axis: d3.Axis<T>): d3.Axis<T> {
+        // handle generic types in formatting axis ticks
+        return axis.tickFormat((v: T, i): string => {
+            if (v instanceof Number) {
+                // special-case numbers, to use two significant figures
+                // we know it's a number-type because of instanceof, double-cast informs compiler
+                return d3.format('.2s')((<number><any>v));
+            }
+            // otherwise coerce directly to string
+            return '' + v;
         });
     }
 
-
-    insertFakeTime(array, key, y_unit):void {
-        key = parseFloat(key);
-        array.push({
-              'color': 'white',
-              'x': key,
-              'y': null,
-              'y_unit': y_unit,
-              'name': '',
-              'lineName': 'n/a'
+    /**
+     * This function creates the left y axis svg object, and applies grid lines.
+     */
+    private buildLeftYAxis<T>(
+        params: GraphParams,
+        y_scale: d3.AxisScale<T>,
+        label: string,
+        icon?: GraphDecorator,
+    ): d3.Axis<T> {
+        if (!label || label === 'undefined') {
+            label = 'n/a'
+        }
+        let yAxis = d3.axisLeft(y_scale).ticks(5);
+        // write the group containing axis elements
+        let axisGroup = this.svg.append("g")
+            .attr("class", "y axis")
+            .style("font-size","12px")
+            .call(this.addAxisTickFormat(yAxis));
+        // entire label group is rotated counter-clockwise about a top-left origin
+        let axisLabel = axisGroup.append('g')
+            .attr('transform', 'rotate(-90)')
+            .attr("fill", "#000");
+        let text_x = -(params.height / 2);
+        let text_y = -55;  // TODO: compute this somehow
+        // add a text label for the axis
+        axisLabel.append('text')
+            .attr('class', 'axis-text')
+            .attr("x", text_x)
+            .attr("y", text_y)
+            .attr("dy", "1em")
+            .text(label);
+        // add a graphical icon for the axis (optional)
+        if (icon) {
+            // x position = text_x + radius + padding = text_x + 5 + 3 = text_x + 8
+            // y position = text_y + (font_size * 0.66) = text_y + 8
+            let fakeValue: GraphValue = (<GraphValue>{
+                'x': text_x + 8,
+                'y': text_y + 8,
             });
+            // create an enter selection with a fake value at icon location
+            let labelIcon = axisLabel.selectAll('.icon')
+                .data([fakeValue])
+                .enter();
+            // using absolute coordinates, identity scale
+            let ident = d3.scaleIdentity();
+            icon.call(this, labelIcon, new Positioning(ident, ident));
+        }
+        // Draw the y Grid lines in a separate group
+        this.svg.append("g")
+            .attr("class", "grid")
+            .call(yAxis.tickSize(-params.width).tickFormat(() => ''));
+        return yAxis;
     }
 
 
     /**
-     * This function takes in nested data by name then time and returns and object with line name as key, and
-     * an object as value containing time points as keys and how many time points as values.
-     * @param nestedByName
-     * @returns {{}}
+     * This function creates the right y axis svg object.
      */
-    findTimeValuesForName(nestedByName):{} {
-        var times = {};
-        nestedByName.forEach(function(value) {
-            var arr = {};
-            _.each(value.values, (d:any) => {
-                arr[d.key] = d.values.length;
+    private buildRightYAxis<T>(
+        params: GraphParams,
+        y_scale: d3.AxisScale<T>,
+        label: string,
+        spacing: number,
+        icon?: GraphDecorator,
+    ): d3.Axis<T> {
+        if (!label || label === 'undefined') {
+            label = 'n/a'
+        }
+        let yAxis = d3.axisRight(y_scale).ticks(5);
+        // write the group containing axis elements
+        let axisGroup = this.svg.append("g")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + spacing + " ,0)")
+            .style("font-size", "12px")
+            .call(this.addAxisTickFormat(yAxis))
+        let axisLabel = axisGroup.append('g')
+            .attr('transform', 'rotate(-90)')
+            .attr("fill", "#000");
+        let text_x = -(params.height / 2);
+        let text_y = 40;  // TODO: compute this somehow
+        // add a text label for the axis; flipped to right-side
+        axisLabel.append('text')
+            .attr('class', 'axis-text')
+            .attr('x', text_x)
+            // mirroring the left-side; no dy needed
+            .attr('y', text_y)
+            // label flipped to opposite side, so need to anchor text to opposite end
+            .style('text-anchor', 'end')
+            .text(label);
+        // add a graphical icon for the axis (optional)
+        if (icon) {
+            // x position = text_x + radius + padding = text_x + 5 + 3 = text_x + 8
+            // y position = text_y - (font_size * 0.33) = text_y - 4
+            let fakeValue: GraphValue = (<GraphValue>{
+                'x': text_x + 8,
+                'y': text_y - 4,
             });
-            times[value.key] = arr;
-        });
-        return times;
+            // create an enter selection with a fake value at icon location
+            let labelIcon = axisLabel.selectAll('.icon')
+                .data([fakeValue])
+                .enter();
+            // using absolute coordinates, identity scale
+            let ident = d3.scaleIdentity();
+            icon.call(this, labelIcon, new Positioning(ident, ident));
+        }
+        return yAxis;
     }
 
-
-    getMaxValue(time):number {
-        var max = 0;
-        $.each(time, (key, value) => {
-            $.each(value, (key, value) => {
-                if (value > max) {
-                    max = value;
-                }
-            })
-        });
-        return max;
+    /**
+     *  function takes in path attributes and creates an svg path
+     */
+    private drawLine(
+        data: GraphValue[],
+        x_scale: d3.AxisScale<number>,
+        y_scale: d3.AxisScale<number>,
+        color: Color,
+        icon?: GraphDecorator,
+    ): void {
+        let lineGenerator = d3.line<GraphValue>()
+            .x((d: GraphValue) => x_scale(d.x))
+            .y((d: GraphValue) => y_scale(d.y));
+        let curve = this.svg.append('g')
+            .attr('class', 'graphValue')
+            .attr('stroke', color)
+            .attr('fill', 'none');
+        let path = curve.append('path')
+            .attr('d', lineGenerator(data))
+            .attr('stroke-width', 2)
+            .attr('class', 'lineClass')
+            .on('mouseover', this.tooltip_over.bind(this))
+            .on('mouseout', this.tooltip_out.bind(this));
+        // add icon glyphs if passed in
+        if (icon) {
+            let pointGroup = curve.append('g')
+                .attr('fill', color)
+                .attr('class', 'pointIcons')
+                .selectAll('.icon')
+                .data(data)
+                .enter();
+            icon.call(this, pointGroup, new Positioning(x_scale, y_scale))
+                .on('mouseover', this.tooltip_over.bind(this))
+                .on('mouseout', this.tooltip_out.bind(this));
+        }
     }
 
-
-    filterTimePoints(data, timePoint):any[] {
-        var newData = [];
-        _.each(data, (dataPoint:any) => {
-            if (dataPoint.x === timePoint) {
-                newData.push(dataPoint);
-            }
-        });
-        return newData;
+    private tooltip_over(v?: GraphValue): void {
+        if (v) {
+            let html = [
+                ['<strong>', v.name, '</strong>:'].join(''),
+                '' + v.measurement,
+                [v.y, v.y_unit].join(' '),
+                ['@', v.x, 'hours'].join(' '),
+            ].join('<br/>');
+            this.tooltip.html(html)
+                .style('top', (d3.event.pageY - 30) + 'px')
+                .style('left', d3.event.pageX + 'px');
+            this.tooltip.transition().style('opacity', 0.9);
+        }
+        this.svg.selectAll('.graphValue').style('opacity', 0.1);
+        // use addBack() for bar graph, where bar is .graphValue
+        $(event.target).parents('.graphValue').addBack().css('opacity', 1);
     }
+
+    private tooltip_out(): void {
+        this.svg.selectAll('.graphValue').style('opacity', 1);
+        this.tooltip.transition().style('opacity', 0);
+    }
+
 }

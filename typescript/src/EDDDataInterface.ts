@@ -18,6 +18,11 @@ interface EDDRecord {
 }
 
 
+interface RecordList<U> {
+    [id: number]: U;
+}
+
+
 // This is what we expect in EDDData.Lines
 interface LineRecord extends EDDRecord {
     active:boolean;      // Active line
@@ -30,7 +35,6 @@ interface LineRecord extends EDDRecord {
     exp:number;          // Experimenter ID
     identifier:string;   // HTML ID for the line filter checkbox
 }
-
 
 
 // This is what we expect in EDDData.Assays
@@ -47,7 +51,6 @@ interface AssayRecord extends EDDRecord {
     general: number[];       // Measurements for everything else
     count: number;
 }
-
 
 
 // This is what we expect in EDDData.AssayMeasurements
@@ -88,6 +91,7 @@ interface MeasurementTypeRecord {
     family: string; // 'm', 'g', 'p' for metabolite, gene, protien
 }
 
+
 // This is what we expect in EDDData.MetaboliteTypes
 interface MetaboliteTypeRecord extends MeasurementTypeRecord {
     formula: string;    // Molecular Formula
@@ -96,11 +100,9 @@ interface MetaboliteTypeRecord extends MeasurementTypeRecord {
 }
 
 
-
 // This is what we expect in EDDData.ProteinTypes
 interface ProteinTypeRecord extends MeasurementTypeRecord {
 }
-
 
 
 // This is what we expect in EDDData.GeneTypes
@@ -157,25 +159,24 @@ interface UserRecord {
 }
 
 
-
 // Declare interface and EDDData variable for highlight support
 interface EDDData {
     currentStudyID: number;    // Can be null/undefined when no Study is chosen
-    Studies:{[id:number]: any};
-    AssayMeasurements:{[id:number]: AssayMeasurementRecord};
-    Assays:{[id:number]: AssayRecord};
-    CSources:{[id:number]: CarbonSourceRecord};
-    GeneTypes:{[id:number]: ProteinTypeRecord};
-    Lines:{[id:number]: LineRecord};
-    MeasurementTypeCompartments:{[id:number]: MeasurementCompartmentRecord};
-    MeasurementTypes:{[id:number]: MeasurementTypeRecord};
-    MetaboliteTypes:{[id:number]: MetaboliteTypeRecord};
-    MetaDataTypes:{[id:number]: MetadataTypeRecord};
-    ProteinTypes:{[id:number]: ProteinTypeRecord};
-    Protocols:{[id:number]: ProtocolRecord};
-    Strains:{[id:number]: StrainRecord};
-    UnitTypes:{[id:number]: UnitType};
-    Users:{[id:number]: UserRecord};
+    Studies: RecordList<any>;
+    AssayMeasurements: RecordList<AssayMeasurementRecord>;
+    Assays: RecordList<AssayRecord>;
+    CSources: RecordList<CarbonSourceRecord>;
+    GeneTypes: RecordList<ProteinTypeRecord>;
+    Lines: RecordList<LineRecord>;
+    MeasurementTypeCompartments: RecordList<MeasurementCompartmentRecord>;
+    MeasurementTypes: RecordList<MeasurementTypeRecord>;
+    MetaboliteTypes: RecordList<MetaboliteTypeRecord>;
+    MetaDataTypes: RecordList<MetadataTypeRecord>;
+    ProteinTypes: RecordList<ProteinTypeRecord>;
+    Protocols: RecordList<ProtocolRecord>;
+    Strains: RecordList<StrainRecord>;
+    UnitTypes: RecordList<UnitType>;
+    Users: RecordList<UserRecord>;
 
     Exchange:any;
     Species:any;
@@ -186,5 +187,5 @@ interface EDDData {
 
 
 /* tslint:disable:no-unused-variable */
-declare var EDDData:EDDData;
+declare var EDDData: EDDData;
 /* tslint:enable:no-unused-variable */

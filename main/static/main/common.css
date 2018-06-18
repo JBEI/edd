@@ -1752,11 +1752,11 @@ div.tooltip2 {
     margin-left: 8px;
 }
 
-.tick text{
-  font-size: 12px;
+.tick text {
+  font-size: 8px;
 }
 
-.tick line{
+.tick line {
   opacity: 0.2;
 }
 
