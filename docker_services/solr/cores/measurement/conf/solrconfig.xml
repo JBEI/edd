@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
     <abortOnConfigurationError>${solr.abortOnConfigurationError:true}</abortOnConfigurationError>
-    <luceneMatchVersion>5.5.0</luceneMatchVersion>
+    <luceneMatchVersion>7.3.0</luceneMatchVersion>
     <dataDir>${solr.data.dir:}</dataDir>
     <directoryFactory name="DirectoryFactory"
             class="${solr.directoryFactory:solr.NRTCachingDirectoryFactory}"/>
@@ -98,9 +98,8 @@
     </requestHandler>
     <requestHandler name="/analysis/field" startup="lazy"
             class="solr.FieldAnalysisRequestHandler" />
-    <requestHandler name="/analysis/document" startup="lazy" 
+    <requestHandler name="/analysis/document" startup="lazy"
             class="solr.DocumentAnalysisRequestHandler" />
-    <requestHandler name="/admin/" class="solr.admin.AdminHandlers" />
     <requestHandler name="/admin/ping" class="solr.PingRequestHandler">
         <lst name="invariants">
             <str name="q">solrpingquery</str>

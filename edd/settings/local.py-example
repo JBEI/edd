@@ -12,9 +12,12 @@ from .base import *  # noqa: F403
 
 root = environ.Path(__file__) - 3  # we get this out of `from .base import *` too
 
-# Override the default MANAGERS and ADMINS
+# Override the default MANAGERS and ADMINS; each item is 2-tuple of name and email
 MANAGERS = ADMINS = (
-    ('Jay Bay', 'admin@example.org'),  # <-- CHANGE ME
+    (
+        env('EDD_USER', default='Jay Bay'),  # noqa: F405
+        env('EDD_EMAIL', default='admin@example.org'),  # noqa: F405
+    ),
 )
 
 ALLOWED_HOSTS = ['*', ]

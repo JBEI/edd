@@ -246,9 +246,6 @@ fi
 if [ ! -f /code/edd/settings/local.py ]; then
     output "Creating local.py from example …"
     cp /code/edd/settings/local.py-example /code/edd/settings/local.py
-    sed -i.bak -e "s/'Jay Bay'/'${EDD_USER}'/;s/'admin@example.org'/'${EDD_EMAIL}'/" \
-        /code/edd/settings/local.py
-    rm /code/edd/settings/local.py.bak
 fi
 cd /code
 export EDD_VERSION_HASH="$(git -C /code rev-parse --short HEAD)"
@@ -345,12 +342,12 @@ if [ $INIT_INDEX -eq 1 ]; then
 
     if [ "$REINDEX_EDD" = "true" ]; then
         output
-        python /code/manage.py edd_index
-        output "End of Solr index rebuild"
+        python /code/manage.py edd_index --force
     else
-        output "Skipping Solr index rebuild since there were" \
-            "no applied database migrations or restores from dump"
+        output
+        python /code/manage.py edd_index
     fi
+    output "End of Solr index check"
 fi
 
 # Wait for rabbitmq to become available

@@ -1,6 +1,6 @@
 import json
 
-from mock import call, patch
+from unittest.mock import call, patch
 
 from main.importer2.codes import FileParseCodes
 from main.importer2.parser import GenericImportParser

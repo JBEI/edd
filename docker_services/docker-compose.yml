@@ -4,10 +4,10 @@ networks:
   backnet: {}
 volumes:
   pgdata: {}
-  solrdata: {}
   attachdata: {}
   staticdata: {}
   redisdata: {}
+  solr_cores: {}
 services:
   postgres:
     image: library/postgres:9.6
@@ -52,15 +52,18 @@ services:
       - '6379'
     command: redis-server --appendonly yes
   solr:
-    build: ./solr/
-    image: jbei/solr:5.5-edd
+    image: library/solr:7.3
+    entrypoint: ['/entrypoint.sh']
     restart: always
     networks:
       - backnet
     volumes:
-      - solrdata:/opt/solr/server/solr
-    # the built Solr image has a default healthcheck; can override interval etc.
+      - solr_cores:/opt/solr/server/solr
+      - ./solr/entrypoint.sh:/entrypoint.sh
+      - ./solr/healthcheck.sh:/healthcheck.sh
+      - ./solr/cores:/tmp/cores
     healthcheck:
+      test: ['CMD', '/healthcheck.sh']
       interval: 1m
       timeout: 15s
       retries: 3
@@ -100,7 +103,7 @@ services:
         max-file: '5'
   flower:
     build: ./flower/
-    image: jbei/flower:0.9-edd
+    image: jbei/flower:1.0.1
     restart: always
     env_file: secrets.env
     environment:
@@ -126,18 +129,12 @@ services:
         max-size: 1m
         max-file: '5'
   smtp:
-    build: ./smtp/
-    image: jbei/exim4:1.0-edd
+    image: tianon/exim4
     restart: always
     networks:
       - backnet
     expose:
       - '25'
-    healthcheck:
-      test: ['CMD', '/bin/healthcheck.sh', 'edd']
-      interval: 1m
-      timeout: 10s
-      retries: 3
     logging:
       driver: 'json-file'
       options:

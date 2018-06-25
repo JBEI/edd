@@ -13,8 +13,8 @@ from django.http import QueryDict
 from django.urls import reverse
 from django.test import override_settings
 from io import BytesIO
-from mock import patch
 from requests import codes
+from unittest.mock import patch
 
 from .. import models, tasks
 from . import factory, TestCase
@@ -238,7 +238,7 @@ class ImportDataTestsMixin(object):
             series_pages = self._slice_series_pages(series_file, page_count)
 
         # mocking redis, so test provides the data instead of real redis
-        with patch('main.tasks.ScratchStorage') as MockStorage:
+        with patch('main.redis.ScratchStorage') as MockStorage:
             storage = MockStorage.return_value
             storage.load.return_value = context_str
             storage.load_pages.return_value = series_pages

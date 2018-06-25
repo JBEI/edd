@@ -28,14 +28,14 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 # Custom EDD-defined configuration options
 ###################################################################################################
 
-EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.2.0')
+EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.3.0')
 EDD_VERSION_HASH = env('EDD_VERSION_HASH', default=None)
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
 # help prevent developers from accidentally altering data in production). Any value that starts
 # with the prefix "DEVELOPMENT" or "TEST" will change EDD's background color and print a the value
 # of this variable at the top of each page.
-EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT', default='PRODUCTION')
+EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT', default='TEST')
 
 # override to allow arbitrary text instead of requiring protein ID's to fit the pattern of Uniprot
 # accession id's (though at present validity isn't confirmed, only format).
@@ -56,7 +56,7 @@ EDD_EXTERNAL_SCRIPTS = []
 ICE_KEY_ID = env('ICE_NAME', default='edd')
 ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY', default=None)
 ICE_ADMIN_ACCOUNT = env('ICE_ADMIN_USER', default='Administrator')
-ICE_URL = env('ICE_URL', default='https://registry-test.jbei.org/')
+ICE_URL = env('ICE_URL', default=None)
 # HTTP request connection and read timeouts, respectively (seconds)
 ICE_REQUEST_TIMEOUT = (10, 10)
 ICE_FOLDER_SEARCH_PAGE_SIZE = 100
@@ -92,7 +92,8 @@ EDD_MAIN_SOLR = {
 
 # most of these just explicitly set the Django defaults, but since it affects Django, Celery, and
 # custom Celery support code, we enforce them here for consistency
-SERVER_EMAIL = 'jbei-edd-admin@lists.lbl.gov'
+SERVER_EMAIL = env('EDD_EMAIL', default='root@localhost')
+DEFAULT_FROM_EMAIL = env('EDD_EMAIL', default='root@localhost')
 EMAIL_SUBJECT_PREFIX = '[EDD] '
 EMAIL_TIMEOUT = 60  # in seconds
 EMAIL_HOST = 'smtp'

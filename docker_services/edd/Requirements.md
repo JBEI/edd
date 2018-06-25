@@ -10,8 +10,8 @@ in the EDD [requirements.txt][1]. Dependencies for these packages can be generat
 used inside EDD, thus will not show up as a root dependency from `pipdeptree` output. Django
 itself has only `pytz` as a dependency.
 
-    Django==2.0.3
-      pytz==2018.3
+    Django==2.0.6
+      pytz==2018.4
 
 ### Django Allauth
 
@@ -19,33 +19,32 @@ The [Allauth][6] Django application handles using external authentication source
 instance of EDD uses this to enable logins via Github, Google, and LinkedIn. Other sources can be
 configured by following the Allauth documentation.
 
-    django-allauth==0.35.0
+    django-allauth==0.36.0
       python3-openid==3.1.0
         defusedxml==0.5.0
-      requests==2.18.4
-        certifi==2018.1.18
+      requests==2.19.0
+        certifi==2018.4.16
         chardet==3.0.4
-        idna==2.6
-        urllib3==1.22
-      requests-oauthlib==0.8.0
-        oauthlib==2.0.7
-        requests==2.18.4
-          certifi==2018.1.18
+        idna==2.7
+        urllib3==1.23
+      requests-oauthlib==1.0.0
+        oauthlib==2.1.0
+        requests==2.19.0
+          certifi==2018.4.16
           chardet==3.0.4
-          idna==2.6
-          urllib3==1.22
+          idna==2.7
+          urllib3==1.23
 
 ### Django Auth LDAP
 
 The [Auth LDAP][7] Django application handles using an LDAP server for authentication and basic
 directory services, e.g. groups. EDD uses this to enable logins with LBNL credentials.
 
-    django-auth-ldap==1.3.0
-      pyldap==3.0.0
-        python-ldap==3.0.0
-          pyasn1==0.4.2
-          pyasn1-modules==0.2.1
-            pyasn1==0.4.2
+    django-auth-ldap==1.6.1
+      python-ldap==3.1.0
+        pyasn1==0.4.3
+        pyasn1-modules==0.2.1
+          pyasn1==0.4.3
 
 ### Django Debug Toolbar
 
@@ -96,7 +95,7 @@ serializers, controllers, etc. that integrate with the Django APIs, making defin
 from existing code as simple as possible. Like Django, the DRF also includes other "apps" with
 further dependencies.
 
-    djangorestframework==3.7.7
+    djangorestframework==3.8.2
 
 #### Django Filter
 
@@ -118,39 +117,41 @@ like `/study/{id1}/lines/{id2}`.
 [SQLAlchemy][17] is an alternative Python ORM library; DRF uses it as part of its documentation
 generator. Removing it will break things in DRF. The EDD itself only uses the Django ORM.
 
-    SQLAlchemy==1.2.5
+    SQLAlchemy==1.2.8
 
-#### Django REST Swagger (deprecated)
+#### Django REST Swagger (deprecated?)
 
 This app generates a Swagger browsable API from DRF's built-in documentation generator. The app is
 no longer maintained, and is scheduled to be replaced with another OpenAPI-compliant documentation
-generator soon.
+generator soon. (Update 2018-06-12: this library has been updated, so is maybe maintained; still
+may replace with a more active documentation generator based on OpenAPI)
 
-    django-rest-swagger==2.1.2
+    django-rest-swagger==2.2.0
       coreapi==2.3.3
         coreschema==0.0.4
           Jinja2==2.10
             MarkupSafe==1.0
         itypes==1.1.0
-        requests==2.18.4
-          certifi==2018.1.18
+        requests==2.19.0
+          certifi==2018.4.16
           chardet==3.0.4
-          idna==2.6
-          urllib3==1.22
+          idna==2.7
+          urllib3==1.23
         uritemplate==3.0.0
+      djangorestframework==3.8.2
       openapi-codec==1.3.2
         coreapi==2.3.3
           coreschema==0.0.4
             Jinja2==2.10
               MarkupSafe==1.0
           itypes==1.1.0
-          requests==2.18.4
-            certifi==2018.1.18
+          requests==2.19.0
+            certifi==2018.4.16
             chardet==3.0.4
-            idna==2.6
-            urllib3==1.22
+            idna==2.7
+            urllib3==1.23
           uritemplate==3.0.0
-      simplejson==3.13.2
+      simplejson==3.15.0
 
 ### Django Threadlocals
 
@@ -178,12 +179,12 @@ timestamps and handle durations between datetimes.
 [Celery][5] is a distributed task queue library. EDD uses Celery to schedule background tasks and
 long-running tasks that could not complete within a normal timeout window for HTTP requests.
 
-    celery==4.1.0
+    celery==4.2.0
       billiard==3.5.0.3
-      kombu==4.1.0
-        amqp==2.2.2
+      kombu==4.2.1
+        amqp==2.3.2
           vine==1.1.4
-      pytz==2018.3
+      pytz==2018.4
 
 ## Channels
 
@@ -191,38 +192,36 @@ long-running tasks that could not complete within a normal timeout window for HT
 of web traffic. Specifially, EDD uses Channels to handle WebSocket connections, where a persistent
 connection passes messages between the remote user and EDD, without resorting to long-polling.
 
-    channels==2.0.2
-      asgiref==2.2.0
-        async-timeout==2.0.1
-      daphne==2.1.0
-        autobahn==18.3.1
+    channels==2.1.1
+      asgiref==2.3.2
+        async-timeout==3.0.0
+      daphne==2.1.2
+        autobahn==18.6.1
           six==1.11.0
-          txaio==2.9.0
+          txaio==2.10.0
             six==1.11.0
-        Twisted==17.9.0
+        Twisted==18.4.0
           Automat==0.6.0
-            attrs==17.4.0
+            attrs==18.1.0
             six==1.11.0
           constantly==15.1.0
           hyperlink==18.0.0
-            idna==2.6
+            idna==2.7
           incremental==17.5.0
-          zope.interface==4.4.3
-            setuptools==39.0.1
-      Django==2.0.3
-        pytz==2018.3
+          zope.interface==4.5.0
+            setuptools==39.2.0
 
 ### channels-redis
 
 Parallel to Channels, this package handles using Redis as a backend and broker for messages
 handled by Channels. It has Channels itself as a dependency, these are the other dependencies.
 
-    channels-redis==2.1.1
-      aioredis==1.0.0
-        async-timeout==2.0.1
+    channels-redis==2.2.1
+      aioredis==1.1.0
+        async-timeout==3.0.0
         hiredis==0.2.0
-      asgiref==2.2.0
-        async-timeout==2.0.1
+      asgiref==2.3.2
+        async-timeout==3.0.0
       msgpack==0.5.6
 
 ## Testing
@@ -234,26 +233,60 @@ The following sub-headings all fall under libraries used to assist in running un
 [Factory Boy][19] is a library used to assist in property-based testing and simplify generation of
 objects to use in tests vs using fixtures.
 
-    factory-boy==2.10.0
-      Faker==0.8.12
-        python-dateutil==2.7.0
+    factory-boy==2.11.1
+      Faker==0.8.15
+        python-dateutil==2.7.3
           six==1.11.0
         six==1.11.0
         text-unidecode==1.2
 
-### Mock (deprecated)
+## Graphene
 
-[Mock][20] is a library used to create mock objects, so that expensive or complicated APIs can be
-condensed to just expected inputs and outputs. This is in the standard library now and can be
-replaced with `unittest.mock` under Python 3.
+[Graphene][27] implements the GraphQL API query language in Python. It runs the GraphQL endpoint
+under development to drive the React-based UIs planned for imports.
 
-    mock==2.0.0
-      pbr==3.1.1
+    graphene==2.1.1
+      aniso8601==3.0.0
+      graphql-core==2.0
+        promise==2.1
+          six==1.11.0
+          typing==3.6.4
+        Rx==1.6.1
+        six==1.11.0
+      graphql-relay==0.4.5
+        graphql-core==2.0
+          promise==2.1
+            six==1.11.0
+            typing==3.6.4
+          Rx==1.6.1
+          six==1.11.0
+        promise==2.1
+          six==1.11.0
+          typing==3.6.4
+        six==1.11.0
+      promise==2.1
+        six==1.11.0
+        typing==3.6.4
+      six==1.11.0
+
+### graphene-django
+
+A Django integration for Graphene.
+
+    graphene-django==2.0.0
+      iso8601==0.1.12
+      promise==2.1
+        six==1.11.0
+        typing==3.6.4
+      singledispatch==3.4.0.3
+        six==1.11.0
       six==1.11.0
 
 ## Gunicorn
 
 [Gunicorn][21] is a production-ready Python WSGI HTTP server. It serves EDD's HTTP(S)-only traffic.
+
+    gunicorn==19.8.1
 
 ## jsonpickle (deprecated)
 
@@ -276,9 +309,9 @@ creation interface to EDD.
 [OpenPyXL][22] is a library for parsing Excel files. It is used in multiple places to parse through
 Excel files, e.g. in the importer, experiment description, etc.
 
-    openpyxl==2.5.1
+    openpyxl==2.5.4
       et-xmlfile==1.0.1
-      jdcal==1.3
+      jdcal==1.4
 
 ## Pillow (deprecated?)
 
@@ -308,16 +341,16 @@ This library ensures that the Python standard library urllib functions will prop
 TLS certificates. [Source][25]
 
     service-identity==17.0.0
-      attrs==17.4.0
-      pyasn1==0.4.2
+      attrs==18.1.0
+      pyasn1==0.4.3
       pyasn1-modules==0.2.1
-        pyasn1==0.4.2
-      pyOpenSSL==17.5.0
-        cryptography==2.2.1
+        pyasn1==0.4.3
+      pyOpenSSL==18.0.0
+        cryptography==2.2.2
           asn1crypto==0.24.0
           cffi==1.11.5
             pycparser==2.18
-          idna==2.6
+          idna==2.7
           six==1.11.0
         six==1.11.0
 
@@ -355,3 +388,4 @@ files, using Django's `collectstatic` command. [Source][24]
 [24]:   https://pythonhosted.org/watchdog/
 [25]:   https://service-identity.readthedocs.io/en/stable/
 [26]:   http://sbml.org/Software/libSBML
+[27]:   http://graphene-python.org/
