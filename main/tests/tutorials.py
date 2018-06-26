@@ -123,7 +123,7 @@ class ExperimentDescriptionTests(TestCase):
         self.assertIn('warnings', messages)
         self.assertEqual(len(messages['errors']), 2)
         self.assertEqual(
-            {'Incorrect file', 'Invalid values'},
+            {'Incorrect file format', 'Invalid values'},
             {err['category'] for err in messages['errors']}
         )
 

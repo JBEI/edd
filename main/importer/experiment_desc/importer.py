@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import codecs
 import copy
 import json
 import logging
@@ -13,8 +14,8 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils.translation import ugettext as _
 from io import BytesIO
-from openpyxl import load_workbook
 from pprint import pformat
+
 from requests import codes
 
 from jbei.rest.clients.ice.api import (ENTRY_CLASS_TO_JSON_TYPE, Strain as IceStrain)
@@ -24,8 +25,11 @@ from jbei.rest.clients.ice.constants import (ENTRY_TYPE_ARABIDOPSIS,
                                              ENTRY_TYPE_PLASMID,
                                              ENTRY_TYPE_PROTEIN,
                                              ENTRY_TYPE_STRAIN,)
+from main.importer.parser import ImportFileTypeFlags
 from main.models import Strain, Assay, Line
 from main.tasks import create_ice_connection
+
+
 # avoiding loading a ton of names to the module by only loading the namespace to constants
 from . import constants
 from .constants import (
@@ -34,7 +38,7 @@ from .constants import (
     BAD_GENERIC_INPUT_CATEGORY,
     DRY_RUN_PARAM,
     DUPLICATE_INPUT_ASSAY_NAMES,
-    DUPLICATE_INPUT_LINE_NAMES,
+    DUPLICATE_COMPUTED_LINE_NAMES,
     EMAIL_WHEN_FINISHED,
     EMPTY_FOLDER_ERROR_CATEGORY,
     EMPTY_FOLDER_ERROR_TITLE,
@@ -294,7 +298,7 @@ class IcePartResolver(object):
     def resolve_strains(self):
         """
         Resolves ICE strains from the input, including finding and filtering contents of ICE
-        folders, and resolving ICE part identifiers present in the input.
+        folders if present, and also resolving ICE part identifiers present in the input.
 
         When processing Experiment Description files, identifiers will be human-readable ICE
         part numbers that must be resolved by querying ICE. For bulk line creation, identifiers
@@ -304,6 +308,7 @@ class IcePartResolver(object):
         When this method returns, either errors have been reported to the importer,
         or all folders and ICE entries in the input have been resolved, and ICE entries have
         all been cached in EDD's database.
+        :return a dict that maps pk => EDD strain for each strain that was resolved in ICE
         """
 
         # if any errors were detected during initialization, skip further processing
@@ -668,7 +673,7 @@ class IcePartResolver(object):
         importer.add_error(
             category_title=constants.SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
             subtitle=constants.ICE_NOT_CONFIGURED,
-            occurrence_detail=details
+            occurrence=details
         )
 
     def _systemic_ice_access_error(self, unique_ids, resource_name):
@@ -834,17 +839,17 @@ class CombinatorialCreationImporter(object):
             return self.user.email
         return None
 
-    def add_issue(self, is_error, title, subtitle, occurrence_detail):
+    def add_issue(self, is_error, title, subtitle, occurrence):
         if is_error:
-            self.add_error(title, subtitle, occurrence_detail)
+            self.add_error(title, subtitle, occurrence)
         else:
-            self.add_warning(title, subtitle, occurrence_detail)
+            self.add_warning(title, subtitle, occurrence)
 
-    def add_error(self, category_title, subtitle='', occurrence_detail=None):
-        self._append_summary(self.errors, category_title, subtitle, occurrence_detail)
+    def add_error(self, category_title, subtitle='', occurrence=None):
+        self._append_summary(self.errors, category_title, subtitle, occurrence)
 
-    def add_warning(self, category_title, subtitle='', occurrence_detail=None):
-        self._append_summary(self.warnings, category_title, subtitle, occurrence_detail)
+    def add_warning(self, category_title, subtitle='', occurrence=None):
+        self._append_summary(self.warnings, category_title, subtitle, occurrence)
 
     def has_error(self, subtitle):
         for category_title, errors_by_subtitle in self.errors.items():
@@ -861,16 +866,16 @@ class CombinatorialCreationImporter(object):
         return False
 
     @staticmethod
-    def _append_summary(source, category_title, subtitle, occurrence_detail=None):
+    def _append_summary(source, category_title, subtitle, occurrence=None):
         summary = source[category_title].get(subtitle)
         if not summary:
             summary = ImportErrorSummary(category_title, subtitle)
             source[category_title][subtitle] = summary
 
-        if occurrence_detail:
-            summary.add_occurrence(occurrence_detail)
+        if occurrence:
+            summary.add_occurrence(occurrence)
 
-    def do_import(self, stream, options, excel_filename=None):
+    def do_import(self, stream, options, filename=None, file_extension=None, encoding='utf8'):
         """
         Performs the import or raises an Exception if an unexpected / unhandled error occurred
 
@@ -892,17 +897,7 @@ class CombinatorialCreationImporter(object):
         # Note: it would be more memory efficient to perform creation after reading each line of
         # the file, but that's not likely to be a problem. Can do that optimization later after
         # enforcing a good separation of concerns with this general layout.
-
-        # parse the input contents (should be relatively short since they're likely manual input)
-        if excel_filename:
-            parser = ExperimentDescFileParser(self.cache)
-            parse_input = load_workbook(BytesIO(stream.read()), read_only=True, data_only=True)
-        else:
-            parser = JsonInputParser(self.cache)
-            parse_input = stream.read()
-
-        line_def_inputs = parser.parse(parse_input, self, options)
-        self.performance.end_input_parse()
+        line_def_inputs = self.parse_input(stream, filename, file_extension, encoding)
 
         if (not line_def_inputs) and (not self.errors):
             self.add_error(BAD_GENERIC_INPUT_CATEGORY, NO_INPUT)
@@ -921,16 +916,32 @@ class CombinatorialCreationImporter(object):
         if self.errors:
             return codes.bad_request, _build_response_content(self.errors, self.warnings)
 
-        # cache a human-readable summary of input for possible use in error emails
-        if excel_filename:
-            self._input_summary = excel_filename
-        else:
-            self._input_summary = parser.parsed_json
-
         with transaction.atomic(savepoint=False):
             result = self._define_study(line_def_inputs, options, strains_required_for_naming)
 
         return result
+
+    def parse_input(self, file, filename, file_extension, encoding):
+        if filename:
+            parser = ExperimentDescFileParser(self.cache, self)
+            if file_extension == ImportFileTypeFlags.CSV:
+                reader = codecs.getreader(encoding)
+                line_def_inputs = parser.parse_csv(reader(file).readlines())
+            else:
+                with BytesIO(file.read()) as stream:
+                    line_def_inputs = parser.parse_excel(stream)
+        else:
+            parser = JsonInputParser(self.cache)
+            line_def_inputs = parser.parse(file.read(), self)
+
+        # cache a human-readable summary of input for possible use in error emails
+        if filename:
+            self._input_summary = filename
+        else:
+            self._input_summary = parser.parsed_json
+
+        self.performance.end_input_parse()
+        return line_def_inputs
 
     def _query_related_object_context(self, line_def_inputs):
         """
@@ -1245,7 +1256,7 @@ class CombinatorialCreationImporter(object):
                         'line_name': duplicate_name,
                         'rows_list': ', '.join(str_row_nums),
                     }
-            self.add_error(NON_UNIQUE_LINE_NAMES_CATEGORY, DUPLICATE_INPUT_LINE_NAMES, message)
+            self.add_error(NON_UNIQUE_LINE_NAMES_CATEGORY, DUPLICATE_COMPUTED_LINE_NAMES, message)
 
         # aggregate/add error messages for duplicate assay names that indicate that the input isn't
         # self-consistent. Note that though it isn't all used yet, we purposefully organize the

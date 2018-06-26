@@ -4,29 +4,39 @@ import json
 import os
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
 from jsonschema import Draft4Validator
-from openpyxl import load_workbook
+from unittest.mock import call, patch
 
 from main.importer.experiment_desc import CombinatorialCreationImporter
-from main.importer.experiment_desc.constants import (
-    ABBREVIATIONS_SECTION,
-    ELEMENTS_SECTION,
-    REPLICATE_COUNT_ELT,
-)
 from main.importer.experiment_desc.importer import (_build_response_content,
                                                     ExperimentDescriptionOptions)
 from main.importer.experiment_desc.parsers import ExperimentDescFileParser, JsonInputParser
 from main.importer.experiment_desc.utilities import ExperimentDescriptionContext
 from main.importer.experiment_desc.validators import SCHEMA as JSON_SCHEMA
+from main.importer.experiment_desc.constants import (
+    BAD_FILE_CATEGORY,
+    BAD_GENERIC_INPUT_CATEGORY,
+    DUPLICATE_LINE_ATTR,
+    DUPLICATE_LINE_METADATA,
+    DUPLICATE_LINE_NAME_LITERAL,
+    DUPLICATE_ASSAY_METADATA,
+    INVALID_REPLICATE_COUNT,
+    INCORRECT_TIME_FORMAT,
+    INVALID_COLUMN_HEADER,
+    UNMATCHED_ASSAY_COL_HEADERS_KEY,
+    INVALID_FILE_VALUE_CATEGORY,
+    MISSING_REQUIRED_LINE_NAME,
+)
 from main.models import (CarbonSource, Line, MetadataType, Protocol, Strain, Study)
+
+from . import factory, TestCase
 
 
 User = get_user_model()
 main_dir = os.path.dirname(__file__),
 fixtures_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 fixtures_dir = os.path.join(fixtures_dir, 'fixtures')
-advanced_experiment_def_xlsx = os.path.join(fixtures_dir, 'advanced_experiment_description.xlsx')
+advanced_experiment_def_xlsx = factory.test_file_path('experiment_description/advanced.xlsx')
 
 
 class CombinatorialCreationTests(TestCase):
@@ -39,15 +49,22 @@ class CombinatorialCreationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.system_user = User.objects.get(username='system')
-        Protocol.objects.get_or_create(name='Proteomics', owned_by=cls.system_user)
-        Protocol.objects.get_or_create(name='Metabolomics', owned_by=cls.system_user)
-        Protocol.objects.get_or_create(name='Targeted Proteomics', owned_by=cls.system_user)
-        MetadataType.objects.get_or_create(type_name='Time', for_context=MetadataType.ASSAY)
-        MetadataType.objects.get_or_create(type_name='Media', for_context=MetadataType.LINE)
+        cls.metabolomics, _ = Protocol.objects.get_or_create(name='Metabolomics',
+                                                             owned_by=cls.system_user)
+        cls.targeted_proteomics, _ = Protocol.objects.get_or_create(name='Targeted Proteomics',
+                                                                    owned_by=cls.system_user)
+        cls.media_mtype, _ = MetadataType.objects.get_or_create(type_name='Media',
+                                                                for_context=MetadataType.LINE)
 
         # query the database and cache MetadataTypes, Protocols, etc that should be static
         # for the duration of the test
         cls.cache = ExperimentDescriptionContext()
+
+        # Initially remove likely-valid assay metadata drafted & partly tested below, since
+        # assay generation isn't yet fully supported by the combinatorial GUI or its back-end
+        # naming strategy
+        # TODO: reinstate once assay generation / naming is implemented for the combinatorial GUI
+        cls._OMIT_ASSAYS_FROM_TEST = True
 
     def setup(self):
         self.cache.clear_import_specific_cache()
@@ -55,7 +72,143 @@ class CombinatorialCreationTests(TestCase):
     def test_json_schema_valid(self):
         Draft4Validator.check_schema(JSON_SCHEMA)
 
-    def test_combinatorial_gui_use_case(self):
+    def build_ui_json(self, strain1, strain2, cs_glucose, cs_galactose, growth_temp_meta):
+        """
+        Builds JSON input for testing back end features of the the "Add Line Combo's" GUI. Test
+        input is similar to that displayed in the original UI mockup attached to EDD-257.
+
+        This data can potentially be captured as a fixture, but because it combines metadata pk's
+        and text, and because JSON doesn't support comments, it should be a lot easier for
+        maintainers to read/interpret as code.
+        """
+        cache = self.cache
+        carbon_src_meta = cache.carbon_sources_mtype
+        media_meta = self.media_mtype
+        strains_name = f'{cache.strains_mtype.pk}__name'
+        carbon_src_name = f'{carbon_src_meta.pk}__name'
+
+        # working carbon source (via metadata) example
+        gui_mockup_example = {
+            'name_elements': {
+                'elements': [
+                    strains_name,
+                    media_meta.pk,
+                    carbon_src_name,
+                    'replicate_num',
+                ],
+                'abbreviations': {
+                    strains_name: {
+                        strain1.name: 58,
+                        strain2.name: 27,
+                    },
+                    carbon_src_name: {
+                        cs_glucose.name: 'GLU',
+                        cs_galactose.name: 'GAL',
+                    }
+                }
+            },
+            'replicate_count': 3,
+            'common_line_metadata': {
+                growth_temp_meta.pk: 30,  # degrees C
+            },
+            'combinatorial_line_metadata': {
+                cache.strains_mtype.pk: [[strain1.pk], [strain2.pk]],
+                media_meta.pk: ['EZ', 'LB'],  # media
+                carbon_src_meta.pk: [[cs_galactose.pk], [cs_glucose.pk]],
+            },
+        }
+
+        if not self._OMIT_ASSAYS_FROM_TEST:
+            gui_mockup_example['protocol_to_combinatorial_metadata'] = {
+                self.targeted_proteomics.pk: {
+                    cache.assay_time_mtype.pk: [8, 24],  # hours
+                },
+                self.metabolomics.pk: {
+                    cache.assay_time_mtype.pk: [4, 6]  # hours
+                },
+            }
+        return json.dumps(gui_mockup_example)
+
+    def build_assay_data(self, exp_line_names):
+        """
+        Builds expected assay metadata as input for the test
+        """
+        if self._OMIT_ASSAYS_FROM_TEST:
+            return None, {}
+
+        # expected assay metadata (4 assays per line!)
+        # (as all strings at the assay level to match hstore field of created model objects)
+        time_pk = str(self.cache.assay_time_mtype.pk)
+        targeted_proteomics = self.targeted_proteomics
+        metabolomics = self.metabolomics
+
+        assay_metadata = {
+            self.targeted_proteomics.pk: [{time_pk: '8'}, {time_pk: '24'}],
+            self.metabolomics.pk: [{time_pk: '4'}, {time_pk: '6'}, ]
+        }
+
+        expected_assay_metadata = {}
+        for line_name in exp_line_names:
+            protocol_to_assay_to_meta = {}
+            expected_assay_metadata[line_name] = protocol_to_assay_to_meta
+            for protocol_pk, assay_meta in assay_metadata.items():
+                assay_to_meta = {}
+                protocol_to_assay_to_meta[protocol_pk] = assay_to_meta
+                for meta in assay_meta:
+                    assay_name = '%(line_name)s-%(time)sh' % {
+                        'line_name': line_name,
+                        'time': meta[time_pk]}
+                    assay_to_meta[assay_name] = meta
+
+        expected_assay_suffixes = {
+            targeted_proteomics.pk: ['8h', '24h'],
+            metabolomics.pk: ['4h', '6h'],
+        }
+
+        return expected_assay_suffixes, expected_assay_metadata
+
+    def test_ed_file_parse_err_detection(self):
+        """"
+        Tests for Experiment Description file errors that can be caught during parsing.  Error
+        detection includes catching column headers that don't match any of:
+        1) Line attributes supported by the parser (e.g. line name)
+        2) Line metadata defined in the database
+        3) Protocol + assay metadata defined in the database
+
+        Also tests duplicate column header detection for each type of column definition implied
+        by 1-3 above.
+        """
+
+        # mock the importer since we're just testing for error detection in the parser
+        classname = 'main.importer.experiment_desc.importer.CombinatorialCreationImporter'
+        with patch(classname) as MockImporter:
+            importer = MockImporter.return_value
+
+            file_path = factory.test_file_path('experiment_description/parse_errors.xlsx')
+            parser = ExperimentDescFileParser(self.cache, importer)
+
+            exp_calls = [
+                call(BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER, '"T3mperature" (col B)'),
+                call(BAD_FILE_CATEGORY, DUPLICATE_LINE_METADATA, '"Media" (col G)'),
+                call(BAD_FILE_CATEGORY, UNMATCHED_ASSAY_COL_HEADERS_KEY,
+                     '"Tomperature" (col H)'),  # TODO: use a different suffix for clarity!
+                call(BAD_FILE_CATEGORY, DUPLICATE_LINE_ATTR, '"Line Name" (col I)'),
+                call(BAD_FILE_CATEGORY, DUPLICATE_LINE_ATTR, '"Replicate Count" (col J)'),
+                call(BAD_FILE_CATEGORY, DUPLICATE_ASSAY_METADATA,
+                     '"Targeted Proteomics Time" (col K)'),
+                call(BAD_FILE_CATEGORY, DUPLICATE_LINE_METADATA, '"Strain(s)" (col L)'),
+                call(BAD_GENERIC_INPUT_CATEGORY, INVALID_REPLICATE_COUNT, '"X" (D2)'),
+                call(INVALID_FILE_VALUE_CATEGORY, MISSING_REQUIRED_LINE_NAME, 'A3'),
+                call(INVALID_FILE_VALUE_CATEGORY, INCORRECT_TIME_FORMAT, '"A" (F4)'),
+                call(INVALID_FILE_VALUE_CATEGORY, DUPLICATE_LINE_NAME_LITERAL,
+                     '"181-aceF" (A2, A4)'),
+            ]
+
+            parser.parse_excel(file_path)
+            importer.add_error.assert_has_calls(exp_calls)
+            self.assertEqual(importer.add_error.call_count, len(exp_calls))
+
+    def test_add_line_combos_use_case(self):
         """
         A simplified integration test that exercises much of the EDD code responsible for
         combinatorial line creation based on a typical anticipated common use case.  Test input
@@ -67,32 +220,15 @@ class CombinatorialCreationTests(TestCase):
         here.
         """
 
-        # Initially remove likely-valid assay metadata drafted & partly tested below, since
-        # assay generation isn't yet fully supported by the combinatorial GUI or its back-end
-        # naming strategy
-        # TODO: reinstate once assay generation / naming is implemented for the combinatorial GUI
-        _OMIT_ASSAYS_FROM_TEST = True
-
         ###########################################################################################
         # Load model objects for use in this test
         ###########################################################################################
-
-        carbon_source_meta = MetadataType.objects.get(
-            type_i18n='main.models.Line.carbon_source'
-        )
+        cache = self.cache
         growth_temp_meta = MetadataType.objects.get(
             type_i18n='main.models.Line.Growth_temperature'
         )
-        media_meta = MetadataType.objects.get(type_name='Media', for_context=MetadataType.LINE)
-
-        carbon_source_glucose, _ = CarbonSource.objects.get_or_create(name=r'1% Glucose',
-                                                                      volume=10.00000)
-        carbon_source_galactose, _ = CarbonSource.objects.get_or_create(name=r'1% Galactose',
-                                                                        volume=50)
-
-        targeted_proteomics = Protocol.objects.get(name='Targeted Proteomics',
-                                                   owned_by=self.system_user)
-        metabolomics = Protocol.objects.get(name='Metabolomics', owned_by=self.system_user)
+        cs_glucose, _ = CarbonSource.objects.get_or_create(name=r'1% Glucose', volume=10.00000)
+        cs_galactose, _ = CarbonSource.objects.get_or_create(name=r'1% Galactose', volume=50)
 
         ###########################################################################################
         # Create non-standard objects to use as the basis for this test
@@ -103,53 +239,11 @@ class CombinatorialCreationTests(TestCase):
         ###########################################################################################
         # Define JSON test input
         ###########################################################################################
-        cache = self.cache
-        strain_name = '%d__name' % cache.strains_mtype.pk
-        carbon_src_name = '%d__name' % carbon_source_meta.pk
-
-        # working carbon source (via metadata) example
-        gui_mockup_example = {
-            'name_elements': {
-                ELEMENTS_SECTION: [
-                    strain_name,
-                    media_meta.pk,
-                    carbon_src_name,
-                    'replicate_num'
-                ],
-                ABBREVIATIONS_SECTION: {
-                    strain_name: {
-                        strain1.name: 58,
-                        strain2.name: 27,
-                    },
-                    carbon_src_name: {
-                        carbon_source_glucose.name: 'GLU',
-                        carbon_source_galactose.name: 'GAL',
-                    }
-                }
-            },
-            REPLICATE_COUNT_ELT: 3,
-            'common_line_metadata': {
-                growth_temp_meta.pk: 30,  # degrees C
-            },
-            'combinatorial_line_metadata': {
-                cache.strains_mtype.pk: [[strain1.pk], [strain2.pk]],
-                media_meta.pk: ['EZ', 'LB'],  # media
-                carbon_source_meta.pk: [[carbon_source_galactose.pk], [carbon_source_glucose.pk]],
-            },
-        }
-
-        if not _OMIT_ASSAYS_FROM_TEST:
-            gui_mockup_example['protocol_to_combinatorial_metadata'] = {
-                targeted_proteomics.pk: {
-                    cache.assay_time_mtype.pk: [8, 24],  # hours
-                },
-                metabolomics.pk: {
-                    cache.assay_time_mtype.pk: [4, 6]  # hours
-                },
-            }
+        ui_json_output = self.build_ui_json(strain1, strain2, cs_glucose, cs_galactose,
+                                            growth_temp_meta)
 
         ###########################################################################################
-        # Expected results of the test
+        # Define expected results of the test
         ###########################################################################################
         expected_line_names = [
             '58-EZ-GLU-R1', '58-EZ-GLU-R2', '58-EZ-GLU-R3',
@@ -164,18 +258,18 @@ class CombinatorialCreationTests(TestCase):
 
         # Build a dict of expected line metadata, with all non-field metadata saved with a string
         # key to match line hstore field)
-        media_pk = str(media_meta.pk)
+        media_pk = str(self.media_mtype.pk)
         temp_pk = str(growth_temp_meta.pk)
-        carbon_source_pk = carbon_source_meta.pk  # related field -> use non-string key
+        carbon_src_pk = cache.carbon_sources_mtype.pk  # related field -> use non-string key
 
         _LB = 'LB'
         _EZ = 'EZ'
 
         temp = str(30)
-        ez_glu = {carbon_source_pk: [carbon_source_glucose.pk], media_pk: _EZ, temp_pk: temp}
-        ez_gal = {carbon_source_pk: [carbon_source_galactose.pk], media_pk: _EZ, temp_pk: temp}
-        lb_glu = {carbon_source_pk: [carbon_source_glucose.pk], media_pk: _LB, temp_pk: temp}
-        lb_gal = {carbon_source_pk: [carbon_source_galactose.pk], media_pk: _LB, temp_pk: temp}
+        ez_glu = {carbon_src_pk: [cs_glucose.pk], media_pk: _EZ, temp_pk: temp}
+        ez_gal = {carbon_src_pk: [cs_galactose.pk], media_pk: _EZ, temp_pk: temp}
+        lb_glu = {carbon_src_pk: [cs_glucose.pk], media_pk: _LB, temp_pk: temp}
+        lb_gal = {carbon_src_pk: [cs_galactose.pk], media_pk: _LB, temp_pk: temp}
 
         expected_line_metadata = {
             '58-EZ-GLU-R1': ez_glu,
@@ -204,32 +298,6 @@ class CombinatorialCreationTests(TestCase):
             '27-LB-GAL-R3': lb_gal,
         }
 
-        # expected assay metadata (4 assays per line!)
-        # (as all strings at the assay level to match hstore field of created model objects)
-        time_pk = str(cache.assay_time_mtype.pk)
-        assay_metadata = {
-            targeted_proteomics.pk: [{time_pk: '8'}, {time_pk: '24'}],
-            metabolomics.pk: [{time_pk: '4'}, {time_pk: '6'}, ]
-        }
-
-        expected_assay_metadata = {}
-        for line_name in expected_line_names:
-            protocol_to_assay_to_meta = {}
-            expected_assay_metadata[line_name] = protocol_to_assay_to_meta
-            for protocol_pk, assay_meta in assay_metadata.items():
-                assay_to_meta = {}
-                protocol_to_assay_to_meta[protocol_pk] = assay_to_meta
-                for meta in assay_meta:
-                    assay_name = '%(line_name)s-%(time)sh' % {
-                        'line_name': line_name,
-                        'time': meta[time_pk]}
-                    assay_to_meta[assay_name] = meta
-
-        expected_assay_suffixes = {
-            targeted_proteomics.pk: ['8h', '24h'],
-            metabolomics.pk: ['4h', '6h'],
-        }
-
         strains_by_pk = {
             strain1.pk: strain1, strain2.pk: strain2,
         }
@@ -237,16 +305,14 @@ class CombinatorialCreationTests(TestCase):
 
         study = Study.objects.create(name='Unit Test Study')
 
-        if _OMIT_ASSAYS_FROM_TEST:
-            expected_assay_suffixes = None
-            expected_assay_metadata = {}
+        exp_assay_suffixes, exp_assay_metadata = self.build_assay_data(expected_line_names)
 
-        self._test_combinatorial_input(study, json.dumps(gui_mockup_example),
+        self._test_combinatorial_input(study, ui_json_output,
                                        expected_line_names,
-                                       expected_assay_suffixes,
+                                       exp_assay_suffixes,
                                        edd_strains_by_ice_id=strains_by_pk,
                                        exp_line_metadata=expected_line_metadata,
-                                       exp_assay_metadata=expected_assay_metadata)
+                                       exp_assay_metadata=exp_assay_metadata)
 
     def _test_combinatorial_creation(
             self,
@@ -482,7 +548,7 @@ class CombinatorialCreationTests(TestCase):
                                  'obs': obs_val, })
 
     def _test_combinatorial_input(self, study, source_input, expected_line_names,
-                                  expected_assay_suffixes, edd_strains_by_ice_id={},
+                                  expected_assay_suffixes, edd_strains_by_ice_id=None,
                                   exp_line_metadata=None, exp_assay_metadata=None,
                                   is_excel_file=False):
         """
@@ -502,19 +568,18 @@ class CombinatorialCreationTests(TestCase):
         """
         cache = self.cache
 
+        # Create an importer to collect errors/warnings
+        importer = CombinatorialCreationImporter(study, self.system_user, cache)
+        options = ExperimentDescriptionOptions()
+        edd_strains_by_ice_id = edd_strains_by_ice_id if edd_strains_by_ice_id is not None else {}
+
         # Parse JSON inputs
         if is_excel_file:
-            source_input = load_workbook(source_input,
-                                         read_only=True,
-                                         data_only=True)
-            parser = ExperimentDescFileParser(cache)
+            parser = ExperimentDescFileParser(cache, importer)
+            combinatorial_inputs = parser.parse_excel(source_input)
         else:
-            parser = JsonInputParser(cache)
-
-        # Creating an importer to collect errors/warnings
-        importer = CombinatorialCreationImporter(study, self.system_user, self.cache)
-        options = ExperimentDescriptionOptions()
-        combinatorial_inputs = parser.parse(source_input, importer, options)
+            parser = JsonInputParser(cache, importer)
+            combinatorial_inputs = parser.parse(source_input)
 
         if importer.errors:
             self.fail('Parse errors: ' + json.dumps(_build_response_content(importer.errors,
@@ -628,9 +693,8 @@ class CombinatorialCreationTests(TestCase):
         strain, _ = Strain.objects.get_or_create(name='JW0111')
         study = Study.objects.create(name='Unit Test Study')
         cache.strains_by_pk = {strain.pk: strain}
-        media_metatype = MetadataType.objects.get(type_name='Media', for_context=MetadataType.LINE)
-        strain_metatype = MetadataType.objects.get(type_name='Strain(s)',
-                                                   for_context=MetadataType.LINE)
+        media_mtype = self.media_mtype
+        strains_mtype = self.cache.strains_mtype
         control = MetadataType.objects.get(type_name='Control', for_context=MetadataType.LINE)
 
         ###########################################################################################
@@ -642,9 +706,9 @@ class CombinatorialCreationTests(TestCase):
             'replicate_count': 3,
             'combinatorial_line_metadata': {},
             'common_line_metadata': {
-                str(media_metatype.pk): 'LB',  # json only supports string keys
+                str(media_mtype.pk): 'LB',  # json only supports string keys
                 str(control.pk): False,
-                str(strain_metatype.pk): [str(strain.uuid)],
+                str(strains_mtype.pk): [str(strain.uuid)],
             }
         }
 
@@ -652,9 +716,9 @@ class CombinatorialCreationTests(TestCase):
         expected_assay_suffixes = {}
 
         expected_line_metadata = {
-            line_name: {media_metatype.pk: 'LB',
+            line_name: {media_mtype.pk: 'LB',
                         control.pk: False,
-                        strain_metatype.pk: [strain.pk]}
+                        strains_mtype.pk: [strain.pk]}
             for line_name in expected_line_names
         }
 
@@ -673,9 +737,9 @@ class CombinatorialCreationTests(TestCase):
         study = Study.objects.create(name='Unit Test Study')
         cache.strains_by_pk = {strain.pk: strain}
         strains_by_part_num = {'JBx_002078': strain}
-        targeted_proteomics = Protocol.objects.get(name='Targeted Proteomics')
-        metabolomics = Protocol.objects.get(name='Metabolomics')
-        media_meta = MetadataType.objects.get(type_name='Media', for_context=MetadataType.LINE)
+        targeted_proteomics = self.targeted_proteomics
+        metabolomics = self.metabolomics
+        media_mtype = self.media_mtype
 
         expected_line_names = ['181-aceF-R1', '181-aceF-R2', '181-aceF-R3']
         expected_assay_suffixes = {
@@ -684,7 +748,7 @@ class CombinatorialCreationTests(TestCase):
         }
 
         expected_line_metadata = {
-            line_name: {str(media_meta.pk): 'LB'}
+            line_name: {str(media_mtype.pk): 'LB'}
             for line_name in expected_line_names
         }
 

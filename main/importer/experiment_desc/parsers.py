@@ -1,11 +1,13 @@
 # coding: utf-8
 
+import csv
 import json
 import logging
 import re
 
-from collections import Sequence
+from collections import defaultdict, Sequence
 from jsonschema import Draft4Validator
+from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter
 from six import string_types
 
@@ -18,6 +20,9 @@ from .constants import (
     COMMON_LINE_METADATA_SECTION,
     DELIMETER_NOT_ALLOWED_VALUE,
     DUPLICATE_ASSAY_METADATA,
+    DUPLICATE_LINE_NAME_LITERAL,
+    DUPLICATE_LINE_ATTR,
+    DUPLICATE_LINE_METADATA,
     ELEMENTS_SECTION,
     EMPTY_WORKBOOK,
     ICE_FOLDERS_KEY,
@@ -114,6 +119,9 @@ class _RawStringValueParser(_AssayMetadataValueParser):
 
 
 class _DecimalTimeParser(_AssayMetadataValueParser):
+    def __init__(self, parser):
+        self.parser = parser
+
     def parse(self, raw_value_str):
         match = _TIME_VALUE_PATTERN.match(raw_value_str)
         if match:
@@ -122,19 +130,37 @@ class _DecimalTimeParser(_AssayMetadataValueParser):
             stripped = str(str_value.strip()).replace(',', '').replace('-', '').replace('+', '')
             sep_index = stripped.find('.')  # TODO: i18n
 
+            # maintain the count of fractional time digits used in the input so we can propagate
+            # the same precision to resulting line names
             fractional_digits = 0
             if sep_index >= 0:
                 fractional_digits = (len(stripped) - sep_index) - 1  # TODO: commas!
-            return number_value, fractional_digits
-        raise ValueError(
-            'Value "%s" did not match the expected time pattern (e.g. "4.0h")' % raw_value_str
-        )
+
+            parser = self.parser
+            parser.max_fractional_time_digits = max(parser.max_fractional_time_digits,
+                                                    fractional_digits)
+            return number_value
+        raise ValueError(f'Value "{raw_value_str}" did not match the expected time pattern (e.g. '
+                         f'"4.0h")')
 
 
-# stateless value parsing strategies for metadata input (time is treated specially by the file
-# format)
-RAW_STRING_PARSER = _RawStringValueParser()
-TIME_PARSER = _DecimalTimeParser()
+# stateless value parsing strategy for metadata input
+_RAW_STRING_PARSER = _RawStringValueParser()
+
+
+def cell_coords(row_index, col_index):
+    col_letter = get_column_letter(col_index + 1)
+    return f'{col_letter}{row_index+1}'
+
+
+def header_desc(cell_content, col_index):
+    col_letter = get_column_letter(col_index + 1)
+    return f'"{cell_content}" (col {col_letter})'
+
+
+def cell_desc(cell_content, row_index, col_index):
+    coords = cell_coords(row_index, col_index)
+    return f'"{cell_content}" ({coords})'
 
 
 class ColumnLayout:
@@ -156,6 +182,9 @@ class ColumnLayout:
         self.combinatorial_col_indices = []
         self.unique_assay_protocols = {}
         self.importer = importer
+
+        # primary keys of line metadata types whose cols have already been detected in the file
+        self.obs_line_meta_pks = set()
 
     def register_protocol(self, protocol):
         self.unique_assay_protocols[protocol.pk] = True
@@ -188,30 +217,24 @@ class ColumnLayout:
             self.combinatorial_col_indices
         )
 
-    def register_assay_meta_column(self, col_index, upper_protocol_name, protocol, assay_meta_type,
-                                   is_combinatorial):
+    def register_assay_meta_column(self, col_header, col_index, upper_protocol_name, protocol,
+                                   assay_mtype, is_combinatorial):
 
         # test for duplicate use of the same (Protocol, MetadataType) combination.
         # if we see it, log an error -- no clear/automated way for us to resolve which column
         #  has the correct values!
-        if self.has_assay_metadata(upper_protocol_name, assay_meta_type.pk):
+        if self.has_assay_metadata(upper_protocol_name, assay_mtype.pk):
             self.importer.add_error(BAD_FILE_CATEGORY, DUPLICATE_ASSAY_METADATA,
-                                    assay_meta_type.pk)
+                                    header_desc(col_header, col_index))
 
         self.register_protocol(protocol)
-
-        self.col_index_to_assay_data[col_index] = (protocol, assay_meta_type)
+        self.col_index_to_assay_data[col_index] = (protocol, assay_mtype)
         if is_combinatorial:
             self.combinatorial_col_indices.append(col_index)
 
-        logger.debug(
-            'Column %(col)d matches protocol "%(protocol)s", assay metadata type "%(meta_type)s"' %
-            {
-                'col': col_index + 1,
-                'protocol': protocol.name,
-                'meta_type': assay_meta_type.type_name
-            }
-        )
+        col_letter = get_column_letter(col_index+1)
+        logger.debug(f'Column {col_letter} matches protocol "{protocol.name}", assay metadata type'
+                     f' "{assay_mtype.type_name}"')
 
     def get_assay_metadata_type(self, col_index):
         value = self.col_index_to_assay_data.get(col_index, None)
@@ -241,13 +264,17 @@ class ColumnLayout:
     def unique_protocols(self):
         return set(self.unique_assay_protocols)
 
-    def set_line_metadata_type(self, col_index, line_metadata_type, is_combinatorial=False):
-        logger.debug(
-            'Column %d matches line metadata type %s' %
-            (col_index+1, line_metadata_type.type_name)
-        )
+    def register_line_meta_col(self, col_index, line_mtype, is_combinatorial=False):
+        col_letter = get_column_letter(col_index + 1)
+        logger.debug(f'Column {col_letter} matches line metadata type {line_mtype.type_name}')
 
-        self.col_index_to_line_meta_pk[col_index] = line_metadata_type.pk
+        # detect duplicate columns in the file & add helpful err messages
+        if line_mtype.pk in self.obs_line_meta_pks:
+            self.importer.add_error(BAD_FILE_CATEGORY, DUPLICATE_LINE_METADATA,
+                                    header_desc(line_mtype.type_name, col_index))
+
+        self.col_index_to_line_meta_pk[col_index] = line_mtype.pk
+        self.obs_line_meta_pks.add(line_mtype.pk)
 
         if is_combinatorial:
             self.combinatorial_col_indices.append(col_index)
@@ -306,13 +333,13 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
                 # the wrong (allowed) value
                 meta_type = cache.line_meta_types[line_meta_pk]
                 related_obj_field = ALLOWED_RELATED_OBJECT_FIELDS[meta_type.type_field]
-                src_detail = get_column_letter(line_metadata_col)
+                col_letter = get_column_letter(line_metadata_col)
                 segment = self.build_related_objects_name_segment(line_metadata,
                                                                   line_meta_pk,
                                                                   related_obj_field,
-                                                                  src_detail)
+                                                                  col_letter)
                 name_elts.append(segment)
-                logger.debug('Built related object name segment "%s"' % meta_type)
+                logger.debug(f'Built related object name segment "{meta_type}"')
                 continue
 
             metadata_value = line_metadata.get(line_meta_pk, None)  # value is optional!
@@ -335,10 +362,10 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
         # if creating more than one replicate, build a suffix to show replicate number so that
         # line names are unique. Replicate number should always be last in the line name
         if self.combinatorial_input.replicate_count > 1:
-            replicate_suffix = 'R%d' % replicate_num
+            replicate_suffix = f'R{replicate_num}'
             name_elts.append(replicate_suffix)
 
-        logger.debug('Building line name from elements: %s' % str(name_elts))
+        logger.debug(f'Building line name from elements: {name_elts}')
 
         # if making lines combinatorially based on line metadata, insert the combinatorial values
         # into the line name so that line names will be unique
@@ -370,10 +397,8 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
         layout = self.col_layout
         name_elts = [line.name]
         assay_time_mtype_pk = self.cache.assay_time_mtype.pk
-
-        logger.debug(
-            'Combinatorial assay column order: %s' % ','.join(
-                    [str(index) for index in layout.combinatorial_assay_col_order()]))
+        col_order = ','.join([str(index) for index in layout.combinatorial_assay_col_order()])
+        logger.debug(f'Combinatorial assay column order: {col_order}')
 
         try:
 
@@ -388,12 +413,9 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
                 if col_protocol.pk != protocol_pk:
                     continue
 
-                logger.debug(
-                    'Inspecting combinatorial assay metadata column %(col)s for protocol '
-                    '"%(protocol)s", meta "%(meta_type)s"' % {
-                        'col': get_column_letter(assay_metadata_col + 1),
-                        'protocol': col_protocol.name,
-                        'meta_type': assay_meta_type.type_name})
+                col = get_column_letter(assay_metadata_col + 1)
+                logger.debug(f'Inspecting combinatorial assay metadata column {col} for protocol '
+                             f'"{col_protocol.name}, meta "{assay_meta_type.type_name}"')
 
                 metadata_value = assay_metadata.get(assay_meta_type.pk)
 
@@ -403,7 +425,7 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
                 name_elt = None
                 if assay_meta_type.pk == assay_time_mtype_pk:
                     custom_time_digits = self._get_time_format_string() % metadata_value
-                    name_elt = '%sh' % custom_time_digits
+                    name_elt = f'{custom_time_digits}h'
                 else:
                     name_elt = metadata_value.replace(' ', self.space_replacement)
 
@@ -413,7 +435,8 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
                         name_elt += assay_meta_type.postfix
                 name_elts.append(name_elt)
 
-            logger.debug('Adding assay naming elements: %s' % ', '.join(name_elts))
+            elts = ', '.join(name_elts)
+            logger.debug(f'Adding assay naming elements: {elts}')
             return self.section_separator.join(name_elts)
 
         except KeyError:
@@ -444,11 +467,9 @@ class _ExperimentDescriptionFileRow(CombinatorialDescriptionInput):
 
 
 class CombinatorialInputParser(object):
-    def __init__(self, cache):
+    def __init__(self, cache, aggregator=None):
         self.cache = cache
-
-    def parse(self, input_source, importer, options):
-        raise NotImplementedError()  # require subclasses to implement
+        self.aggregator = aggregator
 
 
 def _standardize_label(label):
@@ -469,8 +490,10 @@ class ExperimentDescFileParser(CombinatorialInputParser):
     list of CombinatorialCreationInput objects.
     """
 
-    def __init__(self, cache):
+    def __init__(self, cache, aggregator=None):
         super(ExperimentDescFileParser, self).__init__(cache)
+
+        self._time_parser = _DecimalTimeParser(self)
 
         # build a dict of Protocol name -> Protocol to simplify parsing
         self.protocols_by_name = {
@@ -535,86 +558,76 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         self.column_layout = None
 
-        # true to treat all unmatched column headers as an
-        # error. False to ignore unmatch line headers, but to treat those that start with a
-        # protocol name and don't match an assay MetaDataType as an error
-        self.REQUIRE_COL_HEADER_MATCH = True
-
-        self.importer = None
+        self.importer = aggregator
 
         self.max_fractional_time_digits = 0
 
-    def parse(self, wb, importer, options):
-        logger.info('In parse(). workbook has %d sheets' % len(wb.worksheets))
+    # TODO: revisit to unify IO use & exception API across excel / csv methods.  At this point at
+    # least, we have both working, if not as abstract/consistent as possible
+    def parse_excel(self, file):
+        # TODO: verify or remove docstring referencing ParseError
+        """
+        :param file: a path-like object identifying the file location
+        :param options:
+        :return:
+        :raise OSError if the file can't be opened or ParseError if the file format or content
+        is malformed.
+        """
+        self._is_excel = True
+
+        wb = load_workbook(file, read_only=True, data_only=True)
 
         if len(wb.worksheets) == 0:
-            importer.add_error(BAD_FILE_CATEGORY, subtitle=EMPTY_WORKBOOK)
-            return
-
-        # Clear out state from any previous use of this parser instance
-        self.column_layout = None
-        self.importer = importer
-
-        # loop over rows
-        parsed_row_inputs = []
+            self.importer.add_error(BAD_FILE_CATEGORY, subtitle=EMPTY_WORKBOOK)
+            return  # TODO: raise an Exception
 
         if len(wb.worksheets) > 1:
             sheet_name = wb.get_sheet_names()[0]
-            importer.add_warning(
+            self.importer.add_warning(
                 IGNORED_INPUT_CATEGORY, MULTIPLE_WORKSHEETS_FOUND,
                 f'All but the first sheet in your workbook, "{sheet_name}", were ignored'
             )
         worksheet = wb.worksheets[0]
+        return self._parse(worksheet.iter_rows())
 
-        # loop over columns
-        row_index = 0
-        for cols_list in worksheet.iter_rows():
+    def parse_csv(self, lines_iter):
+        self._is_excel = False
+        reader = csv.reader(lines_iter)
+        return self._parse(reader)
 
-            logger.debug('Parsing row %d' % (row_index+1))
+    def _parse(self, rows_iter):
+        # Clear out state from any previous use of this parser instance
+        self.column_layout = None
+        parsed_row_inputs = []
+        importer = self.importer
+
+        # loop over rows
+        for row_index, cols_list in enumerate(rows_iter):
+            logger.debug(f'Parsing row {row_index+1}')
 
             # identify columns of interest first by looking for required labels
             if not self.column_layout:
-                self.column_layout = self.read_column_layout(cols_list)
+                self.column_layout = self._parse_column_layout(cols_list)
 
             # if column labels have been identified, look for line creation input data
             else:
-                #  remove
-                row_num = row_index + 1
-                row_inputs = self.parse_row(cols_list, row_num)
+                row_inputs = self._parse_row(cols_list, row_index)
                 if row_inputs:  # skip empty rows
                     parsed_row_inputs.append(row_inputs)
 
-            row_index += 1
-
-        if not self.column_layout:
+        column_layout = self.column_layout
+        if not column_layout:
             importer.add_error(BAD_FILE_CATEGORY,
                                subtitle='No column header was found matching the single required '
                                         'value "Line Name"')
             return
 
-        column_layout = self.column_layout
-
         # provide a good user-facing warning message as a reminder of line metadata types that
         # aren't supported, but were found in the input file
-        unsupported_value_columns = [
-            col_index
-            for col_index, meta_pk in column_layout.col_index_to_line_meta_pk.items()
-            if meta_pk in self.unsupported_line_meta_types_by_pk
-        ]
-        if unsupported_value_columns:
-            line_meta_types = self.cache.line_meta_types
-            unsupported_values = []
-            for col_index in unsupported_value_columns:
-                meta_pk = column_layout.get_line_meta_pk(col_index)
-                meta_type = line_meta_types[meta_pk]
-                column_letter = get_column_letter(col_index + 1)
-                unsupported_values.append(f'{meta_type.type_name} (column {column_letter})')
+        self.warn_for_unsupported_meta_types()
 
-            importer.add_warning(IGNORED_INPUT_CATEGORY, UNSUPPORTED_LINE_METADATA,
-                                 ', '.join(unsupported_values))
-
-        for combinatorial_input in parsed_row_inputs:
-            combinatorial_input.fractional_time_digits = self.max_fractional_time_digits
+        for row_input in parsed_row_inputs:
+            row_input.fractional_time_digits = self.max_fractional_time_digits
 
         # after reading all rows in the file, loop over combinatorially-defined columns (as
         # defined by column headers) and remove any from our tracking that were completely empty
@@ -636,8 +649,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             if not line_mtype_pk:
                 continue
 
-            for combinatorial_input in parsed_row_inputs:
-                line_values = combinatorial_input.get_related_object_ids(line_mtype_pk)
+            for row_input in parsed_row_inputs:
+                line_values = row_input.get_related_object_ids(line_mtype_pk)
                 meta_values.update(line_values)
 
                 if len(line_values) > 1:
@@ -647,7 +660,28 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             if not meta_values or not multivalued_row:
                 column_layout.combinatorial_col_indices.remove(col_index)
 
-        # Enforce consistency of folder contents and filtering across all inputs.
+        # having now winnowed down the columns that actually contain combinatorial data,
+        # do a proactive check for duplicate input line names if they're predictable (i.e. there's
+        # no auto-naming in play due to combinatorially-defined lines).  This should make the
+        # workflow more intuitive by catching input errors early and giving a more direct error
+        # message that relates exclusively to the user's input.  Also improves efficiency by
+        # avoiding potentially expensive ICE queries and preview creation by catching the
+        # problem early.
+        if column_layout.combinatorial_col_indices:
+            line_name_to_rows = defaultdict(list)
+            for row in parsed_row_inputs:
+                line_name = row.base_line_name
+                cell_nums = line_name_to_rows[line_name]
+                cell_nums.append(cell_coords(row.row_number - 1, column_layout.line_name_col))
+
+            for line_name, cell_nums in line_name_to_rows.items():
+                if len(cell_nums) > 1:
+                    cell_nums = ', '.join(cell_nums)
+                    message = f'"{line_name}" ({cell_nums})'
+                    importer.add_error(INVALID_FILE_VALUE_CATEGORY, DUPLICATE_LINE_NAME_LITERAL,
+                                       message)
+
+        # Enforce consistency of ICE folder contents and filtering across all inputs.
         # This allows us to make simplifying assumptions later on when processing ICE folders
         unique_folder_ids = set()
         for index, combo in enumerate(parsed_row_inputs):
@@ -660,13 +694,34 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                                            f'{folder_id} (row {combo.row_number})')
                     else:
                         current_filters = combo.folder_id_to_folders[folder_id]
-                        if (set(current_filters) != set(self.folder_id_to_filters[folder_id])):
+                        if set(current_filters) != set(self.folder_id_to_filters[folder_id]):
                             importer.add_error(INVALID_FILE_VALUE_CATEGORY, INCONSISTENT_FILTERS,
                                                f'row {combo.row_number}')
 
         return parsed_row_inputs
 
-    def read_column_layout(self, row):
+    def warn_for_unsupported_meta_types(self):
+        column_layout = self.column_layout
+        importer = self.importer
+
+        unsupported_value_columns = [
+            col_index
+            for col_index, meta_pk in column_layout.col_index_to_line_meta_pk.items()
+            if meta_pk in self.unsupported_line_meta_types_by_pk
+        ]
+        if unsupported_value_columns:
+            line_meta_types = self.cache.line_meta_types
+            unsupported_values = []
+            for col_index in unsupported_value_columns:
+                meta_pk = column_layout.get_line_meta_pk(col_index)
+                meta_type = line_meta_types[meta_pk]
+                col_letter = get_column_letter(col_index + 1)
+                unsupported_values.append(f'"{meta_type.type_name}" (col {col_letter})')
+
+            importer.add_warning(IGNORED_INPUT_CATEGORY, UNSUPPORTED_LINE_METADATA,
+                                 ', '.join(unsupported_values))
+
+    def _parse_column_layout(self, row):
         """
         Detects the layout of a template file by matching cell contents of a row containing the
         minimal required column headers, then comparing additional headers in that row against line
@@ -681,44 +736,49 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # loop over columns in the current row, looking for labels that identify at least the
         # minimum set of required columns
         ###########################################################################################
-        found_col_labels = False
-        for col_index in range(len(row)):
-            cell_content = row[col_index].value
+        for col_index, cell in enumerate(row):
+            cell_content = self._raw_cell_value(cell)
 
             # ignore non-string cells since they can't be the column headers we're looking for
             if not isinstance(cell_content, string_types):
                 continue
 
-            cell_content = _standardize_label(cell_content)
+            std_content = _standardize_label(cell_content)
 
             # skip this cell if it has no non-whitespace content
-            if not cell_content:
+            if not std_content:
                 continue
 
             #######################################################################################
             # check whether column label matches one of the fixed labels specified by the file
             # format, but where the column labels don't match a defined line MetadataType
             #######################################################################################
-            if _LINE_NAME_COL_PATTERN.match(cell_content):
-                layout.line_name_col = col_index
-            elif _LINE_DESCRIPTION_COL_PATTERN.match(cell_content):
-                layout.line_description_col = col_index
-            elif _STRAIN_IDS_SINGULAR_COL_PATTERN.match(cell_content):
+            duplicate_attr_col = None
+            if _LINE_NAME_COL_PATTERN.match(std_content):
+                duplicate_attr_col = layout.line_name_col is not None
+                if not duplicate_attr_col:
+                    layout.line_name_col = col_index
+            elif _LINE_DESCRIPTION_COL_PATTERN.match(std_content):
+                duplicate_attr_col = layout.line_description_col is not None
+                if not duplicate_attr_col:
+                    layout.line_description_col = col_index
+            elif _STRAIN_IDS_SINGULAR_COL_PATTERN.match(std_content):
                 layout.strain_ids_col = col_index
-                layout.set_line_metadata_type(col_index, self.cache.strains_mtype, False)
-            elif _STRAIN_IDS_PLURAL_COL_PATTERN.match(cell_content):
+                layout.register_line_meta_col(col_index, self.cache.strains_mtype, False)
+            elif _STRAIN_IDS_PLURAL_COL_PATTERN.match(std_content):
                 layout.strain_ids_col = col_index
-                layout.set_line_metadata_type(col_index, self.cache.strains_mtype, True)
-            elif _REPLICATE_COUNT_COL_PATTERN.match(cell_content):
-                layout.replicate_count_col = col_index
+                layout.register_line_meta_col(col_index, self.cache.strains_mtype, True)
+            elif _REPLICATE_COUNT_COL_PATTERN.match(std_content):
+                duplicate_attr_col = layout.replicate_count_col is not None
+                if not duplicate_attr_col:
+                    layout.replicate_count_col = col_index
 
             # check whether the column label matches custom data defined in the database
             else:
-                upper_content = cell_content.upper()
 
                 # test whether this column is protocol-prefixed assay metadata
                 assay_meta_type = self._parse_assay_metadata_header(layout,
-                                                                    upper_content,
+                                                                    std_content,
                                                                     cell_content,
                                                                     col_index)
 
@@ -728,22 +788,19 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
                 # if this column isn't protocol-prefixed, test whether it's for line metadata
                 line_metadata_type = self._parse_line_metadata_header(layout,
-                                                                      upper_content,
+                                                                      std_content,
                                                                       col_index)
 
                 # if we couldn't process this column, track a warning that describes
                 # dropped columns (can be displayed later in the UI)
                 if not line_metadata_type:
-                    col = 'column %s' % get_column_letter(col_index+1)
-                    skipped = '%(title)s" (%(column)s)' % {
-                        'title': cell_content,
-                        'column': col,
-                    }
-                    logger.warning('Bad column header "%(header)s"' % {'header': skipped})
-                    is_error = self.REQUIRE_COL_HEADER_MATCH
-                    logger.warning('Bad column header "%(header)s"' % {'header': skipped})
-                    self.importer.add_issue(is_error, BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER,
-                                            skipped)
+                    cell = header_desc(cell_content, col_index)
+                    logger.warning(f'Bad column header {cell}')
+                    self.importer.add_error(BAD_FILE_CATEGORY, INVALID_COLUMN_HEADER, cell)
+
+            if duplicate_attr_col:
+                self.importer.add_error(BAD_FILE_CATEGORY, DUPLICATE_LINE_ATTR,
+                                        header_desc(cell_content, col_index))
 
         # return the columns found in this row if at least the
         # minimum required columns were found
@@ -752,6 +809,11 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             return layout
 
         return None
+
+    def _raw_cell_value(self, cell):
+        if self._is_excel:
+            return cell.value
+        return cell
 
     def _parse_assay_metadata_header(self, layout, upper_content, original_content, col_index):
         """
@@ -813,23 +875,20 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
                     if pluralized_match:
                         is_combinatorial = True
-                        logger.debug(
-                            'column header suffix %s matched pluralized regex %s' %
-                            (assay_meta_suffix, meta_regex)
-                        )
+                        logger.debug(f'Column header suffix {assay_meta_suffix} matched '
+                                     f'pluralized regex {meta_regex}')
                         suffix_meta_type = assay_metadata_type
                         break
                     else:
-                        logger.debug(
-                            'column header suffix %s did not match pluralized regex %s' %
-                            (assay_meta_suffix, meta_regex)
-                        )
+                        logger.debug(f'Column header suffix {assay_meta_suffix} did not match '
+                                     f'pluralized regex {meta_regex}')
 
                 # if the column started with the name of a protocol and ended with an
                 # assay metadata type name, store the association of this column with the
                 # (Protocol, MetadataType) combination
                 if suffix_meta_type:
-                    layout.register_assay_meta_column(col_index, upper_protocol_name,
+                    layout.register_assay_meta_column(original_content, col_index,
+                                                      upper_protocol_name,
                                                       protocol, suffix_meta_type,
                                                       is_combinatorial)
                     return suffix_meta_type
@@ -839,14 +898,9 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 # in the database. This check is especially important for the Time metadata
                 # assumed by the file format.
                 else:
-                    original_case_suffix = original_content[start_index:].strip()
-                    col_letter = get_column_letter(col_index+1)
-                    value = '"%(suffix)s" (column %(col)s)' % {
-                        'suffix': original_case_suffix,
-                        'col': col_letter,
-                    }
-                    logger.debug("""Column header suffix %s didn't match """
-                                 """ known metadata types""" % value)
+                    orig_case_suffix = original_content[start_index:].strip()
+                    value = header_desc(orig_case_suffix, col_index)
+                    logger.debug(f"Column header suffix {value} didn't match known metadata types")
                     self.importer.add_error(BAD_FILE_CATEGORY, UNMATCHED_ASSAY_COL_HEADERS_KEY,
                                             value)
                     return True
@@ -875,7 +929,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 result = meta_type if std_cell_content == std_type_name else None
 
             if result is not None:
-                column_layout.set_line_metadata_type(col_index, result)
+                column_layout.register_line_meta_col(col_index, result)
                 return result
 
             # if we didn't find a singular version of the column header, check for a pluralized
@@ -888,232 +942,185 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
             if pluralized_match:
                 result = meta_type
-                column_layout.set_line_metadata_type(col_index, result, is_combinatorial=True)
-                logger.debug(
-                    """Column header "%(header)s" matches line metadata type %(type)s""" % {
-                        'header': std_cell_content, 'type': std_type_name
-                    })
+                column_layout.register_line_meta_col(col_index, result, is_combinatorial=True)
+                logger.debug(f'Column header "{std_cell_content}" matches line metadata type '
+                             f'"{std_type_name}"')
                 return result
 
         return None
 
-    def parse_row(self, cols_list, row_num):
+    def _parse_row(self, row, row_index):
         """
         Reads a single spreadsheet row to find line creation inputs. The row is read even if errors
         occur, logging errors in the 'errors' parameter so that multiple user input errors can be
         detected and communicated during a single pass of editing the file.
         """
-        row_inputs = _ExperimentDescriptionFileRow(self.column_layout, self.cache, row_num,
+        row_inputs = _ExperimentDescriptionFileRow(self.column_layout, self.cache, row_index+1,
                                                    self.importer)
-        layout = self.column_layout
 
-        ###################################################
-        # Line name
-        ###################################################
-        cell_content = self._get_string_cell_content(
-            cols_list,
-            row_num,
-            layout.line_name_col,
-            convert_to_string=True
-        )
-
-        if cell_content:
-            row_inputs.base_line_name = cell_content
-
-        # otherwise, track error state, but keep going so we can try to detect all the
-        # errors with a single pass
-        else:
-            # detect whether the row is completely empty...if not, raise an error. Note that a
-            # completely empty row is the only case where we can safely ignore the missing
-            # required value.
-            for col_index, cell in enumerate(cols_list):
-                if cell.value is not None and str(cell.value).strip():
-                    name_col_letter = get_column_letter(layout.line_name_col + 1)
-                    name_cell_num = f'{row_num}{name_col_letter}'
-                    logger.info(f'Parse error: Cell {name_cell_num} was empty, but was expected '
-                                'to contain a name for the EDD line. This error only occurs for '
-                                'non-empty rows. ')
-                    self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
-                                            MISSING_REQUIRED_LINE_NAME,
-                                            occurrence_detail=name_cell_num)
-                    break
-
-            logger.info(f'Ignored empty row {row_num}.')
+        # parse line name -- dictates whether the row is valid
+        abort_row = not self._parse_line_name(row, row_inputs, row_index)
+        if abort_row:
             return None
 
-        ###################################################
-        # Line description
-        ###################################################
-        if layout.line_description_col is not None:
-            cell_content = self._get_string_cell_content(
-                cols_list,
-                row_num,
-                layout.line_description_col
-            )
-            if cell_content:
-                row_inputs.description = cell_content
+        # parse other optional line attributes or special-case columns
+        self._parse_description(row_inputs, row, row_index)
+        self._parse_control(row_inputs, row, row_index)
+        self._parse_replicates(row_inputs, row, row_index)
 
-        ###################################################
-        # Control
-        ###################################################
-        if layout.line_control_col is not None:
+        # parse line metadata
+        self._parse_line_meta(row_inputs, row, row_index)
 
-            cell_content = self._get_string_cell_content(
-                cols_list,
-                row_num,
-                layout.line_control_col
-            )
-
-            if cell_content:
-                tokens = cell_content.split(',')
-                if len(tokens) == 1:
-                    tokens = cell_content
-
-                values = []
-                for token in tokens:
-                    is_control = "TRUE" == token or "YES" == cell_content
-                    values.append(is_control)
-
-                if len(values) > 1:
-                    pk = self.ctrl_meta_type.pk
-                    row_inputs.combinatorial_line_metadata[pk] = values
-
-        ###################################################
-        # Replicate count
-        ###################################################
-        if layout.replicate_count_col is not None:
-            cell_content = cols_list[layout.replicate_count_col].value
-
-            if cell_content is not None:
-                try:
-                    row_inputs.replicate_count = int(cell_content)
-                    if row_inputs.replicate_count == 0:
-                        cell = '%(row)d%(col)s' % {
-                            'value': str(cell_content), 'row': row_num,
-                            'col': get_column_letter(layout.replicate_count_col + 1),
-                        }
-                        self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, ZERO_REPLICATES, cell)
-                except ValueError:
-                    message = '%(value)s (%(row)d%(col)s)' % {
-                        'value': str(cell_content),
-                        'row': row_num,
-                        'col': get_column_letter(layout.replicate_count_col+1),
-                    }
-                    self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, INVALID_REPLICATE_COUNT,
-                                            occurrence_detail=message)
-            else:
-                row_inputs.replicate_count = 1
-                self.importer.add_warning(IGNORED_INPUT_CATEGORY, ROWS_MISSING_REPLICATE_COUNT,
-                                          row_num)
-
-        ###################################################
-        # line metadata
-        ###################################################
-        if layout.col_index_to_line_meta_pk:
-            for col_index, line_metadata_pk in layout.col_index_to_line_meta_pk.items():
-                # skip values for metadata types we've specifically disabled (with a warning)
-                # earlier in the parsing process
-                if line_metadata_pk in self.unsupported_line_meta_types_by_pk:
-                    continue
-
-                cell_content = self._get_string_cell_content(
-                    cols_list,
-                    row_num,
-                    col_index,
-                    convert_to_string=True
-                )
-
-                if not cell_content:
-                    continue
-
-                ###################################################
-                # Strain part id(s)
-                ###################################################
-                # TODO: after some initial testing, consider adding custom group support for
-                #  Carbon Source similar to that for strains. Since some changes to Carbon
-                #  Source / Media tracking are needed, we will probably want to defer support
-                # for Carbon Sources for now.
-                if col_index == layout.strain_ids_col:
-                    self.parse_strains_cell(layout, cols_list, row_num, row_inputs)
-                    continue
-
-                if col_index in layout.combinatorial_col_indices:
-                    self._parse_combinatorial_input(
-                        row_inputs,
-                        cell_content,
-                        row_num,
-                        col_index,
-                        line_metadata_pk,
-                        INVALID_FILE_VALUE_CATEGORY,
-                        UNPARSEABLE_COMBINATORIAL_VALUE,
-                    )
-                else:
-                    row_inputs.add_common_line_metadata(line_metadata_pk, cell_content)
-
-        ###################################################################################
-        # loop over protocol-specific columns (most likely related assay measurement times)
-        ###################################################################################
-        if layout.col_index_to_assay_data:
-
-            # loop over per-protocol assay metadata columns
-            columns = layout.col_index_to_assay_data.items()
-            for col_index, (protocol, assay_metadata_type) in columns:
-
-                cell_content = self._get_string_cell_content(
-                    cols_list,
-                    row_num,
-                    col_index, convert_to_string=True
-                )
-
-                # skip blank cells
-                if not cell_content:
-                    continue
-
-                # if this cell is in a column of for combinatorial input, add it to that list
-                if col_index in layout.combinatorial_col_indices:
-                    is_time = assay_metadata_type.pk == self.cache.assay_time_mtype.pk
-
-                    error_key = (INCORRECT_TIME_FORMAT if is_time else
-                                 UNPARSEABLE_COMBINATORIAL_VALUE)
-                    parser = TIME_PARSER if is_time else RAW_STRING_PARSER
-
-                    self._parse_combinatorial_input(
-                        row_inputs,
-                        cell_content,
-                        row_num,
-                        col_index,
-                        assay_metadata_type.pk,
-                        INVALID_FILE_VALUE_CATEGORY,
-                        error_key,
-                        protocol,
-                        parser
-                    )
-
-                else:
-                    if row_inputs.has_assay_metadata_type(protocol.pk, assay_metadata_type.pk):
-                        # TODO could improve this error content with a more complex data structure
-                        self.importer.add_error(BAD_FILE_CATEGORY,
-                                                DUPLICATE_ASSAY_METADATA,
-                                                'col %(col_letter)s' % {
-                                                    # 'protocol_id': protocol.pk,
-                                                    # 'metadata_id': assay_metadata_type.pk,
-                                                    'col_letter': get_column_letter(
-                                                        col_index + 1),
-                                                })
-                    row_inputs.add_common_assay_metadata(
-                        protocol.pk,
-                        assay_metadata_type.pk,
-                        cell_content
-                    )
+        # parse assay metadata, e.g. proteomics time
+        self._parse_assay_metadata(row_inputs, row, row_index)
 
         return row_inputs
 
-    def parse_strains_cell(self, layout, cols_list, row_num, row_inputs):
+    def _parse_line_name(self, row, row_inputs, row_index):
+        """
+        Parses line name from a file row, logging errors if needed
+        """
+        str_cell_content = self._get_str_cell_content(
+            row,
+            row_index,
+            self.column_layout.line_name_col,
+            convert_to_string=True
+        )
+
+        if str_cell_content:
+            row_inputs.base_line_name = str_cell_content
+            return True
+
+        # detect whether the row is completely empty...if not, raise an error. Note that a
+        # completely empty row is the only case where we can safely ignore the missing
+        # required value.
+        for col_index, cell in enumerate(row):
+            cell_val = self._raw_cell_value(cell)
+            if cell_val is not None and str(cell_val).strip():
+                name_cell_num = cell_coords(row_index, self.column_layout.line_name_col)
+                logger.info(f'Parse error: Cell {name_cell_num} was empty, but was expected '
+                            'to contain a name for the EDD line')
+                self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
+                                        MISSING_REQUIRED_LINE_NAME,
+                                        name_cell_num)
+                return False
+
+        logger.info(f'Ignored empty row {row_index + 1}.')
+        return False
+
+    def _parse_description(self, row_inputs, row, row_index):
+        desc_col = self.column_layout.line_description_col
+        if desc_col is None:
+            return
+
+        str_cell_content = self._get_str_cell_content(
+            row,
+            row_index,
+            desc_col
+        )
+        if str_cell_content:
+            row_inputs.description = str_cell_content
+
+    def _parse_control(self, row_inputs, row, row_index):
+        ctrl_col = self.column_layout.line_control_col
+        if ctrl_col is None:
+            return
+
+        str_cell_content = self._get_str_cell_content(
+            row,
+            row_index,
+            ctrl_col
+        )
+
+        if str_cell_content:
+            tokens = str_cell_content.split(',')
+            if len(tokens) == 1:
+                tokens = str_cell_content
+
+            values = []
+            for token in tokens:
+                is_control = "TRUE" == token or "YES" == str_cell_content
+                values.append(is_control)
+
+            if len(values) > 1:
+                pk = self.ctrl_meta_type.pk
+                row_inputs.combinatorial_line_metadata[pk] = values
+
+    def _parse_replicates(self, row_inputs, row, row_index):
+        replicate_col = self.column_layout.replicate_count_col
+        if replicate_col is None:
+            return
+
+        raw_val = self._raw_cell_value(row[replicate_col])
+
+        if raw_val is None:
+            row_inputs.replicate_count = 1
+            self.importer.add_warning(IGNORED_INPUT_CATEGORY,
+                                      ROWS_MISSING_REPLICATE_COUNT,
+                                      row_index+1)
+            return
+
+        try:
+            row_inputs.replicate_count = int(raw_val)
+            if row_inputs.replicate_count == 0:
+                cell = cell_coords(row_index, replicate_col)
+                self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, ZERO_REPLICATES, cell)
+        except ValueError:
+            cell = cell_desc(raw_val, row_index, replicate_col)
+            self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, INVALID_REPLICATE_COUNT,
+                                    cell)
+
+    def _parse_line_meta(self, row_inputs, row, row_index):
+        col_to_meta_pk = self.column_layout.col_index_to_line_meta_pk
+        if not col_to_meta_pk:
+            return
+
+        for col_index, mtype_pk in col_to_meta_pk.items():
+            # skip values for metadata types we've specifically disabled (with a warning)
+            # earlier in the parsing process
+            if mtype_pk in self.unsupported_line_meta_types_by_pk:
+                continue
+
+            str_cell_content = self._get_str_cell_content(
+                row,
+                row_index,
+                col_index,
+                convert_to_string=True
+            )
+
+            if not str_cell_content:
+                continue
+
+            ###################################################
+            # Strain part id(s)
+            ###################################################
+            # TODO: after some initial testing, consider adding custom group support for
+            #  Carbon Source similar to that for strains. Since some changes to Carbon
+            #  Source / Media tracking are needed, we will probably want to defer support
+            # for Carbon Sources for now.
+            if col_index == self.column_layout.strain_ids_col:
+                self.parse_strains_cell(row, row_index, row_inputs)
+                continue
+
+            if col_index in self.column_layout.combinatorial_col_indices:
+                self._parse_combinatorial_input(
+                    row_inputs,
+                    str_cell_content,
+                    row_index,
+                    col_index,
+                    mtype_pk,
+                    INVALID_FILE_VALUE_CATEGORY,
+                    UNPARSEABLE_COMBINATORIAL_VALUE,
+                )
+            else:
+                row_inputs.add_common_line_metadata(mtype_pk, str_cell_content)
+
+    def parse_strains_cell(self, cols_list, row_index, row_inputs):
+        layout = self.column_layout
         strain_ids_col = layout.strain_ids_col
         col_combinatorial = strain_ids_col in layout.combinatorial_col_indices
-
-        cell_content = self._get_string_cell_content(cols_list, row_num, strain_ids_col,
-                                                     convert_to_string=True)
+        cell_content = self._get_str_cell_content(cols_list, row_index, strain_ids_col,
+                                                  convert_to_string=True)
 
         combinatorial_strain_id_groups = []  # list of lists of strain IDs
 
@@ -1147,27 +1154,18 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             # strain group rather than single strain to be included in the list.
             token_strain_grp_match = _STRAIN_GROUP_PATTERN.match(token)
 
-            cell_number = '%(row)s%(col)s' % {
-                'row': row_num,
-                'col': get_column_letter(strain_ids_col+1),
-            }
-            token_description = '"%(token)s" (%(cell_number)s)' % {
-                'token': token, 'cell_number': cell_number,
-            }
+            cell_num = cell_coords(row_index, strain_ids_col)
+            token_description = f'"{token}" ({cell_num})'
 
             # if token matches our regex for a strain ID group
             if token_strain_grp_match:
-                logger.debug('Token "%(token)s" is a strain group. Match subgroup 1: '
-                             '"%(match_grp)s"' %
-                             {
-                                 'token': token,
-                                 'match_grp': token_strain_grp_match.group(1),
-                             })
+                grp = token_strain_grp_match.group(1)
+                logger.debug(f'Token "{token}" is a strain group. Match subgroup 1: "{grp}"')
                 strain_group = [strain_id.strip() for strain_id in
                                 token_strain_grp_match.group(1).split(_STRAIN_GROUP_MEMBER_DELIM)]
 
                 for strain_id in strain_group:
-                    self._check_part_id_pattern(strain_id, cell_number)
+                    self._check_part_id_pattern(strain_id, cell_num)
 
                 if col_combinatorial:
                     combinatorial_strain_id_groups.append(strain_group)
@@ -1190,19 +1188,16 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
             # value isn't a valid strain group...should be an ICE part number
             else:
-                logger.debug('Token "%(token)s" is NOT a strain group' % {'token': token, })
+                logger.debug(f'Token "{token}" is NOT a strain group')
                 if _STRAIN_GROUP_MEMBER_DELIM not in token:
                     individual_strain_ids.append(token)
-                    self._check_part_id_pattern(token, cell_number)
+                    self._check_part_id_pattern(token, cell_num)
                 else:
                     self.importer.add_error(INVALID_FILE_VALUE_CATEGORY,
                                             DELIMETER_NOT_ALLOWED_VALUE, token_description)
 
-        logger.debug('Done parsing strains for row %(row_num)s. Individual strains: %(strains)s, '
-                     'combo_groups: %(combo_groups)s' % {
-                        'row_num': row_num,
-                        'strains': individual_strain_ids,
-                        'combo_groups': combinatorial_strain_id_groups})
+        logger.debug(f'Done parsing strains for row {row_index + 1}. Individual strains: '
+                     f'{individual_strain_ids}, combo_groups: {combinatorial_strain_id_groups}')
 
         # depending on whether tho column header defines combinatorial input, either submit
         # comma-delimited strains as a single group (co-culture), or for combinatorial line
@@ -1232,25 +1227,87 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         part_number_match = TYPICAL_ICE_PART_NUMBER_PATTERN.match(part_id)
 
         if not part_number_match:
-            opt_location_str = ' (%s)' % input_location if input_location else ''
-            desc = '"%(part_id)s"%(location_str)s' % {
-                               'part_id': part_id,
-                               'location_str': opt_location_str,
-            }
+            opt_location_str = f' ({input_location})' if input_location else ''
+            desc = f'"{part_id}"{opt_location_str}'
             self.importer.add_warning(POSSIBLE_USER_ERROR_CATEGORY,
                                       PART_NUMBER_PATTERN_UNMATCHED_WARNING,
                                       desc)
+            logger.warning(f'Expected ICE part number(s) but {desc}, did not match the expected '
+                           f'pattern. This is either bad user input, or indicates that the '
+                           f'pattern needs updating.')
 
-            logger.warning('Expected ICE part number(s)'
-                           'but %s, did not match the expected pattern. This is '
-                           'either bad user input, or indicates that the pattern needs '
-                           'updating.' % desc)
+    def _parse_assay_metadata(self, row_inputs, row, row_index):
+        layout = self.column_layout
+        if not layout.col_index_to_assay_data:
+            return
 
-    def _get_string_cell_content(self, row, row_num, col_index, convert_to_string=False):
-        cell_content = row[col_index].value
+        # loop over per-protocol assay metadata columns
+        assay_mtype_cols = layout.col_index_to_assay_data
+        for col_index, (protocol, assay_mtype) in assay_mtype_cols.items():
+
+            str_cell_content = self._get_str_cell_content(
+                row,
+                row_index,
+                col_index, convert_to_string=True
+            )
+
+            # skip blank cells
+            if not str_cell_content:
+                continue
+
+            is_time = assay_mtype.pk == self.cache.assay_time_mtype.pk
+            err_category = INVALID_FILE_VALUE_CATEGORY
+            error_key = (INCORRECT_TIME_FORMAT if is_time else
+                         UNPARSEABLE_COMBINATORIAL_VALUE)
+
+            if col_index not in layout.combinatorial_col_indices:
+                cell_content = str_cell_content
+
+                # do some additional processing of time values to detect bad user entries for time.
+                # best to catch errors here since time's currently stored in hstore as a string.
+                # We should eventually extend similar support to other metadata types defined as
+                # numeric.
+                if is_time:
+                    try:
+                        cell_content = self._time_parser.parse(str_cell_content)
+                    except ValueError as v:
+                        bad_value = cell_desc(str_cell_content, row_index, col_index)
+                        logger.exception(f'ValueError parsing {bad_value}')
+                        self.importer.add_error(err_category, error_key, bad_value)
+
+                row_inputs.add_common_assay_metadata(
+                    protocol.pk,
+                    assay_mtype.pk,
+                    cell_content
+                )
+                continue
+
+            # if this cell is in a column of combinatorial input, add it to that list
+            parser = self._time_parser if is_time else _RAW_STRING_PARSER
+
+            self._parse_combinatorial_input(
+                row_inputs,
+                str_cell_content,
+                row_index,
+                col_index,
+                assay_mtype.pk,
+                err_category,
+                error_key,
+                protocol,
+                parser
+            )
+
+    def _get_str_cell_content(self, row, row_index, col_index, convert_to_string=False):
+        """
+        Reads cell content and converts it to a string for simplified storage in Postgres hstore.
+        TODO: this method should be updated when we transition to using a JSON field instead.
+        :param convert_to_string: True to convert the cell value to a string if it isn't stored
+        as one.
+        """
+        cell_content = self._raw_cell_value(row[col_index])
 
         if cell_content is None:
-            return cell_content
+            return None
 
         if isinstance(cell_content, string_types):
             return cell_content.strip()
@@ -1260,18 +1317,15 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             if convert_to_string:
                 return str(cell_content)
             else:
-                msg = '%(row)d%(col)s (value: %(value)s, type: %(type)s)' % {
-                    'row': row_num,
-                    'col': get_column_letter(col_index+1),
-                    'type': actual_type,
-                    'value': cell_content,
-                }
+                col_letter = get_column_letter(col_index+1)
+                msg = f'{row_index+1}{col_letter} (value: {cell_content}, type: {actual_type})'
                 self.importer.add_error(INVALID_FILE_VALUE_CATEGORY, INVALID_CELL_TYPE, msg)
                 return None
 
-    def _parse_combinatorial_input(self, row_inputs, cell_content, row_num, col_index,
-                                   metadata_type_pk, error_category, error_key, protocol=None,
-                                   value_parser=RAW_STRING_PARSER):
+    # TODO: lots of refactoring to do here!
+    def _parse_combinatorial_input(self, row_inputs, cell_content, row_index, col_index,
+                                   mtype_pk, error_category, error_key, protocol=None,
+                                   value_parser=_RAW_STRING_PARSER):
         """
         Parses the value of a single cell that may / may not have comma-separated combinatorial
         content.
@@ -1280,36 +1334,17 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         for token in cell_content.split(','):
             token = token.strip()
             try:
-
-                if value_parser == TIME_PARSER:
-                    (parsed_value, fractional_digit_count) = value_parser.parse(token)
-                    self.max_fractional_time_digits = max(self.max_fractional_time_digits,
-                                                          fractional_digit_count)
-                else:
-                    parsed_value = value_parser.parse(token)
+                parsed_val = value_parser.parse(token)
 
                 if protocol:
-                    row_inputs.add_combinatorial_assay_metadata(protocol.pk, metadata_type_pk,
-                                                                parsed_value)
+                    row_inputs.add_combinatorial_assay_metadata(protocol.pk, mtype_pk, parsed_val)
                 else:
-                    row_inputs.add_combinatorial_line_metadata(metadata_type_pk,
-                                                               parsed_value)
+                    row_inputs.add_combinatorial_line_metadata(mtype_pk, parsed_val)
+
             except ValueError:
-                cell_num = '%(row_num)d%(col_letter)s' % {
-                    'row_num': row_num,
-                    'col_letter': get_column_letter(col_index+1)}
-                logger.warning(
-                    'ValueError parsing token "%(token)s" from cell content "%(value)s" in '
-                    '%(cell)s' % {
-                        'token': token,
-                        'value': cell_content,
-                        'cell': cell_num,
-                    }
-                )
-                bad_value = '%(token)s ((cell_num)s)' % {
-                    'token': token,
-                    'cell_num': cell_num,
-                }
+                cell_num = cell_coords(row_index, col_index)
+                bad_value = f'"{token}" ({cell_num})'
+                logger.exception(f'ValueError parsing token {token}')
                 self.importer.add_error(error_category, error_key, bad_value)
                 break
 
@@ -1320,14 +1355,15 @@ class JsonInputParser(CombinatorialInputParser):
     class maintain a cache of protocols and metadata types defined in the database, so the
     lifecycle of each instance should be short.
     """
-    def __init__(self, cache):
-        super(JsonInputParser, self).__init__(cache)
+    def __init__(self, cache, importer=None):
+        super(JsonInputParser, self).__init__(cache, importer)
         self.max_fractional_time_digits = 0
         self.parsed_json = None
 
-    def parse(self, stream, importer, options):
+    def parse(self, stream):
 
         combinatorial_inputs = []
+        importer = self.aggregator
 
         if importer.errors:
             return None
@@ -1354,7 +1390,7 @@ class JsonInputParser(CombinatorialInputParser):
                 f'{path_str}: {err.message}'
             )
         if importer.errors:
-            logger.error('Aborting parsing due to JSON validation errors: %s' % validation_errors)
+            logger.error(f'Aborting parsing due to JSON validation errors: {validation_errors}')
             return None
 
         max_decimal_digits = 0

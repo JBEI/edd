@@ -31,12 +31,17 @@ parser_registry = {}
 
 
 def find_parser(import_mode, file_type):
+    extension = guess_extension(file_type)
+    return parser_registry.get((import_mode, extension), None)
+
+
+def guess_extension(file_type):
     if not mimetypes.inited:
         mimetypes.init()
     extension = mimetypes.guess_extension(file_type)
     if extension and extension[0] == '.':
         extension = extension[1:]
-    return parser_registry.get((import_mode, extension), None)
+    return extension
 
 
 class ParserFunction(object):

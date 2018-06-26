@@ -17,7 +17,8 @@ from requests import codes
 # generic errors (apply regardless of input format)
 NO_INPUT = "No line description data were found in the input"
 EMPTY_RESULTS = 'No lines created as a result of the input'
-DUPLICATE_INPUT_LINE_NAMES = 'Insufficient data in new line names to make them unique'
+DUPLICATE_COMPUTED_LINE_NAMES = 'Computed line names have insufficient data to make them unique'
+DUPLICATE_LINE_NAME_LITERAL = 'Duplicate line name'  # for the simple, non-combo ED file case
 EXISTING_LINE_NAMES = 'Input would duplicate existing line names'
 DUPLICATE_INPUT_ASSAY_NAMES = 'Duplicate assay names within the input for a single protocol'
 EXISTING_ASSAY_NAMES = 'Inputs would duplicate existing assay names'
@@ -30,10 +31,12 @@ FOLDER_NOT_FOUND = ("Folder(s) weren't found found in ICE, or your account doesn
 
 
 # Experiment Description file-specific errors
-BAD_FILE_CATEGORY = 'Incorrect file'
+BAD_FILE_CATEGORY = 'Incorrect file format'
 EMPTY_WORKBOOK = 'Empty workbook'
-DUPLICATE_ASSAY_METADATA = 'Several columns specify the same assay metadata'
-DUPLICATE_LINE_METADATA = 'Duplicate line metadata columns'
+DUPLICATE_LINE_ATTR = 'Duplicate line attribute column'
+DUPLICATE_ASSAY_METADATA = ('Several columns specify the same (protocol + assay metadata) '
+                            'combination')
+DUPLICATE_LINE_METADATA = 'Duplicate line metadata column'
 INVALID_CELL_TYPE_TITLE = 'Invalid cell type'
 INVALID_CELL_TYPE = 'Cells have invalid type'
 INVALID_REPLICATE_COUNT = 'Invalid replicate count'
@@ -41,7 +44,6 @@ ZERO_REPLICATES = ('Zero replicates are not allowed. If no lines are desired, re
                    'the file.')
 MISSING_REQUIRED_LINE_NAME = 'Missing required line name in non-empty row(s)'
 MISSING_REQUIRED_COLUMN_TITLE = 'Incorrect file format'
-INVALID_COLUMN_HEADER_TITLE = 'Invalid column headers'
 UNMATCHED_ASSAY_COL_HEADERS_KEY = 'Invalid column header(s) (Unmatched assay metadata suffix)'
 INVALID_COLUMN_HEADER = 'Invalid column header(s)'
 INCORRECT_TIME_FORMAT = 'Incorrect time format'
@@ -134,7 +136,7 @@ DRY_RUN_PARAM = 'DRY_RUN'
 EMAIL_WHEN_FINISHED = 'EMAIL_WHEN_FINISHED'
 
 INCONSISTENT_FOLDERS = 'Inconsistent ICE folders.  Folders must be the same for all rows'
-INCONSISTENT_FILTERS = 'Inconsistint filters.  Filters must be the same for all rows'
+INCONSISTENT_FILTERS = 'Inconsistent filters.  Filters must be the same for all rows'
 
 ###################################################################################################
 # Categorization and display priority order for predicted errors / warnings
@@ -158,13 +160,15 @@ ERROR_PRIORITY_ORDER[BAD_FILE_CATEGORY] = (
         INVALID_COLUMN_HEADER,
         UNMATCHED_ASSAY_COL_HEADERS_KEY,  # TODO: specifically mention assay col header suffix
 
-        DUPLICATE_LINE_METADATA,    # TODO: check/rename these two to append "COLS"
+        DUPLICATE_LINE_ATTR,
+        DUPLICATE_LINE_METADATA,
         DUPLICATE_ASSAY_METADATA,
 )
-INVALID_FILE_VALUE_CATEGORY = 'Invalid Cell Value(s)'
+INVALID_FILE_VALUE_CATEGORY = 'Invalid data cells'
 ERROR_PRIORITY_ORDER[INVALID_FILE_VALUE_CATEGORY] = (
     # cell-specific values
     MISSING_REQUIRED_LINE_NAME,
+    DUPLICATE_LINE_NAME_LITERAL,
     INVALID_CELL_TYPE,
     INCONSISTENT_COMBINATORIAL_VALUE,
     INCORRECT_TIME_FORMAT,
@@ -243,7 +247,7 @@ NON_UNIQUE_LINE_NAMES_CATEGORY = 'Non-unique line names'
 # User-created naming overlaps (depend on prior ICE communication since strain names could be used
 # in line/assay naming)
 _NAMING_OVERLAPS = (
-    DUPLICATE_INPUT_LINE_NAMES,
+    DUPLICATE_COMPUTED_LINE_NAMES,
     EXISTING_LINE_NAMES,  # TODO make var name study-specific
 
     # TODO: included here for safety, but unlikely at present that these will be created...wait

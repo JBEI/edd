@@ -1,11 +1,11 @@
 # coding: utf-8
 
-import collections
 import json
 import logging
 import re
 import uuid
 
+import collections
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.postgres.aggregates import ArrayAgg
@@ -13,18 +13,21 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse, QueryDict
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.template.defaulttags import register
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
-from django.views import generic, View
+from django.views import View, generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from main.tasks import create_ice_connection
 from requests import codes
-
 from rest_framework.exceptions import MethodNotAllowed
 
+
+from edd import utilities
+from edd.notify.backend import RedisBroker
+from main.importer.parser import guess_extension, ImportFileTypeFlags
+from main.tasks import create_ice_connection
 from . import autocomplete, models as edd_models, redis
 from .export.broker import ExportBroker
 from .export.forms import ExportOptionForm, ExportSelectionForm, WorklistForm
@@ -39,6 +42,7 @@ from .forms import (
     MeasurementForm,
     MeasurementValueFormSet,
 )
+from .importer import parser, table
 from .importer.experiment_desc import CombinatorialCreationImporter
 from .importer.experiment_desc.constants import (
     BAD_FILE_CATEGORY,
@@ -47,12 +51,8 @@ from .importer.experiment_desc.constants import (
     UNPREDICTED_ERROR,
     UNSUPPORTED_FILE_TYPE,
 )
-from .importer.experiment_desc.importer import (
-    _build_response_content,
-    ExperimentDescriptionOptions,
-    ImportErrorSummary,
-)
-from .importer import parser, table
+from .importer.experiment_desc.importer import (ExperimentDescriptionOptions, ImportErrorSummary,
+                                                _build_response_content)
 from .models import (
     Assay,
     Line,
@@ -74,9 +74,6 @@ from .utilities import (
     get_edddata_misc,
     get_edddata_study,
 )
-from edd import utilities
-from edd.notify.backend import RedisBroker
-
 
 logger = logging.getLogger(__name__)
 
@@ -1597,10 +1594,13 @@ def study_describe_experiment(request, pk=None, slug=None):
     stream = request
     file = request.FILES.get('file', None)
     file_name = None
+    file_extension = None
     if file:
         stream = file
         file_name = file.name
-        if file.content_type not in EXCEL_TYPES:
+        file_extension = guess_extension(file.content_type)
+
+        if file_extension not in (ImportFileTypeFlags.EXCEL, ImportFileTypeFlags.CSV):
             summary = ImportErrorSummary(BAD_FILE_CATEGORY, UNSUPPORTED_FILE_TYPE)
             summary.add_occurrence(file.content_type)
             errors = {BAD_FILE_CATEGORY: {UNSUPPORTED_FILE_TYPE: summary}}
@@ -1613,7 +1613,9 @@ def study_describe_experiment(request, pk=None, slug=None):
             status_code, reply_content = importer.do_import(
                 stream,
                 options,
-                excel_filename=file_name,
+                filename=file_name,
+                file_extension=file_extension,
+                encoding=request.encoding or 'utf8',
             )
 
         if options.email_when_finished and not options.dry_run:
