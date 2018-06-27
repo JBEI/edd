@@ -1556,8 +1556,13 @@ export namespace StudyDataPage {
         return { 'csrfmiddlewaretoken': token };
     }
 
+    function _settingsPath(propKey: string): string {
+        // make sure the final slash is on path so Django can accept POST requests
+        return '/profile/settings/' + propKey + '/';
+    }
+
     function updateGraphViewFlag(type) {
-        $.ajax('/profile/settings/measurement-' + type.study_id, {
+        $.ajax(_settingsPath('measurement-' + type.study_id), {
             'data': $.extend({}, basePayload(), { 'data': JSON.stringify(type) }),
             'type': 'POST'
         });
@@ -1590,7 +1595,7 @@ export namespace StudyDataPage {
     export function fetchSettings(
             propKey: string,
             callback: (value: any) => void, defaultValue?: any): void {
-        $.ajax('/profile/settings/' + propKey, {
+        $.ajax(_settingsPath(propKey), {
             'dataType': 'json',
             'success': (data:any):void => {
                 data = data || defaultValue;

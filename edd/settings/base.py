@@ -42,11 +42,6 @@ EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT', default='TEST')
 # See http://www.uniprot.org/
 REQUIRE_UNIPROT_ACCESSION_IDS = True
 
-# by default, don't expose EDD's nascent DRF-based REST API until we can do more testing
-# This option is needed to support the bulk line creation script, but should only be exposed on
-# a secure network because of known security problems in the first version.
-PUBLISH_REST_API = False
-
 # external scripts to add to all rendered pages; e.g. JIRA issue collector, Google Analytics
 EDD_EXTERNAL_SCRIPTS = []
 
@@ -146,6 +141,7 @@ INSTALLED_APPS = (
     'allauth.socialaccount',
     'django.contrib.flatpages',
     'channels',  # channels in pip
+    'graphene_django',  # graphene-django in pip
 
     # EDD apps
     'main',
@@ -284,6 +280,16 @@ CHANNEL_LAYERS = {
         }
     }
 }
+
+
+###################################################################################################
+# GraphQL / Graphene
+###################################################################################################
+
+GRAPHENE = {
+    'SCHEMA': 'edd.schema.schema',
+}
+EDD_ENABLE_GRAPHQL = False
 
 
 ###################################################################################################

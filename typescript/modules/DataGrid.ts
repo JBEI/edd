@@ -975,8 +975,13 @@ export class DataGrid {
         return ['datagrid', this._spec.tableSpec.id, 'column'].join('.');
     }
 
+    private _settingsPath(propKey: string): string {
+        // make sure the final slash is on path so Django can accept POST requests
+        return '/profile/settings/' + propKey + '/';
+    }
+
     private _fetchSettings(propKey: string, callback: (value: any) => void, defaultValue?: any): void {
-        $.ajax('/profile/settings/' + propKey, {
+        $.ajax(this._settingsPath(propKey), {
             'dataType': 'json',
             'success': (data: any): void => {
                 data = data || defaultValue;
@@ -1022,7 +1027,7 @@ export class DataGrid {
             // mark non-default hide (i.e. default show) as explicitly excluded
             Array.prototype.push.apply(data, delCol);
             // store new setting value
-            $.ajax('/profile/settings/' + propKey, {
+            $.ajax(this._settingsPath(propKey), {
                 'data': $.extend({}, this._basePayload(), { 'data': JSON.stringify(data) }),
                 'type': 'POST'
             });

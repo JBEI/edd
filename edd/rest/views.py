@@ -89,7 +89,7 @@ class EDDObjectFilter(filters.FilterSet):
         fields = []
 
 
-class StudyObjectFilter(EDDObjectFilter):
+class StudyFilter(EDDObjectFilter):
     class Meta:
         model = models.Study
         fields = ['slug', 'contact', 'metabolic_map']
@@ -101,17 +101,17 @@ class StudyInternalsFilterMixin(object):
     visible study.
     """
     filter_class = EDDObjectFilter
-    _filter_prefix = ''
+    _filter_joins = []
+
+    @classmethod
+    def _filter_key(cls, *args):
+        return '__'.join(cls._filter_joins + list(args))
 
     def filter_queryset(self, queryset):
         queryset = super(StudyInternalsFilterMixin, self).filter_queryset(queryset)
         if not models.Study.user_role_can_read(self.request.user):
-            q_filter = models.Study.user_permission_q(
-                self.request.user,
-                models.StudyPermission.CAN_VIEW,
-                self._filter_prefix,
-            )
-            queryset = queryset.filter(q_filter).distinct()
+            access = models.Study.access_filter(self.request.user, via=self._filter_joins)
+            queryset = queryset.filter(access).distinct()
         return queryset
 
     def get_nested_filter(self):
@@ -119,10 +119,10 @@ class StudyInternalsFilterMixin(object):
         # try converting to UUID
         try:
             study_id = UUID(study_id)
-            return Q(**{self._filter_prefix + 'uuid': study_id})
+            return Q(**{self._filter_key('uuid'): study_id})
         except ValueError:
             pass
-        return Q(**{self._filter_prefix + self.lookup_field: study_id})
+        return Q(**{self._filter_key(self.lookup_field): study_id})
 
     def get_object(self):
         """
@@ -140,11 +140,11 @@ class StudyInternalsFilterMixin(object):
         return super(StudyInternalsFilterMixin, self).get_object()
 
 
-class StudyObjectFilterMixin(StudyInternalsFilterMixin):
-    filter_class = StudyObjectFilter
+class StudyFilterMixin(StudyInternalsFilterMixin):
+    filter_class = StudyFilter
 
 
-class StudiesViewSet(StudyObjectFilterMixin,
+class StudiesViewSet(StudyFilterMixin,
                      mixins.CreateModelMixin,
                      mixins.UpdateModelMixin,
                      viewsets.ReadOnlyModelViewSet):
@@ -189,7 +189,7 @@ class LineFilter(EDDObjectFilter):
 class LineFilterMixin(StudyInternalsFilterMixin):
     filter_class = LineFilter
     serializer_class = serializers.LineSerializer
-    _filter_prefix = 'study__'
+    _filter_joins = ['study']
 
     @cached_request_queryset
     def get_queryset(self):
@@ -227,7 +227,7 @@ class AssayFilter(EDDObjectFilter):
 class AssayFilterMixin(StudyInternalsFilterMixin):
     filter_class = AssayFilter
     serializer_class = serializers.AssaySerializer
-    _filter_prefix = 'line__study__'
+    _filter_joins = ['line', 'study']
 
     @cached_request_queryset
     def get_queryset(self):
@@ -285,7 +285,7 @@ class MeasurementFilter(filters.FilterSet):
 class MeasurementFilterMixin(StudyInternalsFilterMixin):
     filter_class = MeasurementFilter
     serializer_class = serializers.MeasurementSerializer
-    _filter_prefix = 'assay__line__study__'
+    _filter_joins = ['assay', 'line', 'study']
 
     @cached_request_queryset
     def get_queryset(self):
@@ -340,7 +340,7 @@ class MeasurementValueFilter(filters.FilterSet):
 class ValuesFilterMixin(StudyInternalsFilterMixin):
     filter_class = MeasurementValueFilter
     serializer_class = serializers.MeasurementValueSerializer
-    _filter_prefix = 'measurement__assay__line__study__'
+    _filter_joins = ['measurement', 'assay', 'line', 'study']
 
     @cached_request_queryset
     def get_queryset(self):

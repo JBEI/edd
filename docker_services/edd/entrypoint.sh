@@ -385,8 +385,8 @@ case "$COMMAND" in
         exec daphne -b 0.0.0.0 -p 8000 edd.asgi:application
         ;;
     channel)
-        banner "Starting Channels worker with: [$@]"
-        exec python manage.py runworker $@
+        banner "Starting Channels worker with: [$(echo "$@")]"
+        exec python manage.py runworker "$@"
         ;;
     *)
         output "Unrecognized command: $COMMAND"

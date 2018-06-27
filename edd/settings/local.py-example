@@ -52,10 +52,6 @@ if DEBUG:  # noqa: F405
 if env('HTTPS_METHOD', default=None) == 'noredirect':  # noqa: F405
     DEFAULT_HTTP_PROTOCOL = 'http'
 
-# disable the initial new REST API by default since it's insecure. Only needed to support
-# create_lines.py and maintain_ice_links.py
-PUBLISH_REST_API = True
-
 # False disables signup. A callable object will get called with a request object. A string type
 #   will attempt to look up and instantiate an object to use/call.
 EDD_ALLOW_SIGNUP = True

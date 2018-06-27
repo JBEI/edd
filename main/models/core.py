@@ -397,14 +397,13 @@ class Study(EDDObject):
         return metatype.for_context == MetadataType.STUDY
 
     @staticmethod
-    def access_filter(user, access=StudyPermission.CAN_VIEW, via=[]):
+    def access_filter(user, access=StudyPermission.CAN_VIEW, via=None):
         """
         Creates a filter expression to limit queries to objects where a user has a given access
         level to the study containing the objects under query. Note that in nearly all cases, this
         call should be used in concert with a .distinct() on the queryset using the filter, as it
         uses a JOIN, and will return multiple copies of an object if the user in the argument has
-        multiple permission routes to the parent Study. This is an updated API, preferred over the
-        older user_permission_q method.
+        multiple permission routes to the parent Study.
 
         Examples:
 
@@ -449,49 +448,6 @@ class Study(EDDObject):
             }) |
             Q(**{
                 filter_key('everyonepermission', 'permission_type', 'in'): access,
-            })
-        )
-
-    @staticmethod
-    def user_permission_q(user, permission, keyword_prefix=''):
-        """
-        Constructs a django Q object for testing whether the specified user has the required
-        permission for a study as part of a Study-related Django model query. It's important to
-        note that the provided Q object will return one row for each user/group permission that
-        gives the user access to the study, so clients that aren't already filtering by primary
-        key will probably want to use distinct() to limit the returned results. Note that this
-        only tests whether the user or group has specific
-        permissions granted on the Study, not whether the user's role (e.g. 'staff', 'admin')
-        gives him/her access to it. See:
-            @ user_role_has_read_access(user)
-            @ user_can_read(self, user)
-        :param user: the user
-        :param permission: the study permission type to test (e.g. StudyPermission.READ); can be
-            any iterable of permissions or a single permission
-        :param keyword_prefix: an optional keyword prefix to prepend to the query keyword
-            arguments. For example when querying Study, the default value of '' should be used,
-            or when querying for Lines, whose permissions depend on the related Study, use
-            'study__' similar to other queryset keyword arguments.
-        :return: true if the user has the specified permission to the study
-        """
-        prefix = keyword_prefix
-        perm = permission
-        if isinstance(permission, string_types):
-            perm = (permission, )
-        user_perm = '%suserpermission' % prefix
-        group_perm = '%sgrouppermission' % prefix
-        all_perm = '%severyonepermission' % prefix
-        return (
-            Q(**{
-                '%s__user' % user_perm: user,
-                '%s__permission_type__in' % user_perm: perm,
-            }) |
-            Q(**{
-                '%s__group__user' % group_perm: user,
-                '%s__permission_type__in' % group_perm: perm,
-            }) |
-            Q(**{
-                '%s__permission_type__in' % all_perm: perm,
             })
         )
 

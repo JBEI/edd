@@ -1,32 +1,48 @@
+# -*- coding: utf-8 -*-
+
 from django.conf import settings
-from django.conf.urls import include, url, static
 from django.contrib import admin
-from django.contrib.flatpages import views
+from django.contrib.auth.decorators import login_required
+from django.contrib.flatpages import views as flatpage_views
+from django.http import HttpResponse
+from django.urls import include, path, re_path
+from graphene_django.views import GraphQLView
+
+from edd.branding.views import favicon as favicon_view
 
 
 admin.autodiscover()
 
 
 rest_urlpatterns = [
-    url(r'^rest/', include('edd.rest.urls', namespace='rest')),
-    url(r'^rest/auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('', include('edd.rest.urls', namespace='rest')),
+    path('auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
-    url(r'^', include('main.urls', namespace='main')),
-    url(r'^accounts/', include('allauth.urls')),  # allauth does not support namespacing
-    url(r'^messages/', include('messages_extends.urls')),
-    url(r'^utilities/', include('edd_utils.urls', namespace='edd_utils')),
-    url(r'^profile/', include('edd.profile.urls', namespace='profile')),
-    url(r'^pages/(?P<url>.*)/', views.flatpage, name='flatpage'),
-] + static.static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # make sure to match the path to favicon *exactly*
+    re_path(r'favicon\.ico$', favicon_view, name='favicon'),
+    # simplest possible view for healthcheck
+    path('health/', lambda request: HttpResponse(), name='healthcheck'),
+    path('admin/', admin.site.urls),
+    path('', include('main.urls', namespace='main')),
+    path('accounts/', include('allauth.urls')),  # allauth does not support namespacing
+    path('messages/', include('messages_extends.urls')),
+    path('utilities/', include('edd_utils.urls', namespace='edd_utils')),
+    path('profile/', include('edd.profile.urls', namespace='profile')),
+    path('rest/', include(rest_urlpatterns)),
+    # flatpages.urls does not include app_name; cannot include it with namespace
+    # path('pages/', include('django.contrib.flatpages.urls', namespace='flatpage'))
+    path('pages/<path:url>', flatpage_views.flatpage, name='flatpage'),
+]
 
-if settings.PUBLISH_REST_API:
-    urlpatterns += rest_urlpatterns
+if getattr(settings, 'EDD_ENABLE_GRAPHQL', False):
+    urlpatterns += [
+        path('graphql/', login_required(GraphQLView.as_view(graphiql=True))),
+    ]
 
-if settings.DEBUG:
+if getattr(settings, 'DEBUG', False):
     import debug_toolbar
     urlpatterns += [
-        url(r'^__debug__/', include(debug_toolbar.urls, namespace='djdt')),
+        path('__debug__/', include(debug_toolbar.urls, namespace='djdt')),
     ]

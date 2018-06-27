@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from django.conf.urls import include, url
+from django.urls import include, path
 from rest_framework import routers as rest_routers
 from rest_framework_nested import routers as nested_routers
 
@@ -9,6 +9,7 @@ from . import views
 
 
 app_name = 'edd.rest'
+
 
 ###################################################################################################
 # Define a router for base REST API methods & views
@@ -102,7 +103,7 @@ study_router.register(
 # Use routers & supporting frameworks to construct URL patterns
 ###################################################################################################
 urlpatterns = [
-    url(r'^', include(base_rest_api_router.urls)),
-    url(r'^', include(study_router.urls)),
-    url(r'docs/', views.schema_view),
+    path('', include(base_rest_api_router.urls)),
+    path('', include(study_router.urls)),
+    path('docs/', views.schema_view),
 ]

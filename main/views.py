@@ -117,7 +117,7 @@ def load_study(request, pk=None, slug=None, permission_type=StudyPermission.CAN_
     """
     permission = Q()
     if not request.user.is_superuser:
-        permission = Study.user_permission_q(request.user, permission_type)
+        permission = Study.access_filter(request.user, access=permission_type)
     if pk is not None:
         return get_object_or_404(Study.objects.distinct(), permission, Q(pk=pk))
     elif slug is not None:
@@ -175,8 +175,7 @@ class StudyObjectMixin(generic.detail.SingleObjectMixin):
         qs = super(StudyObjectMixin, self).get_queryset()
         if self.request.user.is_superuser:
             return qs
-        return qs.filter(Study.user_permission_q(self.request.user,
-                                                 StudyPermission.CAN_VIEW)).distinct()
+        return qs.filter(Study.access_filter(self.request.user)).distinct()
 
 
 class StudyIndexView(generic.edit.CreateView):

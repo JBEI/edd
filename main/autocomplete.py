@@ -14,8 +14,6 @@ from rest_framework.exceptions import ValidationError
 
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
-from main.models import Line, Study, StudyPermission
-from main.models.common import qfilter
 from . import models as edd_models, solr
 
 DEFAULT_RESULT_COUNT = 20
@@ -123,27 +121,27 @@ def search_study_lines(request):
     name_regex = re.escape(request.GET.get('term', ''))
     active_param = request.GET.get('active', None)
     active_value = 'true' == active_param if active_param in ('true', 'false') else None
-    active = qfilter(value=active_value, fields=['active'])
+    active = edd_models.common.qfilter(value=active_value, fields=['active'])
     user = request.user
 
     if (not study_pk) or (not study_pk.isdigit()):
         raise ValidationError('study parameter is required and must be a valid integer')
 
-    permission_check = Study.user_permission_q(user, StudyPermission.READ)
+    permission_check = edd_models.Study.access_filter(user)
     # if the user's admin / staff role gives read access to all Studies, don't bother querying
     # the database for specific permissions defined on this study
-    if Study.user_role_can_read(user):
+    if edd_models.Study.user_role_can_read(user):
         permission_check = Q()
     try:
         # Note: distinct() necessary in case the user has multiple permission paths to access
         # the study (e.g. individual and group permissions)
-        study = Study.objects.filter(permission_check, pk=study_pk).distinct().get()
+        study = edd_models.Study.objects.filter(permission_check, pk=study_pk).distinct().get()
         query = study.line_set.filter(active)
 
     # if study doesn't exist or requesting user doesn't have read access, return an empty
     # set of lines
-    except Study.DoesNotExist as e:
-        query = Line.objects.none()
+    except edd_models.Study.DoesNotExist as e:
+        query = edd_models.Line.objects.none()
 
     query = query.filter(Q(name__iregex=name_regex) | Q(strains__name__iregex=name_regex))
     query = optional_sort(request, query)
@@ -203,10 +201,9 @@ def search_study_writable(request):
     """ Autocomplete searches for any Studies writable by the currently logged in user. """
     term = request.GET.get('term', '')
     re_term = re.escape(term)
-    perm = edd_models.StudyPermission.WRITE
     found = edd_models.Study.objects.distinct().filter(
         Q(name__iregex=re_term) | Q(description__iregex=re_term),
-        edd_models.Study.user_permission_q(request.user, perm),
+        edd_models.Study.access_filter(request.user, access=edd_models.StudyPermission.CAN_EDIT),
     )[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': [item.to_json() for item in found],
