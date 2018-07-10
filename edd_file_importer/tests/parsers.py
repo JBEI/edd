@@ -1,11 +1,13 @@
+# coding: utf-8
 import json
 
 from unittest.mock import call, patch
 
-from main.importer2.codes import FileParseCodes
-from main.importer2.parser import GenericImportParser
-from . import TestCase, factory
-from ..models import MeasurementType
+from .import factory
+from edd_file_importer.codes import FileParseCodes
+from edd_file_importer.parsers.table import GenericImportParser
+from main.models import MeasurementType
+from main.tests import TestCase
 
 
 class Import2ParserTests(TestCase):
@@ -24,7 +26,7 @@ class Import2ParserTests(TestCase):
     def check_errs(self, file_path, is_excel):
         # mocking importer and test that the parsing does its job of aggregating errors
         # note that we init internal dicts in mock instance so they don't cause errors
-        with patch('main.importer2.utilities.ErrorAggregator') as MockImporter:
+        with patch('edd_file_importer.utilities.ErrorAggregator') as MockImporter:
             aggregator = MockImporter.return_value
             aggregator.errors = {}
 
@@ -65,7 +67,7 @@ class Import2ParserTests(TestCase):
         file_path = factory.test_file_path(filename)
 
         # mocking error aggregator to test that the parsing does its job
-        with patch('main.importer2.utilities.ErrorAggregator') as MockImporter:
+        with patch('edd_file_importer.utilities.ErrorAggregator') as MockImporter:
             importer = MockImporter.return_value
             importer.errors = {}  # prevent mock from masking correct parse return value
             parser = GenericImportParser(MeasurementType.Group.METABOLITE, importer)

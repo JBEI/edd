@@ -1,0 +1,188 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "active": true,
+      "created": {
+        "mod_time": "2017-06-05T17:13:38.709000-07:00",
+        "mod_by": 2,
+        "path": null,
+        "origin": "localhost"
+      },
+      "description": "",
+      "name": "Proteomics",
+      "pk": 5,
+      "updated": {
+        "mod_time": "2017-06-05T17:13:38.709000-07:00",
+        "mod_by": 2,
+        "path": null,
+        "origin": "localhost"
+      },
+      "uuid": "d281089f-9949-4da8-bffd-b3dfa4f16ac1",
+      "display_order": 1,
+      "protocols": [
+        {
+          "id": 1,
+          "meta_store": {},
+          "name": "JBEI Targeted Proteomics",
+          "description": "",
+          "active": true,
+          "uuid": "ec5b98a7-ea17-4305-8dbb-f2f068df5a99",
+          "categorization": "TPOMICS",
+          "created": 1,
+          "updated": 1,
+          "owned_by": 2,
+          "variant_of": null,
+          "default_units": null,
+          "updates": [
+            1
+          ]
+        }
+      ],
+      "file_formats": [
+        {
+          "id": 3,
+          "name": "Skyline",
+          "description": "",
+          "active": true,
+          "uuid": "e1631f93-79c5-4b70-a839-88bd6a8dec60",
+          "parser_class": "ueoao.p",
+          "created": 1,
+          "updated": 1,
+          "updates": [
+            1
+          ]
+        },
+        {
+          "id": 2,
+          "name": "Generic",
+          "description": "",
+          "active": true,
+          "uuid": "0306a2f5-2a25-4546-8fc9-37019c895d39",
+          "parser_class": "ueoao.p",
+          "created": 1,
+          "updated": 1,
+          "updates": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "active": true,
+      "created": {
+        "mod_time": "2017-06-05T17:13:38.709000-07:00",
+        "mod_by": 2,
+        "path": null,
+        "origin": "localhost"
+      },
+      "description": "",
+      "name": "Metabolomics",
+      "pk": 6,
+      "updated": {
+        "mod_time": "2017-06-05T17:13:38.709000-07:00",
+        "mod_by": 2,
+        "path": null,
+        "origin": "localhost"
+      },
+      "uuid": "8f550f5c-e8d0-48a6-a433-95ded52189d5",
+      "display_order": 2,
+      "protocols": [
+        {
+          "id": 2,
+          "meta_store": {},
+          "name": "HPLC",
+          "description": "",
+          "active": true,
+          "uuid": "3070a92d-9c9b-43ae-aafb-727f7fb46eca",
+          "categorization": "HPLC",
+          "created": 1,
+          "updated": 1,
+          "owned_by": 2,
+          "variant_of": null,
+          "default_units": null,
+          "updates": [
+            1
+          ]
+        },
+        {
+          "id": 5,
+          "meta_store": {},
+          "name": "GC-MS",
+          "description": "",
+          "active": true,
+          "uuid": "b4a8d315-92d3-4225-a30d-b4df13d4220e",
+          "categorization": "LCMS",
+          "created": 1,
+          "updated": 1,
+          "owned_by": 2,
+          "variant_of": null,
+          "default_units": null,
+          "updates": [
+            1
+          ]
+        },
+        {
+          "id": 7,
+          "meta_store": {},
+          "name": "LC-MS",
+          "description": "",
+          "active": true,
+          "uuid": "37e8732f-7030-4f78-bfda-919a730fc983",
+          "categorization": "LCMS",
+          "created": 1,
+          "updated": 1,
+          "owned_by": 2,
+          "variant_of": null,
+          "default_units": null,
+          "updates": [
+            1
+          ]
+        }
+      ],
+      "file_formats": [
+        {
+          "id": 3,
+          "name": "Skyline",
+          "description": "",
+          "active": true,
+          "uuid": "e1631f93-79c5-4b70-a839-88bd6a8dec60",
+          "parser_class": "ueoao.p",
+          "created": 1,
+          "updated": 1,
+          "updates": [
+            1
+          ]
+        },
+        {
+          "id": 4,
+          "name": "HPLC",
+          "description": "",
+          "active": true,
+          "uuid": "ec2e3a30-3f35-4219-88a8-cf78fb100a98",
+          "parser_class": "ueoao,.,p",
+          "created": 1,
+          "updated": 1,
+          "updates": [
+            1
+          ]
+        },
+        {
+          "id": 2,
+          "name": "Generic",
+          "description": "",
+          "active": true,
+          "uuid": "0306a2f5-2a25-4546-8fc9-37019c895d39",
+          "parser_class": "ueoao.p",
+          "created": 1,
+          "updated": 1,
+          "updates": [
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}

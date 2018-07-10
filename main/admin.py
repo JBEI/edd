@@ -119,7 +119,7 @@ class ProtocolAdminForm(forms.ModelForm):
             'owned_by': _('Owner'),
             'description': _('Description'),
             'default_units': _('Default Units'),
-            'categorization': _('Categorization'),
+            'categorization': _('SBML Categorization'),
         }
         widgets = {
             'owned_by': UserAutocompleteWidget()

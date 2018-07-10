@@ -15,6 +15,7 @@ admin.autodiscover()
 
 
 rest_urlpatterns = [
+    path('', include('edd_file_importer.rest.urls', namespace='edd_file_importer')),
     path('', include('edd.rest.urls', namespace='rest')),
     path('auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]

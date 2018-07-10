@@ -13,8 +13,8 @@ from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter
 from six import string_types
 
-from .codes import FileParseCodes
-from .utilities import ErrorAggregator
+from ..codes import FileParseCodes
+from ..utilities import ErrorAggregator
 from main.models import MeasurementType, MeasurementUnit
 
 logger = logging.getLogger(__name__)

@@ -582,11 +582,11 @@ class Protocol(EDDObject):
         db_table = 'protocol'
     CATEGORY_NONE = 'NA'
     CATEGORY_OD = 'OD'
-    CATEGORY_HPLC = 'HPLC'
-    CATEGORY_LCMS = 'LCMS'
-    CATEGORY_RAMOS = 'RAMOS'
+    CATEGORY_HPLC = 'HPLC'  # Metabolomics (concentrations)
+    CATEGORY_LCMS = 'LCMS'  # Metabolomics (concentration fluxes)
+    CATEGORY_RAMOS = 'RAMOS'  # Respiration data -> Other
     CATEGORY_TPOMICS = 'TPOMICS'
-    CATEGORY_CHOICE = (
+    SBML_CATEGORY_CHOICE = (
         (CATEGORY_NONE, _('None')),
         (CATEGORY_OD, _('Optical Density')),
         (CATEGORY_HPLC, _('HPLC')),
@@ -627,10 +627,10 @@ class Protocol(EDDObject):
         verbose_name=_('Default Units'),
     )
     categorization = models.CharField(
-        choices=CATEGORY_CHOICE,
+        choices=SBML_CATEGORY_CHOICE,
         default=CATEGORY_NONE,
-        help_text=_('Category of this Protocol.'),
-        verbose_name=_('Category'),
+        help_text=_('SBML category for this Protocol.'),
+        verbose_name=_('SBML Category'),
         max_length=8,
     )
 

@@ -45,8 +45,8 @@ def guess_extension(file_type):
 
 
 class ParserFunction(object):
-    def __init__(self, mode, mime):
-        self.signature = (mode, mime)
+    def __init__(self, mode, ext):
+        self.signature = (mode, ext)
 
     def __call__(self, fn, *args, **kwargs):
         parser_registry[self.signature] = fn
