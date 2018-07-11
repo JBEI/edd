@@ -734,7 +734,12 @@ class DataGridSpecLines extends DataGridSpecBase {
             content = line.strain.map((id) => {
                 var strain = EDDData.Strains[id];
                 if (strain.registry_url) {
-                    return ['<a href="', strain.registry_url, '">', strain.name, '</a>'].join('');
+                    let link = $('<a>')
+                        .attr('href', strain.registry_url)
+                        .attr('target', '_blank')
+                        .html(strain.name);
+                    // render the element to text
+                    return link[0].outerHTML;
                 }
                 return strain.name;
             });
@@ -743,7 +748,7 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 'contentString': content.join('; ') || '--'
-               })
+            })
         ];
     }
 
