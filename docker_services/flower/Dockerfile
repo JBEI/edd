@@ -43,4 +43,6 @@ WORKDIR /opt/celery-flower
 
 EXPOSE 5555
 
+USER nobody
+
 ENTRYPOINT ["/opt/celery-flower/entrypoint.sh"]

@@ -3,18 +3,18 @@
 
 
 interface UpdateRecord {
-    time:number;    // update timestamp
-    user:number;    // User ID
+    time: number;    // update timestamp
+    user: number;    // User ID
 }
 
 
 interface EDDRecord {
-    id:number;          // object ID
-    name:string;        // object name
-    description:string; // object description
-    meta:any;           // Metadata structure
-    created:UpdateRecord;
-    modified:UpdateRecord;
+    id: number;          // object ID
+    name: string;        // object name
+    description: string; // object description
+    meta: any;           // Metadata structure
+    created: UpdateRecord;
+    modified: UpdateRecord;
 }
 
 
@@ -25,29 +25,32 @@ interface RecordList<U> {
 
 // This is what we expect in EDDData.Lines
 interface LineRecord extends EDDRecord {
-    active:boolean;      // Active line
-    control:boolean;     // Is Control
-    replicate:any;       // Line ID of replicate parent Line, or undefined/null
-    contact:any;         // Contact Info structure (user_id, text)
-    experimenter:number; // Experimenter user ID
-    strain:number[];     // Strain ID array
-    carbon:number[];     // Carbon Sources ID array
-    exp:number;          // Experimenter ID
-    identifier:string;   // HTML ID for the line filter checkbox
+    active: boolean;      // Active line
+    control: boolean;     // Is Control
+    // replicate: any;       // Line ID of replicate parent Line, or undefined/null
+    contact: any;         // Contact Info structure (user_id, text)
+    experimenter: number; // Experimenter user ID
+    strain: number[];     // Strain ID array
+    carbon: number[];     // Carbon Sources ID array
+    // exp: number;          // Experimenter ID
+
+    // optional properties, set only in graphing code, not received from backend
+    identifier?: string;   // HTML ID for the line filter checkbox
+    color?: string;
 }
 
 
 // This is what we expect in EDDData.Assays
 interface AssayRecord extends EDDRecord {
-    active:boolean;          // Active assay
-    lid:number;              // Line ID
-    pid:number;              // Protocol ID
-    mod:number;              // Modification epoch
-    exp:number;              // Experimenter ID
-    measures:number[];       // All collected measurements associated with Assay
-    metabolites:number[];    // Metabolite measurements associated with Assay
-    transcriptions:number[]; // Transcription measurements associated with Assay
-    proteins:number[];       // Proteins measurements associated with Assay
+    active: boolean;          // Active assay
+    lid: number;              // Line ID
+    pid: number;              // Protocol ID
+    mod: number;              // Modification epoch
+    exp: number;              // Experimenter ID
+    measures: number[];       // All collected measurements associated with Assay
+    metabolites: number[];    // Metabolite measurements associated with Assay
+    transcriptions: number[]; // Transcription measurements associated with Assay
+    proteins: number[];       // Proteins measurements associated with Assay
     general: number[];       // Measurements for everything else
     count: number;
 }
@@ -55,25 +58,25 @@ interface AssayRecord extends EDDRecord {
 
 // This is what we expect in EDDData.AssayMeasurements
 interface AssayMeasurementRecord {
-    id:number;             // Measurement ID
-    assay:number;          // Assay ID
-    type:number;           // MeasurementTypeRecord ID
-    comp:string;           // see main/models.py:MeasurementCompartment for enum choices
-    format:string;         // see main/models.py:MeasurementFormat for enum choices
-    values:number[][][];   // array of data values
-    x_units:number;
-    y_units:number;
+    id: number;             // Measurement ID
+    assay: number;          // Assay ID
+    type: number;           // MeasurementTypeRecord ID
+    comp: string;           // see main/models.py:MeasurementCompartment for enum choices
+    format: string;         // see main/models.py:MeasurementFormat for enum choices
+    values: number[][][];   // array of data values
+    x_units: number;
+    y_units: number;
     /////// BELOW ARE DEPRECATED ////////
-    aid:number;     // Assay ID
-    dis:boolean;    // Disabled
-    lid:number;     // Line ID
-    mf:number;      // Measurement Type Format
-    mt:number;      // Measurement Type ID
-    mst:number;     // Measurement Subtype
-    mq:number;      // Measurement Type Compartment
-    mtdf:number;    // Display Format
-    uid:number;     // Y Axis Units ID
-    d:any[];        // Data (array of x,y pairs)
+    aid: number;     // Assay ID
+    dis: boolean;    // Disabled
+    lid: number;     // Line ID
+    mf: number;      // Measurement Type Format
+    mt: number;      // Measurement Type ID
+    mst: number;     // Measurement Subtype
+    mq: number;      // Measurement Type Compartment
+    mtdf: number;    // Display Format
+    uid: number;     // Y Axis Units ID
+    d: any[];        // Data (array of x,y pairs)
 }
 
 
@@ -96,7 +99,7 @@ interface MeasurementTypeRecord {
 interface MetaboliteTypeRecord extends MeasurementTypeRecord {
     formula: string;    // Molecular Formula
     molar: number;      // Molar Mass As Number
-    carbons:number;     // Carbon Count As Number
+    carbons: number;     // Carbon Count As Number
 }
 
 
@@ -178,11 +181,11 @@ interface EDDData {
     UnitTypes: RecordList<UnitType>;
     Users: RecordList<UserRecord>;
 
-    Exchange:any;
-    Species:any;
+    Exchange: any;
+    Species: any;
 
     // TODO: is this used anymore?
-    MediaTypes:{[shortform:string]: string};
+    MediaTypes: {[shortform: string]: string};
 };
 
 

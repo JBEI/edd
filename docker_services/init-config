@@ -4,8 +4,14 @@
 #   copied from the examples. The script is only tested with BASH. It probably will not work in
 #   alternate shells.
 
-BOLD="$(tput bold)"
-RESET="$(tput sgr0)"
+if tput bold; then
+    BOLD="$(tput bold)"
+    RESET="$(tput sgr0)"
+else
+    # don't try to set formatting escape sequences if no $TERM is set
+    BOLD=""
+    RESET=""
+fi
 SEPARATOR="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 GETOPT="$(which getopt)"

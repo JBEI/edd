@@ -1,6 +1,6 @@
 FROM jbei/edd-node:latest
 
-COPY tsconfig.json webpack.config.js /
+COPY webpack.config.js /
 
 ENTRYPOINT ["npm", "run"]
 CMD ["watch"]

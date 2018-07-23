@@ -1,69 +1,99 @@
 # coding: utf-8
 
 import logging
+import operator
 
 from collections import OrderedDict
 from django.db.models import Prefetch, Q
 from django.utils.translation import ugettext_lazy as _
+from functools import reduce
+from itertools import islice
+
+from .. import models
 
 
 logger = logging.getLogger(__name__)
 
 
+class TableOptions(object):
+    def __init__(self, model, instances=None):
+        self.model = model
+        self._columns = []
+        model.export_columns(self, instances=instances)
+
+    @property
+    def choices(self):
+        return [c.get_field_choice() for c in self._columns]
+
+    @property
+    def coerce(self):
+        lookup = {col.key: col for col in self._columns}
+        return lambda key: lookup.get(key, None)
+
+    def define_field_column(self, field, lookup=None, heading=None):
+        self._columns.append(ColumnChoice(
+            self.model,
+            field.name,
+            field.verbose_name,
+            field.value_from_object if lookup is None else lookup,
+            heading=heading,
+        ))
+
+    def define_meta_column(self, meta_type):
+        self._columns.append(ColumnChoice(
+            self.model,
+            f'meta.{meta_type.id}',
+            meta_type.type_name,
+            lambda instance: instance.metadata_get(meta_type, default=''),
+        ))
+
+
 class ColumnChoice(object):
-    def __init__(self, model, key, label, lookup, heading=None, lookup_kwargs={}):
-        self._model = model
-        self._key = '.'.join([model.__name__, key, ]) if model else key
-        self._label = label
-        self._lookup = lookup
-        self._heading = heading if heading is not None else label
-        self._lookup_kwargs = lookup_kwargs
+    def __init__(self, model, key, label, lookup, heading=None, lookup_kwargs=None):
+        self.model = model
+        self.key = '.'.join([model.__name__, key, ]) if model else key
+        self.label = label
+        self.lookup = lookup
+        self.heading = label if heading is None else heading
+        self.lookup_kwargs = {} if lookup_kwargs is None else lookup_kwargs
 
     @classmethod
     def coerce(cls, instances):
-        lookup = {col.get_key(): col for col in instances}
+        lookup = {col.key: col for col in instances}
         return lambda key: lookup.get(key, None)
 
     def convert_instance_from_measure(self, measure, default=None):
-        from main.models import Assay, Line, Measurement, Protocol, Study
         try:
             return {
-                Assay: measure.assay,
-                Line: measure.assay.line,
-                Measurement: measure,
-                Protocol: measure.assay.protocol,
-                Study: measure.assay.line.study,
-            }.get(self._model, default)
+                models.Assay: measure.assay,
+                models.Line: measure.assay.line,
+                models.Measurement: measure,
+                models.Protocol: measure.assay.protocol,
+                models.Study: measure.assay.line.study,
+            }.get(self.model, default)
         except AttributeError:
             return default
 
     def convert_instance_from_line(self, line, protocol, default=None):
-        from main.models import Line, Protocol, Study
         try:
             return {
-                Line: line,
-                Protocol: protocol or default,
-                Study: line.study,
+                models.Line: line,
+                models.Protocol: protocol or default,
+                models.Study: line.study,
                 None: line,
-            }.get(self._model, default)
+            }.get(self.model, default)
         except AttributeError:
             return default
 
     def get_field_choice(self):
-        return (self._key, self._label)
-
-    def get_heading(self):
-        return self._heading
-
-    def get_key(self):
-        return self._key
+        return (self.key, self.label)
 
     def get_value(self, instance, **kwargs):
         try:
             lookup_kwargs = {}
-            lookup_kwargs.update(**self._lookup_kwargs)
+            lookup_kwargs.update(**self.lookup_kwargs)
             lookup_kwargs.update(**kwargs)
-            return self._lookup(instance, **lookup_kwargs)
+            return self.lookup(instance, **lookup_kwargs)
         except Exception as e:
             logger.exception('Failed to get column value: %s', e)
             return ''
@@ -78,9 +108,48 @@ class EmptyChoice(ColumnChoice):
 class ExportSelection(object):
     """ Object used for selecting objects for export. """
     def __init__(self, user, exclude_disabled=True,
-                 studyId=[], lineId=[], assayId=[], measureId=[]):
-        # cannot import these at top-level
-        from main import models
+                 studyId=None, lineId=None, assayId=None, measureId=None):
+
+        hierarchy = ['study', 'line', 'assay', 'measurement']
+        ids = {
+            'study': studyId,
+            'line': lineId,
+            'assay': assayId,
+            'measurement': measureId,
+        }
+
+        def build_path(start, end):
+            """
+            Programmatically build a path to another level of EDD hierarchy; e.g. if you have a
+            Study queryset, and want to match to those containing specific Assay objects, call
+            with start = 'study'; and end = 'assay'; result will be ['line', 'assay']
+            """
+            a = hierarchy.index(start)
+            b = hierarchy.index(end)
+            if a == b:
+                return []
+            elif a < b:
+                return hierarchy[a+1:b+1]
+            return list(reversed(hierarchy[b:a]))
+
+        # generate a filter expression for the ids
+        def ids_filter(target_type, input_ids):
+            filters = []
+            for id_type, ids in input_ids.items():
+                if not ids:
+                    continue
+                # non-empty ids to filter on, build path from target query to current type
+                path = build_path(target_type, id_type)
+                if path:
+                    filters.append(
+                        Q(**{'__'.join(path + ['in']): ids}) &
+                        Q_active(**{'__'.join(path + ['active']): True})
+                    )
+                else:
+                    # empty path means query and id target are the same, use PK
+                    filters.append(Q(pk__in=ids) & Q_active(active=True))
+            # chain together all with an OR operator, finding all that match at least one
+            return reduce(operator.or_, filters, Q())
 
         def Q_active(**kwargs):
             """ Conditionally returns a QuerySet Q filter if exclude_disabled flag is set. """
@@ -88,43 +157,32 @@ class ExportSelection(object):
                 return Q(**kwargs)
             return Q()
 
-        # check studies linked to incoming IDs for permissions
-        matched_study = models.Study.objects.filter(
-            (Q(pk__in=studyId) & Q_active(active=True)) |
-            (Q(line__in=lineId) & Q_active(line__active=True)) |
-            (Q(line__assay__in=assayId) & Q_active(line__assay__active=True)) |
-            (Q(line__assay__measurement__in=measureId) &
-             Q_active(line__assay__measurement__active=True))
-        ).distinct(
-        ).prefetch_related(
-            'userpermission_set',
-            'grouppermission_set',
-            'everyonepermission_set',
+        # find all studies containing the listed IDs where the user can read the study
+        self._study_queryset = models.Study.objects.distinct().filter(
+            # first filter based on whether user has access
+            models.Study.access_filter(user),
+            # then find all studies that match at least one of the inputs
+            ids_filter('study', ids)
         )
-        self._allowed_study = [s for s in matched_study if s.user_can_read(user)]
-        # load all matching measurements
-        self._measures = models.Measurement.objects.filter(
-            # all measurements are from visible study
-            Q(assay__line__study__in=self._allowed_study),
-            # OR grouping finds measurements under one of passed-in parameters
-            Q(assay__line__study__in=studyId) |
-            (Q(assay__line__in=lineId) & Q_active(assay__line__active=True)) |
-            (Q(assay__in=assayId) & Q_active(assay__active=True)) |
-            (Q(pk__in=measureId) & Q_active(active=True)),
-        ).order_by(
-            'assay__protocol_id'
-        ).select_related(
-            'measurement_type',
-            'x_units',
-            'y_units',
-            'update_ref__mod_by',
-            'experimenter',
-            'assay__experimenter',
-            'assay__protocol',
-            'assay__line__contact',
-            'assay__line__experimenter',
-            'assay__line__study__contact',
+        # find all lines containing the listed (line|assay|measure) IDs, or contained by study IDs
+        self._line_queryset = models.Line.objects.distinct().filter(
+            # first filter based on whether user has access
+            models.Study.access_filter(user, via=('study', )),
+            # then find all lines that match at least one of the inputs
+            ids_filter('line', ids)
         )
+        # select_related('experimenter__userprofile', 'updated')
+        # prefetch_related(strains, carbon_source)
+
+        # find all assays containing the listed (assay|measure) IDs, or contained by (study|line)
+        self._assay_queryset = models.Assay.objects.distinct().filter(
+            # first filter based on whether user has access
+            models.Study.access_filter(user, via=('line', 'study', )),
+            # then find all lines that match at least one of the inputs
+            ids_filter('assay', ids)
+        )
+        # select_related('protocol')
+
         # TODO: use Prefetch for measurement_type with django-model-utils
         # type_queryset = models.MeasurementType.objects.select_subclasses(
         #     models.ProteinIdentifier
@@ -132,70 +190,34 @@ class ExportSelection(object):
         # self._measures.prefetch_related(
         #     Prefetch('measurement_type', queryset=type_queryset)
         # )
-        self._assays = models.Assay.objects.filter(
-            Q(line__study__in=self._allowed_study),
-            (Q(line__in=lineId) & Q_active(line__active=True)) |
-            (Q(pk__in=assayId) & Q_active(active=True)) |
-            (Q(measurement__in=measureId) & Q_active(measurement__active=True)),
-        ).distinct(
-        ).select_related(
-            'protocol',
-        )
-        self._lines = models.Line.objects.filter(
-            Q(study__in=self._allowed_study),
-            Q(study__in=studyId) |
-            (Q(pk__in=lineId) & Q_active(active=True)) |
-            (Q(assay__in=assayId) & Q_active(assay__active=True)) |
-            (Q(assay__measurement__in=measureId) & Q_active(assay__measurement__active=True)),
-        ).distinct(
-        ).select_related(
-            'experimenter__userprofile', 'updated',
-        ).prefetch_related(
-            Prefetch('strains', queryset=models.Strain.objects.order_by('id')),
-            Prefetch('carbon_source', queryset=models.CarbonSource.objects.order_by('id')),
-        )
+        # find all measurements contained by the listed IDs
+        self._measure_queryset = models.Measurement.objects.distinct().filter(
+            # first filter based on whether user has access
+            models.Study.access_filter(user, via=('assay', 'line', 'study', )),
+            # then find all lines that match at least one of the inputs
+            ids_filter('measurement', ids)
+        ).order_by('assay__protocol_id')
 
     @property
     def studies(self):
         """ List of studies allowed to be viewed in the selection. """
-        return self._allowed_study
-
-    @property
-    def study_columns(self):
-        from main.models import Study
-        return Study.export_columns(self.studies)
+        return self._study_queryset
 
     @property
     def lines(self):
         """ A queryset of lines included in the selection. """
-        return self._lines
-
-    @property
-    def line_columns(self):
-        from main.models import Line
-        return Line.export_columns(self.lines)
+        return self._line_queryset
 
     @property
     def assays(self):
         """ A queryset of assays included in the selection. """
-        return self._assays
-
-    @property
-    def assay_columns(self):
-        from main.models import Assay
-        return Assay.export_columns(self.assays)
+        return self._assay_queryset
 
     @property
     def measurements(self):
         """ A queryset of measurements to include. """
-        # TODO: add in empty measurements for assays that have none
-        return self._measures
-
-    @property
-    def measurements_list(self):
-        if not hasattr(self, '_measures_list'):
-            self._measures_list = list(self._measures)
-        return self._measures_list
+        # TODO: add in empty measurements for assays that have none?
+        return self._measure_queryset
 
 
 class ExportOption(object):
@@ -231,15 +253,15 @@ class ExportOption(object):
     )
 
     def __init__(self, layout=DATA_COLUMN_BY_LINE, separator=COMMA_SEPARATED, data_format=ALL_DATA,
-                 line_section=False, protocol_section=False, columns=[], blank_columns=[],
+                 line_section=False, protocol_section=False, columns=None, blank_columns=None,
                  blank_mod=0):
         self.layout = layout
         self.separator = separator
         self.data_format = data_format
         self.line_section = line_section
         self.protocol_section = protocol_section
-        self.columns = columns
-        self.blank_columns = blank_columns
+        self.columns = columns if columns is not None else []
+        self.blank_columns = blank_columns if blank_columns is not None else []
         self.blank_mod = blank_mod
 
     @classmethod
@@ -321,7 +343,7 @@ class TableExport(object):
             # generate header row
             rows = [list(map(str, table['header'] + [x[0] for x in all_x]))]
             # go through non-header rows; unsquash final column
-            for rkey, row in list(table.items())[1:]:
+            for row in islice(table.values(), 1, None):
                 unsquash = self._output_unsquash(all_x, row[-1:][0])
                 rows.append(list(map(str, row[:-1] + unsquash)))
             # do the transpose here if needed
@@ -334,10 +356,20 @@ class TableExport(object):
         return table_separator.join(out)
 
     def _do_export(self, tables):
-        from main.models import Assay, Line, Measurement, MeasurementValue, Protocol, Study
         # add data from each exported measurement; already sorted by protocol
-        value_qs = MeasurementValue.objects.select_related('updated').order_by('x')
-        measures = self.selection.measurements.prefetch_related(
+        value_qs = models.MeasurementValue.objects.select_related('updated').order_by('x')
+        measures = self.selection.measurements.select_related(
+            'measurement_type',
+            'x_units',
+            'y_units',
+            'update_ref__mod_by',
+            'experimenter',
+            'assay__experimenter',
+            'assay__protocol',
+            'assay__line__contact',
+            'assay__line__experimenter',
+            'assay__line__study__contact',
+        ).prefetch_related(
             Prefetch('measurementvalue_set', queryset=value_qs, to_attr='pf_values'),
             Prefetch('assay__line__strains'),
             Prefetch('assay__line__carbon_source'),
@@ -347,8 +379,8 @@ class TableExport(object):
             protocol = assay.protocol
             line = assay.line
             if self.options.line_section:
-                line_only = [Line, Study, ]
-                other_only = [Assay, Measurement, Protocol, ]
+                line_only = [models.Line, models.Study, ]
+                other_only = [models.Assay, models.Measurement, models.Protocol, ]
                 # add row to line table w/ Study, Line columns only
                 if line.id not in tables['line']:
                     row = self._output_row_with_measure(measurement, models=line_only)
@@ -395,21 +427,20 @@ class TableExport(object):
         row = []
         for column in self.options.columns:
             if models is None or column._model in models:
-                row.append(column.get_heading())
+                row.append(column.heading)
         if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
             row.append('X')
             row.append('Y')
         return row
 
     def _output_line_header(self):
-        from main.models import Line, Study
-        return self._output_header([Line, Study, ])
+        return self._output_header([models.Line, models.Study, ])
 
     def _output_row_with_line(self, line, protocol, models=None, columns=None, **kwargs):
         row = []
         if columns is None:
             columns = self.options.columns
-        for i, column in enumerate(columns):
+        for column in columns:
             if models is None or column._model in models:
                 instance = column.convert_instance_from_line(line, protocol)
                 row.append(column.get_value(instance, **kwargs))
@@ -424,8 +455,7 @@ class TableExport(object):
         return row
 
     def _output_measure_header(self):
-        from main.models import Assay, Measurement, Protocol
-        return self._output_header([Assay, Measurement, Protocol, ])
+        return self._output_header([models.Assay, models.Measurement, models.Protocol, ])
 
     def _output_unsquash(self, all_x, squashed):
         # all_x is list of 2-tuple from dict.items()

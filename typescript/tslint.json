@@ -1,0 +1,31 @@
+{
+    "extends": "tslint:recommended",
+    "rules": {
+        "max-line-length": {
+            "options": [99]
+        },
+        // disable errors for interfaces not starting with 'I'
+        "interface-name": false,
+        // disable errors for missing explicit access modifiers (public, protected, private)
+        "member-access": false,
+        // disable errors for class members not being ordered by access
+        "member-ordering": false,
+        // disable errors for consecutive blank lines
+        "no-consecutive-blank-lines": false,
+        // disable errors for use of 'var' keyword (for now)
+        "no-var-keyword": false,
+        // disable errors for unsorted object-literal keys (for now)
+        "object-literal-sort-keys": false,
+        // disable errors for multiple declarations with a single 'var' (for now)
+        "one-variable-per-declaration": false,
+        // disable errors for single-quotes (for now)
+        "quotemark": false,
+        // disable errors for snake_case variable names (for now)
+        "variable-name": false
+    },
+    "jsRules": {
+        "max-line-length": {
+            "options": [99]
+        }
+    }
+}

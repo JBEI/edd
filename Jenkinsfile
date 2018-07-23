@@ -69,7 +69,7 @@ try {
                 cd docker_services/node
                 sudo docker build \
                     -t jbei/edd-node:${image_version} .
-                cd ../edd
+                cd ../edd/core
                 sed -i.bak \
                     -e "s/edd-node:latest/edd-node:${image_version}/" \
                     Dockerfile
@@ -90,6 +90,7 @@ try {
 
                 # generate HMAC secret
                 RANDOM_HMAC="$$(openssl rand -base64 64 | tr -d '\n')"
+                echo "$$RANDOM_HMAC" > hmac.key
                 # rewrite docker-compose.override.yml with built image version
                 sed -i.bak \
                     -e "s/#image: tagname/image: jbei\/edd-core:${image_version}/" \
@@ -110,6 +111,17 @@ try {
                 cat combined.yml
             /$
             sh prepare_script
+
+            // pre-build other images that are not pulled from Docker Hub, to avoid launch timeout
+            def prepare_images_script = $/#!/bin/bash -xe
+                cd docker_services
+                sudo docker-compose -p '${project_name}' -f combined.yml build postgres
+                sudo docker-compose -p '${project_name}' -f combined.yml build rabbitmq
+                sudo docker-compose -p '${project_name}' -f combined.yml build redis
+                sudo docker-compose -p '${project_name}' -f combined.yml build solr
+                sudo docker-compose -p '${project_name}' -f combined.yml build flower
+            /$
+            sh prepare_images_script
         }
 
         try {
@@ -127,6 +139,7 @@ try {
                     sudo docker-compose -p '${project_name}' -f combined.yml up -d
 
                     # inject the HMAC key to ICE
+                    RANDOM_HMAC="$$(cat hmac.key)"
                     sudo docker-compose -p '${project_name}' -f combined.yml \
                         exec -T ice \
                         bash -c "mkdir rest-auth; echo $$RANDOM_HMAC > rest-auth/edd"

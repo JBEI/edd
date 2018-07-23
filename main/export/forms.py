@@ -9,9 +9,7 @@ from django.http import QueryDict
 from django.utils.translation import ugettext_lazy as _
 
 from . import table
-from ..models import (
-    Assay, Line, Measurement, Protocol, Study, WorklistTemplate, WorklistColumn,
-)
+from .. import models
 
 
 logger = logging.getLogger(__name__)
@@ -20,22 +18,22 @@ logger = logging.getLogger(__name__)
 class ExportSelectionForm(forms.Form):
     """ Form used for selecting objects to export. """
     studyId = forms.ModelMultipleChoiceField(
-        queryset=Study.objects.all(),
+        queryset=models.Study.objects.all(),
         required=False,
         widget=forms.MultipleHiddenInput
     )
     lineId = forms.ModelMultipleChoiceField(
-        queryset=Line.objects.all(),
+        queryset=models.Line.objects.all(),
         required=False,
         widget=forms.MultipleHiddenInput
     )
     assayId = forms.ModelMultipleChoiceField(
-        queryset=Assay.objects.all(),
+        queryset=models.Assay.objects.all(),
         required=False,
         widget=forms.MultipleHiddenInput
     )
     measurementId = forms.ModelMultipleChoiceField(
-        queryset=Measurement.objects.all(),
+        queryset=models.Measurement.objects.all(),
         required=False,
         widget=forms.MultipleHiddenInput
     )
@@ -80,9 +78,10 @@ class WorklistForm(forms.Form):
     """ Form used for selecting worklist export options. """
     template = forms.ModelChoiceField(
         empty_label=None,
-        queryset=WorklistTemplate.objects.prefetch_related(
-            Prefetch('worklistcolumn_set', queryset=WorklistColumn.objects.order_by('ordering', )),
-        ),
+        queryset=models.WorklistTemplate.objects.prefetch_related(Prefetch(
+            'worklistcolumn_set',
+            queryset=models.WorklistColumn.objects.order_by('ordering', )
+        )),
         required=False,
     )
 
@@ -201,6 +200,13 @@ class WorklistFlushForm(WorklistDefaultsForm):
     )
 
 
+study_option = table.TableOptions(models.Study)
+line_option = table.TableOptions(models.Line)
+protocol_option = table.TableOptions(models.Protocol)
+assay_option = table.TableOptions(models.Assay)
+measure_option = table.TableOptions(models.Measurement)
+
+
 class ExportOptionForm(forms.Form):
     """ Form used for changing options on exports. """
     layout = forms.ChoiceField(
@@ -228,36 +234,36 @@ class ExportOptionForm(forms.Form):
         required=False,
     )
     study_meta = forms.TypedMultipleChoiceField(
-        choices=list(map(table.ColumnChoice.get_field_choice, Study.export_columns())),
-        coerce=table.ColumnChoice.coerce(Study.export_columns()),
+        choices=study_option.choices,
+        coerce=study_option.coerce,
         label=_('Study fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     line_meta = forms.TypedMultipleChoiceField(
-        choices=list(map(table.ColumnChoice.get_field_choice, Line.export_columns())),
-        coerce=table.ColumnChoice.coerce(Line.export_columns()),
+        choices=line_option.choices,
+        coerce=line_option.coerce,
         label=_('Line fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     protocol_meta = forms.TypedMultipleChoiceField(
-        choices=list(map(table.ColumnChoice.get_field_choice, Protocol.export_columns())),
-        coerce=table.ColumnChoice.coerce(Protocol.export_columns()),
+        choices=protocol_option.choices,
+        coerce=protocol_option.coerce,
         label=_('Protocol fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     assay_meta = forms.TypedMultipleChoiceField(
-        choices=list(map(table.ColumnChoice.get_field_choice, Assay.export_columns())),
-        coerce=table.ColumnChoice.coerce(Assay.export_columns()),
+        choices=assay_option.choices,
+        coerce=assay_option.coerce,
         label=_('Assay fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     measure_meta = forms.TypedMultipleChoiceField(
-        choices=list(map(table.ColumnChoice.get_field_choice, Measurement.export_columns())),
-        coerce=table.ColumnChoice.coerce(Measurement.export_columns()),
+        choices=measure_option.choices,
+        coerce=measure_option.coerce,
         label=_('Measurement fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
@@ -322,10 +328,9 @@ class ExportOptionForm(forms.Form):
         data.update(self.data)
         # update available choices based on instances in self._selection
         if self._selection and hasattr(self._selection, 'lines'):
-            columns = self._selection.line_columns
-            choices = map(table.ColumnChoice.get_field_choice, columns)
-            self.fields['line_meta'].choices = list(choices)
-            self.fields['line_meta'].coerce = table.ColumnChoice.coerce(columns)
+            options = table.TableOptions(models.Line, instances=self._selection.lines)
+            self.fields['line_meta'].choices = options.choices
+            self.fields['line_meta'].coerce = options.coerce
         # set all _meta options if no list of options was passed in
         for meta in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']:
             if self.initial.get(meta, None) == '__all__':

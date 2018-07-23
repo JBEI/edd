@@ -62,6 +62,11 @@ base_rest_api_router.register(
     views.UsersViewSet,
     base_name='users',
 )
+base_rest_api_router.register(
+    'export',
+    views.ExportViewSet,
+    base_name='export',
+)
 
 ###################################################################################################
 # /rest/studies nested resources

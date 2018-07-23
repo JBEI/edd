@@ -149,9 +149,9 @@ class MetadataType(models.Model, EDDSerialize):
     )
 
     @classmethod
-    def all_types_on_instances(cls, instances=[]):
+    def all_types_on_instances(cls, instances):
         # grab all the keys on each instance meta_store
-        all_ids = [set(o.meta_store.keys()) for o in instances if isinstance(o, MetadataType)]
+        all_ids = [set(o.meta_store.keys()) for o in instances if isinstance(o, EDDMetadata)]
         # reduce all into a set to get only unique ids
         ids = reduce(lambda a, b: a.union(b), all_ids, set())
         return MetadataType.objects.filter(

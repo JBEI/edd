@@ -1,16 +1,14 @@
 FROM jbei/edd-node:latest as node
 
 # Copy in EDD code
-ARG EDD_VERSION=2.2.0
+ARG EDD_VERSION=2.3.0
 ARG GIT_BRANCH=master
 ARG GIT_URL=https://github.com/JBEI/edd.git
 ENV EDD_VERSION="${EDD_VERSION}"
 RUN apk add --no-cache git \
     && git clone --depth 1 -b "${GIT_BRANCH}" "${GIT_URL}" code \
     && echo "Cache-bust: ${EDD_VERSION}" \
-    && cp ./code/docker_services/edd/tsconfig.json \
-        ./code/docker_services/edd/webpack.config.js \
-        . \
+    && cp ./code/docker_services/edd/webpack/webpack.config.js . \
     && npm run build
 
 # ---
@@ -19,7 +17,7 @@ FROM buildpack-deps:buster
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 WORKDIR /code
-ARG EDD_VERSION=2.2.0
+ARG EDD_VERSION=2.3.0
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8 EDD_VERSION="${EDD_VERSION}"
 
 # include Debian packages required to build pip packages

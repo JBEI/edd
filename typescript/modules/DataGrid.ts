@@ -1,7 +1,7 @@
-import { Dragboxes } from "../modules/Dragboxes"
-import { Utl } from "../modules/Utl"
-import * as $ from "jquery"
-import * as _ from "underscore"
+import * as Dragboxes from "./Dragboxes";
+import * as Utl from "./Utl";
+import * as $ from "jquery";
+import * as _ from "underscore";
 
 export class DataGrid {
 
@@ -76,7 +76,7 @@ export class DataGrid {
         if (!this._tableControlsArea) {
             var tr = $(document.createElement("tr")).addClass('header').appendTo(tHead);
             this._tableControlsArea = $(document.createElement("th")).appendTo(tr).get(0);
-            if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
+            if (this.countTotalColumns() > 1) {
                 $(this._tableControlsArea).attr('colspan', this._totalColumnCount);
             }
         }
@@ -293,7 +293,11 @@ export class DataGrid {
         var menuLabel = $(this._optionsLabel = document.createElement("div"))
             .addClass('pulldownMenuLabelOff')
             .text('View options \u25BE')
-            .click(() => { if (menuLabel.hasClass('pulldownMenuLabelOff')) this._showOptMenu(); })
+            .click(() => {
+                if (menuLabel.hasClass('pulldownMenuLabelOff')) {
+                    this._showOptMenu();
+                }
+            })
             .appendTo(mainSpan);
 
         var menuBlock = $(this._optionsMenuBlockElement = document.createElement("div"))
@@ -534,14 +538,14 @@ export class DataGrid {
                 rowGroup.memberRecords.push(this._recordElements[s]);
             });
 
-            //iterate over the different replicate groups
+            // iterate over the different replicate groups
             _.each(rowGroupSpec, (grouping) => {
-                //find the assay ids associated with the replicate group
+                // find the assay ids associated with the replicate group
                 var replicateIds = this._findReplicateLines(this._groupReplicates(), grouping);
-                //find the lines associated with the replicate group
+                // find the lines associated with the replicate group
                 var lines = this.addReplicateRows(replicateIds);
                 _.each(lines, function(line) {
-                    //hide the lines associated with the replicate group
+                    // hide the lines associated with the replicate group
                     $(line).hide();
                 });
             });
@@ -626,7 +630,7 @@ export class DataGrid {
 
     // Add up all the column counts in the headerspec, to arrive at a grand total for the table.
     countTotalColumns(): number {
-        return this._spec.tableHeaderSpec.reduce((prev, v): number => {
+        return this._totalColumnCount = this._spec.tableHeaderSpec.reduce((prev, v): number => {
             if (v.headerRow) {
                 if (v.headerRow > 1) {
                     return prev;
@@ -655,7 +659,7 @@ export class DataGrid {
         return (rowIndexA: number, rowIndexB: number) => {
             var a = lookupFunc.call(this._spec, rowIndexA);
             var b = lookupFunc.call(this._spec, rowIndexB);
-            return (<any>(a > b) - <any>(b > a)); // true becomes 1, false becomes 0
+            return (<any> (a > b) - <any> (b > a)); // true becomes 1, false becomes 0
         };
     }
 
@@ -690,7 +694,7 @@ export class DataGrid {
                 var after;
                 if (header.sortAfter >= 0) {
                     after = this._spec.tableHeaderSpec[header.sortAfter];
-                    if (!after.sorted) return;
+                    if (!after.sorted) { return; };
                 }
                 this._sequence[header.id] = this._spec.getRecordIDs();
                 if (after && after.id && this._sequence[after.id]) {
@@ -710,7 +714,7 @@ export class DataGrid {
     private _getSequence(sort: DataGridSort): string[] {
         var key: string, sequence: string[];
         if (sort) {
-            key = (sort.asc ? '' : '-') + sort.spec.id,
+            key = (sort.asc ? '' : '-') + sort.spec.id;
             sequence = this._sequence[key];
             if (sequence === undefined) {
                 sequence = this._spec.getRecordIDs();
@@ -729,8 +733,8 @@ export class DataGrid {
 
         // Create enough rows to contain the headers (usually just 1)
         var rowElements: HTMLElement[] = [];
-        for (var i = 0; i < maxheaderRow; i++) {
-            var row = $(document.createElement("tr")).addClass('columnLabels');
+        for (let i = 0; i < maxheaderRow; i++) {
+            let row = $(document.createElement("tr")).addClass('columnLabels');
             rowElements.push(row[0]);
         }
 
@@ -744,14 +748,14 @@ export class DataGrid {
             var css: {} = $.extend({
                 'text-align': header.align,
                 'vertical-align': header.valign,
-                'display': header.display
+                'display': header.display,
             }, commonCss);
             header.element = document.createElement("th");
             var cell: JQuery = $(header.element).css(css).attr({
                 'id': header.id,
                 'colspan': header.colspan > 1 ? header.colspan : undefined,
                 'rowspan': header.rowspan > 1 ? header.rowspan : undefined,
-                'class': header.size === 's' ? 'smaller' : undefined
+                'class': header.size === 's' ? 'smaller' : undefined,
             }).appendTo(rowElements[Math.max(header.headerRow || 1, 1) - 1]);
             if (header.sortBy) {
                 cell.addClass('sortheader');
@@ -764,7 +768,7 @@ export class DataGrid {
         // Remove the right-side border line from the last element of each row
         rowElements.forEach((row) => {
             var l: any = row.lastChild;
-            if (l) { l.style.borderRight = '0' }
+            if (l) { l.style.borderRight = '0'; }
         });
 
         return rowElements;
@@ -820,7 +824,7 @@ export class DataGrid {
      * @private
      */
     private _findReplicateLines(replicates, oneGroup): string[] {
-        var groupedIds = []; //returns ids associated with replicate id.
+        var groupedIds = []; // returns ids associated with replicate id.
         $.each(replicates, function(key) {
             if (EDDData.Lines[replicates[key]].name === oneGroup.name) {
                 groupedIds.push(key);
@@ -892,7 +896,7 @@ export class DataGrid {
         var rows: any = {};
         $.each(lines, function(key) {
             if (lines[key].replicate) {
-                rows[lines[key].id] = lines[key].replicate
+                rows[lines[key].id] = lines[key].replicate;
             }
         });
         return rows;
@@ -904,7 +908,10 @@ export class DataGrid {
      * @returns {Array}
      */
     private addReplicateRows(idArray): any {
-        return $.map(idArray, (id) => $('[value=' + id + ']', this._table).parents('tr').filter(':first'))
+        return $.map(
+            idArray,
+            (id) => $('[value=' + id + ']', this._table).parents('tr').filter(':first')
+        );
 
     }
 
@@ -922,7 +929,6 @@ export class DataGrid {
 
 
     clickedOptionWidget(event: Event): void {
-        var control = event.target;    // Grab the checkbox that sent the event
         this.scheduleTimer('arrangeTableDataRows', () => this.arrangeTableDataRows());
     }
 
@@ -967,7 +973,7 @@ export class DataGrid {
     }
 
     private _basePayload(): any {
-        var token:string = Utl.EDD.findCSRFToken();
+        var token: string = Utl.EDD.findCSRFToken();
         return { 'csrfmiddlewaretoken': token };
     }
 
@@ -991,7 +997,7 @@ export class DataGrid {
                     } catch (e) { /* ParseError, just use string value */ }
                 }
                 callback.call({}, data);
-            }
+            },
         });
     }
 
@@ -1021,7 +1027,7 @@ export class DataGrid {
             // filter out all the set boxes already in the settings list
             setCol = setCol.filter(inData);
             // filter out dupes in delCol
-            delCol = delCol.filter(inData)
+            delCol = delCol.filter(inData);
             // add any missing items
             Array.prototype.push.apply(data, setCol);
             // mark non-default hide (i.e. default show) as explicitly excluded
@@ -1029,7 +1035,7 @@ export class DataGrid {
             // store new setting value
             $.ajax(this._settingsPath(propKey), {
                 'data': $.extend({}, this._basePayload(), { 'data': JSON.stringify(data) }),
-                'type': 'POST'
+                'type': 'POST',
             });
         }, []);
         return this;
@@ -1181,11 +1187,12 @@ export class DataGridRecord {
             moreToAdd = false;
             cells = [];
             this.gridSpec.tableColumnSpec.forEach((spec, col) => {
-                var colCells, c, next;
-                if (currentRowHeights[col] > addingForRow) return;
-                if ((colCells = cellsForColumns[col]).length) {
+                let colCells, c, next;
+                if (currentRowHeights[col] > addingForRow) { return; }
+                colCells = cellsForColumns[col];
+                if (colCells.length) {
                     c = colCells.shift();
-                    if (colCells.length) moreToAdd = true;
+                    if (colCells.length) { moreToAdd = true; }
                     next = col + c.colspan;
                     while (col < next) {
                         currentRowHeights[col] = c.rowspan + addingForRow;
@@ -1349,11 +1356,11 @@ export class DataGridDataCell {
         this.hidden = false;
         this.createdElement = false;
         defaults = {
-            'contentFunction': (e, index) => { },
+            'contentFunction': (e, index) => { return; },
             'contentString': '',
             'align': 'left',
             'rowspan': 1,
-            'colspan': 1
+            'colspan': 1,
         };
         $.extend(this, defaults, opt || {});
     }
@@ -1374,7 +1381,7 @@ export class DataGridDataCell {
             $(this.checkboxElement).attr({
                 'id': checkId,
                 'name': checkName,
-                'value': id.toString()
+                'value': id.toString(),
             }).appendTo(c);
             this.contentContainerElement = $('<label>').attr('for', checkId).appendTo(c)[0];
         } else {
@@ -1564,7 +1571,7 @@ export class DataGridOptionWidget extends DataGridWidget {
 
     // Return a fragment to use in generating option widget IDs
     getIDFragment(uniqueID): string {
-        return this.dataGridSpec.tableSpec.id + 'GenericOptionCB' + uniqueID
+        return this.dataGridSpec.tableSpec.id + 'GenericOptionCB' + uniqueID;
     }
 
 
@@ -1676,7 +1683,7 @@ export class DataGridHeaderWidget extends DataGridWidget {
     // when creating input element labels or other things requiring an ID.
     createElements(uniqueID: string): void {
         var tBoxID: string = this.dataGridSpec.tableSpec.id + 'text' + uniqueID;
-        var tBox = $(this.element = document.createElement("input"))
+        $(this.element = document.createElement("input"))
             .attr({ 'id': tBoxID, 'name': tBoxID, 'size': '20' })
             .addClass('tableControl');
     }
@@ -1761,7 +1768,7 @@ export class DGSelectAllWidget extends DataGridHeaderWidget {
     updateButtonLabel(): void {
         if (this.anySelected) {
             this.element.setAttribute('value', 'Select None');
-            //disable action buttons
+            // disable action buttons
             $("#editButton, #cloneButton, #groupButton, #addAssayButton, #disableButton, #enableButton").prop('disabled', false);
         } else {
             this.element.setAttribute('value', 'Select All');
@@ -1856,15 +1863,11 @@ export class DGSearchWidget extends DataGridHeaderWidget {
     // see http://stackoverflow.com/questions/16157839/typescript-this-inside-a-class-method )
     typingDelayExpirationHandler = () => {
         // ignore if the following keys are pressed: [del] [shift] [capslock]
-        //if (this.lastKeyPressCode == 46) {
-        //    return;
-        //}
-        // ignore if the following keys are pressed: [del] [shift] [capslock]
         if (this.lastKeyPressCode > 8 && this.lastKeyPressCode < 32) {
             return;
         }
         var v = $(this.element).val();
-        if (v == this.previousSelection) {
+        if (v === this.previousSelection) {
             return;
         }
         this.previousSelection = v;
@@ -1891,7 +1894,7 @@ export class DGSearchWidget extends DataGridHeaderWidget {
         // If there are multiple words, we look for each separately, but expect to find all of them.
         // We will not attempt to match against empty strings, so we filter those out if any slipped through.
         var queryStrs = v.split(' ').filter((one) => { return one.length > 0; });
-        if (queryStrs.length == 0) {
+        if (queryStrs.length === 0) {
             return rowIDs;
         }
 
@@ -1911,7 +1914,7 @@ export class DGSearchWidget extends DataGridHeaderWidget {
                             unmatchedQueryStrs.push(queryStr);
                         }
                     });
-                    if (unmatchedQueryStrs.length == 0) {
+                    if (unmatchedQueryStrs.length === 0) {
                         return true;
                     }
                     thisRecordQueryStrs = unmatchedQueryStrs;
@@ -2003,7 +2006,7 @@ export class DGPagingWidget extends DataGridHeaderWidget {
                     return false;
                 });
             this.createdElements(true);
-            $(this.widgetElement).addClass('studyPrevNext')
+            $(this.widgetElement).addClass('studyPrevNext');
         }
         this.refreshWidget();
     }
@@ -2046,9 +2049,9 @@ export class DataGridTableSpec {
     constructor(id: string, opt?: { [index: string]: any }) {
         this.id = id;       // ID is required, initialize sensible defaults for everything else
         opt = $.extend({ 'name': '', 'defaultSort': 0, 'showHeader': true }, opt);
-        this.name = opt['name'];
-        this.defaultSort = opt['defaultSort'];
-        this.showHeader = opt['showHeader'];
+        this.name = opt.name;
+        this.defaultSort = opt.defaultSort;
+        this.showHeader = opt.showHeader;
     }
 }
 
@@ -2089,19 +2092,19 @@ export class DataGridHeaderSpec {
         this.columnGroup = group;
         this.id = id;       // ID is required, initialize sensible defaults for everything else
         opt = $.extend({ 'name': '', 'align': 'left', 'size': 'm', 'sortAfter': -1 }, opt);   // most things can be null
-        this.name = opt['name'];
-        this.align = opt['align'];
-        this.valign = opt['valign'];
-        this.nowrap = opt['nowrap'];
-        this.rowspan = opt['rowspan'];
-        this.colspan = opt['colspan'];
-        this.headerRow = opt['headerRow'];
-        this.display = opt['display'];
-        this.size = opt['size'];
-        this.width = opt['width'];
-        this.sortBy = opt['sortBy'];
-        this.sortAfter = opt['sortAfter'];
-        this.sortId = opt['sortId'];
+        this.name = opt.name;
+        this.align = opt.align;
+        this.valign = opt.valign;
+        this.nowrap = opt.nowrap;
+        this.rowspan = opt.rowspan;
+        this.colspan = opt.colspan;
+        this.headerRow = opt.headerRow;
+        this.display = opt.display;
+        this.size = opt.size;
+        this.width = opt.width;
+        this.sortBy = opt.sortBy;
+        this.sortAfter = opt.sortAfter;
+        this.sortId = opt.sortId;
     }
 }
 
@@ -2141,14 +2144,13 @@ export class DataGridColumnSpec {
 
 
     getEntireIndex(): DataGridDataCell[] {
-        var cells: DataGridDataCell[] = [];
-        for (var key in this.createdDataCellObjects) {
-            var a: DataGridDataCell[] = this.createdDataCellObjects[key];
-            if (a) {
+        let cells: DataGridDataCell[] = [];
+        $.each(this.createdDataCellObjects, (key: string, objects: DataGridDataCell[]) => {
+            if (objects) {
                 // Much faster than repeated concats
-                Array.prototype.push.apply(cells, a);
+                Array.prototype.push.apply(cells, objects);
             }
-        }
+        });
         return cells;
     }
 }
@@ -2174,9 +2176,9 @@ export class DataGridColumnGroupSpec {
     constructor(label: string, opt?: { [index: string]: any }) {
         this.name = label;
         opt = $.extend({ 'showInVisibilityList': true }, opt);
-        this.showInVisibilityList = opt['showInVisibilityList'];
-        this.hiddenByDefault = opt['hiddenByDefault'];
-        this.revealedCallback = opt['revealedCallback'];
+        this.showInVisibilityList = opt.showInVisibilityList;
+        this.hiddenByDefault = opt.hiddenByDefault;
+        this.revealedCallback = opt.revealedCallback;
     }
 }
 
@@ -2252,7 +2254,7 @@ export class DataGridSpecBase {
     defineHeaderSpec(): DataGridHeaderSpec[] {
         return [
             new DataGridHeaderSpec(1, 'hName', { 'name': 'Name' }),
-            new DataGridHeaderSpec(2, 'hDesc', { 'name': 'Description' })
+            new DataGridHeaderSpec(2, 'hDesc', { 'name': 'Description' }),
         ];
     }
 
@@ -2276,7 +2278,7 @@ export class DataGridSpecBase {
     defineColumnGroupSpec(): DataGridColumnGroupSpec[] {
         return [
             new DataGridColumnGroupSpec('Name', { 'showInVisibilityList': false }),
-            new DataGridColumnGroupSpec('Description')
+            new DataGridColumnGroupSpec('Description'),
         ];
     }
 
@@ -2356,6 +2358,7 @@ export class DataGridSpecBase {
 
     // This is called after everything is initialized, including the creation of the table content.
     onInitialized(dataGrid: DataGrid): void {
+        return;
     }
 
 
@@ -2375,7 +2378,7 @@ export class DataGridSpecBase {
 
     // Called when the user hides or shows rows.
     onRowVisibilityChanged(): void {
-
+        return;
     }
 
     // This is called to generate a group name. You can process your data however
@@ -2387,6 +2390,7 @@ export class DataGridSpecBase {
     // This is called when the grouping setting is changed, in case
     // you want to persist the setting somewhere.
     onUpdatedGroupingEnabled(dataGrid: DataGrid, enabled: boolean): void {
+        return;
     }
 
 }

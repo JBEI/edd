@@ -4,7 +4,7 @@ This Dockerfile constructs the `edd-core` image for use in the [Experiment Data 
 image is based on [buildpack-deps:stretch][2], and includes the Python dependencies used by EDD
 and clones the current `master` branch into the image. Build with:
 
-    docker build -t yourorg/edd-core .
+    docker build -t yourorg/edd-core ./core
 
 Build from alternate repositories and/or branches with build arguments `GIT_URL` and `GIT_BRANCH`,
 for example:
@@ -12,7 +12,7 @@ for example:
     docker build -t yourorg/edd-core:1.0.0 \
         --build-arg "GIT_URL=https://git.example.org/repo/edd.git" \
         --build-arg "GIT_BRANCH=your-branch-name" \
-        .
+        ./core
 
 The image uses a custom entrypoint with commands for common tasks. Since EDD depends on multiple
 services, the entrypoint ensures that all dependencies are up before proceeding. A full listing

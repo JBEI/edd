@@ -10,18 +10,16 @@ main/views.py, but are not accessible using the same URL scheme.
 import logging
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django_filters import filters as django_filters, rest_framework as filters
 from rest_framework import mixins, response, schemas, viewsets
 from rest_framework.decorators import api_view, permission_classes, renderer_classes
 from rest_framework.permissions import AllowAny, DjangoModelPermissions, IsAuthenticated
 from rest_framework_swagger.renderers import OpenAPIRenderer, SwaggerUIRenderer
-from threadlocals.threadlocals import get_request_variable, set_request_variable
 from uuid import UUID
 
 from main import models
-from .permissions import StudyResourcePermissions
-from . import serializers
+from . import paginators, permissions, renderers, serializers
 
 
 logger = logging.getLogger(__name__)
@@ -36,43 +34,6 @@ def schema_view(request):
     """
     generator = schemas.SchemaGenerator(title='Experiment Data Depot')
     return response.Response(generator.get_schema(request=request))
-
-
-def cached_request_queryset(get_queryset):
-    """
-    A simple decorator to prevent multiple calls to get_queryset() during processing of a single
-    client request from performing the same database query. Presence or absence of queryset
-    results is used by ImpliedPermissions to determine user access to Study internals based on
-    StudyPermissions, which without this decorator would result in running the query twice.
-    """
-    def wrapper(*args):
-        _CACHE_VAR_NAME = 'edd_rest_cached_queryset'
-        queryset = get_request_variable(_CACHE_VAR_NAME, use_threadlocal_if_no_request=False)
-
-        view = args[0]
-        log_msg = ('%(class)s.%(method)s. %(http_method)s %(uri)s: kwargs=%(kwargs)s,'
-                   ' query_params = %(query_params)s' % {
-                       'class': view.__class__.__name__,
-                       'method': get_queryset.__name__,
-                       'http_method': view.request.method,
-                       'uri': view.request.path,
-                       'kwargs': view.kwargs,
-                       'query_params': view.request.query_params,
-                   })
-
-        # if we've already cached this queryset during this request, use the cached copy
-        if queryset:
-            logger.info('Using cache for %s' % log_msg)
-            return queryset
-
-        # otherwise, cache a reference to the queryset
-        else:
-            logger.info(log_msg)
-            queryset = get_queryset(*args)
-            set_request_variable(_CACHE_VAR_NAME, queryset, use_threadlocal_if_no_request=False)
-            return queryset
-
-    return wrapper
 
 
 class EDDObjectFilter(filters.FilterSet):
@@ -154,7 +115,7 @@ class StudiesViewSet(StudyFilterMixin,
     description, etc, but not to the contained lines or other data.
     """
     serializer_class = serializers.StudySerializer
-    permission_classes = [StudyResourcePermissions]
+    permission_classes = [permissions.StudyResourcePermissions]
     queryset = models.Study.objects.order_by('pk').select_related('created', 'updated')
 
 
@@ -191,7 +152,6 @@ class LineFilterMixin(StudyInternalsFilterMixin):
     serializer_class = serializers.LineSerializer
     _filter_joins = ['study']
 
-    @cached_request_queryset
     def get_queryset(self):
         qs = models.Line.objects.order_by('pk')
         qs = qs.select_related('created', 'updated')
@@ -209,7 +169,6 @@ class StudyLinesView(LineFilterMixin, viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that allows Lines within a study to be searched, viewed, and edited.
     """
-    @cached_request_queryset
     def get_queryset(self):
         return super(StudyLinesView, self).get_queryset().filter(self.get_nested_filter())
 
@@ -229,7 +188,6 @@ class AssayFilterMixin(StudyInternalsFilterMixin):
     serializer_class = serializers.AssaySerializer
     _filter_joins = ['line', 'study']
 
-    @cached_request_queryset
     def get_queryset(self):
         qs = models.Assay.objects.order_by('pk')
         return qs.select_related('created', 'updated')
@@ -246,7 +204,6 @@ class StudyAssaysViewSet(AssayFilterMixin, viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that allows Assays within a study to be searched, viewed, and edited.
     """
-    @cached_request_queryset
     def get_queryset(self):
         return super(StudyAssaysViewSet, self).get_queryset().filter(self.get_nested_filter())
 
@@ -287,7 +244,6 @@ class MeasurementFilterMixin(StudyInternalsFilterMixin):
     serializer_class = serializers.MeasurementSerializer
     _filter_joins = ['assay', 'line', 'study']
 
-    @cached_request_queryset
     def get_queryset(self):
         qs = models.Measurement.objects.order_by('pk')
         return qs.select_related('update_ref')
@@ -304,10 +260,141 @@ class StudyMeasurementsViewSet(MeasurementFilterMixin, viewsets.ReadOnlyModelVie
     """
     API endpoint that allows Measurements within a study to be searched, viewed, and edited.
     """
-    @cached_request_queryset
     def get_queryset(self):
         qs = super(StudyMeasurementsViewSet, self).get_queryset()
         return qs.filter(self.get_nested_filter())
+
+
+export_via_lookup = {
+    models.Study: None,
+    models.Line: ('study', ),
+    models.Assay: ('line', 'study'),
+    models.Measurement: ('assay', 'line', 'study'),
+}
+
+
+def export_queryset(model):
+    via = export_via_lookup.get(model, None)
+
+    def queryset(request):
+        user = request.user if request else None
+        if (models.Study.user_role_can_read(user)):
+            # no need to do special permission checking if role automatically can read
+            return model.objects.distinct()
+        access = models.Study.access_filter(user, via=via)
+        print(access)
+        qs = model.objects.distinct().filter(access)
+        print(qs.query)
+        return qs
+
+    return queryset
+
+
+class ExportFilter(filters.FilterSet):
+    """
+    FilterSet used to select data for exporting. See <main.export.table.ExportSelection>.
+    """
+    study_id = django_filters.ModelMultipleChoiceFilter(
+        lookup_expr='in',
+        name='measurement__assay__line__study',
+        queryset=export_queryset(models.Study),
+    )
+    line_id = django_filters.ModelMultipleChoiceFilter(
+        lookup_expr='in',
+        name='measurement__assay__line',
+        queryset=export_queryset(models.Line),
+    )
+    assay_id = django_filters.ModelMultipleChoiceFilter(
+        lookup_expr='in',
+        name='measurement__assay',
+        queryset=export_queryset(models.Assay),
+    )
+    measure_id = django_filters.ModelMultipleChoiceFilter(
+        lookup_expr='in',
+        name='measurement_id',
+        queryset=export_queryset(models.Measurement),
+    )
+
+    class Meta:
+        model = models.MeasurementValue
+        fields = []
+
+    @property
+    def qs(self):
+        # define filters for special handling
+        names = ['study_id', 'line_id', 'assay_id', 'measure_id']
+        special = {name: self.filters.get(name, None) for name in names}
+        fields = {name: f.field for name, f in special.items()}
+        # create a custom form for the filters with special handling
+        form = self._custom_form(fields)
+        if not form.is_valid():
+            return self.queryset.none()
+        # now do special handling to OR together the filters
+        id_filter = Q()
+        for name, filter_ in special.items():
+            if filter_ is not None:
+                # when a value is found, OR together with others
+                value = form.cleaned_data.get(name)
+                if value:
+                    id_filter |= Q(**{f'{filter_.field_name}__{filter_.lookup_expr}': value})
+        # filter with the aggregated filter expression
+        return self.queryset.filter(id_filter)
+
+    def _custom_form(self, fields):
+        # create a custom form for the filters with special handling
+        Form = type(f'{self.__class__.__name__}IDForm', (self._meta.form,), fields)
+        if self.is_bound:
+            form = Form(self.data, prefix=self.form_prefix)
+        else:
+            form = Form(prefix=self.form_prefix)
+        return form
+
+
+class ExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """API endpoint for running exports of data."""
+    filter_class = ExportFilter
+    pagination_class = paginators.LinkHeaderPagination
+    renderer_classes = (renderers.ExportRenderer, )
+    serializer_class = serializers.ExportSerializer
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        pp = request.query_params.get('page', 1)
+        response['Content-Disposition'] = f'attachment; filename=export_page{pp}.csv'
+        return response
+
+    def get_queryset(self):
+        qs = models.MeasurementValue.objects.order_by('pk')
+        return qs.select_related(
+            'measurement__measurement_type',
+            'measurement__x_units',
+            'measurement__y_units',
+            'measurement__update_ref__mod_by',
+            'measurement__experimenter',
+            'measurement__assay__created',
+            'measurement__assay__experimenter',
+            'measurement__assay__protocol',
+            'measurement__assay__updated',
+            'measurement__assay__line__contact',
+            'measurement__assay__line__created',
+            'measurement__assay__line__experimenter',
+            'measurement__assay__line__updated',
+            'measurement__assay__line__study__contact',
+            'measurement__assay__line__study__created',
+            'measurement__assay__line__study__updated',
+        ).prefetch_related(
+            Prefetch('measurement__assay__line__strains'),
+            Prefetch('measurement__assay__line__carbon_source'),
+        )
+
+    # The get_renderers API does not take the request object, cannot configure at this level
+    # The perform_content_negotiation API *does* take request; can inject a custom renderer here
+    def perform_content_negotiation(self, request, force=False):
+        # to customize renderer:
+        # 1. need a method that extracts parameters for customization from request, store on self;
+        # 2. override get_renderers() to use parameters when creating ExportRenderer;
+        # 3. call to parameter extraction must come *before* the below super call
+        return super(ExportViewSet, self).perform_content_negotiation(request, force)
 
 
 class MeasurementValueFilter(filters.FilterSet):
@@ -342,7 +429,6 @@ class ValuesFilterMixin(StudyInternalsFilterMixin):
     serializer_class = serializers.MeasurementValueSerializer
     _filter_joins = ['measurement', 'assay', 'line', 'study']
 
-    @cached_request_queryset
     def get_queryset(self):
         return models.MeasurementValue.objects.order_by('pk').select_related('updated')
 
@@ -358,7 +444,6 @@ class StudyValuesViewSet(ValuesFilterMixin, viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that allows Values within a study to be searched, viewed, and edited.
     """
-    @cached_request_queryset
     def get_queryset(self):
         return super(StudyValuesViewSet, self).get_queryset().filter(self.get_nested_filter())
 
@@ -472,7 +557,6 @@ class UsersViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated, ]
     serializer_class = serializers.UserSerializer
 
-    @cached_request_queryset
     def get_queryset(self):
         User = get_user_model()
         return User.objects.order_by('pk')

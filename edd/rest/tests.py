@@ -11,12 +11,15 @@ seperately in EDD's REST API.  This should help to detect when REST API code cha
 accidentally affect client code.
 """
 
+import codecs
+import csv
 import logging
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.test import Client
+from requests import codes
 from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
@@ -298,6 +301,60 @@ class MeasurementValuesTests(EddApiTestCaseMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         super(MeasurementValuesTests, cls).setUpTestData()
+
+
+class ExportTests(EddApiTestCaseMixin, APITestCase):
+    """Tests for expected outputs from /rest/export/"""
+
+    fixtures = ['main/tutorial_fba', 'main/tutorial_fba_loaded']
+
+    def test_export_login_required(self):
+        url = reverse('rest:export-list')
+        response = self.client.get(url, {
+            'line_id': 8,
+        })
+        self.assertEqual(response.status_code, codes.forbidden)
+
+    def test_export_output(self):
+        url = reverse('rest:export-list')
+        User = get_user_model()
+        admin = User.objects.get(username='system')
+        self.client.force_authenticate(user=admin)
+        # force request with small page_size to see paging of results
+        response = self.client.get(url, {
+            'line_id': 8,
+            'page_size': 5,
+        })
+        # response has OK status
+        self.assertEqual(response.status_code, codes.ok)
+        # response has headers with link to following page
+        self.assertRegex(response.get('Link'), r'<https?://.*/rest/export/\?.*>; rel="next"')
+        # response has correct Content-Type
+        self.assertEqual(response.get('Content-Type'), 'text/csv; charset=utf-8')
+        # check the CSV output
+        reader = csv.reader(codecs.iterdecode(response.content.split(b'\n'), 'utf8'))
+        table = list(reader)
+        # TODO update based on output config?
+        self.assertListEqual(
+            table[0],
+            [
+                'Study ID',
+                'Study Name',
+                'Line ID',
+                'Line Name',
+                'Line Description',
+                'Protocol',
+                'Assay ID',
+                'Assay Name',
+                'Measurement Type',
+                'Compartment',
+                'Units',
+                'Value',
+                'Hours'
+            ]
+        )
+        # one row for header, plus page_size==5 rows
+        self.assertEqual(len(table), 6)
 
 
 class EddObjectSearchTest(EddApiTestCaseMixin, APITestCase):

@@ -13,7 +13,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import Q
 from django.template.defaultfilters import slugify
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from itertools import chain
 from six import string_types
@@ -23,10 +22,8 @@ from .measurement_type import MeasurementType, MeasurementUnit, Metabolite
 from .metadata import EDDMetadata, MetadataType
 from .permission import StudyPermission
 from .update import Update
-from main.export import table  # TODO remove
 
 
-@python_2_unicode_compatible
 class Comment(models.Model):
     """ Text blob attached to an EDDObject by a given user at a given time/Update. """
     class Meta:
@@ -51,7 +48,6 @@ class Comment(models.Model):
         return self.body
 
 
-@python_2_unicode_compatible
 class Attachment(models.Model):
     """ File uploads attached to an EDDObject; include MIME, file name, and description. """
     class Meta:
@@ -160,7 +156,6 @@ class Attachment(models.Model):
         return self.object_ref.user_can_read(user)
 
 
-@python_2_unicode_compatible
 class EDDObject(EDDMetadata, EDDSerialize):
     """ A first-class EDD object, with update trail, comments, attachments. """
     class Meta:
@@ -262,15 +257,17 @@ class EDDObject(EDDMetadata, EDDSerialize):
         return self.name
 
     @classmethod
-    def export_columns(cls, instances=[]):
-        # TODO: flip this to instead pass arguments to a factory on table.ColumnChoice
-        # only do ID and Name here, allow overrides to include e.g. metadata
-        return [
-            table.ColumnChoice(
-                cls, 'id', _('ID'), lambda x: x.id, heading=cls.__name__ + ' ID'),
-            table.ColumnChoice(
-                cls, 'name', _('Name'), lambda x: x.name, heading=cls.__name__ + ' Name'),
-        ]
+    def export_columns(cls, table_generator, instances=None):
+        # define column for object ID
+        table_generator.define_field_column(
+            cls._meta.get_field('id'),
+            heading=f'{cls.__name__} ID',
+        )
+        # define column for object name
+        table_generator.define_field_column(
+            cls._meta.get_field('name'),
+            heading=f'{cls.__name__} Name',
+        )
 
     def to_json(self, depth=0):
         return {
@@ -299,7 +296,6 @@ class EDDObject(EDDMetadata, EDDSerialize):
         return user and user.is_superuser
 
 
-@python_2_unicode_compatible
 class Study(EDDObject):
     """ A collection of items to be studied. """
     class Meta:
@@ -357,11 +353,19 @@ class Study(EDDObject):
     )
 
     @classmethod
-    def export_columns(cls, instances=[]):
-        return super(Study, cls).export_columns(instances) + [
-            table.ColumnChoice(
-                cls, 'contact', _('Contact'), lambda x: x.get_contact(), heading='Study Contact'),
-        ]
+    def export_columns(cls, table_generator, instances=None):
+        super(Study, cls).export_columns(table_generator, instances=instances)
+        # define column for study description
+        table_generator.define_field_column(
+            cls._meta.get_field('description'),
+            heading=_('Study Description'),
+        )
+        # define column for study contact
+        table_generator.define_field_column(
+            cls._meta.get_field('contact'),
+            lookup=Study.get_contact,
+            heading=_('Study Contact'),
+        )
 
     def __str__(self):
         return self.name
@@ -437,19 +441,23 @@ class Study(EDDObject):
         def filter_key(*args):
             return '__'.join(via + list(args))
 
-        return (
-            Q(**{
-                filter_key('userpermission', 'user'): user,
-                filter_key('userpermission', 'permission_type', 'in'): access,
-            }) |
-            Q(**{
-                filter_key('grouppermission', 'group', 'user'): user,
-                filter_key('grouppermission', 'permission_type', 'in'): access,
-            }) |
-            Q(**{
-                filter_key('everyonepermission', 'permission_type', 'in'): access,
-            })
-        )
+        # set access filter for public/anonymous access
+        access_filter = Q(**{filter_key('everyonepermission', 'permission_type', 'in'): access})
+        if user:
+            access_filter |= (
+                # set access for user
+                Q(**{
+                    filter_key('userpermission', 'user'): user,
+                    filter_key('userpermission', 'permission_type', 'in'): access,
+                }) |
+                # set access for user's groups
+                Q(**{
+                    filter_key('grouppermission', 'group', 'user'): user,
+                    filter_key('grouppermission', 'permission_type', 'in'): access,
+                })
+            )
+
+        return access_filter
 
     @staticmethod
     def user_role_can_read(user):
@@ -575,7 +583,6 @@ class Study(EDDObject):
         return Study.objects.filter(slug=slug).exists()
 
 
-@python_2_unicode_compatible
 class Protocol(EDDObject):
     """ A defined method of examining a Line. """
     class Meta:
@@ -659,7 +666,6 @@ class Protocol(EDDObject):
         return super(Protocol, self).save(*args, **kwargs)
 
 
-@python_2_unicode_compatible
 class Strain(EDDObject):
     """ A link to a strain/part in the JBEI ICE Registry. """
     class Meta:
@@ -711,7 +717,6 @@ class Strain(EDDObject):
         return user.has_perm('edd.delete_strain')
 
 
-@python_2_unicode_compatible
 class CarbonSource(EDDObject):
     """ Information about carbon sources, isotope labeling. """
     class Meta:
@@ -746,7 +751,6 @@ class CarbonSource(EDDObject):
         return "%s (%s)" % (self.name, self.labeling)
 
 
-@python_2_unicode_compatible
 class Line(EDDObject):
     """ A single item to be studied (contents of well, tube, dish, etc). """
     class Meta:
@@ -817,37 +821,39 @@ class Line(EDDObject):
         return metatype.for_context == MetadataType.LINE
 
     @classmethod
-    def export_columns(cls, instances=[]):
-        types = MetadataType.all_types_on_instances(instances)
-        return super(Line, cls).export_columns(instances) + [
-            table.ColumnChoice(
-                cls, 'control', _('Control'), lambda x: 'T' if x.control else 'F'),
-            table.ColumnChoice(
-                # TODO export should handle multi-valued fields better than this
-                cls, 'strain', _('Strain'),
-                lambda x: '|'.join([s.name for s in x.strains.all()])),
-            table.ColumnChoice(
-                # TODO export should handle multi-valued fields better than this
-                cls, 'csource_name', _('Carbon Source'),
-                lambda x: '|'.join([c.name for c in x.carbon_source.all()])),
-            table.ColumnChoice(
-                # TODO export should handle multi-valued fields better than this
-                cls, 'csource_label', _('Carbon Labeling'),
-                lambda x: '|'.join([c.labeling for c in x.carbon_source.all()])),
-            table.ColumnChoice(
-                cls, 'experimenter', _('Experimenter'),
-                lambda x: x.experimenter.email if x.experimenter else '',
-                heading=_('Line Experimenter')),
-            table.ColumnChoice(
-                cls, 'contact', _('Contact'),
-                lambda x: x.contact.email if x.contact else '',
-                heading=_('Line Contact')),
-        ] + [
-            table.ColumnChoice(
-                cls, 'meta.%s' % t.id, t.type_name,
-                lambda x: x.meta_store.get('%s' % t.id, ''))
-            for t in types
-        ]
+    def export_columns(cls, table_generator, instances=None):
+        super(Line, cls).export_columns(table_generator, instances=instances)
+        instances = [] if instances is None else instances
+        table_generator.define_field_column(
+            cls._meta.get_field('description'),
+            heading=_('Line Description'),
+        )
+        table_generator.define_field_column(
+            cls._meta.get_field('control'),
+            lookup=lambda line: 'T' if line.control else 'F',
+        )
+        # TODO export should handle multi-valued fields better than this
+        table_generator.define_field_column(
+            cls._meta.get_field('strains'),
+            lookup=lambda line: '|'.join(line.strains.all().values_list('name', flat=True)),
+        )
+        # TODO export should handle multi-valued fields better than this
+        table_generator.define_field_column(
+            cls._meta.get_field('carbon_source'),
+            lookup=lambda line: '|'.join(line.carbon_source.all().values_list('name', flat=True)),
+        )
+        table_generator.define_field_column(
+            cls._meta.get_field('experimenter'),
+            lookup=lambda line: line.experimenter.email if line.experimenter else '',
+            heading=_('Line Experimenter'),
+        )
+        table_generator.define_field_column(
+            cls._meta.get_field('contact'),
+            lookup=lambda line: line.contact.email if line.contact else '',
+            heading=_('Line Contact'),
+        )
+        for type_ in MetadataType.all_types_on_instances(instances):
+            table_generator.define_meta_column(type_)
 
     def __str__(self):
         return self.name
@@ -888,7 +894,6 @@ class Line(EDDObject):
         return self.study.user_can_write(user)
 
 
-@python_2_unicode_compatible
 class Assay(EDDObject):
     """ An examination of a Line, containing the Protocol and set of Measurements. """
     class Meta:
@@ -951,7 +956,6 @@ class Assay(EDDObject):
         return json_dict
 
 
-@python_2_unicode_compatible
 class Measurement(EDDMetadata, EDDSerialize):
     """ A plot of data points for an (assay, measurement type) pair. """
     class Meta:
@@ -1053,21 +1057,24 @@ class Measurement(EDDMetadata, EDDSerialize):
     )
 
     @classmethod
-    def export_columns(cls):
-        return [
-            table.ColumnChoice(
-                cls, 'type', _('Measurement Type'), lambda x: x.measurement_type.export_name()),
-            table.ColumnChoice(
-                cls, 'comp', _('Compartment'), lambda x: x.compartment_symbol),
-            table.ColumnChoice(
-                cls, 'mod', _('Measurement Updated'), lambda x: x.update_ref.mod_time),
-            table.ColumnChoice(
-                cls, 'x_units', _('X Units'),
-                lambda x: x.x_units.unit_name if x.x_units.display else ''),
-            table.ColumnChoice(
-                cls, 'y_units', _('Y Units'),
-                lambda x: x.y_units.unit_name if x.y_units.display else ''),
-        ]
+    def export_columns(cls, table_generator, instances=None):
+        table_generator.define_field_column(
+            cls._meta.get_field('measurement_type'),
+            lookup=lambda measure: measure.measurement_type.export_name(),
+        )
+        table_generator.define_field_column(
+            cls._meta.get_field('update_ref'),
+            heading=_('Measurement Updated'),
+            lookup=lambda measure: measure.update_ref.mod_time,
+        )
+        table_generator.define_field_column(
+            cls._meta.get_field('x_units'),
+            lookup=lambda measure: measure.x_units.unit_name if measure.x_units.display else '',
+        )
+        table_generator.define_field_column(
+            cls._meta.get_field('y_units'),
+            lookup=lambda measure: measure.y_units.unit_name if measure.y_units.display else '',
+        )
 
     def to_json(self, depth=0):
         return {
@@ -1148,7 +1155,6 @@ class Measurement(EDDMetadata, EDDSerialize):
         return (self.y_axis_units_name in ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L", ])
 
 
-@python_2_unicode_compatible
 class MeasurementValue(models.Model):
     """ Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of a measurement """
     class Meta:

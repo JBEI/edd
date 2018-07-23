@@ -15,10 +15,14 @@ admin.autodiscover()
 
 
 rest_urlpatterns = [
-    path('', include('edd_file_importer.rest.urls', namespace='edd_file_importer')),
     path('', include('edd.rest.urls', namespace='rest')),
     path('auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]
+
+if 'edd_file_importer' in settings.INSTALLED_APPS:
+    rest_urlpatterns = [
+        path('', include('edd_file_importer.rest.urls', namespace='edd_file_importer')),
+    ] + rest_urlpatterns
 
 urlpatterns = [
     # make sure to match the path to favicon *exactly*

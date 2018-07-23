@@ -1,6 +1,6 @@
-import * as d3 from "d3"
-import * as _ from "underscore"
-import "../src/EDDDataInterface"
+import * as d3 from "d3";
+import * as _ from "underscore";
+import "../src/EDDDataInterface";
 
 
 export interface GraphParams {
@@ -60,36 +60,36 @@ export interface GraphingSet extends MeasurementValueSequence {
 
 export class EDDGraphingTools {
 
+    static readonly colors: Color[] = [
+        '#0E6FA4',   // dark teal
+        '#51BFD8',   // teal
+        '#2A2056',   // navy
+        '#FCA456',   // light orange
+        '#2B7B3D',   // green
+        '#97D37D',   // light pastel green
+        '#CF5030',   // orange red
+        '#FFB6C1',   // light pink
+        '#6F2F8C',   // royal purple
+        '#B97DD3',   // light purple
+        '#7E0404',   // burgandy red
+        '#765667',   // grey pink
+        '#F279BA',   // pink
+        '#993F6C',   // maroon
+        '#919191',   // dark grey
+        '#BFBFBD',   // grey
+        '#ECDA3A',   // yellow
+        '#B2B200',   // mustard yellow
+        '#006E7E',   // grey blue
+        '#B2F2FB',   // light blue
+        '#0715CD',   // royal blue
+        '#E8C2F3',   // light lavender
+        '#7A5230',   // brown
+    ];
+
     nextColor: string;
     labels: JQuery[];
     remakeGraphCalls: number;
     globalInfo: EDDData;
-
-    static readonly colors: Color[] = [
-        '#0E6FA4',   //dark teal
-        '#51BFD8',   //teal
-        '#2A2056',   //navy
-        '#FCA456',   //light orange
-        '#2B7B3D',   //green
-        '#97D37D',   //light pastel green
-        '#CF5030',   //orange red
-        '#FFB6C1',   //light pink
-        '#6F2F8C',   //royal purple
-        '#B97DD3',   //light purple
-        '#7E0404',   //burgandy red
-        '#765667',   //grey pink
-        '#F279BA',   //pink
-        '#993F6C',   //maroon
-        '#919191',   //dark grey
-        '#BFBFBD',   //grey
-        '#ECDA3A',   //yellow
-        '#B2B200',   //mustard yellow
-        '#006E7E',   //grey blue
-        '#B2F2FB',   //light blue
-        '#0715CD',   //royal blue
-        '#E8C2F3',   //light lavender
-        '#7A5230'    //brown
-    ];
 
     constructor(globalInfo: EDDData) {
         this.nextColor = null;
@@ -198,13 +198,10 @@ export class EDDGraphingTools {
         var lineColors = {};
         // values of line obj
         var lineValues: LineRecord[] = _.values(lines);
-        // new object with numbers for ids
-        var indexLines: number[] = lineValues.map((line: LineRecord) => line.id);
         lineValues.forEach((line, index) => {
             let color = EDDGraphingTools.colors[index % EDDGraphingTools.colors.length];
             // adding color values to existing interface
-            let lineExtra: any = line as any;
-            lineExtra.color = color;
+            line.color = color;
             lineColors[line.id] = color;
         });
         return lineColors;
@@ -214,12 +211,12 @@ export class EDDGraphingTools {
     /**
      * this function takes in the selected color and returns the color that comes after.
      */
-    colorQueue(selectedColor: Color): void {
+    colorQueue(selectedColor: Color): Color {
         // normalize input
         let foundIndex = EDDGraphingTools.colors.indexOf(selectedColor.toUpperCase());
         // when not found, start at beginning; loop around at end
         let nextIndex = (foundIndex + 1) % EDDGraphingTools.colors.length;
-        this.nextColor = EDDGraphingTools.colors[nextIndex];
+        return this.nextColor = EDDGraphingTools.colors[nextIndex];
     }
 
 }
@@ -266,7 +263,6 @@ export class GraphView {
         },
         // triangle icon
         (plot: GenericSelection, pos: Positioning): GenericSelection => {
-            let left = pos.x(-4), middle = pos.x()
             return plot.append('svg:polygon')
                 .attr('class', 'icon')
                 .attr('points', (v: GraphValue): string => [
@@ -305,7 +301,7 @@ export class GraphView {
                 .attr('width', narrow)
                 .attr('height', wide);
             return icon;
-        }
+        },
     ];
     // map BarGraphMode to a human-friendly title (TODO: i18n)
     private static readonly titleLookup: {[k: string]: string} = {
@@ -322,19 +318,19 @@ export class GraphView {
     // map BarGraphMode to a GroupingMode priority of groupings
     private static readonly groupingLookup: {[k: string]: GroupingMode} = {
         'line': {
-            primary: GraphView.keyingLookup['line'],
-            secondary: GraphView.keyingLookup['time'],
-            tertiary: GraphView.keyingLookup['measurement']
+            primary: GraphView.keyingLookup.line,
+            secondary: GraphView.keyingLookup.time,
+            tertiary: GraphView.keyingLookup.measurement,
         },
         'time': {
-            primary: GraphView.keyingLookup['time'],
-            secondary: GraphView.keyingLookup['line'],
-            tertiary: GraphView.keyingLookup['measurement']
+            primary: GraphView.keyingLookup.time,
+            secondary: GraphView.keyingLookup.line,
+            tertiary: GraphView.keyingLookup.measurement,
         },
         'measurement': {
-            primary: GraphView.keyingLookup['measurement'],
-            secondary: GraphView.keyingLookup['time'],
-            tertiary: GraphView.keyingLookup['line']
+            primary: GraphView.keyingLookup.measurement,
+            secondary: GraphView.keyingLookup.time,
+            tertiary: GraphView.keyingLookup.line,
         },
     };
 
@@ -357,7 +353,7 @@ export class GraphView {
             x_extent: [number, number] = d3.extent(values, (v: GraphValue) => v.x);
 
         // tool tip svg
-        var div = d3.select("body").append("div")
+        d3.select("body").append("div")
             .attr("class", "tooltip2")
             .style("opacity", 0);
 
@@ -366,7 +362,7 @@ export class GraphView {
         let ordinalColors = d3.scaleOrdinal(EDDGraphingTools.colors);
 
         // create x axis svg
-        let x_axis = this.buildXAxis(params, x_scale, 'time');
+        this.buildXAxis(params, x_scale, 'time');
 
         // iterate through the different unit groups getting min y value, data, and range.
         d3.nest<GraphValue>()
@@ -405,7 +401,7 @@ export class GraphView {
             .domain(d3.set(values, grouping.primary).values())
             .rangeRound([0, params.width]).padding(0.1);
         // define the x-axis itself
-        let x_axis = this.buildXAxis(params, primary_scale, mode);
+        this.buildXAxis(params, primary_scale, mode);
         // function used later to set translation offsets for groupings
         let translate = (scale: d3.ScaleBand<string>) => {
             return (d: Nested<any>) => 'translate(' + scale(d.key) + ')';
@@ -420,7 +416,7 @@ export class GraphView {
                     .domain(this.yExtent(nest))
                     .range([params.height, 0]);
                 // attach the computed scale to every value
-                nest.values.forEach((v: GraphValue) => (<ScaledValue>v).scaled_y = y_scale(v.y));
+                nest.values.forEach((v: GraphValue) => (<ScaledValue> v).scaled_y = y_scale(v.y));
                 // define axes and icons for this unit grouping
                 this.buildUnitAxis(params, index, y_scale, nest.key);
             });
@@ -428,7 +424,7 @@ export class GraphView {
         let subnest: Nested<Nested<ScaledValue>>[] = d3.nest<ScaledValue>()
             .key(grouping.primary)
             .key(grouping.secondary)
-            .entries(<ScaledValue[]>values);  // values is converted in y_unit nest
+            .entries(<ScaledValue[]> values);  // values is converted in y_unit nest
         // define x-axis secondary scale; d3.set() keeps items in insertion order
         let secondary_scale = d3.scaleBand()
             .domain(d3.set(values, grouping.secondary).values())
@@ -508,18 +504,18 @@ export class GraphView {
         return icon;
     }
 
-    private buildXAxis<T>(
+    private buildXAxis<T extends d3.AxisDomain>(
         params: GraphParams,
         scale: d3.AxisScale<T>,
         mode: BarGraphMode
     ): d3.Axis<T> {
         // define the x-axis itself
-        let x_axis: d3.Axis<T> = d3.axisBottom(scale);
+        let x_axis: d3.Axis<T> = d3.axisBottom<T>(scale);
         let domain: T[] = scale.domain();
         let max_show: number = 20;
         if (domain.length === 2 && domain[0] instanceof Number) {
             // in a numeric domain, just use normal formatting
-            (<d3.Axis<number>><any> x_axis).ticks(10).tickFormat(d3.format('.2s'));
+            (<d3.Axis<number>> <any> x_axis).ticks(10).tickFormat(d3.format('.2s'));
         } else if (domain.length <= max_show) {
             // non-numeric domain with 20 or fewer items, display everything
             x_axis = x_axis.tickFormat((v: T): string => this.truncateLabel(v));
@@ -578,7 +574,7 @@ export class GraphView {
             if (v instanceof Number) {
                 // special-case numbers, to use two significant figures
                 // we know it's a number-type because of instanceof, double-cast informs compiler
-                return d3.format('.2s')((<number><any>v));
+                return d3.format('.2s')((<number> <any> v));
             }
             // otherwise coerce directly to string
             return '' + v;
@@ -588,20 +584,20 @@ export class GraphView {
     /**
      * This function creates the left y axis svg object, and applies grid lines.
      */
-    private buildLeftYAxis<T>(
+    private buildLeftYAxis<T extends d3.AxisDomain>(
         params: GraphParams,
         y_scale: d3.AxisScale<T>,
         label: string,
         icon?: GraphDecorator,
     ): d3.Axis<T> {
         if (!label || label === 'undefined') {
-            label = 'n/a'
+            label = 'n/a';
         }
         let yAxis = d3.axisLeft(y_scale).ticks(5);
         // write the group containing axis elements
         let axisGroup = this.svg.append("g")
             .attr("class", "y axis")
-            .style("font-size","12px")
+            .style("font-size", "12px")
             .call(this.addAxisTickFormat(yAxis));
         // entire label group is rotated counter-clockwise about a top-left origin
         let axisLabel = axisGroup.append('g')
@@ -620,7 +616,7 @@ export class GraphView {
         if (icon) {
             // x position = text_x + radius + padding = text_x + 5 + 3 = text_x + 8
             // y position = text_y + (font_size * 0.66) = text_y + 8
-            let fakeValue: GraphValue = (<GraphValue>{
+            let fakeValue: GraphValue = (<GraphValue> {
                 'x': text_x + 8,
                 'y': text_y + 8,
             });
@@ -643,7 +639,7 @@ export class GraphView {
     /**
      * This function creates the right y axis svg object.
      */
-    private buildRightYAxis<T>(
+    private buildRightYAxis<T extends d3.AxisDomain>(
         params: GraphParams,
         y_scale: d3.AxisScale<T>,
         label: string,
@@ -651,7 +647,7 @@ export class GraphView {
         icon?: GraphDecorator,
     ): d3.Axis<T> {
         if (!label || label === 'undefined') {
-            label = 'n/a'
+            label = 'n/a';
         }
         let yAxis = d3.axisRight(y_scale).ticks(5);
         // write the group containing axis elements
@@ -659,7 +655,7 @@ export class GraphView {
             .attr("class", "y axis")
             .attr("transform", "translate(" + spacing + " ,0)")
             .style("font-size", "12px")
-            .call(this.addAxisTickFormat(yAxis))
+            .call(this.addAxisTickFormat(yAxis));
         let axisLabel = axisGroup.append('g')
             .attr('transform', 'rotate(-90)')
             .attr("fill", "#000");
@@ -678,7 +674,7 @@ export class GraphView {
         if (icon) {
             // x position = text_x + radius + padding = text_x + 5 + 3 = text_x + 8
             // y position = text_y - (font_size * 0.33) = text_y - 4
-            let fakeValue: GraphValue = (<GraphValue>{
+            let fakeValue: GraphValue = (<GraphValue> {
                 'x': text_x + 8,
                 'y': text_y - 4,
             });
@@ -710,7 +706,7 @@ export class GraphView {
             .attr('class', 'graphValue')
             .attr('stroke', color)
             .attr('fill', 'none');
-        let path = curve.append('path')
+        curve.append('path')
             .attr('d', lineGenerator(data))
             .attr('stroke-width', 2)
             .attr('class', 'lineClass')

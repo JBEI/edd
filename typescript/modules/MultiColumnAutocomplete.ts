@@ -1,58 +1,54 @@
 /// <reference types="jqueryui" />
 
-declare function require(name: string): any;  // avoiding warnings for require calls below
-
 import * as jQuery from "jquery";
+
+// TODO find out a way to do this in Typescript without relying on specific output targets
+/* tslint:disable */
+declare function require(name: string): any;  // avoiding warnings for require calls below
 // as of JQuery UI 1.12, need to require each dependency individually
 require('jquery-ui/themes/base/core.css');
 require('jquery-ui/themes/base/menu.css');
 require('jquery-ui/themes/base/autocomplete.css');
 require('jquery-ui/themes/base/theme.css');
-require('jquery-ui/ui/widgets/autocomplete')
+require('jquery-ui/ui/widgets/autocomplete');
+/* tslint:enable */
 
+export type AutoValueFieldCallback = (item: any, col: AutoColumn, i: number) => string;
 
-export namespace MultiColumnAuto {
+export class AutoColumn {
+    name: string;
+    width: string;
+    maxWidth: string;
+    valueField: any; // string | AutoValueFieldCallback;
 
-    export type AutoValueFieldCallback = (item: any, col: AutoColumn, i: number) => string;
-
-    export class AutoColumn {
-        name: string;
-        width: string;
-        maxWidth: string;
-        valueField: any; // string | AutoValueFieldCallback;
-
-        constructor(name, minWidth, valueField, maxWidth?) {
-            this.name = name;
-            this.width = minWidth;
-            this.maxWidth = maxWidth || null;
-            this.valueField = valueField;
-            return this;
-        }
+    constructor(name, minWidth, valueField, maxWidth?) {
+        this.name = name;
+        this.width = minWidth;
+        this.maxWidth = maxWidth || null;
+        this.valueField = valueField;
+        return this;
     }
+}
 
-    /**
-     * Insert these items to display autocomplete messages which are not selectable values.
-     */
-    export class NonValueItem {
-        static NO_RESULT: NonValueItem = new NonValueItem('No Results Found');
-        static ERROR: NonValueItem = new NonValueItem('Server Error');
+/**
+ * Insert these items to display autocomplete messages which are not selectable values.
+ */
+export class NonValueItem {
+    static NO_RESULT: NonValueItem = new NonValueItem('No Results Found');
+    static ERROR: NonValueItem = new NonValueItem('Server Error');
 
-        // the autocomplete JQuery UI plugin expects items with label and value properties
-        // anything without those properties gets converted to a plain object that does
-        label: string;
-        value: Object;
+    // the autocomplete JQuery UI plugin expects items with label and value properties
+    // anything without those properties gets converted to a plain object that does
+    label: string;
+    value: Object;
 
-        constructor(label: string) {
-            this.label = label;
-            this.value = {};
-        }
+    constructor(label: string) {
+        this.label = label;
+        this.value = {};
     }
-
 }
 
 (function($) { // immediately invoked function to bind jQuery to $
-
-    var meta_columns;
 
     /*
      * jQuery UI Multicolumn Autocomplete Widget Plugin 2.2
@@ -95,7 +91,7 @@ export namespace MultiColumnAuto {
             return cell;
         },
         _renderMenu: function(ul, items) {
-            var self = this, thead;
+            var self = this;
 
             if (self.options.showHeader) {
                 var table = $('<li class="ui-widget-header"></div>');
@@ -112,9 +108,10 @@ export namespace MultiColumnAuto {
             $(ul).addClass("edd-autocomplete-list").find("li:odd").addClass("odd");
         },
         _renderItem: function(ul, item) {
-            var t = '', self = this, result = $('<li>').data('ui-autocomplete-item', item);
+            let self = this;
+            let result = $('<li>').data('ui-autocomplete-item', item);
 
-            if (item instanceof MultiColumnAuto.NonValueItem) {
+            if (item instanceof NonValueItem) {
                 self._appendMessage(result, item.label);
             } else {
                 $.each(self.options.columns, function(index, column) {
@@ -137,7 +134,7 @@ export namespace MultiColumnAuto {
 
             result.appendTo(ul);
             return result;
-        }
+        },
     });
 
 }(jQuery));

@@ -252,3 +252,42 @@ class MetadataGroupSerializer(serializers.ModelSerializer):
         fields = (
             'group_name',
         )
+
+
+class ExportStudySerializer(StudySerializer):
+    pass
+
+
+class ExportLineSerializer(LineSerializer):
+    study = ExportStudySerializer(read_only=True)
+
+
+class ExportAssaySerializer(AssaySerializer):
+    line = ExportLineSerializer(read_only=True)
+
+
+class ExportMeasurementSerializer(MeasurementSerializer):
+    assay = ExportAssaySerializer(read_only=True)
+    measurement_type = MeasurementTypeSerializer(read_only=True)
+    x_units = MeasurementUnitSerializer(read_only=True)
+    y_units = MeasurementUnitSerializer(read_only=True)
+
+
+class ExportSerializer(serializers.ModelSerializer):
+    measurement = ExportMeasurementSerializer(read_only=True)
+    x = serializers.SerializerMethodField()
+    y = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.MeasurementValue
+        fields = (
+            'measurement',
+            'x',
+            'y',
+        )
+
+    def get_x(self, obj):
+        return obj.x[0]
+
+    def get_y(self, obj):
+        return obj.y[0]

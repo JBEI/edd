@@ -10,13 +10,13 @@ volumes:
   solr_cores: {}
 services:
   postgres:
-    image: library/postgres:9.6
+    build: ./postgres/
+    image: jbei/postgres:9.6
     restart: always
     networks:
       - backnet
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./postgres/healthcheck.sh:/healthcheck.sh
     healthcheck:
       test: ['CMD', '/healthcheck.sh']
       interval: 1m
@@ -31,13 +31,13 @@ services:
       - '5432'
     env_file: secrets.env
   redis:
-    image: library/redis:3.2
+    build: ./redis/
+    image: jbei/redis:3.2
     restart: always
     networks:
       - backnet
     volumes:
       - redisdata:/data
-      - ./redis/healthcheck.sh:/healthcheck.sh
     healthcheck:
       test: ['CMD', '/healthcheck.sh']
       interval: 1m
@@ -52,16 +52,14 @@ services:
       - '6379'
     command: redis-server --appendonly yes
   solr:
-    image: library/solr:7.3
+    build: ./solr/
+    image: jbei/solr:7.3
     entrypoint: ['/entrypoint.sh']
     restart: always
     networks:
       - backnet
     volumes:
       - solr_cores:/opt/solr/server/solr
-      - ./solr/entrypoint.sh:/entrypoint.sh
-      - ./solr/healthcheck.sh:/healthcheck.sh
-      - ./solr/cores:/tmp/cores
     healthcheck:
       test: ['CMD', '/healthcheck.sh']
       interval: 1m
@@ -75,7 +73,8 @@ services:
     expose:
       - '8983'
   rabbitmq:
-    image: library/rabbitmq:3.6-management
+    build: ./rabbitmq/
+    image: jbei/rabbitmq:3.6-management
     restart: always
     hostname: rabbitmq
     env_file: secrets.env
@@ -89,8 +88,6 @@ services:
       - '15672'
     networks:
       - backnet
-    volumes:
-      - ./rabbitmq/healthcheck.sh:/healthcheck.sh
     healthcheck:
       test: ['CMD', '/healthcheck.sh']
       interval: 1m
@@ -141,7 +138,7 @@ services:
         max-size: 1m
         max-file: '5'
   edd:
-    build: ./edd/
+    build: ./edd/core/
     image: jbei/edd-core:latest
     restart: always
     command: ['application']

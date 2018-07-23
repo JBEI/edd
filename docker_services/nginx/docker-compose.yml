@@ -11,7 +11,8 @@ volumes:
   nginx_webroot: {}
 services:
   nginx:
-    image: nginx:mainline
+    build: ./nginx/
+    image: jbei/nginx:mainline
     # using container_name means there will only ever be one nginx container!
     container_name: nginx
     restart: always
@@ -24,9 +25,8 @@ services:
       - nginx_certs:/etc/nginx/certs:ro
       - attachdata:/usr/share/nginx/html/uploads:ro
       - staticdata:/usr/share/nginx/html/static:ro
-      - ./healthcheck.sh:/bin/healthcheck.sh
     healthcheck:
-      test: ['CMD', '/bin/healthcheck.sh']
+      test: ['CMD', '/healthcheck.sh']
       interval: 1m
       timeout: 5s
       retries: 3
@@ -47,7 +47,8 @@ services:
       #- '10.20.17.100:80:80'
       #- '10.20.17.100:443:443'
   nginx-gen:
-    image: jwilder/docker-gen
+    build: ./nginx-gen/
+    image: jbei/nginx-gen:latest
     # using container_name means there will only ever be one nginx-gen container!
     container_name: nginx-gen
     entrypoint:
