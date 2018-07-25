@@ -4,23 +4,26 @@ Reformat CSV output from the program Skyline to consolidate MS peak areas for
 individual peptides or proteins.
 """
 
+import numbers
 import re
 
 from collections import defaultdict, namedtuple
 from decimal import Decimal
 from itertools import product
+from six import string_types
 
 from .util import RawImportRecord
 
 
 Record = namedtuple('Record', ['sample', 'measurement', 'value', ])
 decimal_pattern = re.compile(r'^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?')
+default_record_layout = Record(0, 1, 3)
 
 
 class SkylineParser(object):
     __slots__ = ['col_index']
 
-    def __init__(self, col_index=Record(0, 1, 3), *args, **kwargs):
+    def __init__(self, col_index=default_record_layout, *args, **kwargs):
         """
         Optionally take indices for the columns containing sample name, measurement type, and
         value; defaults to assuming 0th, 1st, and 3rd columns (2nd is discarded peptide seq).
@@ -111,7 +114,12 @@ class SkylineParser(object):
         """
         Function should evaluate to True if the row has a numeric value in the value column.
         """
-        return bool(decimal_pattern.match(row[self.col_index.value]))
+        test_value = row[self.col_index.value]
+        if isinstance(test_value, numbers.Number):
+            return True
+        elif isinstance(test_value, string_types):
+            return bool(decimal_pattern.match(test_value))
+        return False
 
     def _row_to_record(self, row):
         """ Converting array of spreadsheet cells to a Record tuple. """

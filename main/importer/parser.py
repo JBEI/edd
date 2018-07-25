@@ -101,7 +101,8 @@ def skyline_csv_parser(request):
 @ParserFunction(ImportModeFlags.SKYLINE, ImportFileTypeFlags.EXCEL)
 def skyline_excel_parser(request):
     parser = skyline.SkylineParser()
-    spreadsheet = excel.import_xlsx_tables(file=request)
+    excel_dict = excel.import_xlsx_table(file=request)
+    spreadsheet = [excel_dict["headers"]] + excel_dict["values"]
     return ParsedInput(
         ImportFileTypeFlags.EXCEL,
         parser.getRawImportRecordsAsJSON(spreadsheet)
