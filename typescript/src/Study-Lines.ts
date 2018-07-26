@@ -126,7 +126,7 @@ export function prepareIt() {
             linesDataGridSpec = new DataGridSpecLines();
             linesDataGridSpec.init();
             // Instantiate the table itself with the spec
-            linesDataGrid = new LineResults(this.linesDataGridSpec);
+            linesDataGrid = new LineResults(linesDataGridSpec);
 
             // Show controls that depend on having some lines present to be useful
             hasLines = Object.keys(EDDData.Lines).length !== 0;

@@ -7,7 +7,6 @@ import warnings
 from collections import namedtuple
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
 from django.utils.translation import ugettext as _
 from six import string_types
 
@@ -85,12 +84,12 @@ class TableImport(object):
     measurements to the database.
     """
 
-    def __init__(self, study, user, request=None):
+    def __init__(self, study, user):
         """
         Creates an import handler.
+
         :param study: the target study for import
         :param user: the user performing the import
-        :param request: (optional) if provided, can add messages using Django messages framework
         :raises: PermissionDenied if the user does not have write access to the study
         """
 
@@ -103,39 +102,52 @@ class TableImport(object):
 
         self._study = study
         self._user = user
+        # lookups for line/assay by names
         self._line_assay_lookup = {}
         self._line_lookup = {}
         self._meta_lookup = {}
         self._valid_protocol = {}
-        self._request = request
+        # lookups for line/assay by IDs
+        self._line_by_id = {}
+        self._assay_by_id = {}
         # end up looking for hours repeatedly, just load once at init
         self._hours = models.MeasurementUnit.objects.get(unit_name='hours')
         if not self._study.user_can_write(user):
             raise PermissionDenied(
-                '%s does not have write access to study "%s"' % (user.username, study.name)
+                f'{user.username} does not have write access to study "{study.name}"'
             )
 
     def parse_context(self, context):
         self.mode = context.get('datalayout', None)
-        self.master_compartment = context.get('masterMCompValue',
-                                              models.Measurement.Compartment.UNKNOWN)
+        self.master_compartment = context.get('masterMCompValue', None)
         if not self.master_compartment:
             self.master_compartment = models.Measurement.Compartment.UNKNOWN
         self.master_mtype_id = context.get('masterMTypeValue', None)
         self.master_unit_id = context.get('masterMUnitsValue', None)
         self.replace = context.get('writemode', None) == 'r'
 
-    @transaction.atomic(savepoint=False)
     def import_series_data(self, series_data):
         """
         Imports data into the study.  Assumption is that parse_context() has already been run or
         that a client has directly set related importer attributes.
+
         :param series_data: series data to import into the study.
         :return: a tuple with a summary of measurement counts in the form (added, updated)
         """
         self.check_series_points(series_data)
         self.init_lines_and_assays(series_data)
         return self.create_measurements(series_data)
+
+    def finish_import(self):
+        # after importing, force updates of previously-existing lines and assays
+        for assay in self._assay_by_id.values():
+            # force refresh of Assay's Update (also saves any changed metadata)
+            assay.save(update_fields=['meta_store', 'updated'])
+        for line in self._line_by_id.values():
+            # force refresh of Update (also saves any changed metadata)
+            line.save(update_fields=['meta_store', 'updated'])
+        # and force update of the study
+        self._study.save(update_fields=['meta_store', 'updated'])
 
     def check_series_points(self, series):
         """
@@ -164,16 +176,16 @@ class TableImport(object):
         if assay_id is None:
             logger.warning('Import set has undefined assay_id field.')
             item['invalid_fields'] = True
+        elif assay_id in self._assay_by_id:
+            assay = self._assay_by_id.get(assay_id)
         elif assay_id not in ['new', 'named_or_new', ]:
             # attempt to lookup existing assay
             try:
                 assay = models.Assay.objects.get(pk=assay_id, line__study_id=self._study.pk)
+                self._assay_by_id[assay_id] = assay
             except models.Assay.DoesNotExist:
                 logger.warning(
-                    'Import set cannot load Assay,Study: %(assay_id)s,%(study_id)s' % {
-                        'assay_id': assay_id,
-                        'study_id': self._study.pk,
-                    }
+                    f'Import set cannot load Assay,Study: {assay_id},{self._study.pk}'
                 )
                 item['invalid_fields'] = True
         else:
@@ -189,7 +201,7 @@ class TableImport(object):
                     # if we have no name, 'named_or_new' and 'new' are treated the same
                     index = line.new_assay_number(protocol)
                     assay_name = models.Assay.build_name(line, protocol, index)
-                key = (line.id, assay_id)
+                key = (line.id, assay_name)
                 if key in self._line_assay_lookup:
                     assay = self._line_assay_lookup[key]
                 else:
@@ -198,7 +210,7 @@ class TableImport(object):
                         protocol=protocol,
                         experimenter=self._user,
                     )
-                    logger.info('Created new Assay %s:%s' % (assay.id, assay_name))
+                    logger.info(f'Created new Assay {assay.id}:{assay_name}')
                     self._line_assay_lookup[key] = assay
         return assay
 
@@ -227,9 +239,12 @@ class TableImport(object):
                 )
                 self._line_lookup[line_name] = line
                 logger.info('Created new Line %s:%s' % (line.id, line.name))
+        elif line_id in self._line_by_id:
+            line = self._line_by_id.get(line_id)
         else:
             try:
                 line = models.Line.objects.get(pk=line_id, study_id=self._study.pk)
+                self._line_by_id[line_id] = line
             except models.Line.DoesNotExist:
                 logger.warning(
                     'Import set cannot load Line,Study: %(line_id)s,%(study_id)s' % {
@@ -266,6 +281,9 @@ class TableImport(object):
         # very slowly on my test machine, consistently taking an entire second per set (approx 300
         # values each). To an end user, this makes the submission appear to hang for over a
         # minute, which might make them behave erratically...
+
+        # TODO: try doing loop twice, first with models.Measurement.objects.bulk_create()
+        # then with models.MeasurementValue.objects.bulk_create()
         for (index, item) in enumerate(series):
             points = item.get('data', [])
             meta = item.get('metadata_by_id', {})
@@ -282,16 +300,9 @@ class TableImport(object):
                 added += points_added
                 updated += points_updated
                 self._process_metadata(assay, meta)
-                # force refresh of Assay's Update (also saves any changed metadata)
-                assay.save()
-        for line in self._line_lookup.values():
-            # force refresh of Update (also saves any changed metadata)
-            line.save()
-        self._study.save()
         return (added, updated)
 
     def _load_measurement_record(self, item):
-        record = None
         assay = item['assay_obj']
         points = item.get('data', [])
         mtype = self._mtype(item)
@@ -311,24 +322,24 @@ class TableImport(object):
             if self.replace:
                 records.delete()
             else:
-                record = records[0]
-                record.save()  # force refresh of Update
-        if record is None:
-            find.update(experimenter=self._user)
-            logger.debug("Creating measurement with: %s", find)
-            record = assay.measurement_set.create(**find)
-        return record
+                record = records[0]  # only SELECT query once
+                record.save(update_fields=['update_ref'])  # force refresh of Update
+                return record
+        find.update(experimenter=self._user)
+        logger.debug("Creating measurement with: %s", find)
+        return assay.measurement_set.create(**find)
 
     def _process_measurement_points(self, record, points):
-        added = 0
-        updated = 0
+        total_added = 0
+        total_updated = 0
         for x, y in points:
             (xvalue, yvalue) = (self._extract_value(x), self._extract_value(y))
-            updated += record.measurementvalue_set.filter(x=xvalue).update(y=yvalue)
+            updated = record.measurementvalue_set.filter(x=xvalue).update(y=yvalue)
+            total_updated += updated
             if updated == 0:
                 record.measurementvalue_set.create(x=xvalue, y=yvalue)
-                added += 1
-        return (added, updated)
+                total_added += 1
+        return (total_added, total_updated)
 
     def _process_metadata(self, assay, meta):
         if len(meta) > 0:

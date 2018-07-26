@@ -55,9 +55,8 @@ interface RawInputStat {
     columns: number;
 }
 
-declare var ATData: any; // Setup by the server.
 // make sure this is initialized at least to an empty object.
-ATData = ATData || {};
+var ATData: any = ATData || {};
 
 // During initialization we will allocate one instance of each of the classes
 // that handle the major steps of the import process.
@@ -2830,7 +2829,7 @@ export class TypeDisambiguationStep {
 
         if (uniqueAssayNames.length - 1) {
             let matched: number = $('#matchedAssaysSectionBody tr').length - 1;
-            let matchedLines: number = $('#matchedAssaysSectionBody tr option: selected')
+            let matchedLines: number = $('#matchedAssaysSectionBody tr option:selected')
                                         .text().split('Create New Assay').length - 1;
             let matchedAssays: number = matched - matchedLines;
             if (matched === 0) {
@@ -3922,10 +3921,12 @@ export class ReviewStep {
         $('#submit-div').addClass('off');
         $('#importWaitingDiv, #submit-result').removeClass('off');
         let resolvedSets = this.step4.createSetsForSubmission();
-        let pageSizeLimit = $('#pageSizeLimit').val() || 1000;
-        let pageCount = Math.ceil(resolvedSets.length / pageSizeLimit);
-        let begin = 0, currentPage = 0;
-        let requests = [];
+        // make sure to parse string value from #pageSizeLimit to a number
+        let pageSizeLimit: number = parseInt($('#pageSizeLimit').val(), 10) || 1000;
+        let pageCount: number = Math.ceil(resolvedSets.length / pageSizeLimit);
+        let begin: number = 0;
+        let currentPage: number = 0;
+        let requests: JQueryPromise<any>[] = [];
         progressbar.progressbar({'max': resolvedSets.length, 'value': 0});
         while (begin < resolvedSets.length) {
             let series = resolvedSets.slice(begin, (begin += pageSizeLimit));

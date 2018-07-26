@@ -12,11 +12,13 @@ from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail, mail_admins
+from django.db import transaction
 from django.db.models import F
+from django.http.request import HttpRequest
 from django.urls import reverse
 from django.utils.translation import ugettext as _
 from requests.exceptions import RequestException
-from django.db import transaction
+from threadlocals.threadlocals import set_thread_variable
 
 from . import models
 from .export import forms as export_forms
@@ -198,10 +200,19 @@ def import_table_task(self, study_id, user_id, import_id):
         user = User.objects.get(pk=user_id)
         notifications = RedisBroker(user)
 
+        # set a fake request object with update info
+        fake_request = HttpRequest()
+
         try:
             # load global context for the import
             broker = ImportBroker()
             import_params = json.loads(broker.load_context(import_id))
+            if 'update_id' in import_params:
+                update_id = import_params.get('update_id')
+                fake_request.update_obj = models.Update.objects.get(pk=update_id)
+            else:
+                fake_request.update_obj = models.Update.load_update(user=user)
+            set_thread_variable('request', fake_request)
 
             # load paged series data
             pages = broker.load_pages(import_id)
@@ -218,12 +229,13 @@ def import_table_task(self, study_id, user_id, import_id):
                     added, updated = importer.import_series_data(parsed_page)
                     total_added += added
                     total_updated += updated
+                importer.finish_import()
 
             # if requested, notify user of completion (e.g. for a large import)
             send_import_completion_email(study, user, import_params, start, added, updated)
             message = _(
                 'Finished import to {study}: {added} added and {updated} updated measurements.'
-            ).format(study=study.name, added=added, updated=updated)
+            ).format(study=study.name, added=total_added, updated=total_updated)
             notifications.notify(message)
             notifications.mark_read(self.request.id)
 
@@ -243,6 +255,8 @@ def import_table_task(self, study_id, user_id, import_id):
                     'study': study.name,
                 }
             )
+        finally:
+            set_thread_variable('request', None)
     except Exception as e:
         logger.exception(f'Failure in import_table_task: {e}')
         raise RuntimeError(

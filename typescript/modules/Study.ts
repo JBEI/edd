@@ -62,4 +62,4 @@ export function prepareIt() {
 
 
 // use JQuery ready event shortcut to call prepareIt when page is ready
-$(() => prepareIt());
+$(prepareIt);

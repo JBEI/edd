@@ -94,12 +94,11 @@ class Update(models.Model, EDDSerialize):
 
     @classmethod
     def load_request_update(cls, request):
-        """ Load an existing Update object associated with a request, or create a new one. """
-        rhost = '%s; %s' % (
-            request.META.get('REMOTE_ADDR', None),
-            request.META.get('REMOTE_HOST', '')
-        )
+        """Load an existing Update object associated with a request, or create a new one."""
         if not hasattr(request, 'update_obj'):
+            remote_addr = request.META.get('REMOTE_ADDR', None)
+            remote_host = request.META.get('REMOTE_HOST', None)
+            rhost = f'{remote_addr}; {remote_host}'
             update = cls.objects.create(
                 mod_time=arrow.utcnow(),
                 mod_by=request.user,

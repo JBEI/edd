@@ -69,7 +69,7 @@ ICE_VERIFY_CERT = True
 EDD_SERIALIZE_NAME = 'edd-json'
 
 # the max # of data items in a single page of import data
-EDD_IMPORT_PAGE_SIZE = 10000
+EDD_IMPORT_PAGE_SIZE = 1000
 
 # the max # of pages allowed in a single import
 EDD_IMPORT_PAGE_LIMIT = 1000

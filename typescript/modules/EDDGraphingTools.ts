@@ -213,6 +213,7 @@ export class EDDGraphingTools {
      */
     colorQueue(selectedColor: Color): Color {
         // normalize input
+        selectedColor = selectedColor || '';
         let foundIndex = EDDGraphingTools.colors.indexOf(selectedColor.toUpperCase());
         // when not found, start at beginning; loop around at end
         let nextIndex = (foundIndex + 1) % EDDGraphingTools.colors.length;

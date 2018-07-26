@@ -158,10 +158,6 @@ export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
 
 // Called when the page loads.
 export function prepareIt() {
-    this.attachmentIDs = null;
-    this.attachmentsByID = null;
-    this.prevDescriptionEditElement = null;
-
     let contactEdit = new EditableStudyContact($('#editable-study-contact').get()[0]);
     let descEdit = new EditableStudyDescription($('#editable-study-description').get()[0]);
     contactEdit.getValue();

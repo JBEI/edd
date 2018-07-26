@@ -67,11 +67,11 @@ export function disclose() {
 
 export function prepareTable() {
     // Instantiate a table specification for the Studies table
-    this.studiesDataGridSpec = new DataGridSpecStudies();
-    this.studiesDataGridSpec.init();
+    let studiesDataGridSpec = new DataGridSpecStudies();
+    studiesDataGridSpec.init();
 
     // prepare tooltip for matched searches
-    $(this.studiesDataGridSpec.tableElement).tooltip({
+    $(studiesDataGridSpec.tableElement).tooltip({
         "content": function () {
             return $(this).find('.popupmenu').clone(true).removeClass('off');
         },
@@ -82,9 +82,9 @@ export function prepareTable() {
     });
 
     // Instantiate the table itself with the spec
-    this.studiesDataGrid = new DataGrid(this.studiesDataGridSpec);
-    this.studiesDataGridSpec.requestPageOfData((success) => {
-        if (success) { this.studiesDataGrid.triggerDataReset(); }
+    let studiesDataGrid = new DataGrid(studiesDataGridSpec);
+    studiesDataGridSpec.requestPageOfData((success) => {
+        if (success) { studiesDataGrid.triggerDataReset(); }
     });
 }
 

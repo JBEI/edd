@@ -1514,12 +1514,6 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
             import_id = body['importId']
             series = body['series']
 
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug('\n'.join([
-                    '%(key)s : %(value)s' % {'key': key, 'value': body[key]}
-                    for key in sorted(body)
-                ]))
-
             broker = table.ImportBroker()
             notifications = RedisBroker(request.user)
 
@@ -1534,6 +1528,9 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
             cached_pages = broker.add_page(import_id, json.dumps(series))
             # if this is the initial page of data, store the context
             if page_index == 0:
+                # include an update record for the original request
+                update = edd_models.Update.load_request_update(request)
+                body['update_id'] = update.id
                 # cache the context for the whole import (only sent with this page)
                 del body['series']
                 broker.add_context(import_id, json.dumps(body))
