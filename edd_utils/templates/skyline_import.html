@@ -20,7 +20,7 @@ Skyline conversion
 
 {% block content %}
 <div class="dropzone-wrapper dz-default" style="padding: 20px;">
-<form action="/utilities/proteomics/parse"
+<form action="{% url 'edd_utils:parse_skyline' %}"
     class="dropzone"
     enctype="multipart/form-data"
     id="skylineDropzone"
