@@ -8,30 +8,14 @@ import numbers
 import re
 from io import BytesIO
 
-from django.db.models import Q
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter
 from six import string_types
 
 from ..codes import FileParseCodes
-from ..utilities import ErrorAggregator
-from main.models import MeasurementType, MeasurementUnit
+from ..utilities import ErrorAggregator, ParseError
 
 logger = logging.getLogger(__name__)
-
-
-class ParseError(Exception):
-    def __init__(self, aggregator):
-        super(ParseError, self).__init__()
-        self.aggregator = aggregator
-
-    @property
-    def errors(self):
-        return self.aggregator.errors
-
-    @property
-    def warnings(self):
-        return self.aggregator.warnings
 
 
 class TableParser(object):
@@ -80,7 +64,6 @@ class TableParser(object):
         self.value_opt_cols = value_opt_cols if value_opt_cols is not None else set()
         self.numeric_cols = numeric_cols if numeric_cols is not None else set()
         self.supported_units = supported_units if supported_units is not None else {}
-        self.supported_units = supported_units
 
         # maps canonical col name -> observed text (e.g. maybe including whitespace, mixed case,
         # alias)
@@ -101,9 +84,28 @@ class TableParser(object):
 
         self._build_unit_patterns()
 
+    @property
+    def has_all_times(self):
+        """
+        Tests whether the parsed file contained time values for all measurements.  Incomplete time
+        values should be treated as a parse error.
+        """
+        return False  # children should override
+
+    def has_all_units(self):
+        """
+        Tests whether the parsed file contained units for all measurements
+        Partial units should be treated as a parse error.
+        """
+        return False  # children should override
+
     def _build_col_header_patterns(self, col_headers):
         """
-        Builds patterns to facilitate reasonably tolerant parsing of file column headers
+        Builds patterns to facilitate reasonably tolerant parsing of fixed string values expected
+        to match during parsing.  Patterns are constructed to match case-insensitive input and
+        are tolerant of leading and trailing whitespace insertions, or of added internal
+        whitespace.  Internal whitespace in the input is required, but may use different
+        whitespace characters or have additional whitespace added.
         """
         reg = r'^\s*{title}\s*$'
         return [
@@ -114,6 +116,7 @@ class TableParser(object):
     def _build_unit_patterns(self):
         self._unit_patterns = {}
         for col, units in self.supported_units.items():
+            logger.debug(f'Building unit pattterns for column "{col}": {units}')
             # note : maintaining case-sensitivity is important! SI units use case!
             vals = '|'.join([TableParser._process_label(unit) for unit in units])
             pat = re.compile(r'^\s*({vals})\s*$'.format(vals=vals))
@@ -134,20 +137,19 @@ class TableParser(object):
         is bad
         """
         self._is_excel = True
-        with open(file, 'rb') as fh:
-            wb = load_workbook(BytesIO(fh.read()), read_only=True, data_only=True)
-            logger.debug('In parse(). workbook has %d sheets' % len(wb.worksheets))
-            if not wb.worksheets:
-                self.aggregator.add_error(FileParseCodes.EMPTY_FILE)
-                raise ParseError(self.aggregator)
-
+        wb = load_workbook(BytesIO(file.read()), read_only=True, data_only=True)
+        logger.debug('In parse(). workbook has %d sheets' % len(wb.worksheets))
+        if not wb.worksheets:
+            self.aggregator.add_error(FileParseCodes.EMPTY_FILE)
+            raise ParseError(self.aggregator)
+        elif len(wb.worksheets) > 1:
             sheet_name = wb.sheetnames[0]
             msg = (f'Only the first sheet in your workbook, "{sheet_name}", was processed.  '
                    f'All other sheets will be ignored.')
             self.aggregator.add_warning(FileParseCodes.IGNORED_WORKSHEET,
                                         occurrence=msg)
-            worksheet = wb.worksheets[0]
-            return self._parse(worksheet.iter_rows())
+        worksheet = wb.worksheets[0]
+        return self._parse(worksheet.iter_rows())
 
     def parse_csv(self, file):
         """
@@ -158,9 +160,8 @@ class TableParser(object):
         bad
         """
         self._is_excel = False
-        with open(file) as fh:
-            reader = csv.reader(fh)
-            return self._parse(reader)
+        reader = csv.reader(file)
+        return self._parse(reader)
 
     def _parse(self, rows_iter):
         """
@@ -184,9 +185,6 @@ class TableParser(object):
 
                 if self.column_layout:
                     self._verify_layout(self.aggregator, row_index)
-
-                if self.aggregator.errors:
-                    raise ParseError(self.aggregator)
 
             # if column labels have been identified, look for data
             else:
@@ -298,7 +296,7 @@ class TableParser(object):
         if obs_required_cols:
             missing_cols = req_cols_set.difference(obs_required_cols)
             logger.debug(f'Required column headers missing: {missing_cols}')
-            importer.add_errors(FileParseCodes.MISSING_REQ_COL_HEADER, missing_cols)
+            importer.add_errors(FileParseCodes.MISSING_REQ_COL_HEADER, occurrences=missing_cols)
         else:
             importer.add_warnings(FileParseCodes.IGNORED_VALUE_BEFORE_HEADERS, non_header_values)
 
@@ -328,8 +326,7 @@ class TableParser(object):
         :param col_name: the canonical name of the column whose value should be read
         :return: the value, or None if the col with col_name isn't in the file
         """
-        if col_name:
-            col_index = self.column_layout.get(col_name, None)
+        col_index = self.column_layout.get(col_name, None) if col_name else None
 
         if col_index is None:
             return None
@@ -374,7 +371,8 @@ class TableParser(object):
 
         # if parser is asking for a column not found in the file, end early.
         # if it's required, an error will already have been recorded
-        if not col_index:
+        if col_index is None:
+            logger.warning(f'Column "{col_name}" not found in file')
             return None
 
         # if value is missing, but required, log an error
@@ -387,7 +385,7 @@ class TableParser(object):
 
         # if observed value is a string,
         if isinstance(val, string_types):
-            if not val and col_name not in self.value_opt_cols:
+            if (not val) and col_name not in self.value_opt_cols:
                 importer.add_error(FileParseCodes.MISSING_REQ_VALUE,
                                    subcategory=self.obs_col_name(col_name),
                                    occurrence=self.cell_coords(row_index, col_index))
@@ -398,8 +396,6 @@ class TableParser(object):
             if col_name in self.numeric_cols:
                 return self._parse_num(val, col_name, row_index, col_index)
 
-            # sanitize user-provided strings to prevent XSS attacks for values that may be
-            # re-displayed later in the UI
             return val
 
         # assumption (for now) is that value is numeric. should work for both vector (
@@ -440,24 +436,6 @@ class TableParser(object):
 
         return None
 
-    def _verify_units(self, col_name, obs_units, row_index, col_index):
-        """
-        A stopgap verification that users only provide supply supported units from a hard-coded
-        list. An eventual better approach for this is to validate units found in the file with
-        EDD's database after the parsing step / once the DB stores an association between
-        protocols & related units.
-        :param col_name: the canonical name of the column the units came from
-        :param obs_units: the observed units from the file
-        :param row_index: the index of the row units were read from
-        :param col_index: the index of the column units were read from
-        """
-        obs_units = str(obs_units).strip()
-        allowed_units = self._unit_patterns[col_name]
-        if not allowed_units.match(obs_units):
-            occurrence = self.cell_content_desc(obs_units, row_index, col_index)
-            self.aggregator.add_error(FileParseCodes.UNSUPPORTED_UNITS,
-                                      occurrence=occurrence)
-
     def _verify_layout(self, importer, header_row_index):
         pass  # children may optionally implement
 
@@ -477,7 +455,7 @@ class TableParser(object):
         raise NotImplementedError()  # children must implement
 
     @property
-    def line_names(self):
+    def line_or_assay_names(self):
         raise NotImplementedError()
 
     @staticmethod
@@ -492,74 +470,80 @@ class TableParser(object):
 
 
 # TODO: in a later version, resolve with RawImportRecord from the older import...only significant
-# differences here are that "kind" is removed, no deep copying, and units have been added. Best
-# to keep things separate for now.
+# differences here are that "kind" is removed, no deep copying, and units & src have been added.
+# Best to keep things separate for now.  TODO: update this comment prior to commit
 class MeasurementParseRecord(object):
+    """
+    A record resulting from parsing a single Measurement from an import file.  This object should
+    be flexible enough to capture the full level of detail needed to construct a Measurement from
+    any file, though many formats won't require this level of detail.
+
+    Compare with RawImportRecord from the legacy import.  Major differences are:
+    1. "Kind" is removed
+    2. No deep copying -- client code retains control
+    3. Units have been added
+    4. src_id is added
+    """
     def __init__(self, **kwargs):
-        self.line_name = kwargs.get('line_name', None)
-        self.assay_name = kwargs.get('assay_name', None)
+        self.line_or_assay_name = kwargs.get('line_or_assay_name', None)
         self.mtype_name = kwargs.get('mtype_name', None)
         self.data = kwargs.get('data', None)
         self.metadata_by_name = kwargs.get('meta', None)
         self.units_name = kwargs.get('units_name', None)
 
+        # data source for this measurement...often a row num if input is Excel
+        self.src_id = kwargs.get('src_id', None)
+
     def to_json(self):
         return {
-            "line_name": self.line_name,
-            "assay_name": self.assay_name,
+            "line_or_assay_name": self.line_or_assay_name,
             "measurement_name": self.mtype_name,
             "metadata_by_name": self.metadata_by_name,
+            "units_name": self.units_name,
             "data": self.data,
         }
 
 
 class GenericImportParser(TableParser):
-    def __init__(self, mtype_group, aggregator=None):
-        # filter unit names in the database by the provided measurement type group, or to also
-        # include generic units.  we may eventually create a narrower association between
-        # protocol / file format -> allowed units
-
-        mtype_filter = Q(type_group=MeasurementType.Group.GENERIC)
-        if mtype_group and mtype_group != MeasurementType.Group.GENERIC:
-            mtype_filter = mtype_filter | Q(type_group=mtype_group)
-        all_unit_names = MeasurementUnit.objects.filter(mtype_filter).values_list('unit_name',
-                                                                                  flat=True)
+    """
+    Parser for EDD's "Generic" import file, a normalized, a simple, accessible,
+    and machine-readable tabular format designed for automated data import.
+    """
+    def __init__(self, aggregator=None):
 
         super(GenericImportParser, self).__init__(
             req_cols=['Line Name', 'Time', 'Measurement Type', 'Value', 'Units'],
-            numeric_cols=['Time', 'Value'], supported_units={'Units': all_unit_names},
+            numeric_cols=['Time', 'Value'],
             aggregator=aggregator)
         self._measurements = []
         self.unique_units = set()
         self.unique_mtypes = set()
-        self.unique_line_names = set()
+        self.unique_line_or_assay_names = set()
 
     def _verify_layout(self, importer, header_row_index):
         pass
 
-    def _parse_row(self, cols_list, row_index):
+    def _parse_row(self, cells_list, row_index):
         # extract raw values from in-use cols in this row
-        line = self._get_raw_value(cols_list, 'Line Name')
-        mtype = self._get_raw_value(cols_list, 'Measurement Type')
-        val = self._get_raw_value(cols_list, 'Value')
-        time = self._get_raw_value(cols_list, 'Time')
-        units = self._get_raw_value(cols_list, 'Units')
+        # TODO: should rename col header for clarity if this could actually be assay name
+        line_or_assay_name = self._get_raw_value(cells_list, 'Line Name')
+        mtype = self._get_raw_value(cells_list, 'Measurement Type')
+        val = self._get_raw_value(cells_list, 'Value')
+        time = self._get_raw_value(cells_list, 'Time')
+        units = self._get_raw_value(cells_list, 'Units')
 
         # skip the row entirely if no in-use column has a value in it
-        any_value = self._has_value(line, mtype, val, time, units)
+        any_value = self._has_value(line_or_assay_name, mtype, val, time, units)
         if not any_value:
             return None
 
         # now that we've seen at least a single value in the row, do more rigorous parsing /
         # verification of the values
-        line = self._parse_and_verify_val(line, row_index, 'Line Name')
+        line_or_assay_name = self._parse_and_verify_val(line_or_assay_name, row_index, 'Line Name')
         mtype = self._parse_and_verify_val(mtype, row_index, 'Measurement Type')
         val = self._parse_and_verify_val(val, row_index, 'Value')
         time = self._parse_and_verify_val(time, row_index, 'Time')
         units = self._parse_and_verify_val(units, row_index, 'Units')
-
-        col_index = self.column_layout['Units']
-        self._verify_units('Units', units, row_index, col_index)
 
         if isinstance(val, collections.Iterable):
             data = [time]
@@ -569,17 +553,18 @@ class GenericImportParser(TableParser):
             data = [time, val]
 
         m = MeasurementParseRecord(
-            line_name=line,
-            # assay_name=, # TODO: discuss & resolve use for assays, e.g. in BioLector
+            # assume the name is for an assay...if not we'll fix it later
+            line_or_assay_name=line_or_assay_name,
             mtype_name=mtype,
             data=data,
             units_name=units,
+            src_id=f'row {row_index+1}'
         )
         self._measurements.append(m)
 
         # track unique observed values
-        if line:
-            self.unique_line_names.add(line)
+        if line_or_assay_name:
+            self.unique_line_or_assay_names.add(line_or_assay_name)
         if val:
             self.unique_mtypes.add(mtype)
         if units:
@@ -603,8 +588,8 @@ class GenericImportParser(TableParser):
         return self.unique_mtypes
 
     @property
-    def line_names(self):
-        return self.unique_line_names
+    def line_or_assay_names(self):
+        return self.unique_line_or_assay_names
 
     @property
     def units(self):
@@ -617,3 +602,17 @@ class GenericImportParser(TableParser):
     @property
     def measurement_count(self):
         return len(self._measurements)
+
+    @property
+    def has_all_times(self):
+        """
+        Tests whether the parsed file contained time values for all measurements.
+        """
+        return True  # overrides default False.  Time is a required column in this format.
+
+    def has_all_units(self):
+        """
+        Tests whether the parsed file contained units for all measurements
+        Partial units should be treated as a parse error.
+        """
+        return True  # overrides default False.  Units is a required column in this format

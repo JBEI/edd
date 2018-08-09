@@ -74,10 +74,6 @@ class EddApiTestCaseMixin(object):
         super(EddApiTestCaseMixin, self).tearDown()
         set_thread_variable('request', None)
 
-    def __init__(self, *args, **kwargs):
-        super(EddApiTestCaseMixin, self).__init__(*args, **kwargs)
-        self.unauthenticated_client = Client()
-
     def _check_status(self, response, expected_code):
         self.assertEqual(
             response.status_code,
@@ -115,7 +111,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
     whose non-empty result implies that the requesting user has access to the returned strains.
     """
 
-    fixtures = ['edd/rest/rest_basic_data']
+    fixtures = ['edd/rest/study_permissions']
 
     @classmethod
     def setUpTestData(cls):
@@ -250,7 +246,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
     /rest/lines/{X} (list + detail view)
     """
 
-    fixtures = ['edd/rest/rest_basic_data']
+    fixtures = ['edd/rest/study_permissions']
 
     @classmethod
     def setUpTestData(cls):
@@ -268,7 +264,7 @@ class AssaysTests(EddApiTestCaseMixin, APITestCase):
     /rest/assays/{X}/ (list + detail view)
     """
 
-    fixtures = ['edd/rest/rest_basic_data']
+    fixtures = ['edd/rest/study_permissions']
 
     @classmethod
     def setUpTestData(cls):
@@ -282,7 +278,7 @@ class MeasurementsTests(EddApiTestCaseMixin, APITestCase):
     /rest/measurements/{X}/ (list + detail view)
     """
 
-    fixtures = ['edd/rest/rest_basic_data']
+    fixtures = ['edd/rest/study_permissions']
 
     @classmethod
     def setUpTestData(cls):
@@ -296,7 +292,7 @@ class MeasurementValuesTests(EddApiTestCaseMixin, APITestCase):
     /rest/values/{X}/ (list + detail view)
     """
 
-    fixtures = ['edd/rest/rest_basic_data']
+    fixtures = ['edd/rest/study_permissions']
 
     @classmethod
     def setUpTestData(cls):
@@ -364,7 +360,7 @@ class EddObjectSearchTest(EddApiTestCaseMixin, APITestCase):
     eventually be run individually on each EddObject API endpoint.
     """
 
-    fixtures = ['edd/rest/rest_basic_data']
+    fixtures = ['edd/rest/study_permissions']
 
     @classmethod
     def setUpTestData(cls):

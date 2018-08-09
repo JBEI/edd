@@ -57,3 +57,4 @@ class FileImportSerializer(BaseImportObjectSerializer):
             'compartment',
             'meta_store',
         )
+        read_only_fields = ('study', 'status', )

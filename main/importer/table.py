@@ -42,7 +42,7 @@ class ImportBroker(object):
     def _import_name(self, import_id):
         return f'{import_id}'
 
-    def add_context(self, import_id, context):
+    def set_context(self, import_id, context):
         name = self._import_name(import_id)
         self.storage.save(context, name=name, expires=settings.EDD_IMPORT_CACHE_LENGTH)
 

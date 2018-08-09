@@ -6,18 +6,18 @@
     {
       "active": true,
       "created": {
-        "mod_time": "2017-06-05T17:13:38.709000-07:00",
-        "mod_by": 2,
-        "path": null,
+        "mod_time": "2015-12-31T16:00:00-08:00",
+        "mod_by": 1,
+        "path": "!bootstrap.json",
         "origin": "localhost"
       },
       "description": "",
       "name": "Proteomics",
       "pk": 5,
       "updated": {
-        "mod_time": "2017-06-05T17:13:38.709000-07:00",
-        "mod_by": 2,
-        "path": null,
+        "mod_time": "2015-12-31T16:00:00-08:00",
+        "mod_by": 1,
+        "path": "!bootstrap.json",
         "origin": "localhost"
       },
       "uuid": "d281089f-9949-4da8-bffd-b3dfa4f16ac1",
@@ -61,7 +61,7 @@
           "description": "",
           "active": true,
           "uuid": "0306a2f5-2a25-4546-8fc9-37019c895d39",
-          "parser_class": "ueoao.p",
+          "parser_class": "edd_file_importer.parsers.table.GenericImportParser",
           "created": 1,
           "updated": 1,
           "updates": [
@@ -73,18 +73,18 @@
     {
       "active": true,
       "created": {
-        "mod_time": "2017-06-05T17:13:38.709000-07:00",
-        "mod_by": 2,
-        "path": null,
+        "mod_time": "2015-12-31T16:00:00-08:00",
+        "mod_by": 1,
+        "path": "!bootstrap.json",
         "origin": "localhost"
       },
       "description": "",
       "name": "Metabolomics",
       "pk": 6,
       "updated": {
-        "mod_time": "2017-06-05T17:13:38.709000-07:00",
-        "mod_by": 2,
-        "path": null,
+        "mod_time": "2015-12-31T16:00:00-08:00",
+        "mod_by": 1,
+        "path": "!bootstrap.json",
         "origin": "localhost"
       },
       "uuid": "8f550f5c-e8d0-48a6-a433-95ded52189d5",
@@ -175,7 +175,7 @@
           "description": "",
           "active": true,
           "uuid": "0306a2f5-2a25-4546-8fc9-37019c895d39",
-          "parser_class": "ueoao.p",
+          "parser_class": "edd_file_importer.parsers.table.GenericImportParser",
           "created": 1,
           "updated": 1,
           "updates": [

@@ -1,1 +1,19 @@
-{"importId": "randomkey", "page": 1, "totalPages": 1, "masterProtocol": "3", "writemode": "m", "masterTimestamp": "", "masterLine": "new", "masterAssay": "named_or_new", "masterAssayLine": "new", "masterMComp": "", "masterMCompValue": "", "masterMType": "", "masterMTypeValue": "", "masterMUnits": "", "masterMUnitsValue": "", "masterUnits": "", "masterUnitsValue": ""}
+{
+  "importId": "randomkey",
+  "page": 1,
+  "totalPages": 1,
+  "masterProtocol": "3",
+  "writemode": "m",
+  "masterTimestamp": "",
+  "masterLine": "new",
+  "masterAssay": "named_or_new",
+  "masterAssayLine": "new",
+  "masterMComp": "",
+  "masterMCompValue": "",
+  "masterMType": "",
+  "masterMTypeValue": "",
+  "masterMUnits": "",
+  "masterMUnitsValue": "",
+  "masterUnits": "",
+  "masterUnitsValue": ""
+}

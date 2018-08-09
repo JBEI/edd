@@ -29,8 +29,9 @@ def set_file_info(sender, instance, raw, using, **kwargs):
         if not instance.mime_type:
             # if there is a content_type from the uploaded file, use that
             # instance.file is the db field; instance.file.file is the actual uploaded file
-            if hasattr(instance.file.file, 'content_type'):
-                instance.mime_type = instance.file.file.content_type
+            uploaded_file = instance.file.file
+            if hasattr(uploaded_file, 'content_type'):
+                instance.mime_type = uploaded_file.content_type
             else:
                 # if there is no upload, give up and guess that it's a bunch of bytes
                 instance.mime_type = 'application/octet-stream'

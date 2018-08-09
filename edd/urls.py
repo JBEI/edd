@@ -6,7 +6,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.flatpages import views as flatpage_views
 from django.http import HttpResponse
 from django.urls import include, path, re_path
-from graphene_django.views import GraphQLView
 
 from edd.branding.views import favicon as favicon_view
 
@@ -42,6 +41,7 @@ urlpatterns = [
 ]
 
 if getattr(settings, 'EDD_ENABLE_GRAPHQL', False):
+    from graphene_django.views import GraphQLView
     urlpatterns += [
         path('graphql/', login_required(GraphQLView.as_view(graphiql=True))),
     ]

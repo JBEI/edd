@@ -120,6 +120,16 @@ class ImportCategory(BaseImportModel):
         related_name='import_category',
     )
 
+    default_mtype_group = models.CharField(
+        default=edd_models.MeasurementType.Group.GENERIC,
+        blank=False,
+        help_text=_('The default class of measurement types implied by selection of this '
+                    'category during import'),
+        max_length=15,
+        null=False,
+        verbose_name=_('Default type group'),
+    )
+
     file_formats = models.ManyToManyField(
         ImportFormat,
         through='CategoryFormat',
@@ -172,11 +182,28 @@ class Import(BaseImportModel):
     """
 
     class Status:
+        # implies there's an uploaded file with unknown format, since otherwise import isn't saved
+        # unless parse & resolution are successful
         CREATED = 'Created'
+
+        # file is parsed & content verified, but some required context is missing
+        RESOLVED = 'Resolved'
+
+        # file is parsed, content verified, and all required context is provided
+        READY = 'Ready'
+
+        # import is submitted, but processing may not yet have begun
         SUBMITTED = 'Submitted'
+
+        # import is being processed
         PROCESSING = 'Processing'
-        FAILED = 'Failed'
+
         COMPLETED = 'Completed'
+
+        # import is aborted at user request
+        ABORTED = 'Aborted'
+
+        FAILED = 'Failed'
 
     class Metadata:
         # custom file format for the import, if specified: JSON with row/col identifiers
@@ -220,7 +247,7 @@ class Import(BaseImportModel):
     file = models.ForeignKey(
         'ImportFile',
         on_delete=models.PROTECT,
-        related_name='+',
+        related_name='import_ref',
     )
 
     file_format = models.ForeignKey(
@@ -286,12 +313,14 @@ class ImportFile(models.Model):
         help_text=_('Name of attachment file.'),
         max_length=255,
         verbose_name=_('File Name'),
+        editable=False
     )
     created = models.ForeignKey(
         edd_models.Update,
         help_text=_('Update used to create the attachment.'),
         on_delete=models.PROTECT,
         verbose_name=_('Created'),
+        editable=False,
     )
     description = models.TextField(
         blank=True,
@@ -310,6 +339,7 @@ class ImportFile(models.Model):
         default=0,
         help_text=_('Total byte size of the attachment.'),
         verbose_name=_('Size'),
+        editable=False
     )
 
     extensions_to_icons = edd_models.Attachment.extensions_to_icons

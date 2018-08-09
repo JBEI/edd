@@ -334,13 +334,13 @@ class CombinatorialCreationTests(TestCase):
         cache = importer.cache
         naming_results = combo_input.compute_line_and_assay_names(study, cache, options)
 
-        planned_line_count = len(naming_results.line_names)
-        unique_planned_line_names = set(naming_results.line_names)
+        planned_line_count = len(naming_results.line_or_assay_names)
+        unique_planned_line_names = set(naming_results.line_or_assay_names)
 
         # verify planned line names, while tolerating ordering differences in dict use as a
         # result of parsing
-        self.assertEqual(len(naming_results.line_names), len(expected_line_names))
-        for planned_line_name in naming_results.line_names:
+        self.assertEqual(len(naming_results.line_or_assay_names), len(expected_line_names))
+        for planned_line_name in naming_results.line_or_assay_names:
             self.assertTrue(
                 planned_line_name in expected_line_names,
                 "Line name %s wasn't expected" % planned_line_name
@@ -379,7 +379,7 @@ class CombinatorialCreationTests(TestCase):
 
         for line_index, created_line in enumerate(creation_results.lines_created):
             # verify planned line name is the same as the created one
-            planned_line_name = naming_results.line_names[line_index]
+            planned_line_name = naming_results.line_or_assay_names[line_index]
             self.assertEqual(planned_line_name, created_line.name)
 
             ################################################################################

@@ -1533,7 +1533,7 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
                 body['update_id'] = update.id
                 # cache the context for the whole import (only sent with this page)
                 del body['series']
-                broker.add_context(import_id, json.dumps(body))
+                broker.set_context(import_id, json.dumps(body))
 
             # Test whether all result pages are received.
             all_received = (cached_pages == total_pages)

@@ -1,13 +1,13 @@
 [{
-  "line_name": "A",
-  "assay_name": null,
-  "measurement_name": "Limonene",
+  "line_or_assay_name": "A",
+  "measurement_name": "CID:440917",
   "metadata_by_name": null,
+  "units_name": "g/L",
   "data": [8,1]
 }, {
-  "line_name": "B",
-  "assay_name": null,
-  "measurement_name": "Mevalonate",
+  "line_or_assay_name": "B",
+  "measurement_name": "CID:5288798",
   "metadata_by_name": null,
+  "units_name": "g/L",
   "data": [24, 2]
 }]

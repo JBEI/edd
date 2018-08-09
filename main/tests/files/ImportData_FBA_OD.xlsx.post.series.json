@@ -1,1 +1,90 @@
-[{"kind": "std", "line_name": null, "assay_name": "BW1", "measurement_name": "Optical Density", "metadata_by_name": {}, "data": [[0, "0.1"], [7.5, "1.49"], [9.5, "2.72"], [11, "3.95"], [13, "5.69"], [15, "6.41"], [17, "6.51"]], "protocol_id": 3, "line_id": "8", "assay_id": "named_or_new", "measurement_id": "1", "compartment_id": "0", "units_id": "1", "metadata_by_id": {}}, {"kind": "std", "line_name": null, "assay_name": "arcA", "measurement_name": "Optical Density", "metadata_by_name": {}, "data": [[0, "0.1"], [7.5, "1.49"], [9.5, "2.62"], [11, "2.96"], [13, "3.58"], [15, "3.98"], [17, "4.31"]], "protocol_id": 3, "line_id": "9", "assay_id": "named_or_new", "measurement_id": "1", "compartment_id": "0", "units_id": "1", "metadata_by_id": {}}]
+[
+  {
+    "kind": "std",
+    "line_name": null,
+    "assay_name": "BW1",
+    "measurement_name": "Optical Density",
+    "metadata_by_name": {},
+    "data": [
+      [
+        0,
+        "0.1"
+      ],
+      [
+        7.5,
+        "1.49"
+      ],
+      [
+        9.5,
+        "2.72"
+      ],
+      [
+        11,
+        "3.95"
+      ],
+      [
+        13,
+        "5.69"
+      ],
+      [
+        15,
+        "6.41"
+      ],
+      [
+        17,
+        "6.51"
+      ]
+    ],
+    "protocol_id": 3,
+    "line_id": "8",
+    "assay_id": "named_or_new",
+    "measurement_id": "1",
+    "compartment_id": "0",
+    "units_id": "1",
+    "metadata_by_id": {}
+  },
+  {
+    "kind": "std",
+    "line_name": null,
+    "assay_name": "arcA",
+    "measurement_name": "Optical Density",
+    "metadata_by_name": {},
+    "data": [
+      [
+        0,
+        "0.1"
+      ],
+      [
+        7.5,
+        "1.49"
+      ],
+      [
+        9.5,
+        "2.62"
+      ],
+      [
+        11,
+        "2.96"
+      ],
+      [
+        13,
+        "3.58"
+      ],
+      [
+        15,
+        "3.98"
+      ],
+      [
+        17,
+        "4.31"
+      ]
+    ],
+    "protocol_id": 3,
+    "line_id": "9",
+    "assay_id": "named_or_new",
+    "measurement_id": "1",
+    "compartment_id": "0",
+    "units_id": "1",
+    "metadata_by_id": {}
+  }
+]

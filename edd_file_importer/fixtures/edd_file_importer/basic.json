@@ -75,10 +75,25 @@
     }
   },
   {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 7,
+    "fields": {
+      "name": "OD600",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "d23ec26a-e068-43a3-958d-59e7f1b6a780",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
     "model": "edd_file_importer.importformat",
     "pk": 2,
     "fields": {
-      "parser_class": "ueoao.p",
+      "parser_class": "edd_file_importer.parsers.table.GenericImportParser",
       "updates": [
         1
       ]
@@ -108,6 +123,7 @@
     "model": "edd_file_importer.importcategory",
     "pk": 5,
     "fields": {
+      "default_mtype_group": "p",
       "display_order": 1,
       "updates": [
         1
@@ -121,6 +137,7 @@
     "model": "edd_file_importer.importcategory",
     "pk": 6,
     "fields": {
+      "default_mtype_group": "m",
       "display_order": 2,
       "updates": [
         1
@@ -129,6 +146,20 @@
         2,
         5,
         7
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importcategory",
+    "pk": 7,
+    "fields": {
+      "default_mtype_group": "_",
+      "display_order": 3,
+      "updates": [
+        1
+      ],
+      "protocols": [
+        3
       ]
     }
   },
@@ -178,14 +209,13 @@
     }
   },
   {
+    "model": "edd_file_importer.categoryformat",
+    "pk": 6,
     "fields": {
-      "mod_by": 2,
-      "mod_time": "2017-06-06T00:13:38.709Z",
-      "origin": "localhost",
-      "path": null
-    },
-    "model": "main.update",
-    "pk": 1
+      "format": 2,
+      "category": 7,
+      "display_order": 1
+    }
   },
   {
     "model": "main.protocol",
@@ -347,24 +377,5 @@
         1
       ]
     }
-  },
-  {
-    "fields": {
-      "date_joined": "2017-06-06T00:13:38.666Z",
-      "email": "",
-      "first_name": "",
-      "groups": [],
-      "is_active": true,
-      "is_staff": false,
-      "is_superuser": false,
-      "last_login": "2017-06-06T00:13:38.767Z",
-      "last_name": "",
-      "password": "",
-      "user_permissions": [],
-      "username": "user000"
-    },
-    "model": "auth.user",
-    "pk": 2
   }
-
 ]
