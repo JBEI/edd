@@ -3469,6 +3469,7 @@ export class MetadataDisambiguationRow extends DisambiguationRow {
             "visibleValue": name,
             "cache": MetadataDisambiguationRow.autoCache,
         });
+        this.metaAuto.init();
         this.metaAuto.visibleInput.addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
             .attr('name', 'disamMeta' + i)
             .addClass('autocomp_altype');
@@ -3481,7 +3482,7 @@ export class MetadataDisambiguationRow extends DisambiguationRow {
 
 export class MeasurementDisambiguationRow extends DisambiguationRow {
 
-    compAuto: EDDAuto.AssayLineMetadataType;
+    compAuto: EDDAuto.MeasurementCompartment;
     typeAuto: EDDAuto.GenericOrMetabolite;
     unitsAuto: EDDAuto.MeasurementUnit;
 
@@ -3497,15 +3498,18 @@ export class MeasurementDisambiguationRow extends DisambiguationRow {
             "container": $(this.row.insertCell()),
             "cache": MeasurementDisambiguationRow.compAutoCache,
         });
+        this.compAuto.init();
         this.compAuto.visibleInput.addClass('autocomp_compartment');
         this.typeAuto = new EDDAuto.GenericOrMetabolite({
             "container": $(this.row.insertCell()),
             "cache": MeasurementDisambiguationRow.metaboliteAutoCache,
         });
+        this.typeAuto.init();
         this.unitsAuto = new EDDAuto.MeasurementUnit({
             "container": $(this.row.insertCell()),
             "cache": MeasurementDisambiguationRow.unitAutoCache,
         });
+        this.unitsAuto.init();
         this.unitsAuto.visibleInput.addClass('autocomp_unit');
 
         // create autocompletes
@@ -3558,6 +3562,7 @@ export class LineDisambiguationRow extends DisambiguationRow {
             "active": 'true',
             "study": '' + EDDData.currentStudyID,
         });
+        this.lineAuto.init();
 
         // if there is a line name, auto fill line.
         $(this.lineAuto.container[0]).children('.autocomp').val(defaultSelection.name);

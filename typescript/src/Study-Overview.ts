@@ -35,9 +35,11 @@ function preparePermissions() {
     user = new EDDAuto.User({
         "container": $('#permission_user_box'),
     });
+    user.init();
     group = new EDDAuto.Group({
         "container": $('#permission_group_box'),
     });
+    group.init();
 
     // check public permission input on click
     $('#set_everyone_permission').on('click', function () {

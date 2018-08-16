@@ -624,6 +624,7 @@ export class EditableAutocomplete extends EditableElement {
                     "visibleInput": visibleInput,
                     "hiddenInput": hiddenInput,
                 });
+                autoObject.init();
             }
         }
         // If all else fails (one input missing, no eddData, or no autocompleteobj),
@@ -632,6 +633,7 @@ export class EditableAutocomplete extends EditableElement {
             autoObject = this.createAutoCompleteObject({
                 "container": this.elementJQ,
             });
+            autoObject.init();
         }
 
         this.autoCompleteObject = autoObject;

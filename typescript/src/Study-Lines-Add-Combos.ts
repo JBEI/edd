@@ -1030,6 +1030,7 @@ export class LinePropertyAutoInput extends LinePropertyInput {
                 'visibleInput': visible,
                 'hiddenInput': hidden,
             });
+            this.autoInput.init();
         } else if (EddRest.CARBON_SOURCE_META_NAME === this.lineProperty.inputLabel) {
             visible.attr('eddautocompletetype', "CarbonSource");
             this.autoInput = new EDDAuto.CarbonSource({
@@ -1037,6 +1038,7 @@ export class LinePropertyAutoInput extends LinePropertyInput {
                 'visibleInput': visible,
                 'hiddenInput': hidden,
             });
+            this.autoInput.init();
         } else if (EddRest.STRAINS_META_NAME === this.lineProperty.inputLabel) {
             visible.attr('eddautocompletetype', "Registry");
             this.autoInput = new EDDAuto.Registry({
@@ -1044,6 +1046,7 @@ export class LinePropertyAutoInput extends LinePropertyInput {
                 'visibleInput': visible,
                 'hiddenInput': hidden,
             });
+            this.autoInput.init();
         }
         this.buildRemoveBtn(inputCell);
     }
