@@ -12,16 +12,21 @@ from edd.branding.views import favicon as favicon_view
 
 admin.autodiscover()
 
+rest_urlpatters = []
 
-rest_urlpatterns = [
+if 'edd_file_importer' in settings.INSTALLED_APPS:
+    # if edd_file_importer app is installed, add its URLs into the REST API.  Note that
+    # *evaluation* order is critical here...the app's URL's must be evaluated before EDD's in
+    # order to me merged into the API correctly. Prepending these URL's to the list without
+    # evaluating them first won't work.
+    rest_urlpatterns = [
+        path('', include('edd_file_importer.rest.urls', namespace='edd_file_importer')),
+    ]
+
+rest_urlpatterns += [
     path('', include('edd.rest.urls', namespace='rest')),
     path('auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]
-
-if 'edd_file_importer' in settings.INSTALLED_APPS:
-    rest_urlpatterns = [
-        path('', include('edd_file_importer.rest.urls', namespace='edd_file_importer')),
-    ] + rest_urlpatterns
 
 urlpatterns = [
     # make sure to match the path to favicon *exactly*
