@@ -931,8 +931,8 @@ class CombinatorialCreationImporter(object):
                 with BytesIO(file.read()) as stream:
                     line_def_inputs = parser.parse_excel(stream)
         else:
-            parser = JsonInputParser(self.cache)
-            line_def_inputs = parser.parse(file.read(), self)
+            parser = JsonInputParser(self.cache, self)
+            line_def_inputs = parser.parse(file.read())
 
         # cache a human-readable summary of input for possible use in error emails
         if filename:
