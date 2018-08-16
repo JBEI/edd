@@ -13,7 +13,7 @@ from edd.branding.views import favicon as favicon_view
 
 admin.autodiscover()
 
-rest_urlpatters = []
+rest_urlpatterns = []
 
 if 'edd_file_importer' in settings.INSTALLED_APPS:
     # if edd_file_importer app is installed, add its URLs into the REST API.  Note that
