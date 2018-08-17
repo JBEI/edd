@@ -17,7 +17,7 @@ FROM buildpack-deps:buster
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 WORKDIR /code
-ARG EDD_VERSION=2.3.0
+ARG EDD_VERSION=2.3.1
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8 EDD_VERSION="${EDD_VERSION}"
 
 # include Debian packages required to build pip packages
