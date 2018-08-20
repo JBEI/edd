@@ -9,3 +9,5 @@ class FileImporterConfig(AppConfig):
     def ready(self):
         # make sure to load/register all the signals
         from . import signals  # noqa
+        # add additional REST routes
+        from .rest import urls  # noqa

@@ -19,11 +19,6 @@ rest_urlpatterns = [
     path('auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]
 
-if 'edd_file_importer' in settings.INSTALLED_APPS:
-    rest_urlpatterns = [
-        path('', include('edd_file_importer.rest.urls', namespace='edd_file_importer')),
-    ] + rest_urlpatterns
-
 urlpatterns = [
     # make sure to match the path to favicon *exactly*
     re_path(r'favicon\.ico$', favicon_view, name='favicon'),

@@ -1,7 +1,7 @@
 FROM jbei/edd-node:latest as node
 
 # Copy in EDD code
-ARG EDD_VERSION=2.3.0
+ARG EDD_VERSION=2.3.2
 ARG GIT_BRANCH=master
 ARG GIT_URL=https://github.com/JBEI/edd.git
 ENV EDD_VERSION="${EDD_VERSION}"
@@ -17,7 +17,7 @@ FROM buildpack-deps:buster
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 WORKDIR /code
-ARG EDD_VERSION=2.3.0
+ARG EDD_VERSION=2.3.2
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8 EDD_VERSION="${EDD_VERSION}"
 
 # include Debian packages required to build pip packages
