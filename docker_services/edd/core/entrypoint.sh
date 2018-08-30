@@ -262,7 +262,10 @@ ping_wait redis 6379
 if [ $INIT_STATIC -eq 1 ]; then
     banner "Collecting static resources …"
     # Collect static first, worker will complain if favicons are missing
-    python /code/manage.py collectstatic --noinput
+    python /code/manage.py edd_collectstatic --noinput
+else
+    # if not statically rendering 500.html, fall back to the default
+    cp /code/main/templates/500.default.html /code/main/templates/500.html
 fi
 if [ "$WATCH_STATIC" = "true" ]; then
     output "Watching for static resource changes …"

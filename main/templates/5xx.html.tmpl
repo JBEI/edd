@@ -1,0 +1,16 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+{% load i18n %}
+
+{% block body_title %}
+  {% trans 'Page Unavailable' %}
+{% endblock body_title %}
+
+{% block content %}
+  <p>
+    {% blocktrans %}
+    EDD has encountered an error and cannot show the requested page. The site administrators have
+    been notified of the problem, please check back later.
+    {% endblocktrans %}
+  </p>
+{% endblock content %}
