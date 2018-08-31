@@ -480,7 +480,8 @@ export class GraphView {
     }
 
     private sortOnX(values: GraphValue[]): GraphValue[] {
-        return values.sort((a, b) => a.x - b.x);
+        // filter out undefined values before sorting on X
+        return values.filter((v) => !!v).sort((a, b) => a.x - b.x);
     }
 
     private buildUnitAxis(
