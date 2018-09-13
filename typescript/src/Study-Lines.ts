@@ -38,8 +38,8 @@ require('jquery-ui/ui/widgets/dialog');
 
 
 
-var linesActionPanelRefreshTimer: any;
-var positionActionsBarTimer: any;
+var linesActionPanelRefreshTimer: NodeJS.Timer;
+var positionActionsBarTimer: NodeJS.Timer;
 var attachmentIDs: any;
 var attachmentsByID: any;
 var prevDescriptionEditElement: any;
@@ -281,18 +281,18 @@ function includeAllLinesIfEmpty() {
 
 // Start a timer to wait before calling the routine that shows the actions panel.
 export function queueLinesActionPanelShow() {
-    if (this.linesActionPanelRefreshTimer) {
-        clearTimeout (this.linesActionPanelRefreshTimer);
+    if (linesActionPanelRefreshTimer) {
+        clearTimeout(linesActionPanelRefreshTimer);
     }
-    this.linesActionPanelRefreshTimer = setTimeout(linesActionPanelShow.bind(this), 150);
+    linesActionPanelRefreshTimer = setTimeout(linesActionPanelShow, 150);
 }
 
 
 function linesActionPanelShow() {
     // Figure out how many lines are selected.
     var checkedBoxes = [], checkedBoxLen: number;
-    if (this.linesDataGrid) {
-        checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
+    if (linesDataGrid) {
+        checkedBoxes = linesDataGrid.getSelectedCheckboxElements();
     }
     if (Object.keys(EDDData.Lines).length === 0) {
         $('.lineExplanation').css('display', 'block');
@@ -316,7 +316,7 @@ export function queuePositionActionsBar() {
     if (positionActionsBarTimer) {
         clearTimeout (positionActionsBarTimer);
     }
-    positionActionsBarTimer = setTimeout(positionActionsBar.bind(this), 50);
+    positionActionsBarTimer = setTimeout(positionActionsBar, 50);
 }
 
 
