@@ -278,13 +278,12 @@ def export_queryset(model):
 
     def queryset(request):
         user = request.user if request else None
+        qs = model.objects.distinct().filter(active=True)
         if (models.Study.user_role_can_read(user)):
             # no need to do special permission checking if role automatically can read
-            return model.objects.distinct()
+            return qs
         access = models.Study.access_filter(user, via=via)
-        print(access)
-        qs = model.objects.distinct().filter(access)
-        print(qs.query)
+        qs = qs.filter(access)
         return qs
 
     return queryset
@@ -321,24 +320,32 @@ class ExportFilter(filters.FilterSet):
 
     @property
     def qs(self):
-        # define filters for special handling
-        names = ['study_id', 'line_id', 'assay_id', 'measure_id']
-        special = {name: self.filters.get(name, None) for name in names}
-        fields = {name: f.field for name, f in special.items()}
-        # create a custom form for the filters with special handling
-        form = self._custom_form(fields)
-        if not form.is_valid():
-            return self.queryset.none()
-        # now do special handling to OR together the filters
-        id_filter = Q()
-        for name, filter_ in special.items():
-            if filter_ is not None:
-                # when a value is found, OR together with others
-                value = form.cleaned_data.get(name)
-                if value:
-                    id_filter |= Q(**{f'{filter_.field_name}__{filter_.lookup_expr}': value})
+        if not hasattr(self, '_qs'):
+            # define filters for special handling
+            names = ['study_id', 'line_id', 'assay_id', 'measure_id']
+            special = {name: self.filters.get(name, None) for name in names}
+            fields = {name: f.field for name, f in special.items()}
+            # create a custom form for the filters with special handling
+            form = self._custom_form(fields)
+            if not form.is_valid():
+                return self.queryset.none()
+            # now do special handling to OR together the filters
+            id_filter = Q()
+            for name, filter_ in special.items():
+                if filter_ is not None:
+                    # when a value is found, OR together with others
+                    value = form.cleaned_data.get(name)
+                    if value:
+                        id_filter |= Q(**{f'{filter_.field_name}__{filter_.lookup_expr}': value})
+            self._qs = self.queryset.filter(
+                id_filter,
+                measurement__active=True,
+                measurement__assay__active=True,
+                measurement__assay__line__active=True,
+                measurement__assay__line__study__active=True,
+            )
         # filter with the aggregated filter expression
-        return self.queryset.filter(id_filter)
+        return self._qs
 
     def _custom_form(self, fields):
         # create a custom form for the filters with special handling
