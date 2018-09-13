@@ -287,7 +287,13 @@ class ExportSerializer(serializers.ModelSerializer):
         )
 
     def get_x(self, obj):
-        return obj.x[0]
+        # TODO: handle vector values
+        if len(obj.x) > 0:
+            return obj.x[0]
+        return None
 
     def get_y(self, obj):
-        return obj.y[0]
+        # TODO: handle vector values
+        if len(obj.y) > 0:
+            return obj.y[0]
+        return None
