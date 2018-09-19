@@ -198,12 +198,9 @@ export function onReferenceRecordsLoad(): void {
     // Allocate one instance of each step, providing references to the previous steps
     // as needed.
     step1 = new SelectMajorKindStep(selectMajorKindCallback);
-    step2 = new RawInputStep(step1, rawInputCallback,
-        processingFileCallback);
-    step3 = new IdentifyStructuresStep(step1, step2,
-        identifyStructuresCallback);
-    step4 = new TypeDisambiguationStep(step1, step3,
-        typeDisambiguationCallback);
+    step2 = new RawInputStep(step1, rawInputCallback, processingFileCallback);
+    step3 = new IdentifyStructuresStep(step1, step2, identifyStructuresCallback);
+    step4 = new TypeDisambiguationStep(step1, step3, typeDisambiguationCallback);
     step5 = new ReviewStep(step1, step2, step3, step4, reviewStepCallback);
 
     selectMajorKindStep = step1;
@@ -1129,16 +1126,18 @@ export interface RowPulldownOption extends Array<string|number|RowPulldownOption
 
 // Magic numbers used in pulldowns to assign types to rows/fields.
 export class TypeEnum {
-    static Gene_Names = 10;  // plural!
-    static RPKM_Values = 11;
-    static Line_Names = 1;
-    static Protein_Name = 12;
-    static Pubchem_Name = 13;
     static Gene_Name = 14;  // singular!
-    static Measurement_Types = 2; // plural!!
-    static Timestamp = 3;
+    static Gene_Names = 10;  // plural!
+    static Line_Names = 1;
+    static Measurement_Type = 5;  // singular!
+    static Measurement_Types = 2;  // plural!
     static Metadata_Name = 4;
-    static Measurement_Type = 5; // singular!!
+    static Protein_Name = 12;  // singular!
+    static Protein_Names = 20;  // plural!
+    static Pubchem_Name = 13;  // singular!
+    static Pubchem_Names = 21;  // plural!
+    static RPKM_Values = 11;
+    static Timestamp = 3;
 }
 
 
@@ -1448,10 +1447,13 @@ export class IdentifyStructuresStep implements ImportStep {
                 ['Entire Row Is...', [
                         ['Line Names', TypeEnum.Line_Names],
                         ['Measurement Types', TypeEnum.Measurement_Types],
+                        ['Protein IDs', TypeEnum.Protein_Names],
+                        ['PubChem CIDs', TypeEnum.Pubchem_Names],
+                        ['Gene IDs', TypeEnum.Gene_Names],
                     ],
                 ],
                 ['First Column Is...', [
-                    ['Time (in hours)', TypeEnum.Timestamp],
+                        ['Time (in hours)', TypeEnum.Timestamp],
                         ['Metadata Name', TypeEnum.Metadata_Name],
                         ['Measurement Type', TypeEnum.Measurement_Type],
                         ['Protein ID', TypeEnum.Protein_Name],
@@ -1624,14 +1626,18 @@ export class IdentifyStructuresStep implements ImportStep {
             var pulldown: number, hlLabel: boolean, hlRow: boolean;
             pulldown = this.pulldownSettings[index] || 0;
             hlLabel = hlRow = false;
-            if (pulldown === TypeEnum.Line_Names || pulldown === TypeEnum.Measurement_Types) {
+            if (pulldown === TypeEnum.Line_Names ||
+                    pulldown === TypeEnum.Measurement_Types ||
+                    pulldown === TypeEnum.Pubchem_Names ||
+                    pulldown === TypeEnum.Gene_Names ||
+                    pulldown === TypeEnum.Protein_Names) {
                 hlRow = true;
             } else if (pulldown === TypeEnum.Timestamp ||
-                pulldown === TypeEnum.Metadata_Name ||
-                pulldown === TypeEnum.Protein_Name ||
-                pulldown === TypeEnum.Pubchem_Name ||
-                pulldown === TypeEnum.Gene_Name ||
-                pulldown === TypeEnum.Measurement_Type) {
+                    pulldown === TypeEnum.Metadata_Name ||
+                    pulldown === TypeEnum.Protein_Name ||
+                    pulldown === TypeEnum.Pubchem_Name ||
+                    pulldown === TypeEnum.Gene_Name ||
+                    pulldown === TypeEnum.Measurement_Type) {
                 hlLabel = true;
             }
             $(this.rowLabelCells[index]).toggleClass('dataTypeCell', hlLabel);
@@ -1699,11 +1705,11 @@ export class IdentifyStructuresStep implements ImportStep {
         this.pulldownSettings[index] = value;
         this.pulldownUserChangedFlags[index] = true;
         if (value === TypeEnum.Timestamp ||
-            value === TypeEnum.Metadata_Name ||
-            value === TypeEnum.Measurement_Type ||
-            value === TypeEnum.Protein_Name ||
-            value === TypeEnum.Pubchem_Name ||
-            value === TypeEnum.Gene_Name) {
+                value === TypeEnum.Metadata_Name ||
+                value === TypeEnum.Measurement_Type ||
+                value === TypeEnum.Protein_Name ||
+                value === TypeEnum.Pubchem_Name ||
+                value === TypeEnum.Gene_Name) {
             // "Timestamp", "Metadata", or other single-table-cell types
             // Set all the rest of the pulldowns to this,
             // based on the assumption that the first is followed by many others
@@ -1743,8 +1749,8 @@ export class IdentifyStructuresStep implements ImportStep {
             // selected "Measurement Type", we blank out all references to "Timestamp" and
             // "Metadata", and vice-versa.
             if (value === TypeEnum.Measurement_Type ||
-                value === TypeEnum.Timestamp ||
-                value === TypeEnum.Metadata_Name) {
+                    value === TypeEnum.Timestamp ||
+                    value === TypeEnum.Metadata_Name) {
 
                 grid.forEach((_, i: number): void => {
                     var c: number = this.pulldownSettings[i];
@@ -1758,7 +1764,7 @@ export class IdentifyStructuresStep implements ImportStep {
                             this.pulldownSettings[i] = TypeEnum.Line_Names;
                         }
                     } else if (c === TypeEnum.Measurement_Type &&
-                        (value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name)) {
+                            (value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name)) {
                         this.pulldownObjects[i].selectedIndex = 0;
                         this.pulldownSettings[i] = 0;
                     }
@@ -1974,13 +1980,13 @@ export class IdentifyStructuresStep implements ImportStep {
 
                 set = {
                     // Copy across the fields from the RawImportSet record
-                    kind: rawSet.kind,
-                    hint: rawSet.hint,
-                    line_name: rawSet.line_name,
-                    assay_name: an,
-                    measurement_name: rawSet.measurement_name,
-                    metadata_by_name: rawSet.metadata_by_name,
-                    data: reassembledData,
+                    "kind": rawSet.kind,
+                    "hint": rawSet.hint,
+                    "line_name": rawSet.line_name,
+                    "assay_name": an,
+                    "measurement_name": rawSet.measurement_name,
+                    "metadata_by_name": rawSet.metadata_by_name,
+                    "data": reassembledData,
                 };
                 this.parsedSets.push(set);
 
@@ -2005,13 +2011,14 @@ export class IdentifyStructuresStep implements ImportStep {
         // single-item types
         grid.forEach((_, y: number): void => {
             var pulldown: number;
-            if (!this.activeRowFlags[y]) { return; }    // Skip inactive rows
+            // Skip inactive rows
+            if (!this.activeRowFlags[y]) { return; }
             pulldown = this.pulldownSettings[y];
             if (pulldown === TypeEnum.Measurement_Type ||
                     pulldown === TypeEnum.Protein_Name ||
                     pulldown === TypeEnum.Pubchem_Name ||
                     pulldown === TypeEnum.Gene_Name) {
-                singleCompatibleCount++; // Single Measurement Name or Single Protein Name
+                singleCompatibleCount++;  // Single Measurement Name or Single Protein Name
             } else if (pulldown === TypeEnum.Metadata_Name ||
                     pulldown === TypeEnum.Timestamp) {
                 singleNotCompatibleCount++;
@@ -2206,6 +2213,22 @@ export class IdentifyStructuresStep implements ImportStep {
                         seenMeasurementNames[value] = true;
                         this.uniqueMeasurementNames.push(value);
                     }
+                    set.measurement_name = value;
+                    return;
+                } else if (pulldown === TypeEnum.Pubchem_Names) {
+                    if (!seenMeasurementNames[value]) {
+                        seenMeasurementNames[value] = true;
+                        this.uniquePubchem.push(value);
+                    }
+                    set.hint = 'm';
+                    set.measurement_name = value;
+                    return;
+                } else if (pulldown === TypeEnum.Protein_Names) {
+                    if (!seenMeasurementNames[value]) {
+                        seenMeasurementNames[value] = true;
+                        this.uniqueUniprot.push(value);
+                    }
+                    set.hint = 'p';
                     set.measurement_name = value;
                     return;
                 } else if (label === '') {
@@ -2904,7 +2927,8 @@ export class TypeDisambiguationStep {
                 this.identifyStructuresStep.uniqueGenbank.length > 0;
         // If using pubchem IDs, need to specify compartment
         let needComp: boolean = this.identifyStructuresStep.uniquePubchem.length > 0;
-        let showMasterType = seenAnyTimestamps && uniqueMeasurementNames.length === 0;
+        let showMasterType = seenAnyTimestamps && !needUnits &&
+                uniqueMeasurementNames.length === 0;
         if (hasRequiredInitialInput) {
             $('#masterUnitDiv').toggleClass('off', !needUnits);
             TypeDisambiguationStep.requireInput($('#masterUnitsValue'), needUnits);
@@ -2914,7 +2938,7 @@ export class TypeDisambiguationStep {
             TypeDisambiguationStep.requireInput($('#masterMCompValue'), showMasterType);
             TypeDisambiguationStep.requireInput($('#masterMTypeValue'), showMasterType);
             TypeDisambiguationStep.requireInput($('#masterMUnitsValue'), showMasterType);
-            // skip initializing everything else if master valus are shown
+            // skip initializing everything else if master values are shown
             if (showMasterType || needUnits || needComp) {
                 return;
             }
