@@ -888,7 +888,7 @@ export class GenericFilterSection {
     }
 
     countChecked() {
-        return $('input[type=checkbox]:checked', this.filteringTable).length;
+        return $('input[type=checkbox]:checked', this.filteringTable || $()).length;
     }
 
     // A few utility functions:
@@ -1014,7 +1014,7 @@ export class LineNameFilterSection extends GenericFilterSection {
     }
 
     setLineColors() {
-        let boxes = $('input[type=checkbox]', this.filteringTable);
+        let boxes = $('input[type=checkbox]', this.filteringTable || $());
         if (this.countChecked() === 0) {
             // when nothing is checked, set colors on everything in order
             let color = null;
