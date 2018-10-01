@@ -440,6 +440,7 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
 
 
 class ProteinAdmin(MeasurementTypeAdmin):
+    actions = ['refresh_uniprot_action']
 
     def get_form(self, request, obj=None, **kwargs):
         """
@@ -499,6 +500,11 @@ class ProteinAdmin(MeasurementTypeAdmin):
     def get_search_results(self, request, queryset, search_term):
         search_term = models.ProteinIdentifier.match_accession_id(search_term)
         return super(ProteinAdmin, self).get_search_results(request, queryset, search_term)
+
+    def refresh_uniprot_action(self, request, queryset):
+        for entry in queryset:
+            entry.update_from_uniprot()
+    refresh_uniprot_action.short_description = 'Refresh UniProt Information'
 
 
 class GeneAdmin(MeasurementTypeAdmin):

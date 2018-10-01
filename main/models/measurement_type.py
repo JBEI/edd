@@ -429,11 +429,9 @@ class ProteinIdentifier(MeasurementType):
 
     @classmethod
     def _load_uniprot(cls, uniprot_id, accession_id):
-        url = 'http://www.uniprot.org/uniprot/%s.rdf' % uniprot_id
+        url = f'http://www.uniprot.org/uniprot/{uniprot_id}.rdf'
         # define some RDF predicate terms
-        fullname_predicate = URIRef('http://purl.uniprot.org/core/fullName')
         mass_predicate = URIRef('http://purl.uniprot.org/core/mass')
-        name_predicate = URIRef('http://purl.uniprot.org/core/recommendedName')
         sequence_predicate = URIRef('http://purl.uniprot.org/core/sequence')
         value_predicate = URIRef('http://www.w3.org/1999/02/22-rdf-syntax-ns#value')
         # build the RDF graph
@@ -441,14 +439,13 @@ class ProteinIdentifier(MeasurementType):
             graph = Graph()
             graph.parse(url)
             # find top-level references
-            subject = URIRef('http://purl.uniprot.org/uniprot/%s' % uniprot_id)
-            name_ref = graph.value(subject, name_predicate)
+            subject = URIRef(f'http://purl.uniprot.org/uniprot/{uniprot_id}')
             isoform = graph.value(subject, sequence_predicate)
             # find values of interest
-            values = {'accession_id': accession_id}
-            name = graph.value(name_ref, fullname_predicate)
-            if name:
-                values.update(type_name=name.value)
+            values = {
+                'accession_id': accession_id,
+                'type_name': cls._uniprot_name(graph, subject, uniprot_id),
+            }
             sequence = graph.value(isoform, value_predicate)
             if sequence:
                 values.update(length=len(sequence.value))
@@ -464,8 +461,31 @@ class ProteinIdentifier(MeasurementType):
             )
             return protein
         except Exception:
-            logger.exception('Failed to read UniProt: %s', uniprot_id)
-            raise ValidationError(_u('Could not load information on %s from UniProt') % uniprot_id)
+            logger.exception(f'Failed to read UniProt: {uniprot_id}')
+            raise ValidationError(
+                _u('Could not load information on %s from UniProt') % uniprot_id
+            )
+
+    @classmethod
+    def _uniprot_name(cls, graph, subject, uniprot_id):
+        '''
+        Parses the RDF for name using ordered preferences: recommendedName, then submittedName,
+        then mnemonic, then uniprot_id.
+        '''
+        fullname_predicate = URIRef('http://purl.uniprot.org/core/fullName')
+        mnemonic_predicate = URIRef('http://purl.uniprot.org/core/mnemonic')
+        recname_predicate = URIRef('http://purl.uniprot.org/core/recommendedName')
+        subname_predicate = URIRef('http://purl.uniprot.org/core/submittedName')
+        names = [
+            # get the fullName value of the recommendedName
+            graph.value(graph.value(subject, recname_predicate), fullname_predicate),
+            # get the fullName value of the submittedName
+            graph.value(graph.value(subject, subname_predicate), fullname_predicate),
+            # get the literal value of the mnemonic
+            getattr(graph.value(subject, mnemonic_predicate), 'value', None),
+        ]
+        # fallback to uniprot_id if all above are None
+        return next((name for name in names if name is not None), uniprot_id)
 
     @classmethod
     def _load_ice(cls, link):
