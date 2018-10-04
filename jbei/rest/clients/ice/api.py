@@ -135,6 +135,10 @@ ARABIDOPSIS_KEYWORD_CHANGES = {
     'sentToAbrc': 'sent_to_a_brc',
 }
 
+PROTEIN_KEYWORD_CHANGES = {
+    'geneName': 'gene_name'
+}
+
 
 class IceApiException(Exception):
     def __init__(self, message='', code=requests.codes.internal_server_error):
@@ -272,6 +276,12 @@ class Entry(object):
             return _construct_part(
                 python_object_params, part_type, constants.ARABIDOPSIS_DATA_JSON_KEYWORD,
                 ARABIDOPSIS_KEYWORD_CHANGES, Arabidopsis, silence_type_specific_warnings
+            )
+
+        if constants.ENTRY_TYPE_PROTEIN == part_type:
+            return _construct_part(
+                python_object_params, part_type, constants.PROTEIN_DATA_JSON_KEYWORD,
+                PROTEIN_KEYWORD_CHANGES, Protein, silence_type_specific_warnings
             )
 
         if constants.ENTRY_TYPE_PART == part_type:
@@ -571,7 +581,7 @@ class Strain(Entry):
         if host_value:
             strain_data[constants.HOST_JSON_PARAM] = host_value
         if geno_value:
-            strain_data[GENOTYPE_PHENOTYPE_JSON_PARAM]
+            strain_data[GENOTYPE_PHENOTYPE_JSON_PARAM] = geno_value
 
         if strain_data:
             json_dict[constants.STRAIN_DATA_JSON_KEYWORD] = strain_data
@@ -642,6 +652,13 @@ class Plasmid(Entry):
         self.promoters = promoters
         self.circular = circular
         self.replicates_in = replicates_in
+
+
+class Protein(Entry):
+    def __init__(self, organism=None, gene_name=None, **kwargs):
+        super(Protein, self).__init__(**kwargs)
+        self.organism = organism
+        self.gene_name = gene_name
 
 
 # TODO: class is a draft / isn't tested
