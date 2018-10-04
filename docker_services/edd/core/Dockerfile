@@ -1,7 +1,7 @@
 FROM jbei/edd-node:latest as node
 
 # Copy in EDD code
-ARG EDD_VERSION=2.3.2
+ARG EDD_VERSION=2.3.5
 ARG GIT_BRANCH=master
 ARG GIT_URL=https://github.com/JBEI/edd.git
 ENV EDD_VERSION="${EDD_VERSION}"

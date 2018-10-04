@@ -28,7 +28,7 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 # Custom EDD-defined configuration options
 ###################################################################################################
 
-EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.3.0')
+EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.3.5')
 EDD_VERSION_HASH = env('EDD_VERSION_HASH', default=None)
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
