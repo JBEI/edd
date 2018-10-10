@@ -1,4 +1,4 @@
-FROM library/rabbitmq:3.6-management
+FROM library/rabbitmq:3.7-management-alpine
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 

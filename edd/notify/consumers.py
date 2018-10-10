@@ -2,7 +2,6 @@
 
 import logging
 
-from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
 from itertools import islice
 
@@ -19,16 +18,6 @@ class NotifySubscribeConsumer(JsonWebsocketConsumer):
     active messages.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # extract the user from Channels scope dict
-        user = self.scope['user']
-        logger.info(f'Init NotifySubscribeConsumer w/ {user}')
-        # create a broker to use for this consumer
-        self.broker = RedisBroker(user)
-        # define the channel groups
-        self.groups = tuple(self.broker.group_names())
-
     @classmethod
     def decode_json(cls, text):
         return utilities.JSONDecoder.loads(text)
@@ -37,26 +26,24 @@ class NotifySubscribeConsumer(JsonWebsocketConsumer):
     def encode_json(cls, content):
         return utilities.JSONEncoder.dumps(content)
 
+    @property
+    def broker(self):
+        if not hasattr(self, '_broker'):
+            self._broker = RedisBroker(self.scope['user'])
+        return self._broker
+
     def connect(self):
-        # Override parent connect()
+        # do not try to access anything depending on self.scope['user'] until connect is called
+        self.groups = tuple(self.broker.group_names())
+        # Call parent connect()
         super().connect()
         # get current notifications and send to reply_channel
         self.send_json({
             'messages': list(islice(self.broker, 10)),
             'unread': self.broker.count(),
         })
-        # TODO: remove this loop after upgrading to channels>2.0.2
-        # this is not handled automatically in channels==2.0.2 but is in master (since 98d0011b74)
-        # manually add to group(s)
-        for group in self.groups:
-            async_to_sync(self.channel_layer.group_add)(group, self.channel_name)
 
     def disconnect(self, close_code):
-        # TODO: remove this loop after upgrading to channels>2.0.2
-        # this is not handled automatically in channels==2.0.2 but is in master (since 98d0011b74)
-        # manually remove from group(s)
-        for group in self.groups:
-            async_to_sync(self.channel_layer.group_discard)(group, self.channel_name)
         super().disconnect(close_code)
 
     def notification(self, event):

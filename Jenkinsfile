@@ -127,6 +127,17 @@ try {
         try {
 
             stage('Launch') {
+                // RabbitMQ service is very sensitive to available memory, try launching first
+                def prelaunch_script = $/#!/bin/bash -xe
+                    cd docker_services
+                    sudo docker-compose -p '${project_name}' -f combined.yml up -d rabbitmq
+                    # wait until rabbitmq reports healthy
+                    CONTAINER="$$(sudo docker-compose -p '${project_name}' ps -q rabbitmq | head -1)"
+                    until [ "$$(sudo docker inspect --format "{{json .State.Health.Status}}" $$CONTAINER)" = '"healthy"' ]; do
+                        echo "Waiting for RabbitMQ to report healthy"
+                        sleep 15
+                    done
+                /$
                 def sql_script = $/UPDATE configuration
                     SET value = '/usr/local/tomcat/'
                     WHERE key = 'DATA_DIRECTORY';/$
@@ -161,6 +172,9 @@ try {
                     sudo docker-compose -p '${project_name}' -f combined.yml \
                         restart ice
                 /$
+                timeout(5) {
+                    sh prelaunch_script
+                }
                 // only try to launch for 10 minutes before bugout (takes under 3 min on JBEI vm)
                 timeout(10) {
                     sh launch_script

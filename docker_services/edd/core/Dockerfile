@@ -1,7 +1,7 @@
 FROM jbei/edd-node:latest as node
 
 # Copy in EDD code
-ARG EDD_VERSION=2.3.2
+ARG EDD_VERSION=2.4.0
 ARG GIT_BRANCH=master
 ARG GIT_URL=https://github.com/JBEI/edd.git
 ENV EDD_VERSION="${EDD_VERSION}"
@@ -13,54 +13,58 @@ RUN apk add --no-cache git \
 
 # ---
 
-FROM buildpack-deps:buster
+FROM jbei/scikit-learn:latest
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 WORKDIR /code
-ARG EDD_VERSION=2.3.2
+ARG EDD_VERSION=2.4.0
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8 EDD_VERSION="${EDD_VERSION}"
 
-# include Debian packages required to build pip packages
-RUN apt-get clean \
-    && apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
-        build-essential \
+RUN set -ex \
+    # update package index from base file
+    && apk update \
+    # need build tools to compile gevent and greenlet
+    # (just copying build-deps from python Dockerfile)
+    && apk add --virtual .build-deps \
+        bzip2-dev \
+        coreutils \
+        dpkg-dev dpkg \
+        expat-dev \
         g++ \
-        gfortran \
-        libatlas-base-dev \
-        libbz2-dev \
+        gcc \
+        gdbm-dev \
+        jpeg-dev \
+        libc-dev \
         libffi-dev \
-        liblapack-dev \
-        libldap2-dev \
-        libpq-dev \
-        libsasl2-dev \
-        libssl-dev \
-        libyaml-dev \
-        netcat \
-        openssl \
-        postgresql-client \
-        python3-all-dev \
-        python3-pip \
-        python3-setuptools \
-        python3-wheel \
-    && apt-get autoremove -y \
-    && ln -s /usr/bin/python3 /usr/local/bin/python \
-    && ln -s /usr/bin/pip3 /usr/local/bin/pip \
-    && pip install --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir virtualenv \
-    && rm -rf /var/lib/apt/lists/*
+        libldap \
+        libnsl-dev \
+        libsasl \
+        libtirpc-dev \
+        linux-headers \
+        make \
+        ncurses-dev \
+        libressl \
+        libressl-dev \
+        openldap-dev \
+        pax-utils \
+        postgresql-dev \
+        readline-dev \
+        sqlite-dev \
+        xz-dev \
+        zlib-dev \
+    && apk add --no-cache \
+        # need libjpeg for Pillow to work
+        libjpeg \
+        # need mailcap to install /etc/mime.types database
+        mailcap \
+        # use su-exec to step down from root
+        su-exec \
+    && pipenv --version
 
-# COPY adds a new layer IFF requirements.txt hash has changed
-COPY requirements.txt /tmp/
-
-# Install remaining packages; numpy, scipy, scikit-learn will all be skipped as already-installed
-RUN pip install -r /tmp/requirements.txt
-
-# Add Tini
-# Keep for now to maintain backward-compatibility; better to launch with docker run --init
-ENV TINI_VERSION v0.16.1
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-RUN chmod +x /tini
+COPY Pipfile Pipfile.lock /code/
+RUN pipenv install --system --deploy --verbose \
+    && apk del .build-deps \
+    && rm -f Pipfile Pipfile.lock
 
 # Copy in entrypoint shell scripts
 COPY entrypoint.sh /usr/local/bin
@@ -68,5 +72,9 @@ COPY entrypoint.sh /usr/local/bin
 # Copy in code from node image
 COPY --from=node /code /usr/local/edd
 
-ENTRYPOINT ["/tini", "--", "/usr/local/bin/entrypoint.sh"]
+# Create user/group to run code
+RUN addgroup -g 1000 -S edduser \
+    && adduser -u 1000 -S edduser -G edduser
+
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["--help"]

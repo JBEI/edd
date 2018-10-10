@@ -23,6 +23,10 @@ CELERY_TASK_DEFAULT_QUEUE = 'edd'
 CELERY_TASK_DEFAULT_ROUTING_KEY = 'edd'
 CELERY_TASK_PUBLISH_RETRY = False
 
+# Try fixing problems with connection pool to RabbitMQ by disabling pool
+# See: https://github.com/celery/celery/issues/4226
+CELERY_BROKER_POOL_LIMIT = None
+
 
 ###################################################################################################
 # Configure database backend to store task state and results

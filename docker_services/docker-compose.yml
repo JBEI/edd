@@ -74,7 +74,7 @@ services:
       - '8983'
   rabbitmq:
     build: ./rabbitmq/
-    image: jbei/rabbitmq:3.6-management
+    image: jbei/rabbitmq:3.7-management-alpine
     restart: always
     hostname: rabbitmq
     env_file: secrets.env

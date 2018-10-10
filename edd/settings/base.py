@@ -16,9 +16,10 @@ root = environ.Path(__file__) - 3  # root is two parents up of directory contain
 BASE_DIR = root()
 DOCKER_SENTINEL = object()
 env = environ.Env(
-    EDD_DEBUG=(bool, True),
+    EDD_DEBUG=(bool, False),
     ICE_HMAC_KEY=(str, ''),
     LDAP_PASS=(str, None),
+    SECRET_KEY=(str, DOCKER_SENTINEL),
 )
 # Use the SECRET_KEY to detect if env is setup via Docker; if not, load from file secrets.env
 if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
@@ -28,7 +29,7 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 # Custom EDD-defined configuration options
 ###################################################################################################
 
-EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.3.0')
+EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.4.0')
 EDD_VERSION_HASH = env('EDD_VERSION_HASH', default=None)
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to

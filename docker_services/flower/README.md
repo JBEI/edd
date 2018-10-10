@@ -1,8 +1,12 @@
-# flower 0.9-edd
+# flower 1.0.1
 
 This Dockerfile builds an image to run the [Celery Flower][1] monitoring tool for [Celery][2]
-task queues. It uses the 0.9 version. The image is not meant to be run stand-alone. The container
-will wait for the [RabbitMQ][3] service to begin responding before it launches.
+task queues. It uses the 1.0.1 development version. The image is not meant to be run stand-alone.
+The container will wait for the [RabbitMQ][3] service to begin responding before it launches.
+
+Images are tagged with the version of Flower installed. Additional tags include the build date,
+for reproducing environments. e.g. jbei/flower:1.0.1 will point to the latest build that uses
+Flower v1.0.1, and jbei/flower:1.0.1-20180613 will point to the image built on 13 June, 2018.
 
 The container makes use of the following environment:
 * __AMQP_ADMIN_HOST__: the host to use when connecting to RabbitMQ admin (default `rabbitmq`)

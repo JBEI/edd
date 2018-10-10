@@ -360,36 +360,36 @@ service_wait rabbitmq 5672
 case "$COMMAND" in
     application)
         banner "Starting production appserver"
-        exec gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
+        su-exec edduser:edduser gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
         ;;
     devmode)
         banner "Starting development appserver"
-        exec python manage.py runserver 0.0.0.0:8000
+        su-exec edduser:edduser python manage.py runserver 0.0.0.0:8000
         ;;
     init-only)
         output "Init finished"
         mkdir -p /tmp/edd-wait
         cd /tmp/edd-wait
-        exec python -m SimpleHTTPServer ${1:-24051}
+        su-exec edduser:edduser python -m SimpleHTTPServer ${1:-24051}
         ;;
     init-exit)
         output "Init finished"
         ;;
     test)
         banner "Running tests"
-        exec python manage.py test
+        su-exec edduser:edduser python manage.py test
         ;;
     worker)
         banner "Starting Celery worker"
-        exec celery -A edd worker -l info
+        su-exec edduser:edduser celery -A edd worker -l info
         ;;
     daphne)
         banner "Starting daphne"
-        exec daphne -b 0.0.0.0 -p 8000 edd.asgi:application
+        su-exec edduser:edduser daphne -b 0.0.0.0 -p 8000 edd.asgi:application
         ;;
     channel)
         banner "Starting Channels worker with: [$(echo "$@")]"
-        exec python manage.py runworker "$@"
+        su-exec edduser:edduser python manage.py runworker "$@"
         ;;
     *)
         output "Unrecognized command: $COMMAND"

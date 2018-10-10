@@ -313,9 +313,10 @@ Excel files, e.g. in the importer, experiment description, etc.
       et-xmlfile==1.0.1
       jdcal==1.4
 
-## Pillow (deprecated?)
+## Pillow
 
-[Pillow][23] is a library for manipulating images. I cannot find any current referenced in EDD.
+[Pillow][23] is a library for manipulating images. It is used by the ImageField attributes on the
+`edd.branding` app, and anywhere else that is using an ImageField.
 
 ## psycopg2-binary
 
