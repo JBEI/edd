@@ -10,7 +10,7 @@ main/views.py, but are not accessible using the same URL scheme.
 import logging
 
 from django.contrib.auth import get_user_model
-from django.db.models import Prefetch, Q
+from django.db.models import Q
 from django_filters import filters as django_filters, rest_framework as filters
 from rest_framework import mixins, response, schemas, viewsets
 from rest_framework.decorators import api_view, permission_classes, renderer_classes
@@ -269,7 +269,7 @@ export_via_lookup = {
     models.Study: None,
     models.Line: ('study', ),
     models.Assay: ('line', 'study'),
-    models.Measurement: ('assay', 'line', 'study'),
+    models.Measurement: ('study', ),
 }
 
 
@@ -295,7 +295,7 @@ class ExportFilter(filters.FilterSet):
     """
     study_id = django_filters.ModelMultipleChoiceFilter(
         lookup_expr='in',
-        name='measurement__assay__line__study',
+        name='study',
         queryset=export_queryset(models.Study),
     )
     line_id = django_filters.ModelMultipleChoiceFilter(
@@ -339,10 +339,10 @@ class ExportFilter(filters.FilterSet):
                         id_filter |= Q(**{f'{filter_.field_name}__{filter_.lookup_expr}': value})
             self._qs = self.queryset.filter(
                 id_filter,
+                study__active=True,
                 measurement__active=True,
                 measurement__assay__active=True,
                 measurement__assay__line__active=True,
-                measurement__assay__line__study__active=True,
             )
         # filter with the aggregated filter expression
         return self._qs
@@ -374,24 +374,10 @@ class ExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         qs = models.MeasurementValue.objects.order_by('pk')
         return qs.select_related(
             'measurement__measurement_type',
-            'measurement__x_units',
             'measurement__y_units',
-            'measurement__update_ref__mod_by',
-            'measurement__experimenter',
-            'measurement__assay__created',
-            'measurement__assay__experimenter',
             'measurement__assay__protocol',
-            'measurement__assay__updated',
-            'measurement__assay__line__contact',
-            'measurement__assay__line__created',
-            'measurement__assay__line__experimenter',
-            'measurement__assay__line__updated',
-            'measurement__assay__line__study__contact',
-            'measurement__assay__line__study__created',
-            'measurement__assay__line__study__updated',
-        ).prefetch_related(
-            Prefetch('measurement__assay__line__strains'),
-            Prefetch('measurement__assay__line__carbon_source'),
+            'measurement__assay__line',
+            'study',
         )
 
     # The get_renderers API does not take the request object, cannot configure at this level
@@ -401,7 +387,7 @@ class ExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         # 1. need a method that extracts parameters for customization from request, store on self;
         # 2. override get_renderers() to use parameters when creating ExportRenderer;
         # 3. call to parameter extraction must come *before* the below super call
-        return super(ExportViewSet, self).perform_content_negotiation(request, force)
+        return super().perform_content_negotiation(request, force)
 
 
 class MeasurementValueFilter(filters.FilterSet):

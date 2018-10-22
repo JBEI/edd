@@ -11,7 +11,7 @@ class InstitutionInline(admin.TabularInline):
 
 
 class UserProfileAdmin(admin.ModelAdmin):
-    fields = ('user', 'initials', 'description', 'prefs', )
+    fields = ('user', 'initials', 'description', 'preferences', )
     inlines = (InstitutionInline, )
     list_display = ('user', 'initials', )
 

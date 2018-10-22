@@ -142,12 +142,12 @@ class TableImport(object):
         # after importing, force updates of previously-existing lines and assays
         for assay in self._assay_by_id.values():
             # force refresh of Assay's Update (also saves any changed metadata)
-            assay.save(update_fields=['meta_store', 'updated'])
+            assay.save(update_fields=['metadata', 'updated'])
         for line in self._line_by_id.values():
             # force refresh of Update (also saves any changed metadata)
-            line.save(update_fields=['meta_store', 'updated'])
+            line.save(update_fields=['metadata', 'updated'])
         # and force update of the study
-        self._study.save(update_fields=['meta_store', 'updated'])
+        self._study.save(update_fields=['metadata', 'updated'])
 
     def check_series_points(self, series):
         """
@@ -208,6 +208,7 @@ class TableImport(object):
                     assay = line.assay_set.create(
                         name=assay_name,
                         protocol=protocol,
+                        study_id=line.study_id,
                         experimenter=self._user,
                     )
                     logger.info(f'Created new Assay {assay.id}:{assay_name}')
@@ -325,7 +326,10 @@ class TableImport(object):
                 record = records[0]  # only SELECT query once
                 record.save(update_fields=['update_ref'])  # force refresh of Update
                 return record
-        find.update(experimenter=self._user)
+        find.update(
+            experimenter=self._user,
+            study_id=assay.study_id,
+        )
         logger.debug("Creating measurement with: %s", find)
         return assay.measurement_set.create(**find)
 
@@ -337,27 +341,31 @@ class TableImport(object):
             updated = record.measurementvalue_set.filter(x=xvalue).update(y=yvalue)
             total_updated += updated
             if updated == 0:
-                record.measurementvalue_set.create(x=xvalue, y=yvalue)
+                record.measurementvalue_set.create(
+                    study_id=record.study_id,
+                    x=xvalue,
+                    y=yvalue,
+                )
                 total_added += 1
         return (total_added, total_updated)
 
     def _process_metadata(self, assay, meta):
         if len(meta) > 0:
             if self.replace:
-                # would be simpler to do assay.meta_store.clear()
+                # would be simpler to do assay.metadata.clear()
                 # but we only want to replace types included in import data
                 for metatype in self._meta_lookup.values():
-                    if metatype.pk in assay.meta_store:
-                        del assay.meta_store[metatype.pk]
-                    elif metatype.pk in assay.line.meta_store:
-                        del assay.line.meta_store[metatype.pk]
+                    if metatype.pk in assay.metadata:
+                        del assay.metadata[metatype.pk]
+                    elif metatype.pk in assay.line.metadata:
+                        del assay.line.metadata[metatype.pk]
             for meta_id, value in meta.items():
                 metatype = self._metatype(meta_id)
                 if metatype is not None:
                     if metatype.for_line():
-                        assay.line.meta_store[metatype.pk] = value
+                        assay.line.metadata[metatype.pk] = value
                     elif metatype.for_protocol():
-                        assay.meta_store[metatype.pk] = value
+                        assay.metadata[metatype.pk] = value
 
     def _extract_value(self, value):
         # make sure input is string first, split on slash or colon, and give back array of numbers

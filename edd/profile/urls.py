@@ -10,8 +10,8 @@ app_name = 'edd.profile'
 
 
 urlpatterns = [
-    path('', login_required(views.index), name='index'),
-    path('~<str:username>/', login_required(views.profile), name='profile'),
-    path('settings/', login_required(views.settings), name='settings'),
-    path('settings/<str:key>/', login_required(views.settings_key), name='settings_key'),
+    path('', login_required(views.ProfileView.as_view()), name='index'),
+    path('~<str:username>/', login_required(views.ProfileView.as_view()), name='profile'),
+    path('settings/', login_required(views.SettingsView.as_view()), name='settings'),
+    path('settings/<str:key>/', login_required(views.SettingsView.as_view()), name='settings_key'),
 ]

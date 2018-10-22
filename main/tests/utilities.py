@@ -8,8 +8,10 @@ from jsonschema import Draft4Validator
 from unittest.mock import call, patch
 
 from main.importer.experiment_desc import CombinatorialCreationImporter
-from main.importer.experiment_desc.importer import (_build_response_content,
-                                                    ExperimentDescriptionOptions)
+from main.importer.experiment_desc.importer import (
+    _build_response_content,
+    ExperimentDescriptionOptions,
+)
 from main.importer.experiment_desc.parsers import ExperimentDescFileParser, JsonInputParser
 from main.importer.experiment_desc.utilities import ExperimentDescriptionContext
 from main.importer.experiment_desc.validators import SCHEMA as JSON_SCHEMA
@@ -27,7 +29,14 @@ from main.importer.experiment_desc.constants import (
     INVALID_FILE_VALUE_CATEGORY,
     MISSING_REQUIRED_LINE_NAME,
 )
-from main.models import (CarbonSource, Line, MetadataType, Protocol, Strain, Study)
+from main.models import (
+    CarbonSource,
+    Line,
+    MetadataType,
+    Protocol,
+    Strain,
+    Study,
+)
 
 from . import factory, TestCase
 
@@ -49,12 +58,18 @@ class CombinatorialCreationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.system_user = User.objects.get(username='system')
-        cls.metabolomics, _ = Protocol.objects.get_or_create(name='Metabolomics',
-                                                             owned_by=cls.system_user)
-        cls.targeted_proteomics, _ = Protocol.objects.get_or_create(name='Targeted Proteomics',
-                                                                    owned_by=cls.system_user)
-        cls.media_mtype, _ = MetadataType.objects.get_or_create(type_name='Media',
-                                                                for_context=MetadataType.LINE)
+        cls.metabolomics, _ = Protocol.objects.get_or_create(
+            name='Metabolomics',
+            owned_by=cls.system_user,
+        )
+        cls.targeted_proteomics, _ = Protocol.objects.get_or_create(
+            name='Targeted Proteomics',
+            owned_by=cls.system_user,
+        )
+        cls.media_mtype, _ = MetadataType.objects.get_or_create(
+            type_name='Media',
+            for_context=MetadataType.LINE,
+        )
 
         # query the database and cache MetadataTypes, Protocols, etc that should be static
         # for the duration of the test
@@ -319,7 +334,8 @@ class CombinatorialCreationTests(TestCase):
             study,
             combo_input,
             importer,
-            options, expected_line_names,
+            options,
+            expected_line_names,
             expected_protocols_to_assay_suffixes,
             exp_meta_by_line=None,
             exp_assay_metadata=None):
@@ -447,7 +463,7 @@ class CombinatorialCreationTests(TestCase):
                 for protocol, assays_list in protocol_to_assay.items():
                     for assay in assays_list:
                         expected_metadata = exp_assay_metadata[line_name][protocol][assay.name]
-                        self.assertEqual(expected_metadata, assay.meta_store)
+                        self.assertEqual(expected_metadata, assay.metadata)
 
         # for future tests that may want access to creation results, (e.g. to spot check large
         # assay metadata sets instead of exhaustively specifying), return them
@@ -456,7 +472,7 @@ class CombinatorialCreationTests(TestCase):
     def _test_line_metadata(self, line, exp_metadata, cache, related_object_mtypes,
                             many_related_obj_mtypes):
         if not exp_metadata:
-            self.assertFalse(line.meta_store)
+            self.assertFalse(line.metadata)
             # TODO: for consistency in test inputs, also confirm that no line
             # attributes with a MetadataType analog
             return
@@ -470,7 +486,7 @@ class CombinatorialCreationTests(TestCase):
 
         # if no relations are specified by metadata, just do a strict equality check
         if not exp_related_obj_meta_pks:
-            self.assertEqual(exp_metadata, line.meta_store)
+            self.assertEqual(exp_metadata, line.metadata)
             return
 
         # since relations are expected in the resulting lines, check to make sure they
@@ -523,12 +539,12 @@ class CombinatorialCreationTests(TestCase):
                     obs_val = line_attr
                 # default is that results should be store as metadata
                 else:
-                    obs_val = line.meta_store.get(str(meta_pk))
+                    obs_val = line.metadata.get(str(meta_pk))
 
             # if data should be stored as a relation, check that the related value
             # didn't leak into the meta store
             if related_object:
-                self.assertEqual(line.meta_store.get(meta_pk), None)
+                self.assertEqual(line.metadata.get(meta_pk), None)
 
             # skip value comparison for many-related objects until we've found & fixed
             # the source of related errors... relationships are getting set via the UI, but

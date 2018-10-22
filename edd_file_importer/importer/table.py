@@ -100,7 +100,7 @@ class ImportContext:
             parser_class = getattr(module, class_name)
             self.parser = parser_class(aggregator=aggregator)
         except RuntimeError as r:
-            aggregator.add_error(FileParseCodes.PARSER_NOT_FOUND, occurrence=r.message)
+            aggregator.add_error(FileParseCodes.PARSER_NOT_FOUND, occurrence=str(r))
             raise ParseError(self)
 
 
@@ -372,11 +372,10 @@ class ImportFileHandler(ErrorAggregator):
         Converts MeasurementParseRecords into JSON to send to the legacy import Celery task.
         See RawImportSet in Import.ts or main.importer.table.TableImport._load_measurement_record()
         """
-        logger.debug(f'Cacheing resolved import data to Redis: {import_id}')
+        logger.debug(f'Caching resolved import data to Redis: {import_id}')
 
         cache = self.cache
         protocol = self.cache.protocol
-        compartment = cache.compartment
 
         broker = ImportBroker()
         if not initial_upload:
@@ -400,29 +399,7 @@ class ImportFileHandler(ErrorAggregator):
             # merge parse records that match the same ID (but should have different times)
             import_record = import_records.get(ident)
             if not import_record:
-                import_record = {
-                    # TODO: vestiges of the older import? consider also, e.g. Biolector
-                    # 'kind': 'std',
-                    # 'hint': None,
-
-                    'measurement_id': mtype.pk,
-                    'compartment_id': compartment,
-                    'units_id': unit.pk,
-                    'data': [parse_record.data],
-                    'src_ids': []  # ids for where the data came from, e.g. row #s in an Excel file
-                }
-
-                if matched_assays:
-                    import_record['assay_id'] = assay_or_line_pk
-                else:
-                    line_pk = assay_or_line_pk
-                    import_record['assay_id'] = 'new'
-                    import_record['line_id'] = line_pk
-                    import_record['protocol_id'] = cache.protocol.pk
-                    assays_count = Assay.objects.filter(line_id=line_pk,
-                                                        protocol_id=protocol.pk).count()
-                    if assays_count:
-                        self.raise_error(FileProcessingCodes.MERGE_NOT_SUPPORTED)
+                import_record = self._build_import_record(parse_record, matched_assays)
                 import_records[ident] = import_record
 
             else:
@@ -483,6 +460,38 @@ class ImportFileHandler(ErrorAggregator):
 
         return import_records_list
 
+    def _build_import_record(self, parse_record, matched_assays):
+        assay_or_line_pk = self.cache.loa_name_to_pk.get(parse_record.line_or_assay_name)
+        mtype = (self.cache.mtype_name_to_type[parse_record.mtype_name] if
+                 parse_record.mtype_name else None)
+        unit = (self.cache.unit_name_to_unit[parse_record.units_name] if
+                parse_record.units_name else None)
+        import_record = {
+            # TODO: vestiges of the older import? consider also, e.g. Biolector
+            # 'kind': 'std',
+            # 'hint': None,
+
+            'measurement_id': mtype.pk,
+            'compartment_id': self.cache.compartment,
+            'units_id': unit.pk,
+            'data': [parse_record.data],
+            'src_ids': []  # ids for where the data came from, e.g. row #s in an Excel file
+        }
+
+        if matched_assays:
+            import_record['assay_id'] = assay_or_line_pk
+        else:
+            line_pk = assay_or_line_pk
+            import_record['assay_id'] = 'new'
+            import_record['line_id'] = line_pk
+            import_record['protocol_id'] = self.cache.protocol.pk
+            assays_count = Assay.objects.filter(line_id=line_pk,
+                                                protocol_id=self.cache.protocol.pk).count()
+            if assays_count:
+                self.raise_error(FileProcessingCodes.MERGE_NOT_SUPPORTED)
+
+        return import_record
+
     def _paginate_cache(self, import_records):
         cache_page_size = settings.EDD_IMPORT_PAGE_SIZE
         max_cache_pages = settings.EDD_IMPORT_PAGE_LIMIT
@@ -511,15 +520,16 @@ def verify_assay_times(err_aggregator, assay_pks, parser, assay_time_meta_pk):
     """
     Checks existing assays ID'd in the import file for time metadata, and verifies that they
     all have time metadata (or don't).
+
     :return: a dict that maps assay pk => time if assay times were consistently found,
-    None if they were consistently *not* found
-    :raises ImportError if time is inconsistently specified or overspecified
+        None if they were consistently *not* found
+    :raises EDDImportError: if time is inconsistently specified or overspecified
     """
 
-    times_qs = Assay.objects.filter(pk__in=assay_pks, meta_store__has_key=assay_time_meta_pk)
-    times_qs = times_qs.values('pk', 'meta_store__time')
+    times_qs = Assay.objects.filter(pk__in=assay_pks, metadata__has_key=assay_time_meta_pk)
+    times_qs_values = times_qs.values_list('pk', f'metadata__{assay_time_meta_pk}')
 
-    times_count = len(times_qs)
+    times_count = times_qs.count()
 
     if times_count == len(assay_pks):
         if parser.has_all_times:
@@ -529,11 +539,11 @@ def verify_assay_times(err_aggregator, assay_pks, parser, assay_time_meta_pk):
             )
             err_aggregator.raise_errors()
 
-        return {result['pk']: result['time'] for result in times_qs}
+        return dict(times_qs_values)
 
     elif times_count != 0:
         missing_pks = Assay.objects.filter(pk__in=assay_pks)
-        missing_pks = missing_pks.exclude(meta_store__has_key=assay_time_meta_pk)
+        missing_pks = missing_pks.exclude(metadata__has_key=assay_time_meta_pk)
         missing_pks = missing_pks.values_list('pk', flat=True)
         err_aggregator.add_errors(FileProcessingCodes.ASSAYS_MISSING_TIME,
                                   occurrences=missing_pks)

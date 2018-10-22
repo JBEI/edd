@@ -3,89 +3,63 @@
 import json
 
 from django.contrib.auth import get_user_model
-from django.http import (
-    Http404, HttpResponse, HttpResponseNotAllowed, JsonResponse
-)
-from django.shortcuts import render
-from django.template import RequestContext
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
+from django.views import View
+from django.views.generic.base import TemplateView
+from requests import codes
 
-# /profile/
-def index(request):
-    return profile_for_user(request, request.user)
+from edd import utilities
 
-# /profile/~<username>/
-def profile(request, username):
-    User = get_user_model()
-    try:
-        user = User.objects.get(username=username)
-    except User.DoesNotExist as e:
-        raise Http404("User does not exist")
-    return profile_for_user(request, user)
 
-def profile_for_user(request, user):
-    context = {
-        'profile_user': user,
-        'profile': user.profile,
-    }
-    return render(
-        request,
-        "edd/profile/profile.html",
-        context=context,
-    )
+# /profile/ AND /profile/~<username>/
+class ProfileView(TemplateView):
 
-# /profile/settings/
-def settings(request):
-    user = request.user
-    if hasattr(user, 'profile'):
-        if request.method == 'HEAD':
-            return HttpResponse(status=200)
-        elif request.method == 'GET':
-            return JsonResponse(user.profile.prefs or {})
-        elif request.method == 'PUT' or request.method == 'POST':
-            try:
-                user.profile.prefs = json.loads(request.POST['data'])
-                user.profile.save()
-                return HttpResponse(status=204)
-            except Exception as e:
-                # TODO: logging
-                return HttpResponse(status=500)
-        elif request.method == 'DELETE':
-            try:
-                user.profile.prefs = {}
-                user.profile.save()
-                return HttpResponse(status=204)
-            except Exception as e:
-                # TODO: logging
-                return HttpResponse(status=500)
+    template_name = "edd/profile/profile.html"
+
+    def get_context_data(self, **kwargs):
+        user = self._get_user(self.request, **kwargs)
+        return {
+            "profile_user": user,
+            "profile": user.profile,
+        }
+
+    def _get_user(self, request, **kwargs):
+        username = kwargs.get('username', None)
+        if username is None:
+            return request.user
+        return get_object_or_404(get_user_model(), username=username)
+
+
+# /profile/settings/ AND /profile/settings/<key>/
+class SettingsView(View):
+
+    def get(self, request, *args, **kwargs):
+        profile = request.user.profile
+        key = kwargs.get('key', None)
+        result = profile.preferences if key is None else profile.preferences.get(key, None)
+        return JsonResponse(result, encoder=utilities.JSONEncoder, safe=False)
+
+    def post(self, request, *args, **kwargs):
+        profile = request.user.profile
+        key = kwargs.get('key', None)
+        payload = json.loads(request.POST['data'], cls=utilities.JSONDecoder)
+        if key is None:
+            profile.preferences = payload
         else:
-            return HttpResponseNotAllowed(['HEAD', 'GET', 'PUT', 'POST', 'DELETE', ])
-    raise Http404("Could not find user settings")
+            profile.preferences.update({key: payload})
+        profile.save()
+        return HttpResponse(status=codes.no_content)
 
-# /profile/settings/<key>
-def settings_key(request, key):
-    user = request.user
-    if hasattr(user, 'profile'):
-        prefs = user.profile.prefs
-        if request.method == 'HEAD':
-            return HttpResponse(status=200)
-        elif request.method == 'GET':
-            return JsonResponse(prefs.get(key, None), safe=False)
-        elif request.method == 'PUT' or request.method == 'POST':
-            try:
-                prefs.update({ key: request.POST['data'], })
-                user.profile.save()
-                return HttpResponse(status=204)
-            except Exception as e:
-                # TODO: logging
-                return HttpResponse(status=500)
-        elif request.method == 'DELETE':
-            try:
-                del prefs[key]
-                user.profile.save()
-                return HttpResponse(status=204)
-            except Exception as e:
-                # TODO: logging
-                return HttpResponse(status=500)
+    # treat PUT the same as POST
+    put = post
+
+    def delete(self, request, *args, **kwargs):
+        profile = request.user.profile
+        key = kwargs.get('key', None)
+        if key is None:
+            profile.preferences = {}
         else:
-            return HttpResponseNotAllowed(['HEAD', 'GET', 'PUT', 'POST', 'DELETE', ])
-    raise Http404("Could not find user settings")
+            del profile.preferences[key]
+        profile.save()
+        return HttpResponse(status=codes.no_content)

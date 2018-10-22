@@ -71,12 +71,12 @@ class StudyAccessMixin(object):
         except cls._meta.model.DoesNotExist:
             return None
 
-    def resolve_meta_store(self, info, *args, **kwargs):
+    def resolve_metadata(self, info, *args, **kwargs):
         logger.info(
-            f'resolve_meta_store info={info} dir(info)={dir(info)} '
-            f'type(self.meta_store)={type(self.meta_store)}'
+            f'resolve_metadata info={info} dir(info)={dir(info)} '
+            f'type(self.metadata)={type(self.metadata)}'
         )
-        return self.meta_store
+        return self.metadata
 
 
 class StudyNode(StudyAccessMixin, DjangoObjectType):

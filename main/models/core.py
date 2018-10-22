@@ -247,9 +247,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
             # TODO: do this with Django model APIs instead of raw SQL
             MetadataType.objects.extra(select={
                 'count': 'SELECT COUNT(1) FROM edd_object o '
-                         'INNER JOIN %s x ON o.id = x.object_ref_id '
-                         'WHERE o.meta_store ? metadata_type.id::varchar'
-                         % cls._meta.db_table
+                         f'INNER JOIN {cls._meta.db_table} x ON o.id = x.object_ref_id '
+                         'WHERE o.metadata ? metadata_type.id::varchar'
                 }).values_list('id', 'count')
             )
 
@@ -275,7 +274,7 @@ class EDDObject(EDDMetadata, EDDSerialize):
             'name': self.name,
             'description': self.description,
             'active': self.active,
-            'meta': self.get_metadata_json(),
+            'meta': self.metadata,
             # Always include expanded created/updated objects instead of IDs
             'modified': self.updated.to_json(depth) if self.updated else None,
             'created': self.created.to_json(depth) if self.created else None,
@@ -589,11 +588,11 @@ class Protocol(EDDObject):
         db_table = 'protocol'
     CATEGORY_NONE = 'NA'
     CATEGORY_OD = 'OD'
-    CATEGORY_HPLC = 'HPLC'  # Metabolomics (concentrations)
-    CATEGORY_LCMS = 'LCMS'  # Metabolomics (concentration fluxes)
-    CATEGORY_RAMOS = 'RAMOS'  # Respiration data -> Other
+    CATEGORY_HPLC = 'HPLC'
+    CATEGORY_LCMS = 'LCMS'
+    CATEGORY_RAMOS = 'RAMOS'
     CATEGORY_TPOMICS = 'TPOMICS'
-    SBML_CATEGORY_CHOICE = (
+    CATEGORY_CHOICE = (
         (CATEGORY_NONE, _('None')),
         (CATEGORY_OD, _('Optical Density')),
         (CATEGORY_HPLC, _('HPLC')),
@@ -634,7 +633,7 @@ class Protocol(EDDObject):
         verbose_name=_('Default Units'),
     )
     categorization = models.CharField(
-        choices=SBML_CATEGORY_CHOICE,
+        choices=CATEGORY_CHOICE,
         default=CATEGORY_NONE,
         help_text=_('SBML category for this Protocol.'),
         verbose_name=_('SBML Category'),
@@ -904,6 +903,12 @@ class Assay(EDDObject):
         parent_link=True,
         related_name='+',
     )
+    study = models.ForeignKey(
+        Study,
+        help_text=_('The Study containing this Assay.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Study'),
+    )
     line = models.ForeignKey(
         Line,
         help_text=_('The Line used for this Assay.'),
@@ -995,6 +1000,12 @@ class Measurement(EDDMetadata, EDDSerialize):
         names = [_('scalar'), _('vector'), _('histogram'), _('sigma'), ]
         CHOICE = [(str(i), n) for i, n in enumerate(names)]
 
+    study = models.ForeignKey(
+        Study,
+        help_text=_('The Study containing this Measurement.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Study'),
+    )
     assay = models.ForeignKey(
         Assay,
         help_text=_('The Assay creating this Measurement.'),
@@ -1088,7 +1099,7 @@ class Measurement(EDDMetadata, EDDSerialize):
             # "values": map(lambda p: p.to_json(), self.measurementvalue_set.all()),
             "x_units": self.x_units_id,
             "y_units": self.y_units_id,
-            "meta": self.get_metadata_json(),
+            "meta": self.metadata,
         }
 
     def __str__(self):
@@ -1159,6 +1170,12 @@ class MeasurementValue(models.Model):
     """ Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of a measurement """
     class Meta:
         db_table = 'measurement_value'
+    study = models.ForeignKey(
+        Study,
+        help_text=_('The Study containing this Value.'),
+        on_delete=models.CASCADE,
+        verbose_name=_('Study'),
+    )
     measurement = models.ForeignKey(
         Measurement,
         help_text=_('The Measurement containing this point of data.'),

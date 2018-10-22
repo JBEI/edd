@@ -42,7 +42,7 @@
       "active": true,
       "created": 2,
       "description": "Veniam commodi omnis delectus dolorum adipisci tempore similique. Molestias sed veniam est officia architecto. Culpa pariatur vero magnam. Consequuntur delectus placeat molestias.",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "User-centric dynamic neural-net",
       "updated": 2,
       "updates": [
@@ -72,7 +72,7 @@
       "active": true,
       "created": 3,
       "description": "KEIO wild type",
-      "meta_store": "{\"11\": \"200\", \"10\": \"50\", \"19\": \"M9\", \"18\": \"30\", \"1\": \"1\", \"2\": \"0.1\"}",
+      "metadata": "{\"11\": \"200\", \"10\": \"50\", \"19\": \"M9\", \"18\": \"30\", \"1\": \"1\", \"2\": \"0.1\"}",
       "name": "BW1",
       "updated": 3,
       "updates": [
@@ -104,7 +104,7 @@
       "active": true,
       "created": 3,
       "description": "arcA ko",
-      "meta_store": "{\"11\": \"200\", \"10\": \"50\", \"19\": \"M9\", \"18\": \"30\", \"1\": \"1\", \"2\": \"0.1\"}",
+      "metadata": "{\"11\": \"200\", \"10\": \"50\", \"19\": \"M9\", \"18\": \"30\", \"1\": \"1\", \"2\": \"0.1\"}",
       "name": "arcA",
       "updated": 3,
       "updates": [

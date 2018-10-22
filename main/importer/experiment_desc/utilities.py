@@ -204,7 +204,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
             'name': line_name,
             'description': description,
             'study_id': self.study_pk,
-            'meta_store': hstore_compliant_dict,
+            'metadata': hstore_compliant_dict,
         }
 
         # add in values for single-valued relations captured by specialized MetadataTypes
@@ -268,9 +268,10 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
 
         assay = Assay.objects.create(
             name=assay_name,
+            study_id=line.study_id,
             line_id=line.pk,
             protocol_id=protocol_pk,
-            meta_store=hstore_compliant_dict
+            metadata=hstore_compliant_dict,
         )
         assays_list.append(assay)
 
@@ -307,7 +308,7 @@ class LineAndAssayNamingVisitor(NewLineAndAssayVisitor):
             name=line_name,
             description=description,
             study_id=self.study_pk,
-            meta_store=line_metadata_dict,
+            metadata=line_metadata_dict,
         )
 
         self.lines.append(line)
@@ -481,12 +482,12 @@ class AutomatedNamingStrategy(NamingStrategy):
     automatically.
     """
 
-    def __init__(self, importer, cache, naming_elts=None, custom_name_elts={},
-                 abbreviations=None, ):
+    def __init__(self, importer, cache, naming_elts=None, custom_name_elts=None,
+                 abbreviations=None):
         super(AutomatedNamingStrategy, self).__init__(cache, importer)
         self.elements = naming_elts
         self.abbreviations = abbreviations
-        self.custom_name_elts = custom_name_elts
+        self.custom_name_elts = {} if custom_name_elts is None else custom_name_elts
 
     def get_required_naming_meta_pks(self):
         # parse out line metadata pks from naming element strings, also verifying that only
@@ -887,7 +888,7 @@ class CombinatorialDescriptionInput(object):
             INVALID_PROTOCOL_META_PK,
         )
 
-        for protocol_pk, input_assay_metadata_dict in self.protocol_to_assay_metadata.items():
+        for input_assay_metadata_dict in self.protocol_to_assay_metadata.values():
             self._verify_pk_keys(
                 input_assay_metadata_dict,
                 assay_metadata_types_by_pk,
@@ -905,7 +906,7 @@ class CombinatorialDescriptionInput(object):
             INVALID_PROTOCOL_META_PK,
         )
 
-        for protocol_pk, metadata_dict in self.protocol_to_combinatorial_metadata_dict.items():
+        for metadata_dict in self.protocol_to_combinatorial_metadata_dict.values():
             self._verify_pk_keys(
                 metadata_dict,
                 assay_metadata_types_by_pk,
@@ -1003,51 +1004,53 @@ class CombinatorialDescriptionInput(object):
                 replicate_num
             )
             for protocol_pk in self.unique_protocols:
-                # get common assay metadata for this protocol
-                assay_metadata = copy.copy(self.protocol_to_assay_metadata[protocol_pk])
+                self._visit_new_for_protocol(visitor, line, protocol_pk)
 
-                ###############################################################################
-                # loop over combinatorial assay creation metadata
-                ###############################################################################
-                # (most likely time as in experiment description files)
-                combo = self.protocol_to_combinatorial_metadata_dict[protocol_pk]
-                visited_pks = set()
-                # outer loop for combinatorial
-                for metadata_pk, values in combo.items():
-                    visited_pks.add(metadata_pk)
-                    for value in values:
-                        assay_metadata[metadata_pk] = value
-                        # inner loop for combinatorial
-                        for k, v in combo.items():
-                            if k in visited_pks:
-                                continue
-                            for value in v:
-                                assay_metadata[k] = value
-                                assay_name = self.naming_strategy.get_assay_name(
-                                    line,
-                                    protocol_pk,
-                                    assay_metadata,
-                                )
-                                visitor.visit_assay(
-                                    protocol_pk,
-                                    line,
-                                    assay_name,
-                                    assay_metadata
-                                )
-                        # if only one item in combinatorial, inner loop never visits;
-                        # do it here
-                        if len(combo) == 1:
-                            assay_name = self.naming_strategy.get_assay_name(
-                                line,
-                                protocol_pk,
-                                assay_metadata,
-                            )
-                            visitor.visit_assay(protocol_pk, line, assay_name, assay_metadata)
-                # if nothing in combinatorial, loops never get to visit; do it here
-                if not combo:
-                    assay_name = self.naming_strategy.get_assay_name(line, protocol_pk,
-                                                                     assay_metadata,)
+    def _visit_new_for_protocol(self, visitor, line, protocol_pk):
+        # get common assay metadata for this protocol
+        assay_metadata = copy.copy(self.protocol_to_assay_metadata[protocol_pk])
+
+        ###############################################################################
+        # loop over combinatorial assay creation metadata
+        ###############################################################################
+        # (most likely time as in experiment description files)
+        combo = self.protocol_to_combinatorial_metadata_dict[protocol_pk]
+        visited_pks = set()
+        # outer loop for combinatorial
+        for metadata_pk, values in combo.items():
+            visited_pks.add(metadata_pk)
+            for value in values:
+                assay_metadata[metadata_pk] = value
+                # inner loop for combinatorial
+                for k, v in combo.items():
+                    if k in visited_pks:
+                        continue
+                    for value in v:
+                        assay_metadata[k] = value
+                        assay_name = self.naming_strategy.get_assay_name(
+                            line,
+                            protocol_pk,
+                            assay_metadata,
+                        )
+                        visitor.visit_assay(
+                            protocol_pk,
+                            line,
+                            assay_name,
+                            assay_metadata
+                        )
+                # if only one item in combinatorial, inner loop never visits;
+                # do it here
+                if len(combo) == 1:
+                    assay_name = self.naming_strategy.get_assay_name(
+                        line,
+                        protocol_pk,
+                        assay_metadata,
+                    )
                     visitor.visit_assay(protocol_pk, line, assay_name, assay_metadata)
+        # if nothing in combinatorial, loops never get to visit; do it here
+        if not combo:
+            assay_name = self.naming_strategy.get_assay_name(line, protocol_pk, assay_metadata)
+            visitor.visit_assay(protocol_pk, line, assay_name, assay_metadata)
 
 
 class CombinatorialCreationPerformance(object):

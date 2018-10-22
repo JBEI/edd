@@ -188,7 +188,7 @@
       "active": true,
       "created": 2,
       "description": "Proteomics protocol used at JBEI",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "JBEI Proteomics",
       "updated": 2,
       "updates": [
@@ -217,7 +217,7 @@
       "active": true,
       "created": 2,
       "description": "Everyone read study",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "Everyone read Study",
       "updated": 2,
       "updates": [
@@ -255,7 +255,7 @@
       "active": true,
       "created": 2,
       "description": "Everyone write study",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "Everyone write Study",
       "updated": 2,
       "updates": [
@@ -293,7 +293,7 @@
       "active": true,
       "created": 2,
       "description": "Group write study",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "Group write Study",
       "updated": 2,
       "updates": [
@@ -332,7 +332,7 @@
       "active": true,
       "created": 2,
       "description": "Group read study",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "Group read Study",
       "updated": 2,
       "updates": [
@@ -371,7 +371,7 @@
       "active": true,
       "created": 2,
       "description": "Everyone read line",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "Everyone read line",
       "updated": 2,
       "updates": [
@@ -403,7 +403,7 @@
       "active": true,
       "created": 2,
       "description": "Everyone write line",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "Everyone write line",
       "updated": 2,
       "updates": [
@@ -435,7 +435,7 @@
       "active": true,
       "created": 2,
       "description": "Everyone read Assay",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "Everyone read Assay",
       "updated": 2,
       "updates": [
@@ -448,6 +448,7 @@
   },
   {
     "fields": {
+      "study": 20,
       "line": 30,
       "protocol": 10,
       "experimenter": 4,
@@ -463,7 +464,7 @@
       "active": true,
       "created": 1,
       "description": "Everyone write Assay",
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "Everyone write Assay",
       "updated": 2,
       "updates": [
@@ -476,6 +477,7 @@
   },
   {
     "fields": {
+      "study": 21,
       "line": 31,
       "protocol": 10,
       "experimenter": 4,
@@ -489,12 +491,13 @@
   {
     "fields": {
       "active": true,
+      "study": 20,
       "assay": 40,
       "compartment": "0",
       "experimenter": 4,
       "measurement_format": "0",
       "measurement_type": 1,
-      "meta_store": "{}",
+      "metadata": "{}",
       "update_ref": 1,
       "x_units": 2,
       "y_units": 1
@@ -505,12 +508,13 @@
   {
     "fields": {
       "active": true,
+      "study": 21,
       "assay": 41,
       "compartment": "0",
       "experimenter": 4,
       "measurement_format": "0",
       "measurement_type": 1,
-      "meta_store": "{}",
+      "metadata": "{}",
       "update_ref": 2,
       "x_units": 2,
       "y_units": 1
@@ -520,6 +524,7 @@
   },
   {
     "fields": {
+      "study": 20,
       "measurement": 50,
       "updated": 2,
       "x": "[\"1.00000\"]",
@@ -530,6 +535,7 @@
   },
   {
     "fields": {
+      "study": 21,
       "measurement": 51,
       "updated": 2,
       "x": "[\"1.00000\"]",

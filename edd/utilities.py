@@ -5,8 +5,8 @@ General utility code for EDD, not tied to Django or Celery.
 
 import json
 
-from datetime import datetime
-from dateutil import parser
+from datetime import date, datetime
+from dateutil import parser as date_parser
 from decimal import Decimal
 from django.conf import settings
 from kombu.serialization import register
@@ -31,7 +31,7 @@ class JSONEncoder(json.JSONEncoder):
             return float(o)
         elif isinstance(o, UUID):
             return str(o)
-        elif isinstance(o, datetime):
+        elif isinstance(o, (date, datetime)):
             return {
                 TYPE: DATETIME,
                 VALUE: o.isoformat(),
@@ -55,8 +55,8 @@ class JSONDecoder(json.JSONDecoder):
         if TYPE not in o:
             return o
         klass = o[TYPE]
-        if klass == 'datetime':
-            return parser.parse(o[VALUE])
+        if klass == DATETIME:
+            return date_parser.parse(o[VALUE])
         return o
 
     @staticmethod

@@ -33,9 +33,8 @@ class ImportTests(EddApiTestCaseMixin, APITestCase):
     Sets of tests to exercise the Experiment Description view.
     """
     fixtures = [
-        'bootstrap.json',
-        'edd_file_importer/basic.json',
-        'edd/rest/study_permissions.json'
+        'edd_file_importer/basic',
+        'edd/rest/study_permissions'
     ]
 
     @classmethod
@@ -277,8 +276,7 @@ class ImportTests(EddApiTestCaseMixin, APITestCase):
 
     def test_categories(self):
         url = reverse('edd.rest:import_categories-list')
-        response = self.client.get(url,
-                                   data={'ordering': 'display_order'})
+        response = self.client.get(url, data={'ordering': 'display_order'})
         self.assertEqual(response.status_code, codes.ok)
         with factory.load_test_file('import_categories.json') as file:
             self.assertEqual(json.loads(file.read()), json.loads(response.content))

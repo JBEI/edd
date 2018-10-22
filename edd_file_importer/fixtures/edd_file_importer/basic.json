@@ -286,7 +286,7 @@
     "model": "main.eddobject",
     "pk": 1,
     "fields": {
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "JBEI Targeted Proteomics",
       "description": "",
       "active": true,
@@ -302,7 +302,7 @@
     "model": "main.eddobject",
     "pk": 2,
     "fields": {
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "HPLC",
       "description": "",
       "active": true,
@@ -318,7 +318,7 @@
     "model": "main.eddobject",
     "pk": 3,
     "fields": {
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "OD600",
       "description": "",
       "active": true,
@@ -334,7 +334,7 @@
     "model": "main.eddobject",
     "pk": 4,
     "fields": {
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "Agilent GC-MS",
       "description": "",
       "active": true,
@@ -350,7 +350,7 @@
     "model": "main.eddobject",
     "pk": 5,
     "fields": {
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "GC-MS",
       "description": "",
       "active": true,
@@ -366,7 +366,7 @@
     "model": "main.eddobject",
     "pk": 7,
     "fields": {
-      "meta_store": "{}",
+      "metadata": "{}",
       "name": "LC-MS",
       "description": "",
       "active": true,

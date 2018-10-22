@@ -13,9 +13,18 @@ from ..export import sbml as sbml_export
 from ..forms import LineForm
 from ..importer import TableImport
 from ..models import (
-    Assay, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementType,
-    MeasurementUnit, Metabolite, MetadataGroup, MetadataType, Protocol, Strain, Study, Update,
-    UserPermission)
+    CarbonSource,
+    GroupPermission,
+    Line,
+    MeasurementUnit,
+    Metabolite,
+    MetadataGroup,
+    MetadataType,
+    Protocol,
+    Strain,
+    Study,
+    UserPermission,
+)
 from ..solr import StudySearch
 from . import factory, TestCase
 
@@ -181,13 +190,8 @@ class StudyTests(TestCase):
         md3 = MetadataType.objects.get(type_name='Some key 3')
         study.metadata_add(md, '1.234')
         self.assertTrue(study.metadata_get(md) == "1.234")
-        self.assertTrue(study.get_metadata_dict() == {'Some key': '1.234'})
-        try:
+        with self.assertRaises(ValueError):
             study.metadata_add(md3, '9.876')
-        except ValueError:
-            pass
-        else:
-            raise Exception("Should have caught a ValueError here...")
 
 
 class SolrTests(TestCase):
@@ -328,141 +332,109 @@ class LineTests(TestCase):  # XXX also Strain, CarbonSource
 # TODO also test MeasurementVector
 class AssayDataTests(TestCase):
 
-    def setUp(self):
-        super(AssayDataTests, self).setUp()
-        user1 = User.objects.create_user(
-            username="admin", email="nechols@lbl.gov", password='12345')
-        study1 = Study.objects.create(name='Test Study 1', description='')
-        line1 = study1.line_set.create(
-            name="WT1", description="", experimenter=user1, contact=user1)
-        protocol1 = Protocol.objects.create(
-            name="gc-ms", categorization=Protocol.CATEGORY_LCMS, owned_by=user1)
-        protocol2 = Protocol.objects.get(name='OD600')
-        Protocol.objects.create(name="New protocol", owned_by=user1, active=False)
-        mt1 = Metabolite.objects.get(short_name="ac")
-        mt2 = GeneIdentifier.objects.create(
-            type_name="Gene name 1", short_name="gen1", type_group="g")
-        mt3 = MeasurementType.create_protein(
-            type_name="Protein name 2", short_name="prot2")
-        assay1 = line1.assay_set.create(
-            name="1", protocol=protocol1, description="GC-MS assay 1", experimenter=user1)
-        line1.assay_set.create(
-            name="1", protocol=protocol2, description="OD600 assay 1", experimenter=user1)
-        up1 = Update.objects.create(mod_by=user1)
-        mu1 = MeasurementUnit.objects.get(unit_name="hours")
-        mu2 = MeasurementUnit.objects.get(unit_name="mM")
-        meas1 = assay1.measurement_set.create(
-            experimenter=user1, measurement_type=mt1, compartment="1", update_ref=up1,
-            x_units=mu1, y_units=mu2)
-        assay1.measurement_set.create(
-            experimenter=user1, measurement_type=mt2, compartment="1", update_ref=up1,
-            x_units=mu1, y_units=mu2)
-        assay1.measurement_set.create(
-            experimenter=user1, measurement_type=mt3, compartment="1", update_ref=up1,
-            x_units=mu1, y_units=mu2)
+    @classmethod
+    def setUpClass(cls):
+        cls.user1 = factory.UserFactory()
+        # fake a request so all calls to Update.load_update resolve to a singluar Update
+        request = RequestFactory().get('/test-fixture')
+        request.user = cls.user1
+        set_thread_variable('request', request)
+        # call parent *after* fake request is set up
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        set_thread_variable('request', None)
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.study1 = factory.StudyFactory()
+        cls.line1 = factory.LineFactory(
+            contact=cls.user1,
+            experimenter=cls.user1,
+            study=cls.study1,
+        )
+        cls.protocol1 = factory.ProtocolFactory()
+        cls.assay1 = factory.AssayFactory(
+            line=cls.line1,
+            protocol=cls.protocol1,
+        )
+        cls.type1 = factory.MetaboliteFactory()
+        cls.meas1 = factory.MeasurementFactory(
+            experimenter=cls.user1,
+            measurement_type=cls.type1,
+            assay=cls.assay1,
+        )
+        cls.meas2 = factory.MeasurementFactory(
+            experimenter=cls.user1,
+            assay=cls.assay1,
+        )
         x1 = [0, 4, 8, 12, 18, 24, ]
         y1 = [0.0, 0.1, 0.2, 0.4, 0.8, 1.6, ]
         for x, y in zip(x1, y1):
-            meas1.measurementvalue_set.create(updated=up1, x=[x], y=[y])
-        meas1.measurementvalue_set.create(updated=up1, x=[32], y=[])
+            factory.ValueFactory(measurement=cls.meas1, x=[x], y=[y])
+        factory.ValueFactory(measurement=cls.meas1, x=[32])
 
-    def test_protocol(self):
-        p1 = Assay.objects.get(description="GC-MS assay 1").protocol
-        p2 = Protocol.objects.get(name="OD600")
-        p3 = Protocol.objects.filter(active=False)[0]
-        self.assertTrue('%s' % p1 == "gc-ms")
-        self.assertTrue(p1.categorization == Protocol.CATEGORY_LCMS)
-        self.assertTrue(p2.categorization == Protocol.CATEGORY_OD)
-        self.assertTrue(p3.categorization == Protocol.CATEGORY_NONE)
-        p1_json = p1.to_json()
-        self.assertTrue(p1_json.get('active', False))
-        self.assertTrue(p1_json.get('name', None) == 'gc-ms')
-        p3_json = p3.to_json()
-        self.assertFalse(p3_json.get('active', True))
-        self.assertTrue(p3_json.get('name', None) == 'New protocol')
-        user1 = User.objects.get(username="admin")
-        Protocol.objects.create(name="Another protocol", owned_by=user1, variant_of_id=p3.id)
-        try:
-            Protocol.objects.create(name="Another protocol", owned_by=user1, variant_of_id=p3.id)
-        except ValueError as e:
-            self.assertTrue('%s' % e == "There is already a protocol named 'Another protocol'.")
-        else:
-            raise Exception("Should have caught a ValueError...")
-        try:
-            Protocol.objects.create(name="", owned_by=user1)
-        except ValueError as e:
-            self.assertTrue('%s' % e == "Protocol name required.")
-        else:
-            raise Exception("Should have caught a ValueError...")
+    def test_protocol_naming(self):
+        # non-duplicate names
+        with self.assertRaises(ValueError) as raised:
+            Protocol.objects.create(name=self.protocol1.name)
+        self.assertEqual(
+            str(raised.exception),
+            f"There is already a protocol named '{self.protocol1.name}'."
+        )
+        # non-empty names
+        with self.assertRaises(ValueError) as raised:
+            Protocol.objects.create(name="")
+        self.assertEqual(str(raised.exception), "Protocol name required.")
+        # no errors serializing to json
+        self.protocol1.to_json()
 
-    def test_assay(self):
-        assay = Assay.objects.get(description="GC-MS assay 1")
-        assay.to_json()
-        new_assay_number = assay.line.new_assay_number("gc-ms")
-        self.assertTrue(new_assay_number == 2)
+    def test_assay_naming(self):
+        # no errors serializing to json
+        self.assay1.to_json()
+        # increment for naming works
+        p = self.assay1.protocol
+        self.assertEqual(self.assay1.line.new_assay_number(p), 2)
 
     def test_measurement_type(self):
-        assay = Assay.objects.get(description="GC-MS assay 1")
-        meas1 = assay.measurement_set.filter(measurement_type__short_name="ac")[0]
-        mt1 = meas1.measurement_type
-        # ((<MeasurementType: Acetate>, mt1.is_metabolite() == False, False, False))
-        self.assertTrue(mt1.is_metabolite() and not mt1.is_protein() and not mt1.is_gene())
+        self.assertTrue(self.type1.is_metabolite())
+        self.assertFalse(self.type1.is_protein())
+        self.assertFalse(self.type1.is_gene())
 
     def test_measurement(self):
-        assay = Assay.objects.get(description="GC-MS assay 1")
-        metabolites = list(assay.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.METABOLITE
-        ))  # []
-        self.assertTrue(len(metabolites) == 1)
-        meas1 = metabolites[0]
-        self.assertTrue(meas1.y_axis_units_name == "mM")
-        self.assertTrue(meas1.name == "Acetate")
-        self.assertTrue(meas1.short_name == "ac")
-        self.assertTrue(meas1.full_name == "Intracellular/Cytosol (Cy) Acetate")
-        self.assertTrue(meas1.is_concentration_measurement())
-        self.assertTrue(not meas1.is_carbon_ratio())
-        mdata = list(meas1.measurementvalue_set.all())
-        self.assertTrue(mdata[0].x[0] == 0)
-        self.assertTrue(mdata[0].y[0] == 0)
-        self.assertTrue(mdata[-1].x[0] == 32)
+        self.assertEqual(self.meas1.measurementvalue_set.count(), 7)
+        mdata = list(self.meas1.measurementvalue_set.order_by("x").all())
+        self.assertEqual(mdata[0].x[0], 0)
+        self.assertEqual(mdata[0].y[0], 0)
+        self.assertEqual(mdata[-1].x[0], 32)
         self.assertFalse(mdata[-1].y)
 
     def test_measurement_extract(self):
-        assay = Assay.objects.get(description="GC-MS assay 1")
-        meas1 = assay.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.METABOLITE
-        )[0]
-        meas2 = assay.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.GENEID
-        )[0]
-        xval = meas1.extract_data_xvalues()
-        self.assertTrue(xval == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0, 32.0])
-        xval2 = meas1.extract_data_xvalues(defined_only=True)
-        self.assertTrue(xval2 == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0])
-        xval3 = meas2.extract_data_xvalues()
-        self.assertTrue(len(xval3) == 0)
+        self.assertEqual(
+            self.meas1.extract_data_xvalues(),
+            [0.0, 4.0, 8.0, 12.0, 18.0, 24.0, 32.0],
+        )
+        self.assertEqual(
+            self.meas1.extract_data_xvalues(defined_only=True),
+            [0.0, 4.0, 8.0, 12.0, 18.0, 24.0],
+        )
+        self.assertEqual(self.meas2.extract_data_xvalues(), [])
 
     def test_measurement_interpolate(self):
-        assay = Assay.objects.get(description="GC-MS assay 1")
-        meas1 = assay.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.METABOLITE
-        )[0]  # returns []
-        meas2 = assay.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.GENEID
-        )[0]
-        y_interp = meas1.interpolate_at(21)
+        # interpolation inside domain gives value
+        y_interp = self.meas1.interpolate_at(21)
         if hasattr(math, 'isclose'):
             self.assertTrue(math.isclose(y_interp, 1.2))
         else:
-            self.assertEqual('%s' % y_interp, "1.2")
-        y_interp2 = meas1.interpolate_at(25)
-        self.assertIsNone(y_interp2)
-        try:
-            meas2.interpolate_at(20)
-        except ValueError:
-            pass
-        else:
-            raise Exception("Should have caught an exception here")
+            self.assertEqual(str(y_interp), "1.2")
+        # interpolation outside domain is undefined/None
+        self.assertIsNone(self.meas1.interpolate_at(25))
+        # interpolation with no data raises exception
+        with self.assertRaises(ValueError):
+            self.meas2.interpolate_at(20)
 
 
 class ImportTests(TestCase):

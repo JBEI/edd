@@ -23,7 +23,8 @@ env = environ.Env(
 )
 # Use the SECRET_KEY to detect if env is setup via Docker; if not, load from file secrets.env
 if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
-    env.read_env(root('secrets.env'))  # read passwords into the environment from secrets.env
+    # read passwords into the environment from secrets.env
+    env.read_env(root('docker_services', 'secrets.env'))
 
 ###################################################################################################
 # Custom EDD-defined configuration options

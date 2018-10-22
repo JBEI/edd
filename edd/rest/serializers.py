@@ -42,7 +42,7 @@ class EDDObjectSerializer(serializers.ModelSerializer):
             'active',
             'created',
             'description',
-            'meta_store',
+            'metadata',
             'name',
             'pk',
             'updated',
@@ -254,37 +254,35 @@ class MetadataGroupSerializer(serializers.ModelSerializer):
         )
 
 
-class ExportStudySerializer(StudySerializer):
-    pass
+class ExportEDDObjectSerializer(serializers.Serializer):
+    pk = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    description = serializers.CharField(read_only=True)
 
 
-class ExportLineSerializer(LineSerializer):
-    study = ExportStudySerializer(read_only=True)
+class ExportAssaySerializer(ExportEDDObjectSerializer):
+    line = ExportEDDObjectSerializer(read_only=True)
+    protocol = ExportEDDObjectSerializer(read_only=True)
 
 
-class ExportAssaySerializer(AssaySerializer):
-    line = ExportLineSerializer(read_only=True)
-
-
-class ExportMeasurementSerializer(MeasurementSerializer):
+class ExportMeasurementSerializer(serializers.Serializer):
     assay = ExportAssaySerializer(read_only=True)
-    measurement_type = MeasurementTypeSerializer(read_only=True)
-    x_units = MeasurementUnitSerializer(read_only=True)
-    y_units = MeasurementUnitSerializer(read_only=True)
+    compartment = serializers.ChoiceField(choices=models.Measurement.Compartment.CHOICE)
+    type_name = serializers.SerializerMethodField()
+    unit_name = serializers.SerializerMethodField()
+
+    def get_type_name(self, obj):
+        return obj.measurement_type.type_name
+
+    def get_unit_name(self, obj):
+        return obj.y_units.unit_name
 
 
-class ExportSerializer(serializers.ModelSerializer):
+class ExportSerializer(serializers.Serializer):
+    study = ExportEDDObjectSerializer(read_only=True)
     measurement = ExportMeasurementSerializer(read_only=True)
     x = serializers.SerializerMethodField()
     y = serializers.SerializerMethodField()
-
-    class Meta:
-        model = models.MeasurementValue
-        fields = (
-            'measurement',
-            'x',
-            'y',
-        )
 
     def get_x(self, obj):
         # TODO: handle vector values

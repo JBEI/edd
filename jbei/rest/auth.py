@@ -9,7 +9,7 @@ import requests
 
 from requests.auth import AuthBase
 from requests.compat import urlparse, urlsplit
-from requests.utils import quote
+from requests.utils import quote, unquote
 
 from .utils import remove_trailing_slash, show_response_html
 
@@ -115,7 +115,7 @@ class HmacAuth(AuthBase):
         # split on ampersand
         params = query.split('&')
         # split each param into two-item lists of (key,value) and quote list entries
-        params = [[quote(v) for v in item.split('=', 1)] for item in params]
+        params = [[quote(unquote(v)) for v in item.split('=', 1)] for item in params]
         # sort based on key portion
         params = sorted(params, key=lambda p: p[0])
         # join back together on ampersand

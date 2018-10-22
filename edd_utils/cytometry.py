@@ -116,7 +116,7 @@ class CytometerRow(object):
     def compose(self, time):
         if self._viable and self._count:
             self._count = self._count * self._viable
-        for seq, measure in self._measure_data.items():
+        for measure in self._measure_data.values():
             ptype = measure.get('ptype', None)
             value = measure.get('value', None)
             variance = measure.get('variance', None)
@@ -175,7 +175,7 @@ class CytometerRow(object):
 
     def define_metadata(self, meta_type, value):
         if self._assay:  # could be an ignored row without an assay
-            self._assay.meta_store[meta_type] = value
+            self._assay.metadata[meta_type] = value
 
     def define_variance(self, seq, value):
         seq = str(seq)  # ensure sequence is a string

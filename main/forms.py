@@ -8,7 +8,6 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import CharField as DbCharField, F, Q, Value as V
@@ -35,11 +34,12 @@ logger = logging.getLogger(__name__)
 class AutocompleteWidget(forms.widgets.MultiWidget):
     """ Custom widget for a paired autocomplete and hidden ID field. """
 
-    def __init__(self, attrs=None, model=User, opt={}):
+    def __init__(self, attrs=None, model=User, opt=None):
+        opt = {} if opt is None else opt
         _widgets = (
             forms.widgets.TextInput(attrs=opt.get('text_attr', {})),
-            forms.HiddenInput()
-            )
+            forms.HiddenInput(),
+        )
         self.model = model
         super(AutocompleteWidget, self).__init__(_widgets, attrs)
 
@@ -63,9 +63,12 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
 
 
 class MultiAutocompleteWidget(AutocompleteWidget):
-    """ Extension to Autocomplete widget that handles multiple autocompleted values.
-        All values must be lists; either a list of results from decompress, or a list of values
-        to be passed to decompress """
+    """
+    Extension to Autocomplete widget that handles multiple autocompleted values.
+
+    All values must be lists; either a list of results from decompress, or a list of values
+    to be passed to decompress.
+    """
     def __init__(self, **kwargs):
         self._separator = kwargs.pop('separator', ',')
         super(MultiAutocompleteWidget, self).__init__(**kwargs)
@@ -90,7 +93,7 @@ class MultiAutocompleteWidget(AutocompleteWidget):
     def render(self, name, value, attrs=None):
         joined = []
         widget_count = len(self.widgets)
-        for index in range(widget_count):
+        for _index in range(widget_count):
             joined.append([])
         if value is None:
             value = []
@@ -113,7 +116,8 @@ class MultiAutocompleteWidget(AutocompleteWidget):
 
 class UserAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Users """
-    def __init__(self, attrs=None, opt={}):
+    def __init__(self, attrs=None, opt=None):
+        opt = {} if opt is None else opt
         opt.update({
             'text_attr': {
                 'class': 'autocomp form-control',
@@ -125,7 +129,8 @@ class UserAutocompleteWidget(AutocompleteWidget):
 
 class GroupAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Groups """
-    def __init__(self, attrs=None, opt={}):
+    def __init__(self, attrs=None, opt=None):
+        opt = {} if opt is None else opt
         opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Group'}, })
         super(GroupAutocompleteWidget, self).__init__(attrs=attrs, model=Group, opt=opt)
 
@@ -199,7 +204,8 @@ class RegistryValidator(object):
 
 class RegistryAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Registry strains """
-    def __init__(self, attrs=None, opt={}):
+    def __init__(self, attrs=None, opt=None):
+        opt = {} if opt is None else opt
         opt.update({
             'text_attr': {
                 'class': 'autocomp form-control',
@@ -227,7 +233,8 @@ class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompl
 
 class CarbonSourceAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for carbon sources """
-    def __init__(self, attrs=None, opt={}):
+    def __init__(self, attrs=None, opt=None):
+        opt = {} if opt is None else opt
         opt.update({
             'text_attr': {
                 'class': 'autocomp form-control',
@@ -247,7 +254,8 @@ class MultiCarbonSourceAutocompleteWidget(MultiAutocompleteWidget, CarbonSourceA
 
 class MetadataTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
-    def __init__(self, attrs=None, opt={}):
+    def __init__(self, attrs=None, opt=None):
+        opt = {} if opt is None else opt
         opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'MetadataType'}, })
         super(MetadataTypeAutocompleteWidget, self).__init__(
             attrs=attrs, model=MetadataType, opt=opt)
@@ -255,8 +263,9 @@ class MetadataTypeAutocompleteWidget(AutocompleteWidget):
 
 class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
-    def __init__(self, attrs=None, opt={}):
+    def __init__(self, attrs=None, opt=None):
         """ Set opt with {'text_attr': {'class': 'autocomp autocomp_XXX'}} to override. """
+        opt = {} if opt is None else opt
         my_opt = {
             'text_attr': {
                 'class': 'autocomp form-control',
@@ -271,8 +280,9 @@ class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
 
 class SbmlInfoAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for parts contained within SBMLTemplate """
-    def __init__(self, template, model, attrs=None, opt={}):
+    def __init__(self, template, model, attrs=None, opt=None):
         self._template = template
+        opt = {} if opt is None else opt
         opt.get('text_attr', {}).update({'data-template': template.pk})
         super(SbmlInfoAutocompleteWidget, self).__init__(attrs=attrs, model=model, opt=opt)
 
@@ -311,7 +321,8 @@ class SbmlInfoAutocompleteWidget(AutocompleteWidget):
 
 class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
     """ Autocomplete widget for Exchanges in an SBMLTemplate """
-    def __init__(self, template, attrs=None, opt={}):
+    def __init__(self, template, attrs=None, opt=None):
+        opt = {} if opt is None else opt
         opt.update(text_attr={'class': 'autocomp', 'eddautocompletetype': 'MetaboliteExchange'})
         super(SbmlExchangeAutocompleteWidget, self).__init__(
             template=template, attrs=attrs, model=MetaboliteExchange, opt=opt
@@ -324,7 +335,8 @@ class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
 
 class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
     """ Autocomplete widget for Species in an SBMLTemplate """
-    def __init__(self, template, attrs=None, opt={}):
+    def __init__(self, template, attrs=None, opt=None):
+        opt = {} if opt is None else opt
         opt.update(text_attr={'class': 'autocomp', 'eddautocompletetype': 'MetaboliteSpecies'})
         super(SbmlSpeciesAutocompleteWidget, self).__init__(
             template=template, attrs=attrs, model=MetaboliteSpecies, opt=opt
@@ -497,20 +509,6 @@ class CreateCommentForm(forms.ModelForm):
         return c
 
 
-class EDDHStoreField(HStoreField):
-    def to_python(self, value):
-        if not value:
-            return {}
-        try:
-            value = json.loads(value)
-        except ValueError:
-            raise ValidationError(
-                self.error_messages['invalid_json'],
-                code='invalid_json',
-            )
-        return value
-
-
 class LineForm(forms.ModelForm):
     """ Form to create/edit a line. """
     # include hidden field for applying form changes to multiple Line instances by ID
@@ -520,7 +518,7 @@ class LineForm(forms.ModelForm):
         model = Line
         fields = (
             'name', 'description', 'control', 'contact', 'experimenter', 'carbon_source',
-            'strains', 'meta_store',
+            'strains', 'metadata',
         )
         labels = {
             'name': _('Line Name'),
@@ -538,7 +536,7 @@ class LineForm(forms.ModelForm):
             'experimenter': UserAutocompleteWidget(),
             'carbon_source': MultiCarbonSourceAutocompleteWidget(),
             'strains': MultiRegistryAutocompleteWidget(),
-            'meta_store': forms.HiddenInput(),
+            'metadata': forms.HiddenInput(),
         }
         help_texts = {
             'name': _(''),
@@ -575,11 +573,8 @@ class LineForm(forms.ModelForm):
         strains_field.clean = partial(__clean, strains_field)
         strains_field.to_field_name = 'registry_id'
         strains_field.validators = [RegistryValidator().validate, ]
-        # keep a flag for bulk edit, treats meta_store slightly differently
+        # keep a flag for bulk edit, treats metadata slightly differently
         self._bulk = False
-        # override form field handling of HStore
-        meta = self.fields['meta_store']
-        meta.to_python = EDDHStoreField.to_python.__get__(meta, EDDHStoreField)
 
     @classmethod
     def initial_from_model(cls, line, prefix=None):
@@ -593,7 +588,7 @@ class LineForm(forms.ModelForm):
             if isinstance(widget, forms.widgets.MultiWidget):
                 for i, part in enumerate(widget.decompress(value)):
                     initial['%s_%s' % (fieldkey, i)] = part
-            # HStoreField gives back a dict; must serialize to json
+            # JSONField gives back a dict; must serialize to json
             elif isinstance(value, dict):
                 initial[fieldkey] = json.dumps(value)
             # everything else shove value into fieldname
@@ -614,9 +609,9 @@ class LineForm(forms.ModelForm):
             # Removing excluded key from fields
             del self.fields[fieldname]
 
-    def clean_meta_store(self):
+    def clean_metadata(self):
         # go through and delete any keys with None values
-        meta = self.cleaned_data['meta_store']
+        meta = self.cleaned_data['metadata']
         none_keys = []
         for key, value in meta.items():
             if value is None:
@@ -625,9 +620,9 @@ class LineForm(forms.ModelForm):
             # Removing None-valued key from meta
             del meta[key]
         if self.is_editing() and self._bulk:
-            # Bulk edit updating meta_store
+            # Bulk edit updating metadata
             in_place = {}
-            in_place.update(self.instance.meta_store)
+            in_place.update(self.instance.metadata)
             in_place.update(meta)
             meta = in_place
         return meta

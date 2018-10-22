@@ -72,7 +72,7 @@ class EddRestObject(object):
         self.active = kwargs.pop('active', None)
         self.created = kwargs.pop('created', None)
         self.updated = kwargs.pop('updated', None)
-        self.meta_store = kwargs.pop('meta_store', None)
+        self.metadata = kwargs.pop('metadata', None)
 
     def __str__(self):
         return self.name
