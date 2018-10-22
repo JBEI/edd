@@ -35,6 +35,12 @@ function ping_wait() {
     done
 }
 
+function ensure_dir_owner() {
+    if [ -d "$1" -a "$(stat -c %U "$1")" != "$2" ]; then
+        chown -R "$2" "$1"
+    fi
+}
+
 function print_help() {
     echo "Usage: entrypoint.sh [options] [--] command [arguments]"
     echo "Options:"
@@ -261,15 +267,18 @@ ping_wait redis 6379
 
 if [ $INIT_STATIC -eq 1 ]; then
     banner "Collecting static resources …"
+    # check for correct ownership
+    ensure_dir_owner "/var/www/static" "edduser"
+    ensure_dir_owner "/var/www/uploads" "edduser"
     # Collect static first, worker will complain if favicons are missing
-    python /code/manage.py edd_collectstatic --noinput
+    su-exec edduser:edduser python /code/manage.py edd_collectstatic --noinput
 else
     # if not statically rendering 500.html, fall back to the default
     cp /code/main/templates/500.default.html /code/main/templates/500.html
 fi
 if [ "$WATCH_STATIC" = "true" ]; then
     output "Watching for static resource changes …"
-    python /code/manage.py edd_collectstatic --watch &
+    su-exec edduser:edduser python /code/manage.py edd_collectstatic --watch &
 fi
 
 # Wait for postgres to become available
