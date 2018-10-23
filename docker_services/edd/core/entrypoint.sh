@@ -246,6 +246,7 @@ if [ ! -x /code/manage.py ]; then
     if [ ! -z "$LOCAL_PY" ]; then
         cp "$LOCAL_PY" /code/edd/settings/local.py
     fi
+    ensure_dir_owner "/usr/local/edd" "edduser"
 else
     output "Running with mounted copy of code …"
 fi
