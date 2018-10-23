@@ -26,18 +26,18 @@ export class EditableElement {
     static _uniqueIndex = 1;
     static _prevEditableElement: any = null;
 
-    parentElement: HTMLElement;
-    element: HTMLElement;
+    parentElement: Element;
+    element: Element;
     elementJQ: JQuery;
 
     id: string;
     private _formURL: string;
 
     inputElement: any;
-    editButtonElement: HTMLElement;
-    acceptButtonElement: HTMLElement;
-    cancelButtonElement: HTMLElement;
-    waitButtonElement: HTMLElement;
+    editButtonElement: Element;
+    acceptButtonElement: Element;
+    cancelButtonElement: Element;
+    waitButtonElement: Element;
     editControlsPositioner: any;
     editControlsContainer: any;
     minimumRows: number;
@@ -56,7 +56,7 @@ export class EditableElement {
     //   If no element is provided, the class creates an element and assumes
     // it will be added to the DOM later by a call to its appendTo method, which
     // provides a parent element.
-    constructor(parentOrElement: HTMLElement, style?: string) {
+    constructor(parentOrElement: Element, style?: string) {
         // If we've been given no element, make one.
         if (!parentOrElement) {
             this.elementJQ = $('<div/>').addClass(style || '');
@@ -572,7 +572,7 @@ export class EditableAutocomplete extends EditableElement {
     autoCompleteObject: EDDAuto.BaseAuto;
 
 
-    constructor(inputElement: HTMLElement, style?: string) {
+    constructor(inputElement: Element, style?: string) {
         super(inputElement, style);
         this.autoCompleteObject = null;
     }

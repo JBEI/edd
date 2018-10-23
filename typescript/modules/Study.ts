@@ -21,7 +21,7 @@ $( window ).on("load", function() { // Shortcutting this to .load confuses jQuer
 
 // Base class for the non-autocomplete inline editing fields for the Study
 export class EditableStudyElement extends EDDEditable.EditableElement {
-    constructor(inputElement: HTMLElement, style?: string) {
+    constructor(inputElement: Element, style?: string) {
         super(inputElement, style);
     }
 
@@ -31,7 +31,7 @@ export class EditableStudyElement extends EDDEditable.EditableElement {
 
 
 export class EditableStudyName extends EditableStudyElement {
-    constructor(inputElement: HTMLElement) {
+    constructor(inputElement:Element) {
         super(inputElement);
         this.formURL(Utl.relativeURL('rename/', studyBaseUrl).toString());
     }

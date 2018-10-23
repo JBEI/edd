@@ -125,7 +125,7 @@ export class EditableStudyDescription extends StudyBase.EditableStudyElement {
 
     minimumRows: number;
 
-    constructor(inputElement: HTMLElement, style?: string) {
+    constructor(inputElement: Element, style?: string) {
         super(inputElement, style);
         this.minimumRows = 4;
         this.formURL(Utl.relativeURL('setdescription/', studyBaseUrl).toString());
@@ -143,7 +143,7 @@ export class EditableStudyDescription extends StudyBase.EditableStudyElement {
 
 export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
 
-    constructor(inputElement: HTMLElement, style?: string) {
+    constructor(inputElement: Element, style?: string) {
         super(inputElement, style);
         this.formURL(Utl.relativeURL('setcontact/', studyBaseUrl).toString());
     }

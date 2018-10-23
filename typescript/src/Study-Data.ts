@@ -532,12 +532,12 @@ export class GenericFilterSection {
     tableRows: {[index: string]: HTMLTableRowElement};
 
     // References to HTML elements created by the filter
-    filterColumnDiv: HTMLElement;
+    filterColumnDiv: Element;
     clearIcons: JQuery;
-    plaintextTitleDiv: HTMLElement;
+    plaintextTitleDiv: Element;
     searchBox: HTMLInputElement;
-    searchBoxTitleDiv: HTMLElement;
-    scrollZoneDiv: HTMLElement;
+    searchBoxTitleDiv: Element;
+    scrollZoneDiv: Element;
     filteringTable: JQuery;
     tableBodyElement: HTMLTableElement;
 
@@ -1978,7 +1978,7 @@ function remakeMainGraphArea() {
         let view = new GraphView($('#lineGraph').empty().removeClass('off').get(0));
         view.buildLineGraph(graphSet);
     } else if (viewingMode === 'bargraph') {
-        let elem: HTMLElement;
+        let elem: Element;
         if (barGraphMode === 'time') {
             elem = $('#barGraphByTime').empty().removeClass('off').get(0);
         } else if (barGraphMode === 'line') {
@@ -2036,7 +2036,7 @@ class DataGridAssays extends DataGrid {
         return 'dataTable sortable dragboxes hastablecontrols table-striped';
     }
 
-    getCustomControlsArea(): HTMLElement {
+    getCustomControlsArea(): Element {
         return $('#tableControlsArea').get(0);
     }
 }

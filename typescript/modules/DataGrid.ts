@@ -11,11 +11,11 @@ export class DataGrid {
     private _table: HTMLElement;
     private _tableBody: HTMLElement;
     private _tableBodyJquery: JQuery;
-    private _tableControlsArea: HTMLElement;
+    private _tableControlsArea: Element;
     private _waitBadge: HTMLElement;
     private _classes: string;
 
-    private _headerRows: HTMLElement[];
+    private _headerRows: Element[];
     private _totalColumnCount: number;
     private _recordElements: DataGridRecordSet;
 
@@ -113,7 +113,7 @@ export class DataGrid {
     // By defaut the controls are placed at the top of the table,
     // inside a single header cell spanning the entire table.
     // But we can override this placement by returning a JQuery reference to an alternate location.
-    getCustomControlsArea(): HTMLElement {
+    getCustomControlsArea(): Element {
         return null;
     }
 
@@ -726,13 +726,13 @@ export class DataGrid {
     }
 
 
-    private _buildTableHeaders(): HTMLElement[] {
+    private _buildTableHeaders(): Element[] {
         // Find the minimum number of rows we need to create to contain all the headers
         var maxheaderRow: number = this._spec.tableHeaderSpec.reduce(
             (prev: number, v) => { return Math.max(prev, v.headerRow || 0); }, 1);
 
         // Create enough rows to contain the headers (usually just 1)
-        var rowElements: HTMLElement[] = [];
+        var rowElements: Element[] = [];
         for (let i = 0; i < maxheaderRow; i++) {
             let row = $(document.createElement("tr")).addClass('columnLabels');
             rowElements.push(row[0]);
@@ -1344,7 +1344,7 @@ export class DataGridDataCell {
     // Local data
     cellElement: HTMLElement;
     cellElementJQ: JQuery;
-    contentContainerElement: HTMLElement;
+    contentContainerElement: Element;
     checkboxElement: HTMLInputElement;
     hidden: boolean;
     createdElement: boolean;
@@ -1612,7 +1612,7 @@ export class DataGridOptionWidget extends DataGridWidget {
 
     // This is called to append the widget elements beneath the given element.
     // If the elements have not been created yet, they are created, and the uniqueID is passed along.
-    appendElements(container: HTMLElement, uniqueID: string): void {
+    appendElements(container: Element, uniqueID: string): void {
         if (!this._createdElements) {
             this.createElements(uniqueID);
         }
@@ -1691,7 +1691,7 @@ export class DataGridHeaderWidget extends DataGridWidget {
 
     // This is called to append the widget elements beneath the given element.
     // If the elements have not been created yet, they are created, and the uniqueID is passed along.
-    appendElements(container: HTMLElement, uniqueID: string): void {
+    appendElements(container: Element, uniqueID: string): void {
         if (!this._createdElements) {
             this.createElements(uniqueID);
             this.createdElements(true);
@@ -1983,7 +1983,7 @@ export class DGPagingWidget extends DataGridHeaderWidget {
 
     // This is called to append the widget elements beneath the given element.
     // If the elements have not been created yet, they are created, and the uniqueID is passed along.
-    appendElements(container: HTMLElement, uniqueID: string): void {
+    appendElements(container: Element, uniqueID: string): void {
         if (!this.createdElements()) {
             $(this.widgetElement = document.createElement('div'));
             $(container).append(this.widgetElement);
