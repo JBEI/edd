@@ -283,7 +283,7 @@ class ExportOptionForm(forms.Form):
             sets all options. """
         prefs = {}
         if hasattr(user, 'userprofile'):
-            prefs = user.userprofile.prefs
+            prefs = user.userprofile.preferences
         return {
             "layout": prefs.get('export.csv.layout', table.ExportOption.DATA_COLUMN_BY_LINE),
             "separator": prefs.get('export.csv.separator', table.ExportOption.COMMA_SEPARATED),
