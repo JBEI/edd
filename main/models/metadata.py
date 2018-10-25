@@ -78,7 +78,7 @@ class MetadataType(models.Model, EDDSerialize):
         null=True,
         verbose_name=_("i18n Key"),
     )
-    # field to store metadata, or None if stored in meta_store
+    # field to store metadata, or None if stored in metadata
     type_field = models.CharField(
         blank=True,
         default=None,
@@ -151,9 +151,9 @@ class MetadataType(models.Model, EDDSerialize):
 
     @classmethod
     def all_types_on_instances(cls, instances):
-        # grab all the keys on each instance meta_store
+        # grab all the keys on each instance metadata
         all_ids = [
-            set(o.meta_store.keys()) for o in instances if isinstance(o, EDDMetadata)
+            set(o.metadata.keys()) for o in instances if isinstance(o, EDDMetadata)
         ]
         # reduce all into a set to get only unique ids
         ids = reduce(lambda a, b: a.union(b), all_ids, set())
