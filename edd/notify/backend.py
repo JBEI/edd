@@ -16,24 +16,21 @@ channel_layer = get_channel_layer()
 logger = logging.getLogger(__name__)
 
 
-NotificationBase = namedtuple('NotificationBase', (
-    'message',
-    'tags',
-    'time',
-    'uuid',
-))
+NotificationBase = namedtuple("NotificationBase", ("message", "tags", "time", "uuid"))
 
 
 class Notification(NotificationBase):
     """
     A notification message to be stored in a notification backend and delivered to users.
     """
+
     __slots__ = ()
 
-    def __new__(cls, message, tags=tuple(), time=None, uuid=None):
+    def __new__(cls, message, tags=None, time=None, uuid=None):
+        tags = tuple() if tags is None else tuple(tags)
         time = arrow.utcnow().timestamp if time is None else time
         uuid = uuid4() if uuid is None else uuid
-        self = super(Notification, cls).__new__(cls, message, tuple(tags), time, uuid)
+        self = super().__new__(cls, message, tags, time, uuid)
         return self
 
     def __eq__(self, other):
@@ -67,22 +64,30 @@ class BaseBroker(object):
         return self._loadAll().__iter__()
 
     def _load(self, uuid, *args, **kwargs):
-        raise NotImplementedError("Subclasses of BaseBroker must provide a _load() method")
+        raise NotImplementedError(
+            "Subclasses of BaseBroker must provide a _load() method"
+        )
 
     def _loadAll(self, *args, **kwargs):
-        raise NotImplementedError("Subclasses of BaseBroker must provide a _loadAll() method")
+        raise NotImplementedError(
+            "Subclasses of BaseBroker must provide a _loadAll() method"
+        )
 
     def _remove(self, uuid, *args, **kwargs):
-        raise NotImplementedError("Subclasses of BaseBroker must provide a _remove() method")
+        raise NotImplementedError(
+            "Subclasses of BaseBroker must provide a _remove() method"
+        )
 
     def _store(self, notification, *args, **kwargs):
-        raise NotImplementedError("Subclasses of BaseBroker must provide a _store() method")
+        raise NotImplementedError(
+            "Subclasses of BaseBroker must provide a _store() method"
+        )
 
     def count(self):
         raise NotImplementedError("This broker does not support count() method")
 
     def group_names(self):
-        return [f'edd.notify.{self.user.username}']
+        return [f"edd.notify.{self.user.username}"]
 
     def mark_all_read(self, uuid=None):
         last = self._load(uuid)
@@ -90,30 +95,27 @@ class BaseBroker(object):
             if last is None or note.time < last.time:
                 self.mark_read(note.uuid)
         # send update to Channel Group
-        self.send_to_groups({
-            'type': 'notification.reset',
-        })
+        self.send_to_groups({"type": "notification.reset"})
 
     def mark_read(self, uuid):
         self._remove(uuid)
         # send update to Channel Group
-        self.send_to_groups({
-            'type': 'notification.dismiss',
-            'uuid': JSONEncoder.dumps(uuid),
-        })
+        self.send_to_groups(
+            {"type": "notification.dismiss", "uuid": JSONEncoder.dumps(uuid)}
+        )
 
-    def notify(self, message, tags=[], uuid=None):
+    def notify(self, message, tags=None, uuid=None):
         note = Notification(message, tags=tags, uuid=uuid)
         # _store notification to self
         self._store(note)
         # send notification to Channel Groups
-        self.send_to_groups({
-            'type': 'notification',
-            'notice': JSONEncoder.dumps(note.prepare()),
-        })
+        self.send_to_groups(
+            {"type": "notification", "notice": JSONEncoder.dumps(note.prepare())}
+        )
 
     def send_to_groups(self, payload):
         for group in self.group_names():
+            logger.debug(f"group_send to {group}: {payload}")
             async_to_sync(channel_layer.group_send)(group, payload)
 
 
@@ -124,22 +126,22 @@ class RedisBroker(BaseBroker):
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(user, *args, **kwargs)
-        self._redis = get_redis_connection('default')
+        self._redis = get_redis_connection("default")
 
     def _convert(self, payload):
         if isinstance(payload, bytes):
-            return Notification(*JSONDecoder.loads(payload.decode('utf-8')))
+            return Notification(*JSONDecoder.loads(payload.decode("utf-8")))
         return None
 
     def _key_notification(self, uuid):
         if isinstance(uuid, bytes):
-            uuid = uuid.decode('utf-8')
+            uuid = uuid.decode("utf-8")
         elif isinstance(uuid, UUID):
             uuid = str(uuid)
-        return f'{self._key_user()}:{uuid}'
+        return f"{self._key_user()}:{uuid}"
 
     def _key_user(self):
-        return f'{__name__}.{self.__class__.__name__}:{self.user.username}'
+        return f"{__name__}.{self.__class__.__name__}:{self.user.username}"
 
     def _load(self, uuid, *args, **kwargs):
         payload = self._redis.get(self._key_notification(uuid))
@@ -174,6 +176,6 @@ class RedisBroker(BaseBroker):
     def mark_all_read(self, uuid=None):
         if uuid is None:
             # shortcut for redis when not marking read from a given point: delete everything
-            self._redis.delete(self._key_user(), f'{self._key_user()}:*')
+            self._redis.delete(self._key_user(), f"{self._key_user()}:*")
         # parent will loop over all and remove anything older than uuid; then send reset message
         super().mark_all_read(uuid=uuid)
