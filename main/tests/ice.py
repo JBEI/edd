@@ -107,7 +107,8 @@ class IceIntegrationTests(TestCase):
                     json=user_to_ice_json(user),
                     params={"sendEmail": "false"}
                 )
-                info = response.json()
+                # create response returns just user info; wrap it to look same as search response
+                info = {"users": [response.json()]}
             # cache the returned user ID to the local user
             user._ice_id = info["users"][0]["id"]
 
