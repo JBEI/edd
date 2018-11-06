@@ -5,7 +5,7 @@
 
 set -eo pipefail
 
-host="$(hostname --short || echo 'localhost')"
+host="$(hostname -s || echo 'localhost')"
 export RABBITMQ_NODENAME="${RABBITMQ_NODENAME:-rabbit@$host}"
 
 if rabbitmqctl status; then

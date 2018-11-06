@@ -16,6 +16,11 @@ def projectProperties = [
     ]
 ]
 
+// set a default value for emailing success/fail
+def committer_email = "wcmorrell@lbl.gov"
+def test_output = "Tests did not execute."
+def commit_hash = "_"
+
 // set the properties
 properties(projectProperties)
 
@@ -43,14 +48,18 @@ try {
             print checkout_result
             git_url = checkout_result["GIT_URL"]
             git_branch = checkout_result["GIT_BRANCH"]
+            commit_hash = checkout_result["GIT_COMMIT"]
             image_version = "${git_branch}-${BUILD_NUMBER}".replaceAll("\\W", "")
             project_name = "jpipe_${git_branch}_${BUILD_NUMBER}".replaceAll("\\W", "")
+            committer_email = sh(
+                script: 'git --no-pager show -s --format=\'%ae\'',
+                returnStdout: true
+            ).trim()
         }
 
         stage('Init') {
             // run initialization script, as described in EDD project README
             def init_script = $/#!/bin/bash -xe
-                cd docker_services
                 source init-config \
                     --user 'Jenkins' \
                     --mail 'wcmorrell@lbl.gov' \
@@ -58,7 +67,9 @@ try {
                     --nonginx \
                     --novenv
             /$
-            sh init_script
+            dir("docker_services") {
+                sh init_script
+            }
         }
 
         stage('Build') {
@@ -66,28 +77,25 @@ try {
             // tag both with build-specific versions, ensure edd-core builds off correct edd-node
             // NOTE: sudo is required to execute docker commands
             def build_script = $/#!/bin/bash -xe
-                cd docker_services/node
-                sudo docker build \
-                    -t jbei/edd-node:${image_version} .
-                cd ../edd/core
-                sed -i.bak \
-                    -e "s/edd-node:latest/edd-node:${image_version}/" \
-                    Dockerfile
-                rm Dockerfile.bak
                 sudo docker build \
                     --build-arg 'GIT_URL=${git_url}' \
                     --build-arg 'GIT_BRANCH=${git_branch}' \
                     --build-arg 'EDD_VERSION=${image_version}' \
                     -t jbei/edd-core:${image_version} .
             /$
-            sh build_script
+            dir("docker_services/node") {
+                sh("sudo docker build --pull -t jbei/edd-node:${image_version} .")
+            }
+            dir("docker_services/edd/core") {
+                sh("sed -i.bak -e 's/edd-node:latest/edd-node:${image_version}/' Dockerfile")
+                sh("rm Dockerfile.bak")
+                sh(build_script)
+            }
         }
 
         stage('Prepare') {
             // modify configuration files to prepare for launch
             def prepare_script = $/#!/bin/bash -xe
-                cd docker_services
-
                 # generate HMAC secret
                 RANDOM_HMAC="$$(openssl rand -base64 64 | tr -d '\n')"
                 echo "$$RANDOM_HMAC" > hmac.key
@@ -110,33 +118,43 @@ try {
                     config > combined.yml
                 cat combined.yml
             /$
-            sh prepare_script
+            dir("docker_services") {
+                sh prepare_script
+            }
 
             // pre-build other images that are not pulled from Docker Hub, to avoid launch timeout
             def prepare_images_script = $/#!/bin/bash -xe
-                cd docker_services
-                sudo docker-compose -p '${project_name}' -f combined.yml build postgres
-                sudo docker-compose -p '${project_name}' -f combined.yml build rabbitmq
-                sudo docker-compose -p '${project_name}' -f combined.yml build redis
-                sudo docker-compose -p '${project_name}' -f combined.yml build solr
-                sudo docker-compose -p '${project_name}' -f combined.yml build flower
+                sudo docker-compose -p '${project_name}' -f combined.yml build --pull postgres
+                sudo docker-compose -p '${project_name}' -f combined.yml build --pull rabbitmq
+                sudo docker-compose -p '${project_name}' -f combined.yml build --pull redis
+                sudo docker-compose -p '${project_name}' -f combined.yml build --pull solr
+                sudo docker-compose -p '${project_name}' -f combined.yml build --pull flower
             /$
-            sh prepare_images_script
+            dir("docker_services") {
+                sh prepare_images_script
+            }
         }
 
         try {
 
             stage('Launch') {
-                // RabbitMQ service is very sensitive to available memory, try launching first
+                // Services here are very sensitive to available memory and disk I/O latency
+                // Launch separately to avoid resource contention during startup
                 def prelaunch_script = $/#!/bin/bash -xe
-                    cd docker_services
-                    sudo docker-compose -p '${project_name}' -f combined.yml up -d rabbitmq
-                    # wait until rabbitmq reports healthy
-                    CONTAINER="$$(sudo docker-compose -p '${project_name}' ps -q rabbitmq | head -1)"
-                    until [ "$$(sudo docker inspect --format "{{json .State.Health.Status}}" $$CONTAINER)" = '"healthy"' ]; do
-                        echo "Waiting for RabbitMQ to report healthy"
-                        sleep 15
-                    done
+                    function launch_service() {
+                        # $1 = service name
+                        sudo docker-compose -p '${project_name}' -f combined.yml up -d $${1}
+                        CONTAINER="$$(sudo docker-compose  -p '${project_name}' ps -q $${1} | head -1)"
+                        until [ "$$(sudo docker inspect --format '{{json .State.Health.Status}}' $${CONTAINER})" = '"healthy"' ]; do
+                            echo "Waiting for $${1} to report healthy"
+                            sleep 15
+                        done
+                    }
+
+                    launch_service postgres
+                    launch_service rabbitmq
+                    launch_service redis
+                    launch_service solr
                 /$
                 def sql_script = $/UPDATE configuration
                     SET value = '/usr/local/tomcat/'
@@ -144,8 +162,6 @@ try {
                 // NOTE: using -T flag to docker-compose-exec per:
                 //  https://github.com/docker/compose/issues/3352
                 def launch_script = $/#!/bin/bash -xe
-                    cd docker_services
-
                     # launch
                     sudo docker-compose -p '${project_name}' -f combined.yml up -d
 
@@ -153,7 +169,7 @@ try {
                     RANDOM_HMAC="$$(cat hmac.key)"
                     sudo docker-compose -p '${project_name}' -f combined.yml \
                         exec -T ice \
-                        bash -c "mkdir rest-auth; echo $$RANDOM_HMAC > rest-auth/edd"
+                        bash -c "mkdir -p rest-auth; echo $$RANDOM_HMAC > rest-auth/edd"
 
                     # wait until everything reports healthy
                     CONTAINER="$$(sudo docker-compose -p '${project_name}' ps -q edd | head -1)"
@@ -172,27 +188,35 @@ try {
                     sudo docker-compose -p '${project_name}' -f combined.yml \
                         restart ice
                 /$
-                timeout(5) {
-                    sh prelaunch_script
+                timeout(15) {
+                    dir("docker_services") {
+                        sh prelaunch_script
+                    }
                 }
-                // only try to launch for 10 minutes before bugout (takes under 3 min on JBEI vm)
-                timeout(10) {
-                    sh launch_script
+                // only try to launch for X minutes before bugout
+                timeout(60) {
+                    dir("docker_services") {
+                        sh launch_script
+                    }
                 }
             }
 
             stage('Test') {
                 // previous stage does not finish until EDD up and reporting healthy
                 // NOTE: using -T flag to docker-compose per https://github.com/docker/compose/issues/3352
-                def test_script = $/#!/bin/bash -xe
-                    cd docker_services
-                    sudo docker-compose -p '${project_name}' -f combined.yml \
+                def test_script = $/sudo docker-compose -p '${project_name}' -f combined.yml \
                         exec -T edd \
-                        python manage.py test --exclude-tag=known-broken
+                        python manage.py test --exclude-tag=known-broken 2>&1
                 /$
                 // only try to test for 30 minutes before bugout
                 timeout(30) {
-                    sh test_script
+                    dir("docker_services") {
+                        test_output = sh(
+                            script: test_script,
+                            returnStdout: true
+                        ).trim()
+                    }
+                    print test_output
                 }
             }
 
@@ -202,6 +226,21 @@ try {
             // stage('Deploy') {
             // }
 
+            stage('Notify') {
+                def mail_body = $/Completed build of ${commit_hash} in ${currentBuild.durationString}.
+
+                See build information at <${env.BUILD_URL}>.
+
+                Output from running tests is:
+                ${test_output}
+                /$
+                mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} Success",
+                        body: mail_body,
+                          to: committer_email,
+                     replyTo: committer_email,
+                        from: "jbei-edd-admin@lists.lbl.gov"
+            }
+
         } catch (exc) {
             throw exc
         } finally {
@@ -209,7 +248,6 @@ try {
             // try to clean up things to not have a zillion leftover docker resources
             stage('Teardown') {
                 def teardown_script = $/#!/bin/bash -xe
-                    cd docker_services
                     sudo docker-compose -p '${project_name}' -f combined.yml \
                         down
                     sudo docker ps -qf 'name=${project_name}_*' | xargs \
@@ -219,7 +257,10 @@ try {
                     sudo docker volume ls -qf 'name=${project_name}_*' | xargs \
                         sudo docker volume rm || true
                 /$
-                sh teardown_script
+                print test_output
+                dir("docker_services") {
+                    sh teardown_script
+                }
             }
 
         }
@@ -227,12 +268,19 @@ try {
     }
 } catch (exc) {
     echo "Caught ${exc}"
-    String addressee = 'wcmorrell@lbl.gov'
-    // String addressee = 'jbei-edd-admin@lists.lbl.gov'
+    print test_output
+
+    def mail_body = $/Jenkins build at ${env.BUILD_URL} has failed with commit ${commit_hash}!
+
+    The problem is: ${exc}
+
+    Output from running tests is:
+    ${test_output}
+    /$
 
     mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} Failed",
-            body: "Jenkins build at ${env.BUILD_URL} has failed! The problem is: ${exc}",
-              to: addressee,
-         replyTo: addressee,
+            body: mail_body,
+              to: committer_email,
+         replyTo: committer_email,
             from: 'jbei-edd-admin@lists.lbl.gov'
 }
