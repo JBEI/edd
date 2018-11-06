@@ -321,7 +321,7 @@ export class EditableElement {
     setupInputElement() {
         var desiredFontSize = this.elementJQ.css("font-size");
         if (!this.inputElement) {
-            var potentialInput = this.elementJQ.children('input').first();
+            var potentialInput = this.elementJQ.children(':input').first();
             if (potentialInput.length === 1) {
                 this.inputElement = potentialInput.get(0);
             } else {
