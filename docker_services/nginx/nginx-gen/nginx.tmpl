@@ -237,8 +237,6 @@ upstream {{ $upstream_name }} {
 
 {{ $is_https := (and (ne $https_method "nohttps") (ne $cert "") (exists (printf "/etc/nginx/certs/%s.crt" $cert)) (exists (printf "/etc/nginx/certs/%s.key" $cert))) }}
 
-{{ if $is_https }}
-
 {{ if eq $https_method "redirect" }}
 server {
     server_name {{ $host }};
@@ -247,9 +245,22 @@ server {
     listen [::]:80 {{ $default_server }};
     {{ end }}
     access_log /var/log/nginx/access.log vhost;
-    return 301 https://$host$request_uri;
+
+    # include vhost.d configs to allow Let's Encrypt access on :80
+    {{ if (exists (printf "/etc/nginx/vhost.d/%s" $host)) }}
+    include {{ printf "/etc/nginx/vhost.d/%s" $host }};
+    {{ else if (exists "/etc/nginx/vhost.d/default") }}
+    include /etc/nginx/vhost.d/default;
+    {{ end }}
+
+    # everything else gets redirected to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
 }
 {{ end }}
+
+{{ if $is_https }}
 
 server {
     server_name {{ $host }};
@@ -370,7 +381,7 @@ server {
 
 {{ end }}
 
-{{ if or (not $is_https) (eq $https_method "noredirect") }}
+{{ if and (not $is_https) (eq $https_method "noredirect") }}
 
 server {
     server_name {{ $host }};

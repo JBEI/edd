@@ -397,7 +397,7 @@ class CreateStudyForm(forms.ModelForm):
         super().clean()
         # if no explicit contact is set, make the current user the contact
         # TODO: handle contact_extra too
-        if 'contact' not in self.cleaned_data or not self.cleaned_data.get('contact'):
+        if not self.cleaned_data.get('contact', None):
             self.cleaned_data['contact'] = self._user
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
@@ -441,7 +441,10 @@ class CreateStudyForm(forms.ModelForm):
     def save_lines(self, study):
         """ Saves copies of Line IDs passed to the form on the study. """
         to_add = []
-        for line in self.cleaned_data['lineId']:
+        lines = self.cleaned_data.get('lineId', None)
+        if lines is None:
+            lines = []
+        for line in lines:
             line.pk = line.id = None
             line.study = study
             line.study_id = study.id
@@ -611,11 +614,10 @@ class LineForm(forms.ModelForm):
 
     def clean_metadata(self):
         # go through and delete any keys with None values
-        meta = self.cleaned_data['metadata']
-        none_keys = []
-        for key, value in meta.items():
-            if value is None:
-                none_keys.append(key)
+        meta = self.cleaned_data.get('metadata', None)
+        if meta is None:
+            meta = {}
+        none_keys = {key for key, value in meta.items() if value is None}
         for key in none_keys:
             # Removing None-valued key from meta
             del meta[key]
@@ -630,7 +632,7 @@ class LineForm(forms.ModelForm):
     def clean(self):
         super().clean()
         # if no explicit experimenter is set, make the study contact the experimenter
-        if 'experimenter' not in self.cleaned_data or not self.cleaned_data.get('experimenter'):
+        if not self.cleaned_data.get('experimenter', None):
             if self._study.contact:
                 self.cleaned_data['experimenter'] = self._study.contact
 

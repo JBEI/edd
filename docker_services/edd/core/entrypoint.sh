@@ -37,7 +37,7 @@ function ping_wait() {
 
 function ensure_dir_owner() {
     if [ -d "$1" -a "$(stat -c %U "$1")" != "$2" ]; then
-        chown -R "$2" "$1"
+        chown -R "${2}:${2}" "${1}"
     fi
 }
 
@@ -391,6 +391,8 @@ case "$COMMAND" in
         ;;
     worker)
         banner "Starting Celery worker"
+        # sometimes log directory gets owned by root:root, force change before launch
+        ensure_dir_owner "/usr/local/edd/log/" "edduser"
         su-exec edduser:edduser celery -A edd worker -l info
         ;;
     daphne)
