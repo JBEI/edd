@@ -203,20 +203,44 @@ try {
 
             stage('Test') {
                 // previous stage does not finish until EDD up and reporting healthy
-                // NOTE: using -T flag to docker-compose per https://github.com/docker/compose/issues/3352
-                def test_script = $/sudo docker-compose -p '${project_name}' -f combined.yml \
+                // NOTE: using -T flag to docker-compose exec per
+                //   https://github.com/docker/compose/issues/3352
+                // NOTE: Jenkins sh command will throw exception on non-zero exit!
+                //   Capture output to file and use returnStatus to test for pass/fail
+                def test_script = $/#!/bin/bash -xe
+                    # instruct script to save all output to test.log
+                    exec &> >(tee -a "test.log")
+                    # run tests
+                    sudo docker-compose -p '${project_name}' -f combined.yml \
                         exec -T edd \
-                        python manage.py test --exclude-tag=known-broken 2>&1
+                        python manage.py test --exclude-tag=known-broken
+                /$
+                def save_logs_script = $/#!/bin/bash -xe
+                    # instruct script to save all output to container.log
+                    exec &> >(tee -a "container.log")
+                    echo "EDD logs"
+                    sudo docker-compose -p '${project_name}' -f combined.yml \
+                        exec -T edd \
+                        cat log/edd.log
+                    echo "ICE logs"
+                    sudo docker-compose -p '${project_name}' -f combined.yml \
+                        exec -T ice \
+                        find ./logs -type f -print -exec cat \{\} \;
                 /$
                 // only try to test for 30 minutes before bugout
                 timeout(30) {
                     dir("docker_services") {
-                        test_output = sh(
-                            script: test_script,
-                            returnStdout: true
-                        ).trim()
+                        def test_result = sh(script: test_script, returnStatus: true)
+                        test_output = readFile("test.log").trim()
+                        if (test_result) {
+                            // mark build failed
+                            currentBuild.result = 'FAILURE'
+                            // save away some log files to help diagnose why failed
+                            sh(script: save_logs_script, returnStatus: true)
+                            archiveArtifacts artifacts: 'container.log'
+                            // send mail in Notify step
+                        }
                     }
-                    print test_output
                 }
             }
 
@@ -227,6 +251,10 @@ try {
             // }
 
             stage('Notify') {
+                def status = "Success"
+                if (currentBuild.currentResult == 'FAILURE') {
+                    status = "Failed"
+                }
                 def mail_body = $/Completed build of ${commit_hash} in ${currentBuild.durationString}.
 
                 See build information at <${env.BUILD_URL}>.
@@ -234,7 +262,7 @@ try {
                 Output from running tests is:
                 ${test_output}
                 /$
-                mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} Success",
+                mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} ${status}",
                         body: mail_body,
                           to: committer_email,
                      replyTo: committer_email,
@@ -273,12 +301,9 @@ try {
     def mail_body = $/Jenkins build at ${env.BUILD_URL} has failed with commit ${commit_hash}!
 
     The problem is: ${exc}
-
-    Output from running tests is:
-    ${test_output}
     /$
 
-    mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} Failed",
+    mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} Aborted",
             body: mail_body,
               to: committer_email,
          replyTo: committer_email,

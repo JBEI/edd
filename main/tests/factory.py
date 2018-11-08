@@ -94,6 +94,7 @@ class GeneFactory(MeasurementTypeFactory):
 class UnitFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.MeasurementUnit
+        django_get_or_create = ('unit_name', )
 
     unit_name = factory.Faker("word")
 
