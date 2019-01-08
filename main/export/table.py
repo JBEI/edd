@@ -4,6 +4,7 @@ import logging
 import operator
 
 from collections import OrderedDict
+from django.contrib.postgres.aggregates import ArrayAgg, JSONBAgg
 from django.db.models import Prefetch, Q
 from django.utils.translation import ugettext_lazy as _
 from functools import reduce
@@ -64,6 +65,9 @@ class ColumnChoice(object):
 
     def convert_instance_from_measure(self, measure, default=None):
         try:
+            # aggregated fields on measurement, move to proper object
+            measure.assay.line.strain_names = measure.strain_names
+            measure.assay.line.cs_names = measure.cs_names
             return {
                 models.Assay: measure.assay,
                 models.Line: measure.assay.line,
@@ -102,7 +106,7 @@ class ColumnChoice(object):
 class EmptyChoice(ColumnChoice):
     """ Always inserts an empty value on lookup callback. """
     def __init__(self):
-        super(EmptyChoice, self).__init__(str, '', '', lambda x: '')
+        super().__init__(str, '', '', lambda x: '')
 
 
 class ExportSelection(object):
@@ -177,7 +181,7 @@ class ExportSelection(object):
         # find all assays containing the listed (assay|measure) IDs, or contained by (study|line)
         self._assay_queryset = models.Assay.objects.distinct().filter(
             # first filter based on whether user has access
-            models.Study.access_filter(user, via=('line', 'study', )),
+            models.Study.access_filter(user, via=('study', )),
             # then find all lines that match at least one of the inputs
             ids_filter('assay', ids)
         )
@@ -193,7 +197,7 @@ class ExportSelection(object):
         # find all measurements contained by the listed IDs
         self._measure_queryset = models.Measurement.objects.distinct().filter(
             # first filter based on whether user has access
-            models.Study.access_filter(user, via=('assay', 'line', 'study', )),
+            models.Study.access_filter(user, via=('study', )),
             # then find all lines that match at least one of the inputs
             ids_filter('measurement', ids)
         ).order_by('assay__protocol_id')
@@ -206,7 +210,16 @@ class ExportSelection(object):
     @property
     def lines(self):
         """ A queryset of lines included in the selection. """
-        return self._line_queryset
+        return self._line_queryset.select_related(
+            "experimenter__userprofile",
+            "updated",
+        ).annotate(
+            strain_names=ArrayAgg('strains__name'),
+            cs_names=ArrayAgg('carbon_source__name'),
+        ).prefetch_related(
+            Prefetch('strains', to_attr='strain_list'),
+            Prefetch('carbon_source', to_attr='cs_list'),
+        )
 
     @property
     def assays(self):
@@ -357,9 +370,9 @@ class TableExport(object):
 
     def _do_export(self, tables):
         # add data from each exported measurement; already sorted by protocol
-        value_qs = models.MeasurementValue.objects.select_related('updated').order_by('x')
         measures = self.selection.measurements.select_related(
-            'measurement_type',
+            # add proteinidentifier so export does not repeatedly query for protein-specific stuff
+            'measurement_type__proteinidentifier',
             'x_units',
             'y_units',
             'update_ref__mod_by',
@@ -369,10 +382,14 @@ class TableExport(object):
             'assay__line__contact',
             'assay__line__experimenter',
             'assay__line__study__contact',
-        ).prefetch_related(
-            Prefetch('measurementvalue_set', queryset=value_qs, to_attr='pf_values'),
-            Prefetch('assay__line__strains'),
-            Prefetch('assay__line__carbon_source'),
+        ).annotate(
+            # eliminate some subqueries and/or repeated queries by collecting values in arrays
+            strain_names=ArrayAgg('assay__line__strains__name', distinct=True),
+            cs_names=ArrayAgg('assay__line__carbon_source__name', distinct=True),
+            vids=ArrayAgg('measurementvalue'),
+            # aggregating arrays instead of values, use JSONB
+            vxs=JSONBAgg('measurementvalue__x'),
+            vys=JSONBAgg('measurementvalue__y'),
         )
         for measurement in measures:
             assay = measurement.assay
@@ -391,19 +408,22 @@ class TableExport(object):
                 # create row for protocol/all table
                 row = self._output_row_with_measure(measurement)
             table, table_key = self._init_tables_for_protocol(tables, protocol)
-            values = measurement.pf_values  # prefetched above
+            values = sorted(
+                zip(measurement.vids, measurement.vxs, measurement.vys),
+                key=lambda a: a[1][0],
+            )
             if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
                 for value in values:
                     arow = row[:]
-                    arow.append(value_str(value.x))
-                    arow.append(value_str(value.y))
-                    table[value.id] = arow
+                    arow.append(value_str(value[1]))  # x-values
+                    arow.append(value_str(value[2]))  # y-values
+                    table[value[0]] = arow  # value IDs
             else:
                 # keep track of all x values encountered in the table
                 xx = self._x_values[table_key] = self._x_values.get(table_key, {})
                 # do value_str to the float-casted version of x to eliminate 0-padding
-                xx.update({value_str(v.x): v.x for v in values})
-                squashed = {value_str(v.x): value_str(v.y) for v in values}
+                xx.update({value_str(v[1]): v[1] for v in values})
+                squashed = {value_str(v[1]): value_str(v[2]) for v in values}
                 row.append(squashed)
                 table[measurement.id] = row
 
@@ -468,7 +488,7 @@ class TableExport(object):
 class WorklistExport(TableExport):
     """ Outputs tables for line worklists. """
     def __init__(self, selection, options, worklist=None):
-        super(WorklistExport, self).__init__(selection, options)
+        super().__init__(selection, options)
         self.worklist = worklist
 
     def output(self):

@@ -38,13 +38,12 @@
         </th>
       </tr>
       {% for line in selection.lines %}
-      {% with carbon_source=line.carbon_source.all %}
       <!-- {{ id }} {{ line }} -->
-      <tr class="stripeRow{% if forloop.counter|divisibleby:'2' %}A{% else %}B{% endif %}" data-line-id="{{ line.id }}">
+      <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}" data-line-id="{{ line.id }}">
         <td>{{ line.name }}</td>
         <td>
           <ul>
-          {% for strain in line.strains.all %}
+          {% for strain in line.strain_list %}
             <li>{{ strain.name }}</li>
           {% endfor %}
           </ul>
@@ -52,14 +51,14 @@
         <td>{{ line.media }}</td>
         <td>
           <ul>
-          {% for carbon in carbon_source %}
+          {% for carbon in line.cs_list %}
             <li>{{ carbon.name }}</li>
           {% endfor %}
           </ul>
         </td>
         <td>
           <ul>
-          {% for carbon in carbon_source %}
+          {% for carbon in line.cs_list %}
             <li>{{ carbon.labeling }}</li>
           {% endfor %}
           </ul>
@@ -67,7 +66,6 @@
         <td style="text-align:center;">{{ line.experimenter.profile.initials }}</td>
         <td>{{ line.last_modified }}</td>
       </tr>
-      {% endwith %}
       {% endfor %}
     </table>
   </div>

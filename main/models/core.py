@@ -834,12 +834,12 @@ class Line(EDDObject):
         # TODO export should handle multi-valued fields better than this
         table_generator.define_field_column(
             cls._meta.get_field('strains'),
-            lookup=lambda line: '|'.join(line.strains.all().values_list('name', flat=True)),
+            lookup=lambda line: '|'.join(line.strain_names),
         )
         # TODO export should handle multi-valued fields better than this
         table_generator.define_field_column(
             cls._meta.get_field('carbon_source'),
-            lookup=lambda line: '|'.join(line.carbon_source.all().values_list('name', flat=True)),
+            lookup=lambda line: '|'.join(line.cs_names),
         )
         table_generator.define_field_column(
             cls._meta.get_field('experimenter'),
