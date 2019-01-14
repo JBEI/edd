@@ -92,6 +92,8 @@ export interface AccumulatedRecordIDs {
     geneIDs: string[];
     measurementIDs: string[];
 }
+const NULL_LINE: LineRecord = <LineRecord> {};
+const NULL_ASSAY: AssayRecord = <AssayRecord> {};
 
 
 // For the filtering section on the main graph
@@ -511,6 +513,7 @@ export class GenericFilterSection {
     // first encountered when examining the record data in updateUniqueIndexesHash.
     uniqueValues: UniqueIDToValue;
     uniqueIndexes: ValueToUniqueID;
+    static readonly nullIndex: number = 1;
     uniqueIndexCounter: number;
 
     // The sorted order of the list of unique values found in the filter
@@ -559,7 +562,7 @@ export class GenericFilterSection {
     constructor() {
         this.uniqueValues = {};
         this.uniqueIndexes = {};
-        this.uniqueIndexCounter = 0;
+        this.uniqueIndexCounter = GenericFilterSection.nullIndex;
         this.uniqueValuesOrder = [];
         this.filterHash = {};
         this.previousCheckboxState = {};
@@ -631,23 +634,24 @@ export class GenericFilterSection {
     // of the unique identifiers sorted by the values.  These are what we'll use to construct
     // the rows of criteria visible in the filter's UI.
     populateFilterFromRecordIDs(ids: string[]): void {
-        var crSet: number[], cHash: UniqueIDToValue;
+        // track internal codes (UniqueID) for each value filtered by the widget
+        let valueCodeSet: number[] = [];
+        let valueCodeHash: UniqueIDToValue = {};
+        // convert list of records to values to filter upon; updates this.uniqueIndexes
         this.updateUniqueIndexesHash(ids);
-        crSet = [];
-        cHash = {};
         // Create a reversed hash so keys map values and values map keys
         $.each(this.uniqueIndexes, (value: string, uniqueID: number): void => {
-            cHash[uniqueID] = value;
-            crSet.push(uniqueID);
+            valueCodeHash[uniqueID] = value;
+            valueCodeSet.push(uniqueID);
         });
         // Alphabetically sort an array of the keys according to values
-        crSet.sort((a: number, b: number): number => {
-            var _a: string = cHash[a].toLowerCase();
-            var _b: string = cHash[b].toLowerCase();
+        valueCodeSet.sort((a: number, b: number): number => {
+            var _a: string = valueCodeHash[a].toLowerCase();
+            var _b: string = valueCodeHash[b].toLowerCase();
             return _a < _b ? -1 : _a > _b ? 1 : 0;
         });
-        this.uniqueValues = cHash;
-        this.uniqueValuesOrder = crSet;
+        this.uniqueValues = valueCodeHash;
+        this.uniqueValuesOrder = valueCodeSet;
     }
 
     // In this function (or at least the subclassed versions of it) we are running through
@@ -684,7 +688,9 @@ export class GenericFilterSection {
     }
 
     assignUniqueIndex(value: string): number {
-        if (this.uniqueIndexes[value] === undefined) {
+        if (value === null) {
+            return GenericFilterSection.nullIndex;
+        } else if (this.uniqueIndexes[value] === undefined) {
             this.uniqueIndexes[value] = ++this.uniqueIndexCounter;
         }
         return this.uniqueIndexes[value];
@@ -716,10 +722,7 @@ export class GenericFilterSection {
         $(this.tableBodyElement).empty();
 
         // For each value, if a table row isn't already defined, build one.
-        // There's extra code in here to assign colors to rows in the Lines filter
-        // which should probably be isolated in a subclass.
         this.uniqueValuesOrder.forEach((uniqueId: number): void => {
-
             var cboxName, cell, row, rowElem;
             cboxName = this.generateFilterId(uniqueId);
             row = this.tableRows[this.uniqueValues[uniqueId]];
@@ -911,25 +914,44 @@ export class GenericFilterSection {
 // Note that an Assay's Line can have more than one Strain assigned to it,
 // which is an example of why 'this.filterHash' is built with arrays.
 export class StrainFilterSection extends GenericFilterSection {
+    showNullEntry: boolean = false;
+
     configure(): void {
         super.configure('Strain', 'st');
+    }
+
+    populateFilterFromRecordIDs(ids: string[]): void {
+        super.populateFilterFromRecordIDs(ids);
+        if (this.showNullEntry) {
+            // insert a nullIndex entry
+            this.uniqueValues[GenericFilterSection.nullIndex] = "No Strain";
+            this.uniqueValuesOrder.unshift(GenericFilterSection.nullIndex);
+        }
     }
 
     updateUniqueIndexesHash(ids: string[]): void {
         this.uniqueIndexes = {};
         this.filterHash = {};
+        this.showNullEntry = false;
         ids.forEach((assayId: string) => {
-            var line: any = this._assayIdToLine(assayId) || {},
-                idx: number;
+            let line: LineRecord = this._assayIdToLine(assayId) || NULL_LINE;
+            let strain_ids: number[] = line.strain || [];
+            let idx: number;
             this.filterHash[assayId] = this.filterHash[assayId] || [];
-            // assign unique ID to every encountered strain name
-            (line.strain || []).forEach((strainId: string): void => {
-                var strain = EDDData.Strains[strainId];
-                if (strain && strain.name) {
-                    idx = this.assignUniqueIndex(strain.name);
-                    this.filterHash[assayId].push(idx);
-                }
-            });
+            if (strain_ids.length === 0) {
+                // set null index when no strains
+                this.filterHash[assayId].push(GenericFilterSection.nullIndex);
+                this.showNullEntry = true;
+            } else {
+                // assign unique ID to every encountered strain name
+                strain_ids.forEach((strainId: number): void => {
+                    let strain: StrainRecord = EDDData.Strains[strainId];
+                    if (strain && strain.name) {
+                        idx = this.assignUniqueIndex(strain.name);
+                        this.filterHash[assayId].push(idx);
+                    }
+                });
+            }
         });
     }
 }
