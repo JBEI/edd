@@ -12,10 +12,13 @@ from jbei.rest.clients.edd.api import (
 
 class ClientConfigurablePagination(PageNumberPagination):
     """
-    Overrides defaults to enable client-configurable control (up to a limit) of result pagination
-    by EDD's REST API. Note that specific REST views may override this behavior. See REST_FRAMEWORK
-    setting in edd.settings.py.
+    Overrides defaults to enable client-configurable control (up to a limit) of result
+    pagination by EDD's REST API. Note that specific REST views may override
+    this behavior.
+
+    See REST_FRAMEWORK setting in edd.settings.py.
     """
+
     page_size = DEFAULT_PAGE_SIZE
     page_size_query_param = PAGE_SIZE_QUERY_PARAM
     page_query_param = PAGE_NUMBER_URL_PARAM
@@ -24,9 +27,11 @@ class ClientConfigurablePagination(PageNumberPagination):
 
 class LinkHeaderPagination(ClientConfigurablePagination):
     """
-    Uses same configuration as ClientConfigurablePagination / DRF PageNumberPagination; but uses
-    HTTP Link Header values to convey
+    Uses same configuration as ClientConfigurablePagination / DRF PageNumberPagination;
+    but uses HTTP X-Total-Count and Link Header values to convey the count of records
+    returned, and links to next/prev sets of data.
     """
+
     def get_paginated_response(self, data):
         next_url = self.get_next_link()
         prev_url = self.get_previous_link()
@@ -37,5 +42,6 @@ class LinkHeaderPagination(ClientConfigurablePagination):
         if next_url:
             links.append(f'<{next_url}>; rel="next"')
         if links:
-            headers['Link'] = ', '.join(links)
+            headers["Link"] = ", ".join(links)
+        headers["X-Total-Count"] = str(self.page.paginator.count)
         return Response(data, headers=headers)
