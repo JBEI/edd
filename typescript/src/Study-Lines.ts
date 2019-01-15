@@ -136,6 +136,13 @@ export function prepareIt() {
             $('#noLinesDiv').toggleClass('hide', hasLines);
         },
     });
+
+    // if dialog had errors, open on page reload
+    let editLineModal = $('#editLineModal');
+    if (editLineModal.hasClass('validation_error')) {
+        let options = {minWidth: 500, title: 'Please correct errors'};
+        editLineModal.removeClass('off').dialog(options);
+    }
 }
 
 function setupHelp() {
@@ -168,17 +175,12 @@ export function prepareAfterLinesTable() {
     let input: JQuery = $('.tableControl').last();
     // Enable add new Line button
     parent.find('.addNewLineButton').on('click', (ev: JQueryMouseEventObject): boolean => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        showLineEditDialog([]);
+        showLineEditDialog($());
         return false;
     });
-
     // Enable edit lines button
     parent.find('.editButton').on('click', (ev: JQueryMouseEventObject): boolean => {
-        var button = $(ev.target), data = button.data();
-        ev.preventDefault();
-        showLineEditDialog(data.ids || []);
+        showLineEditDialog($('#studyLinesTable').find('[name=lineId]:checked'));
         return false;
     });
 
@@ -210,28 +212,29 @@ export function prepareAfterLinesTable() {
     });
 
     parent.find(".exportLineButton").click(function() {
+        let table = $('#studyLinesTable').clone();
+        let form = $('#exportForm');
         $("#exportModal").removeClass('off').dialog( "open" );
-        includeAllLinesIfEmpty();
+        includeAllLinesIfEmpty(form);
         // add table to form as hidden field.
-        var table = $('#studyLinesTable').clone();
-        $('#exportForm').append(table);
-        table.hide();
+        form.append(table.hide());
         return false;
     });
 
     parent.find('.worklistButton').click(function () {
-        includeAllLinesIfEmpty();
-        var table = $('#studyLinesTable').clone();
-        $('#exportForm').append(table);
-        table.hide();
-        $('select[name="export"]').val('worklist');
-        $('button[value="line_action"]').click();
+        let table = $('#studyLinesTable').clone();
+        let form = $('#exportForm');
+        includeAllLinesIfEmpty(form);
+        form.append(table.hide())
+            .find('select[name=export]').val('worklist').end()
+            .find('button[name=action]').click().end();
+        return false;
     });
 
     $('#editLineModal').on('change', '.line-meta', (ev) => {
-        // watch for changes to metadata values, and serialize to the meta_store field
+        // watch for changes to metadata values, and serialize to the metadata field
         var form = $(ev.target).closest('form'),
-            metaIn: any = form.find('[name=line-meta_store]'),
+            metaIn: any = form.find('[name=line-metadata]'),
             meta: number | string = JSON.parse(metaIn.val() || '{}');
         form.find('.line-meta > :input').each((i, metaInput) => {
             if ($(metaInput).val() || $(metaInput).siblings('label').find('input').prop('checked')) {
@@ -256,7 +259,7 @@ export function prepareAfterLinesTable() {
         // remove metadata row and insert null value for the metadata key
         var form = $(ev.target).closest('form'),
             metaRow = $(ev.target).closest('.line-meta'),
-            metaIn: any = form.find('[name=line-meta_store]'),
+            metaIn: any = form.find('[name=line-metadata]'),
             meta: any = JSON.parse(metaIn.val() || '{}'),
             key = metaRow.attr('id').match(/-(\d+)$/)[1];
         meta[key] = null;
@@ -267,14 +270,14 @@ export function prepareAfterLinesTable() {
     queuePositionActionsBar();
 }
 
-function includeAllLinesIfEmpty() {
+function includeAllLinesIfEmpty(form) {
     if ($('#studyLinesTable').find('input[name=lineId]:checked').length === 0) {
         // append study id to form
         $('<input>').attr({
             type: 'hidden',
             value: EDDData.currentStudyID,
             name: 'studyId',
-        }).appendTo('form');
+        }).appendTo(form);
     }
 }
 
@@ -300,11 +303,6 @@ function linesActionPanelShow() {
     } else {
         checkedBoxLen = checkedBoxes.length;
         $('.linesSelectedCell').empty().text(checkedBoxLen + ' selected');
-        // enable singular/plural changes
-        $('.editButton').data({
-            'count': checkedBoxLen,
-            'ids': checkedBoxes.map((box: HTMLInputElement) => box.value),
-        });
         $('.disablableButtons > button').prop('disabled', !checkedBoxLen);
     }
 }
@@ -347,17 +345,6 @@ export function positionActionsBar() {
         $('.actionsBar').toggle();
         actionPanelIsInBottomBar = true;
     }
-}
-
-export function clearLineForm(form) {
-    form.find('.line-meta').remove();
-    form.find('[name^=line-]').not(':checkbox, :radio').val('');
-    form.find('[name^=line-]').filter(':checkbox, :radio').prop('checked', false);
-    form.find('.errorlist').remove();
-    form.find('.cancel-link').remove();
-    form.find('.bulk').addClass('off');
-    form.off('change.bulk');
-    return form;
 }
 
 export function fillLineForm(form, record) {
@@ -403,8 +390,8 @@ export function fillLineForm(form, record) {
         insertLineMetadataRow(metaRow, key, value);
     });
     // store original metadata in initial- field
-    form.find('[name=line-meta_store]').val(JSON.stringify(record.meta));
-    form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
+    form.find('[name=line-metadata]').val(JSON.stringify(record.meta));
+    form.find('[name=initial-line-metadata]').val(JSON.stringify(record.meta));
 }
 
 export function insertLineMetadataRow(refRow, key, value) {
@@ -434,44 +421,81 @@ export function insertLineMetadataRow(refRow, key, value) {
 }
 
 
-export function showLineEditDialog(ids: number[]): void {
-    var form = $('#editLineModal'), allMeta = {}, metaRow;
-    clearLineForm(form);
-
-    // Update the disclose title
-    var text = 'Add New Line';
-    if (ids.length > 0) {
-        text = 'Edit Line' + (ids.length > 1 ? 's ' + "(" + ids.length + ")" : '');
+export function showLineEditDialog(selection: JQuery): void {
+    let modalForm = $('#editLineModal');
+    let allMeta = {};
+    let titleText = 'Add New Line';
+    // clear out the form to prepare for next display
+    modalForm
+        // remove metadata rows
+        .find('.line-meta').remove().end()
+        // for all LineForm elements
+        .find('[name^=line-]')
+            // clear input element values
+            .not(':checkbox, :radio').val('').end()
+            // uncheck any toggles (except bulk toggles)
+            .filter(':checkbox, :radio').not('.bulk').prop('checked', false).end().end()
+        .end()
+        // remove reported errors
+        .find('.errorlist').remove().end()
+        // hide bulk edit checkboxes
+        .find('.bulk').addClass('off').end()
+        // remove bulk edit change handler
+        .off('change.bulk')
+        // remove previous selection
+        .find('[name=lineId]').remove().end()
+        // clone selection to the form
+        .find('form').append(selection.clone().addClass('off')).end();
+    // Update the dialog title
+    if (selection.length > 1) {
+        titleText = 'Edit Lines (' + selection.length + ')';
+    } else if (selection.length === 1) {
+        titleText = 'Edit Line';
     }
+    modalForm.dialog({ minWidth: 500, autoOpen: false, title: titleText });
 
-    form.dialog({ minWidth: 500, autoOpen: false, title: text });
-
-    if (ids.length > 1) {
-        // hide line name because this doesn't matter; also remove required attr
-        form.find('[name=line-name]').prop('required', false).parent().hide();
-        // show bulk notice
-        $('.bulkNoteGroup', form).removeClass('off');
-        $('.bulk', form).removeClass('off');
-        form.on('change.bulk', ':input', (ev: JQueryEventObject) => {
-            $(ev.target).siblings('label').find('.bulk').prop('checked', true);
-        });
-        // compute used metadata fields on all data.ids, insert metadata rows?
-        ids.map((id: number) => EDDData.Lines[id] || {}).forEach((line: LineRecord) => {
+    if (selection.length > 1) {
+        modalForm
+            // line name does not matter when editing multiples; remove required attribute
+            .find('[name=line-name]').prop('required', false)
+                // also hide the line name form elements and uncheck bulk box
+                .parent()
+                    .hide()
+                    .find(':checkbox').prop('checked', false).end()
+                .end()
+            .end()
+            // show bulk notice
+            .find('.bulkNoteGroup').removeClass('off').end()
+            // show bulk checkboxes
+            .find('.bulk').removeClass('off').end()
+            // event handler to check bulk checkbox on editing connected input
+            .on('change.bulk', ':input', (ev: JQueryEventObject) => {
+                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
+            });
+        // compute used metadata from every selected Line
+        selection.each((i: number, elem: Element) => {
+            let line: LineRecord = EDDData.Lines[$(elem).val()];
             $.extend(allMeta, line.meta || {});
         });
-        metaRow = form.find('.line-edit-meta');
         // Run through the collection of metadata, and add a form element entry for each
-        $.each(allMeta, (key) => insertLineMetadataRow(metaRow, key, ''));
+        $.each(
+            allMeta,
+            (key) => insertLineMetadataRow(modalForm.find('.line-edit-meta'), key, '')
+        );
     } else {
-        $('.bulkNoteGroup', form).addClass('off');
-        form.find('[name=line-name]').prop('required', true).parent().show();
-        if (ids.length === 1) {
-            fillLineForm(form, EDDData.Lines[ids[0]]);
+        modalForm
+            // make sure bulk checkboxes are hidden
+            .find('.bulkNoteGroup').addClass('off').end()
+            // make sure line name is required
+            .find('[name=line-name]').prop('required', true)
+                // and line name is shown
+                .parent().show().end()
+            .end();
+        if (selection.length === 1) {
+            fillLineForm(modalForm, EDDData.Lines[selection.val()]);
         }
     }
-
-    form.find('[name=line-ids]').val(ids.join(','));
-    form.removeClass('off').dialog( "open" );
+    modalForm.removeClass('off').dialog( "open" );
 }
 
 class LineResults extends DataGrid {
@@ -725,12 +749,6 @@ class DataGridSpecLines extends DataGridSpecBase {
 
     generateLineNameCells(gridSpec: DataGridSpecLines, index: string): DataGridDataCell[] {
         var line = EDDData.Lines[index];
-        // move registration outsisde of funciton..just filter on class and attr with id. and
-        // pull out attr and
-        $(document).on('click', '.line-edit-link', function(e) {
-            var dataIndex: number = parseInt($(this).attr('dataIndex'), 10);
-            showLineEditDialog([dataIndex]);
-        });
         return [
             new DataGridDataCell(gridSpec, index, {
                 'checkboxName': 'lineId',

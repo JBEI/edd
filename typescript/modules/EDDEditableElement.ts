@@ -32,6 +32,7 @@ export class EditableElement {
 
     id: string;
     private _formURL: string;
+    private _fieldName: string;
 
     inputElement: any;
     editButtonElement: Element;
@@ -159,11 +160,14 @@ export class EditableElement {
     }
 
 
-    fillFormData(fd): any {
-        // look for a CSRF token anywhere in the page
-        fd.append('csrfmiddlewaretoken', $('input[name=csrfmiddlewaretoken]').val());
-        fd.append('value', this.getEditedValue());
-        return fd;
+    fieldName(): string;
+    fieldName(field: string): EditableElement;
+    fieldName(field?: string): string | EditableElement {
+        if (field === undefined) {
+            return this._fieldName || '';
+        }
+        this._fieldName = field;
+        return this;
     }
 
 
@@ -281,10 +285,7 @@ export class EditableElement {
     // with appropriate event handlers and styling, and adds them to the
     // container element.
     setUpEditingMode() {
-        var pThis = this;
-
-        this.elementJQ.removeClass('inactive');
-        this.elementJQ.removeClass('saving');
+        this.elementJQ.removeClass('inactive saving');
         this.elementJQ.addClass('active');
 
         this.setupInputElement();
@@ -292,13 +293,12 @@ export class EditableElement {
         this.clearElementForEditing();
         this.element.appendChild(this.inputElement);
         $(this.inputElement).show();
-        if (this.element.id === 'editable-study-description') {
+        if (typeof tinymce !== "undefined" && this.inputElement.type === "textarea") {
             tinymce.init({
-                selector: '#editable-study-description textarea',
-                plugins: "link",
+                "selector": '.active textarea',
+                "plugins": "link",
             });
         }
-
 
         // Remember what we're editing in case they cancel or move to another element
         EditableElement._prevEditableElement = this;
@@ -306,11 +306,8 @@ export class EditableElement {
         // Set focus to the new input element ASAP after the click handler.
         // We can't just do this in here because the browser will set the focus itself
         // after it's done handling the event that triggered this method.
-        window.setTimeout(function() {
-            pThis.inputElement.focus();
-        }, 0);
+        window.setTimeout(() => this.inputElement.focus(), 0);
         this.setUpKeyHandler();
-        // TODO: Handle losing focus (in which case we commit changes?)
     }
 
 
@@ -319,15 +316,16 @@ export class EditableElement {
     // default value for the field.  If no element exists, make a new one,
     // and assume it should be a textarea.
     setupInputElement() {
-        var desiredFontSize = this.elementJQ.css("font-size");
+        let desiredFontSize = this.elementJQ.css("font-size");
+        let desiredFontFace = this.elementJQ.css("font-family");
         if (!this.inputElement) {
-            var potentialInput = this.elementJQ.children(':input').first();
+            let potentialInput = this.elementJQ.children(':input').first();
             if (potentialInput.length === 1) {
                 this.inputElement = potentialInput.get(0);
             } else {
                 // Figure out how high to make the text edit box.
-                var lineHeight = parseInt( desiredFontSize, 10 );
-                var desiredNumLines = this.elementJQ.height() / lineHeight;
+                let lineHeight = parseInt(desiredFontSize, 10);
+                let desiredNumLines = this.elementJQ.height() / lineHeight;
                 desiredNumLines = Math.floor(desiredNumLines) + 1;
                 if (this.minimumRows) {
                     desiredNumLines = Math.max(desiredNumLines, this.minimumRows);
@@ -343,15 +341,13 @@ export class EditableElement {
                     this.inputElement = document.createElement("input");
                     this.inputElement.type = "text";
                 }
-
                 // Set width and height.
                 this.inputElement.style.width = "99%";
-
                 this.inputElement.value = this.getValue();
             }
             // Copy font attributes to match.
-            $(this.inputElement).css( "font-family", this.elementJQ.css("font-family") );
-            $(this.inputElement).css( "font-size", desiredFontSize );
+            $(this.inputElement).css("font-family", desiredFontFace);
+            $(this.inputElement).css("font-size", desiredFontSize);
         }
     }
 
@@ -430,43 +426,28 @@ export class EditableElement {
 
     // Subclass this if your need a different submit behavior after the UI is set up.
     commit() {
-        var debug = false;
+        let payload = {};
         if (typeof tinymce !== 'undefined') {
             tinymce.triggerSave();
         }
-        var value = this.getEditedValue();
-        var pThis = this;
-        var formData = this.fillFormData(new FormData());
-
-        Utl.EDD.callAjax({
-            'url': this.formURL(),
-            'type': 'POST',
-            'cache': false,
-            'debug': debug,
-            'data': formData,
-            'success': function(response) {
-                if (response.type === "Success") {
-                    if (response.message.split(' ')[1] === "[u'description']" && value.length > 0) {
-                        value = $.parseHTML(value);
-                        pThis.cancelEditing();
-                        $(pThis.element).text("");
-                        $(pThis.element).append(value);
-                    } else {
-                        pThis.setValue(value);
-                        pThis.cancelEditing();
-                    }
-                } else {
-                    alert("Error: " + response.message);
-                }
+        payload[this.fieldName()] = this.getEditedValue();
+        $.ajax({
+            "url": this.formURL(),
+            "type": "PATCH",
+            "headers": {"X-CSRFToken": Utl.EDD.findCSRFToken()},
+            "data": payload,
+            "success": (response) => {
+                this.setValue(response[this.fieldName()]);
             },
-            'error': function( jqXHR, textStatus, errorThrown ) {
-                if (debug) {
-                    /* tslint:disable:no-console */
-                    console.log(textStatus + ' ' + errorThrown);
-                    console.log(jqXHR.responseText);
-                    /* tslint:enable */
-                }
-                pThis.cancelEditing();  // TODO: Better reponse in UI for user
+            "error": (jqXHR, status, error) => {
+                // TODO: better UI response for errors
+                /* tslint:disable:no-console */
+                console.log(status + ' ' + error);
+                console.log(jqXHR.responseText);
+                /* tslint:enable */
+            },
+            "complete": () => {
+                this.cancelEditing();
             },
         });
     }
@@ -492,14 +473,13 @@ export class EditableElement {
 
 
     clickToCancelHandler(): boolean {
-        if ($(this.element).attr('id') === 'editable-study-description') {
-            if (typeof tinymce !== 'undefined') {
+        if (this.inputElement.type === "textarea") {
+            if (typeof tinymce !== "undefined") {
                 tinymce.remove();
             }
             let value: any = this.inputElement.value;
             this.cancelEditing();
             if (value) {
-                value = $(value);
                 // remove basic text because it might have html elements in it
                 $(this.element).text('');
                 $(this.element).append(value);
@@ -648,19 +628,15 @@ export class EditableAutocomplete extends EditableElement {
 
 
     setUpEditingMode() {
-        var pThis = this;
-
-        this.elementJQ.removeClass('inactive');
-        this.elementJQ.removeClass('saving');
+        this.elementJQ.removeClass('inactive saving');
         this.elementJQ.addClass('active');
 
         // Calling this may set it up for the first time
-        var auto = this.getAutoCompleteObject();
+        let auto = this.getAutoCompleteObject();
         this.inputElement = auto.visibleInput;
 
         this.clearElementForEditing();
-        this.element.appendChild(auto.visibleInput[0]);
-
+        this.elementJQ.append(auto.visibleInput).append(auto.hiddenInput);
 
         // Remember what we're editing in case they cancel or move to another element
         EditableElement._prevEditableElement = this;
@@ -668,11 +644,8 @@ export class EditableAutocomplete extends EditableElement {
         // Set focus to the new input element ASAP after the click handler.
         // We can't just do this in here because the browser won't actually set the focus,
         // presumably because it thinks the focus should be in what was just clicked on.
-        window.setTimeout(function() {
-            pThis.inputElement.focus();
-        }, 0);
+        window.setTimeout(() => this.inputElement.focus(), 0);
         this.setUpKeyHandler();
-        // TODO: Handle losing focus (in which case we commit changes?)
     }
 
 

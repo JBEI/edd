@@ -21,17 +21,22 @@ study_url_patterns = [
     path('', login_required(views.StudyDetailView.as_view()), name='detail'),
     path('overview/', login_required(views.StudyOverviewView.as_view()), name='overview'),
     path('experiment-description/', include(ed_patterns)),
-    path('assaydata/', login_required(views.study_assay_table_data)),
-    path('edddata/', login_required(views.study_edddata)),
+    path('assaydata/', login_required(views.study_assay_table_data), name="assaydata"),
+    path('edddata/', login_required(views.study_edddata), name="edddata"),
     path('measurements/<int:protocol>/', include([
-        path('', login_required(views.study_measurements)),
-        path('<int:assay>/', login_required(views.study_assay_measurements)),
+        path('', login_required(views.study_measurements), name="measurements"),
+        path(
+            '<int:assay>/', login_required(views.study_assay_measurements),
+            name="assay_measurements",
+        ),
     ])),
-    path('map/', login_required(views.study_map)),
-    path('permissions/', login_required(views.StudyPermissionJSONView.as_view())),
+    path(
+        'permissions/', login_required(views.StudyPermissionJSONView.as_view()),
+        name="permissions",
+    ),
     path('files/<int:file_id>/', include([
         # require the ID in URL
-        path('', login_required(views.StudyAttachmentView.as_view())),
+        path('', login_required(views.StudyAttachmentView.as_view()), name="attachment_list"),
         # optional to include file name in URL; reverse() should include it
         path('<path:file_name>/',
              login_required(views.StudyAttachmentView.as_view()),
@@ -41,19 +46,13 @@ study_url_patterns = [
     path('import/', include([
         path('', login_required(views.ImportTableView.as_view()), name='table-import'),
     ])),
-    path('rename/',
-         login_required(views.StudyUpdateView.as_view(update_action='rename'))),
-    path('setdescription/',
-         login_required(views.StudyUpdateView.as_view(update_action='setdescription'))),
-    path('setcontact/',
-         login_required(views.StudyUpdateView.as_view(update_action='setcontact'))),
 ]
 
 urlpatterns = [
     # "homepage" URLs
     path('', login_required(views.StudyIndexView.as_view()), name='index'),
     path('study/', login_required(views.StudyCreateView.as_view()), name='create_study'),
-    path('study/study-search/', login_required(views.study_search)),
+    path('study/study-search/', login_required(views.study_search), name="study_search"),
 
     # Individual study-specific pages loaded by primary key
     # reverse('main:edd-pk:overview', kwargs={'pk': pk})
@@ -68,15 +67,11 @@ urlpatterns = [
     path('sbml/', login_required(views.SbmlView.as_view()), name='sbml'),
 
     # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
-    path('utilities/parsefile/',
-         login_required(views.utilities_parse_import_file),
-         name='import_parse'),
-    path('data/sbml/', login_required(views.data_sbml)),
-    path('data/sbml/<int:sbml_id>/', include([
-        path('', login_required(views.data_sbml_info)),
-        path('reactions/', login_required(views.data_sbml_reactions)),
-        path('reactions/<path:rxn_id>/', login_required(views.data_sbml_reaction_species)),
-    ])),
+    path(
+        'utilities/parsefile/',
+        login_required(views.utilities_parse_import_file),
+        name='import_parse',
+    ),
     path('help/experiment_description/',
          login_required(views.ExperimentDescriptionHelp.as_view()),
          name='experiment_description_help'),

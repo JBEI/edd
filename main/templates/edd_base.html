@@ -97,19 +97,10 @@
       {% if messages %}
         {% csrf_token %}
         {% for message in messages %}
-        <p class="{{ message.tags }}">
-          {% if message.pk %}
-          <a class="close"
-              aria-label="{% trans 'Close' %}"
-              data-dismiss="alert"
-              close-href="{% url message_mark_read message.pk %}">×</a>
-          {% else %}
-          <a class="close"
-              aria-label="{% trans 'Close' %}"
-              data-dismiss="alert">×</a>
-          {% endif %}
+        <div class="{{ message.tags }}">
+          <a class="close" aria-label="{% trans 'Close' %}" data-dismiss="alert">×</a>
           {{ message }}
-        </p>
+        </div>
         {% endfor %}
       {% endif %}
     {% endblock status %}

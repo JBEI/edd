@@ -128,7 +128,8 @@ export class EditableStudyDescription extends StudyBase.EditableStudyElement {
     constructor(inputElement: Element, style?: string) {
         super(inputElement, style);
         this.minimumRows = 4;
-        this.formURL(Utl.relativeURL('setdescription/', studyBaseUrl).toString());
+        this.fieldName('description');
+        this.formURL($(inputElement).parents('form').attr('data-rest'));
     }
 
     getValue(): string {
@@ -145,7 +146,8 @@ export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
 
     constructor(inputElement: Element, style?: string) {
         super(inputElement, style);
-        this.formURL(Utl.relativeURL('setcontact/', studyBaseUrl).toString());
+        this.fieldName('contact_id');
+        this.formURL($(inputElement).parents('form').attr('data-rest'));
     }
 
     canCommit(value): boolean {

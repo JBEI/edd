@@ -16,10 +16,10 @@ from optparse import OptionParser
 from six import string_types
 
 
-re_signal_new = re.compile("\s*Signal[\s]{1,}:\s{1,}(EIC|TIC).*:")
-re_area_sum = re.compile("Sum\ of\ corrected\ areas:")
-re_table_rule = re.compile("([\-]{1,}[\s]{1,}){8,}")
-re_acq_time = re.compile("(Acq\ On\s*:)(.*)")
+re_signal_new = re.compile(r"\s*Signal[\s]{1,}:\s{1,}(EIC|TIC).*:")
+re_area_sum = re.compile(r"Sum\ of\ corrected\ areas:")
+re_table_rule = re.compile(r"([\-]{1,}[\s]{1,}){8,}")
+re_acq_time = re.compile(r"(Acq\ On\s*:)(.*)")
 
 
 class Peak(object):
@@ -300,18 +300,7 @@ class Report(SampleCollection):
                         continue
                     assert ((not re_signal_new.match(line)) and (not re_area_sum.match(line)))
                     if re_table_rule.match(line):
-                        sample_lines = []
-                        while k < len(lines):
-                            line = lines[k].strip()
-                            if re_area_sum.search(line):
-                                break
-                            elif re_signal_new.match(line):
-                                k -= 1
-                                break
-                            elif line != "":
-                                sample_lines.append(line)
-                            k += 1
-                        self.samples.append(Sample(sample_lines, sample_id))
+                        k = self._extract_sample(k, lines, sample_id)
                         break
             elif self.acquisition_time is None:
                 m = re_acq_time.match(line)
@@ -320,6 +309,21 @@ class Report(SampleCollection):
             k += 1
         if not have_entries:
             raise ValueError("This content does not appear to be a valid ChemStation report.")
+
+    def _extract_sample(self, k, lines, sample_id):
+        sample_lines = []
+        while k < len(lines):
+            line = lines[k].strip()
+            if re_area_sum.search(line):
+                break
+            elif re_signal_new.match(line):
+                k -= 1
+                break
+            elif line:
+                sample_lines.append(line)
+            k += 1
+        self.samples.append(Sample(sample_lines, sample_id))
+        return k
 
 
 def import_xlsx_metadata(file, header_key="ID"):

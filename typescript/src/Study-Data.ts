@@ -1329,7 +1329,7 @@ export class GeneFilterSection extends MeasurementFilterSection {
 
 
 function _displayLineGraph(): void {
-    $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+    $('#exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
     $('#filterControlsArea').removeClass('off');
     $('#displayModeButtons .active').removeClass('active');
     $('#lineGraphButton').addClass('active');
@@ -1345,7 +1345,7 @@ function _displayLineGraph(): void {
 
 
 function _displayBarGraph(mode: 'time'|'line'|'measurement'): void {
-    $('.exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
+    $('#exportButton, #tableControlsArea, .tableActionButtons').addClass('off');
     $('#filterControlsArea').removeClass('off');
     $('#displayModeButtons .active').removeClass('active');
     $('#barGraphButton').add('#' + mode + 'BarGraphButton').addClass('active');
@@ -1362,7 +1362,7 @@ function _displayBarGraph(mode: 'time'|'line'|'measurement'): void {
 
 
 function _displayTable(): void {
-    $(".exportButton, #tableControlsArea, .tableActionButtons").removeClass('off');
+    $("#exportButton, #tableControlsArea, .tableActionButtons").removeClass('off');
     $("#filterControlsArea").addClass('off');
     $('#displayModeButtons .active').removeClass('active');
     $('#dataTableButton').addClass('active');
@@ -1420,9 +1420,9 @@ export function prepareIt() {
                 && _.keys(EDDData.AssayMeasurements).length === 0) {
             // TODO: create prepare it for no data?
             _displayTable();
-            $('.exportButton').prop('disabled', true);
+            $('#exportButton').prop('disabled', true);
         } else {
-            $('.exportButton').prop('disabled', false);
+            $('#exportButton').prop('disabled', false);
         }
     });
 
@@ -1435,51 +1435,8 @@ export function prepareIt() {
         });
     });
 
-    $('.editAssayButton').click((ev) => {
-        ev.preventDefault();
-        editAssay($('[assayId]: checked').val());
-    });
-
-    // click handler for edit assay measurements
-    $('.editMeasurementButton').click(function(ev) {
-        ev.preventDefault();
-        $('input[name="assay_action"][value="edit"]').prop('checked', true);
-        $('button[value="assay_action"]').click();
-        return false;
-    });
-
-    // click handler for delete assay measurements
-    $('.deleteButton').click(function(ev) {
-        ev.preventDefault();
-        $('input[name="assay_action"][value="delete"]').prop('checked', true);
-        $('button[value="assay_action"]').click();
-        return false;
-    });
-
-    // click handler for export assay measurements
-    $('.exportButton').click(function(ev) {
-        ev.preventDefault();
-        includeAllLinesIfEmpty();
-        $('input[value="export"]').prop('checked', true);
-        $('button[value="assay_action"]').click();
-        return false;
-    });
-
-    // click handler for disable assay measurements
-    $('.disableButton').click(function(ev) {
-        ev.preventDefault();
-        $('input[value="mark"]').prop('checked', true);
-        $('select[name="disable"]').val('true');
-        $('button[value="assay_action"]').click();
-        return false;
-    });
-
-    // click handler for re-enable assay measurements
-    $('.enableButton').click(function(ev) {
-        ev.preventDefault();
-        $('input[value="mark"]').prop('checked', true);
-        $('select[name="disable"]').val('false');
-        $('button[value="assay_action"]').click();
+    $('#editAssayButton').click((ev) => {
+        showEditAssayDialog($('#studyAssaysTable').find('[name=assayId]:checked'));
         return false;
     });
 
@@ -1593,13 +1550,19 @@ export function prepareIt() {
         }
     }, []);
 
+    // set up the "add" (edit) assay dialog
+    $("#assayMain").dialog({
+        "minWidth": 500,
+        "autoOpen": false,
+    });
+
     // Set up the Add Measurement to Assay modal
     $("#addMeasurement").dialog({
         "minWidth": 500,
         "autoOpen": false,
     });
 
-    $(".addMeasurementButton").click(function() {
+    $("#addMeasurementButton").click(() => {
         // copy inputs to the modal form
         let inputs = $('#studyAssaysTable').find('input[name=assayId]:checked').clone();
         $('#addMeasurement')
@@ -1700,18 +1663,6 @@ function fetchMeasurements(EDDData) {
         });
     });
 }
-
-function includeAllLinesIfEmpty() {
-    if ($('#studyAssaysTable').find('tbody input[type=checkbox]:checked').length === 0) {
-        // append study id to form
-        $('<input>').attr({
-            "type": 'hidden',
-            "value": EDDData.currentStudyID,
-            "name": 'studyId',
-        }).appendTo('form');
-    }
-}
-
 
 function filterTableKeyDown(e) {
     switch (e.keyCode) {
@@ -1889,7 +1840,9 @@ function actionPanelRefresh() {
         checkedMeasure = $(checkedBoxes).filter('[name=measurementId]').length;
         nothingSelected = !checkedAssays && !checkedMeasure;
         // enable action buttons if something is selected
-        $('.tableActionButtons').find('button').prop('disabled', nothingSelected);
+        let actionButtonGroup = $('.tableActionButtons');
+        actionButtonGroup.find('button.assayButton').prop('disabled', !checkedAssays);
+        actionButtonGroup.find('button').not('.assayButton').prop('disabled', nothingSelected);
         $('.selectedDiv').toggleClass('off', nothingSelected);
         var selectedStrs = [];
         if (!nothingSelected) {
@@ -2016,36 +1969,51 @@ function remakeMainGraphArea() {
 }
 
 
-function clearAssayForm(): JQuery {
-    var form: JQuery = $('#assayMain');
-    form.find('[name^=assay-]').not(':checkbox, :radio').val('');
-    form.find('[name^=assay-]').filter(':checkbox, :radio').prop('selected', false);
-    form.find('.cancel-link').remove();
-    form.find('.errorlist').remove();
-    return form;
-}
-
-
-function fillAssayForm(form, record) {
-    var user = EDDData.Users[record.experimenter];
-    form.find('[name=assay-assay_id]').val(record.id);
-    form.find('[name=assay-name]').val(record.name);
-    form.find('[name=assay-description]').val(record.description);
-    form.find('[name=assay-protocol]').val(record.pid);
-    form.find('[name=assay-experimenter_0]').val(user && user.uid ? user.uid : '--');
-    form.find('[name=assay-experimenter_1]').val(record.experimenter);
-}
-
-
-export function editAssay(index: number): void {
-    var record = EDDData.Assays[index], form;
-    if (!record) {
-        return;
+export function showEditAssayDialog(selection: JQuery): void {
+    let modalForm = $('#assayMain');
+    // clear out the form to prepare for next display
+    modalForm
+        // remove metadata rows
+        .find('.assay-meta').remove().end()
+        // for all AssayForm elements
+        .find('[name^=assay-]')
+            // clear input element values
+            .not(':checkbox, :radio').val('').end()
+            // uncheck any toggles
+            .filter(':checkbox, :radio').prop('checked', false).end()
+        .end()
+        // remove reported errors
+        .find('.errorlist').remove().end()
+        // hide bulk edit checkboxes
+        .find('.bulk').addClass('off').end()
+        // remove bulk edit change handler
+        .off('change.bulk')
+        // remove previous selection
+        .find('[name=assayId]').remove().end()
+        // clone selection to the form
+        .find('form').append(selection.clone().addClass('off')).end();
+    // TODO handle metadata
+    if (selection.length === 1) {
+        // fill form with existing values
+        let record = EDDData.Assays[selection.val()];
+        let user = EDDData.Users[record.experimenter];
+        modalForm
+            .find('[name=assay-assay_id]').val(record.id).end()
+            .find('[name=assay-name]').val(record.name).end()
+            .find('[name=assay-description]').val(record.description).end()
+            .find('[name=assay-protocol]').val(record.pid).end()
+            .find('[name=assay-experimenter_0]').val(user && user.uid ? user.uid : '--').end()
+            .find('[name=assay-experimenter_1]').val(record.experimenter).end();
+    } else {
+        // show bulk edit checkboxes
+        modalForm
+            .find('.bulk').removeClass('off').end()
+            // event handler to check bulk checkbox on editing connected input
+            .on('change.bulk', ':input', (ev: JQueryEventObject) => {
+                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
+            });
     }
-    form = $('#assayMain');
-    clearAssayForm();
-    fillAssayForm(form, record);
-    form.removeClass('off').dialog( "open" );
+    modalForm.removeClass('off').dialog( "open" );
 }
 
 
@@ -2210,7 +2178,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
         let assay = EDDData.Assays[index];
         if (assay) {
-            let experimenter = EDDData.Users[assay.exp];
+            let experimenter = EDDData.Users[assay.experimenter];
             if (experimenter) {
                 return experimenter.initials.toUpperCase();
             }
@@ -2219,7 +2187,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
     private loadAssayModification(index: any): number {
-        return EDDData.Assays[index].mod;
+        return EDDData.Assays[index].modified.time;
     }
 
     // Specification for the headers along the top of the table
@@ -2319,14 +2287,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     generateAssayNameCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[] {
         var record = EDDData.Assays[index];
-        $(document).on('click', '.assay-edit-link', function(e) {
-            let dataIndex: number = parseInt($(this).attr('dataIndex'), 10);
-            editAssay(dataIndex);
-        });
-
-        // Set up jQuery modals
-        $("#assayMain").dialog({ minWidth: 500, autoOpen: false });
-
         return [
             new DataGridDataCell(gridSpec, index, {
                 'checkboxName': 'assayId',

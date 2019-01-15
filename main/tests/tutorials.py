@@ -171,8 +171,8 @@ class ImportDataTestsMixin(object):
             series_pages = self._slice_series_pages(series_file, page_count)
 
         # mocking redis and celery task, to only test the view itself
-        with patch('main.views.redis.ScratchStorage') as MockStorage:
-            with patch('main.views.import_table_task.delay') as mock_task:
+        with patch('main.redis.ScratchStorage') as MockStorage:
+            with patch('main.tasks.import_table_task.delay') as mock_task:
                 storage = MockStorage.return_value
                 storage.page_count.return_value = 0
                 storage.save.return_value = import_id
@@ -383,7 +383,7 @@ class PagedImportTests(ImportDataTestsMixin, TestCase):
         Tests the HTTP DELETE functionality that enables the import retry feature.
         """
         # mocking redis and celery task, to only test the view itself
-        with patch('main.views.redis.ScratchStorage') as MockStorage:
+        with patch('main.redis.ScratchStorage') as MockStorage:
             # get a mock redis cache...ordinarily it'd have data in it to delete, but no need
             # for it here
             storage = MockStorage.return_value

@@ -7,19 +7,6 @@
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/study-lines.css' %}" />
   <script type="text/javascript" src="{% static 'dist/StudyLines.js' %}"></script>
-  {% if new_line.errors %}
-  <script type="text/javascript">
-    var options = {
-      autoOpen: false,
-      minWidth: 500,
-      title: 'Add New Line'
-    };
-    $(document).ready(function() {
-      $('.errorlist').remove();
-      $("#editLineModal").removeClass('off').dialog(options).dialog("open");
-    });
-  </script>
-  {% endif %}
 {% endblock js_css %}
 
 
@@ -188,15 +175,7 @@
 {% if writable %}
 <div id="editLineModal"
     title="{% trans 'Add new line' %}"
-    class="{% if not new_line.is_editing and not new_line.errors %}off{% endif %}">
-  {% if new_line.errors %}
-  <div class="alert alert-danger alert-dismissible" style="width:313px" role="alert">
-    <button type="button" class="close" data-dismiss="alert" aria-label="{% trans 'Close' %}">
-      <span aria-hidden="true">&times;</span>
-    </button>
-    <p>{{ new_line.errors.as_text  }}</p>
-  </div>
-  {% endif %}
+    class="off {% if new_line.errors %}validation_error{% endif %}">
   <form action="" method="POST">
     {% csrf_token %}
     <div class="modal-body">
@@ -256,13 +235,7 @@
 <div id="exportModal" class="off" title="{% trans 'Export as' %}">
   <form action="" method="POST" id="exportForm">
     {% csrf_token %}
-    <input type="radio"
-        id="line_action_export"
-        checked="checked"
-        name="line_action"
-        value="export"
-        hidden="hidden" />
-    <label for="line_action_export">
+    <label for="export">
       <span>{% trans 'Export Lines' %}</span>
       <select name="export">
         <option value="csv">{% trans 'as CSV/etc' %}</option>
@@ -273,7 +246,7 @@
     </label>
     <button type="submit"
         name="action"
-        value="line_action">
+        value="export">
       {% trans 'Take Action' %}
     </button>
   </form>

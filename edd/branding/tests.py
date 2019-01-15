@@ -84,6 +84,17 @@ class BrandingTagTests(TestCase):
             result = template.render(context)
             self.assertEqual(result, "v1 (abcdef)")
 
+    def test_logo_title(self):
+        template = Template(r"{% load branding %}{% logo_title %}")
+        context = Context()
+        # display with default branding
+        result = template.render(context)
+        self.assertEqual(result, "EDD")
+        # diaplay with no found branding
+        with self.settings(SITE_ID=None):
+            result = template.render(context)
+            self.assertEqual(result, "EDD")
+
 
 class BrandingFaviconTests(TestCase):
     def test_favicon(self):

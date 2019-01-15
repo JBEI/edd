@@ -67,7 +67,7 @@ services:
       - '127.0.0.1:8080:8080'
       # - '127.0.0.1:9999:8000'
   ice_db:
-    image: library/postgres:9.6
+    image: jbei/postgres:9.6
     restart: always
     environment:
       POSTGRES_DB: ice

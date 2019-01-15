@@ -8,8 +8,6 @@ import * as EDDAuto from "./EDDAutocomplete";
 import * as Utl from "../modules/Utl";
 
 
-let studyBaseUrl: URL = Utl.relativeURL('../');
-
 $( window ).on("load", function() { // Shortcutting this to .load confuses jQuery
     EDDAuto.BaseAuto.initPreexisting();
     // this makes the autocomplete work like a dropdown box
@@ -18,6 +16,7 @@ $( window ).on("load", function() { // Shortcutting this to .load confuses jQuer
         $(ev.target).addClass('autocomp_search').mcautocomplete('search');
     });
 });
+
 
 // Base class for the non-autocomplete inline editing fields for the Study
 export class EditableStudyElement extends EDDEditable.EditableElement {
@@ -31,9 +30,10 @@ export class EditableStudyElement extends EDDEditable.EditableElement {
 
 
 export class EditableStudyName extends EditableStudyElement {
-    constructor(inputElement:Element) {
+    constructor(inputElement: Element) {
         super(inputElement);
-        this.formURL(Utl.relativeURL('rename/', studyBaseUrl).toString());
+        this.fieldName('name');
+        this.formURL($(inputElement).parents('form').attr('data-rest'));
     }
 
     canCommit(value): boolean {
@@ -48,6 +48,7 @@ export class EditableStudyName extends EditableStudyElement {
         return '(Enter a name for your Study)';
     }
 }
+
 
 // Called when the page loads.
 export function prepareIt() {

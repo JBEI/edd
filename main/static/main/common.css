@@ -236,7 +236,7 @@ div.statusMessage {
     font-size:14px;
     padding:0.7em 0.6em 0.1em 0.6em;
 }
-div.statusMessage > p {
+div.statusMessage > div {
     border-width: 2px;
     border-radius: 6px;
     border-style: solid;
@@ -246,6 +246,31 @@ div.statusMessage > p {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
+div.statusMessage > .success {
+    color: #0000ff;
+    font-weight: bold;
+}
+div.statusMessage > .good {
+    background-color: #F3F9F4;
+    border-color: green;
+}
+div.statusMessage > .neutral {
+    background-color: #D8E4F1;
+    border-color: #77B1EF;
+}
+div.statusMessage > .warn,
+div.statusMessage > .warning {
+    background-color: #FFFDF6;
+    border-color: #FFEAAE;
+}
+/* used in sbml export */
+div.statusMessage > .warn2 {
+    color:rgb(200, 130, 0);
+}
+div.statusMessage > .bad {
+    background-color: #FFCCCC;
+    border-color: red;
+}
 div.errorMessage {
     background: #FFF0F0;
     margin: 0;
@@ -253,31 +278,6 @@ div.errorMessage {
     border-radius: 6px;
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
-}
-div.statusMessage > p.good, .good {
-    background-color: #F3F9F4;
-    border-color: green;
-}
-div.statusMessage > p.neutral, .neutral {
-    background-color: #D8E4F1;
-    border-color: #77B1EF;
-}
-div.statusMessage > p.warn, .warn {
-    background-color: #FFFDF6;
-    border-color: #FFEAAE;
-}
-/* used in sbml export */
-div.statusMessage > p.warn2, .warn2 {
-  color:rgb(200, 130, 0);
-}
-div.statusMessage > p.bad, .bad {
-    background-color: #FFCCCC;
-    border-color: red;
-}
-div.statusMessage > p.success, .success {
-  color: #0000ff;
-  font-weight: bold;
-  width:300px;
 }
 
 

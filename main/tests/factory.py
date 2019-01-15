@@ -77,8 +77,9 @@ class MetaboliteFactory(MeasurementTypeFactory):
 
     charge = factory.Faker("pyint")
     carbon_count = factory.Faker("pyint")
-    molar_mass = factory.Faker("pyfloat")
-    molecular_formula = factory.Faker("pyfloat")
+    # Limit the magnitude to prevent errors casting big numbers to db size
+    molar_mass = factory.Faker("pyfloat", left_digits=5, right_digits=5)
+    molecular_formula = factory.Faker("ean")
 
 
 class ProteinFactory(MeasurementTypeFactory):
@@ -125,6 +126,7 @@ class ValueFactory(factory.django.DjangoModelFactory):
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = get_user_model()
+        django_get_or_create = ("username",)
 
     username = factory.Faker("user_name")
     email = factory.Faker("safe_email")

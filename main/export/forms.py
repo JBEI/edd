@@ -46,21 +46,27 @@ class ExportSelectionForm(forms.Form):
         if self._user is None:
             raise ValueError("ExportSelectionForm requires a user parameter")
         self._selection = None
-        super(ExportSelectionForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if exclude_disabled:
             for fn in ['studyId', 'lineId', 'assayId', 'measurementId']:
                 self.fields[fn].queryset = self.fields[fn].queryset.filter(active=True)
 
     def clean(self):
-        data = super(ExportSelectionForm, self).clean()
+        data = super().clean()
         # incoming IDs
         studyId = data.get('studyId', [])
         lineId = data.get('lineId', [])
         assayId = data.get('assayId', [])
         measureId = data.get('measurementId', [])
+        if not (studyId or lineId or assayId or measureId):
+            raise forms.ValidationError("Selection cannot be empty.")
         self._selection = table.ExportSelection(
-            self._user, exclude_disabled=self._exclude_disabled,
-            studyId=studyId, lineId=lineId, assayId=assayId, measureId=measureId,
+            self._user,
+            exclude_disabled=self._exclude_disabled,
+            studyId=studyId,
+            lineId=lineId,
+            assayId=assayId,
+            measureId=measureId,
         )
         return data
 
@@ -88,14 +94,14 @@ class WorklistForm(forms.Form):
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
-        super(WorklistForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.defaults_form = None
         self.flush_form = None
         self._options = None
         self._worklist = None
 
     def clean(self):
-        data = super(WorklistForm, self).clean()
+        data = super().clean()
         template = data.get('template', None)
         columns = []
         blank_mod = 0
@@ -155,7 +161,7 @@ class WorklistDefaultsForm(forms.Form):
         self._template = kwargs.pop('template', None)
         self._lookup = OrderedDict()
         self._created_fields = {}
-        super(WorklistDefaultsForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # create a field for default values in each column of template
         for x in self._template.worklistcolumn_set.order_by('ordering', ):
             form_name = 'col.%s' % (x.pk, )
@@ -170,7 +176,7 @@ class WorklistDefaultsForm(forms.Form):
             self._lookup[form_name] = x
 
     def clean(self):
-        data = super(WorklistDefaultsForm, self).clean()
+        data = super().clean()
         # this is SUPER GROSS, but apparently the only way to change the form output from here is
         #   to muck with the source data, by poking the undocumented _mutable property of QueryDict
         self.data._mutable = True
@@ -273,7 +279,7 @@ class ExportOptionForm(forms.Form):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
         self._selection = kwargs.pop('selection', None)
-        super(ExportOptionForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._options = None
         self._init_options()
 
@@ -296,7 +302,7 @@ class ExportOptionForm(forms.Form):
         }
 
     def clean(self):
-        data = super(ExportOptionForm, self).clean()
+        data = super().clean()
         columns = []
         for m in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']:
             columns.extend(data.get(m, []))

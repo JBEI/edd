@@ -112,7 +112,7 @@ class StudySerializer(EDDObjectSerializer):
         read_only_fields = ('slug', )
 
     def validate(self, data):
-        if 'contact_id' not in data and 'contact_extra' not in data:
+        if not self.partial and 'contact_id' not in data and 'contact_extra' not in data:
             raise serializers.ValidationError(
                 'Must specify one of "contact_id" or "contact_extra"'
             )

@@ -45,8 +45,7 @@ interface AssayRecord extends EDDRecord {
     active: boolean;          // Active assay
     lid: number;              // Line ID
     pid: number;              // Protocol ID
-    mod: number;              // Modification epoch
-    exp: number;              // Experimenter ID
+    experimenter: number;     // Experimenter ID
     measures: number[];       // All collected measurements associated with Assay
     metabolites: number[];    // Metabolite measurements associated with Assay
     transcriptions: number[]; // Transcription measurements associated with Assay

@@ -61,9 +61,12 @@ def find_consensus_values(
     x_grid = np.linspace(x.min() - 0.25, x.max() + 0.25, 1000)
     if bandwidth_auto:
         # http://jakevdp.github.io/blog/2013/12/01/kernel-density-estimation/
-        grid = GridSearchCV(KernelDensity(),
-                            {'bandwidth': np.linspace(min_bandwidth, 0.1, 30)},
-                            cv=20)  # 20-fold cross-validation
+        grid = GridSearchCV(
+            KernelDensity(),
+            {'bandwidth': np.linspace(min_bandwidth, 0.1, 30)},
+            iid=False,  # TODO: this param is removed in sklearn 0.24, but 0.20 warns if left out
+            cv=20,  # 20-fold cross-validation
+        )
         grid.fit(x[:, None])
         bandwidth = grid.best_params_['bandwidth']
         print("Best bandwidth: %.4f" % bandwidth, file=err)
@@ -85,14 +88,14 @@ def find_consensus_values(
     # now sort major peaks by retention time
     major_peaks.sort(key=lambda x: x[0])
     print("Major retention time peaks:", file=err)
-    for i_peak, (xval, pdf_val) in enumerate(major_peaks):
+    for i_peak, (xval, _pdf_val) in enumerate(major_peaks):
         print("  %2d  %8.3f" % (i_peak+1, xval), file=err)
     if show_plot:
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots()
         ax.plot(x_grid, pdf, linewidth=3, alpha=0.5, label='bw=%.2f' % kde.bandwidth)
         ax.hist(x, 50, fc='gray', histtype='stepfilled', alpha=0.3, normed=True)
-        for rt, pdf_val in major_peaks:
+        for rt, _pdf_val in major_peaks:
             ax.axvline(rt, color='red')
             ax.axvline(rt-bandwidth, color='magenta')
             ax.axvline(rt+bandwidth, color='magenta')

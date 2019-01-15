@@ -92,7 +92,7 @@ class BaseBroker(object):
     def mark_all_read(self, uuid=None):
         last = self._load(uuid)
         for note in self:
-            if last is None or note.time < last.time:
+            if last is None or note.time <= last.time:
                 self.mark_read(note.uuid)
         # send update to Channel Group
         self.send_to_groups({"type": "notification.reset"})

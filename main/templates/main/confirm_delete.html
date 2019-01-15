@@ -13,14 +13,15 @@ The context variables used directly in this template are:
     - cancel_link: a string for the reverse() URL to cancel the delete and return to previous page
     - confirm_action: a token used to validate the items to delete
     - delete_select: a Django Form holding fields defining the objects to delete
-    - item_names: a list of names for items to be deleted
+    - item_names: a list of names for items to be deleted (may not be complete)
+    - item_count: a count of items to be deleted
     - measurement_count: an integer of the number of measurements that would be deleted
     - typename: a translated string for the kind of object to be deleted
 {% endcomment %}
 
 {% block content %}
 
-{% blocktrans trimmed with name=item_names|first count counter=item_names|length asvar t_items %}
+{% blocktrans trimmed with name=item_names|first count counter=item_count asvar t_items %}
 the {{ typename }} "{{ name }}"
 {% plural %}
 {{ counter }} {{ typename }} objects, including "{{ name }}"

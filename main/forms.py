@@ -31,6 +31,14 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+class HiddenJSONWidget(forms.widgets.HiddenInput):
+    """
+    A hidden JSON input that will default to an empty object instead of throwing exception.
+    """
+    def value_from_datadict(self, data, files, name):
+        return data.get(name, "{}")  # default value of empty dict/object
+
+
 class AutocompleteWidget(forms.widgets.MultiWidget):
     """ Custom widget for a paired autocomplete and hidden ID field. """
 
@@ -41,7 +49,7 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
             forms.HiddenInput(),
         )
         self.model = model
-        super(AutocompleteWidget, self).__init__(_widgets, attrs)
+        super().__init__(_widgets, attrs)
 
     def decompress(self, value):
         # if the value is the actual model instance, don't try to look up model
@@ -71,12 +79,12 @@ class MultiAutocompleteWidget(AutocompleteWidget):
     """
     def __init__(self, **kwargs):
         self._separator = kwargs.pop('separator', ',')
-        super(MultiAutocompleteWidget, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def decompress(self, value):
         if isinstance(value, BaseManager):
             # delegate decompress for individual items
-            values = map(super(MultiAutocompleteWidget, self).decompress, value.all())
+            values = map(super().decompress, value.all())
             # zip together into array of two value-arrays
             values = list(zip(*values))
             if len(values):
@@ -88,7 +96,7 @@ class MultiAutocompleteWidget(AutocompleteWidget):
             else:
                 # there are no values, return "empty" structure
                 return ['', None]
-        return super(MultiAutocompleteWidget, self).decompress(value)
+        return super().decompress(value)
 
     def render(self, name, value, attrs=None):
         joined = []
@@ -104,11 +112,11 @@ class MultiAutocompleteWidget(AutocompleteWidget):
                 joined[index].append(item[index] if len(item) > index else '')
         for index in range(widget_count):
             joined[index] = self._separator.join(map(str, joined[index]))
-        return super(MultiAutocompleteWidget, self).render(name, joined, attrs)
+        return super().render(name, joined, attrs)
 
     def value_from_datadict(self, data, files, name):
         # value from super will be joined by self._separator, so split it to get the true value
-        joined = super(MultiAutocompleteWidget, self).value_from_datadict(data, files, name)
+        joined = super().value_from_datadict(data, files, name)
         if joined:
             return joined.split(self._separator)
         return []
@@ -124,7 +132,7 @@ class UserAutocompleteWidget(AutocompleteWidget):
                 'eddautocompletetype': 'User'
             },
         })
-        super(UserAutocompleteWidget, self).__init__(attrs=attrs, model=User, opt=opt)
+        super().__init__(attrs=attrs, model=User, opt=opt)
 
 
 class GroupAutocompleteWidget(AutocompleteWidget):
@@ -132,7 +140,15 @@ class GroupAutocompleteWidget(AutocompleteWidget):
     def __init__(self, attrs=None, opt=None):
         opt = {} if opt is None else opt
         opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'Group'}, })
-        super(GroupAutocompleteWidget, self).__init__(attrs=attrs, model=Group, opt=opt)
+        super().__init__(attrs=attrs, model=Group, opt=opt)
+
+
+class ProtocolAutocompleteWidget(AutocompleteWidget):
+    """Autocomplete widget for Protocols"""
+    def __init__(self, attrs=None, opt=None):
+        opt = {} if opt is None else opt
+        opt.update({"text_attr": {"class": "autocomp", "eddautocompletetype": "Protocol"}, })
+        super().__init__(attrs=attrs, model=Protocol, opt=opt)
 
 
 class RegistryValidator(object):
@@ -212,7 +228,7 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
                 'eddautocompletetype': 'Registry'
             },
         })
-        super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
+        super().__init__(attrs=attrs, model=Strain, opt=opt)
 
     def decompress(self, value):
         """ Overriding since Strain uses registry_id for lookups. """
@@ -241,8 +257,7 @@ class CarbonSourceAutocompleteWidget(AutocompleteWidget):
                 'eddautocompletetype': 'CarbonSource'
             },
         })
-        super(CarbonSourceAutocompleteWidget, self).__init__(
-            attrs=attrs, model=CarbonSource, opt=opt)
+        super().__init__(attrs=attrs, model=CarbonSource, opt=opt)
 
     def display_value(self, value):
         return value.name
@@ -257,8 +272,7 @@ class MetadataTypeAutocompleteWidget(AutocompleteWidget):
     def __init__(self, attrs=None, opt=None):
         opt = {} if opt is None else opt
         opt.update({'text_attr': {'class': 'autocomp', 'eddautocompletetype': 'MetadataType'}, })
-        super(MetadataTypeAutocompleteWidget, self).__init__(
-            attrs=attrs, model=MetadataType, opt=opt)
+        super().__init__(attrs=attrs, model=MetadataType, opt=opt)
 
 
 class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
@@ -273,9 +287,7 @@ class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
             },
         }
         my_opt.update(**opt)
-        super(MeasurementTypeAutocompleteWidget, self).__init__(
-            attrs=attrs, model=MeasurementType, opt=my_opt,
-        )
+        super().__init__(attrs=attrs, model=MeasurementType, opt=my_opt)
 
 
 class SbmlInfoAutocompleteWidget(AutocompleteWidget):
@@ -284,7 +296,7 @@ class SbmlInfoAutocompleteWidget(AutocompleteWidget):
         self._template = template
         opt = {} if opt is None else opt
         opt.get('text_attr', {}).update({'data-template': template.pk})
-        super(SbmlInfoAutocompleteWidget, self).__init__(attrs=attrs, model=model, opt=opt)
+        super().__init__(attrs=attrs, model=model, opt=opt)
 
     def decompress(self, value):
         # if the value is the actual model instance, don't try to look up model
@@ -324,12 +336,10 @@ class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
     def __init__(self, template, attrs=None, opt=None):
         opt = {} if opt is None else opt
         opt.update(text_attr={'class': 'autocomp', 'eddautocompletetype': 'MetaboliteExchange'})
-        super(SbmlExchangeAutocompleteWidget, self).__init__(
-            template=template, attrs=attrs, model=MetaboliteExchange, opt=opt
-        )
+        super().__init__(template=template, attrs=attrs, model=MetaboliteExchange, opt=opt)
 
     def decompress_q(self, value):
-        parent = super(SbmlExchangeAutocompleteWidget, self).decompress_q(value)
+        parent = super().decompress_q(value)
         return parent | Q(exchange_name=value)
 
 
@@ -338,12 +348,10 @@ class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
     def __init__(self, template, attrs=None, opt=None):
         opt = {} if opt is None else opt
         opt.update(text_attr={'class': 'autocomp', 'eddautocompletetype': 'MetaboliteSpecies'})
-        super(SbmlSpeciesAutocompleteWidget, self).__init__(
-            template=template, attrs=attrs, model=MetaboliteSpecies, opt=opt
-        )
+        super().__init__(template=template, attrs=attrs, model=MetaboliteSpecies, opt=opt)
 
     def decompress_q(self, value):
-        parent = super(SbmlSpeciesAutocompleteWidget, self).decompress_q(value)
+        parent = super().decompress_q(value)
         return parent | Q(species=value)
 
 
@@ -383,7 +391,7 @@ class CreateStudyForm(forms.ModelForm):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
         self._user = kwargs.pop('user', None)
-        super(CreateStudyForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # self.fields exists after super.__init__()
         if self._user:
             # make sure lines are in a readable study
@@ -404,7 +412,7 @@ class CreateStudyForm(forms.ModelForm):
         # perform updates atomically to the study and related user permissions
         with transaction.atomic():
             # save the study
-            s = super(CreateStudyForm, self).save(commit=commit, *args, **kwargs)
+            s = super().save(commit=commit, *args, **kwargs)
             # make sure the creator has write permission, and ESE has read
             s.userpermission_set.update_or_create(
                 user=s.created.mod_by,
@@ -475,10 +483,10 @@ class CreateAttachmentForm(forms.ModelForm):
         kwargs.setdefault('label_suffix', '')
         # store the parent EDDObject
         self._parent = kwargs.pop('edd_object', None)
-        super(CreateAttachmentForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
-        a = super(CreateAttachmentForm, self).save(commit=False, *args, **kwargs)
+        a = super().save(commit=False, *args, **kwargs)
         a.object_ref = self._parent
         if commit:
             a.save()
@@ -502,26 +510,81 @@ class CreateCommentForm(forms.ModelForm):
         kwargs.setdefault('label_suffix', '')
         # store the parent EDDObject
         self._parent = kwargs.pop('edd_object', None)
-        super(CreateCommentForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
-        c = super(CreateCommentForm, self).save(commit=False, *args, **kwargs)
+        c = super().save(commit=False, *args, **kwargs)
         c.object_ref = self._parent
         if commit:
             c.save()
         return c
 
 
-class LineForm(forms.ModelForm):
-    """ Form to create/edit a line. """
-    # include hidden field for applying form changes to multiple Line instances by ID
-    ids = forms.CharField(required=False, widget=forms.HiddenInput())
+class BulkEditMixin(object):
+    """Mixin class adds methods to inject bulk-edit checkboxes and filter out before saves."""
 
+    @classmethod
+    def initial_from_model(cls, instance, prefix=None):
+        """ Builds a dict of initial form values from a Line model """
+        initial = {}
+        for fieldname in cls._meta.fields:
+            widget = cls._meta.widgets.get(fieldname, None)
+            value = getattr(instance, fieldname)
+            fieldkey = f"{prefix}-{fieldname}" if prefix else fieldname
+            # need to split MultiWidget values into each widget value
+            if isinstance(widget, forms.widgets.MultiWidget):
+                for i, part in enumerate(widget.decompress(value)):
+                    initial[f"{fieldkey}_{i}"] = part
+            # JSONField gives back a dict; must serialize to json
+            elif isinstance(value, dict):
+                initial[fieldkey] = json.dumps(value)
+            # everything else shove value into fieldname
+            else:
+                initial[fieldkey] = str(value)
+        return initial
+
+    def check_bulk_edit(self):
+        self._bulk = True
+        exclude = []
+        # Look for "bulk-edit" checkboxes for each field
+        for field in self.visible_fields():
+            check = self.add_prefix(f"_bulk_{field.name}")
+            if check not in self.data:
+                exclude.append(field.name)
+        # remove fields without a check from self, preventing processing
+        for fieldname in exclude:
+            # Removing excluded key from fields
+            del self.fields[fieldname]
+
+    def inject_bulk_checkboxes(self):
+        # alter all fields to include a "bulk-edit" checkbox in label
+        # initially hidden via "off" class
+        for fieldname, field in self.fields.items():
+            bulkname = self.add_prefix(f"_bulk_{fieldname}")
+            field.label = mark_safe(
+                f'<input type="checkbox" class="off bulk" name="{bulkname}" '
+                f'checked="checked" value=""/>{field.label}'
+            )
+        # keep a flag for bulk edit, treats metadata slightly differently
+        self._bulk = False
+
+    def is_editing(self):
+        return self.instance.pk is not None
+
+
+class LineForm(forms.ModelForm, BulkEditMixin):
+    """ Form to create/edit a line. """
     class Meta:
         model = Line
         fields = (
-            'name', 'description', 'control', 'contact', 'experimenter', 'carbon_source',
-            'strains', 'metadata',
+            'name',
+            'description',
+            'control',
+            'contact',
+            'experimenter',
+            'carbon_source',
+            'strains',
+            'metadata',
         )
         labels = {
             'name': _('Line Name'),
@@ -539,7 +602,7 @@ class LineForm(forms.ModelForm):
             'experimenter': UserAutocompleteWidget(),
             'carbon_source': MultiCarbonSourceAutocompleteWidget(),
             'strains': MultiRegistryAutocompleteWidget(),
-            'metadata': forms.HiddenInput(),
+            'metadata': HiddenJSONWidget(),
         }
         help_texts = {
             'name': _(''),
@@ -556,61 +619,24 @@ class LineForm(forms.ModelForm):
         kwargs.setdefault('label_suffix', '')
         # store the parent Study
         self._study = kwargs.pop('study', None)
-        super(LineForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # alter all fields to include a "bulk-edit" checkbox in label
-        # initially hidden via "off" class
-        for fieldname, field in self.fields.items():
-            field.label = mark_safe(
-                '<input type="checkbox" class="off bulk" name="%s" checked="checked" '
-                'value/>%s' % (self.add_prefix('_bulk_%s' % fieldname), field.label)
-                )
+        self.inject_bulk_checkboxes()
         # make sure strain is keyed by registry_id instead of pk, and validates uuid
-        strains_field = self.fields['strains']
+        self._tweak_strains_field()
 
+    def _tweak_strains_field(self):
+        # make sure strain is keyed by registry_id instead of pk, and validates uuid
         def __clean(self, value):
             # validator creates Strain record if missing, now can check value
             for v in value:
                 self.run_validators(v)
             return self.__clean(value)
+        strains_field = self.fields['strains']
         strains_field.__clean = strains_field.clean
         strains_field.clean = partial(__clean, strains_field)
         strains_field.to_field_name = 'registry_id'
         strains_field.validators = [RegistryValidator().validate, ]
-        # keep a flag for bulk edit, treats metadata slightly differently
-        self._bulk = False
-
-    @classmethod
-    def initial_from_model(cls, line, prefix=None):
-        """ Builds a dict of initial form values from a Line model """
-        initial = {}
-        for fieldname in cls._meta.fields:
-            widget = cls._meta.widgets.get(fieldname, None)
-            value = getattr(line, fieldname)
-            fieldkey = '%s-%s' % (prefix, fieldname) if prefix else fieldname
-            # need to split MultiWidget values into each widget value
-            if isinstance(widget, forms.widgets.MultiWidget):
-                for i, part in enumerate(widget.decompress(value)):
-                    initial['%s_%s' % (fieldkey, i)] = part
-            # JSONField gives back a dict; must serialize to json
-            elif isinstance(value, dict):
-                initial[fieldkey] = json.dumps(value)
-            # everything else shove value into fieldname
-            else:
-                initial[fieldkey] = str(value)
-        return initial
-
-    def check_bulk_edit(self):
-        self._bulk = True
-        exclude = []
-        # Look for "bulk-edit" checkboxes for each field
-        for field in self.visible_fields():
-            check = self.add_prefix('_bulk_%s' % field.name)
-            if check not in self.data:
-                exclude.append(field.name)
-        # remove fields without a check from self, preventing processing
-        for fieldname in exclude:
-            # Removing excluded key from fields
-            del self.fields[fieldname]
 
     def clean_metadata(self):
         # go through and delete any keys with None values
@@ -636,12 +662,9 @@ class LineForm(forms.ModelForm):
             if self._study.contact:
                 self.cleaned_data['experimenter'] = self._study.contact
 
-    def is_editing(self):
-        return self.instance.pk is not None
-
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
-        line = super(LineForm, self).save(commit=False, *args, **kwargs)
-        line.study = self._study
+        line = super().save(commit=False, *args, **kwargs)
+        line.study_id = self._study.pk
         if commit:
             line.save()
             # since we forced commit=False in the first save, need to explicitly call save_m2m
@@ -649,91 +672,111 @@ class LineForm(forms.ModelForm):
         return line
 
 
-class AssayForm(forms.ModelForm):
+class AssayForm(forms.ModelForm, BulkEditMixin):
     """ Form to create/edit an assay. """
-    # include hidden field for applying form changes to an Assay instance by ID
-    assay_id = forms.CharField(required=False, widget=forms.HiddenInput())
+    # allow auto-generation of name by override auto-created name field required kwarg
     name = forms.CharField(
-        required=False,
+        help_text=_("If left blank, a name in form [Line]-[Protocol]-[#] will be generated."),
+        label=_("Name"),
         max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+    )
+    # order the options in the default SELECT widget; remove when using AutocompleteWidget
+    protocol = forms.ModelChoiceField(
+        label=_("Protocol"),
+        queryset=Protocol.objects.order_by("name"),
+        required=True,
+        # TODO add a ProtocolAutocompleteWidget instead of building a SELECT
+        widget=forms.Select(attrs={'class': 'form-control'}),
     )
 
     class Meta:
         model = Assay
         fields = (
-            'name', 'description', 'protocol', 'experimenter',
+            'name',
+            'description',
+            'protocol',
+            'experimenter',
+            'metadata',
         )
-        help_texts = {
-            'name': _('If left blank, a name in form [Line]-[Protocol]-[#] will be generated. '),
-            'description': _(''),
-        }
         labels = {
-            'name': _('Name'),
             'description': _('Description'),
-            'protocol': _('Protocol'),
             'experimenter': _('Experimenter'),
         }
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'protocol': forms.Select(attrs={'class': 'form-control'}),
             'experimenter': UserAutocompleteWidget(),
+            'metadata': HiddenJSONWidget(),
         }
 
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
-        # store the parent Line
-        self._lines = kwargs.pop('lines', [])
-        super(AssayForm, self).__init__(*args, **kwargs)
-        self.fields['protocol'].queryset = Protocol.objects.order_by('name')
+        # store the parent Lines
+        self._lines = kwargs.pop('lines', models.Line.objects.none())
+        # store the parent Study
+        self._study = kwargs.pop('study', None)
+        super().__init__(*args, **kwargs)
+        # alter all fields to include a "bulk-edit" checkbox in label
+        self.inject_bulk_checkboxes()
 
-    def is_editing(self):
-        return self.instance.pk is not None
+    def clean_metadata(self):
+        # go through and delete any keys with None values
+        meta = self.cleaned_data.get('metadata', None)
+        if meta is None:
+            meta = {}
+        none_keys = {key for key, value in meta.items() if value is None}
+        for key in none_keys:
+            # Removing None-valued key from meta
+            del meta[key]
+        if self.is_editing() and self._bulk:
+            # Bulk edit updating metadata
+            in_place = {}
+            in_place.update(self.instance.metadata)
+            in_place.update(meta)
+            meta = in_place
+        return meta
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
-        assay = super(AssayForm, self).save(commit=False, *args, **kwargs)
+        assay = super().save(commit=False, *args, **kwargs)
+        assay.study_id = self._study.pk
         if commit:
-            if not self._lines:
-                # when self._lines is not set, proceed normally for a ModelForm save override
+            if not self._lines.exists():
+                # when self._lines is empty, proceed normally for single ID
                 assay.save()
                 self.save_m2m()
+            else:
+                # when self._lines is set, Assay objects get created for each item
 
-            # when self._lines is set, Assay objects get created for each item
+                def link_to_line(line_id):
+                    clone = deepcopy(assay)
+                    clone.line_id = line_id
+                    return clone
 
-            def link_to_line(line_id):
-                clone = deepcopy(assay)
-                clone.line_id = line_id
-                return clone
-
-            def save_linked(enum):
-                # caller passes linked iterator through enumerate, unpack the tuple
-                index = enum[0]
-                assay = enum[1]
-                if assay.name:
-                    # when the name is set, append the creation index to stay distinct
-                    assay.name = f'{assay.name} ({index})'
+                def save_linked(enum):
+                    # caller passes linked iterator through enumerate, unpack the tuple
+                    index = enum[0]
+                    assay = enum[1]
                     assay.save()
-                else:
-                    # when the name is not set, save in two parts
-                    assay.save()
-                    # once saved, can update with linked parts in name
-                    parts = [F('line__name'), V('-'), F('protocol__name'), V(f'-{index}')]
-                    new_name = models.Assay.objects.values_list(
-                        Concat(*parts, output_field=DbCharField()),
-                        flat=True
-                    ).get(pk=assay)
-                    # required to query then update; Django does not support joins in update
-                    models.Assay.objects.filter(pk=assay).update(name=new_name)
-                return assay
+                    if not assay.name:
+                        # once saved, can update with linked parts in name
+                        parts = [F('line__name'), V('-'), F('protocol__name'), V(f'-{index}')]
+                        new_name = models.Assay.objects.values_list(
+                            Concat(*parts, output_field=DbCharField()),
+                            flat=True
+                        ).get(pk=assay)
+                        # required to query then update; Django does not support joins in update
+                        models.Assay.objects.filter(pk=assay).update(name=new_name)
+                    return assay
 
-            # clone assay info and link each clone to a line
-            linked = map(link_to_line, self._lines)
-            # save the linked clones to the database
-            with transaction.atomic():
-                # wrap map in list to force iterating over the entire map, executing save
-                saved = list(map(save_linked, enumerate(linked, 1)))
-            return saved[0]  # returning only the first created assay
+                # clone assay info and link each clone to a line
+                linked = map(link_to_line, self._lines.values_list("pk", flat=True))
+                # save the linked clones to the database
+                with transaction.atomic():
+                    # wrap map in list to force iterating over the entire map, executing save
+                    saved = list(map(save_linked, enumerate(linked, 1)))
+                return saved[0]  # returning only the first created assay
         return assay
 
 
@@ -763,26 +806,24 @@ class MeasurementForm(forms.ModelForm):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
         # store the parent Assays
-        self._assays = kwargs.pop('assays', [])
+        self._assays = kwargs.pop('assays', models.Assay.objects.none())
+        # store the parent Study
+        self._study = kwargs.pop('study', None)
         # end up looking for hours repeatedly, just load once at init
         self._hours = models.MeasurementUnit.objects.get(unit_name='hours')
-        super(MeasurementForm, self).__init__(*args, **kwargs)
-
-    def _link_to_assay(self, measurement, assay_id):
-        clone = deepcopy(measurement)
-        clone.assay_id = assay_id
-        return clone
+        super().__init__(*args, **kwargs)
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
-        measure = super(MeasurementForm, self).save(commit=False, *args, **kwargs)
+        measure = super().save(commit=False, *args, **kwargs)
         # TODO: hard-coding x_units for now; extend to take input for x-units?
         measure.x_units = self._hours
+        measure.study_id = self._study.pk
         if commit:
             def link_to_assay(assay_id):
                 clone = deepcopy(measure)
                 clone.assay_id = assay_id
                 return clone
-            linked = map(link_to_assay, self._assays)
+            linked = map(link_to_assay, self._assays.values_list("pk", flat=True))
             with transaction.atomic():
                 saved = list(map(lambda m: m.save(), linked))
             return saved[0]
@@ -794,10 +835,6 @@ class MeasurementValueForm(forms.ModelForm):
     class Meta:
         fields = ('x', 'y', )
         model = MeasurementValue
-        widgets = {
-            'x': forms.widgets.NumberInput(),
-            'y': forms.widgets.NumberInput(),
-        }
 
 
 MeasurementValueFormSet = forms.models.inlineformset_factory(

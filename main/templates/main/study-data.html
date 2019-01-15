@@ -127,40 +127,40 @@
   </div>
   <div id="tableActionButtons" class="tableActionButtons off" style="margin:auto 0;">
     {% if writable %}
-    <!-- TODO enable this button
-    <button id="editAssaysButton"
-        class="editAssayButton actionButton"
+    <button id="editAssayButton"
+        class="assayButton actionButton"
         disabled="true"
         title="{% trans 'Edit selected assays' %}">
       {% trans 'Edit Assays' %}
     </button>
-    -->
     <button id="editMeasurementButton"
-        class="editMeasurementButton actionButton"
+        class="actionButton"
         disabled="true"
+        name="action"
+        type="submit"
+        value="measurement_edit"
         title="{% trans 'Edit selected measurements' %}">
       {% trans 'Edit Measurements' %}
     </button>
     <button id="addMeasurementButton"
-        class="addMeasurementButton actionButton"
-        type="button"
+        class="assayButton actionButton"
         disabled="true"
         title="{% trans 'Add a measurement to selected assays' %}">
       {% trans 'Add Measurement' %}
     </button>
     <button id="deleteButton"
-        class="deleteButton actionButton"
-        type="submit"
+        class="actionButton"
         name="action"
-        value="disable"
+        type="submit"
+        value="disable_assay"
         disabled="true"
         title="{% trans 'Delete selected assays and/or measurements' %}">
       {% trans 'Delete' %}
     </button>
     <button id="enableButton"
-        class="enableButton actionButton off"
-        type="submit"
+        class="actionButton off"
         name="action"
+        type="submit"
         value="enable"
         disabled="true"
         title="{% trans 'Restore selected assays and/or measurements' %}">
@@ -170,8 +170,9 @@
   </div>
 
   <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
-    <button type="button" id="exportButton" class="exportButton actionButton primary off"
-        title="{% trans 'Export your data in a file type of your choosing' %}">
+    <button id="exportButton"
+        class="exportButton actionButton primary off"
+        title="{% trans 'Export your data as CSV' %}">
       <span class="glyphicon glyphicon-cloud-download"></span>
       {% trans 'Export Data' %}
     </button>
