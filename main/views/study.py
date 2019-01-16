@@ -174,13 +174,13 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         # re-using export selection to check if Study has data or not
         selection = ExportSelection(request.user, studyId=[instance.pk])
         lvs = redis.LatestViewedStudies(self.request.user)
+        lvs.remove_study(instance)
         if selection.measurements.count() == 0:
             # true deletion only if there are zero measurements!
             instance.delete()
         else:
             instance.active = False
             instance.save(update_fields=["active"])
-        lvs.remove_study(instance)
         messages.success(
             request, _('Deleted Study "{study}".').format(study=instance.name)
         )

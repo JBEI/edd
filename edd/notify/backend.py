@@ -159,7 +159,7 @@ class RedisBroker(BaseBroker):
 
     def _remove(self, uuid, *args, **kwargs):
         # remove from set of notifications
-        self._redis.zrem(self._key_user(), uuid)
+        self._redis.zrem(self._key_user(), str(uuid))
         # remove notification
         self._redis.delete(self._key_notification(uuid))
 
@@ -168,7 +168,8 @@ class RedisBroker(BaseBroker):
         key = self._key_notification(notification.uuid)
         self._redis.set(key, JSONEncoder.dumps(notification), nx=True)
         # store the uuid in a sorted set of all user's notifications
-        self._redis.zadd(self._key_user(), notification.time, notification.uuid)
+        # scores in sorted set are by time, allowing retreival from specific time periods
+        self._redis.zadd(self._key_user(), {str(notification.uuid): notification.time})
 
     def count(self):
         return self._redis.zcard(self._key_user())

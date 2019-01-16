@@ -172,7 +172,10 @@
   <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
     <button id="exportButton"
         class="exportButton actionButton primary off"
-        title="{% trans 'Export your data as CSV' %}">
+        name="action"
+        title="{% trans 'Export your data as CSV' %}"
+        type="submit"
+        value="export">
       <span class="glyphicon glyphicon-cloud-download"></span>
       {% trans 'Export Data' %}
     </button>

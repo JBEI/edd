@@ -102,7 +102,10 @@ export class EditableElement {
         // For attaching to the input element
         this.keyEnterHandler = (e) => {
             // ENTER key. Commit the changes.
-            if (e.which === 13) { this.beginEditCommit(); }
+            if (e.which === 13) {
+                this.beginEditCommit();
+                return false;
+            }
         };
 
         this.setUpMainElement();
