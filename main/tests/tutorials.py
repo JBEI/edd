@@ -189,7 +189,7 @@ class ImportDataTestsMixin(object):
                         # request has both context and series data. Subsequent requests will
                         # only contain series data.
                         if i == 0:
-                            post_data = context_str[0:-1]  # strip off the closing bracket
+                            post_data = context_str.strip()[0:-1]  # strip off the closing bracket
                             post_data = f'{post_data}, "series": {series_pages[0]} }}'
                         else:
                             post_data = (f'{{ "importId": "{import_id}", "page": {i+1}, '

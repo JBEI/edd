@@ -41,5 +41,6 @@ from .study import (  # noqa: F401
     StudyDetailView,
     StudyIndexView,
     StudyLinesView,
+    StudyObjectMixin,  # TODO: should be internal
     StudyOverviewView,
 )

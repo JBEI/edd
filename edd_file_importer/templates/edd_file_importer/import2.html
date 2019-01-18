@@ -1,0 +1,35 @@
+{% extends "main/study.html" %}
+{% load i18n %}
+{% load staticfiles %}
+
+{% block js_css %}
+  {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="{% static 'edd_file_importer/import2.css' %}" />
+{% endblock js_css %}
+
+{% block body_title %}
+   {% url 'main:detail' slug=study.slug as study_url %}
+   Data Import <span class="prototype">Prototype</span> For <a href="{{ study_url }}">
+    {{study.name }}</a>
+{% endblock body_title %}
+
+{% block content %}
+
+<form>
+    <input id="importUUID" type="hidden" name="uuid" value="{{ uuid }}"/>
+</form>
+<div id="importWizard"></div>
+<script type="text/javascript" src="{% static 'dist/Import2.js' %}"></script>
+<p></p>
+<div id="prototype-status-div">
+    <h5>Prototype status</h5>
+    <p>This prototype is tested for:
+        <ul>
+            <li>Small OD file uploads</li>
+            <li>Generic format data</li>
+        </ul>
+    </p>
+</div>
+
+
+{% endblock content %}

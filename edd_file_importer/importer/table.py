@@ -4,33 +4,30 @@ import json
 import logging
 import math
 from collections import OrderedDict
-from uuid import uuid4
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db import transaction
-from django.db.models import FileField
+from django.db.models import Count
+from django.utils.translation import ugettext_lazy as _
 
 from ..codes import FileParseCodes, FileProcessingCodes
-from ..models import Import, ImportCategory, ImportFile, ImportFormat
-from ..utilities import ParseError, ImportTooLargeError
-from ..utilities import ErrorAggregator
-from main.models import (Assay, Line, GeneIdentifier, Measurement, MeasurementType,
-                         MeasurementUnit, Metabolite, MetadataType, Phosphor, ProteinIdentifier,
-                         Protocol)
+from ..models import Import
+from ..utilities import (build_summary_json, compute_required_context, ErrorAggregator,
+                         ImportTooLargeError, MTYPE_GROUP_TO_CLASS, ParseError, verify_assay_times)
+from main.models import (Assay, Line, MeasurementType, MeasurementUnit, Metabolite, MetadataType)
 from main.importer.parser import guess_extension, ImportFileTypeFlags
 from main.importer.table import ImportBroker
 
 logger = logging.getLogger(__name__)
 
 
-MTYPE_GROUP_TO_CLASS = {
-    MeasurementType.Group.GENERIC: MeasurementType,
-    MeasurementType.Group.METABOLITE: Metabolite,
-    MeasurementType.Group.GENEID: GeneIdentifier,
-    MeasurementType.Group.PROTEINID: ProteinIdentifier,
-    MeasurementType.Group.PHOSPHOR: Phosphor,
+# maps mtype group to error identifiers for failed lookup
+MTYPE_GROUP_TO_ID_ERR = {
+    MeasurementType.Group.GENERIC: FileProcessingCodes.MEASUREMENT_TYPE_NOT_FOUND,
+    MeasurementType.Group.METABOLITE: FileProcessingCodes.METABOLITE_NOT_FOUND,
+    MeasurementType.Group.GENEID: FileProcessingCodes.GENE_ID_NOT_FOUND,
+    MeasurementType.Group.PROTEINID: FileProcessingCodes.PROTEIN_ID_NOT_FOUND,
+    MeasurementType.Group.PHOSPHOR: FileProcessingCodes.PHOSPHOR_NOT_FOUND,
 }
 
 
@@ -41,24 +38,15 @@ class ImportContext:
     import process and unlikely to change on the time scale of processing a single import-related
     request.
     """
-    def __init__(self, aggregator, user_pk, study_pk, category_pk, file_format_pk, protocol_pk,
-                 compartment=None, x_units=None, y_units=None):
+    def __init__(self, import_, aggregator, user):
         """
         :raises ObjectDoesNotExist if the specified format isn't found
         """
         # look up the database entries for each piece of (mostly user-specified) context from
         # step 1... Not strictly necessary when running synchronously, but we're building this code
         # for simple transition to Celery
-        User = get_user_model()
-        self.user = User.objects.get(pk=user_pk)
-        self.study_pk = study_pk
-        self.protocol = Protocol.objects.get(pk=protocol_pk)
-        self.category = ImportCategory.objects.get(pk=category_pk)
-        self.hour_units = MeasurementUnit.objects.get(unit_name='hours')
-        self.compartment = compartment
-
-        self.x_units = x_units if x_units else self.hour_units
-        self.y_units = y_units
+        self.user = user
+        self.import_ = import_
 
         self.assay_time_metatype = MetadataType.objects.filter(
             for_context=MetadataType.ASSAY).get(type_name='Time')
@@ -66,7 +54,6 @@ class ImportContext:
         ###########################################################################################
         # Look up the file parser class based on user input
         ###########################################################################################
-        self.file_format = ImportFormat.objects.get(pk=file_format_pk)
         self._get_parser_instance(aggregator)
 
         ###########################################################################################
@@ -83,7 +70,7 @@ class ImportContext:
         self.line_ids = True  # False = file contains assay ID's instead
 
     def _get_parser_instance(self, aggregator):
-        parser_class_name = self.file_format.parser_class
+        parser_class_name = self.import_.file_format.parser_class
 
         # split fully-qualified class name into module and class names
         i = parser_class_name.rfind('.')
@@ -104,92 +91,58 @@ class ImportContext:
             raise ParseError(self)
 
 
-# skeleton for Import 2.0, to be fleshed out later.  For now, we're just aggregating errors &
-# warnings as part of the early testing process.
 class ImportFileHandler(ErrorAggregator):
 
-    def __init__(self, import_id, user_pk, study_pk, category_pk, file_format_pk, protocol_pk,
-                 uploaded_file, compartment=None, x_units=None, y_units=None):
+    def __init__(self, notify, import_, user):
         """
 
         :raises: ObjectDoesNotExist if any of the provided primary keys don't match the database
         """
         super(ImportFileHandler, self).__init__()
-        self.import_uuid = import_id
-        self.cache = ImportContext(self, user_pk, study_pk, category_pk, file_format_pk,
-                                   protocol_pk, compartment=compartment)
-        self.file = uploaded_file
+        self.import_ = import_
+        self.cache = ImportContext(import_, self, user)
         self.latest_status = None
+        self.notify = notify
 
-    def process_file(self, reprocessing_file):
+    def process_file(self, initial_upload):
         """
         Performs initial processing for an import file uploaded to EDD.  The main purpose of this
         method is to parse and resolve the content of the file against data in EDD's database and
         other partner databases, e.g. Uniprot, PubChem, etc. When this method runs to completion,
-        the file content has been parsed, staged in the database along with user entries that
-        control import context
+        the file content has been parsed & staged in the database and Redis cache, along with user
+        entries that control import context. This method will either return, or raise an
+        EDDImportError.
 
         Basic steps of the process are:
         1.  Parse the file
         2.  Resolve line or assay names in the file against the study
-        3.  Resolve MeasurementUnit MeasurementType and identifiers
-        4. Identify any missing input required for import completion
-
-        # resolve external identifiers
-        # 1) If configurable / enforceable in EDD, enforce format for external ID's
-        # 2) units, internal measurement types  # TODO: resolve with MeasurementType.type_group
-        # 3) external databases (ICE, Uniprot, PubChem)
-        :return:
+        3.  Resolve MeasurementUnit & MeasurementType and identifiers
+        4.  Identify any missing input required for import completion
+        5.  Cache the parsed data in Redis for imminent use
+        6.  Build summary JSON for display in the UI
         """
         # TODO: as an enhancement, compute & use file hashes to prevent re-upload
+
+        cache = self.cache
+        import_ = self.cache.import_
+        file_name = self.import_.file.filename
+
         ###########################################################################################
         # Parse the file, raising an Exception if any parse / initial verification errors occur
         ###########################################################################################
-        cache = self.cache
-        category = cache.category
-
-        file = self.file
-        mime_type = file.mime_type if isinstance(file, FileField) else file.content_type
-        file_extension = guess_extension(mime_type)
-
-        logger.info(f'Parsing import file {file.name} for study {cache.study_pk}, '
-                    f'user {cache.user.username}')
-
-        if file_extension not in (ImportFileTypeFlags.EXCEL, ImportFileTypeFlags.CSV):
-            self.raise_error(FileParseCodes.UNSUPPORTED_FILE_TYPE, occurrence=file_extension)
-
-        parser = cache.parser
-        if file_extension == ImportFileTypeFlags.EXCEL:
-            parser.parse_excel(file)
-        else:
-            parser.parse_csv(file)
+        parser = self._parse_file()
 
         # if file format is unknown and parsing so far has only returned row/column data to the UI
-        # for display, then just cache the inputs and return. arguably we don't have to even upload
-        # the file until later, but the user has entered enough data to make restarting an
-        # annoyance. Also this way we have a record for support purposes.
-        if not cache.file_format:
-            import_, _ = self._save_import_and_file(Import.Status.CREATED, reprocessing_file)
-            return {
-                'id': import_.uuid,
-                'raw_data': parser.raw_data
-            }
+        # for display, then just cache the inputs and return
+        if not import_.file_format:
+            self._notify_format_required(parser, import_, file_name)
+            return Import.Status.CREATED
 
         ###########################################################################################
         # Resolve line / assay names from file to the study
         ###########################################################################################
         logger.info('Resolving identifiers against EDD and reference databases')
-        # first try assay names, since some workflows will use them to resolve times (e.g.
-        # Proteomics)
-        line_or_assay_names = parser.unique_line_or_assay_names
-
-        logger.info(f'Searching for {len(line_or_assay_names)} study internals')
-        matched_assays = self._verify_line_or_assay_match(line_or_assay_names, lines=False)
-        if not matched_assays:
-            matched_lines = self._verify_line_or_assay_match(line_or_assay_names, lines=True)
-            if not matched_lines:
-                self.raise_error(FileProcessingCodes.UNNMATCHED_STUDY_INTERNALS,
-                                 line_or_assay_names)
+        matched_assays = self._verify_line_or_assay_names(parser)
 
         ###########################################################################################
         # Resolve MeasurementType and MeasurementUnit identifiers from local and/or remote sources
@@ -201,129 +154,156 @@ class ImportFileHandler(ErrorAggregator):
         ###########################################################################################
         # Determine any additional data not present in the file that must be entered by the user
         ###########################################################################################
-        # Detect preexisting assay time metadata, if present. E.g. in the proteomics workflow
         assay_pk_to_time = False
         if matched_assays:
-            assay_pks = self.cache.loa_name_to_pk.values()
-            assay_time_pk = self.cache.assay_time_metatype.pk
-            assay_pk_to_time = verify_assay_times(self, assay_pks, parser, assay_time_pk)
-        required_inputs = compute_required_context(category, cache.compartment, parser,
-                                                   assay_pk_to_time)
+            # Detect preexisting assay time metadata, if present. E.g. in the proteomics workflow
+            assay_pk_to_time = self._verify_assay_times(parser)
+
+        compartment = cache.import_.compartment
+        category = cache.import_.category
+        required_inputs = compute_required_context(category, compartment, parser, assay_pk_to_time)
 
         ###########################################################################################
         # Since import content is now verified & has some value, save the file and context to
         # the database
         ###########################################################################################
-        logger.info('Saving parsed file and import context to the database')
-        import_status = Import.Status.READY if not required_inputs else Import.Status.RESOLVED
-        import_, initial_upload = self._save_import_and_file(import_status, reprocessing_file)
+        import_.status = Import.Status.READY if not required_inputs else Import.Status.RESOLVED
+        import_.save()
 
-        # cache the import in redis, but don't actually trigger the Celery task yet...that's the
-        # job of import step 5
+        # cache the import in redis for later use
         import_records = self.cache_resolved_import(import_.uuid, parser, matched_assays,
                                                     initial_upload)
 
         # build the json payload to send back to the UI for use in subsequent import steps
         unique_mtypes = cache.mtype_name_to_type.values()
-        return import_, build_step4_ui_json(import_, required_inputs, import_records,
-                                            unique_mtypes, cache.hour_units.pk)
+        payload = build_summary_json(import_, required_inputs, import_records, unique_mtypes,
+                                     import_.x_units_id)
+        msg = _('Your file "{file_name}" is ready to import').format(file_name=file_name)
+        self.notify.notify(msg,
+                           tags=['import-status-update'],
+                           payload=payload)
 
-    def _save_import_and_file(self, import_status, reprocessing_file):
-        """
+    def _parse_file(self):
+        file = self.import_.file.file
+        mime_type = self.import_.file.mime_type
+        file_extension = guess_extension(mime_type)
+        file_name = self.import_.file.filename
+        study = self.import_.study
+        logger.info(f'Parsing import file {file_name} for study {study.pk} ({study.slug}), '
+                    f'user {self.cache.user.username}')
 
-        :param import_status:
-        :return: (import_model, initial_upload)
-        """
-        cache = self.cache
-        with transaction.atomic():
-            import_uuid = self.import_uuid
+        if file_extension not in (ImportFileTypeFlags.EXCEL, ImportFileTypeFlags.CSV):
+            self.raise_error(FileParseCodes.UNSUPPORTED_FILE_TYPE, occurrence=file_extension)
 
-            if not reprocessing_file:
-                # if a file was already uploaded, delete the old one
-                ImportFile.objects.filter(import_ref__uuid=import_uuid).delete()
+        parser = self.cache.parser
+        if file_extension == ImportFileTypeFlags.EXCEL:
+            parser.parse_excel(file)
+        else:
+            # work around nonstandard interface for Django's FieldFile
+            with file.open('rt') as fp:
+                parser.parse_csv(fp)
 
-                # save the new file
-                file_model = ImportFile.objects.create(file=self.file)
-            else:
-                file_model = self.file
+        return parser
 
-            # if this is the first upload attempt, assign a new uuid
-            self.import_uuid = self.import_uuid if self.import_uuid else uuid4()
+    def _verify_assay_times(self, parser):
+        assay_pks = self.cache.loa_name_to_pk.values()
+        assay_time_pk = self.cache.assay_time_metatype.pk
+        return verify_assay_times(self, assay_pks, parser, assay_time_pk)
 
-            import_context = {
-                'study_id': cache.study_pk,
-                'category_id': cache.category.pk,
-                'status': import_status,
-                'file_id': file_model.pk,
-                'file_format_id': cache.file_format.pk if cache.file_format else None,
-                'protocol_id': cache.protocol.pk,
-            }
+    def _notify_format_required(self, parser, import_, file_name):
+        payload = {
+            'uuid': import_.uuid,
+            'status': import_.status,
+            'raw_data': parser.raw_data
+        }
+        message = _('Your import file, "{file_name}" has been saved, but file format input '
+                    'is needed to process it').format(file_name=file_name)
+        self.notify.notify(message, tags=('import-status-update',), payload=payload)
 
-            # if provided by the client, save global unit specifiers, etc whose use is
-            # context-dependent
-            if self.cache.x_units:
-                import_context['x_units'] = self.cache.x_units
+    def _verify_line_or_assay_names(self, parser):
+        line_or_assay_names = parser.unique_line_or_assay_names
+        logger.info(f'Searching for {len(line_or_assay_names)} study internals')
 
-            if self.cache.y_units:
-                import_context['y_units'] = self.cache.y_units
-
-            if self.cache.compartment:
-                import_context['compartment'] = self.cache.compartment
-
-            return Import.objects.update_or_create(
-                uuid=self.import_uuid,
-                defaults=import_context)
+        # first try assay names, since some workflows will use them to resolve times (e.g.
+        # Proteomics)
+        matched_assays = self._verify_line_or_assay_match(line_or_assay_names, lines=False)
+        if not matched_assays:
+            matched_lines = self._verify_line_or_assay_match(line_or_assay_names, lines=True)
+            if not matched_lines:
+                self.add_errors(FileProcessingCodes.UNNMATCHED_STUDY_INTERNALS,
+                                occurrences=line_or_assay_names)
+        return matched_assays
 
     def _verify_line_or_assay_match(self, line_or_assay_names, lines):
+        """
+        @:return the number of items in line_or_assay_names that match items in the study
+        """
+
         context = self.cache
+        study_pk = context.import_.study_id
         extract_vals = ['name', 'pk']
         if lines:
-            qs = Line.objects.filter(study_id=context.study_pk,
-                                     name__in=line_or_assay_names).values(*extract_vals)
+            qs = Line.objects.filter(study_id=study_pk,
+                                     name__in=line_or_assay_names,
+                                     active=True).values(*extract_vals)
         else:
-            qs = Assay.objects.filter(line__study_id=context.study_pk,
+            protocol_pk = context.import_.protocol_id
+            qs = Assay.objects.filter(study_id=study_pk,
                                       name__in=line_or_assay_names,
-                                      protocol_id=context.protocol.pk).values(*extract_vals)
-        found_count = len(qs)  # evaluate qs and get the # results
+                                      protocol_id=protocol_pk,
+                                      active=True).values(*extract_vals)
+        found_count = qs.count()  # evaluate qs and get the # results
         if found_count:
             model = 'line' if lines else 'assay'
-            logger.debug(f'Matched {found_count} of {len(line_or_assay_names)} {model} names '
-                         f'from the file')
+            input_count = len(line_or_assay_names)
+            logger.info(f'Matched {found_count} of {input_count} {model} names '
+                        f'from the file')
             context.loa_name_to_pk = {result['name']: result['pk'] for result in qs}
 
-            if found_count != len(line_or_assay_names):
-                missing_names = line_or_assay_names - context.loa_name_to_pk.keys()
-                err_code = (FileProcessingCodes.UNMATCHED_LINE_NAME if lines else
-                            FileProcessingCodes.UNMATCHED_ASSAY_NAME)
-                self.add_errors(err_code, occurrences=missing_names)
-                self.raise_errors()
+            if found_count != input_count:
+                if found_count < input_count:
+                    names = line_or_assay_names - context.loa_name_to_pk.keys()
+                    err_code = (FileProcessingCodes.UNMATCHED_LINE_NAME if lines else
+                                FileProcessingCodes.UNMATCHED_ASSAY_NAME)
+                else:  # found_count > input_count...find duplicate line names in the study
+                    names = (Line.objects.filter(study_id=study_pk)
+                             .values('name')  # required for annotate
+                             .annotate(count=Count('name'))
+                             .filter(count__gt=1)
+                             .order_by('name')
+                             .values_list('name', flat=True)  # filter out annotation
+                             )
+                    err_code = (FileProcessingCodes.DUPLICATE_LINE_NAME if lines else
+                                FileProcessingCodes.DUPLICATE_ASSAY_NAME)
+                self.add_errors(err_code, occurrences=names)
 
         return bool(found_count)
 
     def _verify_measurement_types(self, parser):
-        # TODO: in some cases, we can significantly improve user experience here by aggregating
-        # lookup errors... though at the risk of more expensive failures.. maybe a good compromise
-        # is to wait for a small handful of errors before failing?
-        # TODO: also current model implementations don't allow us to distinguish between different
+        # TODO: current model implementations don't allow us to distinguish between different
         # types of errors in linked applications (e.g. connection errors vs permissions errors
         # vs identifier verified not found...consider adding complexity / transparency)
 
-        category_name = self.cache.category.name
-        mtype_group = self.cache.category.default_mtype_group
-        err_limit = 100  # TODO: make this a setting
+        category = self.cache.import_.category
+        mtype_group = category.default_mtype_group
+        err_limit = getattr(settings, 'EDD_IMPORT_LOOKUP_ERR_LIMIT', 0)
         err_count = 0
-
-        types = f': {parser.unique_mtypes}' if len(parser.unique_mtypes) <= 10 else ''
-        logger.debug(f'Verifying MeasurementTypes for category "{category_name}"=> '
+        types_count = len(parser.unique_mtypes)
+        types = f': {parser.unique_mtypes}' if types_count <= 10 else f'{types_count} types'
+        logger.debug(f'Verifying MeasurementTypes for category "{category.name}"=> '
                      f'type "{mtype_group}"{types}')
 
         for mtype_id in parser.unique_mtypes:
             try:
                 mtype = self._mtype_lookup(mtype_id, mtype_group)
                 self.cache.mtype_name_to_type[mtype_id] = mtype
-            except ValidationError as v:
+            except ValidationError:
                 logger.exception(f'Exception verifying MeasurementType id {mtype_id}')
-                self.add_error(FileProcessingCodes.MEASUREMENT_TYPE_NOT_FOUND, mtype_id)
+                err_type = MTYPE_GROUP_TO_ID_ERR.get(mtype_group)
+                self.add_error(err_type, occurrence=mtype_id)
+
+                # to maintain responsiveness, stop looking up measurement types after a reasonable
+                # number of errors
                 err_count += 1
                 if err_count == err_limit:
                     break
@@ -375,7 +355,7 @@ class ImportFileHandler(ErrorAggregator):
         logger.debug(f'Caching resolved import data to Redis: {import_id}')
 
         cache = self.cache
-        protocol = self.cache.protocol
+        protocol = self.cache.import_.protocol
 
         broker = ImportBroker()
         if not initial_upload:
@@ -414,7 +394,8 @@ class ImportFileHandler(ErrorAggregator):
                     # detect parse records that clash with each other, e.g. that fall
                     # exactly on the same line/assay + time + measurement type
                     if import_time == parsed_time:
-                        self._record_record_clash(import_time, import_record, parse_record, mtype)
+                        self._record_record_clash(parse_record.line_or_assay_name, import_time,
+                                                  import_record, parse_record, mtype)
                     elif import_time > parsed_time:
                         insert_index = index
                         break
@@ -422,6 +403,8 @@ class ImportFileHandler(ErrorAggregator):
                     import_series.insert(insert_index, parse_record.data)
                 else:
                     import_series.append(parse_record.data)
+
+        self.raise_errors()   # raise any errors detected during the merge (e.g. duplicate entries)
 
         import_records_list = list(import_records.values())
 
@@ -472,11 +455,13 @@ class ImportFileHandler(ErrorAggregator):
             # 'hint': None,
 
             'measurement_id': mtype.pk,
-            'compartment_id': self.cache.compartment,
+            'compartment_id': self.cache.import_.compartment,
             'units_id': unit.pk,
             'data': [parse_record.data],
             'src_ids': []  # ids for where the data came from, e.g. row #s in an Excel file
         }
+
+        protocol = self.cache.import_.protocol
 
         if matched_assays:
             import_record['assay_id'] = assay_or_line_pk
@@ -484,11 +469,12 @@ class ImportFileHandler(ErrorAggregator):
             line_pk = assay_or_line_pk
             import_record['assay_id'] = 'new'
             import_record['line_id'] = line_pk
-            import_record['protocol_id'] = self.cache.protocol.pk
-            assays_count = Assay.objects.filter(line_id=line_pk,
-                                                protocol_id=self.cache.protocol.pk).count()
-            if assays_count:
-                self.raise_error(FileProcessingCodes.MERGE_NOT_SUPPORTED)
+            import_record['protocol_id'] = protocol.pk
+            assays = Assay.objects.filter(line_id=line_pk,
+                                          protocol_id=protocol.pk).values_list('name')
+            if assays:
+                self.raise_errors(FileProcessingCodes.MERGE_NOT_SUPPORTED,
+                                  occurrences=assays)
 
         return import_record
 
@@ -506,248 +492,13 @@ class ImportFileHandler(ErrorAggregator):
         for i in range(0, len(import_records), cache_page_size):
             yield import_records[i:i+cache_page_size]
 
-    def _record_record_clash(self, import_time, import_record, parse_record, mtype):
+    def _record_record_clash(self, loa_name, import_time, import_record, parse_record,
+                             mtype):
         occurrences = []
-        if len(import_record.src_ids) == 1:
-            occurrences.extend(import_record.src_ids)
+        if len(import_record['src_ids']) == 1:
+            occurrences.extend(import_record['src_ids'])
         occurrences.append(parse_record.src_id)
         self.add_errors(FileProcessingCodes.MEASUREMENT_COLLISION,
-                        f'({mtype.type_name}, T={import_time})', occurrences=occurrences)
+                        f'({loa_name}: {mtype.type_name}, T={import_time})',
+                        occurrences=occurrences)
         return True
-
-
-def verify_assay_times(err_aggregator, assay_pks, parser, assay_time_meta_pk):
-    """
-    Checks existing assays ID'd in the import file for time metadata, and verifies that they
-    all have time metadata (or don't).
-
-    :return: a dict that maps assay pk => time if assay times were consistently found,
-        None if they were consistently *not* found
-    :raises EDDImportError: if time is inconsistently specified or overspecified
-    """
-
-    times_qs = Assay.objects.filter(pk__in=assay_pks, metadata__has_key=assay_time_meta_pk)
-    times_qs_values = times_qs.values_list('pk', f'metadata__{assay_time_meta_pk}')
-
-    times_count = times_qs.count()
-
-    if times_count == len(assay_pks):
-        if parser.has_all_times:
-            err_aggregator.add_error(
-                FileProcessingCodes.DUPLICATE_DATA_ENTRY,
-                occurrence='Time is provided both in the file and in assay metadata'
-            )
-            err_aggregator.raise_errors()
-
-        return dict(times_qs_values)
-
-    elif times_count != 0:
-        missing_pks = Assay.objects.filter(pk__in=assay_pks)
-        missing_pks = missing_pks.exclude(metadata__has_key=assay_time_meta_pk)
-        missing_pks = missing_pks.values_list('pk', flat=True)
-        err_aggregator.add_errors(FileProcessingCodes.ASSAYS_MISSING_TIME,
-                                  occurrences=missing_pks)
-        err_aggregator.raise_errors()
-
-    return None
-
-
-class SeriesCacheParser:
-    """
-    A parser that reads import records from the legacy Redis cache and extracts relevant
-    data to return to the import UI without re-parsing and re-verifying the file content (e.g.
-    external database identifiers)
-    """
-    def __init__(self, master_time=None, master_units=None, master_compartment=None):
-        self.all_records_have_time = False
-        self.all_records_have_units = False
-        self.all_records_have_compartment = False
-        self.master_time = master_time
-        self.master_units = master_units
-        self.master_compartment = master_compartment
-        self.matched_assays = False
-        self.mtype_pks = set()
-        self.loa_pks = set()  # line or assay pks
-
-    def parse(self, import_uuid):
-
-        broker = ImportBroker()
-        cache_pages = broker.load_pages(import_uuid)
-
-        import_records = []
-
-        self.all_records_have_time = True
-        self.all_records_have_units = True
-        self.all_records_have_compartment = True
-        self.matched_assays = True
-        for page in cache_pages:
-            page_json = json.loads(page)
-            for import_record in page_json:
-                measurement_pk = import_record.get('measurement_id')
-                self.mtype_pks.add(measurement_pk)
-
-                if import_record.data[0] is None:
-                    self.all_records_have_time = False
-
-                if hasattr(import_record, 'line_id'):
-                    self._add_id(import_record['line_id'])
-                    self.matched_assays = False
-                else:
-                    self._add_id(import_record['assay_id'])
-
-            import_records.extend(page_json)
-
-        return import_records
-
-    def _add_id(self, val):
-        if val not in ('new', 'named_or_new'):  # ignore placeholders, just get real pks
-            self.loa_pks.add(val)
-
-    def has_all_times(self):
-        return self.master_time or self.all_records_have_time
-
-    def has_all_units(self):
-        return self.master_units or self.all_records_have_units
-
-    def has_all_compartments(self):
-        return self.master_compartment or self.all_records_have_compartment
-
-    @property
-    def mtypes(self):
-        return self.mtype_pks
-
-
-def build_ui_payload_from_cache(import_):
-    """
-    Loads existing import records from Redis cache and parses them in lieu of re-parsing the
-    file and re-resolving string-based line/assay/MeasurementType identifiers from the
-    uploaded file.  This method supports the transition from Step 3 -> Step 4 of the import,
-    and this implementation lets us leverage most of the same code to support the Step 3 -> 4
-    transition as we use for the Step 2 -> 4 transition.
-
-    :return: the UI JSON for Step 4 "Inspect"
-    """
-    parser = SeriesCacheParser(master_units=import_.y_units)
-    import_records = parser.parse(import_.uuid)
-    aggregator = ErrorAggregator()
-
-    # look up MeasurementTypes referenced in the import so we can build JSON containing them.
-    # if we got this far, they'll be in EDD's database unless recently removed, which should
-    # be unlikely
-    category = import_.category
-    MTypeClass = MTYPE_GROUP_TO_CLASS[category.mtype_group]
-    unique_mtypes = MTypeClass.objects.filter(pk__in=parser.mtype_pks)
-
-    # get other context from the database
-    hour_units = MeasurementUnit.objects.get(unit_name='hours')
-    assay_time_meta_pk = MetadataType.objects.filter(type_name='Time',
-                                                     for_context=MetadataType.ASSAY)
-    found_count = len(unique_mtypes)
-
-    if found_count != len(parser.mtype_pks):
-        missing_pks = {mtype.pk for mtype in unique_mtypes} - parser.mtype_pks
-        aggregator.raise_errors(FileProcessingCodes.MEASUREMENT_TYPE_NOT_FOUND,
-                                occurrences=missing_pks)
-
-    # TODO: fold assay times into UI payload to give user helpful feedback as in UI mockup
-    assay_pk_to_time = None
-    if parser.matched_assays:
-        assay_pks = parser.loa_pks
-        assay_pk_to_time = verify_assay_times(aggregator, assay_pks, parser,
-                                              assay_time_meta_pk)
-    required_inputs = compute_required_context(category, import_.compartment, parser,
-                                               assay_pk_to_time)
-
-    return build_step4_ui_json(import_, required_inputs, import_records, unique_mtypes,
-                               hour_units.pk)
-
-
-def build_step4_ui_json(import_, required_inputs, import_records,  unique_mtypes, time_units_pk):
-    """
-    Build JSON to send to the new import front end, including some legacy data for easy
-    display in the existing TS graphing code (which may get replaced later). Relative to the
-    import JSON, x and y elements are further broken down into separate lists. Note that JSON
-    generated here should match that produced by the /s/{study_slug}/measurements/ view
-    TODO: address PR comment re: code organization
-    https://repo.jbei.org/projects/EDD/repos/edd-django/pull-requests/425/overview?commentId=3073
-    """
-    logger.debug('Building UI JSON for user inspection')
-
-    assay_id_to_meas_count = {}
-
-    measures = []
-    data = {}
-    for index, import_record in enumerate(import_records):
-        import_data = import_record['data']
-
-        # if this import is creating new assays, assign temporary IDs to them for pre-import
-        # display and possible deactivation in step 4.  If the import is updating existing
-        # assays, use their real pk's.
-        assay_id = import_record['assay_id']
-        assay_id = assay_id if assay_id not in ('new', 'named_or_new') else index
-
-        mcount = assay_id_to_meas_count.get(assay_id, 0)
-        mcount += 1
-        assay_id_to_meas_count[assay_id] = mcount
-
-        # TODO: file format, content, and protocol should all likely be considerations here.
-        # Once supported by the Celery task, consider moving this determination up to the
-        # parsing step  where the information is all available on a per-measurement basis.
-        format = Measurement.Format.SCALAR
-        if len(import_data) > 2:
-            format = Measurement.Format.VECTOR
-
-        measures.append({
-            # assign temporary measurement ID's.
-            # TODO: revisit when implementing collision detection/merge similar to assays
-            # above. Likely need detection/tracking earlier in the process to do this with
-            # measurements.
-            'id': index,
-
-            'assay': assay_id,
-            'type': import_record['measurement_id'],
-            'comp': import_record['compartment_id'],
-            'format': format,
-            'x_units': time_units_pk,
-            'y_units': import_record['units_id'],
-            'meta': {},
-        })
-
-        # repackage data from the import into the format used by the legacy study data UI
-        # Note: assuming based on initial example that it's broken up into separate arrays
-        # along x and y measurements...correct if that's not born out by other examples (maybe
-        # it's just an array per element)
-        measurement_vals = []
-        data[str(index)] = measurement_vals
-        for imported_timepoint in import_data:
-            display_timepoint = [[imported_timepoint[0]]]  # x-value
-            display_timepoint.append(imported_timepoint[1:])  # y-value(s)
-            measurement_vals.append(display_timepoint)
-
-    return {
-        'pk': f'{import_.pk}',
-        'uuid': f'{import_.uuid}',
-        'status': import_.status,
-        'total_measures': assay_id_to_meas_count,
-        'required_values': required_inputs,
-        'types': {str(mtype.id): mtype.to_json() for mtype in unique_mtypes},
-        'measures': measures,
-        'data': data,
-    }
-
-
-def compute_required_context(category, compartment, parser, assay_meta_times):
-    required_inputs = []
-
-    # TODO: verify assumptions here re: auto-selected compartment.
-    # status quo is that its only needed for metabolomics, but should be configured in protocol
-    if category.name == 'Metabolomics' and not compartment:
-        required_inputs.append('compartment')
-
-    if not (assay_meta_times or parser.has_all_times):
-        required_inputs.append('time')
-
-    if not parser.has_all_units:
-        required_inputs.append('units')
-
-    return required_inputs

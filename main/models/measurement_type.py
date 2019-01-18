@@ -47,7 +47,7 @@ class MeasurementType(models.Model, EDDSerialize):
             (GENERIC, _('Generic')),
             (METABOLITE, _('Metabolite')),
             (GENEID, _('Gene Identifier')),
-            (PROTEINID, _('Protein Identifer')),
+            (PROTEINID, _('Protein Identifier')),
             (PHOSPHOR, _('Phosphor')),
         )
 

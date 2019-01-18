@@ -98,6 +98,8 @@ EMAIL_HOST_USER = ''
 EMAIL_HOST_PASSWORD = ''
 EMAIL_PORT = 25
 
+EDD_IMPORT_LOOKUP_ERR_LIMIT = 50
+
 
 ###################################################################################################
 # Basic Django configuration

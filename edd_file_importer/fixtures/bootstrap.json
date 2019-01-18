@@ -1,0 +1,181 @@
+[
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 5,
+    "fields": {
+      "name": "Generic",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "0306a2f5-2a25-4546-8fc9-37019c895d39",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 1,
+    "fields": {
+      "name": "Proteomics",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "d281089f-9949-4da8-bffd-b3dfa4f16ac1",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 2,
+    "fields": {
+      "name": "Metabolomics",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "8f550f5c-e8d0-48a6-a433-95ded52189d5",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 3,
+    "fields": {
+      "name": "Transcriptomics",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "559f7d6e-3c49-4c7d-918d-85b56c0c8402",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 4,
+    "fields": {
+      "name": "OD",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "d23ec26a-e068-43a3-958d-59e7f1b6a780",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importformat",
+    "pk": 5,
+    "fields": {
+      "parser_class": "edd_file_importer.parsers.table.GenericImportParser",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importcategory",
+    "pk": 1,
+    "fields": {
+      "default_mtype_group": "p",
+      "display_order": 1,
+      "updates": [
+        1
+      ],
+      "protocols": []
+    }
+  },
+  {
+    "model": "edd_file_importer.importcategory",
+    "pk": 2,
+    "fields": {
+      "default_mtype_group": "m",
+      "display_order": 2,
+      "updates": [
+        1
+      ],
+      "protocols": []
+    }
+  },
+  {
+    "model": "edd_file_importer.importcategory",
+    "pk": 3,
+    "fields": {
+      "default_mtype_group": "t",
+      "display_order": 3,
+      "updates": [
+        1
+      ],
+      "protocols": []
+    }
+  },
+  {
+    "model": "edd_file_importer.importcategory",
+    "pk": 4,
+    "fields": {
+      "default_mtype_group": "_",
+      "display_order": 4,
+      "updates": [
+        1
+      ],
+      "protocols": []
+    }
+  },
+  {
+    "model": "edd_file_importer.categoryformat",
+    "pk": 1,
+    "fields": {
+      "format": 5,
+      "category": 1,
+      "display_order": 1
+    }
+  },
+  {
+    "model": "edd_file_importer.categoryformat",
+    "pk": 2,
+    "fields": {
+      "format": 5,
+      "category": 2,
+      "display_order": 1
+    }
+  },
+  {
+    "model": "edd_file_importer.categoryformat",
+    "pk": 3,
+    "fields": {
+      "format": 5,
+      "category": 3,
+      "display_order": 1
+    }
+  },
+  {
+    "model": "edd_file_importer.categoryformat",
+    "pk": 4,
+    "fields": {
+      "format": 5,
+      "category": 4,
+      "display_order": 1
+    }
+  },
+  {
+    "fields": {
+      "mod_by": 1,
+      "mod_time": "2018-10-18T17:37:00.000Z",
+      "origin": "localhost",
+      "path": "!bootstrap.json"
+    },
+    "model": "main.update",
+    "pk": 1
+  }
+]

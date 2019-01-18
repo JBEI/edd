@@ -1,0 +1,24 @@
+{
+  "status": "Failed",
+  "errors": [
+    {
+      "category": "Measurement collision",
+      "summary": "Duplicate simultaneous measurements",
+      "resolution": null,
+      "doc_url": null,
+      "subcategory": "(arcA: Optical Density, T=0)",
+      "detail": "row 3"
+    },
+    {
+      "category": "Measurement collision",
+      "summary": "Duplicate simultaneous measurements",
+      "resolution": null,
+      "doc_url": null,
+      "subcategory": "(BW1: Optical Density, T=0)",
+      "detail": "row 11"
+    }
+  ],
+  "warnings": [],
+  "pk": 18,
+  "uuid": "a2d7ea2a-08b1-4fd9-87d1-d21810f9b5e5"
+}

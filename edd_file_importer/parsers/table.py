@@ -18,6 +18,20 @@ from ..utilities import ErrorAggregator, ParseError
 logger = logging.getLogger(__name__)
 
 
+def _has_value(*args):
+    """
+    Tests whether any of the provided arguments should be treated as having a valid value
+    """
+
+    def _valid_value(arg):
+        if isinstance(arg, string_types):
+            return bool(arg)  # assume it's already .strip()ed
+        else:
+            return arg is not None
+
+    return any(filter(_valid_value, args))
+
+
 class TableParser(object):
     """
     A parser for the tabular import files that allows supports semi-tolerant parsing of
@@ -116,7 +130,7 @@ class TableParser(object):
     def _build_unit_patterns(self):
         self._unit_patterns = {}
         for col, units in self.supported_units.items():
-            logger.debug(f'Building unit pattterns for column "{col}": {units}')
+            logger.debug(f'Building unit patterns for column "{col}": {units}')
             # note : maintaining case-sensitivity is important! SI units use case!
             vals = '|'.join([TableParser._process_label(unit) for unit in units])
             pat = re.compile(r'^\s*({vals})\s*$'.format(vals=vals))
@@ -214,15 +228,14 @@ class TableParser(object):
 
     def _parse_col_layout(self, row, row_index, obs_required_cols):
         """
-        Detects the layout of a template file by matching cell contents of a row containing the
-        minimal required column headers, then comparing additional headers in that row against line
-        and assay metadata names in EDD's database. If required column headers aren't found in this
-        row, then it is ignored. Columns can be provided in any order.
+        Scans a row of the file to see if it contains required column headers that define the file
+        layout.
         :param row: the row to inspect for column headers
         :param row_index: the index into the file of the row being checked for required col headers
         :param obs_required_cols: a set to populate with required col names observed so far in the
-            file.  Essentially just prevents us from creating a new set each time we try to read a
-            row in poorly-formatted files.
+            file.  Since detection of any required column header counts as a match, this parameter
+            is essentially just an optimization to prevent creating a new set each time we try
+            to read a row in poorly-formatted files.
         :return: the column layout if required columns were found, or None otherwise
         """
         layout = {}  # maps col name to col index
@@ -230,10 +243,10 @@ class TableParser(object):
         req_cols_set = set(self.req_cols)
 
         ###########################################################################################
-        # loop over columns in the current row, looking for the first non-blank cell
+        # loop over columns in the current row
         ###########################################################################################
         obs_opt_cols = set()
-        non_header_values = []
+        non_header_vals = []
         for col_index, cell in enumerate(row):
             cell_content = self._raw_cell_value(cell)
 
@@ -243,49 +256,22 @@ class TableParser(object):
                 continue
 
             # ignore non-string cells since they can't be the column headers we're looking for
-            col_desc = self.cell_content_desc(cell_content, row_index, col_index)
             if not isinstance(cell_content, string_types):
                 if cell_content is not None:
-                    non_header_values.append(col_desc)
+                    col_desc = self.cell_content_desc(cell_content, row_index, col_index)
+                    non_header_vals.append(col_desc)
                 continue
 
             #######################################################################################
             # check whether column label matches one of the canonical column names specified by
             # the format
             #######################################################################################
-            req_name = self._parse_col_header(self.req_col_patterns, self.req_cols, row_index,
-                                              col_index, cell_content)
-            opt_name = self._parse_col_header(self.opt_col_patterns, self.opt_cols, row_index,
-                                              col_index, cell_content)
-            if req_name:
-                logger.debug(f'Found required column "{req_name}"'
-                             f'({self.cell_coords(row_index, col_index)})')
-
-                if req_name in obs_required_cols:
-                    importer.add_error(FileParseCodes.DUPLICATE_COL_HEADER,
-                                       occurrence=col_desc)
-                else:
-                    obs_required_cols.add(req_name)
-                    layout[req_name] = col_index
-                    if req_name != cell_content:
-                        self.obs_col_names[req_name] = cell_content
-            elif opt_name:
-                logger.info(f'Found optional column "{opt_name}".'
-                            f'({self.cell_coords(row_index, col_index)})')
-                if opt_name in obs_opt_cols:
-                    importer.add_error(FileParseCodes.DUPLICATE_COL_HEADER,
-                                       occurrence=col_desc)
-                else:
-                    obs_opt_cols.add(opt_name)
-                    layout[opt_name] = col_index
-                    if cell_content != opt_name:
-                        self.obs_col_names[opt_name] = cell_content
-            else:
-                non_header_values.append(col_desc)
+            self._process_col_name(cell_content, row_index, col_index, non_header_vals,
+                                   obs_required_cols, obs_opt_cols, layout)
 
         # if at least the required columns were found, consider this a successful read
         if obs_required_cols == req_cols_set:
-            for bad_val in non_header_values:
+            for bad_val in non_header_vals:
                 importer.add_warning(FileParseCodes.COLUMN_IGNORED, occurrence=bad_val)
             logger.debug(f'Found all {len(self.req_cols)} required column headers in row '
                          f'{row_index+1}')
@@ -296,11 +282,54 @@ class TableParser(object):
         if obs_required_cols:
             missing_cols = req_cols_set.difference(obs_required_cols)
             logger.debug(f'Required column headers missing: {missing_cols}')
-            importer.add_errors(FileParseCodes.MISSING_REQ_COL_HEADER, occurrences=missing_cols)
+            importer.raise_errors(FileParseCodes.MISSING_REQ_COL_HEADER, occurrences=missing_cols)
         else:
-            importer.add_warnings(FileParseCodes.IGNORED_VALUE_BEFORE_HEADERS, non_header_values)
+            importer.add_warnings(FileParseCodes.IGNORED_VALUE_BEFORE_HEADERS, non_header_vals)
 
         return None
+
+    def _process_col_name(self, cell_content, row_index, col_index, non_header_vals,
+                          obs_req_cols, obs_opt_cols, layout):
+        """
+        Process the string content of a cell when looking for columns
+        :param cell_content: the string content (non empty, non-whitespace)
+        :param non_header_vals: a list of non column header values read from the file before
+        any valid column header is found
+        :param obs_req_cols: a set of required column headers already observed in the row
+        :param obs_opt_cols: a set of optional columns headers already observed in the row
+        :param layout: a dict that maps col name to the column index where it was observed
+        """
+        req_name = self._parse_col_header(self.req_col_patterns, self.req_cols, row_index,
+                                          col_index, cell_content)
+        opt_name = self._parse_col_header(self.opt_col_patterns, self.opt_cols, row_index,
+                                          col_index, cell_content)
+        agg = self.aggregator
+        if req_name:
+            logger.debug(f'Found required column "{req_name}"'
+                         f'({self.cell_coords(row_index, col_index)})')
+
+            if req_name in obs_req_cols:
+                col_desc = self.cell_content_desc(cell_content, row_index, col_index)
+                agg.add_error(FileParseCodes.DUPLICATE_COL_HEADER, occurrence=col_desc)
+            else:
+                obs_req_cols.add(req_name)
+                layout[req_name] = col_index
+                if req_name != cell_content:
+                    self.obs_col_names[req_name] = cell_content
+        elif opt_name:
+            logger.info(f'Found optional column "{opt_name}".'
+                        f'({self.cell_coords(row_index, col_index)})')
+            if opt_name in obs_opt_cols:
+                col_desc = self.cell_content_desc(cell_content, row_index, col_index)
+                agg.add_error(FileParseCodes.DUPLICATE_COL_HEADER, occurrence=col_desc)
+            else:
+                obs_opt_cols.add(opt_name)
+                layout[opt_name] = col_index
+                if cell_content != opt_name:
+                    self.obs_col_names[opt_name] = cell_content
+        else:
+            col_desc = self.cell_content_desc(cell_content, row_index, col_index)
+            non_header_vals.append(col_desc)
 
     def _raw_cell_value(self, cell):
         """
@@ -533,7 +562,7 @@ class GenericImportParser(TableParser):
         units = self._get_raw_value(cells_list, 'Units')
 
         # skip the row entirely if no in-use column has a value in it
-        any_value = self._has_value(line_or_assay_name, mtype, val, time, units)
+        any_value = _has_value(line_or_assay_name, mtype, val, time, units)
         if not any_value:
             return None
 
@@ -553,7 +582,6 @@ class GenericImportParser(TableParser):
             data = [time, val]
 
         m = MeasurementParseRecord(
-            # assume the name is for an assay...if not we'll fix it later
             line_or_assay_name=line_or_assay_name,
             mtype_name=mtype,
             data=data,
@@ -569,19 +597,6 @@ class GenericImportParser(TableParser):
             self.unique_mtypes.add(mtype)
         if units:
             self.unique_units.add(units)
-
-    @staticmethod
-    def _has_value(*args):
-        """
-        Tests whether any of the provided arguments should be treated as having a valid value
-        """
-        for arg in args:
-            if isinstance(arg, string_types):
-                if arg:  # assume it's already .strip()ed
-                    return True
-            elif arg is not None:
-                return True
-        return False
 
     @property
     def mtypes(self):

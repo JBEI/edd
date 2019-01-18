@@ -16,7 +16,7 @@ channel_layer = get_channel_layer()
 logger = logging.getLogger(__name__)
 
 
-NotificationBase = namedtuple("NotificationBase", ("message", "tags", "time", "uuid"))
+NotificationBase = namedtuple("NotificationBase", ("message", "tags", "payload", "time", "uuid"))
 
 
 class Notification(NotificationBase):
@@ -26,11 +26,11 @@ class Notification(NotificationBase):
 
     __slots__ = ()
 
-    def __new__(cls, message, tags=None, time=None, uuid=None):
+    def __new__(cls, message, tags=None, payload=None, time=None, uuid=None):
         tags = tuple() if tags is None else tuple(tags)
         time = arrow.utcnow().timestamp if time is None else time
         uuid = uuid4() if uuid is None else uuid
-        self = super().__new__(cls, message, tags, time, uuid)
+        self = super().__new__(cls, message, tags, payload, time, uuid)
         return self
 
     def __eq__(self, other):
@@ -46,6 +46,7 @@ class Notification(NotificationBase):
         prep = Notification(
             message=str(self.message),
             tags=[str(tag) for tag in self.tags],
+            payload=self.payload,
             time=self.time,
             uuid=self.uuid,
         )
@@ -104,8 +105,10 @@ class BaseBroker(object):
             {"type": "notification.dismiss", "uuid": JSONEncoder.dumps(uuid)}
         )
 
-    def notify(self, message, tags=None, uuid=None):
-        note = Notification(message, tags=tags, uuid=uuid)
+    def notify(self, message, tags=None, payload=None, uuid=None):
+        logger.debug(f"Notify: {message} tags: {tags} uuid={uuid}, payload={payload}")
+
+        note = Notification(message, tags=tags, payload=payload, uuid=uuid)
         # _store notification to self
         self._store(note)
         # send notification to Channel Groups

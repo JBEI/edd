@@ -1,0 +1,15 @@
+{
+  "pk": 13,
+  "uuid": "ec2e3a30-3f35-4219-88a8-cf78fb100a98",
+  "status": "Failed",
+  "errors": [
+    {
+      "category": "Cannot resolve line names",
+      "summary": "Study has duplicate line names",
+      "resolution": null,
+      "doc_url": null,
+      "detail": "arcA"
+    }
+  ],
+  "warnings": []
+}

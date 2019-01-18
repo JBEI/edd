@@ -1,0 +1,39 @@
+{
+  "status": "Failed",
+  "errors": [
+    {
+      "category": "Invalid file",
+      "summary": "Duplicate column headers",
+      "resolution": null,
+      "doc_url": null,
+      "detail": "\"Time\" (E1)"
+    },
+    {
+      "category": "Invalid file",
+      "summary": "Required values missing",
+      "resolution": null,
+      "doc_url": null,
+      "subcategory": "Measurement Type",
+      "detail": "B2"
+    },
+    {
+      "category": "Invalid file",
+      "summary": "Required values missing",
+      "resolution": null,
+      "doc_url": null,
+      "subcategory": "Value",
+      "detail": "C2"
+    },
+    {
+      "category": "Invalid file",
+      "summary": "Invalid value",
+      "resolution": null,
+      "doc_url": null,
+      "subcategory": "Time",
+      "detail": "\"A\" (D3)"
+    }
+  ],
+  "warnings": [],
+  "pk": 16,
+  "uuid": "5c90ae30-1ea3-4442-88bc-d0b987d2c5a4"
+}

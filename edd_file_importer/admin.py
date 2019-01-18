@@ -12,16 +12,23 @@ from django.utils.translation import ugettext_lazy as _
 
 from . import models
 from main.admin import EDDObjectAdmin
+from main.models import MeasurementType
 
 logger = logging.getLogger(__name__)
 
 
 class ImportCategoryForm(forms.ModelForm):
+    default_mtype_group = forms.ChoiceField(choices=MeasurementType.Group.GROUP_CHOICE,
+                                            label='Default measurement type',
+                                            help_text=models.ImportCategory._meta.get_field(
+                                                'default_mtype_group').help_text)
+
     class Meta:
         model = models.ImportCategory
-        fields = ('name', 'display_order', 'active', 'description')
+        fields = ('name', 'display_order', 'default_mtype_group', 'active', 'description')
         labels = {
             'name': _('Category'),
+            'default_mtype_group': _('Default measurement type'),
             'active': _('Is Active'),
             'description': _('Description'),
         }

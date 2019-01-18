@@ -69,6 +69,10 @@ class StudyInternalsFilterMixin(object):
         return '__'.join(cls._filter_joins + list(args))
 
     def filter_queryset(self, queryset):
+        """
+        Overrides GenericAPIView's filter_queryset() to filter results to only studies the user has
+        access to.
+        """
         queryset = super(StudyInternalsFilterMixin, self).filter_queryset(queryset)
         if not models.Study.user_role_can_read(self.request.user):
             access = models.Study.access_filter(self.request.user, via=self._filter_joins)
@@ -88,6 +92,7 @@ class StudyInternalsFilterMixin(object):
     def get_object(self):
         """
         Find the object if the parameter matches the primary key OR the UUID.
+        Overrides GenericAPIView's implementation.
         """
         url_kwarg = self.lookup_url_kwarg or self.lookup_field
         lookup = self.kwargs.get(url_kwarg, None)

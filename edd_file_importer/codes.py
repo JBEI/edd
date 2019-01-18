@@ -35,6 +35,8 @@ class FileProcessingCodes(Enum):
     # missing study ids
     UNMATCHED_ASSAY_NAME = auto()
     UNMATCHED_LINE_NAME = auto()
+    DUPLICATE_ASSAY_NAME = auto()
+    DUPLICATE_LINE_NAME = auto()
     UNNMATCHED_STUDY_INTERNALS = auto()
 
     # communication errors... current model load_or_create methods don't support differentiating
@@ -44,7 +46,16 @@ class FileProcessingCodes(Enum):
     # PERMISSION_DENIED = auto()
     MEASUREMENT_TYPE_NOT_FOUND = auto()
 
+    PROTEIN_ID_NOT_FOUND = auto()
+    GENE_ID_NOT_FOUND = auto()
+    PHOSPHOR_NOT_FOUND = auto()
+    METABOLITE_NOT_FOUND = auto()
+
+    COMMUNICATION_ERROR = auto()
+
     MEASUREMENT_UNIT_NOT_FOUND = auto()
+
+    ILLEGAL_STATE_TRANSITION = auto()
 
     MERGE_NOT_SUPPORTED = auto()
 
@@ -52,29 +63,31 @@ class FileProcessingCodes(Enum):
 
     ASSAYS_MISSING_TIME = auto()
 
+    UNEXPECTED_ERROR = auto()
+
 
 parse_code_to_ui_detail = {
     # basic file read errors
     FileParseCodes.UNSUPPORTED_FILE_TYPE: {
-        'category': _('Bad file'),
+        'category': _('Invalid file'),
         'summary': _('Unsupported file type'),
     },
     FileParseCodes.EMPTY_FILE: {
-        'category': _('Empty file'),
-        'summary': _(''),
+        'category': _('Invalid file'),
+        'summary': _('File is empty'),
     },
 
     # file format errors
     FileParseCodes.IGNORED_WORKSHEET: {
         'category': _('Ignored data'),
-        'summary': _(''),
+        'summary': _('Worksheets ignored'),
     },
     FileParseCodes.MISSING_REQ_COL_HEADER: {
-        'category': _('Bad file'),
-        'summary': _(''),
+        'category': _('Invalid file'),
+        'summary': _('Required column headers missing'),
     },
     FileParseCodes.DUPLICATE_COL_HEADER: {
-        'category': _('Bad file'),
+        'category': _('Invalid file'),
         'summary': _('Duplicate column headers'),
     },
     FileParseCodes.COLUMN_IGNORED: {
@@ -83,20 +96,20 @@ parse_code_to_ui_detail = {
     },
     FileParseCodes.IGNORED_VALUE_BEFORE_HEADERS: {
         'category': _('Ignored data'),
-        'summary': _(''),
+        'summary': _('Ignored values before recognized headers'),
     },
 
     # file content errors
     FileParseCodes.UNSUPPORTED_UNITS: {
-        'category': _('Bad file'),
+        'category': _('Invalid file'),
         'summary': _('Unsupported units'),
     },
     FileParseCodes.MISSING_REQ_VALUE: {
-        'category': _('Bad file'),
+        'category': _('Invalid file'),
         'summary': _('Required values missing'),
     },
     FileParseCodes.INVALID_VALUE: {
-        'category': _('Bad file'),
+        'category': _('Invalid file'),
         'summary': _('Invalid value'),
     },
     FileParseCodes.DUPLICATE_DATA_ENTRY: {
@@ -108,44 +121,77 @@ parse_code_to_ui_detail = {
 processing_code_to_ui_detail = {
     # invalid identifier format
     FileProcessingCodes.INVALID_ID_FORMAT: {
-        'category': _('Bad file'),
+        'category': _('Invalid file'),
         'summary': _('Invalid identifier format'),
     },
 
     FileProcessingCodes.UNMATCHED_ASSAY_NAME: {
-        'category': _('Unmatched assay names'),
-        'summary': _(),
+        'category': _("File doesn't match study"),
+        'summary': _('Assay names in file not found in study'),
     },
 
     FileProcessingCodes.UNMATCHED_LINE_NAME: {
-        'category': _('Unmatched line names'),
-        'summary': _(),
+        'category': _("File doesn't match study"),
+        'summary': _('Line names in file not found in study'),
+    },
+
+    FileProcessingCodes.DUPLICATE_ASSAY_NAME: {
+        'category': _('Cannot resolve assay names'),
+        'summary': _('Study has duplicate assay names'),
+    },
+
+    FileProcessingCodes.DUPLICATE_LINE_NAME: {
+        'category': _('Cannot resolve line names'),
+        'summary': _('Study has duplicate line names'),
     },
 
     FileProcessingCodes.UNNMATCHED_STUDY_INTERNALS: {
-        'category': _('Unmatched study internals'),
-        'summary': _('Identifiers must either match line or assay names in the study.  Neither '
-                     'matched'),
+        'category': _("File doesn't match study"),
+        'summary': _('Identifiers in your file must match either line or assay names in the '
+                     'study'),
     },
     FileProcessingCodes.MEASUREMENT_TYPE_NOT_FOUND: {
+        'category': _('Measurement identifiers not found'),
+        'summary': _('Missing IDs'),
+    },
+
+    FileProcessingCodes.PROTEIN_ID_NOT_FOUND: {
         'category': _('Identifiers not found'),
-        'summary': _(''),
+        'summary': _('Protein identifiers in the file were not found in UniProt'),
+    },
+    FileProcessingCodes.GENE_ID_NOT_FOUND: {
+        'category': _('Identifiers not found'),
+        'summary': _('Genes identifiers in the file were not found in the registry'),
+    },
+    FileProcessingCodes.METABOLITE_NOT_FOUND: {
+        'category': _('Identifiers not found'),
+        'summary': _('Metabolites were not found by PubChem CID'),
+    },
+
+    FileProcessingCodes.ILLEGAL_STATE_TRANSITION: {
+        'category': _('Invalid Request'),
+        'summary': _('Illegal state transition'),
     },
 
     FileProcessingCodes.ASSAYS_MISSING_TIME: {
-        'category': _('Incomplete time data'),
-        'summary': _(''),
+        'category': _('Incomplete study configuration'),
+        'summary': _('Assays missing time metadata'),
     },
 
     FileProcessingCodes.MEASUREMENT_COLLISION: {
         'category': _('Measurement collision'),
-        'summary': _('File contains duplicate measurements of the same quantity at the same time'),
+        'summary': _('Duplicate simultaneous measurements'),
     },
 
     FileProcessingCodes.MERGE_NOT_SUPPORTED: {
         'category': _('Merge not yet supported'),
-        'summary': _('Your study already contains data for this protocol.  Merge is not yet '
-                     'supported.'),
+        'summary': _("Your study already contains data for this protocol.  Merge with existing "
+                     "assays isn't supported"),
+    },
+
+    FileProcessingCodes.UNEXPECTED_ERROR: {
+        'category': _('Error'),
+        'summary': _('An unexpected error occurred'),
     }
 }
 

@@ -9,6 +9,8 @@ from datetime import date, datetime
 from dateutil import parser as date_parser
 from decimal import Decimal
 from django.conf import settings
+from django.utils.encoding import force_text
+from django.utils.functional import Promise
 from kombu.serialization import register
 from uuid import UUID
 
@@ -36,6 +38,8 @@ class JSONEncoder(json.JSONEncoder):
                 TYPE: DATETIME,
                 VALUE: o.isoformat(),
             }
+        elif isinstance(o, Promise):
+            return force_text(o)
         return super(JSONEncoder, self).default(o)
 
     @staticmethod

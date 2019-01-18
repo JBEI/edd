@@ -4,6 +4,7 @@ installation.
 """
 from django.contrib.auth.management.commands import createsuperuser
 from django.core.management.base import CommandError
+from django.db import transaction
 
 from allauth.account.models import EmailAddress
 
@@ -35,21 +36,24 @@ class Command(createsuperuser.Command):
         # attempt to load username from command-line options
         # username can come from command-line flag OR from interactive input
         self._username = options.get(self.UserModel.USERNAME_FIELD)
-        # let the base class handle all the user-creation details
-        super(Command, self).handle(*args, **options)
-        # now try to create the validated EmailAddress object
+
         try:
-            user = self.UserModel.objects.get(username=self._username)
-            # overriding the value of is_superuser set by parent (always True in parent)
-            user.is_superuser = options[ADMIN]
-            # create a verified primary EmailAddress for the user
-            email_address = EmailAddress(user=user, email=user.email, verified=True, primary=True)
-            email_address.save()
-            user.save()
-            if options['verbosity'] >= 1:
-                self.stdout.write(
-                    'Simulated email address verification for user "%s"' % self._username
-                )
+            with transaction.atomic():
+                # let the base class handle all the user-creation details
+                super().handle(*args, **options)
+                # now try to create the validated EmailAddress object
+                user = self.UserModel.objects.get(username=self._username)
+                # overriding the value of is_superuser set by parent (always True in parent)
+                user.is_superuser = options[ADMIN]
+                # create a verified primary EmailAddress for the user
+                email_address = EmailAddress(user=user, email=user.email, verified=True,
+                                             primary=True)
+                email_address.save()
+                user.save()
+                if options['verbosity'] >= 1:
+                    self.stdout.write(
+                        'Simulated email address verification for user "%s"' % self._username
+                    )
         except Exception as e:
             raise CommandError(e)
 

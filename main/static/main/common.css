@@ -2048,4 +2048,19 @@ body > .navbar {
     color: gray;
 }
 
+/* Import 2.0 prototype button */
+#importPrototypeBtn {
+    color: darkslategrey;
+    background: #BBBBBB;
+    padding-top: 7px;
+    padding-bottom: 10px;
+    margin-right: 10px;
+}
+
+#importPrototypeBtn .new {
+    vertical-align: super;
+    font-size: 60%;
+    color: slategrey;
+}
+
 /* End of common styles */

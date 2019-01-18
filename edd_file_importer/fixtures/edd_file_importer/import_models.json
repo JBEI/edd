@@ -1,0 +1,264 @@
+[
+  {
+    "model": "main.eddobject",
+    "pk": 10,
+    "fields": {
+      "metadata": {},
+      "name": "FBA study",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "de284f6c-f7e8-440f-b7a5-a3254164265f",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "main.study",
+    "pk": 10,
+    "fields": {
+      "contact": 1,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "slug": "fba",
+      "updates": [
+        1
+      ],
+      "protocols": []
+    }
+  },
+  {
+    "model": "main.eddobject",
+    "pk": 11,
+    "fields": {
+      "metadata": {},
+      "name": "arcA",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "ac75ce89-4c0a-436a-871f-4675f7357012",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "main.eddobject",
+    "pk": 12,
+    "fields": {
+      "metadata": {},
+      "name": "BW1",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "bbb4a6da-0a91-4587-94be-6418f0645f42",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "main.line",
+    "pk": 11,
+    "fields": {
+      "study": 10,
+      "control": false,
+      "contact": null,
+      "contact_extra": "",
+      "experimenter": null,
+      "updates": [1],
+      "carbon_source": [],
+      "strains": []
+    }
+  },
+  {
+    "model": "main.line",
+    "pk": 12,
+    "fields": {
+      "study": 10,
+      "control": false,
+      "contact": null,
+      "contact_extra": "",
+      "experimenter": null,
+      "updates": [1],
+      "carbon_source": [],
+      "strains": []
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 13,
+    "fields": {
+      "name": "",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "ec2e3a30-3f35-4219-88a8-cf78fb100a98",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 13,
+    "fields": {
+      "meta_store": {},
+      "study": 10,
+      "status": "Created",
+      "category": 4,
+      "file": 14,
+      "file_format": 5,
+      "protocol": 3,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importfile",
+    "pk": 14,
+    "fields": {
+      "file": "FBA-OD-generic.xlsx",
+      "filename": "FBA-OD-generic.xlsx",
+      "created": 1,
+      "description": "",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "file_size": 9082
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 15,
+    "fields": {
+      "name": "",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "f464cca6-7370-4526-9718-be3ea55fea42",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 15,
+    "fields": {
+      "meta_store": {},
+      "study": 10,
+      "status": "Ready",
+      "category": 4,
+      "file": 14,
+      "file_format": 5,
+      "protocol": 3,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 16,
+    "fields": {
+      "name": "Generic parse err import",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "5c90ae30-1ea3-4442-88bc-d0b987d2c5a4",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 16,
+    "fields": {
+      "meta_store": {},
+      "study": 10,
+      "status": "Created",
+      "category": 4,
+      "file": 17,
+      "file_format": 5,
+      "protocol": 3,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importfile",
+    "pk": 17,
+    "fields": {
+      "file": "generic_import_parse_errs.xlsx",
+      "filename": "generic_import_parse_errs.xlsx",
+      "created": 1,
+      "description": "",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "file_size": 9143
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 18,
+    "fields": {
+      "name": "Generic processing err import",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "a2d7ea2a-08b1-4fd9-87d1-d21810f9b5e5",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 18,
+    "fields": {
+      "meta_store": {},
+      "study": 10,
+      "status": "Created",
+      "category": 4,
+      "file": 19,
+      "file_format": 5,
+      "protocol": 3,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importfile",
+    "pk": 19,
+    "fields": {
+      "file": "FBA-OD-generic-processing-errs.xlsx",
+      "filename": "FBA-OD-generic-processing-errs.xlsx",
+      "created": 1,
+      "description": "",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "file_size": 9143
+    }
+  }
+]

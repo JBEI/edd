@@ -1,0 +1,42 @@
+{
+  "pk": "13",
+  "uuid":
+  "ec2e3a30-3f35-4219-88a8-cf78fb100a98",
+  "status": "Ready",
+  "total_measures": {
+    "0": 1,
+    "1": 1
+  },
+  "required_values": [],
+  "types": {
+    "1": {
+      "id": 1,
+      "uuid": "d7510207-5beb-4d56-a54d-76afedcf14d0",
+      "name": "Optical Density",
+      "short": "OD",
+      "family": "_"
+    }
+  },
+  "measures": [
+    {
+      "id": 0,
+      "assay": 0,
+      "type": 1,
+      "comp": "0",
+      "format": "1",
+      "x_units": 2,
+      "y_units": 1,
+      "meta": {}
+    },
+    {
+      "id": 1,
+      "assay": 1,
+      "type": 1,
+      "comp": "0",
+      "format": "1",
+      "x_units": 2,
+      "y_units": 1,
+      "meta": {}
+    }
+  ]
+}

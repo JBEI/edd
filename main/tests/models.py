@@ -291,6 +291,9 @@ class LineTests(TestCase):  # XXX also Strain, CarbonSource
         request.user = self.user1
         set_thread_variable('request', request)
 
+    def tearDown(self):
+        set_thread_variable('request', None)
+
     def test_line_metadata(self):
         # 'media' is a MetadataType for Lines
         media = MetadataType.objects.get(type_name="Media")

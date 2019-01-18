@@ -57,18 +57,16 @@ class CombinatorialCreationTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.system_user = User.objects.get(username='system')
         cls.metabolomics, _ = Protocol.objects.get_or_create(
-            name='Metabolomics',
-            owned_by=cls.system_user,
+            name='Metabolomics', owned_by=cls.system_user
         )
         cls.targeted_proteomics, _ = Protocol.objects.get_or_create(
-            name='Targeted Proteomics',
-            owned_by=cls.system_user,
+            name="Targeted Proteomics", owned_by=cls.system_user
         )
         cls.media_mtype, _ = MetadataType.objects.get_or_create(
-            type_name='Media',
-            for_context=MetadataType.LINE,
+            type_name='Media', for_context=MetadataType.LINE,
         )
 
         # query the database and cache MetadataTypes, Protocols, etc that should be static
@@ -81,7 +79,8 @@ class CombinatorialCreationTests(TestCase):
         # TODO: reinstate once assay generation / naming is implemented for the combinatorial GUI
         cls._OMIT_ASSAYS_FROM_TEST = True
 
-    def setup(self):
+    def setUp(self):
+        super().setUp()
         self.cache.clear_import_specific_cache()
 
     def test_json_schema_valid(self):

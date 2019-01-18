@@ -182,8 +182,7 @@ class Import(BaseImportModel):
     """
 
     class Status:
-        # implies there's an uploaded file with unknown format, since otherwise import isn't saved
-        # unless parse & resolution are successful
+        # implies there's an uploaded file, which may not be processed yet
         CREATED = 'Created'
 
         # file is parsed & content verified, but some required context is missing
@@ -246,7 +245,7 @@ class Import(BaseImportModel):
 
     file = models.ForeignKey(
         'ImportFile',
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name='import_ref',
     )
 
@@ -310,34 +309,34 @@ class ImportFile(models.Model):
         verbose_name=_('File Path'),
     )
     filename = models.CharField(
-        help_text=_('Name of attachment file.'),
+        help_text=_('Name of the file.'),
         max_length=255,
         verbose_name=_('File Name'),
         editable=False
     )
     created = models.ForeignKey(
         edd_models.Update,
-        help_text=_('Update used to create the attachment.'),
+        help_text=_('Update used to create the file.'),
         on_delete=models.PROTECT,
         verbose_name=_('Created'),
         editable=False,
     )
     description = models.TextField(
         blank=True,
-        help_text=_('Description of attachment file contents.'),
+        help_text=_('Description of file contents.'),
         null=False,
         verbose_name=_('Description'),
     )
     mime_type = models.CharField(
         blank=True,
-        help_text=_('MIME ContentType of the attachment.'),
+        help_text=_('MIME ContentType of the file.'),
         max_length=255,
         null=True,
         verbose_name=_('MIME'),
     )
     file_size = models.IntegerField(
         default=0,
-        help_text=_('Total byte size of the attachment.'),
+        help_text=_('Total byte size of the file.'),
         verbose_name=_('Size'),
         editable=False
     )

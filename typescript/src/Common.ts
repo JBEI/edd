@@ -2,6 +2,8 @@ import * as $ from "jquery";
 import "bootstrap-loader";
 import * as Notification from "../modules/Notification";
 
+export const notificationSocket = new Notification.NotificationSocket();
+
 // called when the page loads
 export function prepareIt() {
 
@@ -21,23 +23,30 @@ export function prepareIt() {
     });
 
     // adding handlers for notifications in menubar
-    let socket = new Notification.NotificationSocket();
     let menuElement = document.getElementById('notification-dropdown');
-    let menu = new Notification.NotificationMenu(menuElement, socket);
+    let menu = new Notification.NotificationMenu(menuElement, notificationSocket);
 
-    // add handler to auto-download messages with the download tag
-    menu.tagActions.download = (message, item) => {
+    // Add a handler to auto-download messages with the "download" tag
+    // This handler is somewhat special in that it uses the browser to parse the HTML message
+    // content to extract the download link
+    notificationSocket.addTagAction('download', (message) => {
         // only acting if the current document is active and focused
         if (document.hasFocus()) {
-            let downloadLink = item.find('a.download').attr('href');
+            let downloadLink = message.payload.url;
             // and only act if a link is found
             if (downloadLink) {
-                socket.markRead(message.uuid);
+                notificationSocket.markRead(message.uuid);
                 window.location.replace(downloadLink);
             }
         }
-        return item;
-    };
+    });
+
+    // as a stopgap, silence menubar-level user notifications resulting from progression
+    // through the steps of the import process.  These notifications will eventually be valuable
+    // once we have support for monitoring imports or resumption of a work-in-progress import
+    notificationSocket.addTagAction('import-status-update', (message) => {
+        notificationSocket.markRead(message.uuid);
+    });
 }
 
 // use JQuery ready event shortcut to call prepareIt when page is ready

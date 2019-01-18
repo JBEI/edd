@@ -6,6 +6,7 @@ Views dealing with displaying and manipulating Study records.
 import collections
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -142,6 +143,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         action_lookup = collections.defaultdict(lambda: self.handle_unknown)
         action_lookup.update(
             delete_confirm=self.handle_delete_confirm,
+            showImportPrototype="edd_file_importer" in settings.INSTALLED_APPS,
             study_delete=self.handle_delete,
             study_restore=self.handle_restore,
         )

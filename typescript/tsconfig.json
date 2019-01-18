@@ -20,6 +20,8 @@
     "moduleResolution": "node",
     "baseUrl": ".",
 
+    "jsx": "react",
+
     /* Experimental */
     "pretty": true  // colorizes compiler outputs
   },

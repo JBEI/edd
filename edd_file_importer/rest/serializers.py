@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from .. import models
-from edd.rest.serializers import UpdateSerializer
+from edd.rest.serializers import UpdateSerializer, ProtocolSerializer
 
 
 class BaseImportObjectSerializer(serializers.ModelSerializer):
@@ -25,14 +25,20 @@ class BaseImportObjectSerializer(serializers.ModelSerializer):
 
 
 class ImportFormatSerializer(BaseImportObjectSerializer):
+    pk = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = models.ImportFormat
+        fields = BaseImportObjectSerializer.Meta.fields
 
 
 class ImportCategorySerializer(BaseImportObjectSerializer):
+    protocols = ProtocolSerializer(many=True)
+    file_formats = ImportFormatSerializer(many=True)
 
     class Meta:
         model = models.ImportCategory
+
         depth = 1
         fields = BaseImportObjectSerializer.Meta.fields + (
             'display_order',
@@ -41,7 +47,7 @@ class ImportCategorySerializer(BaseImportObjectSerializer):
         )
 
 
-class FileImportSerializer(BaseImportObjectSerializer):
+class ImportSerializer(BaseImportObjectSerializer):
 
     class Meta:
         model = models.Import

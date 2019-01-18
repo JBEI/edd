@@ -97,7 +97,7 @@ def export_table_task(self, user_id, param_path):
                 'Your export for "{name}" is ready. '
                 '<a href="{url}" class="download">Download the file here</a>.'
             ).format(name=export_name, url=url)
-            notifications.notify(message, tags=('download', ))
+            notifications.notify(message, tags=('download', ), payload={'url': url})
         except Exception as e:
             logger.exception('Failure in export_table_task: %s', e)
             message = _(
@@ -152,7 +152,7 @@ def export_worklist_task(self, user_id, param_path):
                 'Your worklist for "{name}" is ready. '
                 '<a href="{url}" class="download">Download the file here</a>.'
             ).format(name=export_name, url=url)
-            notifications.notify(message, tags=('download', ))
+            notifications.notify(message, tags=('download', ), payload={'url': url})
         except Exception as e:
             logger.exception(f'Failure in export_worklist_task: {e}')
             message = _(
@@ -185,7 +185,6 @@ def import_table_task(self, study_id, user_id, import_id):
     :param study_id: the primary key of the target study
     :param user_id: the primary key of the user running the import
     :param import_id: the UUID of this import
-    :param total_import_pages: the integer number of pages in the import
     :returns: a message to display via the TaskNotification middleware
     :throws RuntimeError: on any errors occurring while running the import
     """
@@ -232,38 +231,33 @@ def import_table_task(self, study_id, user_id, import_id):
                 importer.finish_import()
 
             # if requested, notify user of completion (e.g. for a large import)
-            send_import_completion_email(study, user, import_params, start, added, updated)
+            send_import_completion_email(study, user, import_params, start, total_added,
+                                         total_updated)
             message = _(
-                'Finished import to {study}: {added} added and {updated} updated measurements.'
-            ).format(study=study.name, added=total_added, updated=total_updated)
-            notifications.notify(message)
+                'Finished import to {study}: {total_added} added and {total_updated} '
+                'updated measurements.'.format(study=study.name, total_added=total_added,
+                                               total_updated=total_updated))
+            notifications.notify(message, tags=('legacy-import-message',))
             notifications.mark_read(self.request.id)
 
         except Exception as e:
-            logger.exception('Failure in import_table_task: %s', e)
+            logger.exception('Failure in import_table_task', e)
 
             # send configured error notifications
             send_import_failure_email(study, user, import_id, import_params, start)
             message = _(
-                'Failed import to {study}, EDD encountered this problem: {ex}'
+                'Failed import to {study}, EDD encountered this problem: {e}'
             ).format(study=study.name, ex=e)
-            notifications.notify(message)
+            notifications.notify(message, tags=('legacy-import-message',))
             notifications.mark_read(self.request.id)
-            raise RuntimeError(
-                _('Failed import to %(study)s, EDD encountered this problem: %(problem)s') % {
-                    'problem': e,
-                    'study': study.name,
-                }
-            )
+            raise RuntimeError(_(f'Failed import to {study.name}, EDD encountered this problem: '
+                                 f'{e}'))
         finally:
             set_thread_variable('request', None)
     except Exception as e:
         logger.exception(f'Failure in import_table_task: {e}')
         raise RuntimeError(
-            _('Failed import to study {study_id}, EDD encountered this problem: %(problem)s') % {
-                'problem': e,
-            }
-        )
+            _(f'Failed import to study {study_id}, EDD encountered this problem: {e}'))
 
 
 _IMPORT_SUCCESS_MSG = """Your data import is complete for study "%(study)s".
