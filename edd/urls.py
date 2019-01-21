@@ -26,7 +26,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('main.urls', namespace='main')),
     path('accounts/', include('allauth.urls')),  # allauth does not support namespacing
-    path('messages/', include('messages_extends.urls')),
     path('utilities/', include('edd_utils.urls', namespace='edd_utils')),
     path('profile/', include('edd.profile.urls', namespace='profile')),
     path('rest/', include(rest_urlpatterns)),

@@ -138,7 +138,6 @@ INSTALLED_APPS = (
     'rest_framework',  # djangorestframework in pip
     'rest_framework_swagger',  # django-rest-swagger in pip
     'django_filters',  # django-filter in pip
-    'messages_extends',  # django-messages-extends in pip
     # django-allauth in pip; separate apps for each provider
     'allauth',
     'allauth.account',
@@ -163,7 +162,6 @@ MIDDLEWARE = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'main.utilities.EDDSettingsMiddleware',
-    'edd.profile.middleware.TaskNotification',
 )
 
 

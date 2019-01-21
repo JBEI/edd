@@ -40,13 +40,3 @@ class InstitutionID(models.Model):
     institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
     profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     identifier = models.CharField(max_length=255, blank=True, null=True)
-
-
-class UserTask(models.Model):
-    """Recording of celery tasks started by a user."""
-    class Meta:
-        db_table = 'profile_task'
-    profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='tasks')
-    uuid = models.UUIDField(editable=False, unique=True)
-    add_time = models.DateTimeField(auto_now_add=True, editable=False)
-    notified = models.BooleanField(default=False)
