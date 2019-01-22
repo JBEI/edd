@@ -10,7 +10,7 @@ from main import solr
 
 
 class Command(BaseCommand):
-    help = 'Ensures the Solr indexes are ready for EDD to use.'
+    help = "Ensures the Solr indexes are ready for EDD to use."
 
     backend = LDAPBackend()
     study_core = solr.StudySearch()
@@ -24,16 +24,16 @@ class Command(BaseCommand):
         # Add all parent arguments
         super(Command, self).add_arguments(parser)
         parser.add_argument(
-            '--force',
-            action='store_true',
+            "--force",
+            action="store_true",
             default=False,
-            dest='force',
-            help='Forces a re-index',
+            dest="force",
+            help="Forces a re-index",
         )
 
     def handle(self, *args, **options):
         self.stdout.write("Checking user index")
-        if options['force'] or len(self.user_core) == 0:
+        if options["force"] or len(self.user_core) == 0:
             users_qs = self.user_core.get_queryset()
             self.user_core.swap().clear()
             user_updates = map(self._copy_groups, users_qs)
@@ -42,7 +42,7 @@ class Command(BaseCommand):
             self.user_core.swap_execute()
 
         self.stdout.write("Checking studies index")
-        if options['force'] or len(self.study_core) == 0:
+        if options["force"] or len(self.study_core) == 0:
             study_qs = self.study_core.get_queryset()
             self.study_core.swap().clear()
             self.stdout.write(f"Indexing {study_qs.count()} studies")
@@ -50,7 +50,7 @@ class Command(BaseCommand):
             self.study_core.swap_execute()
 
         self.stdout.write("Checking metabolite index")
-        if options['force'] or len(self.measurement_core) == 0:
+        if options["force"] or len(self.measurement_core) == 0:
             metabolite_qs = solr.MeasurementTypeSearch.get_queryset()
             self.measurement_core.swap().clear()
             self.stdout.write(f"Indexing {metabolite_qs.count()} metabolites")
@@ -64,7 +64,7 @@ class Command(BaseCommand):
         _LDAPUser(self.backend, user=user)
         try:
             user.ldap_user._mirror_groups()
-        except Exception as e:
+        except Exception:
             # _mirror_groups fails when ldap_user is not Active
             user.groups.clear()
         return user
