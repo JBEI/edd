@@ -355,10 +355,10 @@ if [ $INIT_INDEX -eq 1 ]; then
 
     if [ "$REINDEX_EDD" = "true" ]; then
         output
-        python /code/manage.py edd_index --force
+        python /code/manage.py edd_index --force &
     else
         output
-        python /code/manage.py edd_index
+        python /code/manage.py edd_index &
     fi
     output "End of Solr index check"
 fi

@@ -15,33 +15,45 @@ from edd import utilities
 
 
 logger = logging.getLogger(__name__)
-timeout = (10, 10)  # tuple for request connection and read timeouts, respectively, in seconds
+timeout = (
+    10,
+    10,
+)  # tuple for request connection and read timeouts, respectively, in seconds
 
 
 class SolrSearch(object):
     """ Base class for interfacing with Solr indices. """
 
-    def __init__(self, core=None, settings=None, settings_key='default', url=None,
-                 *args, **kwargs):
+    def __init__(
+        self,
+        core=None,
+        settings=None,
+        settings_key="default",
+        url=None,
+        *args,
+        **kwargs,
+    ):
         self.core = core
         if url is not None:
             self.base_url = url
         elif settings is not None:
-            self.base_url = settings.get('URL', None)
+            self.base_url = settings.get("URL", None)
         elif settings_key in django_settings.EDD_MAIN_SOLR:
-            self.base_url = django_settings.EDD_MAIN_SOLR[settings_key].get('URL', None)
+            self.base_url = django_settings.EDD_MAIN_SOLR[settings_key].get("URL", None)
         else:
-            logger.warning(f'Using default Solr configuration, no setting key for {settings_key}')
-            self.base_url = 'http://localhost:8080'
+            logger.warning(
+                f"Using default Solr configuration, no setting key for {settings_key}"
+            )
+            self.base_url = "http://localhost:8080"
         # chop trailing slash if present
-        if self.base_url[-1] == '/':
+        if self.base_url[-1] == "/":
             self.base_url = self.base_url[0:-1]
 
     def __repr__(self, *args, **kwargs):
         return self.__str__()
 
     def __str__(self, *args, **kwargs):
-        return f'SolrSearch[{self.url}]'
+        return f"SolrSearch[{self.url}]"
 
     def clear(self):
         """
@@ -50,9 +62,9 @@ class SolrSearch(object):
         :raises IOError: if an error occurs during the attempt
         """
         # build the request
-        url = f'{self.url}/update/json'
-        command = '{"delete":{"query":"*:*"},"commit":{}}'
-        headers = {'content-type': 'application/json'}
+        url = f"{self.url}/update/json"
+        command = r'{"delete":{"query":"*:*"},"commit":{}}'
+        headers = {"content-type": "application/json"}
         # issue the request (raises IOError)
         response = requests.post(url, data=command, headers=headers, timeout=timeout)
         response.raise_for_status()  # raises HttpError (extends IOError)
@@ -64,24 +76,24 @@ class SolrSearch(object):
     def get_queryopt(self, query, **kwargs):
         # do some basic bounds sanity checking
         try:
-            start = int(kwargs.get('i', 0))
+            start = int(kwargs.get("i", 0))
             start = 0 if start < 0 else start
-        except Exception as e:
+        except Exception:
             start = 0
 
         try:
-            rows = int(kwargs.get('size', 50))
+            rows = int(kwargs.get("size", 50))
             rows = 50 if rows < 1 else rows
-        except Exception as e:
+        except Exception:
             rows = 50
         queryopt = {
-            'indent': True,
-            'q': query,
-            'start': start,
-            'rows': rows,
-            'sort': kwargs.get('sort', None),
-            'wt': 'json',
-            'fl': '*',
+            "indent": True,
+            "q": query,
+            "start": start,
+            "rows": rows,
+            "sort": kwargs.get("sort", None),
+            "wt": "json",
+            "fl": "*",
         }
         return queryopt
 
@@ -91,31 +103,36 @@ class SolrSearch(object):
 
         :param docs: an iterable of objects with an id property
 
-        :raises IOError: if an error occurs during the removal attempt. Note that removals are
-            performed iteratively, so it's possible that some succeeded before the error occurred.
+        :raises IOError: if an error occurs during the removal attempt. Note that
+            removals are performed iteratively, so it's possible that some succeeded
+            before the error occurred.
         """
-        # Does no permissions checking; permissions already valid if called from Study pre_delete
-        # signal, but other clients must do their own permission checks.
-        url = f'{self.url}/update/json'
+        # Does no permissions checking; permissions already valid if called from
+        # Study pre_delete signal, but other clients must do their own permission checks.
+        url = f"{self.url}/update/json"
         # proactively log input to help diagnose integration errors, if they occur
         logger.info(
-            f'{self.__class__.__name__} deleting from solr index with: {[d.id for d in docs]}'
+            f"{self.__class__.__name__} deleting from solr index with: {[d.id for d in docs]}"
         )
-        headers = {'content-type': 'application/json'}
+        headers = {"content-type": "application/json"}
         for doc in docs:
             try:
                 response = requests.post(
                     url,
-                    data=json.dumps({"delete": {"query": f"id:{doc.id}"}, "commit": {}}),
+                    data=json.dumps(
+                        {"delete": {"query": f"id:{doc.id}"}, "commit": {}}
+                    ),
                     headers=headers,
                     timeout=timeout,
                 )
                 response.raise_for_status()
-            # catch / re-raise communication errors after logging some helpful context re: where
-            # the error occurred
+            # catch / re-raise communication errors after logging some helpful
+            # context re: where the error occurred
             except IOError as err:
                 # log the doc id on which the error occurred, then re-raise the error
-                logger.error(f'Error removing data from Solr index. Failed on doc id {doc.id}')
+                logger.error(
+                    f"Error removing data from Solr index. Failed on doc id {doc.id}"
+                )
                 raise err
 
     def search(self, queryopt=None):
@@ -126,16 +143,16 @@ class SolrSearch(object):
         :raises IOError: if an error occurs during the query attempt
         """
         if queryopt is None:
-            queryopt = {'q': '*:*', 'wt': 'json', }
+            queryopt = {"q": "*:*", "wt": "json"}
         # single character queries will never return results as smallest ngram is 2 characters
-        if len(queryopt['q']) == 1:
-            queryopt['q'] = f'{queryopt["q"]}*'
+        if len(queryopt["q"]) == 1:
+            queryopt["q"] = f'{queryopt["q"]}*'
 
         # proactively log input to help diagnose integration errors, if they occur
-        logger.info(f'{self.__class__.__name__} searching solr index with: {queryopt}')
+        logger.info(f"{self.__class__.__name__} searching solr index with: {queryopt}")
 
         # contact Solr / raise any IOErrors that arise
-        response = requests.get(f'{self.url}/select', params=queryopt, timeout=timeout)
+        response = requests.get(f"{self.url}/select", params=queryopt, timeout=timeout)
         response.raise_for_status()
 
         return response.json()
@@ -167,24 +184,26 @@ class SolrSearch(object):
 
     def update(self, docs):
         """
-        Update Solr index from the given list of objects. Does no permissions checking; permissions
-        already valid if called from Study post_save signal, but other clients must do own checks
-        on permissions.
+        Update Solr index from the given list of objects. Does no permissions checking;
+        permissions already valid if called from Study post_save signal, but other
+        clients must do own checks on permissions.
 
-        :param docs: an iterable of objects with a to_solr_json method to update in Solr. Must
-            have an id attribute.
+        :param docs: an iterable of objects with a to_solr_json method to update in Solr.
+            Must have an id attribute.
         :return: list of Solr's JSON response(s), if the update was successfully performed.
         :raises IOError: if an error occurs during the update attempt
         """
-        url = f'{self.url}/update/json'
+        url = f"{self.url}/update/json"
         payload = filter(lambda d: d is not None, map(self.get_solr_payload, docs))
         response_list = []
 
-        headers = {'content-type': 'application/json'}
+        headers = {"content-type": "application/json"}
         # Send updates in groups of 50
         for group in iter(lambda: list(islice(payload, 50)), []):
-            ids = [item.get('id') for item in group]
-            logger.info(f'{self.__class__.__name__} updating solr index with IDs: {ids}')
+            ids = [item.get("id") for item in group]
+            logger.info(
+                f"{self.__class__.__name__} updating solr index with IDs: {ids}"
+            )
             # make an initial request to do the add / raise IOError if it occurs
             response = requests.post(
                 url,
@@ -198,13 +217,10 @@ class SolrSearch(object):
             # if the add worked, send commit command
             add_json = response.json()
             response = requests.post(
-                url,
-                data='{"commit":{}}',
-                headers=headers,
-                timeout=timeout,
+                url, data=r'{"commit":{}}', headers=headers, timeout=timeout
             )  # raises IOError
             response.raise_for_status()  # raises HttpError (extends IOError)
-            logger.info(f'{self.__class__.__name__} commit successful with IDs: {ids}')
+            logger.info(f"{self.__class__.__name__} commit successful with IDs: {ids}")
             response_list.append(add_json)
         return response_list
 
@@ -213,10 +229,10 @@ class SolrSearch(object):
         Change this search object to point to the swap index. All other search objects will
         continue to use the main index.
         """
-        if self.core.endswith('_swap'):
-            self.core = self.core[:self.core.rfind('_swap')]
+        if self.core.endswith("_swap"):
+            self.core = self.core[: self.core.rfind("_swap")]
         else:
-            self.core = self.core + '_swap'
+            self.core = self.core + "_swap"
         return self
 
     def swap_execute(self):
@@ -225,23 +241,23 @@ class SolrSearch(object):
         long-running re-index tasks; update everything in the swap index, then replace the main
         index with the swap index.
         """
-        url = f'{self.base_url}/admin/cores'
-        params = {
-            'action': 'SWAP',
-            'other': self.swap().core,
-            'core': self.swap().core,
-        }
+        url = f"{self.base_url}/admin/cores"
+        current_core = self.core
+        updated_core = self.swap().core
+        params = {"action": "SWAP", "other": updated_core, "core": current_core}
+        # send the request to swap out the current core for the updated one
         response = requests.get(url, params=params, timeout=timeout)
         response.raise_for_status()
-        return self
+        # swap again after the service switches the backing cores
+        return self.swap()
 
     @property
     def url(self):
-        return f'{self.base_url}/{self.core}'
+        return f"{self.base_url}/{self.core}"
 
     def __len__(self):
-        url = f'{self.base_url}/admin/cores'
-        response = requests.get(url, params={'core': self.core}, timeout=timeout)
+        url = f"{self.base_url}/admin/cores"
+        response = requests.get(url, params={"core": self.core}, timeout=timeout)
         response.raise_for_status()
         return response.json()["status"][self.core]["index"]["maxDoc"]
 
@@ -257,12 +273,12 @@ class StudySearch(SolrSearch):
         settings_key: connection key in settings SOLR value
     """
 
-    def __init__(self, core='studies', ident=None, *args, **kwargs):
+    def __init__(self, core="studies", ident=None, *args, **kwargs):
         super(StudySearch, self).__init__(core=core, *args, **kwargs)
         self.ident = ident
 
     def __str__(self, *args, **kwargs):
-        return f'StudySearch[{self.url}][{self.ident}]'
+        return f"StudySearch[{self.url}][{self.ident}]"
 
     @staticmethod
     def build_acl_filter(ident):
@@ -276,36 +292,39 @@ class StudySearch(SolrSearch):
         """
         # Admins get no filter on read, and a query that will always eval true for write
         if ident.is_superuser:
-            return ('', 'id:*')
+            return ("", "id:*")
         user_acl = f'"u:{ident.username}"'
-        acl = ['"g:__Everyone__"', user_acl, ] + [f'"g:{g.name}"' for g in ident.groups.all()]
+        acl = ['"g:__Everyone__"', user_acl] + [
+            f'"g:{g.name}"' for g in ident.groups.all()
+        ]
         return (
-            ' OR '.join([f'aclr:{r}' for r in acl]),
-            ' OR '.join([f'aclw:{w}' for w in acl]),
+            " OR ".join([f"aclr:{r}" for r in acl]),
+            " OR ".join([f"aclw:{w}" for w in acl]),
         )
 
     @staticmethod
     def get_queryset():
-        return models.Study.objects.select_related(
-            'contact',
-            'updated__mod_by__userprofile',
-            'created__mod_by__userprofile',
-        ).annotate(
-            _file_count=Count('files'),
-            _comment_count=Count('comments'),
-        ).prefetch_related(
-            Prefetch(
-                'userpermission_set',
-                queryset=models.UserPermission.objects.select_related('user'),
-            ),
-            Prefetch(
-                'grouppermission_set',
-                queryset=models.GroupPermission.objects.select_related('group'),
-            ),
-            'everyonepermission_set',
+        return (
+            models.Study.objects.select_related(
+                "contact",
+                "updated__mod_by__userprofile",
+                "created__mod_by__userprofile",
+            )
+            .annotate(_file_count=Count("files"), _comment_count=Count("comments"))
+            .prefetch_related(
+                Prefetch(
+                    "userpermission_set",
+                    queryset=models.UserPermission.objects.select_related("user"),
+                ),
+                Prefetch(
+                    "grouppermission_set",
+                    queryset=models.GroupPermission.objects.select_related("group"),
+                ),
+                "everyonepermission_set",
+            )
         )
 
-    def query(self, query='', options=None):
+    def query(self, query="", options=None):
         """
         Run a query against the Solr index.
 
@@ -339,42 +358,54 @@ class StudySearch(SolrSearch):
     def get_queryopt(self, query, **kwargs):
         queryopt = super(StudySearch, self).get_queryopt(query, **kwargs)
         if self.ident is None:
-            raise RuntimeError('No user defined for query')
+            raise RuntimeError("No user defined for query")
         (readable, writable) = StudySearch.build_acl_filter(self.ident)
-        fq = [readable, ]
-        queryopt['fl'] = f"""*,score,writable:exists(query({{!v='{writable}'}},0))"""
-        if kwargs.get('edismax', False):
-            queryopt['defType'] = 'edismax'
+        fq = [readable]
+        queryopt["fl"] = f"""*,score,writable:exists(query({{!v='{writable}'}},0))"""
+        if kwargs.get("edismax", False):
+            queryopt["defType"] = "edismax"
             # these are the query fields and boosts to use in EDisMax
-            queryopt['qf'] = ' '.join([
-                'name^10', 'name_ng', 'description^5', 'description_ng', 'contact', 'contact_ng',
-                'creator_email', 'creator_name', 'creator_ng', 'initials', 'metabolite_name',
-                'protocol_name', 'part_name',
-            ])
-            queryopt['q.alt'] = '*:*'
-        if not kwargs.get('showDisabled', False):
-            fq.append('active:true')
-        if kwargs.get('showMine', False):
-            fq.append(f'creator:{self.ident.pk}')
-        queryopt['fq'] = fq
+            queryopt["qf"] = " ".join(
+                [
+                    "name^10",
+                    "name_ng",
+                    "description^5",
+                    "description_ng",
+                    "contact",
+                    "contact_ng",
+                    "creator_email",
+                    "creator_name",
+                    "creator_ng",
+                    "initials",
+                    "metabolite_name",
+                    "protocol_name",
+                    "part_name",
+                ]
+            )
+            queryopt["q.alt"] = "*:*"
+        if not kwargs.get("showDisabled", False):
+            fq.append("active:true")
+        if kwargs.get("showMine", False):
+            fq.append(f"creator:{self.ident.pk}")
+        queryopt["fq"] = fq
         return queryopt
 
 
 class UserSearch(SolrSearch):
     """ API to manage searching for users via Solr index """
 
-    def __init__(self, core='users', *args, **kwargs):
+    def __init__(self, core="users", *args, **kwargs):
         super(UserSearch, self).__init__(core=core, *args, **kwargs)
 
     @staticmethod
     def get_queryset():
-        return get_user_model().objects.select_related(
-            'userprofile',
-        ).prefetch_related(
-            'userprofile__institutions',
+        return (
+            get_user_model()
+            .objects.select_related("userprofile")
+            .prefetch_related("userprofile__institutions")
         )
 
-    def query(self, query='is_active:true', options=None):
+    def query(self, query="is_active:true", options=None):
         """
         Run a query against the Users Solr index.
 
@@ -406,67 +437,76 @@ class UserSearch(SolrSearch):
 
     def get_queryopt(self, query, **kwargs):
         queryopt = super(UserSearch, self).get_queryopt(query, **kwargs)
-        if kwargs.get('edismax', False):
-            queryopt['defType'] = 'edismax'
+        if kwargs.get("edismax", False):
+            queryopt["defType"] = "edismax"
             # these are the query fields and boosts to use in EDisMax
-            queryopt['qf'] = ' '.join([
-                'name^10', 'name_ng^5', 'initial_lower^5', 'group_ng', 'institution_ng',
-            ])
-            queryopt['q.alt'] = '*:*'
-        if kwargs.get('showDisabled', False):
-            queryopt['fq'] = [queryopt['fq'], 'is_active:true']
+            queryopt["qf"] = " ".join(
+                [
+                    "name^10",
+                    "name_ng^5",
+                    "initial_lower^5",
+                    "group_ng",
+                    "institution_ng",
+                ]
+            )
+            queryopt["q.alt"] = "*:*"
+        if kwargs.get("showDisabled", False):
+            queryopt["fq"] = [queryopt["fq"], "is_active:true"]
         return queryopt
 
 
 class MeasurementTypeSearch(SolrSearch):
     """ API to manage searching for measurement types via Solr index """
 
-    def __init__(self, core='measurement', *args, **kwargs):
+    def __init__(self, core="measurement", *args, **kwargs):
         super(MeasurementTypeSearch, self).__init__(core=core, *args, **kwargs)
 
     @staticmethod
     def get_queryset():
         return models.MeasurementType.objects.annotate(
-            _source_name=F('type_source__name'),
+            _source_name=F("type_source__name")
         ).select_related(
-            'metabolite',
-            'proteinidentifier',
-            'geneidentifier',
-            'phosphor',
+            "metabolite", "proteinidentifier", "geneidentifier", "phosphor"
         )
 
     def get_queryopt(self, query, **kwargs):
         queryopt = super(MeasurementTypeSearch, self).get_queryopt(query, **kwargs)
-        queryopt['defType'] = 'edismax'
-        queryopt['qf'] = ' '.join([
-            'name^10',  # put high weight on matching name
-            'name_edge^5',  # half as much on matching begin/end of name
-            'name_ng^2',  # smaller weight on matching substring
-            'synonym^8',  # high weight on matching synonyms
-            'synonym_edge^4',  # half as much on matching begin/end of synonym
-            'synonym_ng^2',  # smaller weight on matching substring of synonym
-            'code^10',  # high weight on matching the BIGG/SBML short name
-            'm_formula',  # small weight on matching formula string
-        ])
-        queryopt['q.alt'] = '*:*'
-        if kwargs.get('family', None):
-            family = kwargs['family']
+        queryopt["defType"] = "edismax"
+        queryopt["qf"] = " ".join(
+            [
+                "name^10",  # put high weight on matching name
+                "name_edge^5",  # half as much on matching begin/end of name
+                "name_ng^2",  # smaller weight on matching substring
+                "synonym^8",  # high weight on matching synonyms
+                "synonym_edge^4",  # half as much on matching begin/end of synonym
+                "synonym_ng^2",  # smaller weight on matching substring of synonym
+                "code^10",  # high weight on matching the BIGG/SBML short name
+                "m_formula",  # small weight on matching formula string
+            ]
+        )
+        queryopt["q.alt"] = "*:*"
+        if kwargs.get("family", None):
+            family = kwargs["family"]
             if isinstance(family, string_types):
-                queryopt['fq'] = f'family:{family}'
+                queryopt["fq"] = f"family:{family}"
             else:
-                queryopt['fq'] = [f'family:{f}' for f in family].join(' OR ')
+                queryopt["fq"] = [f"family:{f}" for f in family].join(" OR ")
         return queryopt
 
     def get_solr_payload(self, obj):
         Group = models.MeasurementType.Group
         try:
-            if obj.type_group == Group.METABOLITE and hasattr(obj, 'metabolite'):
+            if obj.type_group == Group.METABOLITE and hasattr(obj, "metabolite"):
                 item = obj.metabolite
-            elif obj.type_group == Group.PROTEINID and hasattr(obj, 'proteinidentifier'):
+            elif obj.type_group == Group.PROTEINID and hasattr(
+                obj, "proteinidentifier"
+            ):
                 item = obj.proteinidentifier
             else:
                 item = obj
-        except Exception as e:
-            logger.exception(f'Could not load detailed info on measurement type {obj.type_name}')
+        except Exception:
+            logger.exception(
+                f"Could not load detailed info on measurement type {obj.type_name}"
+            )
             item = obj
         return item.to_solr_json()
