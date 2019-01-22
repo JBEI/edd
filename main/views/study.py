@@ -143,7 +143,6 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         action_lookup = collections.defaultdict(lambda: self.handle_unknown)
         action_lookup.update(
             delete_confirm=self.handle_delete_confirm,
-            showImportPrototype="edd_file_importer" in settings.INSTALLED_APPS,
             study_delete=self.handle_delete,
             study_restore=self.handle_restore,
         )
@@ -162,6 +161,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             rest=rest_reverse(
                 "rest:studies-detail", kwargs={"pk": instance.pk}, request=self.request
             ),
+            showImportPrototype="edd_file_importer" in settings.INSTALLED_APPS,
             writable=instance.user_can_write(self.request.user),
         )
         return context
