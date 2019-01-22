@@ -211,7 +211,7 @@ class StudyImportsViewSet(StudyInternalsFilterMixin, mixins.CreateModelMixin,
             requested_status = request.data.get('status', None)
             if requested_status:
                 attempt_status_transition(import_, requested_status,
-                                          self.request.user, async_=True)
+                                          self.request.user, run_async=True)
                 return JsonResponse({}, status=codes.accepted)
 
             # if the file was parsed in an earlier request, e.g. in the first half of Step 3,
