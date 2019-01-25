@@ -247,7 +247,7 @@ def import_table_task(self, study_id, user_id, import_id):
             send_import_failure_email(study, user, import_id, import_params, start)
             message = _(
                 'Failed import to {study}, EDD encountered this problem: {e}'
-            ).format(study=study.name, ex=e)
+            ).format(study=study.name, e=e)
             notifications.notify(message, tags=('legacy-import-message',))
             notifications.mark_read(self.request.id)
             raise RuntimeError(_(f'Failed import to {study.name}, EDD encountered this problem: '
