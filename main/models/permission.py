@@ -5,16 +5,11 @@ Models related to setting permissions to view/edit objects in EDD.
 
 from django.conf import settings
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
 
-@python_2_unicode_compatible
-class StudyPermission(models.Model):
-    """ Access given for a *specific* study instance, rather than for object types provided by
-        Django. """
-    class Meta:
-        abstract = True
+class Permission(object):
+    """Mixin class of constants used for permissions."""
     NONE = 'N'
     READ = 'R'
     WRITE = 'W'
@@ -25,6 +20,33 @@ class StudyPermission(models.Model):
     )
     CAN_VIEW = (READ, WRITE)
     CAN_EDIT = (WRITE, )
+
+    def applies_to_user(self, user):
+        """
+        Test if permission applies to given user.
+
+        Base class will always return False, override in child classes.
+
+        :param user: to be tested, model from django.contrib.auth.models.User
+        :returns: True if StudyPermission applies to the User
+        """
+        return False
+
+    def get_who_label(self):
+        return '?'
+
+    def __str__(self):
+        return self.get_who_label()
+
+
+class StudyPermission(Permission, models.Model):
+    """
+    Access given for a *specific* study instance, rather than for object types provided
+    by Django.
+    """
+    class Meta:
+        abstract = True
+
     study = models.ForeignKey(
         'main.Study',
         help_text=_('Study this permission applies to.'),
@@ -32,53 +54,43 @@ class StudyPermission(models.Model):
         verbose_name=_('Study'),
     )
     permission_type = models.CharField(
-        choices=TYPE_CHOICE,
-        default=NONE,
+        choices=Permission.TYPE_CHOICE,
+        default=Permission.NONE,
         help_text=_('Type of permission.'),
         max_length=8,
         verbose_name=_('Permission'),
     )
 
-    def applies_to_user(self, user):
-        """ Test if permission applies to given user.
-            Base class will always return False, override in child classes.
-            Arguments:
-                user: to be tested, model from django.contrib.auth.models.User
-            Returns:
-                True if StudyPermission applies to the User """
-        return False
-
     def get_type_label(self):
         return dict(self.TYPE_CHOICE).get(self.permission_type, '?')
 
-    def get_who_label(self):
-        return '?'
-
     def is_read(self):
-        """ Test if the permission grants read privileges.
-            Returns:
-                True if permission grants read """
-        return self.permission_type == self.READ or self.permission_type == self.WRITE
+        """
+        Test if the permission grants read privileges.
+
+        :returns: True if permission grants read access
+        """
+        return self.permission_type in self.CAN_VIEW
 
     def is_write(self):
-        """ Test if the permission grants write privileges.
-            Returns:
-                True if permission grants write """
-        return self.permission_type == self.WRITE
+        """
+        Test if the permission grants write privileges.
 
-    def __str__(self):
-        return self.get_who_label()
+        :returns: True if permission grants write access
+        """
+        return self.permission_type in self.CAN_EDIT
 
 
-@python_2_unicode_compatible
-class UserPermission(StudyPermission):
+class UserMixin(models.Model):
+    """Mixin class for permissions linking to a specific user."""
     class Meta:
-        db_table = 'study_user_permission'
+        abstract = True
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         help_text=_('User this permission applies to.'),
         on_delete=models.CASCADE,
-        related_name='userpermission_set',
+        related_name='+',
         verbose_name=_('User'),
     )
 
@@ -98,18 +110,24 @@ class UserPermission(StudyPermission):
         }
 
     def __str__(self):
-        return 'u:%(user)s' % {'user': self.user.username}
+        return f'u:{self.user.username}'
 
 
-@python_2_unicode_compatible
-class GroupPermission(StudyPermission):
+class UserPermission(UserMixin, StudyPermission):
     class Meta:
-        db_table = 'study_group_permission'
+        db_table = 'study_user_permission'
+
+
+class GroupMixin(models.Model):
+    """Mixin class for permissions linking to a specific group."""
+    class Meta:
+        abstract = True
+
     group = models.ForeignKey(
         'auth.Group',
         help_text=_('Group this permission applies to.'),
         on_delete=models.CASCADE,
-        related_name='grouppermission_set',
+        related_name='+',
         verbose_name=_('Group'),
     )
 
@@ -129,13 +147,16 @@ class GroupPermission(StudyPermission):
         }
 
     def __str__(self):
-        return 'g:%(group)s' % {'group': self.group.name}
+        return f'g:{self.group.name}'
 
 
-@python_2_unicode_compatible
-class EveryonePermission(StudyPermission):
+class GroupPermission(GroupMixin, StudyPermission):
     class Meta:
-        db_table = 'study_public_permission'
+        db_table = 'study_group_permission'
+
+
+class EveryoneMixin(object):
+    """Mixin class for permissions applying to all logged-in users."""
 
     def applies_to_user(self, user):
         return True
@@ -150,3 +171,8 @@ class EveryonePermission(StudyPermission):
 
     def __str__(self):
         return 'g:__Everyone__'
+
+
+class EveryonePermission(EveryoneMixin, StudyPermission):
+    class Meta:
+        db_table = 'study_public_permission'

@@ -27,7 +27,7 @@ class EDDSerialize(object):
         }
 
 
-def qfilter(value, fields=tuple()):
+def qfilter(value, fields=None):
     """
     Creates an optional filter; if the content of the value to filter by is None, return an empty
     filter term. Otherwise, chain together the field lookups and return a filter term for those
@@ -35,6 +35,8 @@ def qfilter(value, fields=tuple()):
     chained field names has an unknown. If these conditions are not met, use regular syntax of
     queryset.filter(fieldA__fieldB=value).
     """
+    if fields is None:
+        fields = tuple()
     if value is not None:
         return Q(**{'__'.join(fields): value})
     return Q()
