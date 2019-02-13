@@ -65,7 +65,7 @@ def flatten_json(source):
         if isinstance(value, string_types):
             output[key] = value
         elif isinstance(value, (dict, Iterable)):
-            for sub, item in flatten_json(value.items()):
+            for sub, item in flatten_json(value).items():
                 output['.'.join((key, sub, ))] = item
         else:
             output[key] = value

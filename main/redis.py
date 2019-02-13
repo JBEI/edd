@@ -77,7 +77,7 @@ class ScratchStorage(object):
         :param ...names: one or more names to delete from storage
         :returns: the number of keys actually deleted
         """
-        return self._redis.delete(self._key(name) for name in names)
+        return self._redis.delete(*map(self._key, names))
 
     def load(self, name):
         """
