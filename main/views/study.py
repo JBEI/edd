@@ -497,7 +497,8 @@ class StudyLinesView(StudyDetailBaseView):
 
     def handle_line_export(self, request, context, *args, **kwargs):
         export_type = request.POST.get("export", "csv")
-        return self._get_export_types().get(export_type, ExportView.as_view())
+        study = self.get_object()
+        return self._get_export_types().get(export_type, ExportView.as_view(study=study))
 
     def handle_line_edit(self, request, context, lines):
         study = self.get_object()
@@ -534,11 +535,12 @@ class StudyLinesView(StudyDetailBaseView):
         return False
 
     def _get_export_types(self):
+        study = self.get_object()
         return {
-            "csv": ExportView.as_view(),
-            "sbml": SbmlView.as_view(),
+            "csv": ExportView.as_view(study=study),
+            "sbml": SbmlView.as_view(study=study),
             "study": StudyCreateView.as_view(),
-            "worklist": WorklistView.as_view(),
+            "worklist": WorklistView.as_view(study=study),
         }
 
 
@@ -635,7 +637,7 @@ class StudyDetailView(StudyDetailBaseView):
         return saved > 0
 
     def handle_export(self, request, context, *args, **kwargs):
-        return ExportView.as_view()
+        return ExportView.as_view(study=self.get_object())
 
     def handle_measurement_add(self, request, context, *args, **kwargs):
         self.check_write_permission(request)

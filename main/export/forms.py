@@ -38,11 +38,24 @@ class ExportSelectionForm(forms.Form):
         widget=forms.MultipleHiddenInput
     )
 
-    def __init__(self, user=None, exclude_disabled=True, *args, **kwargs):
+    def __init__(self, user=None, exclude_disabled=True, fallback=None, *args, **kwargs):
+        """
+        A form for selecting measurements to export. If a parent object is passed to
+        the form, all measurements under that parent object are also included.
+
+        :param user: the user selecting items for export; used to determine permissions
+        :param exclude_disabled: defaults True; if truthy, limit validation of IDs to
+            only those that have the active flag set
+        :param fallback: if set, the fallback IDs to use if no form fields in form
+            data. Useful for cases where empty selection is equivalent to selecting
+            an entire study. Should be a dict-like object with keys matching form
+            field names and values being iterables of IDs (e.g. {"studyId": x})
+        """
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
         self._user = user
         self._exclude_disabled = exclude_disabled
+        self._fallback = fallback
         if self._user is None:
             raise ValueError("ExportSelectionForm requires a user parameter")
         self._selection = None
@@ -59,7 +72,13 @@ class ExportSelectionForm(forms.Form):
         assayId = data.get('assayId', [])
         measureId = data.get('measurementId', [])
         if not (studyId or lineId or assayId or measureId):
-            raise forms.ValidationError("Selection cannot be empty.")
+            if self._fallback:
+                studyId = self._fallback.get('studyId', [])
+                lineId = self._fallback.get('lineId', [])
+                assayId = self._fallback.get('assayId', [])
+                measureId = self._fallback.get('measurementId', [])
+            if not (studyId or lineId or assayId or measureId):
+                raise forms.ValidationError("Selection cannot be empty.")
         self._selection = table.ExportSelection(
             self._user,
             exclude_disabled=self._exclude_disabled,

@@ -23,10 +23,9 @@ logger = logging.getLogger(__name__)
 class EDDExportView(generic.TemplateView):
     """ Base view for exporting EDD information. """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._export_ok = False
-        self._selection = ExportSelection(None)
+    study = None
+    _export_ok = False
+    _selection = ExportSelection(None)
 
     def get(self, request, *args, **kwargs):
         context = self.get_context_data(**kwargs)
@@ -47,7 +46,10 @@ class EDDExportView(generic.TemplateView):
         return ["main/export.html"]
 
     def init_forms(self, request, payload):
-        select_form = export_forms.ExportSelectionForm(data=payload, user=request.user)
+        fallback = {"studyId": [self.study.pk]} if self.study else None
+        select_form = export_forms.ExportSelectionForm(
+            data=payload, user=request.user, fallback=fallback
+        )
         try:
             self._selection = select_form.get_selection()
         # TODO: uncovered code

@@ -83,7 +83,7 @@ def import_xlsx_tables(
         raise ValueError("No worksheets found in Excel file!")
     ws = _get_sheets_from_workbook(wb, worksheet_name, worksheet_id)
     ws_results = []
-    for i_sheet, ws_ in enumerate(ws):
+    for ws_ in ws:
         try:
             ws_results.append(
                 _find_table_of_values(
@@ -92,7 +92,7 @@ def import_xlsx_tables(
                     column_search_text=column_search_text,
                     enforce_non_blank_cells=enforce_non_blank_cells,
                     expect_numeric_data=expect_numeric_data))
-        except ValueError as e:
+        except ValueError:
             if len(ws) > 1:
                 continue
             else:
@@ -122,13 +122,14 @@ def import_xlsx_table(*args, **kwds):
 # XXX This might be generalizable to other applications (e.g. processing
 # various text files), since it can accept a Python list-of-lists as input
 def _find_table_of_values(
-        worksheet,
-        column_labels=None,
-        column_search_text=None,
-        expect_numeric_data=False,
-        minimum_number_of_data_rows=2,
-        maximum_number_of_tables=sys.maxsize,
-        enforce_non_blank_cells=False):
+    worksheet,
+    column_labels=None,
+    column_search_text=None,
+    expect_numeric_data=False,
+    minimum_number_of_data_rows=2,
+    maximum_number_of_tables=sys.maxsize,
+    enforce_non_blank_cells=False,
+):
     """
     Scan a worksheet for a block of cells resembling a regular table structure,
     using optional clues about content.  Returns a list of dicts with separate
@@ -167,12 +168,16 @@ def _find_table_of_values(
                 if len(headers) >= 2:
                     table = []
                     while row_index < n_rows:
-                        row = [rows[row_index][k] for k in column_indices]
+                        current_row = rows[row_index]
+                        adding_row = [
+                            current_row[k] for k in column_indices if k < len(current_row)
+                        ]
                         row_index += 1
                         # stop when we hit a row where (at least) the first cell is blank
-                        if (row[0] is None):
+                        if adding_row and adding_row[0] is not None:
+                            table.append(adding_row)
+                        else:
                             break
-                        table.append(row)
                     if (len(table) == 0):
                         raise ValueError(
                             "The column labels '%s' were found in the "
@@ -195,7 +200,7 @@ def _find_table_of_values(
                         while (row_index < n_rows):
                             row = rows[row_index][i_cell:]
                             row_index += 1
-                            if (row[0] is not None):
+                            if row and row[0] is not None:
                                 table.append(list(row))
                             else:
                                 break
@@ -239,7 +244,7 @@ def _find_table_of_values(
                 # to have 'irregular row sizes'.
                 irregular_row_sizes = False
                 found_blank_cells = False
-                for c_rows_index, c_row in enumerate(contiguous_rows):
+                for c_row in contiguous_rows:
 
                     first_non_empty_cell = None
                     last_non_empty_cell = None
@@ -297,7 +302,7 @@ def _find_table_of_values(
                 # empty leading cells are structurally relevant -
                 # e.g. they indicate null values, or act as spacing for headers.
                 tmp = []
-                for c_rows_index, c_row in enumerate(contiguous_rows):
+                for c_row in contiguous_rows:
                     c_row_part = c_row[first_non_empty_column:]
                     tmp.append(list(c_row_part))
 
