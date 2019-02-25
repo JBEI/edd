@@ -17,7 +17,9 @@ from requests import codes
 from unittest.mock import patch
 
 from .. import models, tasks
-from . import factory, TestCase
+from . import factory
+from edd import TestCase
+
 
 _CONTEXT_FILENAME = '%s.post.context.json'
 _PAGED_CONTEXT_FILENAME = '%s.post.paged.context.json'

@@ -3,9 +3,9 @@
 import logging
 import os.path
 
-from django.test import TestCase
 from io import StringIO
 
+from edd import TestCase
 from .parsers.excel import export_to_xlsx, import_xlsx_table, import_xlsx_tables
 from .form_utils import (
     extract_floats_from_form,

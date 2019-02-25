@@ -10,6 +10,7 @@ https://docs.djangoproject.com/en/dev/ref/settings/
 """
 
 import environ
+import logging
 
 
 root = environ.Path(__file__) - 3  # root is two parents up of directory containing base.py
@@ -346,6 +347,7 @@ LOGGING = {
         }
     },
 }
+logging.captureWarnings(True)
 
 
 ###################################################################################################

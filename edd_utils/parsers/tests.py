@@ -5,10 +5,11 @@ Tests to validate utilities pages.
 
 import environ
 
-from django.test import TestCase
 from django.urls import reverse
 from io import BytesIO
 from requests import codes
+
+from edd import TestCase
 
 
 class SkylineConversionTests(TestCase):

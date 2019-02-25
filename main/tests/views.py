@@ -11,8 +11,9 @@ from io import BytesIO
 from requests import codes
 from unittest.mock import patch
 
+from edd import TestCase
 from .. import models, views
-from . import factory, TestCase
+from . import factory
 
 
 faker = Faker()

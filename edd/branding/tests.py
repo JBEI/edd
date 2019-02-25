@@ -1,12 +1,12 @@
 # coding: utf-8
 
 from django.template import Context, Template
-from django.test import TestCase
 from django.urls import reverse
 from requests import codes
 
 from . import models
 
+from edd import TestCase
 from main.tests import factory
 
 

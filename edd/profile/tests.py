@@ -1,10 +1,10 @@
 # coding: utf-8
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.urls import reverse
 from requests import codes
 
+from edd import TestCase
 from main.tests.factory import UserFactory
 from . import models
 
@@ -13,6 +13,7 @@ User = get_user_model()
 
 
 class UserProfileTest(TestCase):
+
     @classmethod
     def setUpTestData(cls):
         super(UserProfileTest, cls).setUpTestData()

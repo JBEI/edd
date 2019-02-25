@@ -2,10 +2,10 @@
 
 import time
 
-from django.test import TestCase
 from uuid import uuid4
 
 from . import backend
+from edd import TestCase
 from main.tests import factory
 
 

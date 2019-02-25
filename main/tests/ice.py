@@ -13,7 +13,8 @@ from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
 
 from .. import models
-from . import factory, TestCase
+from . import factory
+from edd import TestCase
 
 
 def user_to_ice_json(user):

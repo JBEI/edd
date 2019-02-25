@@ -12,8 +12,11 @@ import re
 import sys
 
 from io import StringIO
+from openpyxl import load_workbook
 from optparse import OptionParser
 from six import string_types
+
+import edd_utils.math
 
 
 re_signal_new = re.compile(r"\s*Signal[\s]{1,}:\s{1,}(EIC|TIC).*:")
@@ -237,7 +240,6 @@ class SampleCollection(object):
         Use kernel density estimation to analyze the distribution of retention
         times and identify consensus values for major species.
         """
-        import edd_utils.math
         x = self.extract_all_retention_times()
         return edd_utils.math.find_consensus_values(x, **kwds)
 
@@ -327,7 +329,6 @@ class Report(SampleCollection):
 
 
 def import_xlsx_metadata(file, header_key="ID"):
-    from openpyxl import load_workbook
     headers = []
     table = []
     wb = load_workbook(file, read_only=True)

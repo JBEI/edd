@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from jsonschema import Draft4Validator
 from unittest.mock import call, patch
 
+from edd import TestCase
 from main.importer.experiment_desc import CombinatorialCreationImporter
 from main.importer.experiment_desc.importer import (
     _build_response_content,
@@ -38,7 +39,7 @@ from main.models import (
     Study,
 )
 
-from . import factory, TestCase
+from . import factory
 
 
 User = get_user_model()

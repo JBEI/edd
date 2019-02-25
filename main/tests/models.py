@@ -26,7 +26,8 @@ from ..models import (
     UserPermission,
 )
 from ..solr import StudySearch
-from . import factory, TestCase
+from . import factory
+from edd import TestCase
 
 
 User = get_user_model()
