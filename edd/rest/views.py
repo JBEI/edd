@@ -11,6 +11,7 @@ import logging
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.http import StreamingHttpResponse
 from django_filters import filters as django_filters, rest_framework as filters
 from rest_framework import mixins, response, schemas, viewsets
 from rest_framework.decorators import api_view, permission_classes, renderer_classes
@@ -371,8 +372,9 @@ class ExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
-        pp = request.query_params.get('page', 1)
-        response['Content-Disposition'] = f'attachment; filename=export_page{pp}.csv'
+        name = request.query_params.get("out", "export")
+        pp = request.query_params.get("page", 1)
+        response["Content-Disposition"] = f"attachment; filename={name}_page{pp}.csv"
         return response
 
     def get_queryset(self):
@@ -393,6 +395,34 @@ class ExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         # 2. override get_renderers() to use parameters when creating ExportRenderer;
         # 3. call to parameter extraction must come *before* the below super call
         return super().perform_content_negotiation(request, force)
+
+
+class StreamingExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    API endpoint for streaming exports of data.
+
+    This class is purposefully short-circuiting several parts of the Django and
+    DRF APIs to try getting at export data as quickly as possible. It is not
+    meant to be flexible or extensible. Do not use this as an example without
+    knowing *EXACTLY* what you are doing.
+    """
+
+    filter_class = ExportFilter
+
+    def get_queryset(self):
+        return models.MeasurementValue.objects.order_by("pk")
+
+    def list(self, request, *args, **kwargs):
+        # custom implementation of list() ignores serializers
+        queryset = self.filter_queryset(self.get_queryset())
+        renderer = renderers.StreamingExportRenderer()
+        response = StreamingHttpResponse(
+            renderer.stream_csv(queryset), content_type="text/csv"
+        )
+        # TODO make sure to test with weird non-ascii names
+        name = request.query_params.get("out", "export.csv")
+        response["Content-Disposition"] = f"attachment; filename={name}"
+        return response
 
 
 class MeasurementValueFilter(filters.FilterSet):
