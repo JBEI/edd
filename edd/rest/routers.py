@@ -67,6 +67,11 @@ base_rest_api_router.register(
     views.ExportViewSet,
     base_name='export',
 )
+base_rest_api_router.register(
+    'stream-export',
+    views.StreamingExportViewSet,
+    base_name='stream-export',
+)
 
 ###################################################################################################
 # /rest/studies nested resources

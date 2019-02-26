@@ -370,7 +370,12 @@ service_wait rabbitmq 5672
 case "$COMMAND" in
     application)
         banner "Starting production appserver"
-        su-exec edduser:edduser gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
+        su-exec edduser:edduser gunicorn -w 4 \
+            -b 0.0.0.0:8000 \
+            -k gthread \
+            --no-sendfile \
+            --forwarded-allow-ips '*' \
+            edd.wsgi:application
         ;;
     devmode)
         banner "Starting development appserver"
