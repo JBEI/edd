@@ -138,9 +138,9 @@ class TableParser(object):
 
     @staticmethod
     def _process_label(s):
-        s = re.sub(r'\s+', ' ', s)  # collapse multiple whitespace chars into a single space char
-        s = re.escape(s)  # escape any regex chars in the input (also escapes space char)
-        return re.sub(r'\\ ', r'\s+', s)  # replace escaped space with space regex
+        tokens = re.split(r"\s+", s)  # tokenize label on whitespace
+        escaped_tokens = (re.escape(part) for part in tokens)  # escape each part
+        return r"\s+".join(escaped_tokens)  # gather together with whitespace regex
 
     def parse_excel(self, file):
         """

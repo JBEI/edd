@@ -1,4 +1,4 @@
-FROM library/python:3.6-alpine3.8
+FROM library/python:3.7-alpine3.9
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
