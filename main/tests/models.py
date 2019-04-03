@@ -640,3 +640,20 @@ class IceTests(TestCase):
         self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
         uri = 'http://registry.jbei.org/entry/foobar'
         self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
+
+
+class MetaboliteTests(TestCase):
+
+    def test_carbon_count(self):
+        # a formula string without any carbons should return 0
+        m1 = factory.MetaboliteFactory.build(molecular_formula="H2O")
+        self.assertEqual(m1.extract_carbon_count(), 0)
+        # a formula string with a single carbon should return 1
+        m2 = factory.MetaboliteFactory.build(molecular_formula="CH4")
+        self.assertEqual(m2.extract_carbon_count(), 1)
+        # a formula string with a C that is not carbon should not count it as carbon
+        m3 = factory.MetaboliteFactory.build(molecular_formula="CuO4S")
+        self.assertEqual(m3.extract_carbon_count(), 0)
+        # a formula string with a subscripted carbon should return the subscript count
+        m4 = factory.MetaboliteFactory.build(molecular_formula="C6H12O6")
+        self.assertEqual(m4.extract_carbon_count(), 6)

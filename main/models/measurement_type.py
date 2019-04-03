@@ -218,7 +218,7 @@ class Metabolite(MeasurementType):
         verbose_name=_('Tags'),
     )
 
-    carbon_pattern = re.compile(r'C(\d*)')
+    carbon_pattern = re.compile(r'C(?![a-z])(\d*)')
     pubchem_pattern = re.compile(r'(?i)cid:\s*(\d+)(:.*)?')
 
     def __str__(self):
