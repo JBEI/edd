@@ -1,5 +1,8 @@
-FROM jwilder/docker-gen:latest
+FROM helder/docker-gen:latest
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
-ADD nginx.tmpl /etc/docker-gen/templates/
+COPY nginx.tmpl /etc/docker-gen/templates/
+COPY entrypoint.sh /
+
+ENTRYPOINT ["/entrypoint.sh"]

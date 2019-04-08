@@ -99,32 +99,6 @@ services:
       options:
         max-size: 1m
         max-file: '5'
-  flower:
-    build: ./flower/
-    image: jbei/flower:1.0.1
-    restart: always
-    env_file: secrets.env
-    environment:
-      AMQP_ADMIN_HOST: rabbitmq
-      AMQP_ADMIN_USERNAME: edd_user
-      AMQP_HOST: rabbitmq
-      AMQP_USERNAME: edd_user
-    networks:
-      - backnet
-    links:
-      - rabbitmq
-    expose:
-      - '5555'
-    healthcheck:
-      test: ['CMD', '/opt/celery-flower/healthcheck.sh']
-      interval: 1m
-      timeout: 5s
-      retries: 3
-    logging:
-      driver: 'json-file'
-      options:
-        max-size: 1m
-        max-file: '5'
   smtp:
     image: tianon/exim4
     restart: always
