@@ -14,21 +14,21 @@ var css_extract = new ExtractTextPlugin({
 
 module.exports = {
   entry: {
-    Admin: "./code/typescript/src/Admin.ts",
-    Common: "./code/typescript/src/Common.ts",
-    Cytometry: "./code/typescript/src/Cytometry.ts",
-    ExperimentDescHelp: "./code/typescript/src/Experiment-Desc-Help.ts",
-    Export: "./code/typescript/src/Export.ts",
-    GCMS_Workbench: "./code/typescript/src/GCMS_Workbench.ts",
-    Import: "./code/typescript/src/Import.ts",
-    Import2: "./code/typescript/src/Import2.tsx",
-    index: "./code/typescript/src/index.ts",
-    RNASeq: "./code/typescript/src/RNASeq.ts",
-    Skyline_Convert: "./code/typescript/src/Skyline_Convert.ts",
-    StudyData: "./code/typescript/src/Study-Data.ts",
-    StudyLines: "./code/typescript/src/Study-Lines.ts",
-    StudyLinesAddCombos: "./code/typescript/src/Study-Lines-Add-Combos.ts",
-    StudyOverview: "./code/typescript/src/Study-Overview.ts",
+    Admin: "./src/Admin.ts",
+    Common: "./src/Common.ts",
+    Cytometry: "./src/Cytometry.ts",
+    ExperimentDescHelp: "./src/Experiment-Desc-Help.ts",
+    Export: "./src/Export.ts",
+    GCMS_Workbench: "./src/GCMS_Workbench.ts",
+    Import: "./src/Import.ts",
+    Import2: "./src/Import2.tsx",
+    index: "./src/index.ts",
+    RNASeq: "./src/RNASeq.ts",
+    Skyline_Convert: "./src/Skyline_Convert.ts",
+    StudyData: "./src/Study-Data.ts",
+    StudyLines: "./src/Study-Lines.ts",
+    StudyLinesAddCombos: "./src/Study-Lines-Add-Combos.ts",
+    StudyOverview: "./src/Study-Overview.ts",
     vendor: [
       "bootstrap",
       "d3",
@@ -50,14 +50,15 @@ module.exports = {
     ]
   },
   output: {
-    path: path.resolve(__dirname, 'code/main/static/dist'),
+    // TODO: this changes after re-org again, to '../server/main/static/dist'
+    path: path.resolve(__dirname, '../main/static/dist'),
     filename: '[name].js',
     publicPath: '/static/dist/'
   },
   resolve: {
     modules: [
       "node_modules",
-      path.resolve(__dirname, "code/typescript/modules")
+      path.resolve(__dirname, "modules")
     ],
     extensions: ['.js', '.json', '.jsx', '.css', '.ts', '.vue'],
     alias: {

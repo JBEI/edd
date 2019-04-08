@@ -1,7 +1,9 @@
 -- Load a password from the environment, or use default value 'jbei'
 \set edd_pgpass `echo "${EDD_PGPASS:-jbei}"`
 -- Create edduser with environment password
-CREATE USER edduser WITH PASSWORD :'edd_pgpass' NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
+CREATE USER edduser WITH PASSWORD :'edd_pgpass'
+    NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
+\c template1
 -- Enable the hstore extension in the template database
 CREATE EXTENSION IF NOT EXISTS "hstore";
 -- Enable the uuid extension in the template database
@@ -13,4 +15,3 @@ GRANT ALL PRIVILEGES ON DATABASE edd TO edduser;
 -- Create the database for celery tasks
 CREATE DATABASE celery;
 GRANT ALL PRIVILEGES ON DATABASE celery TO edduser;
-

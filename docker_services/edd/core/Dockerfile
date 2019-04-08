@@ -1,14 +1,27 @@
 FROM jbei/edd-node:latest as node
 
-# Copy in EDD code
-ARG EDD_VERSION=2.4.0
+# arguments and defaults used with docker build command
+ARG EDD_VERSION="manual-build"
 ARG GIT_BRANCH=master
 ARG GIT_URL=https://github.com/JBEI/edd.git
+
+# set environment in this build phase with the version passed as argument
 ENV EDD_VERSION="${EDD_VERSION}"
+
+# Install git
 RUN apk add --no-cache git \
-    && git clone --depth 1 -b "${GIT_BRANCH}" "${GIT_URL}" code \
-    && echo "Cache-bust: ${EDD_VERSION}" \
-    && cp ./code/docker_services/edd/webpack/webpack.config.js . \
+    # copy in EDD repo
+    && git clone --depth 1 -b "${GIT_BRANCH}" "${GIT_URL}" edd \
+    # save commit hash to file for later use
+    && git -C /edd rev-parse --short HEAD > edd.hash \
+    # cache-bust using version argument
+    && echo "Building TypeScript for EDD ${EDD_VERSION} $(cat /edd.hash)" \
+    # enter the typescript directory
+    && cd /edd/typescript \
+    # link package.json and node_modules from base image; npm run isn't checking parent directory?
+    && ln -s /node_modules node_modules \
+    && ln -s /package.json package.json \
+    # build the TypeScript code
     && npm run build
 
 # ---
@@ -17,7 +30,7 @@ FROM jbei/scikit-learn:latest
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 WORKDIR /code
-ARG EDD_VERSION=2.4.0
+ARG EDD_VERSION="manual-build"
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8 EDD_VERSION="${EDD_VERSION}"
 
 RUN set -ex \
@@ -67,10 +80,11 @@ RUN pipenv install --system --deploy --verbose \
     && rm -f Pipfile Pipfile.lock
 
 # Copy in entrypoint shell scripts
-COPY entrypoint.sh /usr/local/bin
+COPY entrypoint.sh /usr/local/bin/
 
 # Copy in code from node image
-COPY --from=node /code /usr/local/edd
+COPY --from=node /edd /usr/local/edd/
+COPY --from=node /edd.hash /edd.hash
 
 # Create user/group to run code
 RUN addgroup -g 1000 -S edduser \

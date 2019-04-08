@@ -11,7 +11,7 @@ volumes:
 services:
   postgres:
     build: ./postgres/
-    image: jbei/postgres:9.6
+    image: jbei/edd-postgres:9.6
     restart: always
     networks:
       - backnet

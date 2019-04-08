@@ -56,11 +56,6 @@ function print_help() {
     echo "        Copy static files to the static volume. Only used to override -A."
     echo "    -S, --no-init-static"
     echo "        Skip initialization of static files."
-    echo "    -d, --init-database"
-    echo "        Initialize the database using POSTGRES_DUMP_URL or POSTGRES_DUMP_FILE"
-    echo "        environment. Only used to override -A."
-    echo "    -D, --no-init-database"
-    echo "        Skip initialization of the database."
     echo "    -m, --init-migration"
     echo "        Run any pending database migrations. Only used to override -A."
     echo "    -M, --no-init-migration"
@@ -106,9 +101,8 @@ function print_help() {
     echo "        Start a Django Channels worker listening on listed channel names (runworker)."
 }
 
-short="adhimp:qsw:ADIMS"
-long="help,quiet,init,init-all,no-init,no-init-all"
-long="$long,init-static,no-init-static,init-database,no-init-database"
+short="ahimp:qsw:AIMS"
+long="help,quiet,init,init-all,no-init,no-init-all,init-static,no-init-static"
 long="$long,init-migration,no-init-migration,init-index,no-init-index"
 long="$long,local:,force-index,wait-host:,wait-port:,watch-static"
 params=`getopt -o "$short" -l "$long" --name "$0" -- "$@"`
@@ -137,14 +131,12 @@ while [ ! $# -eq 0 ]; do
         --init-all | --init | -a)
             shift
             INIT_STATIC=1
-            INIT_DB=1
             INIT_MIGRATE=1
             INIT_INDEX=1
             ;;
         --no-init-all | --no-init | -A)
             shift
             INIT_STATIC=0
-            INIT_DB=0
             INIT_MIGRATE=0
             INIT_INDEX=0
             ;;
@@ -155,14 +147,6 @@ while [ ! $# -eq 0 ]; do
         --no-init-static | -S)
             shift
             INIT_STATIC=0
-            ;;
-        --init-database | -d)
-            shift
-            INIT_DB=1
-            ;;
-        --no-init-database | -D)
-            shift
-            INIT_DB=0
             ;;
         --init-migration | -m)
             shift
@@ -255,7 +239,7 @@ if [ ! -f /code/edd/settings/local.py ]; then
     cp /code/edd/settings/local.py-example /code/edd/settings/local.py
 fi
 cd /code
-export EDD_VERSION_HASH="$(git -C /code rev-parse --short HEAD)"
+export EDD_VERSION_HASH="$(cat /edd.hash)"
 
 # If specified, wait on other service(s)
 for ((i=0; i<${#WAIT_HOST[@]}; i++)); do
@@ -284,47 +268,6 @@ fi
 
 # Wait for postgres to become available
 service_wait postgres 5432
-
-if [ $INIT_DB -eq 1 ]; then
-    banner "Configuring database initial state …"
-
-    export PGPASSWORD=$POSTGRES_PASSWORD
-    # Test if our database exists; run init script if missing
-    if ! psql -lqt -h postgres -U postgres | cut -d \| -f 1 | grep -qw edd; then
-        output "Initializing the database for first-time use …"
-        psql -h postgres -U postgres template1 < /code/docker_services/postgres/init.sql
-        # Flag for re-indexing
-        REINDEX_EDD=true
-        DATABASE_CREATED=true
-    fi
-    if [ ! -z $POSTGRES_DUMP_URL ] || \
-            ([ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]); then
-        # Don't bother dropping and recreating if database just initialized
-        if [ "$DATABASE_CREATED" != "true" ]; then
-            echo 'DROP DATABASE IF EXISTS edd; CREATE DATABASE edd;' | \
-                psql -h postgres -U postgres
-        fi
-        # Flag for re-indexing
-        REINDEX_EDD=true
-    fi
-
-    # If database dump URL is provided, dump the reference database and restore the local one from
-    # the dump
-    if [ ! -z $POSTGRES_DUMP_URL ]; then
-        output $(echo "Copying database from remote $POSTGRES_DUMP_URL …" | \
-                sed -E -e 's/(\w+):\/\/([^:]+):[^@]*@/\1:\/\/\2:****@/')
-        pg_dump "$POSTGRES_DUMP_URL" | psql -h postgres -U postgres edd
-    elif [ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]; then
-        output "Copying database from local file $POSTGRES_DUMP_FILE …"
-        psql -h postgres -U postgres edd < "$POSTGRES_DUMP_FILE"
-    else
-        output "Skipping database restore. No dump source specified."
-    fi
-fi
-
-unset PGPASSWORD
-unset POSTGRES_DUMP_FILE
-unset POSTGRES_DUMP_URL
 
 # Wait for solr to become available
 service_wait solr 8983

@@ -1,7 +1,7 @@
 'use strict';
 
 import * as $ from "jquery";
-import { default as RWS } from "reconnectingwebsocket";
+import * as RWS from "reconnectingwebsocket";
 import * as Utl from "./Utl";
 
 // TODO find out a way to do this in Typescript without relying on specific output targets

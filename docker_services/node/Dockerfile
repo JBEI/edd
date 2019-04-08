@@ -1,4 +1,4 @@
-FROM node:8.9-alpine
+FROM node:10-alpine
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
