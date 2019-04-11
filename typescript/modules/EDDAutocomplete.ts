@@ -480,6 +480,20 @@ export class LineMetadataType extends BaseAuto {
     }
 }
 
+// a special case autocomplete for use in the Line creation / edit form.  Specialized query
+// parameters defined here work around inclusion of metadata types that replicate Line fields
+// already included in the form. EDD-1131
+export class LineFormMetadataType extends LineMetadataType {
+
+    constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
+        // sort entries for improved usability
+        search_options = $.extend({}, search_options);
+        search_options.sort = search_options.sort || "type_name";
+        super(opt, search_options);
+        this.modelName = 'LineFormMetadataType';
+    }
+}
+
 
 // .autocomp_stype
 export class StudyMetadataType extends BaseAuto {
@@ -715,6 +729,7 @@ const class_lookup: {[name: string]: typeof BaseAuto} = {
     "AssayMetadataType": AssayMetadataType,
     "AssayLineMetadataType": AssayLineMetadataType,
     "LineMetadataType": LineMetadataType,
+    "LineFormMetadataType": LineFormMetadataType,
     "StudyMetadataType": StudyMetadataType,
     "Metabolite": Metabolite,
     "Protein": Protein,

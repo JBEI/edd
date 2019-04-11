@@ -80,6 +80,7 @@ AUTOCOMPLETE_METADATA_LOOKUP = {
     'Assay': Q(for_context=edd_models.MetadataType.ASSAY),
     'AssayLine': Q(for_context__in=[edd_models.MetadataType.ASSAY, edd_models.MetadataType.LINE]),
     'Line': Q(for_context=edd_models.MetadataType.LINE),
+    'LineForm': (Q(for_context=edd_models.MetadataType.LINE) & (Q(type_field__isnull=True))),
     'Study': Q(for_context=edd_models.MetadataType.STUDY),
 }
 
@@ -96,6 +97,7 @@ def search_metadata(request, context):
         Q(group__group_name__iregex=re_term),
     ]
 
+    # if requested, filter out metadata types that reference a field on the model object
     type_filter = AUTOCOMPLETE_METADATA_LOOKUP.get(context, Q())
     q_filter = reduce(operator.or_, term_filters, Q()) & type_filter
     found_qs = edd_models.MetadataType.objects.filter(q_filter).select_related('group')
