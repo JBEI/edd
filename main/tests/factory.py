@@ -6,7 +6,7 @@ Factory classes used to generate objects under test.
 import environ
 import factory
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, models as auth_models
 
 from .. import models
 
@@ -132,3 +132,11 @@ class UserFactory(factory.django.DjangoModelFactory):
     email = factory.Faker("safe_email")
     first_name = factory.Faker("first_name")
     last_name = factory.Faker("last_name")
+
+
+class GroupFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = auth_models.Group
+        django_get_or_create = ("name",)
+
+    name = factory.Faker("word")

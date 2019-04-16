@@ -8,6 +8,7 @@ import json
 import logging
 
 from django.contrib.postgres.aggregates import ArrayAgg
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count
 from django.http import JsonResponse, HttpResponse
@@ -161,40 +162,42 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
     """ Implements a REST-style view for /study/<id-or-slug>/permissions/ """
 
     def get(self, request, *args, **kwargs):
-        # TODO: uncovered code
         instance = self.object = self.get_object()
-        return JsonResponse(
-            [permission.to_json() for permission in instance.get_combined_permission()]
-        )
-        # END uncovered
+        permissions = [
+            permission.to_json() for permission in instance.get_combined_permission()
+        ]
+        return JsonResponse(permissions, safe=False)
 
     def head(self, request, *args, **kwargs):
-        # TODO: uncovered code
         self.object = self.get_object()
         return HttpResponse(status=codes.ok)
-        # END uncovered
 
     def post(self, request, *args, **kwargs):
-        # TODO: uncovered code
         instance = self.object = self.get_object()
         self.check_write_permission(request)
         try:
             perms = json.loads(request.POST.get("data", "[]"))
             # make requested changes as a group, or not at all
             with transaction.atomic():
-                for permission_def in perms:
+                success = all(
                     self._handle_permission_update(permission_def)
+                    for permission_def in perms
+                )
+                if not success:
+                    raise PermissionDenied()
+        except PermissionDenied:
+            raise
+        # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Error modifying study ({instance}) permissions: {e}")
             return HttpResponse(status=codes.server_error)
-        return HttpResponse(status=codes.no_content)
         # END uncovered
+        return HttpResponse(status=codes.no_content)
 
     # Treat PUT requests the same as POST
     put = post
 
     def delete(self, request, *args, **kwargs):
-        # TODO: uncovered code
         instance = self.object = self.get_object()
         self.check_write_permission(request)
         try:
@@ -203,18 +206,21 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
                 instance.everyonepermission_set.all().delete()
                 instance.grouppermission_set.all().delete()
                 instance.userpermission_set.all().delete()
+        # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Error deleting study ({instance}) permissions: {e}")
             return HttpResponse(status=codes.server_error)
-        return HttpResponse(status=codes.no_content)
         # END uncovered
+        return HttpResponse(status=codes.no_content)
 
     def _handle_permission_update(self, permission_def):
-        # TODO: uncovered code
+        # update a permission based on input dict from JSON
+        # return False when nothing updated, otherwise True
         instance = self.get_object()
         ptype = permission_def.get("type", None)
         kwargs = dict(study=instance)
         defaults = dict(permission_type=ptype)
+        manager = None
         if "group" in permission_def:
             kwargs.update(group_id=permission_def["group"].get("id", 0))
             manager = instance.grouppermission_set
@@ -222,13 +228,16 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
             kwargs.update(user_id=permission_def["user"].get("id", 0))
             manager = instance.userpermission_set
         elif "public" in permission_def:
-            manager = instance.everyonepermission_set
+            if edd_models.EveryonePermission.can_make_public(self.request.user):
+                manager = instance.everyonepermission_set
 
         if manager is None or ptype is None:
-            logger.warning("Invalid permission type for add")
+            logger.info(f"Refusing to set permission {permission_def}")
+            return False
         elif ptype == edd_models.StudyPermission.NONE:
             manager.filter(**kwargs).delete()
+            return True
         else:
             kwargs.update(defaults=defaults)
             manager.update_or_create(**kwargs)
-        # END uncovered code
+            return True

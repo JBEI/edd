@@ -3,9 +3,14 @@
 Tests used to validate the tutorial screencast functionality.
 """
 
+import json
+
+from django.contrib.auth import models as auth_models
+from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
 from django.http.request import HttpRequest
 from django.urls import reverse
+from django.utils.encoding import force_text
 from faker import Faker
 from io import BytesIO
 from requests import codes
@@ -772,3 +777,196 @@ class StudyViewTests(TestCase):
         saved_value = models.MeasurementValue.objects.get(id=value.pk)
         self.assertEqual(saved_value.x, [56])
         self.assertEqual(saved_value.y, [78])
+
+
+class AjaxPermissionViewTests(TestCase):
+    """
+    Tests for the behavior of AJAX views assisting front-end display of
+    Study permissions.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = factory.UserFactory()
+        cls.target_study = factory.StudyFactory()
+        cls.target_kwargs = {"slug": cls.target_study.slug}
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def _set_permission(self, permission_type=models.StudyPermission.READ, user=None):
+        # abstracting this repeating pattern for setting a permission
+        user = self.user if user is None else user
+        self.target_study.userpermission_set.update_or_create(
+            permission_type=permission_type, user=user
+        )
+
+    def _length_of_permissions(self):
+        # making a nicer name for the below repeated expression
+        return len(list(self.target_study.get_combined_permission()))
+
+    def test_get_permissions_no_read(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        # no permissions set
+        response = self.client.get(target_url)
+        # response will be NOT FOUND
+        self.assertEqual(response.status_code, codes.not_found)
+
+    def test_get_permissions_with_read(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        self._set_permission(models.StudyPermission.READ)
+        response = self.client.get(target_url)
+        # response has username listed in permissions (implicit status OK)
+        self.assertContains(response, self.user.username)
+
+    def test_get_permissions_with_admin(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        # make user admin
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
+        response = self.client.get(target_url)
+        # response is empty array
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertJSONEqual(force_text(response.content), [])
+
+    def test_head_permissions(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        self._set_permission(models.StudyPermission.READ)
+        response = self.client.head(target_url)
+        # HEAD requests should always be OK with zero length
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(len(response.content), 0)
+
+    def test_delete_permissions_no_read(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        # no permissions set
+        response = self.client.delete(target_url)
+        # response will be NOT FOUND
+        self.assertEqual(response.status_code, codes.not_found)
+
+    def test_delete_permissions_with_read(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        # add a READ permission
+        self._set_permission(models.StudyPermission.READ)
+        response = self.client.delete(target_url)
+        # response will be FORBIDDEN (no write access)
+        self.assertEqual(response.status_code, codes.forbidden)
+
+    def test_delete_permissions_with_write(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        self._set_permission(models.StudyPermission.WRITE)
+        # have one permission before deletion
+        self.assertEqual(self._length_of_permissions(), 1)
+        # do deletion
+        response = self.client.delete(target_url)
+        # correct response of NO CONTENT, and permissions length zero
+        self.assertEqual(response.status_code, codes.no_content)
+        self.assertEqual(self._length_of_permissions(), 0)
+
+    def test_post_permissions_no_read(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        # no permissions set
+        response = self.client.post(target_url, data={})
+        # response will be NOT FOUND
+        self.assertEqual(response.status_code, codes.not_found)
+
+    def test_post_permissions_with_read(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        # add a READ permission
+        self._set_permission(models.StudyPermission.READ)
+        response = self.client.post(target_url, data={})
+        # response will be FORBIDDEN (no write access)
+        self.assertEqual(response.status_code, codes.forbidden)
+
+    def test_post_permissions_empty(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        self._set_permission(models.StudyPermission.WRITE)
+        # have one permission before empty post
+        self.assertEqual(self._length_of_permissions(), 1)
+        response = self.client.post(target_url, data={})
+        # correct response, no change in permission count
+        self.assertEqual(response.status_code, codes.no_content)
+        self.assertEqual(self._length_of_permissions(), 1)
+
+    def test_post_permissions_adding(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        self._set_permission(models.StudyPermission.WRITE)
+        # have one permission before post
+        self.assertEqual(self._length_of_permissions(), 1)
+        # create a bunch of things to add permissions for
+        other_user = factory.UserFactory()
+        some_group = factory.GroupFactory()
+        add_other_user = {
+            "type": models.StudyPermission.WRITE, "user": {"id": other_user.id}
+        }
+        add_some_group = {
+            "type": models.StudyPermission.WRITE, "group": {"id": some_group.id}
+        }
+        payload = json.dumps([add_other_user, add_some_group])
+        response = self.client.post(target_url, data={"data": payload})
+        # correct response NO CONTENT, permission count updated
+        self.assertEqual(response.status_code, codes.no_content)
+        self.assertEqual(self._length_of_permissions(), 3)
+
+    def test_post_permissions_removing(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        self._set_permission(models.StudyPermission.WRITE)
+        # create some permissions to delete
+        other_user = factory.UserFactory()
+        self._set_permission(models.StudyPermission.READ, user=other_user)
+        delete_other_user = {
+            "type": models.StudyPermission.NONE, "user": {"id": other_user.id}
+        }
+        # have two permissions before post
+        self.assertEqual(self._length_of_permissions(), 2)
+        payload = json.dumps([delete_other_user])
+        response = self.client.post(target_url, data={"data": payload})
+        # correct response NO CONTENT, permission count updated
+        self.assertEqual(response.status_code, codes.no_content)
+        self.assertEqual(self._length_of_permissions(), 1)
+
+    def test_post_permissions_public_without_access(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        self._set_permission(models.StudyPermission.WRITE)
+        # have one permission before post
+        self.assertEqual(self._length_of_permissions(), 1)
+        add_everyone = {"type": models.StudyPermission.READ, "public": None}
+        payload = json.dumps([add_everyone])
+        response = self.client.post(target_url, data={"data": payload})
+        # without access to make public, FORBIDDEN response and no change in length
+        self.assertEqual(response.status_code, codes.forbidden)
+        self.assertEqual(self._length_of_permissions(), 1)
+
+    def test_post_permissions_public_with_access(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        # self.user gets a write permission AND Django ContentType permission
+        self._set_permission(models.StudyPermission.WRITE)
+        public_ct = ContentType.objects.get_for_model(models.EveryonePermission)
+        public_permission = auth_models.Permission.objects.get(
+            codename="add_everyonepermission", content_type=public_ct
+        )
+        self.user.user_permissions.add(public_permission)
+        # have one permission before post
+        self.assertEqual(self._length_of_permissions(), 1)
+        add_everyone = {"type": models.StudyPermission.READ, "public": None}
+        payload = json.dumps([add_everyone])
+        response = self.client.post(target_url, data={"data": payload})
+        # correct response NO CONTENT, permission count updated
+        self.assertEqual(response.status_code, codes.no_content)
+        self.assertEqual(self._length_of_permissions(), 2)
+
+    def test_post_permissions_public_with_admin(self):
+        target_url = reverse("main:permissions", kwargs=self.target_kwargs)
+        # make user admin
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
+        # have empty permission before post
+        self.assertEqual(self._length_of_permissions(), 0)
+        add_everyone = {"type": models.StudyPermission.READ, "public": None}
+        payload = json.dumps([add_everyone])
+        response = self.client.post(target_url, data={"data": payload})
+        # correct response NO CONTENT, permission count updated to one
+        self.assertEqual(response.status_code, codes.no_content)
+        self.assertEqual(self._length_of_permissions(), 1)

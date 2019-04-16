@@ -312,6 +312,7 @@
         </select>
         <button id="set_group_permission">{% trans 'Set Permission' %}</button>
       </div>
+      {% if can_make_public %}
       <div class="permission" id="permission_public_box">
         <input type="radio" id="permission_public" name="class" value="Public" hidden/>
         <label for="permission_public">
@@ -324,6 +325,7 @@
         </select>
         <button id="set_everyone_permission">{% trans 'Set Permission' %}</button>
       </div>
+      {% endif %}
     </form>
   </div>
 </div>

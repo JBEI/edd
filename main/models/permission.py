@@ -176,3 +176,8 @@ class EveryoneMixin(object):
 class EveryonePermission(EveryoneMixin, StudyPermission):
     class Meta:
         db_table = 'study_public_permission'
+
+    @staticmethod
+    def can_make_public(user):
+        """Test if a given user can make public permissions"""
+        return user.is_superuser or user.has_perm("main.add_everyonepermission")

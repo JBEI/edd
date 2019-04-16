@@ -157,6 +157,9 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             assays=edd_models.Assay.objects.filter(
                 line__study=instance, active=True
             ).exists(),
+            can_make_public=edd_models.EveryonePermission.can_make_public(
+                self.request.user
+            ),
             lines=instance.line_set.filter(active=True).exists(),
             rest=rest_reverse(
                 "rest:studies-detail", kwargs={"pk": instance.pk}, request=self.request
@@ -498,7 +501,9 @@ class StudyLinesView(StudyDetailBaseView):
     def handle_line_export(self, request, context, *args, **kwargs):
         export_type = request.POST.get("export", "csv")
         study = self.get_object()
-        return self._get_export_types().get(export_type, ExportView.as_view(study=study))
+        return self._get_export_types().get(
+            export_type, ExportView.as_view(study=study)
+        )
 
     def handle_line_edit(self, request, context, lines):
         study = self.get_object()
