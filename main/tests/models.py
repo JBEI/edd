@@ -24,6 +24,7 @@ from ..models import (
     Strain,
     Study,
     UserPermission,
+    SYSTEM_META_TYPES,
 )
 from ..solr import StudySearch
 from . import factory
@@ -297,9 +298,9 @@ class LineTests(TestCase):  # XXX also Strain, CarbonSource
 
     def test_line_metadata(self):
         # 'media' is a MetadataType for Lines
-        media = MetadataType.objects.get(type_name="Media")
+        media = MetadataType.objects.get(uuid=SYSTEM_META_TYPES['Media'])
         # 'original name' is a MetadataType for Assays
-        orig_name = MetadataType.objects.get(type_name="Original Name")
+        orig_name = MetadataType.objects.get(uuid=SYSTEM_META_TYPES['Original Name'])
         # adding line metadata to a line should work fine
         self.line1.metadata_add(media, "M9")
         self.assertEqual(self.line1.metadata_get(media), "M9")

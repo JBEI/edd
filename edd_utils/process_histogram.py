@@ -88,7 +88,7 @@ def main(argv):
 # -----------------------------------------------------------------------------
 # study = Study.objects.get(…)
 # lines = defaultdict(list)
-# media_type = MetadataType.objects.get(type_name='Media')
+# media_type = MetadataType.objects.get(uuid=SYSTEM_META_TYPES["Media"])
 # promoter_type = MetadataType.objects.get(type_name='Promoter')
 # plate_type = MetadataType.objects.get(type_name='Plate ID')
 # well_type = MetadataType.objects.get(type_name='Well Location')

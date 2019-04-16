@@ -68,7 +68,7 @@ class ICEFolderView(View):
         self, category, title, status=codes.internal_server_error, detail=None
     ):
         # TODO: uncovered code
-        err = experiment_desc.ImportErrorSummary(category, title)
+        err = experiment_desc.importer.ImportErrorSummary(category, title)
         if detail:
             err.add_occurrence(detail)
         return JsonResponse({"errors": [err.to_json_dict()]}, status=status)

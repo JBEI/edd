@@ -5,14 +5,27 @@
 export let LINE_METADATA_CONTEXT = 'L';
 export let ASSAY_METADATA_CONTEXT = 'A';
 
-/* Default metadata names that may have to be explicitly-referenced in the UI */
-export let CARBON_SOURCE_META_NAME = 'Carbon Source(s)';
-export let CONTROL_META_NAME = 'Control';
-export let LINE_CONTACT_META_NAME = 'Line Contact';
-export let LINE_DESCRIPTION_META_NAME = 'Line Description';
-export let LINE_EXPERIMENTER_META_NAME = 'Line Experimenter';
-export let LINE_NAME_META_NAME = 'Line Name';
-export let STRAINS_META_NAME = 'Strain(s)';
+/* System metadata types that may have to be explicitly-referenced in the UI */
+export let CARBON_SRC_META_UUID = '4ddaf92a-1623-4c30-aa61-4f7407acfacc';
+export let CONTROL_META_UUID = '8aa26735-e184-4dcd-8dd1-830ec240f9e1';
+export let LINE_CONTACT_META_UUID = '13672c8a-2a36-43ed-928f-7d63a1a4bd51';
+export let LINE_DESCRIPTION_META_UUID = '5fe84549-9a97-47d2-a897-8c18dd8fd34a';
+export let LINE_EXPERIMENTER_META_UUID = '974c3367-f0c5-461d-bd85-37c1a269d49e';
+export let LINE_NAME_META_UUID = 'b388bcaa-d14b-4d7f-945e-a6fcb60142f2';
+export let LINE_STRAINS_META_UUID = '292f1ca7-30de-4ba1-89cd-87d2f6291416';
+
+export let ASSAY_DESCRIPTION_META_UUID = '4929a6ad-370c-48c6-941f-6cd154162315';
+export let ASSAY_EXPERIMENTER_META_UUID = '15105bee-e9f1-4290-92b2-d7fdcb3ad68d';
+export let ASSAY_NAME_META_UUID = '33125862-66b2-4d22-8966-282eb7142a45';
+
+// Metadata types present in the database that should be omitted from user-displayed lists in
+// contexts where separate display is available for line attributes.
+export const LINE_PROPERTY_META_UUIDS = [LINE_NAME_META_UUID,
+    LINE_DESCRIPTION_META_UUID, LINE_CONTACT_META_UUID,
+    LINE_EXPERIMENTER_META_UUID, LINE_STRAINS_META_UUID];
+
+export const ASSAY_PROPERTY_META_TYPES = [ASSAY_DESCRIPTION_META_UUID,
+    ASSAY_EXPERIMENTER_META_UUID, ASSAY_NAME_META_UUID];
 
 /**
  * Initiates one or more asynchronous requests to load Protocols from the REST API back

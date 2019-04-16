@@ -37,6 +37,7 @@ from main.models import (
     Protocol,
     Strain,
     Study,
+    SYSTEM_META_TYPES,
 )
 
 from . import factory
@@ -66,9 +67,7 @@ class CombinatorialCreationTests(TestCase):
         cls.targeted_proteomics, _ = Protocol.objects.get_or_create(
             name="Targeted Proteomics", owned_by=cls.system_user
         )
-        cls.media_mtype, _ = MetadataType.objects.get_or_create(
-            type_name='Media', for_context=MetadataType.LINE,
-        )
+        cls.media_mtype = MetadataType.objects.get(uuid=SYSTEM_META_TYPES['Media'])
 
         # query the database and cache MetadataTypes, Protocols, etc that should be static
         # for the duration of the test
@@ -239,9 +238,7 @@ class CombinatorialCreationTests(TestCase):
         # Load model objects for use in this test
         ###########################################################################################
         cache = self.cache
-        growth_temp_meta = MetadataType.objects.get(
-            type_i18n='main.models.Line.Growth_temperature'
-        )
+        growth_temp_meta = MetadataType.objects.get(uuid=SYSTEM_META_TYPES['Growth temperature'])
         cs_glucose, _ = CarbonSource.objects.get_or_create(name=r'1% Glucose', volume=10.00000)
         cs_galactose, _ = CarbonSource.objects.get_or_create(name=r'1% Galactose', volume=50)
 
@@ -711,7 +708,7 @@ class CombinatorialCreationTests(TestCase):
         cache.strains_by_pk = {strain.pk: strain}
         media_mtype = self.media_mtype
         strains_mtype = self.cache.strains_mtype
-        control = MetadataType.objects.get(type_name='Control', for_context=MetadataType.LINE)
+        control = MetadataType.objects.get(uuid=SYSTEM_META_TYPES['Control'])
 
         ###########################################################################################
         # define test input

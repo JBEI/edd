@@ -8,7 +8,7 @@ from collections import defaultdict, OrderedDict, Sequence
 from arrow import utcnow
 from six import string_types
 
-from main.models import Assay, Line, MetadataType, Protocol, Strain
+from main.models import Assay, Line, MetadataType, Protocol, Strain, SYSTEM_META_TYPES
 from .constants import (
     BAD_GENERIC_INPUT_CATEGORY,
     ICE_FOLDERS_KEY,
@@ -364,15 +364,14 @@ class ExperimentDescriptionContext(object):
             for meta_type in MetadataType.objects.filter(for_context=MetadataType.ASSAY)
         }
 
-        self.strains_mtype = MetadataType.objects.filter(
-            for_context=MetadataType.LINE).get(type_name='Strain(s)')
-
+        # line metadata types
+        self.strains_mtype = MetadataType.objects.filter(uuid=SYSTEM_META_TYPES['Strain(s)']).get()
         self.carbon_sources_mtype = MetadataType.objects.filter(
-            for_context=MetadataType.LINE).get(type_name='Carbon Source(s)')
+            uuid=SYSTEM_META_TYPES['Carbon Source(s)']).get()
         ##################################################
 
         self.assay_time_mtype = MetadataType.objects.filter(
-            for_context=MetadataType.ASSAY).get(type_name='Time')
+            for_context=MetadataType.ASSAY, uuid=SYSTEM_META_TYPES['Time']).get()
 
         # get related MetadataTypes that describe related object fields
         relation_mtypes = self.query_related_object_types(

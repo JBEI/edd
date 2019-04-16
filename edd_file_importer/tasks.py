@@ -18,7 +18,7 @@ from .utilities import (build_err_payload, build_summary_json, compute_required_
                         verify_assay_times)
 from edd.notify.backend import RedisBroker
 from main.importer.table import ImportBroker
-from main.models import MeasurementUnit, MetadataType
+from main.models import MeasurementUnit, MetadataType, SYSTEM_META_TYPES
 from main.tasks import import_table_task
 
 
@@ -229,8 +229,7 @@ def build_ui_payload_from_cache(import_pk, user_pk):
 
     # get other context from the database
     hour_units = MeasurementUnit.objects.get(unit_name='hours')
-    assay_time_meta_pk = MetadataType.objects.filter(type_name='Time',
-                                                     for_context=MetadataType.ASSAY)
+    assay_time_meta_pk = MetadataType.objects.filter(uuid=SYSTEM_META_TYPES['Time'])
     found_count = len(unique_mtypes)
 
     if found_count != len(parser.mtype_pks):

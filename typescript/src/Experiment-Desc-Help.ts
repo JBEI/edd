@@ -13,15 +13,6 @@ var measurementUnits = {};
 
 var loadedProtocols = false;
 
-// Metadata types present in the database that should be omitted from the lists displayed
-// in the help page... they duplicate baked-in line/assay characteristics displayed in a
-// separate table or required in slightly different form by the Experiment Description file
-// format.
-var omitLineMetadataTypes = ['Line Name', 'Line Description', 'Line Contact',
-    'Line Experimenter', 'Strain(s)'];
-
-var omitAssayMetadataTypes = ['Assay Description', 'Assay Experimenter', 'Assay Name'];
-
 // As soon as the window load signal is sent, call back to the server for the set of reference
 // records that will be used to disambiguate labels in imported data.
 function onDocumentReady(): void {
@@ -122,11 +113,19 @@ function showWaitMessage(divSelector: string) {
 }
 
 function lineMetaSuccessHandler(metadataTypes: any[]) {
-    showMetadataTypes(LINE_DIV_SELECTOR, metadataTypes, omitLineMetadataTypes);
+    // omit Metadata types present in the database that should be omitted from the lists displayed
+    // in the help page... they duplicate baked-in line/assay characteristics displayed in a
+    // separate table or required in slightly different form by the Experiment Description file
+    // format.
+    showMetadataTypes(LINE_DIV_SELECTOR, metadataTypes, EddRest.LINE_PROPERTY_META_UUIDS);
 }
 
 function assayMetaSuccessHandler(metadataTypes: any[]) {
-    showMetadataTypes(ASSAY_DIV_SELECTOR, metadataTypes, omitAssayMetadataTypes);
+    // omit Metadata types present in the database that should be omitted from the lists displayed
+    // in the help page... they duplicate baked-in line/assay characteristics displayed in a
+    // separate table or required in slightly different form by the Experiment Description file
+    // format.
+    showMetadataTypes(ASSAY_DIV_SELECTOR, metadataTypes, EddRest.ASSAY_PROPERTY_META_TYPES);
 }
 
 function showProtocols() {
@@ -196,20 +195,22 @@ function showMetadataTypes(
         body = $('<tbody>').appendTo(table);
 
         metadataTypes.forEach((metadataType: any): boolean => {
-            var typeName: string, unitsStr: string, omit: boolean, row: JQuery;
-            typeName = metadataType.type_name;
 
             // omit items included in the 'primary characteristics' table
-            omit = omitFromDisplay.indexOf(typeName) >= 0;
+            let omit: boolean = omitFromDisplay.indexOf(metadataType.uuid) >= 0;
             if (omit) {
                 return true;
             }
 
-            row = $('<tr>').appendTo(body);
-            $('<td>').text(typeName).appendTo(row);
+            let row: JQuery = $('<tr>')
+                .appendTo(body);
+            $('<td>')
+                .text(metadataType.type_name)
+                .appendTo(row);
 
-            unitsStr = metadataType.postfix;
-            $('<td>').text(unitsStr).appendTo(row);
+            $('<td>')
+                .text(metadataType.postfix)
+                .appendTo(row);
         });
     } else {
         div.val('No metadata types were found.');

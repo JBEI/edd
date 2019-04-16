@@ -24,26 +24,19 @@ require('jquery-ui/ui/effects/effect-bounce');
 /* tslint:enable */
 
 
-// names of line metadata types that should use an autocomplete to gather user input
-import STRAINS_META_NAME = EddRest.STRAINS_META_NAME;
-export const AUTOCOMPLETE_META_NAMES: string[] = [EddRest.LINE_EXPERIMENTER_META_NAME,
-                                                  EddRest.LINE_CONTACT_META_NAME,
-                                                  EddRest.CARBON_SOURCE_META_NAME,
-                                                  EddRest.STRAINS_META_NAME];
+// line metadata types that should use an autocomplete to gather user input
+export const AUTOCOMPLETE_META_UUIDS: string[] = [EddRest.LINE_EXPERIMENTER_META_UUID,
+                                                  EddRest.LINE_CONTACT_META_UUID,
+                                                  EddRest.CARBON_SRC_META_UUID,
+                                                  EddRest.LINE_STRAINS_META_UUID];
 
-// names of line metadata types which represent a user and should use the user autocomplete
-export const USER_META_TYPE_NAMES: string[] = [EddRest.LINE_CONTACT_META_NAME,
-                                               EddRest.LINE_EXPERIMENTER_META_NAME];
+// line metadata types which represent a user and should use the user autocomplete
+export const USER_META_TYPE_UUIDS: string[] = [EddRest.LINE_CONTACT_META_UUID,
+                                               EddRest.LINE_EXPERIMENTER_META_UUID];
 
-// names of line metadata types that support multiple values for a single line
-export const MULTIVALUED_LINE_META_TYPES = [EddRest.STRAINS_META_NAME,
-                                            EddRest.CARBON_SOURCE_META_NAME];
-
-// Metadata types present in the database that should be omitted from user-displayed lists in
-// contexts where separate display is available for line attributes.
-export const LINE_PROPERTY_META_TYPES = [EddRest.LINE_NAME_META_NAME,
-    EddRest.LINE_DESCRIPTION_META_NAME, EddRest.LINE_CONTACT_META_NAME,
-    EddRest.LINE_EXPERIMENTER_META_NAME, EddRest.STRAINS_META_NAME];
+// line metadata types that support multiple values for a single line
+export const MULTIVALUED_LINE_META_UUIDS = [EddRest.LINE_STRAINS_META_UUID,
+                                            EddRest.CARBON_SRC_META_UUID];
 
 export interface ErrorSummary {
     category: string;
@@ -201,12 +194,14 @@ class LinePropertyDescriptor extends NameElement {
     jsonId: any; // integer pk for line metadata, string for special cases (e.g.
                  // replicates, ICE collections)
     inputLabel: string;
+    metaUUID: string;
 
     constructor(jsonId, inputLabel: string, nameEltLabel: string = null,
-                nameEltJsonId: any = null) {
+                nameEltJsonId: any = null, metaUUID: string = null) {
         super(nameEltLabel || inputLabel, nameEltJsonId || jsonId);
         this.jsonId = jsonId;
         this.inputLabel = inputLabel;
+        this.metaUUID = metaUUID;
     }
 
     toString(): string {
@@ -498,7 +493,7 @@ export class LinePropertyInput extends MultiValueInput {
             return false;
         }
 
-        if (EddRest.STRAINS_META_NAME === this.lineProperty.inputLabel) {
+        if (EddRest.LINE_STRAINS_META_UUID === this.lineProperty.metaUUID) {
             // do special-case processing for single-entry strains so they show as
             // combinatorial if an ICE folder is also specified
 
@@ -544,7 +539,7 @@ export class LinePropertyInput extends MultiValueInput {
         // in combinatorial line creation...inputs may not be provided yet, but best to give
         // feedback right away re: intention when a new row is added
         isIceFolder = this.lineProperty.jsonId === ICE_FOLDER_JSON_ID;
-        isStrains = this.lineProperty.inputLabel === STRAINS_META_NAME;
+        isStrains = this.lineProperty.metaUUID === EddRest.LINE_STRAINS_META_UUID;
         aggregateComboIntended = (isIceFolder ||
             (isStrains && creationManager.getPropertyInput(ICE_FOLDER_JSON_ID)));
         comboInputIntended = this.hasMultipleInputs() || aggregateComboIntended;
@@ -1031,7 +1026,7 @@ export class LinePropertyAutoInput extends LinePropertyInput {
                 'hiddenInput': hidden,
             });
             this.autoInput.init();
-        } else if (EddRest.CARBON_SOURCE_META_NAME === this.lineProperty.inputLabel) {
+        } else if (EddRest.CARBON_SRC_META_UUID === this.lineProperty.metaUUID) {
             visible.attr('eddautocompletetype', "CarbonSource");
             this.autoInput = new EDDAuto.CarbonSource({
                 'container': inputCell,
@@ -1039,7 +1034,7 @@ export class LinePropertyAutoInput extends LinePropertyInput {
                 'hiddenInput': hidden,
             });
             this.autoInput.init();
-        } else if (EddRest.STRAINS_META_NAME === this.lineProperty.inputLabel) {
+        } else if (EddRest.LINE_STRAINS_META_UUID === this.lineProperty.metaUUID) {
             visible.attr('eddautocompletetype', "Registry");
             this.autoInput = new EDDAuto.Registry({
                 'container': inputCell,
@@ -1055,7 +1050,7 @@ export class LinePropertyAutoInput extends LinePropertyInput {
         var stringVal: string;
         stringVal = this.rows[rowIndex].find('input[type=hidden]').first().val();
 
-        if (this.lineProperty.inputLabel === EddRest.STRAINS_META_NAME) {
+        if (this.lineProperty.metaUUID === EddRest.LINE_STRAINS_META_UUID) {
             // strain autocomplete uses UUID
             return stringVal;
         }
@@ -1352,7 +1347,7 @@ export class CreationManager {
         autocompleteMetaItem = this.autocompleteLineMetaTypes[lineProperty.jsonId];
         if (autocompleteMetaItem) {
             newInput = new LinePropertyAutoInput({'lineProperty': lineProperty});
-        } else if (EddRest.CONTROL_META_NAME === lineProperty.inputLabel) {
+        } else if (EddRest.CONTROL_META_UUID === lineProperty.metaUUID) {
             newInput = new BooleanInput({'lineProperty': lineProperty, 'maxRows': 1});
         } else if (REPLICATE_COUNT_JSON_ID === lineProperty.jsonId) {
             newInput = new NumberInput({'lineProperty': lineProperty});
@@ -2206,20 +2201,20 @@ export class CreationManager {
             // options would be confusing for users, since the normal case for this
             // GUI should be to compute line names from combinatorial metadata values, and
             // combinatorial entry of line descriptions isn't really possible
-            if (EddRest.LINE_NAME_META_NAME === meta.type_name ||
-                EddRest.LINE_DESCRIPTION_META_NAME === meta.type_name) {
+            if (EddRest.LINE_NAME_META_UUID === meta.uuid ||
+                EddRest.LINE_DESCRIPTION_META_UUID === meta.uuid) {
                 return true; // keep looping!
             }
 
             // if this metadata type matches the name of one we have autocomplete inputs for
             // keep track of its pk for easy reference
-            if (AUTOCOMPLETE_META_NAMES.indexOf(meta.type_name) >= 0) {
+            if (AUTOCOMPLETE_META_UUIDS.indexOf(meta.uuid) >= 0) {
                 self.autocompleteLineMetaTypes[meta.pk] = meta;
             }
 
             // if this metadata type is one that supports multivalued input for a single line,
             // store its pk for easy reference
-            if (MULTIVALUED_LINE_META_TYPES.indexOf(meta.type_name) >= 0) {
+            if (MULTIVALUED_LINE_META_UUIDS.indexOf(meta.uuid) >= 0) {
                 self.multivaluedMetaTypePks.push(meta.pk);
             }
 
@@ -2240,17 +2235,18 @@ export class CreationManager {
             // build up a descriptor for this metadata type, including logical labeling for it
             // in various parts of the GUI, as well as JSON id's for both the metadata itself
             // or its naming elements
-            if (USER_META_TYPE_NAMES.indexOf(meta.type_name) >= 0) {
+            if (USER_META_TYPE_UUIDS.indexOf(meta.uuid) >= 0) {
                 nameEltLabel = uiLabel + ' Last Name';
                 nameEltJsonId = meta.pk + '__last_name';
                 propertyDescriptor = new LinePropertyDescriptor(meta.pk, uiLabel,
-                                                                nameEltLabel, nameEltJsonId);
+                                                                nameEltLabel, nameEltJsonId,
+                                                                meta.uuid);
                 self.userMetaTypePks.push(meta.pk);
-            } else if (EddRest.STRAINS_META_NAME === meta.type_name ||
-                       EddRest.CARBON_SOURCE_META_NAME === meta.type_name) {
+            } else if (EddRest.LINE_STRAINS_META_UUID === meta.uuid ||
+                       EddRest.CARBON_SRC_META_UUID === meta.uuid) {
                 nameEltJsonId = meta.pk + '__name';
 
-                if (EddRest.STRAINS_META_NAME === meta.type_name) {
+                if (EddRest.LINE_STRAINS_META_UUID === meta.uuid) {
                     nameEltLabel = STRAIN_NAME_ELT_LABEL;
                     this.strainNameEltJsonId = nameEltJsonId;
                     this.strainMetaPk = meta.pk;
@@ -2260,9 +2256,10 @@ export class CreationManager {
                 }
 
                 propertyDescriptor = new LinePropertyDescriptor(meta.pk, uiLabel,
-                                                                nameEltLabel, nameEltJsonId);
+                                                                nameEltLabel, nameEltJsonId,
+                                                                meta.uuid);
             } else {
-                propertyDescriptor = new LinePropertyDescriptor(meta.pk, uiLabel);
+                propertyDescriptor = new LinePropertyDescriptor(meta.pk, uiLabel, null, null, meta.uuid);
             }
 
             lineProps.push(propertyDescriptor);
@@ -2749,8 +2746,8 @@ export class CreationManager {
             // for now, we'll assume that multiple entries for either results in combinatorial
             // line creation.  later on, we may add support for non-combinatorial multiples
             // (e.g. co-culture \ multiple carbon sources)
-            multiValuedInput = (MULTIVALUED_LINE_META_TYPES.indexOf(
-                                            input.lineProperty.inputLabel) >= 0);
+            multiValuedInput = (MULTIVALUED_LINE_META_UUIDS.indexOf(
+                                            input.lineProperty.metaUUID) >= 0);
             if (multiValuedInput && validInputCount > 1) {
                 value = input.getValueJson();
                 if (value.constructor === Array) {

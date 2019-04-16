@@ -21,6 +21,26 @@ from .common import EDDSerialize
 
 logger = logging.getLogger(__name__)
 
+# built-in metadata that reference Line and Assay attributes
+SYSTEM_META_TYPES = {
+    # assay metadata types
+    "Assay Description": "4929a6ad-370c-48c6-941f-6cd154162315",
+    "Assay Experimenter": "15105bee-e9f1-4290-92b2-d7fdcb3ad68d",
+    "Assay Name": "33125862-66b2-4d22-8966-282eb7142a45",
+    "Original Name": "5ef6500e-0f8b-4eef-a6bd-075bcb655caa",
+    "Time": "6629231d-4ef0-48e3-a21e-df8db6dfbb72",
+
+    # line metadata types
+    "Carbon Source(s)": "4ddaf92a-1623-4c30-aa61-4f7407acfacc",
+    "Control": "8aa26735-e184-4dcd-8dd1-830ec240f9e1",
+    "Growth temperature": "fe685261-ca5d-45a3-8121-3a3279025ab2",
+    "Line Contact": "13672c8a-2a36-43ed-928f-7d63a1a4bd51",
+    "Line Description": "5fe84549-9a97-47d2-a897-8c18dd8fd34a",
+    "Line Experimenter": "974c3367-f0c5-461d-bd85-37c1a269d49e",
+    "Line Name": "b388bcaa-d14b-4d7f-945e-a6fcb60142f2",
+    "Media": "463546e4-a67e-4471-a278-9464e78dbc9d",
+    "Strain(s)": "292f1ca7-30de-4ba1-89cd-87d2f6291416",
+}
 
 @python_2_unicode_compatible
 class MetadataGroup(models.Model):

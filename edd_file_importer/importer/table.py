@@ -14,7 +14,8 @@ from ..codes import FileParseCodes, FileProcessingCodes
 from ..models import Import
 from ..utilities import (build_summary_json, compute_required_context, ErrorAggregator,
                          ImportTooLargeError, MTYPE_GROUP_TO_CLASS, ParseError, verify_assay_times)
-from main.models import (Assay, Line, MeasurementType, MeasurementUnit, Metabolite, MetadataType)
+from main.models import (Assay, Line, MeasurementType, MeasurementUnit, Metabolite,
+                         MetadataType, SYSTEM_META_TYPES)
 from main.importer.parser import guess_extension, ImportFileTypeFlags
 from main.importer.table import ImportBroker
 
@@ -48,8 +49,7 @@ class ImportContext:
         self.user = user
         self.import_ = import_
 
-        self.assay_time_metatype = MetadataType.objects.filter(
-            for_context=MetadataType.ASSAY).get(type_name='Time')
+        self.assay_time_metatype = MetadataType.objects.get(uuid=SYSTEM_META_TYPES['Time'])
 
         ###########################################################################################
         # Look up the file parser class based on user input
