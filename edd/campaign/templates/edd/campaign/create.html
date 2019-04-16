@@ -1,0 +1,13 @@
+{% extends "edd/campaign/base.html" %}
+{% load i18n %}
+{% load staticfiles %}
+
+
+{% block content %}
+  {{ block.super }}
+  <form action="{% url 'campaign:index' %}" class="edd-form" method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">{% trans 'Create' %}</button>
+  </form>
+{% endblock content %}

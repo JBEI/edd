@@ -28,6 +28,7 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),  # allauth does not support namespacing
     path('utilities/', include('edd_utils.urls', namespace='edd_utils')),
     path('profile/', include('edd.profile.urls', namespace='profile')),
+    path('campaign/', include('edd.campaign.urls', namespace='campaign')),
     path('rest/', include(rest_urlpatterns)),
     # flatpages.urls does not include app_name; cannot include it with namespace
     # path('pages/', include('django.contrib.flatpages.urls', namespace='flatpage'))

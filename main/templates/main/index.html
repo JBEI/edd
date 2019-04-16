@@ -1,50 +1,26 @@
 {% extends "edd_base.html" %}
+{% load i18n %}
 {% load staticfiles %}
 
 
 {% block js_css %}
     {{ block.super }}
     <script type="text/javascript" src="{% static 'dist/index.js' %}"></script>
-    {% if form.errors %}
-    <script>
-        var options = {
-            autoOpen: false,
-            minWidth: 600,
-            title: 'Add New Study'
-        };
-        $(document).ready(function() {
-            $('.errorlist').remove();
-            $("#addStudyModal").removeClass('off').dialog(options).dialog("open");
-        });
-    </script>
-    {% endif %}
 {% endblock js_css %}
 
 
 {% block content %}
     {% if can_create %}
-    <div style="float: right">
-        <button id="addStudyButton"
-                class="actionButton primary larger"
-                title="Add a new study">
-            New Study
-        </button>
-    </div>
-    {% endif %}
-    <h2 style="margin-bottom: {% if latest_viewed_studies %}12{% else %}50{% endif %}px;">
-        Recently Viewed Studies:
-    </h2>
-    <div class="lastViewed">
-        {% for study in latest_viewed_studies %}
-            <span><a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a></span>
-        {% endfor %}
-    </div>
-
-    <h2>All Studies:</h2>
-    <table id="studiesTable"></table>
-
-    <div id="addStudyModal" class="off"
-         title="Add New Study">
+    <button id="addStudyButton"
+            class="actionButton primary larger"
+            style="float: right;"
+            title="{% trans 'Add a new Study' %}">
+        {% trans 'New Study' context 'button' %}
+    </button>
+    {# the DIV below is hidden by default; TypeScript code removes and puts in a modal #}
+    <div id="addStudyModal"
+            class="off"
+            title="{% trans 'Add New Study' context 'modal title' %}">
         {% if form.errors %}
         <div class="alert alert-danger alert-dismissible" role="alert">
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
@@ -62,8 +38,19 @@
                 <button type="submit"
                         name="action"
                         class="btn btn-primary"
-                        value="assay">Add Study</button>
+                        value="assay">{% trans 'Add Study' context 'button' %}</button>
             </div>
         </form>
     </div>
+    {% endif %}
+    <h2>{% trans 'Recently Viewed Studies:' context 'heading' %}</h2>
+    <div class="lastViewed" style="min-height: 30px;">
+        {% for study in latest_viewed_studies %}
+            <span><a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a></span>
+        {% endfor %}
+    </div>
+
+    <h2>{% trans 'All Studies:' context 'heading' %}</h2>
+    <table id="studiesTable"></table>
+
 {% endblock content %}

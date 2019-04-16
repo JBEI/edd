@@ -1,0 +1,107 @@
+{% extends "edd/campaign/base.html" %}
+{% load i18n %}
+{% load staticfiles %}
+
+
+{% block body_title %}
+  {{ block.super }} &ndash; {{ campaign.name }}
+{% endblock body_title %}
+
+
+{% block content %}
+  {{ block.super }}
+  {% if can_create_study %}
+    <button id="addStudyButton"
+        class="actionButton primary larger"
+        style="float: right;"
+        title="{% trans 'Add a new Study' %}">
+      {% trans 'New Study' context 'button' %}
+    </button>
+    {# the DIV below is hidden by default; TypeScript code removes and puts in a modal #}
+    <div id="addStudyModal"
+        class="off"
+        title="{% trans 'Add New Study' context 'modal title' %}">
+      {% if create_study.errors %}
+        <div class="alert alert-danger alert-dismissible" role="alert">
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <p>{{ create_study.errors.as_text }}</p>
+        </div>
+      {% endif %}
+      <form action="" class="edd-form" method="POST">
+        {% csrf_token %}
+        <div class="modal-body">
+          {{ create_study.as_p }}
+        </div>
+        <div class="modal-footer">
+          <button type="submit">{% trans "Create Study" context "button" %}</button>
+        </div>
+      </form>
+    </div>
+  {% endif %}
+  <h1>{{ campaign.name }}</h1>
+  <p>{{ campaign.description }}</p>
+  <hr/>
+  <p>
+    <a href="{% url 'campaign:study' slug=campaign.slug %}">
+      {% blocktrans with count=campaign.studies.count %}
+      Go to Study List ({{ count }})
+      {% endblocktrans %}
+    </a>
+  </p>
+  {% if can_write %}
+    <div class="disclose discloseHide">
+      <div class="pageDivider">
+        <span class="discloseLink">{% trans " Permissions" %}</span>
+      </div>
+      <div class="discloseBody">
+        <div class="sectionContent indent">
+          {% with all_perm=campaign.get_all_permissions %}
+          <table class="dataTable table-bordered table-striped">
+            <thead>
+              <tr class="columnLabels">
+                <th class="sortheader smaller">{% trans "Who" context "permission list" %}</th>
+                <th class="sortheader smaller">{% trans "Level" context "permission list" %}</th>
+                <th class="smaller">{% trans "Add Study" context "permission list" %}</th>
+                <th class="smaller">{% trans "Remove Study" context "permission list" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% with studyadd=permission_keys.study_add studyrem=permissionkeys.study_remove %}
+              {% for p in all_perm %}
+                <tr>
+                  <td>{{ p.get_who_label }}</td>
+                  <td>{{ p.get_type_label }}</td>
+                  <td>
+                    <input type="checkbox"
+                        {% if p|getitem:studyadd %}
+                        checked="checked"
+                        {% endif %}
+                        disabled="disabled"/>
+                  </td>
+                  <td>
+                    <input type="checkbox"
+                        {% if p|getitem:studyrem %}
+                        checked="checked"
+                        {% endif %}
+                        disabled="disabled"/>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="4">{% trans "No permissions set" %}</td>
+                </tr>
+              {% endfor %}
+              {% endwith %}
+            </tbody>
+          </table>
+          {% endwith %}
+          <button class="actionButton primary" id="addPermission">
+            {% trans "Configure Permissions" context "button" %}
+          </button>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock content %}

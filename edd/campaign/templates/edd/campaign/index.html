@@ -1,0 +1,110 @@
+{% extends "edd/campaign/base.html" %}
+{% load i18n %}
+{% load staticfiles %}
+
+
+{% block js_css %}
+  {{ block.super }}
+  <script type="text/javascript" src="{% static 'dist/CampaignIndex.js' %}"></script>
+{% endblock js_css %}
+
+
+{% block body_title %}
+  {{ block.super }} &ndash; {% trans 'Campaign Index' context 'heading' %}
+{% endblock body_title %}
+
+
+{% block content %}
+  {{ block.super }}
+  {% if can_create %}
+    <button id="addCampaignButton"
+        class="actionButton primary larger"
+        style="float: right;"
+        title="{% trans 'Add a new Campaign' context 'button tooltip' %}">
+      {% trans 'New Campaign' context 'button label' %}
+    </button>
+    <div id="addCampaignModal"
+        class="off"
+        title="{% trans 'Add New Campaign' context 'modal title' %}">
+      <form action="{% url 'campaign:index' %}" class="edd-form" method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">{% trans 'Create' %}</button>
+      </form>
+    </div>
+  {% endif %}
+  {% if is_paginated %}
+    <div class="paging_controls">
+      {% if page_obj.has_previous %}
+        <a href="{% url 'campaign:index-paged' page=1 %}">{% trans 'First' %}</a>
+        {% if page_obj.previous_page_number != 1 %}
+          <a href="{% url 'campaign:index-paged' page=page_obj.previous_page_number %}">
+            {% trans 'Previous' %}
+          </a>
+        {% endif %}
+      {% endif %}
+      <span>
+        {% blocktrans with page_num=page_obj.number total=paginator.num_pages %}
+        Page {{ page_num }} of {{ total }}
+        {% endblocktrans %}
+      </span>
+      {% if page_obj.has_next %}
+        {% if page_obj.next_page_number != paginator.num_pages %}
+          <a href="{% url 'campaign:index-paged' page=page_obj.next_page_number %}">
+            {% trans 'Next' %}
+          </a>
+        {% endif %}
+        <a href="{% url 'campaign:index-paged' page=paginator.num_pages %}">
+          {% trans 'Last' %}
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+  <table class="dataTable table-bordered table-striped">
+    <thead>
+      <tr>
+        <td>{% trans 'Name' context 'campaign table heading' %}</td>
+        <td>{% trans 'Description' context 'campaign table heading' %}</td>
+      </tr>
+    </thead>
+    <tbody>
+      {% for campaign in object_list %}
+        <tr>
+          <td>
+            <a href="{% url 'campaign:detail' slug=campaign.slug %}">
+              {{ campaign.name }}
+            </a>
+          </td>
+          <td>{{ campaign.description|truncatechars_html:280 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if is_paginated %}
+    <div class="paging_controls">
+      {% if page_obj.has_previous %}
+        <a href="{% url 'campaign:index-paged' page=1 %}">{% trans 'First' %}</a>
+        {% if page_obj.previous_page_number != 1 %}
+          <a href="{% url 'campaign:index-paged' page=page_obj.previous_page_number %}">
+            {% trans 'Previous' %}
+          </a>
+        {% endif %}
+      {% endif %}
+      <span>
+        {% blocktrans with page_num=page_obj.number total=paginator.num_pages %}
+        Page {{ page_num }} of {{ total }}
+        {% endblocktrans %}
+      </span>
+      {% if page_obj.has_next %}
+        {% if page_obj.next_page_number != paginator.num_pages %}
+          <a href="{% url 'campaign:index-paged' page=page_obj.next_page_number %}">
+            {% trans 'Next' %}
+          </a>
+        {% endif %}
+        <a href="{% url 'campaign:index-paged' page=paginator.num_pages %}">
+          {% trans 'Last' %}
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock content %}

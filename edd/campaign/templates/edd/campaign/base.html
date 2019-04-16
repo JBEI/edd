@@ -1,0 +1,14 @@
+{% extends "edd_base.html" %}
+{% load i18n %}
+{% load staticfiles %}
+
+
+{% block head_title %}
+{% trans "EDD Campaign" context "HTML Title" %}
+{% endblock head_title %}
+
+
+{% block js_css %}
+  {{ block.super }}
+  <script type="text/javascript" src="{% static 'dist/Campaign.js' %}"></script>
+{% endblock js_css %}

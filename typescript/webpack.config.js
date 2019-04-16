@@ -15,6 +15,8 @@ var css_extract = new ExtractTextPlugin({
 module.exports = {
   entry: {
     Admin: "./src/Admin.ts",
+    Campaign: "./src/Campaign.ts",
+    CampaignIndex: "./src/Campaign-Index.ts",
     Common: "./src/Common.ts",
     Cytometry: "./src/Cytometry.ts",
     ExperimentDescHelp: "./src/Experiment-Desc-Help.ts",

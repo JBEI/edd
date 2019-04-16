@@ -1,0 +1,101 @@
+{% extends "edd/campaign/base.html" %}
+{% load i18n %}
+{% load staticfiles %}
+
+
+{% block content %}
+  {{ block.super }}
+  <h1>{{ campaign.name }}</h1>
+  <p>{{ campaign.description }}</p>
+  {% if is_paginated %}
+    <hr/>
+    {% if page_obj.has_previous %}
+      <a href="{% url 'campaign:study-paged' slug=campaign.slug page=1 %}">{% trans 'First' %}</a>
+      {% if page_obj.previous_page_number != 1 %}
+        <a href="{% url 'campaign:study-paged' slug=campaign.slug page=page_obj.previous_page_number %}">
+          {% trans 'Previous' %}
+        </a>
+      {% endif %}
+    {% endif %}
+    <span>
+      {% blocktrans with page_num=page_obj.number total=paginator.num_pages %}
+      Page {{ page_num }} of {{ total }}
+      {% endblocktrans %}
+    </span>
+    {% if page_obj.has_next %}
+      {% if page_obj.next_page_number != paginator.num_pages %}
+        <a href="{% url 'campaign:study-paged' slug=campaign.slug page=page_obj.next_page_number %}">
+          {% trans 'Next' %}
+        </a>
+      {% endif %}
+      <a href="{% url 'campaign:study-paged' slug=campaign.slug page=paginator.num_pages %}">
+        {% trans 'Last' %}
+      </a>
+    {% endif %}
+  {% endif %}
+  <hr/>
+  <table class="dataTable table-bordered table-striped">
+    <colgroup>
+      {% if can_remove_study %}
+        <col id="study-select-column"/>
+      {% else %}
+        <col id="study-select-column" class="off"/>
+      {% endif %}
+      <col id="study-name-column"/>
+      <col id="study-desc-column"/>
+    </colgroup>
+    <thead>
+      <tr>
+        <td><input type="checkbox" id="study-select-all"/></td>
+        <td>{% trans 'Name' context 'campaign table heading' %}</td>
+        <td>{% trans 'Description' context 'campaign table heading' %}</td>
+      </tr>
+    </thead>
+    <tbody>
+      {% for study in object_list %}
+        <tr>
+          <td><input type="checkbox" name="id" value="{{ study.id }}"/></td>
+          <td>
+            <a href="{% url 'main:detail' slug=study.slug %}">
+              {{ study.name }}
+            </a>
+          </td>
+          <td>{{ study.description|truncatechars_html:280 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if can_remove_study %}
+    <button id="removeStudyButton"
+        class="btn btn-danger"
+        title="{% trans 'Remove Selected Studies' %}">
+      {% trans "Remove Studies" %}
+    </button>
+  {% endif %}
+  {% if is_paginated %}
+    <hr/>
+    {% if page_obj.has_previous %}
+      <a href="{% url 'campaign:study-paged' slug=campaign.slug page=1 %}">{% trans 'First' %}</a>
+      {% if page_obj.previous_page_number != 1 %}
+        <a href="{% url 'campaign:study-paged' slug=campaign.slug page=page_obj.previous_page_number %}">
+          {% trans 'Previous' %}
+        </a>
+      {% endif %}
+    {% endif %}
+    <span>
+      {% blocktrans with page_num=page_obj.number total=paginator.num_pages %}
+      Page {{ page_num }} of {{ total }}
+      {% endblocktrans %}
+    </span>
+    {% if page_obj.has_next %}
+      {% if page_obj.next_page_number != paginator.num_pages %}
+        <a href="{% url 'campaign:study-paged' slug=campaign.slug page=page_obj.next_page_number %}">
+          {% trans 'Next' %}
+        </a>
+      {% endif %}
+      <a href="{% url 'campaign:study-paged' slug=campaign.slug page=paginator.num_pages %}">
+        {% trans 'Last' %}
+      </a>
+    {% endif %}
+  {% endif %}
+{% endblock content %}

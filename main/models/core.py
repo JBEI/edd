@@ -295,7 +295,53 @@ class EDDObject(EDDMetadata, EDDSerialize):
         return user and user.is_superuser
 
 
-class Study(EDDObject):
+class SlugMixin(object):
+    """
+    Mixin class for models with a slug field.
+
+    Assumes base object has fields for: name, slug, uuid.
+    """
+
+    def _build_slug(self, name=None, uuid=None):
+        """
+        Builds a slug for this object; by default uses name field. If there is a
+        collision, append truncated UUID; if there is still a collision, use full UUID.
+
+        :param name: text to use as basis of slugified name; defaults to the object name
+        :param uuid: text for UUID; defaults to the object UUID
+        :returns: a slug without collisions
+        """
+        # sanity check parameters, default to object attribute values
+        name = name if isinstance(name, string_types) else self.name if self.name else ''
+        uuid = uuid if isinstance(uuid, string_types) else self.uuid.hex if self.uuid else ''
+        # generate slug from only the name; keep base_slug in case truncation is required
+        base_slug = self._slug_append(name)
+        slug = base_slug
+        # test uniqueness, add more stuff to end if not unique
+        if self._slug_exists(slug):
+            # try with last 4 of UUID appended, trimming off space if needed
+            slug = self._slug_concat(base_slug, uuid, frag_length=4)
+            if self._slug_exists(slug):
+                # full length of uuid should be 32 characters
+                slug = self._slug_concat(base_slug, uuid, frag_length=32)
+        return slug
+
+    def _slug_append(self, *items):
+        max_length = self._meta.get_field('slug').max_length
+        base = ' '.join((str(i) for i in items))
+        return slugify(base)[:max_length]
+
+    def _slug_concat(self, name, uuid, frag_length=4):
+        max_length = self._meta.get_field('slug').max_length
+        # try with last `frag_length` of UUID appended, trimming off space if needed
+        trunc = max_length - (frag_length + 1)
+        return self._slug_append(name[:trunc], uuid[-frag_length:])
+
+    def _slug_exists(self, slug):
+        return type(self).objects.filter(slug=slug).exists()
+
+
+class Study(SlugMixin, EDDObject):
     """ A collection of items to be studied. """
     class Meta:
         db_table = 'study'
@@ -544,42 +590,6 @@ class Study(EDDObject):
             'metabolic_map': self.get_attr_depth('metabolic_map', depth),
         })
         return json_dict
-
-    def _build_slug(self, name=None, uuid=None):
-        """ Builds a slug for this Study; by default uses initials-study-name. If there is a
-            collision, append truncated UUID; if there is still a collision, keep incrementing
-            a counter and trying new slugs. """
-        max_length = self._meta.get_field('slug').max_length
-        frag_length = 4
-        name = name if name is not None else self.name if self.name else ''
-        base_slug = self._slug_append(self.name)
-        slug = base_slug
-        # test uniqueness, add more stuff to end if not unique
-        if self._slug_exists(base_slug):
-            # try with last 4 of UUID appended, trimming off space if needed
-            uuid = uuid if uuid is not None else self.uuid.hex if self.uuid else ''
-            base_slug = self._slug_append(
-                base_slug[:max_length - (frag_length + 1)],
-                uuid[-frag_length:],
-            )
-            slug = base_slug
-            i = 1
-            # keep incrementing number at end if even partial UUID causes collision
-            while self._slug_exists(slug):
-                slug = self._slug_append(
-                    base_slug[:max_length - (len(str(i)) + 1)],
-                    i,
-                )
-                i += 1
-        return slug
-
-    def _slug_append(self, *items):
-        max_length = self._meta.get_field('slug').max_length
-        base = ' '.join((str(i) for i in items))
-        return slugify(base)[:max_length]
-
-    def _slug_exists(self, slug):
-        return Study.objects.filter(slug=slug).exists()
 
 
 class Protocol(EDDObject):

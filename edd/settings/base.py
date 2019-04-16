@@ -165,6 +165,7 @@ INSTALLED_APPS = (
     'edd_utils',
     'edd.profile',
     'edd.branding',
+    'edd.campaign.apps.CampaignConfig',
     'edd.rest',
 )
 MIDDLEWARE = (
