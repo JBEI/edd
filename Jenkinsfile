@@ -128,7 +128,6 @@ try {
                 sudo docker-compose -p '${project_name}' -f combined.yml build --pull rabbitmq
                 sudo docker-compose -p '${project_name}' -f combined.yml build --pull redis
                 sudo docker-compose -p '${project_name}' -f combined.yml build --pull solr
-                sudo docker-compose -p '${project_name}' -f combined.yml build --pull flower
             /$
             dir("docker_services") {
                 sh prepare_images_script

@@ -6,7 +6,7 @@ their specific needs.
 For Celery configuration reference, see http://docs.celeryproject.org/en/latest/configuration.html
 """
 
-from .base import env, EDD_SERIALIZE_NAME
+from .base import env
 
 
 ###################################################################################################
@@ -14,6 +14,9 @@ from .base import env, EDD_SERIALIZE_NAME
 ###################################################################################################
 # Broker Settings
 CELERY_BROKER_URL = env('BROKER_URL')
+
+# specify the name of the JSON serializer in use
+EDD_SERIALIZE_NAME = 'edd-json'
 
 CELERY_ACCEPT_CONTENT = {'json', EDD_SERIALIZE_NAME}
 CELERY_TASK_SERIALIZER = EDD_SERIALIZE_NAME

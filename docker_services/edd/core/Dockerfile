@@ -88,7 +88,14 @@ COPY --from=node /edd.hash /edd.hash
 
 # Create user/group to run code
 RUN addgroup -g 1000 -S edduser \
-    && adduser -u 1000 -S edduser -G edduser
+    && adduser -u 1000 -S edduser -G edduser \
+    # run collectstatic to set static assets in build
+    && cd /usr/local/edd \
+    && export EDD_VERSION_HASH="$(cat /edd.hash)" \
+    && python manage.py collectstatic \
+        --noinput \
+        --settings "edd.settings.build_collectstatic"
+
 
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["--help"]

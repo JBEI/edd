@@ -4,12 +4,10 @@ An override of the built-in collectstatic command, which adds a --watch paramete
 the collectstatic command when changes are detected in the watch directories.
 """
 
-import os.path
 import time
 
 from django.contrib.staticfiles.finders import get_finders
 from django.contrib.staticfiles.management.commands import collectstatic
-from django.template import loader
 from functools import partial
 from itertools import chain
 from watchdog.events import FileSystemEventHandler
@@ -41,8 +39,6 @@ class Command(collectstatic.Command):
         else:
             # fall back to parent functionality
             super().handle(*args, **options)
-            # only process error page when not doing --watch
-            self.render_error_page()
 
     def watch_handle(self, *args, **options):
         super().handle(*args, **options)
@@ -72,15 +68,6 @@ class Command(collectstatic.Command):
         except KeyboardInterrupt:
             observer.stop()
         observer.join()
-
-    def render_error_page(self):
-        # TODO: add some config options, rather than straight hard-coding this
-        error_template = loader.get_template("5xx.html.tmpl")
-        template_dir = os.path.dirname(error_template.origin.name)
-        # TODO: write this to static files storage, and inform Nginx to use as error page
-        with open(os.path.join(template_dir, "500.html"), mode="w") as out:
-            out.write(error_template.render())
-        self.log("Rendered static 500.html error page", level=2)
 
 
 class ChangeDebounceHandler(FileSystemEventHandler):

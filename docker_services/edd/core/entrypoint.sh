@@ -52,10 +52,6 @@ function print_help() {
     echo "        Perform all initialization tasks prior to command start (default)."
     echo "    -A, --no-init, --no-init-all"
     echo "        Skip all initialization tasks; may override with another --init* flag."
-    echo "    -s, --init-static"
-    echo "        Copy static files to the static volume. Only used to override -A."
-    echo "    -S, --no-init-static"
-    echo "        Skip initialization of static files."
     echo "    -m, --init-migration"
     echo "        Run any pending database migrations. Only used to override -A."
     echo "    -M, --no-init-migration"
@@ -101,15 +97,14 @@ function print_help() {
     echo "        Start a Django Channels worker listening on listed channel names (runworker)."
 }
 
-short="ahimp:qsw:AIMS"
-long="help,quiet,init,init-all,no-init,no-init-all,init-static,no-init-static"
+short="hqaimAIMp:w:"
+long="help,quiet,init,init-all,no-init,no-init-all"
 long="$long,init-migration,no-init-migration,init-index,no-init-index"
 long="$long,local:,force-index,wait-host:,wait-port:,watch-static"
 params=`getopt -o "$short" -l "$long" --name "$0" -- "$@"`
 eval set -- "$params"
 
 COMMAND=shell
-INIT_STATIC=1
 INIT_DB=1
 INIT_MIGRATE=1
 INIT_INDEX=1
@@ -130,23 +125,13 @@ while [ ! $# -eq 0 ]; do
             ;;
         --init-all | --init | -a)
             shift
-            INIT_STATIC=1
             INIT_MIGRATE=1
             INIT_INDEX=1
             ;;
         --no-init-all | --no-init | -A)
             shift
-            INIT_STATIC=0
             INIT_MIGRATE=0
             INIT_INDEX=0
-            ;;
-        --init-static | -s)
-            shift
-            INIT_STATIC=1
-            ;;
-        --no-init-static | -S)
-            shift
-            INIT_STATIC=0
             ;;
         --init-migration | -m)
             shift
@@ -227,10 +212,10 @@ if [ ! -x /code/manage.py ]; then
     ln -s /usr/local/edd /code
     # and go back into /code
     cd /code
-    if [ ! -z "$LOCAL_PY" ]; then
+    # if given a local.py override, copy it into place
+    if [ -r "$LOCAL_PY" ]; then
         cp "$LOCAL_PY" /code/edd/settings/local.py
     fi
-    ensure_dir_owner "/usr/local/edd" "edduser"
 else
     output "Running with mounted copy of code …"
 fi
@@ -240,6 +225,14 @@ if [ ! -f /code/edd/settings/local.py ]; then
 fi
 cd /code
 export EDD_VERSION_HASH="$(cat /edd.hash)"
+# set correct ownership over directories
+ensure_dir_owner "/usr/local/edd" "edduser"
+ensure_dir_owner "/var/www/static" "edduser"
+ensure_dir_owner "/var/www/uploads" "edduser"
+# copy static assets to volume if needed
+if [ ! -d "/var/www/static/${EDD_VERSION_HASH}" ]; then
+    cp -r "/usr/local/edd-static/${EDD_VERSION_HASH}" "/var/www/static/"
+fi
 
 # If specified, wait on other service(s)
 for ((i=0; i<${#WAIT_HOST[@]}; i++)); do
@@ -250,17 +243,6 @@ done
 # Wait for redis to become available
 ping_wait redis 6379
 
-if [ $INIT_STATIC -eq 1 ]; then
-    banner "Collecting static resources …"
-    # check for correct ownership
-    ensure_dir_owner "/var/www/static" "edduser"
-    ensure_dir_owner "/var/www/uploads" "edduser"
-    # Collect static first, worker will complain if favicons are missing
-    su-exec edduser:edduser python /code/manage.py edd_collectstatic --noinput
-else
-    # if not statically rendering 500.html, fall back to the default
-    cp /code/main/templates/500.default.html /code/main/templates/500.html
-fi
 if [ "$WATCH_STATIC" = "true" ]; then
     output "Watching for static resource changes …"
     su-exec edduser:edduser python /code/manage.py edd_collectstatic --watch &
@@ -312,6 +294,8 @@ service_wait rabbitmq 5672
 # Start up the command
 case "$COMMAND" in
     application)
+        # render 500 error page
+        su-exec edduser:edduser python /code/manage.py edd_render_error
         banner "Starting production appserver"
         su-exec edduser:edduser gunicorn -w 4 \
             -b 0.0.0.0:8000 \

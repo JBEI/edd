@@ -13,25 +13,33 @@ import environ
 import logging
 
 
+def load_secret(name, default=None):
+    """Check for and load a secret value mounted by Docker in /run/secrets."""
+    try:
+        with open(f"/run/secrets/{name}") as f:
+            return f.read().strip()
+    except Exception:
+        return default
+
+
 root = environ.Path(__file__) - 3  # root is two parents up of directory containing base.py
 BASE_DIR = root()
 DOCKER_SENTINEL = object()
+# initialize environment, fall back to secrets if not set
 env = environ.Env(
+    BROKER_URL=(str, load_secret("edd_broker_url")),
+    CACHE_URL=(str, "dummycache://"),
+    CELERY_RESULT_BACKEND=(str, load_secret("edd_celery_database_url")),
+    DATABASE_URL=(str, load_secret("edd_database_url", default="sqlite:///temp.db")),
     EDD_DEBUG=(bool, False),
-    ICE_HMAC_KEY=(str, ''),
-    LDAP_PASS=(str, None),
-    SECRET_KEY=(str, DOCKER_SENTINEL),
+    LDAP_PASS=(str, load_secret("edd_ldap_password")),
 )
-# Use the SECRET_KEY to detect if env is setup via Docker; if not, load from file secrets.env
-if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
-    # read passwords into the environment from secrets.env
-    env.read_env(root('docker_services', 'secrets.env'))
 
 ###################################################################################################
 # Custom EDD-defined configuration options
 ###################################################################################################
 
-EDD_VERSION_NUMBER = env('EDD_VERSION', default='2.4.0')
+EDD_VERSION_NUMBER = env('EDD_VERSION', default='unversioned-build')
 EDD_VERSION_HASH = env('EDD_VERSION_HASH', default=None)
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
@@ -52,7 +60,9 @@ EDD_EXTERNAL_SCRIPTS = []
 # ICE configuration used in multiple places, or that we want to be able to override in local.py
 ##############################
 ICE_KEY_ID = env('ICE_NAME', default='edd')
-ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY', default=None)
+ICE_SECRET_HMAC_KEY = env(
+    'ICE_HMAC_KEY', default=load_secret("edd_ice_key", default=None)
+)
 ICE_ADMIN_ACCOUNT = env('ICE_ADMIN_USER', default='Administrator')
 ICE_URL = env('ICE_URL', default=None)
 # HTTP request connection and read timeouts, respectively (seconds)
@@ -67,9 +77,6 @@ ICE_FOLDER_SEARCH_PAGE_SIZE = 100
 # WARNING: Use in any context other than local testing can expose user credentials to a
 # third party!
 ICE_VERIFY_CERT = True
-
-# specify the name of the JSON serializer in use
-EDD_SERIALIZE_NAME = 'edd-json'
 
 # the max # of data items in a single page of import data
 EDD_IMPORT_PAGE_SIZE = 1000
@@ -112,8 +119,14 @@ DEBUG = env('EDD_DEBUG', default=False)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # default quote from http://thedoomthatcametopuppet.tumblr.com/
-SECRET_KEY = env('SECRET_KEY', default='I was awake and dreaming at the same time, which is why '
-                                       'this only works for local variables')
+SECRET_KEY = env(
+    'SECRET_KEY',
+    default=load_secret(
+        "edd_django_secret",
+        default='I was awake and dreaming at the same time, which is why '
+                'this only works for local variables'
+    )
+)
 
 ALLOWED_HOSTS = []
 SITE_ID = 1
@@ -365,9 +378,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 ###################################################################################################
 # https://docs.djangoproject.com/en/dev/howto/static-files/
-STATIC_ROOT = '/var/www/static'
-STATIC_URL = '/static/'
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.CachedStaticFilesStorage'
+STATIC_ROOT = f"/var/www/static/{EDD_VERSION_HASH}"
+STATIC_URL = f"/static/{EDD_VERSION_HASH}/"
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 
 
 ###################################################################################################
