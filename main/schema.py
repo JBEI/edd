@@ -67,7 +67,7 @@ class StudyAccessMixin(object):
     def get_node(cls, info, id):
         try:
             access = models.Study.access_filter(info.context.user, via=cls._filter_joins)
-            return cls._meta.model.objects.filter(access).get(pk=id)
+            return cls._meta.model.objects.filter(access).distinct().get(pk=id)
         except cls._meta.model.DoesNotExist:
             return None
 

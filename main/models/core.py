@@ -473,6 +473,8 @@ class Study(SlugMixin, EDDObject):
             StudyPermission.CAN_EDIT; defaults to StudyPermission.CAN_VIEW
         :param via: an iterable of field names to traverse to get to the parent study
         """
+        if user and getattr(user, "is_superuser", False):
+            return Q()
         if isinstance(access, string_types):
             access = (access, )
         # enforce list type to via, and ensure that we work with a copy of argument

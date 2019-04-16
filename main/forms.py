@@ -395,10 +395,8 @@ class CreateStudyForm(forms.ModelForm):
         # self.fields exists after super.__init__()
         if self._user:
             # make sure lines are in a readable study
-            if self._user.is_superuser:
-                queryset = Line.objects.filter()
-            else:
-                queryset = Line.objects.filter(Study.access_filter(self._user, via='study'))
+            access = models.Study.access_filter(self._user, via="study")
+            queryset = models.Line.objects.filter(access).distinct()
             self.fields['lineId'].queryset = queryset
 
     def clean(self):
