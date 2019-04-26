@@ -25,8 +25,10 @@ EDD_MAIN_SOLR = {}
 
 # finally, the actual staticfiles settings:
 # location where static assets are saved in Docker image
-STATIC_ROOT = f"/usr/local/edd-static/{EDD_VERSION_HASH}"
+STATIC_ROOT = "/usr/local/edd-static"
 # URL where static assets will eventually get served; used in processing references
-STATIC_URL = f"/static/{EDD_VERSION_HASH}/"
-# storage generates a staticfiles.json manifest mapping name to hashed name
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+STATIC_URL = "/static/"
+# save the manifest specific to this build version
+STATICFILES_MANIFEST = f"staticfiles.{EDD_VERSION_HASH}.json"
+# use storage that uses the altered manifest name
+STATICFILES_STORAGE = "edd.utilities.StaticFilesStorage"

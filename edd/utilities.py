@@ -9,6 +9,7 @@ from datetime import date, datetime
 from dateutil import parser as date_parser
 from decimal import Decimal
 from django.conf import settings
+from django.contrib.staticfiles.storage import ManifestStaticFilesStorage
 from django.utils.encoding import force_text
 from django.utils.functional import Promise
 from kombu.serialization import register
@@ -66,6 +67,15 @@ class JSONDecoder(json.JSONDecoder):
     @staticmethod
     def loads(text):
         return json.loads(text, cls=JSONDecoder)
+
+
+class StaticFilesStorage(ManifestStaticFilesStorage):
+    """
+    Exactly the same as ManifestStaticFilesStorage from the Django contrib
+    package, except this one optionally changes the manifest file name
+    based on the value of STATICFILES_MANIFEST in settings.
+    """
+    manifest_name = getattr(settings, "STATICFILES_MANIFEST", "staticfiles.json")
 
 
 # register serializers for JSON that handle UUIDs and datetime objects

@@ -379,9 +379,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 ###################################################################################################
 # https://docs.djangoproject.com/en/dev/howto/static-files/
-STATIC_ROOT = f"/var/www/static/{EDD_VERSION_HASH}"
-STATIC_URL = f"/static/{EDD_VERSION_HASH}/"
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+STATIC_ROOT = "/var/www/static"
+STATIC_URL = "/static/"
+STATICFILES_MANIFEST = f"staticfiles.{EDD_VERSION_HASH}.json"
+STATICFILES_STORAGE = "edd.utilities.StaticFilesStorage"
 
 
 ###################################################################################################

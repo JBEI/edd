@@ -230,8 +230,11 @@ ensure_dir_owner "/usr/local/edd" "edduser"
 ensure_dir_owner "/var/www/static" "edduser"
 ensure_dir_owner "/var/www/uploads" "edduser"
 # copy static assets to volume if needed
-if [ ! -d "/var/www/static/${EDD_VERSION_HASH}" ]; then
-    cp -r "/usr/local/edd-static/${EDD_VERSION_HASH}" "/var/www/static/"
+if [ ! -f "/var/www/static/staticfiles.${EDD_VERSION_HASH}.json" ]; then
+    output "Copying staticfiles from manifest staticfiles.${EDD_VERSION_HASH}.json"
+    cp -r /usr/local/edd-static/* /var/www/static/
+else
+    output "Found manifest staticfiles.${EDD_VERSION_HASH}.json, doing nothing"
 fi
 
 # If specified, wait on other service(s)
