@@ -107,18 +107,19 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': get_log_filename(),
-            'formatter': 'simple',
-        },
-        'queryfile': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': get_log_filename('query.log'),
-            'formatter': 'simple',
-        },
+        # Docker logging to console covers most needs; below examples will also log to files
+        # 'file': {
+        #     'level': 'DEBUG',
+        #     'class': 'logging.FileHandler',
+        #     'filename': get_log_filename(),
+        #     'formatter': 'simple',
+        # },
+        # 'queryfile': {
+        #     'level': 'DEBUG',
+        #     'class': 'logging.FileHandler',
+        #     'filename': get_log_filename('query.log'),
+        #     'formatter': 'simple',
+        # },
     },
     'loggers': {
         'daphne': {
@@ -127,17 +128,17 @@ LOGGING = {
         },
         'django.db.backends': {
             'level': 'DEBUG',
-            'handlers': ['console', 'queryfile', ],
+            'handlers': ['console', ],  # 'queryfile', ],
             'propagate': False,
         },
         'main': {
             'level': 'DEBUG',
-            'handlers': ['console', 'file', ],
+            'handlers': ['console', ],  # 'file', ],
             'propagate': False,
         },
         'edd': {
             'level': 'DEBUG',
-            'handlers': ['console', 'file', ],
+            'handlers': ['console', ],  # 'file', ],
             'propagate': False,
         },
         '': {
