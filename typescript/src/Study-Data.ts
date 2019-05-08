@@ -1409,7 +1409,7 @@ export function prepareIt() {
     // and does the same to elements named in the 'for' attributes of each button.
     // We still need to add our own responders to actually do stuff.
     Utl.ButtonBar.prepareButtonBars();
-    copyActionButtons();
+    StudyBase.overlayContent($("#assaysActionPanel"));
     // Prepend show/hide filter button for better alignment
     // Note: this will be removed when we implement left side filtering
 
@@ -1596,18 +1596,6 @@ function updateGraphViewFlag(type) {
     $.ajax(_settingsPath('measurement-' + type.study_id), {
         'data': $.extend({}, basePayload(), { 'data': JSON.stringify(type) }),
         'type': 'POST',
-    });
-}
-
-function copyActionButtons() {
-    // create a copy of the buttons in the flex layout bottom bar
-    // the original must stay inside form
-    var original: JQuery, copy: JQuery;
-    original = $('#assaysActionPanel');
-    copy = original.clone().appendTo('#bottomBar').attr('id', 'copyActionPanel').hide();
-    // forward click events on copy to the original button
-    copy.on('click', '.actionButton', (e) => {
-        original.find('#' + e.target.id).trigger(e);
     });
 }
 
@@ -1870,37 +1858,6 @@ function actionPanelRefresh() {
             $('#TableShowEAssaysCB').click();
         }
     }
-
-    // move buttons so they are always visible if the page is scrolling
-    contentScrolling = isContentScrolling();
-    if (actionPanelIsInBottomBar && !contentScrolling) {
-        $('#assaysActionPanel').show();
-        $('#copyActionPanel').hide();
-        actionPanelIsInBottomBar = false;
-    } else if (!actionPanelIsInBottomBar && contentScrolling) {
-        $('#assaysActionPanel').hide();
-        $('#copyActionPanel').show();
-        actionPanelIsInBottomBar = true;
-    }
-
-    // only move the filter section when the page is scrolling in table view
-    if (viewingMode === 'table') {
-        contentScrolling = isContentScrolling();
-        filterInBottom = $('#mainFilterSection').parent().is('#bottomBar');
-        if (filterInBottom && !contentScrolling) {
-            $('#mainFilterSection').appendTo('#content');
-        } else if (!filterInBottom && contentScrolling) {
-            $('#mainFilterSection').appendTo('#bottomBar');
-        }
-    }
-}
-
-
-function isContentScrolling(): boolean {
-    var viewHeight: number = 0, itemsHeight: number = 0;
-    viewHeight = $('#content').height();
-    $('#content').children().each((i, e) => { itemsHeight += e.scrollHeight; });
-    return viewHeight < itemsHeight;
 }
 
 

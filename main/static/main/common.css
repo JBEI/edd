@@ -282,7 +282,7 @@ div.errorMessage {
 
 
 /* Main content section */
-div.content {
+div.content, div.bottomBar {
     padding-left: 15px;
     padding-right: 15px;
 }
@@ -298,6 +298,12 @@ div.footer-text {
 }
 div.footer-text > span {
     margin: 0 2em;
+}
+div.bottomBar {
+    background: inherit;
+    bottom: 0;
+    position: fixed;
+    width: 100%;
 }
 
 
@@ -390,7 +396,7 @@ div.lineFlex {
     flex-wrap: nowrap;
     flex-direction: row;
     margin: 10px 29px 32px 10px;
-    justify-content: space-between;"
+    justify-content: space-between;
 }
 
 div.overviewFlex {

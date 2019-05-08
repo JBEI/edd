@@ -62,5 +62,33 @@ export function prepareIt() {
 }
 
 
+export function overlayContent(original: JQuery) {
+    const bottomBar = $("#bottomBar");
+    const content = $("#content");
+    original = original && original.length && content.has(original[0]) ? original.first() : null;
+    // original must be in content, and not copied yet
+    if (original && !original.data("overlay_copied")) {
+        const copy = original.clone();
+        // set copied flag
+        original.data("overlay_copied", true);
+        // add to bottom of page
+        copy.appendTo("#bottomBar")
+            // hide initially
+            .hide()
+            // forward click events to originals
+            .on("click", (e) => {
+                // easiest way to find matching button is to check button label
+                original.find("button:contains(" + e.target.textContent.trim() + ")").trigger(e);
+            });
+        $(window).on("scroll resize", (ev) => {
+            const $window = $(window);
+            const viewOffset = $window.height() + $window.scrollTop();
+            const offset = original.offset().top + original.height();
+            copy.toggle(offset > viewOffset);
+        }).trigger("scroll");
+    }
+}
+
+
 // use JQuery ready event shortcut to call prepareIt when page is ready
 $(prepareIt);

@@ -108,8 +108,6 @@
     {% block content %}
     {% endblock content %}
   </div>
-  <div id="bottomBar" class="bottomBar">
-  </div>
   <div class="footer-text">
     {% edd_version_number as version %}
     <span class="footer-text-app">
@@ -122,6 +120,7 @@
     {% endif %}
     <span><a href="{% url 'edd_utils:index' %}">{% trans 'Utilities' %}</a></span>
   </div>
+  <div id="bottomBar" class="bottomBar"></div>
 </body>
 {% external_scripts %}
 </html>

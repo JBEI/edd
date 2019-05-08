@@ -39,7 +39,6 @@ require('jquery-ui/ui/widgets/dialog');
 
 
 var linesActionPanelRefreshTimer: NodeJS.Timer;
-var positionActionsBarTimer: NodeJS.Timer;
 var attachmentIDs: any;
 var attachmentsByID: any;
 var prevDescriptionEditElement: any;
@@ -50,10 +49,6 @@ var mTypeEntries: any;
 // The table spec object and table object for the Lines table.
 export var linesDataGridSpec;
 export var linesDataGrid;
-// We use our own flag to ensure we don't get into an infinite event loop,
-// switching back and forth between positions that might trigger resize events.
-export var actionPanelIsInBottomBar;
-export var actionPanelIsCopied = false;
 
 let studyBaseUrl: URL = Utl.relativeURL('../');
 
@@ -71,10 +66,7 @@ export function prepareIt() {
     linesDataGridSpec = null;
     linesDataGrid = null;
 
-    actionPanelIsInBottomBar = false;
-
     linesActionPanelRefreshTimer = null;
-    positionActionsBarTimer = null;
 
     let lineHelp = $('#line-help-content').dialog({
         'title': 'What is a line?',
@@ -109,8 +101,6 @@ export function prepareIt() {
     // set up editable study name
     let nameEdit = new StudyBase.EditableStudyName($('#editable-study-name').get()[0]);
     nameEdit.getValue();
-
-    $(window).on('resize', queuePositionActionsBar);
 
     $.ajax({
         'url': '../edddata/',
@@ -267,7 +257,8 @@ export function prepareAfterLinesTable() {
         metaRow.remove();
     });
 
-    queuePositionActionsBar();
+    // make sure the action bar is always visible
+    StudyBase.overlayContent($("#actionsBar"));
 }
 
 function includeAllLinesIfEmpty(form) {
@@ -304,46 +295,6 @@ function linesActionPanelShow() {
         checkedBoxLen = checkedBoxes.length;
         $('.linesSelectedCell').empty().text(checkedBoxLen + ' selected');
         $('.disablableButtons > button').prop('disabled', !checkedBoxLen);
-    }
-}
-
-
-// Start a timer to wait before calling the routine that moves the actions bar.
-// Required so we don't crater the CPU with unserved resize events.
-export function queuePositionActionsBar() {
-    if (positionActionsBarTimer) {
-        clearTimeout (positionActionsBarTimer);
-    }
-    positionActionsBarTimer = setTimeout(positionActionsBar, 50);
-}
-
-
-export function positionActionsBar() {
-    // old code was trying to calculate when to move the buttons to the #bottomBar element,
-    //    but the calculations were structured in a way to always return the same result.
-    var original: JQuery, copy: JQuery, viewHeight: number, itemsHeight: number;
-    // first time, copy the buttons
-    if (!actionPanelIsCopied) {
-        original = $('#actionsBar');
-        copy = original.clone().appendTo('#bottomBar').hide();
-        // forward click events on copy to the original button
-        copy.on('click', 'button', (e) => {
-            // this is super gross, but checking button label is easiest way to match
-            original.find('button:contains(' + e.target.textContent.trim() + ')').trigger(e);
-        });
-        actionPanelIsCopied = true;
-    }
-    // calculate how big everything is
-    viewHeight = $('#content').height();
-    itemsHeight = 0;
-    $('#content').children().each((i, e) => { itemsHeight += e.scrollHeight; });
-    // switch which set of buttons is visible based on size
-    if (actionPanelIsInBottomBar && itemsHeight < viewHeight) {
-        $('.actionsBar').toggle();
-        actionPanelIsInBottomBar = false;
-    } else if (!actionPanelIsInBottomBar && viewHeight < itemsHeight) {
-        $('.actionsBar').toggle();
-        actionPanelIsInBottomBar = true;
     }
 }
 
