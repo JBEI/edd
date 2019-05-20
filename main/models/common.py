@@ -8,23 +8,23 @@ from django.db.models import Q
 
 class EDDSerialize(object):
     """ Mixin class for EDD models supporting JSON serialization. """
+
     def get_attr_depth(self, attr_name, depth, default=None):
         # check for id attribute does not trigger database call
-        id_attr = '%s_id' % attr_name
-        if hasattr(self, id_attr) and getattr(self, id_attr):
+        id_value = getattr(self, f"{attr_name}_id", None)
+        if id_value is not None:
             if depth > 0:
-                return getattr(self, attr_name).to_json(depth=depth-1)
-            return getattr(self, id_attr)
+                return getattr(self, attr_name).to_json(depth=depth - 1)
+            return id_value
         return default
 
     def to_json(self, depth=0):
-        """ Converts object to a dict appropriate for JSON serialization. If the depth argument
-            is positive, the dict will expand links to other objects, rather than inserting a
-            database identifier. """
-        return {
-            'id': self.pk,
-            'klass': self.__class__.__name__,
-        }
+        """
+        Converts object to a dict appropriate for JSON serialization. If the depth argument
+        is positive, the dict will expand links to other objects, rather than inserting a
+        database identifier.
+        """
+        return {"id": self.pk, "klass": self.__class__.__name__}
 
 
 def qfilter(value, fields=None):
@@ -38,5 +38,5 @@ def qfilter(value, fields=None):
     if fields is None:
         fields = tuple()
     if value is not None:
-        return Q(**{'__'.join(fields): value})
+        return Q(**{"__".join(fields): value})
     return Q()

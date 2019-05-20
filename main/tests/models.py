@@ -5,19 +5,14 @@ import warnings
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory
 from threadlocals.threadlocals import set_thread_variable
 
 from ..export import sbml as sbml_export
 from ..forms import LineForm
-from ..importer import TableImport
 from ..models import (
     CarbonSource,
     GroupPermission,
-    Line,
-    MeasurementUnit,
-    Metabolite,
     MetadataGroup,
     MetadataType,
     Protocol,
@@ -440,129 +435,6 @@ class AssayDataTests(TestCase):
         # interpolation with no data raises exception
         with self.assertRaises(ValueError):
             self.meas2.interpolate_at(20)
-
-
-class ImportTests(TestCase):
-    """ Test import of assay measurement data. """
-    table1 = [  # FPKM
-        ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
-        ["gene1", "5.34", "5.32", "7.45", "7.56"],
-        ["gene2", "1.79", "1.94", "0.15", "0.33"],
-    ]
-    table2 = [  # count
-        ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
-        ["gene1", "64", "67", "89", "91"],
-        ["gene2", "27", "30", "5", "4"],
-    ]
-    table3 = [  # combined
-        ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
-        ["gene1", "64,5.34", "67,5.32", "89,7.45", "91,7.56"],
-        ["gene2", "27,1.79", "30,1.94", "5,0.15", "4,0.33"],
-    ]
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.user1 = factory.UserFactory(username="admin")
-        cls.user2 = factory.UserFactory(username="postdoc")
-        cls.study1 = factory.StudyFactory(name='Test Study 1')
-        permissions = cls.study1.userpermission_set
-        permissions.update_or_create(permission_type=UserPermission.WRITE, user=cls.user1)
-        permissions.update_or_create(permission_type=UserPermission.READ, user=cls.user2)
-        cls.line1 = cls.study1.line_set.create(
-            name="L1",
-            description="Line 1",
-            experimenter=cls.user1,
-            contact=cls.user1,
-        )
-        cls.line2 = cls.study1.line_set.create(
-            name="L2",
-            description="Line 2",
-            experimenter=cls.user1,
-            contact=cls.user1,
-        )
-        cls.transcriptomics = Protocol.objects.create(name="Transcriptomics", owned_by=cls.user1)
-
-    def setUp(self):
-        super(ImportTests, self).setUp()
-        # fake a request so all calls to Update.load_update resolve to a singluar Update
-        self.request = RequestFactory().get('/')
-        self.request.user = self.user1
-        set_thread_variable('request', self.request)
-
-    def get_json_data(self):
-        p_id = str(Protocol.objects.get(name="GC-MS").pk)
-        l_id = str(Line.objects.get(name="L1").pk)
-        m_id_a = str(Metabolite.objects.get(short_name="ac").pk)
-        m_id_b = str(Metabolite.objects.get(short_name="glc__D").pk)
-        u_id = str(MeasurementUnit.objects.get(unit_name="mM").pk)
-
-        series = [
-            {
-                "protocol_name": "GC-MS",
-                "protocol_id": p_id,
-                "line_name": "",
-                "line_id": l_id,
-                "assay_name": "Column 0",
-                "assay_id": "named_or_new",
-                "measurement_name": "ac",
-                "measurement_id": m_id_a,
-                "comp_name": "ic",
-                "comp_id": "1",
-                "units_name": "units",
-                "units_id": u_id,
-                "metadata": {},
-                "data": [[0, "0.1"], [1, "0.2"], [2, "0.4"], [4, "1.7"], [8, "5.9"]]},
-            {
-                "kind": "std",
-                "protocol_name": "GC-MS",
-                "protocol_id": "5",
-                "line_name": "",
-                "line_id": l_id,
-                "assay_name": "Column 0",
-                "assay_id": "named_or_new",
-                "measurement_name": "glc__D",
-                "measurement_id": m_id_b,
-                "comp_name": "ic",
-                "comp_id": "1",
-                "units_name": "units",
-                "units_id": u_id,
-                "metadata": {},
-                "data": [[0, "0.2"], [1, "0.4"], [2, "0.6"], [4, "0.8"], [8, "1.2"]]
-            }
-        ]
-
-        # XXX not proud of this, but we need actual IDs in here
-        import_context = {
-            'kind': 'std',
-            'writemode': 'm',
-        }
-        return import_context, series
-
-    def test_import_gc_ms_metabolites(self):
-        table = TableImport(self.study1, self.user1)
-        context, series_data = self.get_json_data()
-        table.parse_context(context)
-        (added, updated) = table.import_series_data(series_data)
-        self.assertEqual(added, 10)
-        self.assertEqual(updated, 0)
-        data_literal = ("""[[(0.0, 0.1), (1.0, 0.2), (2.0, 0.4), (4.0, 1.7), (8.0, 5.9)], """
-                        """[(0.0, 0.2), (1.0, 0.4), (2.0, 0.6), (4.0, 0.8), (8.0, 1.2)]]""")
-        assays = self.line1.assay_set.all()
-        self.assertEqual(len(assays), 1)
-        meas = assays[0].measurement_set.all()
-        self.assertEqual(len(meas), 2)
-        data = []
-        for m in meas:
-            data.append([(float(d.x[0]), float(d.y[0])) for d in m.measurementvalue_set.all()])
-        self.assertEqual(str(data), data_literal)
-
-    def test_error(self):
-        # failed user permissions check
-        with self.assertRaises(PermissionDenied):
-            table = TableImport(self.study1, self.user2)
-            context, series = self.get_json_data()
-            table.parse_context(context)
-            table.import_series_data(series)
 
 
 class SBMLUtilTests(TestCase):

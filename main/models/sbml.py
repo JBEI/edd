@@ -149,7 +149,7 @@ class MetaboliteSpecies(models.Model):
     sbml_template = models.ForeignKey(
         SBMLTemplate,
         help_text=_('The SBML Model defining this species link to a Measurement Type.'),
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         verbose_name=_('SBML Model'),
     )
     measurement_type = models.ForeignKey(
@@ -157,12 +157,20 @@ class MetaboliteSpecies(models.Model):
         blank=True,
         help_text=_('Mesurement type linked to this species in the model.'),
         null=True,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         verbose_name=_('Measurement Type'),
     )
     species = VarCharField(
         help_text=_('Species name used in the model for this metabolite.'),
         verbose_name=_('Species'),
+    )
+    short_code = models.CharField(
+        blank=True,
+        default="",
+        help_text=_('Short code used for a species in the model.'),
+        max_length=255,
+        null=True,
+        verbose_name=_('Short Code'),
     )
 
     def __str__(self):

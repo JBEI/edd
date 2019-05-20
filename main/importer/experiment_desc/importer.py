@@ -656,7 +656,7 @@ class IcePartResolver(object):
 
         preamble = f"You've provided {requested}, but EDD isn't configured to connect to ICE."
 
-        if importer.combinatorial_strains:
+        if self.combinatorial_strains:
             details = (f"{preamble} EDD can't satisfy your request to create lines "
                        f"combinatorially from ICE entries until an ICE connection is configured.")
         elif self.strains_required_for_naming:

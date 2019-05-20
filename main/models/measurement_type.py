@@ -3,6 +3,7 @@
 Models describing measurement types.
 """
 
+import collections
 import logging
 import re
 import requests
@@ -11,8 +12,6 @@ from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import F, Func
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _, ugettext as _u
 from rdflib import Graph
 from rdflib.term import URIRef
@@ -26,8 +25,7 @@ from .update import Datasource
 logger = logging.getLogger(__name__)
 
 
-@python_2_unicode_compatible
-class MeasurementType(models.Model, EDDSerialize):
+class MeasurementType(EDDSerialize, models.Model):
     """ Defines the type of measurement being made. A generic measurement only has name and short
         name; if the type is a metabolite, the metabolite attribute will contain additional
         metabolite info. """
@@ -58,7 +56,7 @@ class MeasurementType(models.Model, EDDSerialize):
     )
     short_name = models.CharField(
         blank=True,
-        help_text=_('Short name used as an ID for the Measurement Type in SBML output.'),
+        help_text=_('(DEPRECATED) Short name used in SBML output.'),
         max_length=255,
         null=True,
         verbose_name=_('Short Name'),
@@ -78,6 +76,11 @@ class MeasurementType(models.Model, EDDSerialize):
         on_delete=models.PROTECT,
         verbose_name=_('Datasource'),
     )
+    provisional = models.BooleanField(
+        default=False,
+        help_text=_("Flag indicating if the type is pending lookup in external Datasource"),
+        verbose_name=_("Provisional"),
+    )
     # linking together EDD instances will be easier later if we define UUIDs now
     uuid = models.UUIDField(
         editable=False,
@@ -96,13 +99,15 @@ class MeasurementType(models.Model, EDDSerialize):
     def save(self, *args, **kwargs):
         if self.uuid is None:
             self.uuid = uuid4()
-        super(MeasurementType, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def to_solr_value(self):
-        return '%(id)s@%(name)s' % {'id': self.pk, 'name': self.type_name}
+        return f"{self.pk}@{self.type_name}"
 
     def to_solr_json(self):
-        """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
+        """
+        Convert the MeasurementType model to a dict structure formatted for Solr JSON.
+        """
         source_name = None
         # Check if this is coming from a child MeasurementType, and ref the base type
         mtype = getattr(self, 'measurementtype_ptr', None)
@@ -117,7 +122,6 @@ class MeasurementType(models.Model, EDDSerialize):
             'id': self.id,
             'uuid': self.uuid,
             'name': self.type_name,
-            'code': self.short_name,
             'family': self.type_group,
             # use the annotated attr if present, otherwise must make a new query
             'source': source_name,
@@ -128,7 +132,6 @@ class MeasurementType(models.Model, EDDSerialize):
             "id": self.pk,
             "uuid": self.uuid,
             "name": self.type_name,
-            "short": self.short_name,
             "family": self.type_group,
         }
 
@@ -155,25 +158,16 @@ class MeasurementType(models.Model, EDDSerialize):
             return self.proteinidentifier.export_name()
         return self.type_name
 
-    # TODO: replace use of this in tests, then remove
-    @classmethod
-    def create_protein(cls, type_name, short_name=None):
-        return cls.objects.create(
-            short_name=short_name,
-            type_group=MeasurementType.Group.PROTEINID,
-            type_name=type_name,
-        )
 
-
-@python_2_unicode_compatible
 class Metabolite(MeasurementType):
-    """ Defines additional metadata on a metabolite measurement type; charge, carbon count, molar
-        mass, and molecular formula.
-        TODO: aliases for metabolite type_name/short_name
-        TODO: datasource; BiGG vs JBEI-created records
-        TODO: links to kegg files? """
+    """
+    Defines additional metadata on a metabolite measurement type;
+    charge, carbon count, molar mass, molecular formula, SMILES, PubChem CID.
+    """
+
     class Meta:
         db_table = 'metabolite'
+
     charge = models.IntegerField(
         help_text=_('The charge of this molecule.'),
         verbose_name=_('Charge'),
@@ -228,16 +222,18 @@ class Metabolite(MeasurementType):
         return True
 
     def to_json(self, depth=0):
-        """ Export a serializable dictionary. """
-        return dict(super(Metabolite, self).to_json(), **{
+        """Export a serializable dictionary."""
+        return dict(super().to_json(), **{
             "formula": self.molecular_formula,
             "molar": float(self.molar_mass),
             "carbons": self.carbon_count,
+            "pubchem": self.pubchem_cid,
+            "smiles": self.smiles,
         })
 
     def to_solr_json(self):
-        """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
-        return dict(super(Metabolite, self).to_solr_json(), **{
+        """Convert the MeasurementType model to a dict structure formatted for Solr JSON."""
+        return dict(super().to_solr_json(), **{
             'm_charge': self.charge,
             'm_carbons': self.carbon_count,
             'm_mass': self.molar_mass,
@@ -250,7 +246,7 @@ class Metabolite(MeasurementType):
             self.carbon_count = self.extract_carbon_count()
         # force METABOLITE group
         self.type_group = MeasurementType.Group.METABOLITE
-        super(Metabolite, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def extract_carbon_count(self):
         count = 0
@@ -259,34 +255,47 @@ class Metabolite(MeasurementType):
             count = count + (int(c) if c else 1)
         return count
 
-    @classmethod
-    def _load_pubchem(cls, pubchem_cid):
+    def _load_pubchem(self, pubchem_cid):
         try:
-            base_url = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug'
-            url = '%s/compound/cid/%s/JSON' % (base_url, pubchem_cid)
-            response = requests.post(url, data={'cid': pubchem_cid})
-            record = response.json()['PC_Compounds'][0]
-            properties = {
-                item['urn']['label']: list(item['value'].values())[0]
-                for item in record['props']
-            }
-            datasource = Datasource.objects.create(name='PubChem', url=url)
-            return cls.objects.create(
-                type_name=properties['IUPAC Name'],
-                short_name=pubchem_cid,
-                type_source=datasource,
-                charge=record.get('charge', 0),
-                carbon_count=len([a for a in record['atoms']['element'] if a == 6]),
-                molar_mass=properties['Molecular Weight'],
-                molecular_formula=properties['Molecular Formula'],
-                smiles=properties['SMILES'],
-                pubchem_cid=pubchem_cid,
+            base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
+            url = f"{base_url}/compound/cid/{pubchem_cid}/JSON"
+            response = requests.post(url, data={"cid": pubchem_cid})
+            # get first (hopefully only!) compound result
+            record = response.json()["PC_Compounds"][0]
+            # props mapping has nested objects
+            # map to flattened structure for easier lookup
+            properties = collections.defaultdict(dict)
+            for item in record["props"]:
+                prop_type = item["urn"]
+                prop_label = prop_type["label"]
+                prop_name = prop_type.get("name", None)
+                prop_value = list(item["value"].values())[0]
+                if prop_name:
+                    properties[prop_label].update({prop_name: prop_value})
+                else:
+                    properties[prop_label] = prop_value
+            # load type_name from IUPAC Name, favoring "Traditional", "Preferred"
+            # use first listed if neither is found
+            names = properties["IUPAC Name"]
+            self.type_name = names.get(
+                "Traditional",
+                names.get("Preferred", next(names.values())),
             )
+            self.type_source = Datasource.objects.create(name='PubChem', url=url)
+            self.charge = record.get("charge", 0)
+            self.carbon_count = len([a for a in record["atoms"]["element"] if a == 6])
+            self.molar_mass = properties["Molecular Weight"]
+            self.molecular_formula = properties["Molecular Formula"]
+            # favor "Canonical" SMILES, otherwise use first listed
+            smiles = properties["SMILES"]
+            self.smiles = smiles.get("Canonical", next(smiles.values()))
+            self.provisional = False
+            self.pubchem_cid = pubchem_cid
+            self.save()
+            return True
         except Exception:
-            logger.exception('Failed loading PubChem %s', pubchem_cid)
-            raise ValidationError(
-                _u('Could not load information on %s from PubChem') % pubchem_cid
-            )
+            logger.exception(f"Failed loading PubChem {pubchem_cid}")
+        return False
 
     @classmethod
     def load_or_create(cls, pubchem_cid):
@@ -294,23 +303,29 @@ class Metabolite(MeasurementType):
         if match:
             cid = match.group(1)
             # try to find existing Metabolite record
-            try:
-                return cls.objects.get(pubchem_cid=cid)
-            except cls.DoesNotExist:
-                return cls._load_pubchem(cid)
-            except Exception:
-                logger.exception('Error loading Metabolite with cid %s', pubchem_cid)
-                raise ValidationError(_u('There was a problem looking up %s') % pubchem_cid)
+            metabolite, created = cls.objects.get_or_create(pubchem_cid=cid, defaults={
+                "provisional": True,
+                "type_group": MeasurementType.Group.METABOLITE,
+                "type_name": "Unknown Metabolite",
+            })
+            if created:
+                metabolite._load_pubchem(pubchem_cid)
+            return metabolite
         raise ValidationError(
-            _u('Metabolite lookup failed: %s must match pattern "cid:0000"') % pubchem_cid
+            _u('Metabolite lookup failed: {pubchem} must match pattern "cid:0000"').format(
+                pubchem=pubchem_cid
+            )
         )
 
 
-@python_2_unicode_compatible
 class GeneIdentifier(MeasurementType):
-    """ Defines additional metadata on gene identifier transcription measurement type. """
+    """
+    Defines additional metadata on gene identifier transcription measurement type.
+    """
+
     class Meta:
         db_table = 'gene_identifier'
+
     gene_length = models.IntegerField(
         blank=True,
         help_text=_('Length of the gene nucleotides.'),
@@ -349,18 +364,24 @@ class GeneIdentifier(MeasurementType):
                 return gene
         except Exception:
             pass  # fall through to raise ValidationError
-        raise ValidationError(_u('Could not load gene "%s"') % identifier)
+        raise ValidationError(
+            _u('Could not load gene "{identifier}"').format(identifier=identifier)
+        )
 
     @classmethod
     def _load_fallback(cls, identifier, user):
         try:
-            return cls.objects.get(type_name=identifier, type_source__created__mod_by=user)
+            return cls.objects.get(
+                type_name=identifier, type_source__created__mod_by=user
+            )
         except cls.DoesNotExist:
             datasource = Datasource.objects.create(name=user.username)
             return cls.objects.create(type_name=identifier, type_source=datasource)
         except Exception:
             logger.exception('Failed to load GeneIdentifier "%s"', identifier)
-            raise ValidationError(_u('Could not load gene "%s"') % identifier)
+            raise ValidationError(
+                _u('Could not load gene "{identifier}"').format(identifier=identifier)
+            )
 
     @classmethod
     def load_or_create(cls, identifier, user):
@@ -373,21 +394,28 @@ class GeneIdentifier(MeasurementType):
             return cls._load_fallback(identifier, user)
 
 
-@python_2_unicode_compatible
 class ProteinIdentifier(MeasurementType):
-    """ Defines additional metadata on gene identifier transcription measurement type. """
+    """Defines additional metadata on proteomic measurement type."""
+
     class Meta:
         db_table = 'protein_identifier'
+
     # protein names use:
-    #   type_name = human-readable name; e.g. AATM_RABIT
-    #   short_name = accession code ID portion; e.g. P12345
+    #   type_name = "human-readable" name; e.g. AATM_RABIT
+    #   accession_code = accession code ID portion; e.g. P12345
     #   accession_id = "full" accession ID if available; e.g. sp|P12345|AATM_RABIT
-    #       if "full" version unavailable, repeat the short_name
+    #       if "full" version unavailable, repeat the accession_code
     accession_id = VarCharField(
         blank=True,
         help_text=_('Accession ID for protein characterized in e.g. UniProt.'),
         null=True,
-        verbose_name=_('Accession ID')
+        verbose_name=_('Accession ID'),
+    )
+    accession_code = VarCharField(
+        blank=True,
+        help_text=_("Required portion of Accession ID for easier lookup."),
+        null=True,
+        verbose_name=_("Accession Code"),
     )
     length = models.IntegerField(
         blank=True,
@@ -404,10 +432,14 @@ class ProteinIdentifier(MeasurementType):
         verbose_name=_('Mass'),
     )
 
+    # TODO find how this can also match JGI accession IDs
     accession_pattern = re.compile(
-        r'(?:[a-z]{2}\|)?'  # optional identifier for SwissProt or TrEMBL
-        r'([OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2})'  # the ID
-        r'(?:\|(\w+))?'  # optional name
+        # optional identifier for SwissProt or TrEMBL
+        r'(?:[a-z]{2}\|)?'
+        # the ID
+        r'([OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2})'
+        # optional name
+        r'(?:\|(\w+))?'
     )
 
     def export_name(self):
@@ -416,20 +448,49 @@ class ProteinIdentifier(MeasurementType):
         return self.type_name
 
     def to_solr_json(self):
-        """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
-        return dict(super(ProteinIdentifier, self).to_solr_json(), **{
+        """
+        Convert the MeasurementType model to a dict structure formatted for Solr JSON.
+        """
+        return dict(super().to_solr_json(), **{
             'p_length': self.length,
             'p_mass': self.mass,
         })
 
     def update_from_uniprot(self):
-        match = self.accession_pattern.match(self.short_name)
+        match = self.accession_pattern.match(self.accession_id)
         if match:
-            self._load_uniprot(self.short_name, self.accession_id)
+            uniprot_id = match.group(1)
+            for name, value in self._load_uniprot_values(uniprot_id):
+                setattr(self, name, value)
+            if not self.provisional:
+                self.save()
 
     @classmethod
     def _load_uniprot(cls, uniprot_id, accession_id):
-        url = f'http://www.uniprot.org/uniprot/{uniprot_id}.rdf'
+        try:
+            url = cls._uniprot_url(uniprot_id)
+            values = cls._load_uniprot_values(uniprot_id)
+            values.update(
+                accession_id=accession_id,
+                type_source=Datasource.objects.create(name="UniProt", url=url),
+            )
+            protein, created = cls.objects.update_or_create(
+                accession_code=uniprot_id,
+                defaults=values,
+            )
+            return protein
+        except Exception:
+            logger.exception(f"Failed to create from UniProt {uniprot_id}")
+            raise ValidationError(
+                _u("Could not create Protein from {uniprot_id}").format(
+                    uniprot_id=uniprot_id
+                )
+            )
+
+    @classmethod
+    def _load_uniprot_values(cls, uniprot_id):
+        url = cls._uniprot_url(uniprot_id)
+        values = {}
         # define some RDF predicate terms
         mass_predicate = URIRef('http://purl.uniprot.org/core/mass')
         sequence_predicate = URIRef('http://purl.uniprot.org/core/sequence')
@@ -442,29 +503,18 @@ class ProteinIdentifier(MeasurementType):
             subject = URIRef(f'http://purl.uniprot.org/uniprot/{uniprot_id}')
             isoform = graph.value(subject, sequence_predicate)
             # find values of interest
-            values = {
-                'accession_id': accession_id,
-                'type_name': cls._uniprot_name(graph, subject, uniprot_id),
-            }
+            values.update(type_name=cls._uniprot_name(graph, subject, uniprot_id))
             sequence = graph.value(isoform, value_predicate)
             if sequence:
                 values.update(length=len(sequence.value))
             mass = graph.value(isoform, mass_predicate)
             if mass:
                 values.update(mass=mass.value)
-            # build the ProteinIdentifier
-            datasource = Datasource.objects.create(name='UniProt', url=url)
-            values.update(type_source=datasource)
-            protein, created = cls.objects.update_or_create(
-                short_name=uniprot_id,
-                defaults=values,
-            )
-            return protein
+            values.update(provisional=False)
         except Exception:
             logger.exception(f'Failed to read UniProt: {uniprot_id}')
-            raise ValidationError(
-                _u('Could not load information on %s from UniProt') % uniprot_id
-            )
+            values.update(provisional=True)
+        return values
 
     @classmethod
     def _uniprot_name(cls, graph, subject, uniprot_id):
@@ -488,12 +538,17 @@ class ProteinIdentifier(MeasurementType):
         return next((name for name in names if name is not None), uniprot_id)
 
     @classmethod
+    def _uniprot_url(cls, uniprot_id):
+        return f"http://www.uniprot.org/uniprot/{uniprot_id}.rdf"
+
+    @classmethod
     def _load_ice(cls, link):
         part = link.strain.part
-        datasource = Datasource.objects.create(name='Part Registry', url=link.strain.registry_url)
+        datasource = Datasource.objects.create(
+            name='Part Registry', url=link.strain.registry_url
+        )
         protein = cls.objects.create(
             type_name=link.strain.name,
-            short_name=part.part_id,
             type_source=datasource,
             accession_id=part.part_id,
         )
@@ -507,46 +562,44 @@ class ProteinIdentifier(MeasurementType):
         accession_match = cls.accession_pattern.match(protein_name)
         proteins = cls.objects.none()
         if accession_match:
-            short_name = accession_match.group(1)
-            proteins = cls.objects.filter(short_name=short_name)
+            accession_code = accession_match.group(1)
+            proteins = cls.objects.filter(accession_code=accession_code)
         else:
-            proteins = cls.objects.filter(short_name=protein_name)
+            proteins = cls.objects.filter(accession_code=protein_name)
 
-        # force query to LIMIT 2
+        # force query to LIMIT 2, anything more than one is treated same
         proteins = proteins[:2]
 
         if len(proteins) > 1:
             # fail if protein couldn't be uniquely matched
             raise ValidationError(
-                _u('More than one match was found for protein name "%(type_name)s".') % {
-                    'type_name': protein_name,
-                }
+                _u('More than one match was found for protein name "{type_name}".').format(
+                    type_name=protein_name,
+                )
             )
         elif len(proteins) == 0:
             # try to create a new protein
             link = ProteinStrainLink()
             if accession_match:
                 # if it looks like a UniProt ID, look up in UniProt
-                short_name = accession_match.group(1)
-                accession_id = protein_name
-                return cls._load_uniprot(short_name, accession_id)
+                accession_code = accession_match.group(1)
+                return cls._load_uniprot(accession_code, protein_name)
             elif link.check_ice(user.email, protein_name):
                 # if it is found in ICE, create based on ICE info
                 return cls._load_ice(link)
             elif getattr(settings, 'REQUIRE_UNIPROT_ACCESSION_IDS', True):
                 raise ValidationError(
-                    _u('Protein name "%(type_name)s" is not a valid UniProt accession id.') % {
-                        'type_name': protein_name,
-                    }
+                    _u('Protein name "{type_name}" is not a valid UniProt accession id.').format(
+                        type_name=protein_name
+                    )
                 )
-            logger.info('Creating a new ProteinIdentifier for %(name)s' % {
-                'name': protein_name,
-            })
+            logger.info(f"Creating a new ProteinIdentifier for {protein_name}")
             # not requiring accession ID or ICE entry; just create protein with arbitrary name
             datasource = Datasource.objects.create(name=user.username, url=user.email)
             return cls.objects.create(
                 type_name=protein_name,
-                short_name=protein_name,
+                provisional=True,
+                accession_code=protein_name,
                 accession_id=protein_name,
                 type_source=datasource,
             )
@@ -555,12 +608,13 @@ class ProteinIdentifier(MeasurementType):
     @classmethod
     def match_accession_id(cls, text):
         """
-        Tests whether the input text matches the pattern of a Uniprot accession id, and if so,
-        extracts & returns the required identifier portion of the text, less optional prefix/suffix
-        allowed by the pattern.
+        Tests whether the input text matches the pattern of a Uniprot accession id,
+        and if so, extracts & returns the required identifier portion of the text,
+        less optional prefix/suffix allowed by the pattern.
+
         :param text: the text to match
         :return: the Uniprot identifier if the input text matched the accession id pattern,
-        or the entire input string if not
+            or the entire input string if not
         """
         match = cls.accession_pattern.match(text)
         if match:
@@ -573,14 +627,44 @@ class ProteinIdentifier(MeasurementType):
     def save(self, *args, **kwargs):
         # force PROTEINID group
         self.type_group = MeasurementType.Group.PROTEINID
-        super(ProteinIdentifier, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 
-@python_2_unicode_compatible
-class ProteinStrainLink(models.Model):
-    """ Defines a link between a ProteinIdentifier and a Strain. """
+class StrainLinkMixin(object):
+    """Common code for objects linked to Strains."""
+
+    def check_ice(self, user_token, name):
+        from main.tasks import create_ice_connection
+        from .core import Strain
+        try:
+            ice = create_ice_connection(user_token)
+            part = ice.get_entry(name, suppress_errors=True)
+            if part:
+                url = f"{ice.base_url}/entry/{part.id}"
+                default = dict(
+                    name=part.name,
+                    description=part.short_description,
+                    registry_url=url,
+                )
+                self.strain, created = Strain.objects.get_or_create(
+                    registry_id=part.uuid, defaults=default
+                )
+                self.strain.part = part
+                return True
+        except Exception:
+            logger.warning(
+                f"Failed to load ICE information on `{name}` for `{user_token}`",
+                exc_info=True,
+            )
+        return False
+
+
+class ProteinStrainLink(StrainLinkMixin, models.Model):
+    """Defines a link between a ProteinIdentifier and a Strain."""
+
     class Meta:
         db_table = 'protein_strain'
+
     protein = models.OneToOneField(
         ProteinIdentifier,
         related_name='strainlink',
@@ -592,31 +676,16 @@ class ProteinStrainLink(models.Model):
         on_delete=models.CASCADE,
     )
 
-    def check_ice(self, user_token, name):
-        from main.tasks import create_ice_connection
-        from .core import Strain
-        ice = create_ice_connection(user_token)
-        part = ice.get_entry(name, suppress_errors=True)
-        if part:
-            default = dict(
-                name=part.name,
-                description=part.short_description,
-                registry_url=''.join((ice.base_url, '/entry/', str(part.id))),
-            )
-            self.strain, x = Strain.objects.get_or_create(registry_id=part.uuid, defaults=default)
-            self.strain.part = part
-            return True
-        return False
-
     def __str__(self):
         return self.strain.name
 
 
-@python_2_unicode_compatible
-class GeneStrainLink(models.Model):
-    """ Defines a link between a GeneIdentifier and a Strain. """
+class GeneStrainLink(StrainLinkMixin, models.Model):
+    """Defines a link between a GeneIdentifier and a Strain."""
+
     class Meta:
         db_table = 'gene_strain'
+
     gene = models.OneToOneField(
         GeneIdentifier,
         related_name='strainlink',
@@ -628,31 +697,16 @@ class GeneStrainLink(models.Model):
         on_delete=models.CASCADE,
     )
 
-    def check_ice(self, user_token, name):
-        from main.tasks import create_ice_connection
-        from .core import Strain
-        ice = create_ice_connection(user_token)
-        part = ice.get_entry(name, suppress_errors=True)
-        if part:
-            default = dict(
-                name=part.name,
-                description=part.short_description,
-                registry_url=''.join((ice.base_url, '/entry/', str(part.id))),
-            )
-            self.strain, x = Strain.objects.get_or_create(registry_id=part.uuid, defaults=default)
-            self.strain.part = part
-            return True
-        return False
-
     def __str__(self):
         return self.strain.name
 
 
-@python_2_unicode_compatible
 class Phosphor(MeasurementType):
-    """ Defines metadata for phosphorescent measurements """
+    """Defines metadata for phosphorescent measurements."""
+
     class Meta:
         db_table = 'phosphor_type'
+
     excitation_wavelength = models.DecimalField(
         blank=True,
         decimal_places=5,
@@ -685,14 +739,15 @@ class Phosphor(MeasurementType):
     def save(self, *args, **kwargs):
         # force PHOSPHOR group
         self.type_group = MeasurementType.Group.PHOSPHOR
-        super(Phosphor, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 
-@python_2_unicode_compatible
 class MeasurementUnit(models.Model):
-    """ Defines a unit type and metadata on measurement values. """
+    """Defines a unit type and metadata on measurement values."""
+
     class Meta:
         db_table = 'measurement_unit'
+
     unit_name = models.CharField(
         help_text=_('Name for unit of measurement.'),
         max_length=255,
@@ -732,15 +787,7 @@ class MeasurementUnit(models.Model):
     }
 
     def to_json(self):
-        return {"id": self.pk, "name": self.unit_name, }
-
-    @property
-    def group_name(self):
-        return dict(MeasurementType.Group.GROUP_CHOICE)[self.type_group]
-
-    @classmethod
-    def all_sorted(cls):
-        return cls.objects.filter(display=True).order_by(Func(F('unit_name'), function='LOWER'))
+        return {"id": self.pk, "name": self.unit_name}
 
     def __str__(self):
         return self.unit_name

@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 # /study/<study_id>/import/
 class ImportTableView(StudyObjectMixin, generic.DetailView):
+
     def delete(self, request, *args, **kwargs):
         study = self.object = self.get_object()
         if not study.user_can_write(request.user):
@@ -79,64 +80,44 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
         )
         # END uncovered code
 
+    def _parse_payload(self, request):
+        # init storage for task and parse request body
+        broker = table.ImportBroker()
+        payload = json.loads(request.body)
+        # check requested import parameters are acceptable
+        import_id = payload["importId"]
+        series = payload["series"]
+        pages = payload["totalPages"]
+        broker.check_bounds(import_id, series, pages)
+        # store the series of points for the task to read later
+        count = broker.add_page(import_id, json.dumps(series))
+        # only on the first page, store the import context
+        if payload["page"] == 1:
+            del payload["series"]
+            # include an update record from the original request
+            update = edd_models.Update.load_request_update(request)
+            payload.update(update_id=update.id)
+            broker.set_context(import_id, json.dumps(payload))
+        return import_id, count == pages
+
     def post(self, request, *args, **kwargs):
         study = self.object = self.get_object()
         try:
-            #######################################################################################
-            # Extract & verify data from the request
-            #######################################################################################
-            body = json.loads(request.body)  # TODO: add JSON validation
-            page_index = body["page"] - 1
-            total_pages = body["totalPages"]
-            import_id = body["importId"]
-            series = body["series"]
-
-            broker = table.ImportBroker()
-            notifications = RedisBroker(request.user)
-
-            # test result limits to prevent erroneous or malicious clients from abusing resources
-            broker.check_bounds(import_id, series, total_pages)
-
-            #######################################################################################
-            # Cache this page of data
-            #######################################################################################
-            logger.debug(
-                f"Caching import page {page_index+1} of {total_pages}: ({import_id})"
-            )
-
-            cached_pages = broker.add_page(import_id, json.dumps(series))
-            # if this is the initial page of data, store the context
-            if page_index == 0:
-                # include an update record for the original request
-                update = edd_models.Update.load_request_update(request)
-                body["update_id"] = update.id
-                # cache the context for the whole import (only sent with this page)
-                del body["series"]
-                broker.set_context(import_id, json.dumps(body))
-
-            # Test whether all result pages are received.
-            all_received = cached_pages == total_pages
-
-            #######################################################################################
-            # If all the data are received, schedule a background task to process them
-            #######################################################################################
-            if all_received:
+            import_id, done = self._parse_payload(request)
+            if done:
+                # once all pages are parsed, submit task and send notification
                 logger.debug(f"Submitting Celery task for import {import_id}")
                 result = tasks.import_table_task.delay(
                     study.pk, request.user.pk, import_id
                 )
-
-                # notify that import is processing
-                notifications.notify(
+                RedisBroker(request.user).notify(
                     _(
                         "Data is submitted for import. You may continue to use EDD, "
                         "another message will appear once the import is complete."
                     ),
                     uuid=result.id,
                 )
-
             return JsonResponse(data={}, status=codes.accepted)
-
         # TODO: uncovered code
         except table.ImportTooLargeException as e:
             return HttpResponse(str(e), status=codes.request_entity_too_large)

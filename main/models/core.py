@@ -1140,11 +1140,6 @@ class Measurement(EDDMetadata, EDDSerialize):
         return self.measurement_type.type_name
 
     @property
-    def short_name(self):
-        """ alias for self.measurement_type.short_name """
-        return self.measurement_type.short_name
-
-    @property
     def compartment_symbol(self):
         return Measurement.Compartment.short_names[int(self.compartment)]
 

@@ -89,7 +89,6 @@ interface MeasurementTypeRecord {
     id: number;     // Type ID
     uuid: string;   // Type UUID
     name: string;   // Type name
-    short: string;  // Short-form name
     family: string; // 'm', 'g', 'p' for metabolite, gene, protien
 }
 
@@ -98,7 +97,7 @@ interface MeasurementTypeRecord {
 interface MetaboliteTypeRecord extends MeasurementTypeRecord {
     formula: string;    // Molecular Formula
     molar: number;      // Molar Mass As Number
-    carbons: number;     // Carbon Count As Number
+    carbons: number;    // Carbon Count As Number
 }
 
 

@@ -6,7 +6,7 @@ import warnings
 
 from collections import namedtuple
 from django.conf import settings
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils.translation import ugettext as _
 from six import string_types
 
@@ -37,45 +37,53 @@ class ImportBoundsException(ImportException):
 
 class ImportBroker(object):
     def __init__(self):
-        self.storage = redis.ScratchStorage(key_prefix=f'{__name__}.{self.__class__.__name__}')
+        self.storage = redis.ScratchStorage(
+            key_prefix=f'{__name__}.{self.__class__.__name__}'
+        )
 
     def _import_name(self, import_id):
         return f'{import_id}'
 
     def set_context(self, import_id, context):
         name = self._import_name(import_id)
-        self.storage.save(context, name=name, expires=settings.EDD_IMPORT_CACHE_LENGTH)
+        expires = getattr(settings, "EDD_IMPORT_CACHE_LENGTH", None)
+        self.storage.save(context, name=name, expires=expires)
 
     def add_page(self, import_id, page):
         name = f'{self._import_name(import_id)}:pages'
-        _, count = self.storage.append(page, name=name, expires=settings.EDD_IMPORT_CACHE_LENGTH)
+        expires = getattr(settings, "EDD_IMPORT_CACHE_LENGTH", None)
+        _, count = self.storage.append(page, name=name, expires=expires)
         return count
 
     def check_bounds(self, import_id, page, expected_count):
-        if len(page) > settings.EDD_IMPORT_PAGE_SIZE:
+        size = getattr(settings, "EDD_IMPORT_PAGE_SIZE", 1000)
+        limit = getattr(settings, "EDD_IMPORT_PAGE_LIMIT", 1000)
+        if len(page) > size:
+            # TODO uncovered
             raise ImportTooLargeException(
-                f'Page size is greater than maximum {settings.EDD_IMPORT_PAGE_SIZE}'
+                f'Page size is greater than maximum {size}'
             )
-        if expected_count > settings.EDD_IMPORT_PAGE_LIMIT:
+            # END uncovered
+        if expected_count > limit:
+            # TODO uncovered
             raise ImportTooLargeException(
-                'Total number of pages is greater than allowed '
-                f'maximum {settings.EDD_IMPORT_PAGE_LIMIT}'
+                f'Total number of pages is greater than allowed maximum {limit}'
             )
+            # END uncovered
         name = f'{self._import_name(import_id)}:pages'
         if self.storage.page_count(name) >= expected_count:
+            # TODO uncovered
             raise ImportBoundsException('Data is already cached for import')
+            # END uncovered
 
     def clear_pages(self, import_id):
-        name = f'{self._import_name(import_id)}*'
-        self.storage.delete(name)
+        self.storage.delete(f"{self._import_name(import_id)}*")
 
     def load_context(self, import_id):
-        name = self._import_name(import_id)
-        return self.storage.load(name)
+        return self.storage.load(self._import_name(import_id))
 
     def load_pages(self, import_id):
-        name = f'{self._import_name(import_id)}:pages'
-        return self.storage.load_pages(name)
+        return self.storage.load_pages(f"{self._import_name(import_id)}:pages")
 
 
 class TableImport(object):
@@ -97,7 +105,8 @@ class TableImport(object):
         self.mode = None
         self.master_compartment = models.Measurement.Compartment.UNKNOWN
         self.master_mtype_id = None
-        self.master_unit_id = None
+        # EDD bootstrap sets "n/a" units as ID 1
+        self.master_unit_id = 1
         self.replace = False
 
         self._study = study
@@ -113,25 +122,68 @@ class TableImport(object):
         # end up looking for hours repeatedly, just load once at init
         self._hours = models.MeasurementUnit.objects.get(unit_name='hours')
         if not self._study.user_can_write(user):
+            # TODO uncovered
             raise PermissionDenied(
                 f'{user.username} does not have write access to study "{study.name}"'
             )
+            # END uncovered
 
     def parse_context(self, context):
+        """
+        Takes a dict of miscellaneous control flags from the import front-end,
+        setting the corresponding attributes on this import object. The complete
+        list of flags is out of scope of this function, but the list of flags
+        this function looks for are:
+
+            - "datalayout": radio buttons from Step 1 of front-end, values one of:
+                "std", "skyline", "tr", "hplc", "mdv", "biolector"
+            - "masterMCompValue": autocomplete dropdown from Step 4, for the
+                compartment to use for all imported points. Corresponds to values
+                from main.models.Measurement.Compartment.CHOICES: 0, 1, 2
+            - "masterMTypeValue": autocomplete dropdown from Step 4, for the
+                type to use for all imported points. Corresponds to primary key
+                of main.models.MeasurementType
+            - "masterMUnitsValue": autocomplete dropdown from Step 4, for the
+                y-units to use for all imported points. Corresponds to primary
+                key of main.models.MeasurementUnit
+            - "writemode": radio buttons for merge/replace in Step 1, value is
+                either "m" (for merge) or "r" (for replace)
+        """
         self.mode = context.get('datalayout', None)
         self.master_compartment = context.get('masterMCompValue', None)
+        # some import modes will send an empty string for master_compartment
         if not self.master_compartment:
             self.master_compartment = models.Measurement.Compartment.UNKNOWN
         self.master_mtype_id = context.get('masterMTypeValue', None)
-        self.master_unit_id = context.get('masterMUnitsValue', None)
+        self.master_unit_id = context.get('masterMUnitsValue', 1)
+        # some import modes will send an empty string for master_unit_id
+        if not self.master_unit_id:
+            self.master_unit_id = 1
         self.replace = context.get('writemode', None) == 'r'
 
     def import_series_data(self, series_data):
         """
-        Imports data into the study.  Assumption is that parse_context() has already been run or
-        that a client has directly set related importer attributes.
+        Imports a list of measurement values into the study.
 
-        :param series_data: series data to import into the study.
+        An item in the series data is a dict serialized from the TypeScript
+        class ResolvedImportSet:
+            - "kind": unused
+            - "hint": hint from front-end that a measurement type belongs to
+                a group from main.models.MeasurementType.Group
+            - "line_name": name picked for line by file parser
+            - "assay_name": name picked for assay by file parser
+            - "measurement_name": name for measurement type
+            - "metadata_by_name": unused
+            - "protocol_id": primary key of main.models.Protocol used for measurement
+            - "line_id": primary key of main.models.Line used for measurement
+            - "assay_id": primary key of main.models.Assay used for measurement
+            - "measurement_id": primary key of main.models.MeasurementType used for measurement
+            - "compartment_id": value of main.models.MeasurementType.Compartment
+            - "units_id": primary key of main.models.MeasurementUnit for y-units
+            - "metadata_by_id": dict of main.models.MetadataType keys to arbitrary values
+            - "data": a list of 2-tuples of x,y values; each x and y can be a string or number
+
+        :param series_data: list of individual measurement values to import
         :return: a tuple with a summary of measurement counts in the form (added, updated)
         """
         self.check_series_points(series_data)
@@ -142,7 +194,9 @@ class TableImport(object):
         # after importing, force updates of previously-existing lines and assays
         for assay in self._assay_by_id.values():
             # force refresh of Assay's Update (also saves any changed metadata)
+            # TODO uncovered
             assay.save(update_fields=['metadata', 'updated'])
+            # END uncovered
         for line in self._line_by_id.values():
             # force refresh of Update (also saves any changed metadata)
             line.save(update_fields=['metadata', 'updated'])
@@ -152,20 +206,26 @@ class TableImport(object):
     def check_series_points(self, series):
         """
         Checks that each item in the series has some data or metadata, and sets a
-        'nothing to import' value for the item if that's the case
-         """
+        'nothing to import' value for the item when there is no data/metadata to add.
+        """
         for item in series:
             points = item.get('data', [])
             meta = item.get('metadata_by_id', {})
             for meta_id in meta:
+                # TODO uncovered
                 self._metatype(meta_id)  # don't care about return value here
+                # END uncovered
             if len(points) == 0 and len(meta) == 0:
+                # TODO uncovered
                 item['nothing_to_import'] = True
+                # END uncovered
 
     def init_lines_and_assays(self, series):
-        """ Client-side code detects labels for assays/lines, and allows the user to select
-            an "ID" for each label; these ids are passed along in each set and are used to resolve
-            actual Line and Assay instances. """
+        """
+        Client-side code detects labels for assays/lines, and allows the user to select
+        an "ID" for each label; these ids are passed along in each set and are used to resolve
+        actual Line and Assay instances.
+        """
         for item in series:
             item['assay_obj'] = self._init_item_assay(item)
 
@@ -174,12 +234,17 @@ class TableImport(object):
         assay_id = item.get('assay_id', None)
         assay_name = item.get('assay_name', None)
         if assay_id is None:
+            # TODO uncovered
             logger.warning('Import set has undefined assay_id field.')
             item['invalid_fields'] = True
+            # END uncovered
         elif assay_id in self._assay_by_id:
+            # TODO uncovered
             assay = self._assay_by_id.get(assay_id)
+            # END uncovered
         elif assay_id not in ['new', 'named_or_new', ]:
             # attempt to lookup existing assay
+            # TODO uncovered
             try:
                 assay = models.Assay.objects.get(pk=assay_id, line__study_id=self._study.pk)
                 self._assay_by_id[assay_id] = assay
@@ -188,6 +253,7 @@ class TableImport(object):
                     f'Import set cannot load Assay,Study: {assay_id},{self._study.pk}'
                 )
                 item['invalid_fields'] = True
+            # END uncovered
         else:
             # At this point we know we need to create an Assay, or reference one we created
             # earlier. The question is, for which Line and Protocol? Now protocol_id is essential,
@@ -195,7 +261,9 @@ class TableImport(object):
             protocol = self._init_item_protocol(item)
             line = self._init_item_line(item)
             if protocol is None or line is None:
+                # TODO uncovered
                 pass  # already logged errors, move on
+                # END uncovered
             else:
                 if assay_name is None or assay_name.strip() == '':
                     # if we have no name, 'named_or_new' and 'new' are treated the same
@@ -220,14 +288,17 @@ class TableImport(object):
         line_id = item.get('line_id', None)
         line_name = item.get('line_name', None)
         if line_id is None:
+            # TODO uncovered
             logger.warning('Import set needs new Assay but has undefined line_id field.')
             item['invalid_fields'] = True
+            # END uncovered
         elif line_id == 'new':
             # If the label is 'None' we attempt to locate (or if missing, create) a Line named
             # 'New Line'.
             # (If a user wants a new Line created but has not specified a name, it means we have
             # no way of distinguishing one new Line request in a multi-set import from any other.
             # So the only sane behavior is to place all the sets under one Line.)
+            # TODO uncovered
             if line_name is None or line_name.strip() == '':
                 line_name = _('New Line')
             if line_name in self._line_lookup:
@@ -240,12 +311,14 @@ class TableImport(object):
                 )
                 self._line_lookup[line_name] = line
                 logger.info('Created new Line %s:%s' % (line.id, line.name))
+            # END uncovered
         elif line_id in self._line_by_id:
             line = self._line_by_id.get(line_id)
         else:
             try:
                 line = models.Line.objects.get(pk=line_id, study_id=self._study.pk)
                 self._line_by_id[line_id] = line
+            # TODO uncovered
             except models.Line.DoesNotExist:
                 logger.warning(
                     'Import set cannot load Line,Study: %(line_id)s,%(study_id)s' % {
@@ -254,25 +327,32 @@ class TableImport(object):
                     }
                 )
                 item['invalid_fields'] = True
+            # END uncovered
         return line
 
     def _init_item_protocol(self, item):
         protocol_id = item.get('protocol_id', None)
         if protocol_id is None:
+            # TODO uncovered
             logger.warning('Import set needs new Assay, but has undefined protocol_id field.')
             item['invalid_fields'] = True
+            # END uncovered
         elif protocol_id not in self._valid_protocol:
             # when protocol ID valid, map to itself, otherwise map to None
             protocol = None
             try:
                 protocol = models.Protocol.objects.get(pk=protocol_id)
+            # TODO uncovered
             except models.Protocol.DoesNotExist:
                 pass
+            # END uncovered
             self._valid_protocol[protocol_id] = protocol
         result = self._valid_protocol.get(protocol_id, None)
         if result is None:
+            # TODO uncovered
             logger.warning('Import set cannot load protocol %s' % (protocol_id))
             item['invalid_fields'] = True
+            # END uncovered
         return result
 
     def create_measurements(self, series):
@@ -289,11 +369,17 @@ class TableImport(object):
             points = item.get('data', [])
             meta = item.get('metadata_by_id', {})
             if item.get('nothing_to_import', False):
-                logger.warning('Skipped set %s because it has no data' % index)
+                # TODO uncovered
+                logger.warning(f'Skipped set {index} because it has no data')
+                # END uncovered
             elif item.get('invalid_fields', False):
-                logger.warning('Skipped set %s because it has invalid fields' % index)
+                # TODO uncovered
+                logger.warning(f'Skipped set {index} because it has invalid fields')
+                # END uncovered
             elif item.get('assay_obj', None) is None:
-                logger.warning('Skipped set %s because no assay could be loaded' % index)
+                # TODO uncovered
+                logger.warning(f'Skipped set {index} because no assay could be loaded')
+                # END uncovered
             else:
                 assay = item['assay_obj']
                 record = self._load_measurement_record(item)
@@ -316,16 +402,18 @@ class TableImport(object):
             "x_units": self._hours,
             "y_units_id": mtype.unit,
         }
-        logger.info('Finding measurements for %s', find)
+        logger.debug(f'Finding measurements for {find}')
         records = assay.measurement_set.filter(**find)
 
         if records.count() > 0:
+            # TODO uncovered
             if self.replace:
                 records.delete()
             else:
                 record = records[0]  # only SELECT query once
                 record.save(update_fields=['update_ref'])  # force refresh of Update
                 return record
+            # END uncovered
         find.update(
             experimenter=self._user,
             study_id=assay.study_id,
@@ -338,19 +426,22 @@ class TableImport(object):
         total_updated = 0
         for x, y in points:
             (xvalue, yvalue) = (self._extract_value(x), self._extract_value(y))
-            updated = record.measurementvalue_set.filter(x=xvalue).update(y=yvalue)
-            total_updated += updated
-            if updated == 0:
-                record.measurementvalue_set.create(
-                    study_id=record.study_id,
-                    x=xvalue,
-                    y=yvalue,
-                )
+            obj, created = record.measurementvalue_set.update_or_create(
+                study_id=record.study_id,
+                x=xvalue,
+                defaults={"y": yvalue}
+            )
+            if created:
                 total_added += 1
+            else:
+                # TODO uncovered
+                total_updated += 1
+                # END uncovered
         return (total_added, total_updated)
 
     def _process_metadata(self, assay, meta):
         if len(meta) > 0:
+            # TODO uncovered
             if self.replace:
                 # would be simpler to do assay.metadata.clear()
                 # but we only want to replace types included in import data
@@ -366,49 +457,50 @@ class TableImport(object):
                         assay.line.metadata[metatype.pk] = value
                     elif metatype.for_protocol():
                         assay.metadata[metatype.pk] = value
+            # END uncovered
 
     def _extract_value(self, value):
         # make sure input is string first, split on slash or colon, and give back array of numbers
         try:
-            return list(map(float, re.split('/|:', ('%s' % value).replace(',', ''))))
+            return list(map(float, re.split('/|:', str(value).replace(',', ''))))
+        # TODO uncovered
         except ValueError:
-            warnings.warn('Value %s could not be interpreted as a number' % value)
+            warnings.warn(f'Value "{value}" could not be interpreted as a number')
         return []
+        # END uncovered
 
     def _load_compartment(self, item):
-        compartment = item.get('compartment_id', None)
-        if not compartment:
+        compartment = item.get('compartment_id', self.master_compartment)
+        if not compartment:  # replace empty values with default
             compartment = self.master_compartment
         return compartment
 
     def _load_hint(self, item):
-        hint = item.get('hint', None)
-        if hint:
-            return hint
-        return self.mode
+        return item.get('hint', self.mode)
+
+    def _load_name(self, item):
+        name = item.get('measurement_name', None)
+        if name:
+            # drop any non-ascii characters; copying values from e.g. Google search
+            # would include some invisible unicode that screws with pattern matching
+            name = name.encode('ascii', 'ignore').decode('utf-8')
+        return name
 
     def _load_type_id(self, item):
-        type_id = item.get('measurement_id', None)
-        if type_id is None:
-            return self.master_mtype_id
-        return type_id
+        return item.get('measurement_id', self.master_mtype_id)
 
     def _load_unit(self, item):
-        unit = item.get('units_id', None)
-        if not unit:
-            unit = self.master_unit_id
-            # TODO: get rid of magic number fallback; every EDD will have n/a as Unit #1?
-            if not unit:
-                unit = 1
-        return unit
+        return item.get('units_id', self.master_unit_id)
 
     def _metatype(self, meta_id):
+        # TODO uncovered
         if meta_id not in self._meta_lookup:
             try:
                 self._meta_lookup[meta_id] = models.MetadataType.objects.get(pk=meta_id)
             except models.MetadataType.DoesNotExist:
                 logger.warning('No MetadataType found for %s' % meta_id)
         return self._meta_lookup.get(meta_id, None)
+        # END uncovered
 
     def _mtype(self, item):
         """
@@ -420,7 +512,6 @@ class TableImport(object):
         """
         mtype_fn_lookup = {
             MODE_PROTEOMICS: self._mtype_proteomics,
-            MODE_SKYLINE: self._mtype_skyline,
             MODE_TRANSCRIPTOMICS: self._mtype_transcriptomics,
             models.MeasurementType.Group.GENEID: self._mtype_transcriptomics,
             models.MeasurementType.Group.PROTEINID: self._mtype_proteomics,
@@ -434,60 +525,70 @@ class TableImport(object):
         units_id = self._load_unit(item)
         # if type_id is not set, assume it's a lookup pattern
         if not type_id:
-            name = item.get('measurement_name', None)
-            # drop any non-ascii characters
-            name = name.encode('ascii', 'ignore').decode('utf-8')
-            if models.Metabolite.pubchem_pattern.match(name):
-                metabolite = models.Metabolite.load_or_create(name)
-                return MType(compartment, metabolite.pk, units_id)
-            else:
-                protein = models.ProteinIdentifier.load_or_create(name, self._user)
-                return MType(compartment, protein.pk, units_id)
+            for lookup in [self._mtype_metabolomics, self._mtype_proteomics]:
+                try:
+                    found = lookup(item, default=None)
+                    if found is not None:
+                        return found
+                except ValidationError:
+                    pass
+            # TODO uncovered
+            name = self._load_name(item)
+            raise ValidationError(
+                _("No existing type matched for {name} and EDD cannot interpret as "
+                  "a metabolite or protein ID.").format(name=name)
+            )
+            # END uncovered
         return MType(compartment, type_id, units_id)
+
+    def _mtype_metabolomics(self, item, default=None):
+        found_type = default
+        compartment = self._load_compartment(item)
+        measurement_name = self._load_name(item)
+        units_id = self._load_unit(item)
+        metabolite = models.Metabolite.load_or_create(measurement_name)
+        # TODO uncovered
+        found_type = MType(compartment, metabolite.pk, units_id)
+        return found_type
+        # END uncovered
 
     def _mtype_proteomics(self, item, default=None):
         found_type = default
         compartment = self._load_compartment(item)
-        measurement_name = item.get('measurement_name', None)
+        measurement_name = self._load_name(item)
         units_id = self._load_unit(item)
         protein = models.ProteinIdentifier.load_or_create(measurement_name, self._user)
         found_type = MType(compartment, protein.pk, units_id)
         return found_type
 
-    def _mtype_skyline(self, item, default=None):
-        found_type = default
-        compartment = self._load_compartment(item)
-        measurement_name = item.get('measurement_name', None)
-        units_id = self._load_unit(item)
-        # check if measurement_name should load metabolite
-        match = models.Metabolite.pubchem_pattern.match(measurement_name)
-        if match:
-            # TODO: refactor this to eliminate double-check on format, try all available lookups
-            metabolite = models.Metabolite.load_or_create(measurement_name)
-            found_type = MType(compartment, metabolite.pk, units_id)
-        else:
-            protein = models.ProteinIdentifier.load_or_create(measurement_name, self._user)
-            found_type = MType(compartment, protein.pk, units_id)
-        return found_type
-
     def _mtype_transcriptomics(self, item, default=None):
+        # TODO uncovered
         compartment = self._load_compartment(item)
-        measurement_name = item.get('measurement_name', None)
+        measurement_name = self._load_name(item)
         units_id = self._load_unit(item)
         gene = models.GeneIdentifier.load_or_create(measurement_name, self._user)
         return MType(compartment, gene.pk, units_id)
+        # END uncovered
 
     def _mtype_guess_format(self, points):
         if self.mode == 'mdv':
+            # TODO uncovered
             return models.Measurement.Format.VECTOR    # carbon ratios are vectors
+            # END uncovered
         elif self.mode in (MODE_TRANSCRIPTOMICS, MODE_PROTEOMICS):
+            # TODO uncovered
             return models.Measurement.Format.SCALAR    # always single values
+            # END uncovered
         elif len(points):
             # if first value looks like carbon ratio (vector), treat all as vector
             (x, y) = points[0]
             # several potential inputs to handle: list, string, numeric
             if isinstance(y, list):
+                # TODO uncovered
                 return models.Measurement.Format.VECTOR
-            elif y is not None and isinstance(y, string_types) and ('/' in y or ':' in y):
+                # END uncovered
+            elif isinstance(y, string_types) and ('/' in y or ':' in y or '|' in y):
+                # TODO uncovered
                 return models.Measurement.Format.VECTOR
+                # END uncovered
         return models.Measurement.Format.SCALAR
