@@ -1,134 +1,36 @@
 import * as $ from "jquery";
-import "jquery.cookie";
 
 // TODO find out a way to do this in Typescript without relying on specific output targets
 /* tslint:disable */
 declare function require(name: string): any;  // avoiding warnings for require calls below
 var Dropzone = require('dropzone');
 /* tslint:enable */
+/* tslint:disable:object-literal-shorthand */
 
-
-function oninit (dz) {
-  var _this = dz;
-  _this.on("dragstart", function () {
-    _this.removeAllFiles();
-  });
-  _this.on("drop", function () {
-    _this.removeAllFiles();
-  });
-}
+var by_protein = [];
+var by_sample = [];
 
 Dropzone.options.skylineDropzone = {
-  init: function() {
-    oninit(this);
-  },
-  // add CSRF token to xmlHTTPRequest headers
-  sending : function (evt, xhr, fd) {
-    var csrftoken = jQuery.cookie('csrftoken');
-    xhr.setRequestHeader("X-CSRFToken", csrftoken);
-  },
-  success: function(file, response) {
-    var report = response;
-    var target1 = $("#fileinfo");
-    target1.empty();
-    var info_table = $("<table/>").append(
-      $("<tr/>").append(
-        $("<td/>").text("Number of records:"),
-        $("<td/>").text(report.n_records)));
-    info_table.append(
-      $("<tr/>").append(
-        $("<td/>").text("Number of proteins:"),
-        $("<td/>").text(report.n_proteins)));
-    info_table.append(
-      $("<tr/>").append(
-        $("<td/>").text("Number of samples:"),
-        $("<td/>").text(report.n_samples)));
-    target1.append(info_table);
-    if (report.errors) {
-      for (var i = 0; i < report.errors; i++) {
-        target1.append($("<font/>").attr("id", "error").text(report.errors[i]));
-      }
-    }
-    var target2 = $("#formatted");
-    var table = target2.data();
-    table.set_data({
-      "by_protein" : report.by_protein,
-      "rows" : report.rows,
+  "init": function () {
+    this.on("dragstart drop", () => this.removeAllFiles());
+    this.on("success", (file, response) => {
+      $("#fileinfo").empty()
+        .append($("<div>").text("Number of records: " + response.n_records))
+        .append($("<div>").text("Number of proteins: " + response.n_proteins))
+        .append($("<div>").text("Number of samples: " + response.n_samples));
+      by_protein = response.by_protein;
+      by_sample = response.rows;
+      format_table();
     });
-    table.format_table();
   },
 };
 
-function TableOutput (ta_elem_id, st_elem_id, ft_elem_id) {
-  this._ta_elem_id = ta_elem_id;
-  this._st_elem_id = st_elem_id;
-  this._ft_elem_id = ft_elem_id;
-  this._textarea = $(ta_elem_id);
-  this._data = null;
-  this.set_data = function (data) {
-    this._data = data;
-  };
-  this.format_table = function () {
-    if (this._data == null) {
-      alert("No data input!");
-      return;
-    }
-    var text = [];
-    var sep_type = $(this._st_elem_id).val();
-    var format_type = $(this._ft_elem_id).val();
-    var sep = ",";
-    if (sep_type === "space") {
-      sep = " ";
-    }
-    var table = this._data.by_protein;
-    if (format_type === "vert") {
-      table = this._data.rows;
-    }
-    if (sep_type === "space") {
-      table = format_rows_for_minimum_field_size(table);
-    }
-    for (var i = 0; i < table.length; i++) {
-      text.push(table[i].join(sep));
-    }
-    this._textarea.val(text.join("\n"));
-  };
-  this._textarea.data(this);
+function format_table() {
+  const format = $("#table_type").val();
+  const rows = (format === "vert" ? by_sample : by_protein) || [];
+  $("#formatted").val(rows.map((row) => row.join(",")).join("\n"));
 }
 
-function format_rows_for_minimum_field_size (table) {
-  var n_rows = table.length;
-  var n_cols = table[0].length;
-  var lengths = [];
-  for (let i = 0; i < n_cols; i++) {
-    lengths.push(0);
-    for (let j = 0; j < n_rows; j++) {
-      lengths[i] = Math.max(lengths[i], String(table[j][i]).length);
-    }
-  }
-  var formatted = [];
-  for (let j = 0; j < n_rows; j++) {
-    var row = [];
-    for (let i = 0; i < n_cols; i++) {
-      var val_str = String(table[j][i]);
-      var n_pad = lengths[i] - val_str.length;
-      if (i === 0) {
-        val_str = val_str + Array(n_pad + 1).join(' ');
-      } else {
-        val_str = Array(n_pad + 1).join(' ') + val_str;
-      }
-      row.push(val_str);
-    }
-    formatted.push(row);
-  }
-  return formatted;
-}
-
-$(document).ready(function () {
-  var table_out = new TableOutput("#formatted", "#sep_type", "#table_type");
-  $("#sep_type").change(function () {
-    table_out.format_table();
-  });
-  $("#table_type").change(function() {
-    table_out.format_table();
-  });
+$(() => {
+  $("#table_type").on("change", format_table);
 });

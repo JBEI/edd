@@ -36,27 +36,18 @@ Skyline conversion
   </div>
   <br/>
   <div>
-    <center><h3>Formatted output</h3></center>
     <center>
+      <h3>Formatted output</h3>
       <div>
-      <b>Separator type:</b>
-      <select id="sep_type">
-        <option>comma</option>
-        <option>space</option>
-      </select>
-      </div>
-      <br/>
-      <div>
-      <b>Table type:</b>
+        <label for="table_type"><b>Table type:</b></label>
         <select id="table_type">
           <option value="vert">Fixed columns, one row per protein for each sample</option>
           <option value="horiz">One row per sample, proteins as columns</option>
         </select>
       </div>
-      <br/>
     </center>
     <div class="rawtext">
-    <div><textarea class="rawtext" id="formatted"></textarea></div>
+      <textarea class="rawtext" id="formatted" style="width: 100%;"></textarea>
     </div>
   </div>
 </div>
