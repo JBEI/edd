@@ -43,7 +43,7 @@ def search_generic(request, model_name, module=edd_models):
             for f in Model._meta.get_fields()
             if hasattr(f, 'get_attname') and f.get_internal_type() in ['TextField', 'CharField']
         ]
-    except AttributeError as e:
+    except AttributeError:
         return JsonResponse({'error': 'Unknown search model %s' % model_name}, status=400)
     term = request.GET.get('term', '')
     re_term = re.escape(term)
@@ -78,9 +78,10 @@ def search_metaboliteish(request):
 
 AUTOCOMPLETE_METADATA_LOOKUP = {
     'Assay': Q(for_context=edd_models.MetadataType.ASSAY),
+    'AssayForm': Q(for_context=edd_models.MetadataType.ASSAY, type_field__isnull=True),
     'AssayLine': Q(for_context__in=[edd_models.MetadataType.ASSAY, edd_models.MetadataType.LINE]),
     'Line': Q(for_context=edd_models.MetadataType.LINE),
-    'LineForm': (Q(for_context=edd_models.MetadataType.LINE) & (Q(type_field__isnull=True))),
+    'LineForm': Q(for_context=edd_models.MetadataType.LINE, type_field__isnull=True),
     'Study': Q(for_context=edd_models.MetadataType.STUDY),
 }
 
@@ -142,7 +143,7 @@ def search_study_lines(request):
 
     # if study doesn't exist or requesting user doesn't have read access, return an empty
     # set of lines
-    except edd_models.Study.DoesNotExist as e:
+    except edd_models.Study.DoesNotExist:
         query = edd_models.Line.objects.none()
 
     query = query.filter(Q(name__iregex=name_regex) | Q(strains__name__iregex=name_regex))

@@ -9,6 +9,7 @@ tscommand-*
 
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN
 secrets.env
+/secrets
 
 # per-machine local settings files; this will override default settings with local changes
 edd/settings/local.py

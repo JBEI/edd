@@ -1,0 +1,46 @@
+{% load i18n %}
+<p class="bulk-note off">
+  {% blocktrans trimmed %}
+  Disabled fields have conflicting values, and will be ignored until edited. Editing
+  these will overwrite to the new value. Use the Don't Change button to discard edits
+  and keep original value(s) for a field. Use the Clear Value button to remove
+  metadata.
+  {% endblocktrans %}
+</p>
+<div class="meta-add-row meta-row form-group">
+  <span class="edd-label">
+    <input type="text"
+        size="14"
+        autocomplete="off"
+        class="autocomp {{ meta_class }} form-control-meta ui-autocomplete-input"
+        eddautocompletetype="{{ meta_type }}"
+        placeholder="{% trans 'Metadata Type' %}" />
+    <input type="hidden" value="" />
+  </span>
+  <button class="meta-add btn btn-default">
+    <i class="glyphicon glyphicon-plus-sign"></i>
+    {% trans "Add Field" %}
+  </button>
+</div>
+<p class="off meta-model">
+  <span class="meta-prefix"></span>
+  <label></label>
+  <span class="meta-postfix"></span>
+  <span class="off meta-restore">
+    {% trans "Values of <label></label> will be removed on Save." %}
+  </span>
+  <br/>
+  <input type="text" class="form-control"/>
+  <span class="off meta-restore btn btn-default btn-xs">
+    <i class="glyphicon glyphicon-plus-sign"></i>
+    {% trans "Restore Field" %}
+  </span>
+  <span class="meta-clear btn btn-default btn-xs">
+    <i class="glyphicon glyphicon-remove-sign"></i>
+    {% trans "Clear Value" %}
+  </span>
+  <span class="meta-remove btn btn-default btn-xs">
+    <i class="glyphicon glyphicon-minus-sign"></i>
+    {% trans "Don't Change" %}
+  </span>
+</p>

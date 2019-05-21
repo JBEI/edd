@@ -173,34 +173,32 @@
 </form>
 
 {% if writable %}
-<div id="editLineModal"
-    title="{% trans 'Add new line' %}"
-    class="off {% if new_line.errors %}validation_error{% endif %}">
+<div id="editLineModal" class="off {% if new_line.errors %}validation_error{% endif %}">
+  <span class="off" id="new_line_title">{% trans "Add New Line" %}</span>
+  <span class="off" id="edit_line_title">{% trans "Edit Line" %}</span>
+  <span class="off" id="bulk_line_title">{% trans "Bulk Edit Lines" %}</span>
   <form action="" method="POST">
     {% csrf_token %}
     <div class="modal-body">
-      <div class="bulkNoteGroup">
-        <p class="bulkNote">{% trans 'Any fields modified will update corresponding lines' %}</p>
-        <p class="bulkNote">{% trans 'Any fields left blank will remain unchanged' %}</p>
-        <p class="bulkNote">{% trans 'Any checked fields left blank will delete contents' %}</p>
-      </div>
-    {{ new_line.as_p }}
-    <div class="line-edit-meta form-group">
-      <span class="edd-label">
-        <input type="text"
-            size="14"
-            autocomplete="off"
-            class="autocomp autocomp_ltype form-control-meta ui-autocomplete-input"
-            eddautocompletetype="LineFormMetadataType"
-            placeholder="{% trans 'Metadata Type' %}" />
-        <input type="hidden" class="line-meta-type" value="" />
-      </span>
-      <button class="line-meta-add btn btn-default">{% trans 'Add Field' %}</button>
-    </div>
+      <fieldset>
+        <legend>{% trans "Basic Line Information" %}</legend>
+        <p class="bulk-note off">{% trans "Only enabled fields will be modified." %}</p>
+        {{ new_line.as_p }}
+        <span class="off bulk-ignore btn btn-default btn-xs">
+          <i class="glyphicon glyphicon-minus-sign"></i>
+          {% trans "Don't Change" %}
+        </span>
+      </fieldset>
+      <fieldset>
+        <legend>{% trans "Line Metadata" %}</legend>
+        {% with meta_class="autocomp_ltype" meta_type="LineFormMetadataType" %}
+        {% include "main/include/metadata-template.html" %}
+        {% endwith %}
+      </fieldset>
     </div>
     <div class="modal-footer">
       <button type="submit" class="btn btn-primary" name="action" value="line">
-        {% trans 'Save changes' %}
+        {% trans 'Save' %}
       </button>
     </div>
   </form>
@@ -213,12 +211,21 @@
   {% trans 'Add Assays To Selected Lines' as add_assay_modal_title %}
   {% trans 'Add Assay' context 'button' as add_assay_button %}
 {% endif %}
-<div id="addAssayModal" class="off" title="{{ add_assay_modal_title}}">
+<div id="addAssayModal" class="off" title="{{ add_assay_modal_title }}">
   <form action="" method="POST">
     {% csrf_token %}
     <div class="off hidden-line-inputs"></div>
     <div class="modal-body">
-      {{ new_assay.as_p }}
+      <fieldset>
+        <legend>{% trans "Basic Assay Information" %}</legend>
+        {{ new_assay.as_p }}
+      </fieldset>
+      <fieldset>
+        <legend>{% trans "Assay Metadata" %}</legend>
+        {% with meta_class="autocomp_atype" meta_type="AssayFormMetadataType" %}
+        {% include "main/include/metadata-template.html" %}
+        {% endwith %}
+      </fieldset>
     </div>
     <div class="modal-footer">
       <button type="submit"

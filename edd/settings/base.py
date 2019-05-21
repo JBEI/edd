@@ -40,7 +40,8 @@ env = environ.Env(
 ###################################################################################################
 
 EDD_VERSION_NUMBER = env('EDD_VERSION', default='unversioned-build')
-EDD_VERSION_HASH = env('EDD_VERSION_HASH', default=None)
+with open("/edd.hash") as f:
+    EDD_VERSION_HASH = f.read().strip()
 
 # Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
 # help prevent developers from accidentally altering data in production). Any value that starts

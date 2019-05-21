@@ -1,5 +1,6 @@
 "use strict";
 
+import * as $ from "jquery";
 import {
     DataGrid,
     DataGridColumnGroupSpec,
@@ -13,7 +14,6 @@ import {
     DataGridTableSpec,
     DGSelectAllWidget,
 } from "../modules/DataGrid";
-import * as Utl from "../modules/Utl";
 import * as Dragboxes from "../modules/Dragboxes";
 import {
     BarGraphMode,
@@ -22,9 +22,9 @@ import {
     GraphView,
     ViewingMode,
 } from "../modules/EDDGraphingTools";
+import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
-import * as $ from "jquery";
-import * as _ from "underscore";
+import * as Utl from "../modules/Utl";
 
 
 // TODO find out a way to do this in Typescript without relying on specific output targets
@@ -44,6 +44,7 @@ require('jquery-ui/ui/widgets/resizable');
 require('jquery-ui/ui/widgets/dialog');
 require('jquery-ui/ui/widgets/tooltip');
 /* tslint:enable */
+/* tslint:disable:prefer-const */
 
 
 var viewingMode: ViewingMode;
@@ -92,8 +93,11 @@ export interface AccumulatedRecordIDs {
     geneIDs: string[];
     measurementIDs: string[];
 }
-const NULL_LINE: LineRecord = <LineRecord> {};
-const NULL_ASSAY: AssayRecord = <AssayRecord> {};
+const NULL_LINE: LineRecord = {} as LineRecord;
+const NULL_MEASURE: AssayMeasurementRecord = {} as AssayMeasurementRecord;
+
+// define managers for forms with metadata
+let assayMetadataManager: Forms.FormMetadataManager;
 
 
 // For the filtering section on the main graph
@@ -242,9 +246,9 @@ export class ProgressiveFilteringWidget {
             // If we've seen it already (rather unlikely), skip it.
             if (this.accumulatedRecordIDs.seenRecordFlags[measurement.id]) { return; }
             this.accumulatedRecordIDs.seenRecordFlags[measurement.id] = true;
-            if (!assay) { return; };
+            if (!assay) { return; }
             line = EDDData.Lines[assay.lid];
-            if (!line || !line.active) { return; };
+            if (!line || !line.active) { return; }
             mtype = types[measurement.type] || {};
             if (mtype.family === 'm') { // measurement is of metabolite
                 this.accumulatedRecordIDs.metaboliteIDs.push(measurement.id);
@@ -399,9 +403,7 @@ export class ProgressiveFilteringWidget {
 
         if (this.metaboliteDataPresent) {
             $.each(this.metaboliteFilters, (i, filter) => {
-                metaboliteMeasurements = filter.applyProgressiveFiltering(
-                    metaboliteMeasurements
-                );
+                metaboliteMeasurements = filter.applyProgressiveFiltering(metaboliteMeasurements);
                 filteringResults[filter.sectionShortLabel] = metaboliteMeasurements;
             });
         }
@@ -624,7 +626,7 @@ export class GenericFilterSection {
         this.filteringTable = $("<table>")
             .addClass('filterCriteriaTable dragboxes')
             .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-            .append(this.tableBodyElement = <HTMLTableElement> $("<tbody>")[0]);
+            .append(this.tableBodyElement = $("<tbody>")[0] as HTMLTableElement);
     }
 
     // By calling updateUniqueIndexesHash, we go through the records and find all the unique
@@ -729,7 +731,7 @@ export class GenericFilterSection {
             if (!row) {
                 // No need to append a new row in a separate call:
                 // insertRow() creates, and appends, and returns one.
-                rowElem = <HTMLTableRowElement> this.tableBodyElement.insertRow();
+                rowElem = this.tableBodyElement.insertRow() as HTMLTableRowElement;
                 this.tableRows[this.uniqueValues[uniqueId]] = rowElem;
                 cell = this.tableRows[this.uniqueValues[uniqueId]].insertCell();
                 this.checkboxes[this.uniqueValues[uniqueId]] = $("<input type='checkbox'>")
@@ -830,7 +832,7 @@ export class GenericFilterSection {
                 // If there are multiple words, we match each separately.
                 // We will not attempt to match against empty strings, so we filter those out
                 // if any slipped through.
-                queryStrs = v.split(/\s+/).filter((one) => { return one.length > 0; });
+                queryStrs = v.split(/\s+/).filter((one) => one.length > 0);
                 // The user might have pasted/typed only whitespace, so:
                 if (queryStrs.length > 0) {
                     useSearchBox = true;
@@ -1023,7 +1025,7 @@ export class LineNameFilterSection extends GenericFilterSection {
         this.uniqueIndexes = {};
         this.filterHash = {};
         ids.forEach((assayId: string) => {
-            let line: LineRecord = this._assayIdToLine(assayId) || <LineRecord> {};
+            let line: LineRecord = this._assayIdToLine(assayId) || NULL_LINE;
             let idx: number;
             this.filterHash[assayId] = this.filterHash[assayId] || [];
             if (line.name) {
@@ -1416,8 +1418,7 @@ export function prepareIt() {
     // when all ajax requests are finished, determine if there are AssayMeasurements.
     $(document).ajaxStop(function() {
         // show assay table by default if there are assays but no assay measurements
-        if (_.keys(EDDData.Assays).length > 0
-                && _.keys(EDDData.AssayMeasurements).length === 0) {
+        if (!$.isEmptyObject(EDDData.Assays) && $.isEmptyObject(EDDData.AssayMeasurements)) {
             // TODO: create prepare it for no data?
             _displayTable();
             $('#exportButton').prop('disabled', true);
@@ -1551,16 +1552,16 @@ export function prepareIt() {
     }, []);
 
     // set up the "add" (edit) assay dialog
-    $("#assayMain").dialog({
+    let assayModalForm = $("#assayMain");
+    assayModalForm.dialog(StudyBase.dialogDefaults({
         "minWidth": 500,
-        "autoOpen": false,
-    });
+    }));
+    assayMetadataManager = new Forms.FormMetadataManager(assayModalForm, "assay");
 
     // Set up the Add Measurement to Assay modal
-    $("#addMeasurement").dialog({
+    $("#addMeasurement").dialog(StudyBase.dialogDefaults({
         "minWidth": 500,
-        "autoOpen": false,
-    });
+    }));
 
     $("#addMeasurementButton").click(() => {
         // copy inputs to the modal form
@@ -1576,10 +1577,9 @@ export function prepareIt() {
     });
 
     // Callbacks to respond to the filtering section
-    $('#mainFilterSection').on(
-        'mouseover mousedown mouseup',
-        queueRefreshDataDisplayIfStale.bind(this)
-    ).on('keydown', filterTableKeyDown.bind(this));
+    $('#mainFilterSection')
+        .on('mouseover mousedown mouseup', queueRefreshDataDisplayIfStale.bind(this))
+        .on('keydown', filterTableKeyDown.bind(this));
 }
 
 function basePayload(): any {
@@ -1727,10 +1727,7 @@ function processMeasurementData(protocol, data) {
         }
     });
 
-    progressiveFilteringWidget.processIncomingMeasurementRecords(
-        data.measures || {},
-        data.types
-    );
+    progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
 
     if (count_rec < count_total) {
         // TODO not all measurements downloaded; display a message indicating this
@@ -1790,13 +1787,9 @@ function refreshDataDisplayIfStale(force?: boolean) {
     }
 
     if (viewingMode === 'table') {
-        if (assaysDataGridSpec === null) {
-            assaysDataGridSpec = new DataGridSpecAssays();
-            assaysDataGridSpec.init();
-            assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
-        } else {
-            assaysDataGrid.triggerDataReset();
-        }
+        assaysDataGridSpec = new DataGridSpecAssays();
+        assaysDataGridSpec.init();
+        assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
         viewingModeIsStale.table = false;
         progressiveFilteringWidget.lineNameFilter.setLineColors();
     } else {
@@ -1836,12 +1829,12 @@ function actionPanelRefresh() {
         if (!nothingSelected) {
             if (checkedAssays) {
                 selectedStrs.push(
-                    (checkedAssays > 1) ? (checkedAssays + " Assays") : "1 Assay"
+                    (checkedAssays > 1) ? (checkedAssays + " Assays") : "1 Assay",
                 );
             }
             if (checkedMeasure) {
                 selectedStrs.push(
-                    (checkedMeasure > 1) ? (checkedMeasure + " Measurements") : "1 Measurement"
+                    (checkedMeasure > 1) ? (checkedMeasure + " Measurements") : "1 Measurement",
                 );
             }
             var selectedStr = selectedStrs.join(', ');
@@ -1853,7 +1846,7 @@ function actionPanelRefresh() {
     }
     // if there are assays but no data, show empty assays
     // note: this is to combat the current default setting for showing graph on page load
-    if (_.keys(EDDData.Assays).length > 0 && _.keys(EDDData.AssayMeasurements).length === 0 ) {
+    if (!$.isEmptyObject(EDDData.Assays) && $.isEmptyObject(EDDData.AssayMeasurements)) {
         if (!$('#TableShowEAssaysCB').prop('checked')) {
             $('#TableShowEAssaysCB').click();
         }
@@ -1927,50 +1920,76 @@ function remakeMainGraphArea() {
 
 
 export function showEditAssayDialog(selection: JQuery): void {
-    let modalForm = $('#assayMain');
-    // clear out the form to prepare for next display
-    modalForm
-        // remove metadata rows
-        .find('.assay-meta').remove().end()
-        // for all AssayForm elements
-        .find('[name^=assay-]')
-            // clear input element values
-            .not(':checkbox, :radio').val('').end()
-            // uncheck any toggles
-            .filter(':checkbox, :radio').prop('checked', false).end()
-        .end()
-        // remove reported errors
-        .find('.errorlist').remove().end()
-        // hide bulk edit checkboxes
-        .find('.bulk').addClass('off').end()
-        // remove bulk edit change handler
-        .off('change.bulk')
-        // remove previous selection
-        .find('[name=assayId]').remove().end()
-        // clone selection to the form
-        .find('form').append(selection.clone().addClass('off')).end();
-    // TODO handle metadata
-    if (selection.length === 1) {
-        // fill form with existing values
-        let record = EDDData.Assays[selection.val()];
-        let user = EDDData.Users[record.experimenter];
-        modalForm
-            .find('[name=assay-assay_id]').val(record.id).end()
-            .find('[name=assay-name]').val(record.name).end()
-            .find('[name=assay-description]').val(record.description).end()
-            .find('[name=assay-protocol]').val(record.pid).end()
-            .find('[name=assay-experimenter_0]').val(user && user.uid ? user.uid : '--').end()
-            .find('[name=assay-experimenter_1]').val(record.experimenter).end();
-    } else {
-        // show bulk edit checkboxes
-        modalForm
-            .find('.bulk').removeClass('off').end()
-            // event handler to check bulk checkbox on editing connected input
-            .on('change.bulk', ':input', (ev: JQueryEventObject) => {
-                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
-            });
+    const form = $("#assayMain");
+    let titleText: string;
+    let record: AssayRecord;
+    let experimenter: StudyBase.EDDContact;
+
+    // Update the dialog title and fetch selection info
+    if (selection.length === 0) {
+        titleText = $("#new_assay_title").text();
+    } else if (selection.length > 1) {
+        titleText = $("#bulk_assay_title").text();
+        // merge all selected items into a single record
+        record = selection.toArray()
+            .map((elem: Element): AssayRecord => Utl.lookup(EDDData.Assays, $(elem).val()))
+            .reduce(StudyBase.mergeAssays);
+        experimenter = new StudyBase.EDDContact(record.experimenter);
+    } else if (selection.length === 1) {
+        titleText = $("#edit_assay_title").text();
+        record = Utl.lookup(EDDData.Assays, selection.val());
+        experimenter = new StudyBase.EDDContact(record.experimenter);
     }
-    modalForm.removeClass('off').dialog( "open" );
+    form.dialog({"title": titleText});
+
+    // create object to handle form interactions
+    const formManager = new Forms.BulkFormManager(form, "assay");
+    const str = (x: any): string => "" + (x || "");  // forces values to string, falsy === ""
+    // define fields on form
+    const fields: {[name: string]: Forms.IFormField} = {
+        "name": new Forms.Field(form.find("[name=assay-name]"), "name"),
+        "description": new Forms.Field(form.find("[name=assay-description]"), "description"),
+        "protocol": new Forms.Field(form.find("[name=assay-protocol"), "pid"),
+        "experimenter": new Forms.Autocomplete(
+                form.find("[name=assay-experimenter_0"),
+                form.find("[name=assay-experimenter_1"),
+                "experimenter",
+            )
+            .render(
+                (): [string, string] => [experimenter.display(), str(experimenter.id())],
+            ),
+    };
+    // initialize the form to clean slate, pass in active selection, selector for previous items
+    formManager
+        .init(selection, "[name=assayId]")
+        .fields($.map(fields, (v: Forms.IFormField) => v));
+    assayMetadataManager.reset();
+    if (record !== undefined) {
+        formManager.fill(record);
+        assayMetadataManager.metadata(record.meta);
+    }
+
+    // special case, ignore name field when editing multiples
+    if (selection.length > 1) {
+        form.find('[name=assay-name]')
+            // remove required property
+            .prop('required', false)
+            // also hide form elements and uncheck bulk box
+            .parent()
+                .hide()
+                .find(':checkbox').prop('checked', false).end()
+            .end();
+    } else {
+        form.find('[name=assay-name]')
+            // make sure line name is required
+            .prop('required', true)
+                // and line name is shown
+                .parent().show().end()
+            .end();
+    }
+
+    // display modal dialog
+    form.removeClass('off').dialog( "open" );
 }
 
 
@@ -1981,10 +2000,6 @@ class DataGridAssays extends DataGrid {
 
     _getClasses(): string {
         return 'dataTable sortable dragboxes hastablecontrols table-striped';
-    }
-
-    getCustomControlsArea(): Element {
-        return $('#tableControlsArea').get(0);
     }
 }
 
@@ -2057,8 +2072,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     findMetaDataIDsUsedInAssays() {
         var seenHash: any = {};
         this.metaDataIDsUsedInAssays = [];
-        this.getRecordIDs().forEach((assayId) => {
-            var assay = EDDData.Assays[assayId];
+        $.each(EDDData.Assays, (assayId, assay) => {
             $.each(assay.meta || {}, (metaId) => { seenHash[metaId] = true; });
         });
         [].push.apply(this.metaDataIDsUsedInAssays, Object.keys(seenHash));
@@ -2069,7 +2083,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         var minmax: MinMax;
         // reduce to find highest/lowest value across all records
         minmax = this.getRecordIDs().reduce((outer: MinMax, assayId): MinMax => {
-            let assay: AssayRecordExended = <AssayRecordExended> EDDData.Assays[assayId];
+            let assay: AssayRecordExended = EDDData.Assays[assayId] as AssayRecordExended;
             let measures: number[];
             let recordMinmax: MinMax;
             // Some caching to speed subsequent runs way up...
@@ -2083,14 +2097,15 @@ class DataGridSpecAssays extends DataGridSpecBase {
                     let measure: AssayMeasurementRecord;
                     let measureMinmax: number[];
                     lookup = EDDData.AssayMeasurements || {};
-                    measure = lookup[measureId] || <AssayMeasurementRecord> {};
+                    measure = lookup[measureId] || NULL_MEASURE;
                     // reduce to find highest/lowest value across all data in measurement
-                    measureMinmax = (measure.values || []).reduce((inner: MinMax, point): MinMax => {
-                        return [
-                            Math.max(inner[0], point[0][0]),
-                            Math.min(inner[1], point[0][0]),
-                        ];
-                    }, [0, Number.MAX_VALUE]);
+                    measureMinmax = (measure.values || [])
+                        .reduce((inner: MinMax, point): MinMax => {
+                            return [
+                                Math.max(inner[0], point[0][0]),
+                                Math.min(inner[1], point[0][0]),
+                            ];
+                        }, [0, Number.MAX_VALUE]);
                     return [
                         Math.max(middle[0], measureMinmax[0]),
                         Math.min(middle[1], measureMinmax[1]),
@@ -2150,8 +2165,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // Specification for the headers along the top of the table
     defineHeaderSpec(): DataGridHeaderSpec[] {
         // map all metadata IDs to HeaderSpec objects
-        var metaDataHeaders: DataGridHeaderSpec[] = this.metaDataIDsUsedInAssays.map(
-            (id, index) => {
+        var metaDataHeaders: DataGridHeaderSpec[] = this.metaDataIDsUsedInAssays
+            .map((id, index) => {
                 var mdType = EDDData.MetaDataTypes[id];
                 return new DataGridHeaderSpec(2 + index, 'hAssaysMetaid' + id, {
                     'name': mdType.name,
@@ -2160,8 +2175,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                     'sortBy': this.makeMetaDataSortFunction(id),
                     'sortAfter': 1,
                 });
-            }
-        );
+            });
 
         // The left section of the table has Assay Name and Line (Name)
         var leftSide: DataGridHeaderSpec[] = [
@@ -2199,7 +2213,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 {
                     'name': 'Measuring Times',
                     'headerRow': 2,
-                }
+                },
             ),
             new DataGridHeaderSpec(++rightOffset, 'hAssaysExperimenter', {
                 'name': 'Experimenter',
@@ -2247,7 +2261,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'checkboxName': 'assayId',
-                'checkboxWithID': (id) => { return 'assay' + id + 'include'; },
+                'checkboxWithID': (id) => 'assay' + id + 'include',
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
@@ -2355,13 +2369,13 @@ class DataGridSpecAssays extends DataGridSpecBase {
             },
             'metaboliteValueSort': (a: any, b: any) => {
                 var y = a.name.toLowerCase(), z = b.name.toLowerCase();
-                return (<any> (y > z) - <any> (z > y));
+                return (((y > z) as any) - ((z > y) as any));
             },
             'metaboliteValueToCell': (value) => {
                 return new DataGridDataCell(gridSpec, value.id, {
                     'hoverEffect': true,
                     'checkboxName': 'measurementId',
-                    'checkboxWithID': () => { return 'measurement' + value.id + 'include'; },
+                    'checkboxWithID': () => 'measurement' + value.id + 'include',
                     'contentString': value.name,
                 });
             },
@@ -2391,7 +2405,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             },
             'metaboliteValueSort': (a: any, b: any) => {
                 var y = a.name.toLowerCase(), z = b.name.toLowerCase();
-                return (<any> (y > z) - <any> (z > y));
+                return (((y > z) as any) - ((z > y) as any));
             },
             'metaboliteValueToCell': (value) => {
                 return new DataGridDataCell(gridSpec, index, {
@@ -2425,7 +2439,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             },
             'metaboliteValueSort': (a: any, b: any) => {
                 var y = a.name.toLowerCase(), z = b.name.toLowerCase();
-                return (<any> (y > z) - <any> (z > y));
+                return (((y > z) as any) - ((z > y) as any));
             },
             'metaboliteValueToCell': (value) => {
                 return new DataGridDataCell(gridSpec, index, {
@@ -2476,7 +2490,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             },
             'metaboliteValueSort': (a: any, b: any) => {
                 var y = a.name.toLowerCase(), z = b.name.toLowerCase();
-                return (<any> (y > z) - <any> (z > y));
+                return (((y > z) as any) - ((z > y) as any));
             },
             'metaboliteValueToCell': (value) => {
                 var measure = value.measure || {},
@@ -2503,7 +2517,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
         ];
     }
 
-    generateModificationDateCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[] {
+    generateModificationDateCells(
+        gridSpec: DataGridSpecAssays,
+        index: string,
+    ): DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
@@ -2527,7 +2544,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                         style="stroke-width:2px;"\
                         stroke-width="2"></path>';
         var paths = [ svg ];
-        points.sort((a, b) => { return a[0] - b[0]; }).forEach((point) => {
+        points.sort((a, b) => a[0] - b[0]).forEach((point) => {
             var x = point[0][0],
                 y = point[1][0],
                 range = this.maximumXValueInData - this.minimumXValueInData,
@@ -2541,11 +2558,11 @@ class DataGridSpecAssays extends DataGridSpecBase {
             paths.push(['<path class="cP" d="M', rx, ',1v4"></path>'].join(''));
             if (format === 'carbon') {
                 paths.push(
-                    ['<path class="cV" d="M', rx, ',1v8"><title>', tt, '</title></path>'].join('')
+                    ['<path class="cV" d="M', rx, ',1v8"><title>', tt, '</title></path>'].join(''),
                 );
             } else {
                 paths.push(
-                    ['<path class="cP" d="M', rx, ',1v8"><title>', tt, '</title></path>'].join('')
+                    ['<path class="cP" d="M', rx, ',1v8"><title>', tt, '</title></path>'].join(''),
                 );
             }
         });
@@ -2700,21 +2717,11 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
         } else {
             $("#enableButton").addClass('off');
         }
-        var disabledRows = $('.disabledRecord');
 
-        var checkedDisabledRows = 0;
-        _.each(disabledRows, function(row) {
-            if ($(row).find('input').prop('checked')) {
-                checkedDisabledRows++;
-            }
-        });
-
-        if (checkedDisabledRows > 0) {
-            $('#enableButton').prop('disabled', false);
-        } else {
-            $('#enableButton').prop('disabled', true);
-        }
-
+        let anyDisabledChecked: boolean = $(".disabledRecord")
+            .toArray()
+            .some((row): boolean => $(row).find("input").prop("checked"));
+        $("#enableButton").prop("disabled", !anyDisabledChecked);
 
         // If the box is checked, return the set of IDs unfiltered
         if (checked) { return rowIDs; }
@@ -2726,7 +2733,9 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
     initialFormatRowElementsForID(dataRowObjects: any, rowID: string): any {
         var assay = EDDData.Assays[rowID];
         if (!assay.active) {
-            $.each(dataRowObjects, (x, row) => { $(row.getElement()).addClass('disabledRecord'); });
+            $.each(dataRowObjects, (x, row) => {
+                $(row.getElement()).addClass('disabledRecord');
+            });
         }
     }
 }

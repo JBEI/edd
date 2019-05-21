@@ -1,8 +1,8 @@
 // This file contains various utility classes under the Utl module.
 
-import "../src/EDDDataInterface";
 import * as jQuery from "jquery";
 import "jquery.cookie";
+import "../src/EDDDataInterface";
 
 // TODO find out a way to do this in Typescript without relying on specific output targets
 /* tslint:disable */
@@ -12,6 +12,7 @@ var Dropzone = require('dropzone');
 require('dropzone/dist/dropzone.css');
 /* tslint:enable */
 
+
 export function relativeURL(path: string, base?: URL): URL {
     // Defining this to clean up boilerplate as TypeScript compiler requires URL constructor
     // to take only strings as both arguments, instead of a string and another URL.
@@ -20,6 +21,12 @@ export function relativeURL(path: string, base?: URL): URL {
         baseStr = base.toString();
     }
     return new URL(path, baseStr);
+}
+
+
+export function lookup<U>(list: RecordList<U>, key: number | string): U {
+    // return item or an empty null type
+    return list[key] || {} as U;
 }
 
 

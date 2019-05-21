@@ -4,19 +4,20 @@ declare var EDDData: EDDData;  // sticking this here as IDE isn't following refe
 
 import {
     DataGrid,
-    DataGridSpecBase,
-    DataGridDataCell,
-    DataGridColumnSpec,
-    DataGridTableSpec,
-    DataGridHeaderWidget,
     DataGridColumnGroupSpec,
+    DataGridColumnSpec,
+    DataGridDataCell,
     DataGridHeaderSpec,
-    DGSelectAllWidget,
+    DataGridHeaderWidget,
     DataGridOptionWidget,
+    DataGridSpecBase,
+    DataGridTableSpec,
     DGSearchWidget,
+    DGSelectAllWidget,
 } from "../modules/DataGrid";
-import * as Utl from "../modules/Utl";
+import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
+import * as Utl from "../modules/Utl";
 
 
 // TODO find out a way to do this in Typescript without relying on specific output targets
@@ -35,7 +36,7 @@ require('jquery-ui/ui/widgets/draggable');
 require('jquery-ui/ui/widgets/resizable');
 require('jquery-ui/ui/widgets/dialog');
 /* tslint:enable */
-
+/* tslint:disable:prefer-const */
 
 
 var linesActionPanelRefreshTimer: NodeJS.Timer;
@@ -51,6 +52,12 @@ export var linesDataGridSpec;
 export var linesDataGrid;
 
 let studyBaseUrl: URL = Utl.relativeURL('../');
+
+// define managers for forms with metadata
+var lineMetadataManager: Forms.FormMetadataManager;
+var assayMetadataManager: Forms.FormMetadataManager;
+var $window = $(window);
+
 
 // Called when the page loads.
 export function prepareIt() {
@@ -82,11 +89,11 @@ export function prepareIt() {
     var helper = new Utl.FileDropZoneHelpers();
 
     Utl.FileDropZone.create({
-        elementId: "addToLinesDropZone",
-        url: Utl.relativeURL('describe/', studyBaseUrl).toString(),
-        processResponseFn: helper.fileReturnedFromServer.bind(helper),
-        processErrorFn: helper.fileErrorReturnedFromServer.bind(helper),
-        processWarningFn: helper.fileWarningReturnedFromServer.bind(helper),
+        "elementId": "addToLinesDropZone",
+        "url": Utl.relativeURL('describe/', studyBaseUrl).toString(),
+        "processResponseFn": helper.fileReturnedFromServer.bind(helper),
+        "processErrorFn": helper.fileErrorReturnedFromServer.bind(helper),
+        "processWarningFn": helper.fileWarningReturnedFromServer.bind(helper),
     });
 
     $('#content').on('dragover', (e: JQueryMouseEventObject) => {
@@ -128,10 +135,16 @@ export function prepareIt() {
     });
 
     // if dialog had errors, open on page reload
-    let editLineModal = $('#editLineModal');
-    if (editLineModal.hasClass('validation_error')) {
-        let options = {minWidth: 500, title: 'Please correct errors'};
-        editLineModal.removeClass('off').dialog(options);
+    let lineModalForm = $("#editLineModal");
+    if (lineModalForm.hasClass('validation_error')) {
+        let navbar = $("nav.navbar");
+        lineModalForm.removeClass('off').dialog({
+            "maxHeight": $window.height() - navbar.height(),
+            "maxWidth": $window.width(),
+            "minWidth": 500,
+            "position": StudyBase.buildModalPosition(),
+            "title": "Please correct errors",
+        });
     }
 }
 
@@ -159,10 +172,11 @@ function setupHelp() {
 
 // Called by DataGrid after the Lines table is rendered
 export function prepareAfterLinesTable() {
-
-    let parent: JQuery = $('#studyLinesTable').parent();
-    let helpBadge: JQuery = $('.move');
-    let input: JQuery = $('.tableControl').last();
+    const parent: JQuery = $('#studyLinesTable').parent();
+    const helpBadge: JQuery = $('.move');
+    const input: JQuery = $('.tableControl').last();
+    const position = StudyBase.buildModalPosition();
+    const navbar = $("nav.navbar");
     // Enable add new Line button
     parent.find('.addNewLineButton').on('click', (ev: JQueryMouseEventObject): boolean => {
         showLineEditDialog($());
@@ -177,33 +191,40 @@ export function prepareAfterLinesTable() {
     $(helpBadge).insertAfter(input).removeClass('off');
 
     // Set up jQuery modals
-    $("#editLineModal").dialog({ minWidth: 500, autoOpen: false });
-    $("#addAssayModal").dialog({ minWidth: 500, autoOpen: false });
-    $("#exportModal").dialog({
+    const lineModalForm = $("#editLineModal");
+    lineModalForm.dialog(StudyBase.dialogDefaults({
+        "minWidth": 500,
+    }));
+    lineMetadataManager = new Forms.FormMetadataManager(lineModalForm, "line");
+    const assayModalForm = $("#addAssayModal");
+    assayModalForm.dialog(StudyBase.dialogDefaults({
+        "minWidth": 500,
+    }));
+    assayMetadataManager = new Forms.FormMetadataManager(assayModalForm, "assay");
+    $("#exportModal").dialog(StudyBase.dialogDefaults({
+        "maxHeight": 400,
         "minWidth": 400,
-        "autoOpen": false,
-        "minHeight": 0,
-        "create": function() {
-            $(this).css("maxHeight", 400);
-        },
-    });
+    }));
 
     parent.find(".addAssayButton").click(function() {
         // copy inputs to the modal form
-        let inputs = $('#studyLinesTable').find('input[name=lineId]:checked').clone();
-        $('#addAssayModal')
+        const inputs = $('#studyLinesTable').find('input[name=lineId]:checked').clone();
+        assayModalForm
             .find('.hidden-line-inputs')
                 .empty()
                 .append(inputs)
             .end()
             .removeClass('off')
+            .dialog(StudyBase.dialogDefaults({
+                "minWidth": 500,
+            }))
             .dialog('open');
         return false;
     });
 
     parent.find(".exportLineButton").click(function() {
-        let table = $('#studyLinesTable').clone();
-        let form = $('#exportForm');
+        const table = $('#studyLinesTable').clone();
+        const form = $('#exportForm');
         $("#exportModal").removeClass('off').dialog( "open" );
         includeAllLinesIfEmpty(form);
         // add table to form as hidden field.
@@ -212,49 +233,13 @@ export function prepareAfterLinesTable() {
     });
 
     parent.find('.worklistButton').click(function () {
-        let table = $('#studyLinesTable').clone();
-        let form = $('#exportForm');
+        const table = $('#studyLinesTable').clone();
+        const form = $('#exportForm');
         includeAllLinesIfEmpty(form);
         form.append(table.hide())
             .find('select[name=export]').val('worklist').end()
             .find('button[name=action]').click().end();
         return false;
-    });
-
-    $('#editLineModal').on('change', '.line-meta', (ev) => {
-        // watch for changes to metadata values, and serialize to the metadata field
-        var form = $(ev.target).closest('form'),
-            metaIn: any = form.find('[name=line-metadata]'),
-            meta: number | string = JSON.parse(metaIn.val() || '{}');
-        form.find('.line-meta > :input').each((i, metaInput) => {
-            if ($(metaInput).val() || $(metaInput).siblings('label').find('input').prop('checked')) {
-                var key = $(metaInput).attr('id').match(/-(\d+)$/)[1];
-                meta[key] = $(metaInput).val();
-            }
-        });
-        metaIn.val(JSON.stringify(meta));
-    }).on('click', '.line-meta-add', (ev: JQueryMouseEventObject) => {
-        // make metadata Add Value button work and not submit the form
-        var addrow = $(ev.target).closest('.line-edit-meta'), type, rowValue;
-        type = addrow.find('.line-meta-type').val();
-        rowValue = addrow.find('.line-meta-value').val();
-        // clear out inputs so another value can be entered
-        addrow.find(':input').not(':checkbox, :radio').val('');
-        addrow.find(':checkbox, :radio').prop('checked', false);
-        if (EDDData.MetaDataTypes[type]) {
-            insertLineMetadataRow(addrow, type, rowValue).find(':input').trigger('change');
-        }
-        return false;
-    }).on('click', '.meta-remove', (ev: JQueryMouseEventObject) => {
-        // remove metadata row and insert null value for the metadata key
-        var form = $(ev.target).closest('form'),
-            metaRow = $(ev.target).closest('.line-meta'),
-            metaIn: any = form.find('[name=line-metadata]'),
-            meta: any = JSON.parse(metaIn.val() || '{}'),
-            key = metaRow.attr('id').match(/-(\d+)$/)[1];
-        meta[key] = null;
-        metaIn.val(JSON.stringify(meta));
-        metaRow.remove();
     });
 
     // make sure the action bar is always visible
@@ -265,9 +250,9 @@ function includeAllLinesIfEmpty(form) {
     if ($('#studyLinesTable').find('input[name=lineId]:checked').length === 0) {
         // append study id to form
         $('<input>').attr({
-            type: 'hidden',
-            value: EDDData.currentStudyID,
-            name: 'studyId',
+            "name": 'studyId',
+            "type": 'hidden',
+            "value": EDDData.currentStudyID,
         }).appendTo(form);
     }
 }
@@ -298,156 +283,109 @@ function linesActionPanelShow() {
     }
 }
 
-export function fillLineForm(form, record) {
-    var metaRow, experimenter, contact;
-    experimenter = EDDData.Users[record.experimenter];
-    contact = EDDData.Users[record.contact.user_id];
-    form.find('[name=line-name]').val(record.name);
-    form.find('[name=line-description]').val(record.description);
-    form.find('[name=line-control]').prop('checked', record.control);
-    form.find('[name=line-contact_0]').val(
-        record.contact.text || (contact && contact.uid ? contact.uid : '--')
-    );
-    form.find('[name=line-contact_1]').val(record.contact.user_id);
-    form.find('[name=line-experimenter_0]').val(
-        experimenter && experimenter.uid ? experimenter.uid : '--'
-    );
-    form.find('[name=line-experimenter_1]').val(record.experimenter);
-    form.find('[name=line-carbon_source_0]').val(
-        record.carbon.map(
-            (v) => (EDDData.CSources[v] || <CarbonSourceRecord> {}).name || '--'
-        ).join(',')
-    );
-    form.find('[name=line-carbon_source_1]').val(record.carbon.join(','));
-    form.find('[name=line-strains_0]').val(
-        record.strain.map(
-            (v) => (EDDData.Strains[v] || <StrainRecord> {}).name || '--'
-        ).join(',')
-    );
-    form.find('[name=line-strains_1]').val(
-        record.strain.map(
-            (v) => (EDDData.Strains[v] || <StrainRecord> {}).registry_id || ''
-        ).join(',')
-    );
-    if (record.strain.length && form.find('[name=line-strains_1]').val() === '') {
-        $('<li>').text('Strain does not have a linked ICE entry! ' +
-                'Saving the line without linking to ICE will remove the strain.')
-            .wrap('<ul>').parent().addClass('errorlist')
-            .appendTo(form.find('[name=line-strains_0]').parent());
-    }
-    metaRow = form.find('.line-edit-meta');
-    // Run through the collection of metadata, and add a form element entry for each
-    $.each(record.meta, (key, value) => {
-        insertLineMetadataRow(metaRow, key, value);
-    });
-    // store original metadata in initial- field
-    form.find('[name=line-metadata]').val(JSON.stringify(record.meta));
-    form.find('[name=initial-line-metadata]').val(JSON.stringify(record.meta));
-}
 
-export function insertLineMetadataRow(refRow, key, value) {
-    var row, type, label, input, postfixVal, prefixVal, id = 'line-meta-' + key, checkbox;
-    row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
-    type = EDDData.MetaDataTypes[key];
-    label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
-    // bulk checkbox
-    checkbox = $('<input type="checkbox">').addClass('bulk').attr('name', id);
-    $(checkbox).prependTo(label);
-    input = $('<input type="text">').attr('id', 'id_' + id).addClass('form-control').val(value).appendTo(row);
-    postfixVal = $(refRow).find('.meta-postfix'); // returns array of postfix elems present
-    prefixVal = $(refRow).find('.meta-prefix'); // returns array of prefix elems present
-    // if there is a meta postfix val, hide it.
-    postfixVal.remove();
-    // if there is a meta prefix val, hide it.
-    prefixVal.remove();
+function showLineEditDialog(selection: JQuery): void {
+    const form = $("#editLineModal");
+    let titleText: string;
+    let record: LineRecord;
+    let contact: StudyBase.EDDContact;
+    let experimenter: StudyBase.EDDContact;
 
-    if (type.pre) {
-        $('<span>').addClass('meta-prefix').text("(" + type.pre + ") ").insertBefore(label);
-    }
-    $('<span>').addClass('meta-remove').text('Remove').insertAfter(label);
-    if (type.postfix) {
-        $('<span>').addClass('meta-postfix').text(" (" + type.postfix + ")").insertAfter(label);
-    }
-    return row;
-}
-
-
-export function showLineEditDialog(selection: JQuery): void {
-    let modalForm = $('#editLineModal');
-    let allMeta = {};
-    let titleText = 'Add New Line';
-    // clear out the form to prepare for next display
-    modalForm
-        // remove metadata rows
-        .find('.line-meta').remove().end()
-        // for all LineForm elements
-        .find('[name^=line-]')
-            // clear input element values
-            .not(':checkbox, :radio').val('').end()
-            // uncheck any toggles (except bulk toggles)
-            .filter(':checkbox, :radio').not('.bulk').prop('checked', false).end().end()
-        .end()
-        // remove reported errors
-        .find('.errorlist').remove().end()
-        // hide bulk edit checkboxes
-        .find('.bulk').addClass('off').end()
-        // remove bulk edit change handler
-        .off('change.bulk')
-        // remove previous selection
-        .find('[name=lineId]').remove().end()
-        // clone selection to the form
-        .find('form').append(selection.clone().addClass('off')).end();
-    // Update the dialog title
-    if (selection.length > 1) {
-        titleText = 'Edit Lines (' + selection.length + ')';
+    // Update the dialog title and fetch selection info
+    if (selection.length === 0) {
+        titleText = $("#new_line_title").text();
+    } else if (selection.length > 1) {
+        titleText = $("#bulk_line_title").text();
+        // merge all selected items into a single record
+        record = selection.toArray()
+            .map((elem: Element): LineRecord => Utl.lookup(EDDData.Lines, $(elem).val()))
+            .reduce(StudyBase.mergeLines);
+        contact = new StudyBase.EDDContact(record.contact);
+        experimenter = new StudyBase.EDDContact(record.experimenter);
     } else if (selection.length === 1) {
-        titleText = 'Edit Line';
+        titleText = $("#edit_line_title").text();
+        record = Utl.lookup(EDDData.Lines, selection.val());
+        contact = new StudyBase.EDDContact(record.contact);
+        experimenter = new StudyBase.EDDContact(record.experimenter);
     }
-    modalForm.dialog({ minWidth: 500, autoOpen: false, title: titleText });
+    form.dialog({"title": titleText});
 
+    // create object to handle form interactions
+    const formManager = new Forms.BulkFormManager(form, "line");
+    const str = (x: any): string => "" + (x || "");  // forces values to string, falsy === ""
+    // define fields on form
+    type Pair = [string, string];  // this gets used below to disambiguate Autocomplete renders
+    const fields: {[name: string]: Forms.IFormField} = {
+        "name": new Forms.Field(form.find("[name=line-name]"), "name"),
+        "description": new Forms.Field(form.find("[name=line-description]"), "description"),
+        "control": new Forms.Checkbox(form.find("[name=line-control]"), "control"),
+        "contact": new Forms.Autocomplete(
+                form.find("[name=line-contact_0"),
+                form.find("[name=line-contact_1"),
+                "contact",
+            )
+            .render((): Pair => [contact.display(), str(contact.id())]),
+        "experimenter": new Forms.Autocomplete(
+                form.find("[name=line-experimenter_0"),
+                form.find("[name=line-experimenter_1"),
+                "experimenter",
+            )
+            .render((): Pair => [experimenter.display(), str(experimenter.id())]),
+        "carbon": new Forms.Autocomplete(
+                form.find("[name=line-carbon_source_0"),
+                form.find("[name=line-carbon_source_1"),
+                "carbon",
+            )
+            .render((r): Pair => {
+                const list = r.carbon || [];
+                const names = list.map((v) => Utl.lookup(EDDData.CSources, v).name || "--");
+                return [names.join(", "), list.join(",")];
+            }),
+        "strain": new Forms.Autocomplete(
+                form.find("[name=line-strains_0"),
+                form.find("[name=line-strains_1"),
+                "strain",
+            )
+            .render((r): Pair => {
+                const list = r.strain || [];
+                const names = list.map((v) => Utl.lookup(EDDData.Strains, v).name || "--");
+                const uuids = list.map((v) => Utl.lookup(EDDData.Strains, v).registry_id || "");
+                return [names.join(", "), uuids.join(",")];
+            }),
+    };
+    // initialize the form to clean slate, pass in active selection, selector for previous items
+    formManager
+        .init(selection, "[name=lineId]")
+        .fields($.map(fields, (v: Forms.IFormField) => v));
+    lineMetadataManager.reset();
+    if (record !== undefined) {
+        formManager.fill(record);
+        lineMetadataManager.metadata(record.meta);
+    }
+
+    // special case, ignore name field when editing multiples
     if (selection.length > 1) {
-        modalForm
-            // line name does not matter when editing multiples; remove required attribute
-            .find('[name=line-name]').prop('required', false)
-                // also hide the line name form elements and uncheck bulk box
-                .parent()
-                    .hide()
-                    .find(':checkbox').prop('checked', false).end()
-                .end()
-            .end()
-            // show bulk notice
-            .find('.bulkNoteGroup').removeClass('off').end()
-            // show bulk checkboxes
-            .find('.bulk').removeClass('off').end()
-            // event handler to check bulk checkbox on editing connected input
-            .on('change.bulk', ':input', (ev: JQueryEventObject) => {
-                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
-            });
-        // compute used metadata from every selected Line
-        selection.each((i: number, elem: Element) => {
-            let line: LineRecord = EDDData.Lines[$(elem).val()];
-            $.extend(allMeta, line.meta || {});
-        });
-        // Run through the collection of metadata, and add a form element entry for each
-        $.each(
-            allMeta,
-            (key) => insertLineMetadataRow(modalForm.find('.line-edit-meta'), key, '')
-        );
+        form.find('[name=line-name]')
+            // remove required property
+            .prop('required', false)
+            // also hide form elements and uncheck bulk box
+            .parent()
+                .hide()
+                .find(':checkbox').prop('checked', false).end()
+            .end();
     } else {
-        modalForm
-            // make sure bulk checkboxes are hidden
-            .find('.bulkNoteGroup').addClass('off').end()
+        form.find('[name=line-name]')
             // make sure line name is required
-            .find('[name=line-name]').prop('required', true)
+            .prop('required', true)
                 // and line name is shown
                 .parent().show().end()
             .end();
-        if (selection.length === 1) {
-            fillLineForm(modalForm, EDDData.Lines[selection.val()]);
-        }
     }
-    modalForm.removeClass('off').dialog( "open" );
+
+    // display modal dialog
+    form.removeClass('off').dialog( "open" );
 }
+
 
 class LineResults extends DataGrid {
 
@@ -461,16 +399,20 @@ class LineResults extends DataGrid {
 
 }
 
+
 class DGSelectAllLinesWidget extends DGSelectAllWidget {
 
     clickHandler(): void {
         super.clickHandler();
         // update selected text
-        var checkedBoxLen = $('#studyLinesTable').find('tbody input[type=checkbox]:checked').length;
+        var checkedBoxLen = $('#studyLinesTable')
+            .find('tbody input[type=checkbox]:checked')
+            .length;
         $('.linesSelectedCell').empty().text(checkedBoxLen + ' selected');
         queueLinesActionPanelShow();
      }
 }
+
 
 // The spec object that will be passed to DataGrid to create the Lines table
 class DataGridSpecLines extends DataGridSpecBase {
@@ -529,7 +471,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         this.groupIDsToGroupIndexes = {};
         $.each(
             this.groupIDsInOrder,
-            (index, group) => { this.groupIDsToGroupIndexes[group] = index; }
+            (index, group) => { this.groupIDsToGroupIndexes[group] = index; },
         );
     }
 
@@ -653,15 +595,16 @@ class DataGridSpecLines extends DataGridSpecBase {
         ];
 
         // map all metadata IDs to HeaderSpec objects
-        var metaDataHeaders: DataGridHeaderSpec[] = this.metaDataIDsUsedInLines.map((id, index) => {
-            var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridHeaderSpec(6 + index, 'hLinesMeta' + id, {
-                'name': mdType.name,
-                'size': 's',
-                'sortBy': this.makeMetaDataSortFunction(id),
-                'sortAfter': 0,
+        var metaDataHeaders: DataGridHeaderSpec[] = this.metaDataIDsUsedInLines
+            .map((id, index) => {
+                var mdType = EDDData.MetaDataTypes[id];
+                return new DataGridHeaderSpec(6 + index, 'hLinesMeta' + id, {
+                    'name': mdType.name,
+                    'size': 's',
+                    'sortBy': this.makeMetaDataSortFunction(id),
+                    'sortAfter': 0,
+                });
             });
-        });
 
         var rightSide = [
             new DataGridHeaderSpec(6 + metaDataHeaders.length, 'hLinesExperimenter', {
@@ -703,7 +646,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'checkboxName': 'lineId',
-                'checkboxWithID': (id) => { return 'line' + id + 'include'; },
+                'checkboxWithID': (id) => 'line' + id + 'include',
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
@@ -755,7 +698,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         var line = EDDData.Lines[index], strings = ['--'];
         if (line) {
             if (line.carbon && line.carbon.length) {
-                strings = line.carbon.map((id) => { return EDDData.CSources[id].name; });
+                strings = line.carbon.map((id) => EDDData.CSources[id].name);
             }
         }
         return strings.map((name) => {
@@ -769,7 +712,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         var line = EDDData.Lines[index], strings = ['--'];
         if (line) {
             if (line.carbon && line.carbon.length) {
-                strings = line.carbon.map((id) => { return EDDData.CSources[id].labeling; });
+                strings = line.carbon.map((id) => EDDData.CSources[id].labeling);
             }
         }
         return strings.map((labeling) => {
@@ -843,8 +786,12 @@ class DataGridSpecLines extends DataGridSpecBase {
             return new DataGridColumnSpec(6 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
         rightSide = [
-            new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterInitialsCells),
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells),
+            new DataGridColumnSpec(
+                6 + metaDataCols.length, this.generateExperimenterInitialsCells,
+            ),
+            new DataGridColumnSpec(
+                7 + metaDataCols.length, this.generateModificationDateCells,
+            ),
         ];
 
         return leftSide.concat(metaDataCols, rightSide);
@@ -878,9 +825,7 @@ class DataGridSpecLines extends DataGridSpecBase {
     defineRowGroupSpec(): any {
 
         var rowGroupSpec = [];
-        for (var x = 0; x < this.groupIDsInOrder.length; x++) {
-            var id = this.groupIDsInOrder[x];
-
+        for (let id of this.groupIDsInOrder) {
             var rowGroupSpecEntry: any = {    // Groups are numbered starting from 0
                 "name": this.groupIDsToGroupNames[id],
             };
@@ -902,8 +847,9 @@ class DataGridSpecLines extends DataGridSpecBase {
         return Object.keys(EDDData.Lines);
     }
 
-    // This is called to generate the array of custom header widgets. The order of the array will be
-    // the order they are added to the header bar. It's perfectly fine to return an empty array.
+    // This is called to generate the array of custom header widgets. The order
+    // of the array will be the order they are added to the header bar. It's
+    // perfectly fine to return an empty array.
     createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[] {
         var widgetSet: DataGridHeaderWidget[] = [];
 
@@ -967,8 +913,7 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
         }
 
         var filteredIDs = [];
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
+        for (let id of rowIDs) {
             // Here is the condition that determines whether the rows associated with this ID are
             // shown or hidden.
             if (EDDData.Lines[id].active) {

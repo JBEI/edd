@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import collections
 import json
 import logging
 
@@ -17,6 +18,7 @@ from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from functools import partial
+from six import string_types
 
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
@@ -406,7 +408,7 @@ class CreateStudyForm(forms.ModelForm):
         if not self.cleaned_data.get('contact', None):
             self.cleaned_data['contact'] = self._user
 
-    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+    def save(self, commit=True, *args, **kwargs):
         # perform updates atomically to the study and related user permissions
         with transaction.atomic():
             # save the study
@@ -483,7 +485,7 @@ class CreateAttachmentForm(forms.ModelForm):
         self._parent = kwargs.pop('edd_object', None)
         super().__init__(*args, **kwargs)
 
-    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+    def save(self, commit=True, *args, **kwargs):
         a = super().save(commit=False, *args, **kwargs)
         a.object_ref = self._parent
         if commit:
@@ -510,7 +512,7 @@ class CreateCommentForm(forms.ModelForm):
         self._parent = kwargs.pop('edd_object', None)
         super().__init__(*args, **kwargs)
 
-    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+    def save(self, commit=True, *args, **kwargs):
         c = super().save(commit=False, *args, **kwargs)
         c.object_ref = self._parent
         if commit:
@@ -542,7 +544,6 @@ class BulkEditMixin(object):
         return initial
 
     def check_bulk_edit(self):
-        self._bulk = True
         exclude = []
         # Look for "bulk-edit" checkboxes for each field
         for field in self.visible_fields():
@@ -560,17 +561,84 @@ class BulkEditMixin(object):
         for fieldname, field in self.fields.items():
             bulkname = self.add_prefix(f"_bulk_{fieldname}")
             field.label = mark_safe(
-                f'<input type="checkbox" class="off bulk" name="{bulkname}" '
+                f'<input type="checkbox" class="bulk" name="{bulkname}" '
                 f'checked="checked" value=""/>{field.label}'
             )
-        # keep a flag for bulk edit, treats metadata slightly differently
-        self._bulk = False
+
+
+class MetadataEditMixin(object):
+    """Mixin class adds methods to handle processing values for MetadataType."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.input_types = {}
+
+    def clean_metadata(self):
+        # go through and delete any keys with None values
+        meta = self.cleaned_data.get("metadata", None)
+        if meta is None:
+            meta = {}
+        updating, removing = self.process_metadata_inputs(meta)
+        if self.is_editing():
+            replacement = dict(self.instance.metadata)
+            replacement.update(updating)
+            # we don't care about list of removed values, so no assignment below
+            collections.deque(
+                map(lambda key: replacement.pop(key, None), removing),
+                maxlen=0,
+            )
+            return replacement
+        # when not editing, just clean to the updating values
+        return updating
 
     def is_editing(self):
-        return self.instance.pk is not None
+        """Returns True when the Form is editing an instance object."""
+        return self.instance and self.instance.pk is not None
+
+    def load_metadata_types(self, ids):
+        """
+        Caches MetadataType instances referenced by the Form object.
+
+        :param ids: an iterable of ID values for MetadataType to be cached/loaded
+        """
+        # check that the input_type of MetadataType is already loaded
+        to_find = set(ids)
+        missing = to_find.difference(self.input_types.keys())
+        if missing:
+            lookup = models.MetadataType.objects.filter(id__in=missing)
+            self.input_types.update(lookup.values_list("id", "input_type"))
+
+    def process_metadata_inputs(self, meta):
+        """
+        Given input from the metadata form field, return a dict of updated keys/values
+        and a set of keys to remove.
+
+        :returns: a 2-tuple of a dict of updated metadata values and a set of
+            removing metadata values.
+        """
+        self.load_metadata_types(meta.keys())
+        updating = {}
+        removing = set()
+        for key, value in meta.items():
+            input_type = self.input_types.get(key, None)
+            # TODO: for now, everything has None input_type. See EDD-438
+            # do different input processing depending on value of input_type; see EDD-772
+            if input_type is None:
+                # default processing:
+                # - pass strings verbatim
+                # - treat None/null/undefined as empty string
+                # - remove values with a "delete" key
+                # - ignore everything else
+                if isinstance(value, string_types):
+                    updating[key] = value
+                elif value is None:
+                    updating[key] = ""
+                elif "delete" in value:
+                    removing.add(key)
+        return updating, removing
 
 
-class LineForm(forms.ModelForm, BulkEditMixin):
+class LineForm(BulkEditMixin, MetadataEditMixin, forms.ModelForm):
     """ Form to create/edit a line. """
     class Meta:
         model = Line
@@ -596,6 +664,7 @@ class LineForm(forms.ModelForm, BulkEditMixin):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '(required)'}),
             'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control '}),
+            'control': forms.widgets.CheckboxInput(attrs={'class': 'form-control'}),
             'contact': UserAutocompleteWidget(),
             'experimenter': UserAutocompleteWidget(),
             'carbon_source': MultiCarbonSourceAutocompleteWidget(),
@@ -636,23 +705,6 @@ class LineForm(forms.ModelForm, BulkEditMixin):
         strains_field.to_field_name = 'registry_id'
         strains_field.validators = [RegistryValidator().validate, ]
 
-    def clean_metadata(self):
-        # go through and delete any keys with None values
-        meta = self.cleaned_data.get('metadata', None)
-        if meta is None:
-            meta = {}
-        none_keys = {key for key, value in meta.items() if value is None}
-        for key in none_keys:
-            # Removing None-valued key from meta
-            del meta[key]
-        if self.is_editing() and self._bulk:
-            # Bulk edit updating metadata
-            in_place = {}
-            in_place.update(self.instance.metadata)
-            in_place.update(meta)
-            meta = in_place
-        return meta
-
     def clean(self):
         super().clean()
         # if no explicit experimenter is set, make the study contact the experimenter
@@ -660,7 +712,7 @@ class LineForm(forms.ModelForm, BulkEditMixin):
             if self._study.contact:
                 self.cleaned_data['experimenter'] = self._study.contact
 
-    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+    def save(self, commit=True, *args, **kwargs):
         line = super().save(commit=False, *args, **kwargs)
         line.study_id = self._study.pk
         if commit:
@@ -670,7 +722,7 @@ class LineForm(forms.ModelForm, BulkEditMixin):
         return line
 
 
-class AssayForm(forms.ModelForm, BulkEditMixin):
+class AssayForm(BulkEditMixin, MetadataEditMixin, forms.ModelForm):
     """ Form to create/edit an assay. """
     # allow auto-generation of name by override auto-created name field required kwarg
     name = forms.CharField(
@@ -702,6 +754,10 @@ class AssayForm(forms.ModelForm, BulkEditMixin):
             'description': _('Description'),
             'experimenter': _('Experimenter'),
         }
+        help_texts = {
+            "description": _(""),
+            "experimenter": _(""),
+        }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'experimenter': UserAutocompleteWidget(),
@@ -719,24 +775,7 @@ class AssayForm(forms.ModelForm, BulkEditMixin):
         # alter all fields to include a "bulk-edit" checkbox in label
         self.inject_bulk_checkboxes()
 
-    def clean_metadata(self):
-        # go through and delete any keys with None values
-        meta = self.cleaned_data.get('metadata', None)
-        if meta is None:
-            meta = {}
-        none_keys = {key for key, value in meta.items() if value is None}
-        for key in none_keys:
-            # Removing None-valued key from meta
-            del meta[key]
-        if self.is_editing() and self._bulk:
-            # Bulk edit updating metadata
-            in_place = {}
-            in_place.update(self.instance.metadata)
-            in_place.update(meta)
-            meta = in_place
-        return meta
-
-    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+    def save(self, commit=True, *args, **kwargs):
         assay = super().save(commit=False, *args, **kwargs)
         assay.study_id = self._study.pk
         if commit:
@@ -811,7 +850,7 @@ class MeasurementForm(forms.ModelForm):
         self._hours = models.MeasurementUnit.objects.get(unit_name='hours')
         super().__init__(*args, **kwargs)
 
-    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+    def save(self, commit=True, *args, **kwargs):
         measure = super().save(commit=False, *args, **kwargs)
         # TODO: hard-coding x_units for now; extend to take input for x-units?
         measure.x_units = self._hours

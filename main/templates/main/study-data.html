@@ -201,14 +201,31 @@
 </div>
 
 <div id="assayMain" class="off" title="Edit Assay">
+  <span class="off" id="new_assay_title">{% trans "Add New Assay" %}</span>
+  <span class="off" id="edit_assay_title">{% trans "Edit Assay" %}</span>
+  <span class="off" id="bulk_assay_title">{% trans "Bulk Edit Assays" %}</span>
   <form action="" method="POST">
     {% csrf_token %}
     <div class="modal-body">
-    {{ new_assay.as_p }}
+      <fieldset>
+        <legend>{% trans "Basic Assay Information" %}</legend>
+        <p class="bulk-note off">{% trans "Only enabled fields will be modified." %}</p>
+        {{ new_assay.as_p }}
+        <span class="off bulk-ignore btn btn-default btn-xs">
+          <i class="glyphicon glyphicon-minus-sign"></i>
+          {% trans "Don't Change" %}
+        </span>
+      </fieldset>
+      <fieldset>
+        <legend>{% trans "Assay Metadata" %}</legend>
+        {% with meta_class="autocomp_atype" meta_type="AssayFormMetadataType" %}
+        {% include "main/include/metadata-template.html" %}
+        {% endwith %}
+      </fieldset>
     </div>
     <div class="modal-footer">
       <button type="submit" name="action" class="btn btn-primary" value="assay">
-        {% trans 'Edit Assay' %}
+        {% trans 'Save' %}
       </button>
     </div>
   </form>

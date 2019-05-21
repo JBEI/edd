@@ -23,16 +23,22 @@ interface RecordList<U> {
 }
 
 
+interface BasicContact {
+    user_id: number;
+    extra: string;
+}
+
+
 // This is what we expect in EDDData.Lines
 interface LineRecord extends EDDRecord {
     active: boolean;      // Active line
     control: boolean;     // Is Control
-    // replicate: any;       // Line ID of replicate parent Line, or undefined/null
-    contact: any;         // Contact Info structure (user_id, text)
-    experimenter: number; // Experimenter user ID
+    // contact can vary depending on source call
+    contact: number | UserRecord | BasicContact;
+    // experimenter can vary depending on source call
+    experimenter: number | UserRecord | BasicContact;
     strain: number[];     // Strain ID array
     carbon: number[];     // Carbon Sources ID array
-    // exp: number;          // Experimenter ID
 
     // optional properties, set only in graphing code, not received from backend
     identifier?: string;   // HTML ID for the line filter checkbox
@@ -50,7 +56,7 @@ interface AssayRecord extends EDDRecord {
     metabolites: number[];    // Metabolite measurements associated with Assay
     transcriptions: number[]; // Transcription measurements associated with Assay
     proteins: number[];       // Proteins measurements associated with Assay
-    general: number[];       // Measurements for everything else
+    general: number[];        // Measurements for everything else
     count: number;
 }
 
@@ -102,11 +108,13 @@ interface MetaboliteTypeRecord extends MeasurementTypeRecord {
 
 
 // This is what we expect in EDDData.ProteinTypes
+// tslint:disable-next-line:no-empty-interface
 interface ProteinTypeRecord extends MeasurementTypeRecord {
 }
 
 
 // This is what we expect in EDDData.GeneTypes
+// tslint:disable-next-line:no-empty-interface
 interface GeneTypeRecord extends MeasurementTypeRecord {
 }
 
@@ -130,6 +138,7 @@ interface MetadataTypeRecord {
 }
 
 
+// tslint:disable-next-line:no-empty-interface
 interface ProtocolRecord extends EDDRecord {
 }
 
@@ -184,7 +193,7 @@ interface EDDData {
 
     // TODO: is this used anymore?
     MediaTypes: {[shortform: string]: string};
-};
+}
 
 
 /* tslint:disable:no-unused-variable */

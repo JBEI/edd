@@ -456,6 +456,19 @@ export class AssayMetadataType extends BaseAuto {
 }
 
 
+// a special case autocomplete for use in the Assay creation / edit form.
+// excludes types that map to Assay fields
+export class AssayFormMetadataType extends AssayMetadataType {
+
+    constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
+        // default to sort by type name
+        search_options = $.extend({"sort": "type_name"}, search_options);
+        super(opt, search_options);
+        this.modelName = "AssayFormMetadataType";
+    }
+}
+
+
 // .autocomp_altype
 export class AssayLineMetadataType extends BaseAuto {
 
@@ -486,9 +499,8 @@ export class LineMetadataType extends BaseAuto {
 export class LineFormMetadataType extends LineMetadataType {
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
-        // sort entries for improved usability
-        search_options = $.extend({}, search_options);
-        search_options.sort = search_options.sort || "type_name";
+        // default to sort by type name
+        search_options = $.extend({"sort": "type_name"}, search_options);
         super(opt, search_options);
         this.modelName = 'LineFormMetadataType';
     }
@@ -727,6 +739,7 @@ const class_lookup: {[name: string]: typeof BaseAuto} = {
     "CarbonSource": CarbonSource,
     "MetadataType": MetadataType,
     "AssayMetadataType": AssayMetadataType,
+    "AssayFormMetadataType": AssayFormMetadataType,
     "AssayLineMetadataType": AssayLineMetadataType,
     "LineMetadataType": LineMetadataType,
     "LineFormMetadataType": LineFormMetadataType,

@@ -1,8 +1,8 @@
 {
-  "name": "edd-django",
-  "version": "2.3.0",
-  "description": "Nodejs code associated with the Django port of EDD.",
-  "main": "index.js",
+  "name": "edd",
+  "version": "2.5.0",
+  "description": "TypeScript code for the Experiment Data Depot front-end.",
+  "private": true,
   "dependencies": {
   },
   "devDependencies": {
@@ -52,8 +52,8 @@
     "webpack": "^3.6.0"
   },
   "scripts": {
-    "build": "NODE_ENV=production webpack -p --progress --profile --colors",
-    "watch": "webpack -p --progress --profile --colors --watch --watch-poll"
+    "build": "NODE_ENV=production webpack -p --progress --profile --colors --config edd/typescript/webpack.config.js",
+    "watch": "webpack -p --progress --profile --colors --watch --watch-poll --config edd/typescript/webpack.config.js"
   },
   "repository": {
     "type": "git",

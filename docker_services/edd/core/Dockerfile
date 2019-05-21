@@ -8,20 +8,17 @@ ARG GIT_URL=https://github.com/JBEI/edd.git
 # set environment in this build phase with the version passed as argument
 ENV EDD_VERSION="${EDD_VERSION}"
 
+WORKDIR /run/
+
 # Install git
 RUN apk add --no-cache git \
     # copy in EDD repo
     && git clone --depth 1 -b "${GIT_BRANCH}" "${GIT_URL}" edd \
     # save commit hash to file for later use
-    && git -C /edd rev-parse --short HEAD > edd.hash \
+    && git -C edd rev-parse --short HEAD > edd.hash \
     # cache-bust using version argument
-    && echo "Building TypeScript for EDD ${EDD_VERSION} $(cat /edd.hash)" \
-    # enter the typescript directory
-    && cd /edd/typescript \
-    # link package.json and node_modules from base image; npm run isn't checking parent directory?
-    && ln -s /node_modules node_modules \
-    && ln -s /package.json package.json \
-    # build the TypeScript code
+    && echo "Building TypeScript for EDD ${EDD_VERSION} $(cat edd.hash)" \
+    # build the TypeScript code; note npm run commands execute relative to package.json
     && npm run build
 
 # ---
@@ -83,8 +80,8 @@ RUN pipenv install --system --deploy --verbose \
 COPY entrypoint.sh /usr/local/bin/
 
 # Copy in code from node image
-COPY --from=node /edd /usr/local/edd/
-COPY --from=node /edd.hash /edd.hash
+COPY --from=node /run/edd /usr/local/edd/
+COPY --from=node /run/edd.hash /edd.hash
 
 # Create user/group to run code
 RUN addgroup -g 1000 -S edduser \
