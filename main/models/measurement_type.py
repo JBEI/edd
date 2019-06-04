@@ -3,20 +3,21 @@
 Models describing measurement types.
 """
 
-import collections
 import logging
 import re
 import requests
 
+from celery.exceptions import Retry
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _, ugettext as _u
 from rdflib import Graph
 from rdflib.term import URIRef
 from uuid import uuid4
 
+from edd.celery import app
 from .common import EDDSerialize
 from .fields import VarCharField
 from .update import Datasource
@@ -213,7 +214,7 @@ class Metabolite(MeasurementType):
     )
 
     carbon_pattern = re.compile(r'C(?![a-z])(\d*)')
-    pubchem_pattern = re.compile(r'(?i)cid:\s*(\d+)(:.*)?')
+    pubchem_pattern = re.compile(r'(?i)cid:\s*(\d+)(?::(.*))?')
 
     def __str__(self):
         return self.type_name
@@ -256,45 +257,56 @@ class Metabolite(MeasurementType):
         return count
 
     def _load_pubchem(self, pubchem_cid):
+        base_url = (
+            f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{pubchem_cid}"
+        )
         try:
-            base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
-            url = f"{base_url}/compound/cid/{pubchem_cid}/JSON"
-            response = requests.post(url, data={"cid": pubchem_cid})
-            # get first (hopefully only!) compound result
-            record = response.json()["PC_Compounds"][0]
-            # props mapping has nested objects
-            # map to flattened structure for easier lookup
-            properties = collections.defaultdict(dict)
-            for item in record["props"]:
-                prop_type = item["urn"]
-                prop_label = prop_type["label"]
-                prop_name = prop_type.get("name", None)
-                prop_value = list(item["value"].values())[0]
-                if prop_name:
-                    properties[prop_label].update({prop_name: prop_value})
-                else:
-                    properties[prop_label] = prop_value
-            # load type_name from IUPAC Name, favoring "Traditional", "Preferred"
-            # use first listed if neither is found
-            names = properties["IUPAC Name"]
-            self.type_name = names.get(
-                "Traditional",
-                names.get("Preferred", next(names.values())),
-            )
-            self.type_source = Datasource.objects.create(name='PubChem', url=url)
-            self.charge = record.get("charge", 0)
-            self.carbon_count = len([a for a in record["atoms"]["element"] if a == 6])
-            self.molar_mass = properties["Molecular Weight"]
-            self.molecular_formula = properties["Molecular Formula"]
-            # favor "Canonical" SMILES, otherwise use first listed
-            smiles = properties["SMILES"]
-            self.smiles = smiles.get("Canonical", next(smiles.values()))
-            self.provisional = False
             self.pubchem_cid = pubchem_cid
-            self.save()
+            if self._load_pubchem_name(base_url) and self._load_pubchem_props(base_url):
+                self.type_source = Datasource.objects.create(
+                    name="PubChem", url=base_url
+                )
+                self.carbon_count = self.extract_carbon_count()
+                self.provisional = False
+                self.save()
+                return True
+            logger.warn(f"Skipped saving PubChem info for {pubchem_cid}")
+        except Exception:
+            logger.exception(f"Failed processing PubChem info for {pubchem_cid}")
+        return False
+
+    def _load_pubchem_name(self, base_url):
+        # the default properties listing does not give common names, synonyms list does
+        try:
+            response = requests.get(f"{base_url}/synonyms/JSON")
+            # payload is nested in this weird envelope
+            names = response.json()["InformationList"]["Information"][0]["Synonym"]
+            # set the first synonym
+            self.type_name = next(iter(names))
             return True
         except Exception:
-            logger.exception(f"Failed loading PubChem {pubchem_cid}")
+            logger.exception(
+                f"Failed loading names from PubChem for {self.pubchem_cid}"
+            )
+        return False
+
+    def _load_pubchem_props(self, base_url):
+        # can list out only specific properties needed in URL
+        props = "MolecularFormula,MolecularWeight,Charge,CanonicalSMILES"
+        try:
+            response = requests.get(f"{base_url}/property/{props}/JSON")
+            # payload is nested in this weird envelope
+            table = response.json()["PropertyTable"]["Properties"][0]
+            # set the properties found
+            self.charge = table.get("Charge", 0)
+            self.molecular_formula = table.get("MolecularFormula", "")
+            self.molar_mass = table.get("MolecularWeight", 1)
+            self.smiles = table.get("CanonicalSMILES", "")
+            return True
+        except Exception:
+            logger.exception(
+                f"Failed loading properties from Pubchem for {self.pubchem_cid}"
+            )
         return False
 
     @classmethod
@@ -302,20 +314,42 @@ class Metabolite(MeasurementType):
         match = cls.pubchem_pattern.match(pubchem_cid)
         if match:
             cid = match.group(1)
+            label = match.group(2)
             # try to find existing Metabolite record
-            metabolite, created = cls.objects.get_or_create(pubchem_cid=cid, defaults={
-                "provisional": True,
-                "type_group": MeasurementType.Group.METABOLITE,
-                "type_name": "Unknown Metabolite",
-            })
+            metabolite, created = cls.objects.get_or_create(
+                pubchem_cid=cid,
+                defaults={
+                    "carbon_count": 0,
+                    "charge": 0,
+                    "molar_mass": 1,
+                    "molecular_formula": "",
+                    "provisional": True,
+                    "type_group": MeasurementType.Group.METABOLITE,
+                    "type_name": label or "Unknown Metabolite",
+                },
+            )
             if created:
-                metabolite._load_pubchem(pubchem_cid)
+                transaction.on_commit(
+                    lambda: metabolite_load_pubchem.delay(metabolite.pk)
+                )
             return metabolite
         raise ValidationError(
-            _u('Metabolite lookup failed: {pubchem} must match pattern "cid:0000"').format(
-                pubchem=pubchem_cid
-            )
+            _u(
+                'Metabolite lookup failed: {pubchem} must match pattern "cid:0000"'
+            ).format(pubchem=pubchem_cid)
         )
+
+
+@app.task(ignore_result=True, rate_limit="6/m")
+def metabolite_load_pubchem(pk):
+    try:
+        metabolite = Metabolite.objects.get(pk=pk)
+        success = metabolite._load_pubchem(metabolite.pubchem_cid)
+        if success:
+            return
+    except Exception:
+        logger.exception(f"Failed task updating metabolite ID {pk} from PubChem")
+    raise Retry()
 
 
 class GeneIdentifier(MeasurementType):

@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 
+import json
 import math
 import warnings
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
 from django.test import RequestFactory
 from threadlocals.threadlocals import set_thread_variable
+from unittest.mock import patch
 
+from .. import models as edd_models
 from ..export import sbml as sbml_export
 from ..forms import LineForm
 from ..models import (
@@ -530,3 +534,21 @@ class MetaboliteTests(TestCase):
         # a formula string with a subscripted carbon should return the subscript count
         m4 = factory.MetaboliteFactory.build(molecular_formula="C6H12O6")
         self.assertEqual(m4.extract_carbon_count(), 6)
+
+    def test_pubchem_load_existing(self):
+        # create a metabolite with a CID
+        m = factory.MetaboliteFactory(pubchem_cid=factory.factory.Faker("pyint"))
+        cid = m.pubchem_cid
+        # not in the CID:00000 format raises an error
+        with self.assertRaises(ValidationError):
+            edd_models.Metabolite.load_or_create(f"{cid}")
+        found = edd_models.Metabolite.load_or_create(f"CID:{cid}")
+        self.assertEqual(m.id, found.id)
+
+    def test_pubchem_create(self):
+        # patch to not actually call out to PubChem
+        with patch("main.models.measurement_type.metabolite_load_pubchem.delay"):
+            created = edd_models.Metabolite.load_or_create("CID:9999")
+        # verify provisional type
+        self.assertTrue(created.provisional)
+        self.assertEqual(created.pubchem_cid, "9999")
