@@ -10,7 +10,7 @@ contributing to EDD.
     * [Docker](#Docker)
 * [Linux / Debian](#Debian)
 * [Common Setup Tasks](#Common)
-* [For Developers](#Developers)
+* [Front-end Development](#Frontend)
 * [Running EDD](#Running_EDD)
 
 ---------------------------------------------------------------------------------------------------
@@ -34,8 +34,7 @@ dependency management for Terminal software. The Caskroom extension to Homebrew 
 for GUI applications. There is a `Brewfile` in the root of the EDD repository that defines the
 software used for EDD development.
 
-To install, run the below command in Terminal, and follow the prompts. NOTE: this command will
-run automatically as part of the `start-edd.sh` script.
+To install, run the below command in Terminal, and follow the prompts.
 
     ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
@@ -63,14 +62,14 @@ configuration file. Running the `docker-compose` command should display some hel
 the options for using the tool. If you do not see this help, try re-installing Docker for Mac.
 
 Resources available for Docker containers are set in the Docker menu Preferences, under the
-Advanced tab. It is recommended to allocate at least 2 CPU cores and 2 GB RAM to Docker. Click
+Advanced tab. It is recommended to allocate at least 2 CPU cores and 4 GB RAM to Docker. Click
 the `Apply & Restart` button to restart Docker with updated resource allocations.
 
 #### Next Steps
 
 Complete [Common Setup Tasks](#Common) below to get an EDD development environment configured and
-running for the first time. The "For Developers" section has a few additional recommendations to
-ease development and debugging.
+running for the first time. The "Front-end Development" section has a few additional
+recommendations to ease development and debugging.
 
 
 ### Linux / Debian Setup <a name="Debian">¶</a>
@@ -85,6 +84,10 @@ Test that Docker and Docker Compose are installed and running correctly by execu
 `docker run --rm hello-world` and `docker-compose`, respectively. If all is well, proceed to
 [Common Setup Tasks](#Common).
 
+Install [pre-commit][12], either directly with `pip install pre-commit` in the system Python or
+a development-specific virtualenv, or use the non-administrative install script with
+`curl https://pre-commit.com/install-local.py | python -`.
+
 
 ### Common Setup Tasks <a name="Common">¶</a>
 
@@ -93,69 +96,49 @@ following steps to configure EDD and launch it for the first time.
 
 1. __Clone the repo__: `git clone https://github.com/JBEI/edd.git`
 
-2. __Install virtualenvwrapper__
-    * `pip install virtualenvwrapper`
-    * Create a folder for your virtualenvs; recommend `~/.virtualenvs` or `/usr/local/virtualenvs`
-    * Add lines to your `.bashrc`:
+2. __Install pre-commit hooks__: `pre-commit install`
 
-          export WORKON_HOME=~/.virtualenvs
-          source /usr/local/bin/virtualenvwrapper.sh
-
-    * Activate changes with `source ~/.bashrc`
-
-3. __From `./docker_services/` run `. init-config --project edd`__
+3. __Run `bin/init-config`__
 
    This script will:
     * Test your git configuration
     * Copy sample configuration files
     * Generate random passwords for use in autoconfiguring EDD's Docker services
-    * Create a virtualenv named `edd`
 
-4. __Configure `secrets.env`__
+4. (_optional_) __Configure `secrets`__
 
-   The `init-config` script will create a `secrets.env` file, containing generated passwords and
+   The `init-config` script will create a `secrets` directory, containing generated passwords and
    connection URLs for services. These passwords are set in the service data volumes on first
    launch; to use alternate passwords or existing services (e.g. if you already have a Postgres
    cluster), edit the file prior to launching EDD.
 
 5. (_optional_) __Build or Pull EDD's images__
 
-   The start script will automatically ensure that Docker images are present on the host before
-   launching; however, it is sometimes useful to run this step manually to have more control over
-   the images used to launch containers.
+   Running `docker-compose up` will automatically pull any missing Docker images to the host
+   prior to launching; however, it is sometimes useful to run this step manually to have more
+   control over the images used to launch containers.
     * Build images from the repository Dockerfiles with `docker-compose build`
     * Pull pre-built images from Docker Hub with `docker-compose pull`
     * Tag images with version tags using the `docker tag {src-image} {tag-name}` command
 
 6. __Launch EDD's services__
 
-   Run `./start-edd.sh`. At this point, you can use Docker commands to view the logs for
-   each service or to locate the IP for viewing EDD's web interface.
-
-   See "Running EDD" below for a list of helpful commands. If you skipped the previous step, this
-   command will take significantly longer the first time you run it, since Docker has to initially
-   build / configure the EDD services before they can run.
+   You can run EDD either on a single Docker node with `docker-compose up -d`, or use a Docker
+   Swarm with `docker stack deploy -c [CONFIG] [STACK]`. Create a config file by running
+   `docker-compose config` and saving the output.
 
 7. __Install and configure a supporting [ICE][7] deployment__
 
-   EDD requires ICE as a reference for strains used in EDD's experiments. You will not be able to
-   reference strains in your EDD studies until EDD can successfully communicate and authenticate
-   with ICE.
-    * Follow ICE's directions for installation/setup
-    * Create a base-64 encoded HMAC key to for signing communication from EDD to ICE. EDD's default
-      configuration assumes a key ID of 'edd', but you can change it by overriding the value of
-      `ICE_KEY_ID` in your `local.py`. For example, to generate a random 64-byte/512-bit key:
+   The `ice.yml` file included in the repository will create a simple ICE deployment when combined
+   with the other Compose YAML files. EDD requires ICE as a reference for strains used in EDD's experiments. You will not be able to reference strains in your EDD studies until EDD can
+   successfully communicate and authenticate with ICE.
 
-          openssl rand -base64 64 | tr -d '\n' > hmac.key
+   Create a HMAC signing key to authenticate communication using a command like:
 
-    * Configure ICE with the HMAC key. In the `rest-auth` folder of the linked ICE deployment, copy
-      the `hmac.key` file above to a file named with `ICE_KEY_ID`; 'edd' by default.
-    * Configure EDD with the HMAC key. Edit `secrets.env` to set the value of `ICE_HMAC_KEY` to the
-      value inside `hmac.key`. Do a `docker-compose restart` if you already had Docker running.
-    * See directions under Common 'Maintenance/Development Tasks' to test EDD/ICE communication
+       openssl rand -base64 64 | tr -d '\n' > secrets/edd_ice_key
 
 
-### For Developers <a name="Developers">¶</a>
+### Front-end Development <a name="Frontend">¶</a>
 
 The EDD makes use of Node.js packages for managing front-end code. All dev dependencies are
 contained in the root directory of a Docker image, available under the tag `jbei/edd-node` on
@@ -165,34 +148,35 @@ EDD. It is used as part of the build of the `jbei/edd-core` image, to prepare fr
 EDD uses [TypeScript][4] for its client-side interface, and compiles JavaScript with third-party
 libraries using [Webpack][9] during the build process for the `jbei/edd-core` image. Running a
 full Docker build, for any change to the TypeScript code, will be inefficient. To avoid this,
-follow these configuration steps to get changed TypeScript deployed to a running EDD automatically.
+follow these configuration steps to get changed TypeScript deployed to a running
+EDD automatically.
 
 1. __Load local copy of EDD code__
 
    By default, EDD runs from code contained inside the Docker image. To run modified code, add an
    entry to the `services/edd/volumes` setting key in `docker-compose.override.yml` with the full
    path to code on your system. An example of this setting is commented out in the override file
-   generated by `. init-config` from step 3 of [Common Setup Tasks](#Common).
+   generated by `./bin/init-config` from step 2 of [Common Setup Tasks](#Common).
 
 2. __Add `--watch-static` to `command`__
 
    This flag to the EDD `entrypoint.sh` script will instruct EDD to watch for changes to static
    web assets, and copy changed files to the storage location for the webserver. Without this,
-   the Django `python manage.py collectstatic` command would need to run manually. An example is
-   in the `docker-compose.override.yml` under the comment tagged with `[DEVMODE]`.
+   the Django `python manage.py collectstatic` command would need to run manually after every
+   re-build of Webpack. An example is in the `docker-compose.override.yml` under the comment
+   tagged with `[DEVMODE]`.
 
 3. __Launch EDD__
 
-4. __Run the `jbei/edd-webpack` image__
+4. __Run the `jbei/edd-node` image__
 
    Run the below command to launch a container to watch for TypeScript changes and automatically
-   compile them to new dist JavaScript files. Note, this image contains its own `tsconfig.json`
-   and `webpack.config.js` files. If you are changing these files, e.g. to add a new module entry,
-   you will need to build a new Docker image using the `Dockerfile.npm` file.
+   compile them to new dist JavaScript files.
 
        docker run --rm \
-           --volumes-from "$(docker-compose ps -q edd | head -1)" \
-           jbei/edd-webpack
+           -v "/full/path/to/repo:/run/edd" \
+           jbei/edd-node \
+           npm run watch
 
 5. __Edit TypeScript files__
 
@@ -210,8 +194,9 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
 
 * __Docker services__
 
-  `docker-compose` is the recommended tool for controlling EDD services. `docker-compose.yml`
-  defines the list of services as top-level entries under the 'services' line.
+  `docker-compose` is the recommended tool for controlling EDD services on a single Docker node.
+  The `docker-compose.yml` file defines the list of services as top-level entries under the
+  `services` line. To run in a Swarm, use `docker stack deploy`.
 
   For quick reference, the provided services are:
     * __edd__: WSGI server that runs the EDD webapp
@@ -221,38 +206,31 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
     * __redis__: provides the cache back-end for EDD
     * __solr__: provides a search index for EDD
     * __rabbitmq__: messaging bus that supports Celery
-    * __flower__: management / monitoring application for Celery
     * __smtp__: mail server that supports emails from EDD
 
   These additional services may be included as well:
+    * __flower__: management / monitoring application for Celery
     * __nginx__: webserver that proxies clients' HTTP requests to other Docker services
     * __nginx-gen__: monitors container start/stop events to generate configs for `nginx`
     * __letsencrypt__: generates TLS certificates for `nginx` through the Let's Encrypt service
 
-  While edd is running, you can also get a list of its services by runnning `docker-compose ps`
-  from the `docker_services` directory. Each container will be listed in the "Name" column of the
-  output, with a name generated by Docker Compose. The name consists of three parts separated
-  by underscores:
-    * the "project", by default the current directory, may be set using the `-p` flag to
-      `docker-compose` or the `COMPOSE_PROJECT_NAME` environment variable;
-    * the "service" name;
-    * a counter value, to distinguish multiple containers scaled beyond the first;
-  As an example, the container named `edd_worker_1` is the first instance of the `worker`
-  service in the `edd` project. You can also use `docker ps` from anywhere on the host to get a
-  similar listing, though it will include all containers running on your host, not just those
-  defined by EDD.
+  While edd is running, you can also get a list of its services by runnning `docker-compose ps` or
+  `docker stack ps [NAME]`. Each container will be listed in the "Name" column of the
+  output, with a name generated by Docker.
 
 * __`docker-compose` commands__
     * View logs: `docker-compose logs [service]`
     * See more in the [Docker Compose documentation][8]
 
+* __`docker stack` and `docker service` commands__
+    * View logs: `docker service logs [service]`
+    * See more in the [Docker Stack documentation][11]
+
 * __Running multiple copies of EDD__
 
-  If running multiple copies of EDD on one host, you _must_ use the `COMPOSE_PROJECT_NAME`
-  environment variable or add the `-p` flag to every `docker-compose` command. Otherwise, each copy
-  will create containers named similar to `dockerservices_edd_1`, because of the name of the
-  `docker_services` subdirectory containing the Docker-related files. Commands intended for other
-  copies will execute on the first launched copy, and not work as expected.
+  If running multiple copies of EDD on one host or Swarm, prefer using the Swarm deployment method
+  and give each deployed stack a unique name. To avoid clashing with open ports, launch Nginx
+  separately and configure the different EDD instances with different `VIRTUAL_HOST` environments.
 
 * __Determining the local URL for EDD's web interfaces:__
 
@@ -272,13 +250,15 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
 
 ---------------------------------------------------------------------------------------------------
 
-[1]:    http://brew.sh
-[2]:    https://docker.io
+[1]:    http://brew.sh/
+[2]:    https://docker.io/
 [3]:    https://docs.docker.com/machine/overview/
 [4]:    http://typescriptlang.org/
 [5]:    https://docs.docker.com/engine/installation/linux/
 [6]:    docs/Configuration.md
-[7]:    https://github.com/JBEI/ice
+[7]:    https://github.com/JBEI/ice/
 [8]:    https://docs.docker.com/compose/overview/
 [9]:    https://webpack.js.org/
 [10]:   https://django-debug-toolbar.readthedocs.io/en/stable/
+[11]:   https://docs.docker.com/engine/reference/commandline/stack/
+[12]:   https://pre-commit.com/

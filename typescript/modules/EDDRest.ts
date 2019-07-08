@@ -232,4 +232,3 @@ export function insertSortOrderParam(options: any, queryParams: any) {
         queryParams.ordering = sortOrder;
     }
 }
-

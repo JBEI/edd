@@ -1,0 +1,210 @@
+---
+version: '3.7'
+networks:
+  backnet: {}
+volumes:
+  edd_attachments: {}
+  edd_staticfiles: {}
+  postgres_db: {}
+  redis_db: {}
+  solr_cores: {}
+services:
+  postgres:
+    build: ./docker/postgres/
+    image: jbei/edd-postgres:9.6
+    restart: always
+    env_file: secrets/secrets.env
+    networks:
+      - backnet
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+    expose:
+      - '5432'
+  redis:
+    build: ./docker/redis/
+    image: jbei/redis:3.2
+    restart: always
+    networks:
+      - backnet
+    volumes:
+      - redis_db:/data
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+    expose:
+      - '6379'
+    command: redis-server --appendonly yes
+  solr:
+    build: ./docker/solr/
+    image: jbei/solr:7.3
+    entrypoint: ['/entrypoint.sh']
+    restart: always
+    networks:
+      - backnet
+    volumes:
+      - solr_cores:/opt/solr/server/solr
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 1m
+      timeout: 15s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+    expose:
+      - '8983'
+  rabbitmq:
+    build: ./docker/rabbitmq/
+    image: jbei/rabbitmq:3.7-management-alpine
+    restart: always
+    hostname: rabbitmq
+    env_file: secrets/secrets.env
+    environment:
+      HOSTNAME: rabbitmq
+      RABBITMQ_DEFAULT_USER: edd_user
+      RABBITMQ_DEFAULT_VHOST: edd
+      RABBITMQ_NODENAME: rabbit@rabbitmq
+    expose:
+      - '5672'
+      - '15672'
+    networks:
+      - backnet
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 1m
+      retries: 3
+      start_period: 1m
+      timeout: 30s
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+  smtp:
+    image: tianon/exim4
+    restart: always
+    networks:
+      - backnet
+    expose:
+      - '25'
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+  edd:
+    build: ./docker/edd/core/
+    image: jbei/edd-core:latest
+    restart: always
+    command: ['application']
+    environment:
+      CACHE_URL: "rediscache://redis:6379/1?client_class=django_redis.client.DefaultClient"
+      EDD_DEBUG: "false"
+      SEARCH_URL: "solr://solr:8983/solr/"
+      # These will not do anything without VIRTUAL_HOST set in override file
+      VIRTUAL_PORT: "8000"
+      VIRTUAL_STATIC: "true"
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+      - smtp
+      - solr
+    expose:
+      - '8000'
+    networks:
+      - backnet
+    volumes:
+      - edd_attachments:/var/www/uploads
+      - edd_staticfiles:/var/www/static
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', '-LSs', 'http://localhost:8000/health/']
+      interval: 15s
+      start_period: 60s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+  websocket:
+    image: jbei/edd-core:latest
+    environment:
+      CACHE_URL: "rediscache://redis:6379/1?client_class=django_redis.client.DefaultClient"
+      EDD_DEBUG: "false"
+      SEARCH_URL: "solr://solr:8983/solr/"
+      # These will not do anything without VIRTUAL_HOST set in override file
+      VIRTUAL_PATH_GROUP: "/ws"
+      VIRTUAL_PORT: "8000"
+    expose:
+      - '8000'
+    networks:
+      - backnet
+    volumes:
+      - edd_attachments:/var/www/uploads
+      - edd_staticfiles:/var/www/static
+    restart: always
+    command: [-A, -w, edd, -p, '8000', daphne]
+    links:
+      - edd
+      - postgres
+      - rabbitmq
+      - redis
+      - smtp
+      - solr
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'
+  worker:
+    image: jbei/edd-core:latest
+    environment:
+      C_FORCE_ROOT: "true"
+      CACHE_URL: "rediscache://redis:6379/1?client_class=django_redis.client.DefaultClient"
+      EDD_DEBUG: "false"
+      SEARCH_URL: "solr://solr:8983/solr/"
+    networks:
+      - backnet
+    volumes:
+      - edd_attachments:/var/www/uploads
+      - edd_staticfiles:/var/www/static
+    restart: always
+    command: [-A, -w, edd, -p, '8000', worker]
+    links:
+      - edd
+      - postgres
+      - rabbitmq
+      - redis
+      - smtp
+      - solr
+    healthcheck:
+      test: ['CMD', 'celery', 'inspect', 'ping', '-A', 'edd', '--workdir', '/code']
+      interval: 1m
+      timeout: 20s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: 1m
+        max-file: '5'

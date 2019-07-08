@@ -56,7 +56,7 @@ of EDD, during which they're likely to forget part or all of their training.
    enough, experimenters can view their data directly in the EDD UI and use it to guide
    decisionmaking for further experiment design, or for where to focus further analysis. Ideally,
    some experimentors will be able to export publication-quality results directly from EDD's user
-   interface without the need for other tools. EDD's goal is to support the most common ~80% of
+   interface without the need for other tools. EDD's goal is to support the most common \~80% of
    visualization needs, and experimentors who need less commonly-used visualizations should use
    or create other tools developed for that purpose.
 

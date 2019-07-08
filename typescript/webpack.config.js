@@ -54,8 +54,7 @@ module.exports = {
     ]
   },
   output: {
-    // TODO: this changes after re-org again, to '../server/main/static/dist'
-    path: path.resolve(__dirname, '../main/static/dist'),
+    path: path.resolve(__dirname, '../server/main/static/dist'),
     filename: '[name].js',
     publicPath: '/static/dist/'
   },

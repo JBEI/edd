@@ -1,0 +1,336 @@
+#!/usr/bin/env bash
+
+# Basic idea of this script is to check that other software is installed and config files are
+#   copied from the examples. The script is only tested with BASH. It probably will not work in
+#   alternate shells.
+
+if tput bold; then
+    # command in conditional makes everything bold, so reset immediately
+    tput sgr0
+    BOLD="$(tput bold)"
+    RESET="$(tput sgr0)"
+else
+    # don't try to set formatting escape sequences if no $TERM is set
+    BOLD=""
+    RESET=""
+fi
+SEPARATOR="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$DIR")"
+GETOPT="$(which getopt)"
+GIT="$(which git)"
+
+function check_brew() {
+    if [ ! -x "$(which brew)" ]; then
+        # Install brew if missing
+        BREW="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+        if ! /usr/bin/ruby -e "${BREW}"; then
+            return 1
+        fi
+    fi
+}
+
+function check_gnu_getopt() {
+    opt="$(getopt -o 'a' -- -a)"
+    if [ "$opt" == " -a --" ]; then
+        # GNU getopt is in use
+        GETOPT="$(which getopt)"
+    elif [ "$(uname)" == "Darwin" ]; then
+        check_brew
+        if ! brew --prefix gnu-getopt > /dev/null 2>&1; then
+            echo "Updating Homebrew"
+            brew update
+            brew install gnu-getopt
+        fi
+        GETOPT="$(brew --prefix gnu-getopt)/bin/getopt"
+    else
+        (>&2 echo "GNU getopt not installed, ignoring script arguments")
+    fi
+}
+
+function print_help() {
+    echo "Usage: . init-config [options]"
+    echo "Options:"
+    echo "    -h, --help"
+    echo "        Print this help message."
+    echo
+    echo "    -d domain, --domain domain"
+    echo "        Sets the domain to use in automated Let's Encrypt service."
+    echo "    -m mail, --mail mail"
+    echo "        Sets the default administrator email for EDD; uses git user.email if omitted."
+    echo "    -u user, --user user"
+    echo "        Sets the default administrator name for EDD; uses git user.name if omitted."
+    echo "    --noinput"
+    echo "        Runs the initialization without any input prompts for omitted information."
+    echo "    --nonginx"
+    echo "        Builds a Docker Compose configuration without the nginx webserver container(s)."
+    echo
+    echo "    --split-nginx"
+    echo "        Generates configuration to use a split Compose file for running Nginx. This will"
+    echo "        create a Docker virtual network to connect containers in both Compose files, and"
+    echo "        Docker virtual volumes to share data between containers. Implies --nonginx; see"
+    echo "        also: --split-media, --split-network, --split-static"
+    echo "    --split-media name"
+    echo "        Specifies the Docker volume name used for the EDD media directory. If omitted,"
+    echo "        a generated volume name will be used. Must be used with --split-nginx"
+    echo "    --split-network name"
+    echo "        Specifies the Docker network name used to link the EDD containers with an nginx"
+    echo "        proxy. If omitted, a generated network name will be used. Must be used "
+    echo "        with --split-nginx"
+    echo "    --split-static name"
+    echo "        Specifies the Docker volume name used for the EDD static directory. If omitted,"
+    echo "        a generated volume name will be used. Must be used with --split-nginx"
+    echo
+    echo "    --seed secret"
+    echo "        This script generates some random secret values based on the current time and "
+    echo "        known text. Set this flag to add some extra entropy to generated values."
+}
+
+EDD_EMAIL=
+EDD_USER=
+RANDOM_SEED="$(date | shasum | cut -c 1-32)"
+if [ ! $# -eq 0 ]; then
+    check_gnu_getopt
+    short='p:u:m:d:he'
+    long='help,user:,mail:,noinput,domain:,nonginx,expose,seed'
+    long="${long},split-nginx,split-media:,split-network:,split-static:"
+    params="$($GETOPT -o "$short" -l "$long" --name "$0" -- "$@")"
+    eval set -- "$params"
+    while [ ! $# -eq 0 ]; do
+        case "$1" in
+            --help | -h)
+                print_help
+                shift
+                return 0 2>/dev/null || exit 0
+                ;;
+            --user | -u)
+                EDD_USER="$2"
+                shift 2
+                ;;
+            --mail | -m)
+                EDD_EMAIL="$2"
+                shift 2
+                ;;
+            --domain | -d)
+                DOMAIN="$2"
+                shift 2
+                ;;
+            --noinput)
+                shift
+                NOINPUT=1
+                ;;
+            --nonginx)
+                shift
+                NONGINX=1
+                ;;
+            --split-nginx)
+                shift
+                NONGINX=1
+                DOSPLIT=1
+                ;;
+            --split-media)
+                MEDIA_NAME="$2"
+                shift 2
+                ;;
+            --split-network)
+                NETWORK_NAME="$2"
+                shift 2
+                ;;
+            --split-static)
+                STATIC_NAME="$2"
+                shift 2
+                ;;
+            --seed)
+                RANDOM_SEED="$(echo "${RANDOM_SEED}:${2}" | shasum | cut -c 1-32)"
+                shift 2
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+fi
+
+if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
+    if [ -x "$GIT" ]; then
+        EDD_EMAIL=$("$GIT" config --get user.email)
+        EDD_USER=$("$GIT" config --get user.name)
+    fi
+    if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
+        echo "${SEPARATOR}"
+        echo "Could not detect git user. Please re-run this script with your name and email,"
+        echo -e "e.g. ${BOLD}${0} --user 'Your Name' --mail 'you@example.org'${RESET}"
+        echo "or after configuring your git install with commands like these:"
+        echo ""
+        echo -e "\\t${BOLD}git config --global user.name 'Alice Liddell'${RESET}"
+        echo -e "\\t${BOLD}git config --global user.email 'aliddell@example.net'${RESET}"
+        echo ""
+        return 1 2>/dev/null || exit 1
+    fi
+fi
+
+if [ "$NOINPUT" != "1" ] && [ -f "${PROJECT_ROOT}/docker_services/secrets.env" ]; then
+    read -r -n 1 -p "Found existing secrets.env; Migrate to secrets directory? (y/N): " MIGRATE
+    echo
+elif [ ! -d "${PROJECT_ROOT}/secrets" ]; then
+    WRITE_SECRETS=y
+elif [ "$NOINPUT" != "1" ]; then
+    read -r -n 1 -p "Found existing secrets directory. Overwrite? (y/N): " WRITE_SECRETS
+    echo
+fi
+
+if [ "$MIGRATE" == "y" ]; then
+    echo "Migrating secrets …"
+    mkdir -p "${PROJECT_ROOT}/secrets"
+    cp "${PROJECT_ROOT}/docker_services/secrets.env" "${PROJECT_ROOT}/secrets/secrets.env"
+elif [ "$WRITE_SECRETS" == "y" ]; then
+    COUNTER=1
+    EXT=".bak"
+    echo "Copying example secrets.env and generating secrets …"
+    mkdir -p "${PROJECT_ROOT}/secrets"
+    cp "${PROJECT_ROOT}/secrets.env-example" "${PROJECT_ROOT}/secrets/secrets.env"
+    # make sure not to overwrite existing backups
+    while [ -f "${PROJECT_ROOT}/secrets/secrets.env${EXT}" ]; do
+        EXT=".bak${COUNTER}"
+        (( COUNTER++ ))
+    done
+    # replacing secret{n} values
+    COUNTER=1
+    while [ $COUNTER -lt 7 ]; do
+        SECRET="$(echo "secret${COUNTER}:${RANDOM_SEED}" | shasum | cut -c 1-32)"
+        sed "-i${EXT}" -e "s/secret${COUNTER}/${SECRET}/" "${PROJECT_ROOT}/secrets/secrets.env"
+        (( COUNTER++ ))
+    done
+    rm "${PROJECT_ROOT}/secrets/secrets.env${EXT}"
+fi
+if [ "$MIGRATE" == "y" ] || [ "$WRITE_SECRETS" == "y" ]; then
+    # .env files do not do quote processing, and have no special chars to ignore
+    # bash does do quote processing, and has a lot more syntax
+    # quick sed script converts .env to a more bash-friendly file
+    cat "${PROJECT_ROOT}/secrets/secrets.env" \
+        | sed -E -e "/^[0-9A-Za-z_]+=/ s/'/'\"'\"'/" \
+        | sed -E -e "/^[0-9A-Za-z_]+=/ s/=(.*)$/='\1'/" \
+        > "${PROJECT_ROOT}/secrets/secrets.quoted"
+    (
+        source "${PROJECT_ROOT}/secrets/secrets.quoted"
+        echo "${BROKER_URL}" > "${PROJECT_ROOT}/secrets/edd_broker_url"
+        echo "${CELERY_RESULT_BACKEND}" > "${PROJECT_ROOT}/secrets/edd_celery_database_url"
+        echo "${DATABASE_URL}" > "${PROJECT_ROOT}/secrets/edd_database_url"
+        echo "${SECRET_KEY}" > "${PROJECT_ROOT}/secrets/edd_django_secret"
+        echo "${ICE_HMAC_KEY}" > "${PROJECT_ROOT}/secrets/edd_ice_key"
+        echo "${LDAP_PASS}" > "${PROJECT_ROOT}/secrets/edd_ldap_password"
+        echo "${AMQP_ADMIN_PASSWORD}" > "${PROJECT_ROOT}/secrets/flower_amqp_admin_password"
+        echo "${AMQP_PASSWORD}" > "${PROJECT_ROOT}/secrets/flower_amqp_password"
+        echo "${FLOWER_BROKER_API}" > "${PROJECT_ROOT}/secrets/flower_broker_api"
+        echo "${POSTGRES_PASSWORD}" > "${PROJECT_ROOT}/secrets/postgres_password"
+        echo "${EDD_PGPASS}" > "${PROJECT_ROOT}/secrets/postgres_edd_password"
+        echo "${RABBITMQ_DEFAULT_PASS}" > "${PROJECT_ROOT}/secrets/rabbitmq_default_password"
+    )
+    rm "${PROJECT_ROOT}/secrets/secrets.quoted"
+fi
+
+if [ ! -f "${PROJECT_ROOT}/docker-compose.override.yml" ]; then
+    WRITE_OVERRIDE=y
+elif [ "$NOINPUT" != "1" ]; then
+    read -r -n 1 -p "Found existing docker-compose.override.yml. Overwrite? (y/N): " WRITE_OVERRIDE
+    echo
+fi
+
+# basic replacement script for sed
+REPLACEMENT="$(cat <<EOT
+    s/#EDD_USER: "Alice Liddell"/EDD_USER: "${EDD_USER}"/;
+    s/#EDD_EMAIL: "aliddell@example.net"/EDD_EMAIL: "${EDD_EMAIL}"/;
+EOT
+)"
+if [ ! -z "$DOMAIN" ]; then
+    REPLACEMENT="$REPLACEMENT;$(cat <<EOT
+    s/VIRTUAL_HOST: "localhost,edd.lvh.me"/VIRTUAL_HOST: "${DOMAIN}"/;
+    s/HTTPS_METHOD:/#HTTPS_METHOD:/;
+    s/#LETSENCRYPT_HOST: edd.example.net/LETSENCRYPT_HOST: "${DOMAIN}"/;
+    s/#LETSENCRYPT_EMAIL: "aliddell@example.net"/LETSENCRYPT_EMAIL: "${EDD_EMAIL}"/;
+EOT
+)"
+fi
+
+if [ "$WRITE_OVERRIDE" == "y" ]; then
+    echo "Copying example docker-compose.override.yml settings …"
+    cp "${PROJECT_ROOT}/docker-compose.override.yml-example" \
+        "${PROJECT_ROOT}/docker-compose.override.yml"
+    # make sure to not overwrite existing backups
+    COUNTER=1
+    EXT=".bak"
+    while [ -f "${PROJECT_ROOT}/docker-compose.override.yml${EXT}" ]; do
+        EXT=".bak${COUNTER}"
+        (( COUNTER++ ))
+    done
+    sed "-i${EXT}" -e "${REPLACEMENT}" "${PROJECT_ROOT}/docker-compose.override.yml"
+    if [ "$NONGINX" == "1" ]; then
+        # comment out section in in override
+        awk '/# START LET/,/# END LET/ { sub(/^/, "#"); }{ print }' \
+            "${PROJECT_ROOT}/docker-compose.override.yml" \
+            > "${PROJECT_ROOT}/docker-compose.override.yml${EXT}" \
+            && mv "${PROJECT_ROOT}/docker-compose.override.yml${EXT}" \
+                "${PROJECT_ROOT}/docker-compose.override.yml"
+    fi
+    # remove temp file
+    if [ -f "${PROJECT_ROOT}/docker-compose.override.yml${EXT}" ]; then
+        rm "${PROJECT_ROOT}/docker-compose.override.yml${EXT}"
+    fi
+fi
+
+if [ "$DOSPLIT" == "1" ]; then
+    POSTFIX="$(date -u "+%Y%m%d%H%M")"
+    # Create the virtual network
+    if [ -z "$NETWORK_NAME" ]; then
+        NETWORK_NAME="eddnet_${POSTFIX}"
+    fi
+    NETWORK_ID="$(docker network ls -qf "name=${NETWORK_NAME}")"
+    if [ -z "$NETWORK_ID" ]; then
+        NETWORK_ID="$(docker network create "${NETWORK_NAME}")"
+    fi
+    # Create the volumes
+    if [ -z "$MEDIA_NAME" ]; then
+        MEDIA_NAME="eddmedia_${POSTFIX}"
+    fi
+    MEDIA_ID="$(docker volume ls -qf "name=${MEDIA_NAME}")"
+    if [ -z "$MEDIA_ID" ]; then
+        MEDIA_ID="$(docker volume create "${MEDIA_NAME}")"
+    fi
+    if [ -z "$STATIC_NAME" ]; then
+        STATIC_NAME="eddstatic_${POSTFIX}"
+    fi
+    STATIC_ID="$(docker volume ls -qf "name=${STATIC_NAME}")"
+    if [ -z "$STATIC_ID" ]; then
+        STATIC_ID="$(docker volume create "${STATIC_NAME}")"
+    fi
+    # Build replacement commands
+    NETWORK_SEARCH='^([[:space:]]*)proxynet: {}'
+    NETWORK_SUB='\1proxynet:\'$'\n''\1\1external:\'$'\n''\1\1\1name: '"$NETWORK_NAME"
+    MEDIA_SEARCH='^([[:space:]]*)attachdata: {}'
+    MEDIA_SUB='\1attachdata:\'$'\n''\1\1external:\'$'\n''\1\1\1name: '"$MEDIA_NAME"
+    STATIC_SEARCH='^([[:space:]]*)staticdata: {}'
+    STATIC_SUB='\1staticdata:\'$'\n''\1\1external:\'$'\n''\1\1\1name: '"$STATIC_NAME"
+    REPLACEMENT="s/${NETWORK_SEARCH}/${NETWORK_SUB}/;"
+    REPLACEMENT="${REPLACEMENT}s/${MEDIA_SEARCH}/${MEDIA_SUB}/;"
+    REPLACEMENT="${REPLACEMENT}s/${STATIC_SEARCH}/${STATIC_SUB}/;"
+    # Replace sections in docker-compose.override.yml
+    sed -i.bak -E -e "${REPLACEMENT}" "${PROJECT_ROOT}/docker-compose.override.yml"
+    rm "${PROJECT_ROOT}/docker-compose.override.yml.bak"
+    # Write nginx/docker-compose.override.yml; de-indented because of HEREDOC use
+cat <<EOF > "${PROJECT_ROOT}/nginx/docker-compose.override.yml"
+---
+version: '3.7'
+networks:
+  proxynet:
+    external:
+      name: ${NETWORK_NAME}
+volumes:
+  attachdata:
+    external:
+      name: ${MEDIA_NAME}
+  staticdata:
+    external:
+      name: ${STATIC_NAME}
+EOF
+
+fi

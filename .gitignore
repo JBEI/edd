@@ -1,33 +1,29 @@
 # Various IDE and OS files to ignore
 .DS_Store
 *.pyc
+__pycache__
 *.swp
 .pydevproject
 .idea
 tscommand-*
 .tscache
 
-# per-machine configuration file; contains secrets, DO NOT CHECK-IN
+# per-machine configuration files; contains secrets, DO NOT CHECK-IN
 secrets.env
 /secrets
 
 # per-machine local settings files; this will override default settings with local changes
-edd/settings/local.py
-jbei/edd/rest/scripts/settings/local.py
-docker-compose.override.yml
+**/local.py
+**/docker-compose.override.yml
 # also ignore any local media/upload folders
-/media
-/upload
-/uploads
+**/media
+**/upload
+**/uploads
 # and ignore local log directory
-/log
-# and ignore the "development" static folder
-/static
-/main/static/lib
+**/log
 
 # ignore typescript generated files in mounted code folders
-main/static/main/js
-main/static/dist
+**/main/static/dist
 typescript/modules/*.d.ts
 typescript/src/*.d.ts
 
@@ -35,5 +31,3 @@ typescript/src/*.d.ts
 secrets.cfg
 bower_components
 node_modules
-
-

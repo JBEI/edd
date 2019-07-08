@@ -1,3 +1,0 @@
-# ignore 500.html as it can be overwritten when volume mounting /code
-500.html
-

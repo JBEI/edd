@@ -3,49 +3,23 @@
 ## Pre-requisites
 
 Have [Docker][1] and [Docker Compose][2] installed on the target host. EDD is tested with Docker
-version 17.09.0-ce and Docker Compose version 1.16.1; these instructions are not guaranteed to
-work for any older versions of Docker or Docker Compose. Also have the contents of
-the `docker_services` directory of the EDD codebase copied to the target host.
-
-Optionally, have [virtualenvwrapper][8] installed on the target host. This will simplify the shell
-setup to run EDD. The simplest way to install `virtualenvwrapper` is via `pip`, using
-`pip install virtualenvwrapper`; then, add the following lines to your shell startup file
-(e.g. `.bashrc`):
-
-    export WORKON_HOME=/usr/local/virtualenvs
-    source /usr/local/bin/virtualenvwrapper.sh
+version 18.09.2 and Docker Compose version 1.23.2; these instructions are not guaranteed to
+work for any older versions of Docker or Docker Compose. Also have at least the `bin` and `docker`
+directories, along with `docker-compose.yml` and `docker-compose.override.yml-example` copied to
+the target host.
 
 ## Initial configuration
 
 There are many configuration options that can be set before launching EDD. The `init-config`
-script handles creating two files based on included example files:
+script handles creating additional options based on included example files:
 
-  * __`secrets.env`__: Contains environment variables loaded into containers at launch; these
+  * __`secrets`__: Directory contains secret values loaded into containers at launch; these
     values will generally be passwords, keys, and other secret information.
   * __`docker-compose.override.yml`__: Overrides the default configuration used to launch the
     Docker containers. Non-secret environment, and other launch options will be put into this file.
 
 More information and example configuration options can be found in the example files, and copied
 into the files created automatically by the `init-config` script.
-
-The `init-config` script can also optionally take a `--project NAME` argument, and will attempt
-to create a virtualenv with `virtualenvwrapper`, and set the `COMPOSE_PROJECT_NAME` environment
-when the virtualenv is activated. This is useful to have the Docker containers started by Compose
-have a prefix other than `dockerservices`. It will also allow `workon NAME` to take you directly
-to the `docker_services` directory of the deployment. Using this option will allow for a workflow
-similar to the following:
-
-    . init-config --project edd
-    ./start-edd.sh
-    # use EDD for some time
-    ./stop-edd.sh
-    deactivate
-    # do other terminal work
-    # ... two weeks later ...
-    workon edd
-    # terminal is now in the docker_services directory
-    ./start-edd.sh
-    # use EDD for some time
 
 ## Building EDD
 
@@ -63,17 +37,11 @@ encryption via certificates generated with the [Let's Encrypt][4] service. By se
 environment in the `edd` service container, EDD will generate a configuration file for Nginx to
 proxy HTTP requests and secure connections with TLS.
 
-By default, EDD will only listen for connections on the loopback or localhost network interface.
-Change the `docker-compose.override.yml` file under the `services/nginx/ports` keys to comment out
-the lines with `127.0.0.1`, and uncomment the lines with `0.0.0.0` to have EDD listen on all
-network interfaces. To only listen on a specific IP address, add in entries with that IP address.
-
-To proxy requests to a container, set the environment variables `VIRTUAL_HOST`, `VIRTUAL_NETWORK`,
-and `VIRTUAL_PORT` on that container. The values of these variables are the DNS hostname, the
-Docker virtual network name, and the IP network port exposed on the container, respectively. These
-values are set automatically for the central EDD service by the `init-config` script, but only for
-a single domain, via the `--domain` option. For more advanced configuration, consult the
-documentation for the [`letsencrypt-nginx-proxy-compainion`][6].
+To proxy requests to a container, set the environment variables `VIRTUAL_HOST` and `VIRTUAL_PORT`
+on that container. The values of these variables are the DNS hostname, and the port exposed on the
+container, respectively. These values are set automatically for the central EDD service by the
+`init-config` script, but only for a single domain, via the `--domain` option. For more advanced
+configuration, consult the documentation for the [`letsencrypt-nginx-proxy-compainion`][6].
 
 If alternate TLS configuration -- or any other Nginx configuration -- is desired, replace the
 default `nginx` service image with one containing options for your alternate configuration, or
@@ -91,21 +59,20 @@ To link to an ICE server, EDD uses a Base64-encoded key. Create a key using a co
 
     openssl rand -base64 64 | tr -d '\n' > hmac.key
 
-This will create a file named `hmac.key`. Copy the contents of this file and add it to the line
-setting `ICE_HMAC_KEY` in your `secrets.env`. Then, copy this file to your ICE server, and place it
-in a file named `edd` in the `rest-auth` directory of the ICE home directory. This will usually be
-`/usr/local/tomcat`, but it may be configured differently. Look for "Data Directory" in the ICE
-Administration Settings.
+This will create a file named `hmac.key`. Copy this file to the `secrets` directory, and add a
+secret to the `docker-compose.override.yml` configuration for the services using `edd-core` and
+`ice`. The `edd-core` image will check for a secret named `edd_ice_key`, and the `ice` image will
+load in HMAC keys using the value of the `ICE_HMAC_SECRETS` environment.
 
 ## Creating an EDD administrator account
 
 Several parts of EDD's configuration is contained within the running application's database,
 instead of loaded from files at startup. A login account to the EDD application, with access to
 the administration interface, is the easiest way to edit this configuration. To create an
-administrator account, run this command from the `docker_services` directory, after EDD has
+administrator account, run this command inside the `edd` service, after EDD has
 finished startup:
 
-    docker-compose exec edd /code/manage.py createsuperuser
+    python manage.py createsuperuser
 
 The command will prompt for a username, email address, and password. Logging in with the username
 and password combination will send a confirmation email to the provided address. Once the email
@@ -167,12 +134,11 @@ The entrypoint script for the `edd-core` image uses this approximate workflow:
   3. Wait on redis
   4. Initialize static files (Javascript, stylesheets, and images included in EDD image)
   5. Wait on postgres
-  6. Create and/or restore database
-  7. Wait on solr
-  8. Run pending database migrations (if any)
-  9. Re-index solr (if any changes made to database)
-  10. Wait on rabbitmq
-  11. Execute entrypoint command
+  6. Wait on solr
+  7. Run pending database migrations (if any)
+  8. Re-index solr (if any changes made to database)
+  9. Wait on rabbitmq
+  10. Execute entrypoint command
 
 The entrypoint workflow can be modified with the flags defined below. Set these flags in the
 `command` entry of the service using the `jbei/edd-core` image in `docker-compose.override.yml`.
@@ -192,11 +158,6 @@ This output can be recreated with `docker-compose exec edd entrypoint.sh --help`
             Copy static files to the static volume. Only used to override -A.
         -S, --no-init-static
             Skip initialization of static files.
-        -d, --init-database
-            Initialize the database using POSTGRES_DUMP_URL or POSTGRES_DUMP_FILE
-            environment. Only used to override -A.
-        -D, --no-init-database
-            Skip initialization of the database.
         -m, --init-migration
             Run any pending database migrations. Only used to override -A.
         -M, --no-init-migration
@@ -244,8 +205,27 @@ This output can be recreated with `docker-compose exec edd entrypoint.sh --help`
 
 ## Starting EDD
 
-Once configured, EDD is launched with a simple command, `./start-edd.sh`. To stop EDD, run
-`./stop-edd.sh`.
+Once configured, EDD is launched with either `docker-compose` for a single-node deployment, or
+`docker stack deploy` for a Swarm deployment:
+
+    # For single-node deployment, launch in detached mode
+    docker-compose up -d
+
+    # For Swarm deployment:
+    # 1. Make sure the swarm manager is set up
+    docker swarm init
+    # 2. Aggregate configuration files
+    docker-compose config > stack.yml
+    # 3. Launch the stack (replace [NAME] with desired stack name)
+    docker stack deploy -c stack.yml [NAME]
+
+To shut down EDD:
+
+    # For single-node deployment
+    docker-compose down
+
+    # For Swarm deployment (replace [NAME] with deployed stack name)
+    docker stack down [NAME]
 
 ---------------------------------------------------------------------------------------------------
 

@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    /* Basic Options */
     "target": "es5",
     "module": "es2015",
     "lib": [
@@ -12,18 +11,11 @@
     "declaration": true,
     "sourceMap": true,
     "rootDir": ".",
-
-    /* Strict Type-Checking Options */
     "noImplicitAny": false,
-
-    /* Module Resolution Options */
     "moduleResolution": "node",
     "baseUrl": ".",
-
     "jsx": "react",
-
-    /* Experimental */
-    "pretty": true  // colorizes compiler outputs
+    "pretty": true
   },
   "include": [
     "./**/*"

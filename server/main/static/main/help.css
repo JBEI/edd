@@ -1,0 +1,61 @@
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 1em;
+}
+
+.figureTable {
+    border-collapse: collapse;
+    border: 1px solid black;
+    border-spacing: 5px 10px;
+}
+
+.figureTable td {
+    margin: 0.5em;
+}
+
+.figureTable td, .figureTable th {
+    border: 1px solid black;
+    padding: 5px;
+}
+
+.figureTable th {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.figureTable, .caption {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: 3em;
+}
+
+.disclose {
+    margin: 1em;
+}
+
+/* specific to the Experiment Description help*/
+.discloseBody {
+	color:#444;
+	font-size:12px;
+	margin-left:1.2em;
+}
+
+.discloseBody ol {
+    margin-left: 3em;
+}
+
+.TODO {
+    display: inline-block; /*none;*/ /*  */
+    background-color: #FFFF00;
+}
+
+.metadataList {
+    margin-top: 1em;
+}
+
+.metadataList li {
+    list-style-type: none;
+}
+
+#lineNamePartsTable, #lineNamePartsTable td {
+    border: none;
+}

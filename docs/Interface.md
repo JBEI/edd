@@ -17,7 +17,7 @@ interface option because it is:
 ## API Documentation
 
 Once complete, EDD's REST API will include detailed documentation of each API endpoint available
-to logged-in users via a web browser.  For example, the following URL will display the 
+to logged-in users via a web browser.  For example, the following URL will display the
 documentation soon [https://public-edd.jbei.org/rest/docs/][1].
 
 ## Reference Client Implementation
@@ -35,7 +35,7 @@ __Sample client-side use of EddApi__
 
     # prompt terminal user for credentials and log in
     edd_login_details = session_login(EddSessionAuth, EDD_URL, 'EDD',
-                                      username_arg=args.username, 
+                                      username_arg=args.username,
                                       password_arg=args.password,
                                       print_result=True,
                                       timeout=EDD_REQUEST_TIMEOUT)
@@ -56,8 +56,8 @@ during API development and testing.
 
 # Direct Database Access
 
-Another less-preferred option for automated interface with EDD is to directly access EDD's 
-database. Direct database access is only an appropriate option in a limited number of cases, 
+Another less-preferred option for automated interface with EDD is to directly access EDD's
+database. Direct database access is only an appropriate option in a limited number of cases,
 since it
 effectively circumvents data access controls and consistency checks implemented by EDD.  If your
 organization provides open access to the data stored in EDD in lieu of using EDD's user/group
@@ -69,7 +69,7 @@ and configuring each possible scenario is beyond the scope of this document.  Lo
 documentation for your specific technology stack.  After your EDD instance is configured are
 working, here are several helpful entry points to configuring client-side database access:
    * EDD's database URL and acccess credentials are in the `secrets.env` file under the
-     `docker_services/` directory.
+     `secrets/` directory.
    * See PostgresSQL documentation for directions on creating an account with read-only access to
      EDD's database.
    * You may also need to consult or configure your `docker-compose-override.yml` file to open a

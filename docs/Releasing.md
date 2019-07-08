@@ -17,22 +17,18 @@ possible, these steps should be automated.
         * `--pull` makes sure to pull the latest version of the base image from Docker Hub
         * `--no-cache` makes sure to build from scratch
         * `-t [NAME]` tags the resulting image; otherwise image is only accessible from hash ID
-    * Docker image for `jbei/edd-node` in `/docker_services/node/` directory:
+    * Docker image for `jbei/edd-node` in `/docker/node/` directory:
         * Run `docker build --pull --no-cache -t jbei/edd-node`
         * Tag the image with: `docker tag jbei/edd-node:latest jbei/edd-node:X.Y.Z`
-    * Docker image for `jbei/scikit-learn` in `/docker_services/edd/scikit-learn` directory:
+    * Docker image for `jbei/scikit-learn` in `/docker/edd/scikit-learn` directory:
         * This image should remain stable for longer periods. Release schedule is TBD, see
           README in the directory.
         * Run `docker build --pull --no-cache -t jbei/scikit-learn`
-    * Docker image for `jbei/edd-webpack` in `/docker_services/edd/webpack/` directory:
-        * This image is only useful for development, and in most cases the `latest` tag is the
-          only one that should exist. It does not need to be public.
-        * Run `docker build -t jbei/edd-webpack`
-    * Docker image for `jbei/edd-core` in `/docker_services/edd/core/` directory:
+    * Docker image for `jbei/edd-core` in `/docker/edd/core/` directory:
         * Make sure to locally build `jbei/edd-node` and `jbei/scikit-learn` first.
-        * Run `docker build --no-cache -t jbei/edd-core`
+        * Run `docker build --no-cache --build-arg "TARGET=prod" -t jbei/edd-core`
         * Tag the image with: `docker tag jbei/edd-core:latest jbei/edd-core:X.Y.Z`
-    * Other Docker images under `/docker_services/` directory:
+    * Other Docker images under `/docker/` directory:
         * Custom builds of services should get tagged with the upstream service version. For
           example, custom build of Postgres 9.6 would get tagged `jbei/postgres:9.6`.
         * Also tag custom builds of services with the ISO date of the build. For example, a
@@ -43,5 +39,5 @@ possible, these steps should be automated.
     * On deploy host:
         * Pull images from Docker Hub with `docker pull [IMAGENAME]`
         * Checkout or pull updated code/configs from `git`
-        * For smallest downtime, `docker stop` and `docker rm` for the containers needing an
-          updated image, then `docker-compose up -d` as usual to re-create containers.
+        * For smallest downtime, use `docker-compose up -d` to detect containers that need
+          re-created, and automatically stop, remove, and re-create them.

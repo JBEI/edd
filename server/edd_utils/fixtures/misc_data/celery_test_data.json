@@ -1,0 +1,152 @@
+{
+  "time_until_retry": {
+    "unity_delay (invalid)": {
+      "start_retry_num": "0",
+      "goal_retry_num": "1",
+      "est_execution_time": "0",
+      "default_retry_delay": "1",
+      "expected_result": "ValueError"
+    },
+    "time_from_first_failure_to_first_retry": {
+      "start_retry_num": "0",
+      "goal_retry_num": "1",
+      "default_retry_delay": "2",
+      "expected_result": "2"
+    },
+    "time_from_first_failure_to_second_retry": {
+      "start_retry_num": "0",
+      "goal_retry_num": "2",
+      "default_retry_delay": "2",
+      "expected_result": "6"
+    },
+    "time_from_first_failure_to_default_final_retry": {
+      "start_retry_num": "0",
+      "goal_retry_num": "19",
+      "default_retry_delay": "2",
+      "expected_result": "1048574"
+    },
+    "final_wait_time": {
+      "start_retry_num": "18",
+      "goal_retry_num": "19",
+      "default_retry_delay": "2",
+      "expected_result": "524288"
+    },
+    "sum_of_final_two_waits": {
+      "start_retry_num": "17",
+      "goal_retry_num": "19",
+      "default_retry_delay": "2",
+      "expected_result": "786432"
+    },
+    "inconsistent bounds": {
+      "start_retry_num": "1",
+      "goal_retry_num": "1",
+      "default_retry_delay": "2",
+      "expected_result": "ValueError"
+    }
+  },
+  "compute_exp_retry_delay": {
+    "unity_delay (invalid)": {
+      "task": {
+        "retries": "0",
+        "default_retry_delay": "1",
+        "soft_time_limit": "5"
+      },
+      "expected_result": "ValueError"
+    },
+    "fractional_delay (invalid)": {
+      "task": {
+        "retries": "0",
+        "default_retry_delay": "0.5",
+        "soft_time_limit": "5"
+      },
+      "expected_result": "ValueError"
+    },
+    "negative_delay (invalid)": {
+      "task": {
+        "retries": "0",
+        "default_retry_delay": "-1",
+        "soft_time_limit": "5"
+      },
+      "expected_result": "ValueError"
+    },
+    "default_retry_1": {
+      "task": {
+        "retries": "0",
+        "default_retry_delay": "2",
+        "soft_time_limit": "5"
+      },
+      "expected_result": "2"
+    },
+    "default_retry_2": {
+      "task": {
+        "retries": "1",
+        "default_retry_delay": "2",
+        "soft_time_limit": "5"
+      },
+      "expected_result": "4"
+    },
+    "default_retry_3": {
+      "task": {
+        "retries": "2",
+        "default_retry_delay": "2",
+        "soft_time_limit": "10"
+      },
+      "expected_result": "8"
+    },
+    "default_final_retry": {
+      "task": {
+        "retries": "18",
+        "default_retry_delay": "2",
+        "soft_time_limit": "1048574"
+      },
+      "expected_result": "524288"
+    }
+  },
+  "send_retry_warning_before_failure": {
+    "first_retry_is_too_late": {
+      "task": {
+        "default_retry_delay": 2,
+        "retries": 0,
+        "max_retries": 5
+      },
+      "est_execution_time": 0,
+      "notify_on_retry_num": 1,
+      "expected_result": false
+    },
+
+    "all_warnings_are_too_late": {
+     "task": {
+        "default_retry_delay": 2,
+        "retries": 4,
+        "max_retries": 5
+      },
+      "est_execution_time": 0,
+      "notify_on_retry_num": 4,
+      "expected_result": false
+    },
+
+    "approaching_worthwhile_to_warn": {
+     "task": {
+        "default_retry_delay": 2,
+        "retries": 8,
+        "max_retries": 10
+      },
+      "est_execution_time": 0,
+      "notify_on_retry_num": 9,
+      "expected_result": false
+    },
+
+    "worthwhile_to_warn": {
+     "task": {
+        "default_retry_delay": 2,
+        "retries": 9,
+        "max_retries": 11
+      },
+      "est_execution_time": 0,
+      "notify_on_retry_num": 9,
+      "expected_result": true
+    }
+
+
+  }
+}

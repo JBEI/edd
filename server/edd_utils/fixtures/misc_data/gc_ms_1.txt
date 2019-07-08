@@ -1,0 +1,2441 @@
+                              Area Percent Report
+
+
+
+  Data Path : C:\MSDChem\1\DATA\JORGE\110410_2X\
+
+  Data File : 0001.D
+
+  Acq On    : 14 Apr 2011  21:17
+
+  Operator  :
+
+  Sample    : Blank
+
+  Misc      :
+
+  ALS Vial  : 1   Sample Multiplier: 1
+
+
+
+  Integration Parameters: rteint.p
+
+  Integrator: RTE
+
+  Smoothing : OFF                            Filtering: 5
+
+  Sampling  : 2                               Min Area: 2 % of largest Peak
+
+  Start Thrs: 0.15                           Max Peaks: 100
+
+  Stop Thrs : 0                          Peak Location: TOP
+
+
+
+  If leading or trailing edge < 100 prefer < Baseline drop else tangent >
+
+  Peak separation: 5
+
+
+
+  Method    : C:\MSDCHEM\1\METHODS\STEROL-SCN SR.M
+
+  Title     :
+
+
+
+  Signal     : TIC
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   7.929  1417 1424 1447 rVB      148       305 100.00%  52.951%
+
+  2   8.271  1515 1517 1521 rVB      119       130  42.62%  22.569%
+
+  3   8.319  1521 1530 1533 rBB2      16        65  21.31%  11.285%
+
+  4   8.492  1573 1577 1579 rBV2      53        76  24.92%  13.194%
+
+
+
+
+
+                        Sum of corrected areas:         576
+
+  Signal     : TIC: 0002.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   8.087  1413 1467 1471 rBV   111878    928497 100.00%  97.642%
+
+  2  10.217  2037 2045 2061 rBV    19109     22426   2.42%   2.358%
+
+
+
+
+
+                        Sum of corrected areas:      950923
+
+  Signal     : TIC: 0003.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.260   689  700  771 rBV2    8168     37978   3.89%   3.311%
+
+  2   8.087  1413 1467 1469 rBV   113175    976311 100.00%  85.104%
+
+  3   8.109  1469 1473 1477 rVB2  113087    103871  10.64%   9.054%
+
+  4  10.217  2037 2045 2061 rBV    26455     29033   2.97%   2.531%
+
+
+
+
+
+                        Sum of corrected areas:     1147193
+
+  Signal     : TIC: 0004.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.249   689  697  809 rBV2   24618     90436   8.13%   7.339%
+
+  2   8.098  1413 1470 1479 rVB   114609   1112684 100.00%  90.298%
+
+  3  10.217  2037 2045 2061 rBV    26010     29114   2.62%   2.363%
+
+
+
+
+
+                        Sum of corrected areas:     1232234
+
+  Signal     : TIC: 0005.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.242   687  695  821 rBV2   63891    177953  16.42%  13.778%
+
+  2   8.105  1413 1472 1477 rBV   114805   1083755 100.00%  83.909%
+
+  3  10.217  2037 2045 2059 rBV2   25271     29873   2.76%   2.313%
+
+
+
+
+
+                        Sum of corrected areas:     1291581
+
+  Signal     : TIC: 0006.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  825 rBV2  158113    365286  38.98%  25.053%
+
+  2   8.080  1413 1465 1467 rBV   114982    937228 100.00%  64.280%
+
+  3   8.102  1469 1471 1477 rVB2  114769    125283  13.37%   8.593%
+
+  4  10.217  2037 2045 2061 rBV    26402     30248   3.23%   2.075%
+
+
+
+
+
+                        Sum of corrected areas:     1458045
+
+  Signal     : TIC: 0007.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  819 rBV2  352240    692668  63.66%  38.248%
+
+  2   8.091  1413 1468 1477 rBV   115440   1088039 100.00%  60.080%
+
+  3  10.217  2037 2045 2059 rBV2   26444     30274   2.78%   1.672%
+
+
+
+
+
+                        Sum of corrected areas:     1810981
+
+  Signal     : TIC: 0008.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.227   683  691  835 rBV2  689214   1240583 100.00%  55.556%
+
+  2   8.094  1413 1469 1473 rBV   115191    992457  80.00%  44.444%
+
+
+
+
+
+                        Sum of corrected areas:     2233040
+
+  Signal     : TIC: 0009.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.168   645  675  679 rBV2     158       737  29.97%  17.116%
+
+  2   5.297   697  710  733 rBV2     116       591  24.03%  13.725%
+
+  3   7.925  1415 1423 1459 rBV     1187      2459 100.00%  57.106%
+
+  4   8.279  1515 1519 1521 rVB      129       141   5.73%   3.275%
+
+  5   8.319  1521 1530 1559 rBB2      50       257  10.45%   5.968%
+
+
+
+  6   8.503  1573 1580 1583 rBV2      55       121   4.92%   2.810%
+
+
+
+
+
+                        Sum of corrected areas:        4306
+
+  Signal     : TIC: 0010.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.242   687  695  839 rBV2   58214    170840  16.34%  13.734%
+
+  2   8.091  1413 1468 1475 rBV   114076   1045464 100.00%  84.046%
+
+  3  10.217  2037 2045 2059 rBV2   24790     27616   2.64%   2.220%
+
+
+
+
+
+                        Sum of corrected areas:     1243920
+
+  Signal     : TIC: 0011.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  829 rBV   269678    550098  49.49%  32.493%
+
+  2   8.098  1411 1470 1477 rBV   114892   1111584 100.00%  65.659%
+
+  3  10.217  2037 2045 2059 rBV2   26866     31289   2.81%   1.848%
+
+
+
+
+
+                        Sum of corrected areas:     1692971
+
+  Signal     : TIC: 0012.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  777 rBV2  263526    521628  47.22%  31.467%
+
+  2   8.105  1413 1472 1477 rBV   115289   1104749 100.00%  66.644%
+
+  3  10.217  2037 2045 2059 rBV2   26850     31318   2.83%   1.889%
+
+
+
+
+
+                        Sum of corrected areas:     1657695
+
+  Signal     : TIC: 0013.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.246   687  696  827 rBV2   33128    109300   9.99%   8.864%
+
+  2   8.098  1413 1470 1477 rBV   115459   1093778 100.00%  88.708%
+
+  3  10.217  2037 2045 2059 rBV2   26764     29931   2.74%   2.427%
+
+
+
+
+
+                        Sum of corrected areas:     1233009
+
+  Signal     : TIC: 0014.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  823 rBV2  417832    771513  71.28%  40.950%
+
+  2   8.098  1413 1470 1477 rVB   115306   1082318 100.00%  57.447%
+
+  3  10.217  2037 2045 2059 rBV2   26681     30194   2.79%   1.603%
+
+
+
+
+
+                        Sum of corrected areas:     1884025
+
+  Signal     : TIC: 0015.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  841 rBV2  304000    601919  57.24%  34.127%
+
+  2   8.083  1411 1466 1471 rBV   115427   1051539 100.00%  59.618%
+
+  3   8.109  1471 1473 1477 rVB2  115005     77877   7.41%   4.415%
+
+  4  10.217  2037 2045 2059 rBV2   28162     32449   3.09%   1.840%
+
+
+
+
+
+                        Sum of corrected areas:     1763784
+
+  Signal     : TIC: 0016.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.253   689  698  775 rBV2   11467     47893   4.78%   4.446%
+
+  2   8.087  1411 1467 1473 rBV   115939   1002969 100.00%  93.109%
+
+  3  10.217  2037 2045 2059 rBV2   23703     26339   2.63%   2.445%
+
+
+
+
+
+                        Sum of corrected areas:     1077201
+
+  Signal     : TIC: 0017.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.238   687  694  809 rBV2   56086    160788  17.89%  14.794%
+
+  2   8.076  1413 1464 1465 rBV   115689    898696 100.00%  82.690%
+
+  3  10.217  2037 2045 2059 rBV2   23988     27342   3.04%   2.516%
+
+
+
+
+
+                        Sum of corrected areas:     1086826
+
+  Signal     : TIC: 0018.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  839 rBV2  246490    512378  57.02%  32.914%
+
+  2   8.076  1411 1464 1465 rBV   115709    898658 100.00%  57.728%
+
+  3   8.102  1469 1471 1477 rVB2  115756    114211  12.71%   7.337%
+
+  4  10.217  2037 2045 2059 rBV2   27880     31468   3.50%   2.021%
+
+
+
+
+
+                        Sum of corrected areas:     1556715
+
+  Signal     : TIC: 0019.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.120   629  662  663 rBV2     217      1097  35.58%  25.824%
+
+  2   7.921  1413 1422 1457 rBV     1565      3083 100.00%  72.575%
+
+  3   8.319  1521 1530 1533 rBB2      17        68   2.21%   1.601%
+
+
+
+
+
+                        Sum of corrected areas:        4248
+
+  Signal     : TIC: 0020.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.238   687  694  827 rBV2   63716    175940  17.32%  14.444%
+
+  2   8.087  1411 1467 1473 rBV   114672   1015991 100.00%  83.411%
+
+  3  10.217  2037 2045 2061 rBV    23125     26123   2.57%   2.145%
+
+
+
+
+
+                        Sum of corrected areas:     1218054
+
+  Signal     : TIC: 0021.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  843 rBV   375070    722793  68.97%  38.851%
+
+  2   8.087  1411 1467 1471 rBV   115171   1048033 100.00%  56.333%
+
+  3   8.109  1471 1473 1477 rVB2  114878     58325   5.57%   3.135%
+
+  4  10.217  2037 2045 2059 rBV2   27448     31272   2.98%   1.681%
+
+
+
+
+
+                        Sum of corrected areas:     1860423
+
+  Signal     : TIC: 0022.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  841 rBV2  413024    777185  77.70%  40.380%
+
+  2   8.087  1411 1467 1469 rBV   115524   1000247 100.00%  51.970%
+
+  3   8.102  1469 1471 1477 rVB2  115446    116479  11.65%   6.052%
+
+  4  10.217  2037 2045 2059 rBV2   26562     30760   3.08%   1.598%
+
+
+
+
+
+                        Sum of corrected areas:     1924671
+
+  Signal     : TIC: 0023.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.246   687  696  775 rBV2   41942    122926 100.00%  43.216%
+
+  2   7.486  1289 1304 1325 rBV2    1514      4433   3.61%   1.558%
+
+  3   8.105  1469 1472 1477 rVB2  115655    112465  91.49%  39.538%
+
+  4  10.217  2037 2045 2059 rBV2   28069     31792  25.86%  11.177%
+
+  5  11.396  2357 2365 2381 rBV    10232     12829  10.44%   4.510%
+
+
+
+
+
+
+
+                        Sum of corrected areas:      284445
+
+  Signal     : TIC: 0024.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  837 rBV2  790241   1340755 100.00%  57.016%
+
+  2   8.072  1411 1463 1465 rBV   115688    905186  67.51%  38.493%
+
+  3   8.113  1473 1474 1479 rVB   115152     71184   5.31%   3.027%
+
+  4  10.217  2037 2045 2059 rBV2   29494     34409   2.57%   1.463%
+
+
+
+
+
+                        Sum of corrected areas:     2351534
+
+  Signal     : TIC: 0025.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  823 rBV2  499541    897644 100.00%  96.434%
+
+  2  10.217  2037 2045 2059 rBV2   29657     33189   3.70%   3.566%
+
+
+
+
+
+                        Sum of corrected areas:      930833
+
+  Signal     : TIC: 0026.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.249   689  697  813 rBV    17788     64706   5.82%   5.111%
+
+  2   8.091  1411 1468 1473 rBV   115985   1112073 100.00%  87.840%
+
+  3   8.117  1473 1475 1479 rVB   116197     55208   4.96%   4.361%
+
+  4  10.217  2037 2045 2059 rBV2   29712     34027   3.06%   2.688%
+
+
+
+
+
+                        Sum of corrected areas:     1266014
+
+  Signal     : TIC: 0027.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  829 rBV   348988    671397  66.34%  37.924%
+
+  2   8.069  1411 1462 1469 rBV   116151   1012081 100.00%  57.167%
+
+  3   8.113  1473 1474 1479 rVB   115934     52987   5.24%   2.993%
+
+  4  10.217  2037 2045 2059 rBV2   29537     33932   3.35%   1.917%
+
+
+
+
+
+                        Sum of corrected areas:     1770397
+
+  Signal     : TIC: 0028.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  833 rBV2  411140    774209  73.27%  41.576%
+
+  2   8.094  1413 1469 1471 rBV   116568   1056585 100.00%  56.740%
+
+  3  10.217  2037 2045 2059 rBV2   27557     31361   2.97%   1.684%
+
+
+
+
+
+                        Sum of corrected areas:     1862155
+
+  Signal     : TIC: 0029.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.061   615  646  651 rBV2     292      1658  79.14%  39.205%
+
+  2   7.925  1415 1423 1449 rBV     1062      2095 100.00%  49.539%
+
+  3   8.323  1521 1531 1573 rBB2      53       359  17.14%   8.489%
+
+  4   8.500  1573 1579 1583 rBV2      54       117   5.58%   2.767%
+
+
+
+
+
+                        Sum of corrected areas:        4229
+
+  Signal     : TIC: 0030.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.238   687  694  807 rBV2   82322    207554  23.12%  17.438%
+
+  2   8.072  1411 1463 1465 rBV   114630    897719 100.00%  75.425%
+
+  3   8.117  1473 1475 1479 rVB   114658     52607   5.86%   4.420%
+
+  4  10.217  2037 2045 2061 rBV    28524     32331   3.60%   2.716%
+
+
+
+
+
+                        Sum of corrected areas:     1190211
+
+  Signal     : TIC: 0031.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  839 rBV2  588924   1025030  96.91%  48.440%
+
+  2   8.091  1411 1468 1471 rBV   115487   1057756 100.00%  49.987%
+
+  3  10.217  2037 2045 2059 rBV2   30389     33287   3.15%   1.573%
+
+
+
+
+
+                        Sum of corrected areas:     2116073
+
+  Signal     : TIC: 0032.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  871 rVB   517000    922933  82.95%  44.656%
+
+  2   8.109  1413 1473 1477 rBV   115817   1112633 100.00%  53.834%
+
+  3  10.217  2037 2045 2061 rBV    27690     31212   2.81%   1.510%
+
+
+
+
+
+                        Sum of corrected areas:     2066778
+
+  Signal     : TIC: 0033.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.242   687  695  819 rBV2   33869    109725  10.87%   9.131%
+
+  2   8.083  1411 1466 1469 rBV   116165   1009780 100.00%  84.027%
+
+  3   8.098  1469 1470 1475 rVB2  115851     53920   5.34%   4.487%
+
+  4  10.217  2037 2045 2059 rBV2   24592     28303   2.80%   2.355%
+
+
+
+
+
+                        Sum of corrected areas:     1201728
+
+  Signal     : TIC: 0034.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  841 rVB2  988724   1599318 100.00%  60.460%
+
+  2   8.080  1411 1465 1467 rBV   115512    954608  59.69%  36.088%
+
+  3   8.117  1473 1475 1479 rVB   115451     56774   3.55%   2.146%
+
+  4  10.217  2037 2045 2059 rBV2   30590     34535   2.16%   1.306%
+
+
+
+
+
+                        Sum of corrected areas:     2645235
+
+  Signal     : TIC: 0035.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  777 rBV2  778107   1290280 100.00%  54.110%
+
+  2   8.083  1411 1466 1469 rBV   115667   1007022  78.05%  42.231%
+
+  3   8.117  1473 1475 1479 rVB   115849     53744   4.17%   2.254%
+
+  4  10.217  2037 2045 2059 rBV2   29417     33483   2.60%   1.404%
+
+
+
+
+
+                        Sum of corrected areas:     2384529
+
+  Signal     : TIC: 0036.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.253   689  698  805 rBV2   17282     62732   6.55%   5.626%
+
+  2   8.083  1411 1466 1467 rBV   116366    957361 100.00%  85.858%
+
+  3   8.117  1473 1475 1479 rVB   116196     60569   6.33%   5.432%
+
+  4  10.217  2037 2045 2059 rBV2   30106     34388   3.59%   3.084%
+
+
+
+
+
+                        Sum of corrected areas:     1115050
+
+  Signal     : TIC: 0037.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  835 rBV2  473517    848334  83.89%  41.956%
+
+  2   8.083  1411 1466 1469 rBV   116094   1011205 100.00%  50.011%
+
+  3   8.113  1469 1474 1477 rVB2  116045    129860  12.84%   6.422%
+
+  4  10.213  2037 2044 2059 rBV2   28527     32558   3.22%   1.610%
+
+
+
+
+
+                        Sum of corrected areas:     2021957
+
+  Signal     : TIC: 0038.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  841 rBV2  670075   1130369 100.00%  48.431%
+
+  2   8.083  1411 1466 1473 rBV   116037   1110553  98.25%  47.582%
+
+  3   8.117  1473 1475 1479 rVB   115828     59402   5.26%   2.545%
+
+  4  10.217  2037 2045 2059 rBV2   29202     33640   2.98%   1.441%
+
+
+
+
+
+                        Sum of corrected areas:     2333964
+
+  Signal     : TIC: 0039.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   4.980   601  624  627 rBV2     419      1592  41.23%  23.477%
+
+  2   5.283   697  706  743 rVB2     186       872  22.58%  12.859%
+
+  3   7.921  1413 1422 1457 rBV     2034      3861 100.00%  56.939%
+
+  4   8.319  1521 1530 1573 rBB2      55       359   9.30%   5.294%
+
+  5   8.503  1573 1580 1581 rBV2      55        97   2.51%   1.430%
+
+
+
+
+
+
+
+                        Sum of corrected areas:        6781
+
+  Signal     : TIC: 0040.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.246   687  696  819 rBV2   26333     88221   8.02%   7.226%
+
+  2   8.087  1411 1467 1477 rBV   114790   1100601 100.00%  90.150%
+
+  3  10.217  2037 2045 2059 rBV2   27855     32039   2.91%   2.624%
+
+
+
+
+
+                        Sum of corrected areas:     1220861
+
+  Signal     : TIC: 0041.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  841 rBV2  255333    514019  51.02%  31.879%
+
+  2   8.080  1411 1465 1469 rBV   115592   1007574 100.00%  62.490%
+
+  3   8.098  1469 1470 1475 rVB2  115282     61656   6.12%   3.824%
+
+  4  10.217  2037 2045 2059 rBV2   26194     29133   2.89%   1.807%
+
+
+
+
+
+                        Sum of corrected areas:     1612382
+
+  Signal     : TIC: 0042.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.275   689  704  829 rBV     2002     17748  16.84%  14.415%
+
+  2   7.947  1411 1429 1435 rBV    54449    105373 100.00%  85.585%
+
+
+
+
+
+                        Sum of corrected areas:      123121
+
+  Signal     : TIC: 0043.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.246   687  696  799 rBV    37051    112421  11.24%   9.363%
+
+  2   8.083  1411 1466 1469 rBV   114684   1000206 100.00%  83.303%
+
+  3   8.117  1473 1475 1479 rVB   115308     53240   5.32%   4.434%
+
+  4  10.217  2037 2045 2059 rBV2   29783     34816   3.48%   2.900%
+
+
+
+
+
+                        Sum of corrected areas:     1200683
+
+  Signal     : TIC: 0044.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  799 rBV   409919    760438  70.55%  40.713%
+
+  2   8.087  1411 1467 1475 rBV   115656   1077888 100.00%  57.709%
+
+  3  10.217  2037 2045 2059 rBV2   26285     29464   2.73%   1.577%
+
+
+
+
+
+                        Sum of corrected areas:     1867790
+
+  Signal     : TIC: 0045.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  841 rBV2  312179    607464  70.97%  38.829%
+
+  2   8.058  1411 1459 1463 rBV   115034    855921 100.00%  54.711%
+
+  3   8.105  1471 1472 1477 rVB2  115167     68409   7.99%   4.373%
+
+  4  10.217  2037 2045 2059 rBV2   29050     32657   3.82%   2.087%
+
+
+
+
+
+                        Sum of corrected areas:     1564451
+
+  Signal     : TIC: 0046.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.253   689  698  827 rBV2   10865     44566   3.90%   3.648%
+
+  2   8.113  1411 1474 1477 rBV   116143   1143571 100.00%  93.603%
+
+  3  10.217  2037 2045 2059 rBV2   29416     33588   2.94%   2.749%
+
+
+
+
+
+                        Sum of corrected areas:     1221725
+
+  Signal     : TIC: 0047.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  835 rBV2  221265    455176  49.98%  31.246%
+
+  2   8.069  1411 1462 1465 rBV   115792    910708 100.00%  62.517%
+
+  3   8.117  1473 1475 1479 rVB   115723     56285   6.18%   3.864%
+
+  4  10.217  2037 2045 2059 rBV2   31816     34573   3.80%   2.373%
+
+
+
+
+
+                        Sum of corrected areas:     1456742
+
+  Signal     : TIC: 0048.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  841 rBV2  195136    412168  38.72%  26.105%
+
+  2   8.080  1411 1465 1471 rBV   116168   1064437 100.00%  67.417%
+
+  3   8.105  1471 1472 1477 rVB2  115691     69327   6.51%   4.391%
+
+  4  10.217  2037 2045 2059 rBV2   28999     32962   3.10%   2.088%
+
+
+
+
+
+                        Sum of corrected areas:     1578894
+
+  Signal     : TIC: 0049.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.003   605  630  645 rBV2     388      2631  92.12%  45.693%
+
+  2   7.921  1413 1422 1453 rBV     1510      2856 100.00%  49.601%
+
+  3   8.271  1515 1517 1521 rVB      125       135   4.73%   2.345%
+
+  4   8.323  1521 1531 1533 rBB2      11        66   2.31%   1.146%
+
+  5   8.496  1573 1578 1579 rBV2      49        70   2.45%   1.216%
+
+
+
+
+
+
+
+                        Sum of corrected areas:        5758
+
+  Signal     : TIC: 0050.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.246   687  696  821 rBV2   31948    100699   9.13%   8.128%
+
+  2   8.087  1411 1467 1473 rBV   114893   1103543 100.00%  89.077%
+
+  3  10.217  2037 2045 2059 rBV2   30178     34617   3.14%   2.794%
+
+
+
+
+
+                        Sum of corrected areas:     1238859
+
+  Signal     : TIC: 0051.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  841 rBV2  439947    808022  75.94%  42.389%
+
+  2   8.094  1411 1469 1471 rBV   115906   1063984 100.00%  55.817%
+
+  3  10.213  2037 2044 2059 rBV2   29106     34198   3.21%   1.794%
+
+
+
+
+
+                        Sum of corrected areas:     1906204
+
+  Signal     : TIC: 0052.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  815 rBV2  397800    739298  66.47%  38.146%
+
+  2   8.094  1411 1469 1473 rBV   116046   1112245 100.00%  57.390%
+
+  3   8.117  1473 1475 1479 rVB   116445     53660   4.82%   2.769%
+
+  4  10.217  2037 2045 2059 rBV2   28822     32850   2.95%   1.695%
+
+
+
+
+
+                        Sum of corrected areas:     1938053
+
+  Signal     : TIC: 0053.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.246   687  696  833 rBV2   34620    107790  10.15%   8.955%
+
+  2   8.087  1411 1467 1471 rBV   116135   1061910 100.00%  88.217%
+
+  3  10.217  2037 2045 2059 rBV2   29750     34050   3.21%   2.829%
+
+
+
+
+
+                        Sum of corrected areas:     1203750
+
+  Signal     : TIC: 0054.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  817 rBV   750329   1256621 100.00%  51.788%
+
+  2   8.098  1411 1470 1477 rBV   115796   1135583  90.37%  46.800%
+
+  3  10.217  2037 2045 2059 rBV2   29593     34270   2.73%   1.412%
+
+
+
+
+
+                        Sum of corrected areas:     2426474
+
+  Signal     : TIC: 0055.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  823 rBV2  616117   1068142  95.93%  48.164%
+
+  2   8.091  1411 1468 1473 rBV   115821   1113457 100.00%  50.207%
+
+  3  10.217  2037 2045 2059 rBV2   32850     36124   3.24%   1.629%
+
+
+
+
+
+                        Sum of corrected areas:     2217723
+
+  Signal     : TIC: 0056.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.253   689  698  807 rBV2   15069     55799   5.80%   5.296%
+
+  2   8.080  1411 1465 1467 rBV   115981    961306 100.00%  91.242%
+
+  3  10.217  2037 2045 2059 rBV2   30783     36470   3.79%   3.462%
+
+
+
+
+
+                        Sum of corrected areas:     1053575
+
+  Signal     : TIC: 0057.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  839 rBV2  347946    656332  68.34%  38.453%
+
+  2   8.072  1411 1463 1467 rBV   115820    960454 100.00%  56.270%
+
+  3   8.124  1475 1477 1481 rVB   116663     53836   5.61%   3.154%
+
+  4  10.217  2037 2045 2059 rBV2   32716     36238   3.77%   2.123%
+
+
+
+
+
+                        Sum of corrected areas:     1706860
+
+  Signal     : TIC: 0058.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  843 rBV   380743    729556  66.97%  39.426%
+
+  2   8.105  1411 1472 1477 rVB   116612   1089403 100.00%  58.873%
+
+  3  10.217  2037 2045 2059 rBV2   28318     31469   2.89%   1.701%
+
+
+
+
+
+                        Sum of corrected areas:     1850428
+
+  Signal     : TIC: 0059.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.014   605  633  643 rBV2     372      2380  74.84%  38.449%
+
+  2   5.286   699  707  741 rVB2     119       562  17.67%   9.079%
+
+  3   7.921  1413 1422 1449 rBV     1722      3180 100.00%  51.373%
+
+  4   8.316  1521 1529 1533 rBB2      22        68   2.14%   1.099%
+
+
+
+
+
+                        Sum of corrected areas:        6190
+
+  Signal     : TIC: 0060.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.264   689  701  789 rBV2    5023     22629   2.05%   1.866%
+
+  2   8.083  1411 1466 1473 rBV   115014   1104554 100.00%  91.069%
+
+  3   8.113  1473 1474 1479 rVB   114567     52211   4.73%   4.305%
+
+  4  10.217  2037 2045 2059 rBV2   29940     33482   3.03%   2.761%
+
+
+
+
+
+                        Sum of corrected areas:     1212876
+
+  Signal     : TIC: 0061.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.257   689  699  817 rBV    13499     51057   4.81%   4.441%
+
+  2   8.087  1411 1467 1471 rBV   115500   1062267 100.00%  92.407%
+
+  3  10.217  2037 2045 2059 rBV2   31659     36225   3.41%   3.151%
+
+
+
+
+
+                        Sum of corrected areas:     1149549
+
+  Signal     : TIC: 0062.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.246   687  696  813 rBV    33541    104049   9.34%   7.809%
+
+  2   8.080  1411 1465 1473 rBV   116212   1113500 100.00%  83.565%
+
+  3   8.120  1473 1476 1479 rVB   116452     79026   7.10%   5.931%
+
+  4  10.217  2037 2045 2059 rBV2   32523     35926   3.23%   2.696%
+
+
+
+
+
+                        Sum of corrected areas:     1332501
+
+  Signal     : TIC: 0063.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.238   687  694  811 rBV2   70763    184223  16.68%  13.963%
+
+  2   8.083  1411 1466 1477 rVB   116970   1104355 100.00%  83.705%
+
+  3  10.217  2037 2045 2059 rBV2   28048     30759   2.79%   2.331%
+
+
+
+
+
+                        Sum of corrected areas:     1319337
+
+  Signal     : TIC: 0064.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  841 rBV2  194173    411716  43.00%  29.369%
+
+  2   8.080  1413 1465 1467 rBV   116302    957532 100.00%  68.304%
+
+  3  10.217  2037 2045 2059 rBV2   28921     32630   3.41%   2.328%
+
+
+
+
+
+                        Sum of corrected areas:     1401878
+
+  Signal     : TIC: 0065.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  847 rBV   373738    717491  68.06%  39.873%
+
+  2   8.087  1411 1467 1475 rBV   116482   1054196 100.00%  58.585%
+
+  3  10.217  2037 2045 2059 rBV2   24291     27740   2.63%   1.542%
+
+
+
+
+
+                        Sum of corrected areas:     1799427
+
+  Signal     : TIC: 0066.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  841 rBV2 1002214   1646850 100.00%  60.136%
+
+  2   8.083  1411 1466 1471 rBV   116123   1058189  64.26%  38.640%
+
+  3  10.217  2037 2045 2059 rBV2   29801     33523   2.04%   1.224%
+
+
+
+
+
+                        Sum of corrected areas:     2738562
+
+  Signal     : TIC: 0067.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   4.999   609  629  631 rBV2     311       947  39.49%  22.367%
+
+  2   5.283   697  706  733 rVB2     145       613  25.56%  14.478%
+
+  3   7.921  1415 1422 1457 rBV     1185      2398 100.00%  56.637%
+
+  4   8.271  1515 1517 1521 rVB      126       138   5.75%   3.259%
+
+  5   8.319  1521 1530 1533 rBB2      17        69   2.88%   1.630%
+
+
+
+  6   8.496  1573 1578 1579 rBV2      50        69   2.88%   1.630%
+
+
+
+
+
+                        Sum of corrected areas:        4234
+
+  Signal     : TIC: 0068.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.249   687  697  835 rBV2   26444     87891   9.82%   8.212%
+
+  2   8.076  1413 1464 1465 rBV   114945    895004 100.00%  83.629%
+
+  3   8.117  1473 1475 1479 rVB   115176     52755   5.89%   4.929%
+
+  4  10.217  2037 2045 2059 rBV2   31290     34563   3.86%   3.230%
+
+
+
+
+
+                        Sum of corrected areas:     1070213
+
+  Signal     : TIC: 0069.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.227   683  691  825 rBV2  286118    605515  72.50%  41.479%
+
+  2   8.065  1411 1461 1467 rBV   115736    835211 100.00%  57.214%
+
+  3  10.217  2037 2045 2059 rBV2   16882     19079   2.28%   1.307%
+
+
+
+
+
+                        Sum of corrected areas:     1459805
+
+  Signal     : TIC: 0070.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  813 rBV   457095    837554  88.03%  43.456%
+
+  2   8.080  1413 1465 1467 rBV   115491    951445 100.00%  49.365%
+
+  3   8.102  1467 1471 1475 rVB2  115373    109065  11.46%   5.659%
+
+  4  10.217  2037 2045 2059 rBV2   25429     29302   3.08%   1.520%
+
+
+
+
+
+                        Sum of corrected areas:     1927366
+
+  Signal     : TIC: 0071.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.246   687  696  839 rBV2   29458     95803   9.51%   8.440%
+
+  2   8.080  1411 1465 1469 rBV   115901   1007697 100.00%  88.778%
+
+  3  10.217  2037 2045 2059 rBV2   27899     31579   3.13%   2.782%
+
+
+
+
+
+                        Sum of corrected areas:     1135079
+
+  Signal     : TIC: 0072.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  837 rBV2 1109889   1788992 100.00%  66.893%
+
+  2   8.065  1413 1461 1463 rBV   115356    848817  47.45%  31.739%
+
+  3  10.217  2037 2045 2059 rBV2   32564     36583   2.04%   1.368%
+
+
+
+
+
+                        Sum of corrected areas:     2674392
+
+  Signal     : TIC: 0073.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  825 rBV2  801898   1342479 100.00%  52.353%
+
+  2   8.087  1411 1467 1473 rBV   115711   1108057  82.54%  43.211%
+
+  3   8.113  1473 1474 1479 rVB   115380     77577   5.78%   3.025%
+
+  4  10.217  2037 2045 2059 rBV2   32869     36177   2.69%   1.411%
+
+
+
+
+
+                        Sum of corrected areas:     2564290
+
+  Signal     : TIC: 0074.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.253   689  698  781 rBV2   14037     50677   5.29%   4.851%
+
+  2   8.083  1411 1466 1467 rBV   116167    957465 100.00%  91.644%
+
+  3  10.217  2037 2045 2059 rBV2   32997     36622   3.82%   3.505%
+
+
+
+
+
+                        Sum of corrected areas:     1044764
+
+  Signal     : TIC: 0075.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  827 rBV2  467758    834460  82.97%  41.992%
+
+  2   8.076  1413 1464 1469 rBV   116354   1005787 100.00%  50.613%
+
+  3   8.102  1469 1471 1477 rVB2  115717    114391  11.37%   5.756%
+
+  4  10.217  2037 2045 2059 rBV2   29253     32561   3.24%   1.639%
+
+
+
+
+
+                        Sum of corrected areas:     1987199
+
+  Signal     : TIC: 0076.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  839 rBV2  666680   1155519 100.00%  49.144%
+
+  2   8.080  1411 1465 1473 rBV   116030   1106527  95.76%  47.060%
+
+  3   8.117  1473 1475 1479 rVB   116200     54324   4.70%   2.310%
+
+  4  10.217  2037 2045 2059 rBV2   32102     34929   3.02%   1.486%
+
+
+
+
+
+                        Sum of corrected areas:     2351299
+
+  Signal     : TIC: 0077.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   4.980   603  624  627 rBV2     402      1477  35.00%  22.207%
+
+  2   5.286   695  707  733 rVB2     188       841  19.93%  12.645%
+
+  3   7.921  1413 1422 1457 rBV     2327      4220 100.00%  63.449%
+
+  4   8.503  1573 1580 1583 rBV2      51       113   2.68%   1.699%
+
+
+
+
+
+                        Sum of corrected areas:        6651
+
+  Signal     : TIC: 0078.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.242   687  695  789 rBV2   54918    144461  13.18%  10.855%
+
+  2   8.087  1411 1467 1473 rBV   114630   1096195 100.00%  82.369%
+
+  3   8.117  1473 1475 1479 rVB   114609     54910   5.01%   4.126%
+
+  4  10.217  2037 2045 2059 rBV2   32075     35263   3.22%   2.650%
+
+
+
+
+
+                        Sum of corrected areas:     1330829
+
+  Signal     : TIC: 0079.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  819 rBV2  313986    601894  59.96%  36.689%
+
+  2   8.083  1411 1466 1469 rBV   115687   1003756 100.00%  61.185%
+
+  3  10.217  2037 2045 2059 rBV2   32147     34879   3.47%   2.126%
+
+
+
+
+
+                        Sum of corrected areas:     1640529
+
+  Signal     : TIC: 0080.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  815 rBV2  245962    496423  52.16%  33.532%
+
+  2   8.076  1413 1464 1467 rBV   115833    951792 100.00%  64.292%
+
+  3  10.217  2037 2045 2059 rBV2   28948     32214   3.38%   2.176%
+
+
+
+
+
+                        Sum of corrected areas:     1480429
+
+  Signal     : TIC: 0081.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.242   687  695  811 rBV2   47288    133074  12.57%   9.949%
+
+  2   8.080  1411 1465 1471 rBV   115880   1058346 100.00%  79.124%
+
+  3   8.109  1471 1473 1479 rVB2  115714    110606  10.45%   8.269%
+
+  4  10.217  2037 2045 2059 rBV2   31167     35546   3.36%   2.658%
+
+
+
+
+
+                        Sum of corrected areas:     1337572
+
+  Signal     : TIC: 0082.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  831 rBV2  498964    877799  82.93%  42.898%
+
+  2   8.083  1411 1466 1471 rBV   115853   1058525 100.00%  51.730%
+
+  3   8.109  1471 1473 1477 rVB2  115406     76370   7.21%   3.732%
+
+  4  10.217  2037 2045 2059 rBV2   29072     33558   3.17%   1.640%
+
+
+
+
+
+                        Sum of corrected areas:     2046252
+
+  Signal     : TIC: 0083.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  827 rBV2  346703    653139  68.34%  37.906%
+
+  2   8.076  1411 1464 1467 rBV   115764    955712 100.00%  55.466%
+
+  3   8.120  1473 1476 1479 rVB   115471     77973   8.16%   4.525%
+
+  4  10.217  2037 2045 2059 rBV2   32226     36227   3.79%   2.102%
+
+
+
+
+
+                        Sum of corrected areas:     1723051
+
+  Signal     : TIC: 0084.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.249   687  697  775 rBV2   14229     51967   4.90%   4.536%
+
+  2   8.091  1411 1468 1471 rBV   116132   1060502 100.00%  92.575%
+
+  3  10.217  2037 2045 2059 rBV2   29739     33087   3.12%   2.888%
+
+
+
+
+
+                        Sum of corrected areas:     1145556
+
+  Signal     : TIC: 0085.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  841 rBV2  171655    365909  36.22%  24.756%
+
+  2   8.087  1411 1467 1469 rBV   115837   1010198 100.00%  68.346%
+
+  3   8.117  1473 1475 1479 rVB   115614     66362   6.57%   4.490%
+
+  4  10.217  2037 2045 2059 rBV2   31412     35588   3.52%   2.408%
+
+
+
+
+
+                        Sum of corrected areas:     1478057
+
+  Signal     : TIC: 0086.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  801 rBV2  241224    474370  52.08%  31.932%
+
+  2   8.072  1411 1463 1465 rBV   115685    910898 100.00%  61.317%
+
+  3   8.113  1473 1474 1479 rVB   115533     64412   7.07%   4.336%
+
+  4  10.217  2037 2045 2059 rBV2   32062     35880   3.94%   2.415%
+
+
+
+
+
+                        Sum of corrected areas:     1485560
+
+  Signal     : TIC: 0087.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   4.962   597  619  623 rBV2     478      1939  52.00%  32.892%
+
+  2   7.921  1413 1422 1457 rBV     2016      3729 100.00%  63.257%
+
+  3   8.271  1515 1517 1521 rVB      124       136   3.65%   2.307%
+
+  4   8.492  1573 1577 1581 rBV2      49        91   2.44%   1.544%
+
+
+
+
+
+                        Sum of corrected areas:        5895
+
+  Signal     : TIC: 0088.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.242   687  695  821 rBV2   53009    144454  15.28%  12.257%
+
+  2   8.083  1411 1466 1467 rBV   114449    945336 100.00%  80.215%
+
+  3   8.117  1473 1475 1479 rVB   114902     53580   5.67%   4.546%
+
+  4  10.217  2037 2045 2059 rBV2   30791     35130   3.72%   2.981%
+
+
+
+
+
+                        Sum of corrected areas:     1178500
+
+  Signal     : TIC: 0089.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  835 rBV2  496098    884564  83.76%  44.810%
+
+  2   8.083  1411 1466 1471 rBV   115528   1056075 100.00%  53.499%
+
+  3  10.213  2037 2044 2059 rBV2   28676     33374   3.16%   1.691%
+
+
+
+
+
+                        Sum of corrected areas:     1974013
+
+  Signal     : TIC: 0090.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  841 rBV2  395420    736216  73.38%  40.086%
+
+  2   8.080  1411 1465 1469 rBV   115766   1003289 100.00%  54.628%
+
+  3   8.102  1469 1471 1475 rVB2  115376     66813   6.66%   3.638%
+
+  4  10.217  2037 2045 2059 rBV2   26634     30263   3.02%   1.648%
+
+
+
+
+
+                        Sum of corrected areas:     1836581
+
+  Signal     : TIC: 0091.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.242   687  695  803 rBV2   41107    118255  10.68%   9.006%
+
+  2   8.076  1411 1464 1473 rBV   115528   1107441 100.00%  84.339%
+
+  3   8.113  1473 1474 1479 rVB   115512     52490   4.74%   3.997%
+
+  4  10.217  2037 2045 2059 rBV2   30724     34894   3.15%   2.657%
+
+
+
+
+
+                        Sum of corrected areas:     1313080
+
+  Signal     : TIC: 0092.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  843 rBV   747141   1269272 100.00%  51.505%
+
+  2   8.091  1411 1468 1473 rBV   115527   1106398  87.17%  44.896%
+
+  3   8.117  1473 1475 1479 rVB   115939     53279   4.20%   2.162%
+
+  4  10.217  2037 2045 2059 rBV2   31401     35431   2.79%   1.438%
+
+
+
+
+
+                        Sum of corrected areas:     2464380
+
+  Signal     : TIC: 0093.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  839 rBV2  492292    893161  88.85%  46.291%
+
+  2   8.076  1411 1464 1469 rBV   115784   1005244 100.00%  52.101%
+
+  3  10.213  2037 2044 2059 rBV2   27350     31025   3.09%   1.608%
+
+
+
+
+
+                        Sum of corrected areas:     1929430
+
+  Signal     : TIC: 0094.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.249   687  697  813 rBV    17211     61298   5.81%   5.330%
+
+  2   8.083  1411 1466 1471 rBV   115784   1055860 100.00%  91.806%
+
+  3  10.217  2037 2045 2059 rBV2   29416     32942   3.12%   2.864%
+
+
+
+
+
+                        Sum of corrected areas:     1150100
+
+  Signal     : TIC: 0095.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  839 rBV2  248643    501235  47.06%  31.408%
+
+  2   8.091  1411 1468 1475 rBV   116010   1065174 100.00%  66.746%
+
+  3  10.217  2037 2045 2059 rBV2   25855     29455   2.77%   1.846%
+
+
+
+
+
+                        Sum of corrected areas:     1595864
+
+  Signal     : TIC: 0096.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  839 rBV2  404491    741957  70.46%  39.199%
+
+  2   8.083  1411 1466 1471 rBV   115624   1053036 100.00%  55.634%
+
+  3   8.105  1471 1472 1477 rVB2  115179     64490   6.12%   3.407%
+
+  4  10.217  2037 2045 2059 rBV2   28689     33319   3.16%   1.760%
+
+
+
+
+
+                        Sum of corrected areas:     1892802
+
+  Signal     : TIC: 0097.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   4.984   603  625  629 rBV2     359      1470  61.58%  33.401%
+
+  2   7.921  1413 1422 1453 rBV     1234      2387 100.00%  54.238%
+
+  3   8.282  1517 1520 1521 rVB      121        79   3.31%   1.795%
+
+  4   8.319  1521 1530 1573 rBB2      55       359  15.04%   8.157%
+
+  5   8.496  1573 1578 1583 rBV2      46       106   4.44%   2.409%
+
+
+
+
+
+
+
+                        Sum of corrected areas:        4401
+
+  Signal     : TIC: 0098.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.242   687  695  813 rBV    47069    130197  13.09%  11.235%
+
+  2   8.087  1411 1467 1469 rBV   113994    994684 100.00%  85.834%
+
+  3  10.217  2037 2045 2059 rBV2   30208     33971   3.42%   2.931%
+
+
+
+
+
+                        Sum of corrected areas:     1158852
+
+  Signal     : TIC: 0099.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   685  692  841 rBV2  683962   1162096 100.00%  48.276%
+
+  2   8.076  1411 1464 1475 rBV   114936   1154175  99.32%  47.947%
+
+  3   8.124  1475 1477 1481 rVB   115306     53070   4.57%   2.205%
+
+  4  10.217  2037 2045 2059 rBV2   33835     37839   3.26%   1.572%
+
+
+
+
+
+                        Sum of corrected areas:     2407180
+
+  Signal     : TIC: 0100.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.231   683  692  809 rBV2  601849   1036842  98.77%  48.912%
+
+  2   8.083  1411 1466 1471 rBV   115004   1049751 100.00%  49.521%
+
+  3  10.217  2037 2045 2059 rBV2   29611     33211   3.16%   1.567%
+
+
+
+
+
+                        Sum of corrected areas:     2119804
+
+  Signal     : TIC: 0101.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.242   687  695  781 rBV2   34361    100124   9.99%   8.846%
+
+  2   8.087  1411 1467 1469 rBV   115185   1002126 100.00%  88.539%
+
+  3  10.217  2037 2045 2059 rBV2   25634     29603   2.95%   2.615%
+
+
+
+
+
+                        Sum of corrected areas:     1131853
+
+  Signal     : TIC: 0102.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  839 rBV2  298276    658922 100.00%  51.300%
+
+  2   8.039  1411 1454 1459 rBV   112601    625534  94.93%  48.700%
+
+
+
+
+
+                        Sum of corrected areas:     1284456
+
+  Signal     : TIC: 0103.D
+
+
+
+ peak  R.T. first  max last  PK   peak      corr.   corr.    % of
+
+   #   min   scan scan scan  TY  height     area    % max.   total
+
+ ---  ----- ----- ---- ---- ---  -------   -------  ------  -------
+
+  1   5.235   685  693  807 rVB2  961592   1479294 100.00%  52.929%
+
+  2   8.080  1411 1465 1473 rBV   118993   1139737  77.05%  40.780%
+
+  3   8.124  1475 1477 1483 rVB2  118583    127786   8.64%   4.572%
+
+  4  10.243  2045 2052 2067 rBV2   42504     48046   3.25%   1.719%
+
+
+
+
+
+                        Sum of corrected areas:     2794863
+
+
+
+STEROL-SCN SR.M Tue Apr 19 11:07:24 2011

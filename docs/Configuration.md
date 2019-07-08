@@ -9,18 +9,17 @@ detailed description of some of the options.
 * __Docker configuration files__
   These files configure EDD's docker containers and enable you to launch EDD and most of its
   dependencies with a single command.
-    * `secrets.env`: Stores passwords and URL's for the various services EDD has to connect to,
-      and makes them accessible to EDD's Docker containers. Make sure to control access to this
-      file! It is meant to contain secrets for external services, and should be protected as any
-      other password file. The repository excludes this file, but includes a
-      `secrets.env-example` to use as a template.
+    * `secrets`: Directory stores passwords and URL's for the various services EDD has to connect
+      to, and makes them accessible to EDD's Docker containers. Make sure to control access to
+      this directory! It is meant to contain secrets for external services, and should be
+      protected as any other password file. The `.gitignore` should exclude this directory.
     * `docker-compose.yml`: Configures EDD's docker containers as run by Docker Compose. This is
       set up in a working configuration with basic default settings, but you may wish to change
       container definitions, etc. based on your computing needs, available resources, and
       deployment strategy. See the [Docker-compose documentation][1] for reference. Most local
       changes should go in the `docker-compose.override.yml` file. The override file is not
-      included in the repository -- similar to `secrets.env` -- but there is an example template
-      file `docker-compose.yml-example`. See comments in the example file, and the related
+      included in the repository, but can be automatically generated from an example template file
+      `docker-compose.yml-example`. See comments in the example file, and the related
       [Docker-compose extends documentation][2] for reference.
 
 * __EDD Django configuration files__: Much of EDD's functionality runs through the Django
@@ -28,7 +27,7 @@ detailed description of some of the options.
   Configuration Files" below for more details.
 
 * __Service-specific scripts and configuration__: The full definitions of services and
-  configurations used in EDD are contained in the `docker_services` directory. Each service can be
+  configurations used in EDD are contained in the `docker` directory. Each service can be
   configured per the documentation provided by the maintainer of the used image, or a different
   image can be used. Links to the documentation for EDD service images are provided here
   for reference:
@@ -85,13 +84,10 @@ including possible values, should be included in the `local.py-example` file.
 You may want to use an external postgres server instead of the Postgres Docker container configured
 in EDD's default `docker-compose.yml`. If so, you'll want to follow this general outline:
 
-* Manually run similar commands to those in `docker_services/postgres/init.sql`, to create
+* Manually run similar commands to those in `bin/postgres/000_init.sql`, to create
   databases and roles for user and celery data.
-* Update secrets.env with the correct database URLs for both edd and celery databases.
-* Change the service definition for `postgres` in your `docker-compose.override.yml` file. The
-  container will still start, but overhead can be reduced by:
-    * Changing the `image` to `edd-core`; eliminating the need to download the `postgres` image.
-    * Changing the `entrypoint` to `true`; causing the container to immediately exit.
+* Update secrets directory with the correct database URLs for both edd and celery databases.
+* (optional) Remove the service definition for `postgres` in `docker-compose.yml` file.
 
 ---------------------------------------------------------------------------------------------------
 
