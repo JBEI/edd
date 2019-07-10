@@ -46,7 +46,7 @@ class EddApiTestCaseMixin(object):
         Overrides the default Django TestCase to clear out the threadlocal request variable during
         class setUp and tearDown.
         """
-        super(EddApiTestCaseMixin, cls).setUpClass()
+        super().setUpClass()
         set_thread_variable("request", None)
 
     @classmethod
@@ -55,7 +55,7 @@ class EddApiTestCaseMixin(object):
         Overrides the default Django TestCase to clear out the threadlocal request variable during
         class setUp and tearDown.
         """
-        super(EddApiTestCaseMixin, cls).tearDownClass()
+        super().tearDownClass()
         set_thread_variable("request", None)
 
     def setUp(self):
@@ -63,7 +63,7 @@ class EddApiTestCaseMixin(object):
         Overrides the default Django TestCase to clear out the threadlocal request variable during
         test setUp and tearDown.
         """
-        super(EddApiTestCaseMixin, self).setUp()
+        super().setUp()
         set_thread_variable("request", None)
 
     def tearDown(self):
@@ -71,23 +71,17 @@ class EddApiTestCaseMixin(object):
         Overrides the default Django TestCase to clear out the threadlocal request variable during
         test setUp and tearDown.
         """
-        super(EddApiTestCaseMixin, self).tearDown()
+        super().tearDown()
         set_thread_variable("request", None)
 
     def _check_status(self, response, expected_code):
+        wsgi = response.wsgi_request
         self.assertEqual(
             response.status_code,
             expected_code,
-            "Wrong response status code (%(code)s instead of %(expected)s) %(method)s %(url)s "
-            "for user %(user)s. Response: %(response)s"
-            % {
-                "code": response.status_code,
-                "expected": expected_code,
-                "method": response.wsgi_request.method,
-                "response": response.content,
-                "url": response.wsgi_request.path,
-                "user": response.wsgi_request.user,
-            },
+            f"Received {response.status_code} instead of {expected_code} for "
+            f"{wsgi.method} {wsgi.path} for user {wsgi.user}. "
+            f"Response: {response.content}",
         )
         return response
 
@@ -116,7 +110,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
 
     @classmethod
     def setUpTestData(cls):
-        super(StudiesTests, cls).setUpTestData()
+        super().setUpTestData()
         User = get_user_model()
         cls.study = models.Study.objects.get(pk=23)  # "Group read study"
         cls.superuser = User.objects.get(username="superuser")
@@ -266,7 +260,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
         Creates strains, users, and study/line combinations to test the REST resource's application
         of user permissions.
         """
-        super(LinesTests, cls).setUpTestData()
+        super().setUpTestData()
 
 
 class AssaysTests(EddApiTestCaseMixin, APITestCase):
@@ -280,7 +274,7 @@ class AssaysTests(EddApiTestCaseMixin, APITestCase):
 
     @classmethod
     def setUpTestData(cls):
-        super(AssaysTests, cls).setUpTestData()
+        super().setUpTestData()
 
 
 class MeasurementsTests(EddApiTestCaseMixin, APITestCase):
@@ -294,7 +288,7 @@ class MeasurementsTests(EddApiTestCaseMixin, APITestCase):
 
     @classmethod
     def setUpTestData(cls):
-        super(MeasurementsTests, cls).setUpTestData()
+        super().setUpTestData()
 
 
 class MeasurementValuesTests(EddApiTestCaseMixin, APITestCase):
@@ -308,7 +302,7 @@ class MeasurementValuesTests(EddApiTestCaseMixin, APITestCase):
 
     @classmethod
     def setUpTestData(cls):
-        super(MeasurementValuesTests, cls).setUpTestData()
+        super().setUpTestData()
 
 
 class ExportTests(EddApiTestCaseMixin, APITestCase):
@@ -373,7 +367,7 @@ class EddObjectSearchTest(EddApiTestCaseMixin, APITestCase):
 
     @classmethod
     def setUpTestData(cls):
-        super(EddObjectSearchTest, cls).setUpTestData()
+        super().setUpTestData()
         User = get_user_model()
         cls.superuser = User.objects.get(username="superuser")
 

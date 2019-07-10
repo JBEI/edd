@@ -39,20 +39,22 @@ def schema_view(request):
 
 
 class EDDObjectFilter(filters.FilterSet):
-    active = django_filters.BooleanFilter(name="active")
+    active = django_filters.BooleanFilter(field_name="active")
     created_before = django_filters.IsoDateTimeFilter(
-        name="created__mod_time", lookup_expr="lte"
+        field_name="created__mod_time", lookup_expr="lte"
     )
     created_after = django_filters.IsoDateTimeFilter(
-        name="created__mod_time", lookup_expr="gte"
+        field_name="created__mod_time", lookup_expr="gte"
     )
-    description = django_filters.CharFilter(name="description", lookup_expr="iregex")
-    name = django_filters.CharFilter(name="name", lookup_expr="iregex")
+    description = django_filters.CharFilter(
+        field_name="description", lookup_expr="iregex"
+    )
+    name = django_filters.CharFilter(field_name="name", lookup_expr="iregex")
     updated_before = django_filters.IsoDateTimeFilter(
-        name="updated__mod_time", lookup_expr="lte"
+        field_name="updated__mod_time", lookup_expr="lte"
     )
     updated_after = django_filters.IsoDateTimeFilter(
-        name="updated__mod_time", lookup_expr="gte"
+        field_name="updated__mod_time", lookup_expr="gte"
     )
 
     class Meta:
@@ -68,8 +70,8 @@ class StudyFilter(EDDObjectFilter):
 
 class StudyInternalsFilterMixin(object):
     """
-    Mixin class handling the filtering of a queryset to only return objects linked to a
-    visible study.
+    Mixin class handling the filtering of a queryset to only return objects
+    linked to a visible study.
     """
 
     filter_class = EDDObjectFilter
@@ -81,10 +83,10 @@ class StudyInternalsFilterMixin(object):
 
     def filter_queryset(self, queryset):
         """
-        Overrides GenericAPIView's filter_queryset() to filter results to only studies the user has
-        access to.
+        Overrides GenericAPIView's filter_queryset() to filter results to only
+        studies the user has access to.
         """
-        queryset = super(StudyInternalsFilterMixin, self).filter_queryset(queryset)
+        queryset = super().filter_queryset(queryset)
         if not models.Study.user_role_can_read(self.request.user):
             access = models.Study.access_filter(
                 self.request.user, via=self._filter_joins
@@ -116,7 +118,7 @@ class StudyInternalsFilterMixin(object):
             self.lookup_field = "uuid"
         except ValueError:
             pass
-        return super(StudyInternalsFilterMixin, self).get_object()
+        return super().get_object()
 
 
 class StudyFilterMixin(StudyInternalsFilterMixin):
@@ -131,8 +133,8 @@ class StudiesViewSet(
 ):
     """
     API endpoint that provides access to studies, subject to user/role read access
-    controls. Note that some privileged 'manager' users may have access to the base study name,
-    description, etc, but not to the contained lines or other data.
+    controls. Note that some privileged 'manager' users may have access to the
+    base study name, description, etc, but not to the contained lines or other data.
     """
 
     serializer_class = serializers.StudySerializer
@@ -141,8 +143,10 @@ class StudiesViewSet(
 
 
 class LineFilter(EDDObjectFilter):
-    strain = django_filters.CharFilter(name="strains", method="filter_strain")
-    strains__in = django_filters.CharFilter(name="strains", method="filter_strains")
+    strain = django_filters.CharFilter(field_name="strains", method="filter_strain")
+    strains__in = django_filters.CharFilter(
+        field_name="strains", method="filter_strains"
+    )
     # TODO: filter on Carbon Source.  Note that 'in' filtering via Meta.fields doesn't work on
     # m2m relationships
 
@@ -182,22 +186,19 @@ class LineFilterMixin(StudyInternalsFilterMixin):
 
 
 class LinesViewSet(LineFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that allows Lines to be searched, viewed, and edited.
-    """
+    """API endpoint that allows Lines to be searched, viewed, and edited."""
 
     pass
 
 
 class StudyLinesView(LineFilterMixin, viewsets.ReadOnlyModelViewSet):
     """
-    API endpoint that allows Lines within a study to be searched, viewed, and edited.
+    API endpoint that allows Lines within a study to be searched, viewed,
+    and edited.
     """
 
     def get_queryset(self):
-        return (
-            super(StudyLinesView, self).get_queryset().filter(self.get_nested_filter())
-        )
+        return super().get_queryset().filter(self.get_nested_filter())
 
 
 class AssayFilter(EDDObjectFilter):
@@ -221,42 +222,37 @@ class AssayFilterMixin(StudyInternalsFilterMixin):
 
 
 class AssaysViewSet(AssayFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that allows Assays to be searched, viewed, and edited.
-    """
+    """API endpoint that allows Assays to be searched, viewed, and edited."""
 
     pass
 
 
 class StudyAssaysViewSet(AssayFilterMixin, viewsets.ReadOnlyModelViewSet):
     """
-    API endpoint that allows Assays within a study to be searched, viewed, and edited.
+    API endpoint that allows Assays within a study to be searched, viewed,
+    and edited.
     """
 
     def get_queryset(self):
-        return (
-            super(StudyAssaysViewSet, self)
-            .get_queryset()
-            .filter(self.get_nested_filter())
-        )
+        return super().get_queryset().filter(self.get_nested_filter())
 
 
 class MeasurementFilter(filters.FilterSet):
-    active = django_filters.BooleanFilter(name="active")
+    active = django_filters.BooleanFilter(field_name="active")
     created_before = django_filters.IsoDateTimeFilter(
-        name="update_ref__mod_time", lookup_expr="lte"
+        field_name="update_ref__mod_time", lookup_expr="lte"
     )
     created_after = django_filters.IsoDateTimeFilter(
-        name="update_ref__mod_time", lookup_expr="gte"
+        field_name="update_ref__mod_time", lookup_expr="gte"
     )
     compartment = django_filters.ChoiceFilter(
-        name="compartment", choices=models.Measurement.Compartment.CHOICE
+        field_name="compartment", choices=models.Measurement.Compartment.CHOICE
     )
     line = django_filters.ModelChoiceFilter(
-        name="assay__line", queryset=models.Line.objects.all()
+        field_name="assay__line", queryset=models.Line.objects.all()
     )
     measurement_format = django_filters.ChoiceFilter(
-        name="measurement_format", choices=models.Measurement.Format.CHOICE
+        field_name="measurement_format", choices=models.Measurement.Format.CHOICE
     )
 
     class Meta:
@@ -289,11 +285,12 @@ class MeasurementsViewSet(MeasurementFilterMixin, viewsets.ReadOnlyModelViewSet)
 
 class StudyMeasurementsViewSet(MeasurementFilterMixin, viewsets.ReadOnlyModelViewSet):
     """
-    API endpoint that allows Measurements within a study to be searched, viewed, and edited.
+    API endpoint that allows Measurements within a study to be searched,
+    viewed, and edited.
     """
 
     def get_queryset(self):
-        qs = super(StudyMeasurementsViewSet, self).get_queryset()
+        qs = super().get_queryset()
         return qs.filter(self.get_nested_filter())
 
 
@@ -323,25 +320,26 @@ def export_queryset(model):
 
 class ExportFilter(filters.FilterSet):
     """
-    FilterSet used to select data for exporting. See <main.export.table.ExportSelection>.
+    FilterSet used to select data for exporting.
+    See <main.export.table.ExportSelection>.
     """
 
     study_id = django_filters.ModelMultipleChoiceFilter(
-        lookup_expr="in", name="study", queryset=export_queryset(models.Study)
+        lookup_expr="in", field_name="study", queryset=export_queryset(models.Study)
     )
     line_id = django_filters.ModelMultipleChoiceFilter(
         lookup_expr="in",
-        name="measurement__assay__line",
+        field_name="measurement__assay__line",
         queryset=export_queryset(models.Line),
     )
     assay_id = django_filters.ModelMultipleChoiceFilter(
         lookup_expr="in",
-        name="measurement__assay",
+        field_name="measurement__assay",
         queryset=export_queryset(models.Assay),
     )
     measure_id = django_filters.ModelMultipleChoiceFilter(
         lookup_expr="in",
-        name="measurement_id",
+        field_name="measurement_id",
         queryset=export_queryset(models.Measurement),
     )
 
@@ -455,21 +453,21 @@ class StreamingExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 class MeasurementValueFilter(filters.FilterSet):
     assay = django_filters.ModelChoiceFilter(
-        name="measurement__assay", queryset=models.Assay.objects.all()
+        field_name="measurement__assay", queryset=models.Assay.objects.all()
     )
     created_before = django_filters.IsoDateTimeFilter(
-        name="updated__mod_time", lookup_expr="lte"
+        field_name="updated__mod_time", lookup_expr="lte"
     )
     created_after = django_filters.IsoDateTimeFilter(
-        name="updated__mod_time", lookup_expr="gte"
+        field_name="updated__mod_time", lookup_expr="gte"
     )
     line = django_filters.ModelChoiceFilter(
-        name="measurement__assay__line", queryset=models.Line.objects.all()
+        field_name="measurement__assay__line", queryset=models.Line.objects.all()
     )
-    x__gt = django_filters.NumberFilter(name="x", lookup_expr="0__gte")
-    x__lt = django_filters.NumberFilter(name="x", lookup_expr="0__lte")
-    y__gt = django_filters.NumberFilter(name="y", lookup_expr="0__gte")
-    y__lt = django_filters.NumberFilter(name="y", lookup_expr="0__lte")
+    x__gt = django_filters.NumberFilter(field_name="x", lookup_expr="0__gte")
+    x__lt = django_filters.NumberFilter(field_name="x", lookup_expr="0__lte")
+    y__gt = django_filters.NumberFilter(field_name="y", lookup_expr="0__gte")
+    y__lt = django_filters.NumberFilter(field_name="y", lookup_expr="0__lte")
 
     class Meta:
         model = models.MeasurementValue
@@ -486,29 +484,26 @@ class ValuesFilterMixin(StudyInternalsFilterMixin):
 
 
 class MeasurementValuesViewSet(ValuesFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that allows Values to be searched, viewed, and edited.
-    """
+    """API endpoint that allows Values to be searched, viewed, and edited."""
 
     pass
 
 
 class StudyValuesViewSet(ValuesFilterMixin, viewsets.ReadOnlyModelViewSet):
     """
-    API endpoint that allows Values within a study to be searched, viewed, and edited.
+    API endpoint that allows Values within a study to be searched, viewed,
+    and edited.
     """
 
     def get_queryset(self):
-        return (
-            super(StudyValuesViewSet, self)
-            .get_queryset()
-            .filter(self.get_nested_filter())
-        )
+        return super().get_queryset().filter(self.get_nested_filter())
 
 
 class MeasurementTypesFilter(filters.FilterSet):
-    type_name = django_filters.CharFilter(name="type_name", lookup_expr="iregex")
-    type_group = django_filters.CharFilter(name="type_group", lookup_expr="iregex")
+    type_name = django_filters.CharFilter(field_name="type_name", lookup_expr="iregex")
+    type_group = django_filters.CharFilter(
+        field_name="type_group", lookup_expr="iregex"
+    )
 
     class Meta:
         model = models.MeasurementType
@@ -517,9 +512,10 @@ class MeasurementTypesFilter(filters.FilterSet):
 
 class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    API endpoint that provides search/detail access to all MeasurementTypes. Clients can filter
-    results to the desired type. and can get additional type-specific details by setting the
-    'type_group' parameter: GeneIdentifiers ('g'), Metabolites ('m'), Phosphors ('h'),
+    API endpoint that provides search/detail access to all MeasurementTypes.
+    Clients can filter results to the desired type, and can get additional
+    type-specific details by setting the 'type_group' parameter:
+    GeneIdentifiers ('g'), Metabolites ('m'), Phosphors ('h'),
     and ProteinIdentifiers ('p').
     """
 
@@ -549,15 +545,15 @@ class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_serializer_class(self):
         """
-        Overrides the parent implementation to provide serialization that's dynamically determined
-        by the requested result type
+        Overrides the parent implementation to provide serialization
+        dynamically determined by the requested result type.
         """
         group = self.request.query_params.get("type_group")
         return self.serializer_lookup.get(group, serializers.MeasurementTypeSerializer)
 
 
 class MetadataTypesFilter(filters.FilterSet):
-    group = django_filters.CharFilter(name="group__group_name")
+    group = django_filters.CharFilter(field_name="group__group_name")
 
     class Meta:
         model = models.MetadataType
@@ -576,9 +572,9 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class MeasurementUnitFilter(filters.FilterSet):
-    unit_name = django_filters.CharFilter(name="unit_name", lookup_expr="iregex")
+    unit_name = django_filters.CharFilter(field_name="unit_name", lookup_expr="iregex")
     alternate_names = django_filters.CharFilter(
-        name="alternate_names", lookup_expr="iregex"
+        field_name="alternate_names", lookup_expr="iregex"
     )
 
     class Meta:
@@ -616,8 +612,8 @@ class MetadataGroupViewSet(viewsets.ReadOnlyModelViewSet):
 
 class UsersViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    API endpoint that allows privileged users to get read-only information on the current set of
-    EDD user accounts.
+    API endpoint that allows privileged users to get read-only information on
+    the current set of EDD user accounts.
     """
 
     permission_classes = [IsAuthenticated]

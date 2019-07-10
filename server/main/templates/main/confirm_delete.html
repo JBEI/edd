@@ -30,7 +30,7 @@ the {{ typename }} "{{ name }}"
   <div class="confirm-form">
     <p>
       {% if measurement_count >= 1 %}
-        {% blocktrans trimmed with item=t_items count counter=measure_count %}
+        {% blocktrans trimmed with item=t_items count counter=measurement_count %}
           Are you sure you want to delete {{ item }}? This will remove a measurement value.
         {% plural %}
           Are you sure you want to delete {{ item }}? This will remove {{ counter }}

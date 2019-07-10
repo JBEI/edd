@@ -118,7 +118,7 @@ class MultiAutocompleteWidget(AutocompleteWidget):
                 return ["", None]
         return super().decompress(value)
 
-    def render(self, name, value, attrs=None):
+    def render(self, name, value, attrs=None, renderer=None):
         joined = []
         widget_count = len(self.widgets)
         for _index in range(widget_count):

@@ -81,10 +81,8 @@
         <div>
           <span class="linesSelectedCell linesRequiredControls">
             {# TODO: this gets replaced in Typescript, figure out i18n there #}
-            {% blocktrans count counter=0 %}
-            {{ counter }} selected
-            {% plural %}
-            {{ counter }} selected
+            {% blocktrans %}
+            0 selected
             {% endblocktrans %}
           </span>
           <span class="disablableButtons linesRequiredControls">

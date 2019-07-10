@@ -273,6 +273,7 @@ class StudyAttachmentView(generic.DetailView):
             cancel_link=reverse("main:overview", kwargs={"slug": study.slug}),
             confirm_action="delete",
             delete_select=None,
+            item_count=1,
             item_names=[attachment.filename],
             measurement_count=0,
             typename=_("Attachment"),
