@@ -13,7 +13,7 @@ register = template.Library()
 
 class EnvironmentLabelNode(Node):
     def render(self, context):
-        env = getattr(settings, "EDD_DEPLOYMENT_ENVIRONMENT")
+        env = getattr(settings, "EDD_DEPLOYMENT_ENVIRONMENT", "")
         if env[:11] == "DEVELOPMENT":
             return format_html('<span class="dev">{}</span>', env)
         elif env[:4] == "TEST":
@@ -96,3 +96,15 @@ def env_label(parser, token):
 @register.tag
 def external_scripts(parser, token):
     return ExternalScriptsNode()
+
+
+@register.simple_tag(takes_context=True)
+def login_welcome(context):
+    try:
+        request = context["request"]
+        site = get_current_site(request)
+        welcome = site.page.branding.login_welcome
+        return welcome
+    except Exception:
+        # with no branding, show no welcome message
+        return ""

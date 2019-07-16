@@ -16,7 +16,7 @@ AUTH_LDAP_BIND_PASSWORD = env("LDAP_PASS", default=None)
 AUTH_LDAP_USER_SEARCH = LDAPSearch(
     "ou=People,dc=lbl,dc=gov",
     ldap.SCOPE_ONELEVEL,
-    "(&(uid=%(user)s)(objectclass=lblperson)(lblaccountstatus=active))",
+    "(&(|(uid=%(user)s)(mail=%(user)s))(objectclass=lblperson)(lblaccountstatus=active))",
 )
 AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
     "ou=JBEI-Groups,ou=Groups,dc=lbl,dc=gov",
@@ -32,16 +32,14 @@ AUTH_LDAP_USER_ATTR_MAP = {
 }
 AUTH_LDAP_PROFILE_ATTR_MAP = {"employee_number": "lblempnum"}
 
-# See https://pythonhosted.org/django-auth-ldap/install.html
-# See https://docs.djangoproject.com/en/dev/howto/auth-remote-user/
 AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",
-    # 'django.contrib.auth.backends.RemoteUserBackend',
     # `allauth` specific authentication methods, such as login by e-mail
     "allauth.account.auth_backends.AuthenticationBackend",
 )
 # only enable AllauthLDAPBackend iff bind password is set
 if AUTH_LDAP_BIND_PASSWORD:
+    # See https://pythonhosted.org/django-auth-ldap/install.html
     AUTHENTICATION_BACKENDS = (
         "main.account.adapter.AllauthLDAPBackend",  # 'django_auth_ldap.backend.LDAPBackend',
     ) + AUTHENTICATION_BACKENDS

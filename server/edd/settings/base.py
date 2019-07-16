@@ -118,7 +118,8 @@ MIDDLEWARE = (
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        # force check our templates directory first for overrides
+        "DIRS": [root("main", "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

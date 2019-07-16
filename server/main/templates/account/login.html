@@ -2,76 +2,85 @@
 
 {% load i18n %}
 {% load account socialaccount %}
+{% load branding %}
 {% load staticfiles %}
 
 {% block js_css %}
-    {{ block.super }}
-    {% get_providers as socialaccount_providers %}
-    {% if socialaccount_providers %}
-    {% providers_media_js %}
-    {% endif %}
+  {{ block.super }}
+  {% get_providers as socialaccount_providers %}
+  {% if socialaccount_providers %}
+  {% providers_media_js %}
+  {% endif %}
 {% endblock js_css %}
 
 {% block status %}
-    {{ block.super }}
-    {% if form.errors %}
-    <p class="bad">Login failed. Please try again.</p>
-    {% endif %}
+  {{ block.super }}
+  {% if form.errors %}
+  <p class="bad">{% trans 'Login failed. Please try again.' %}</p>
+  {% endif %}
 {% endblock status %}
 
 {% block content %}
-    {% get_providers as socialaccount_providers %}
-    <form class="login_form" method="POST" action="{% url 'account_login' %}">
-        {% csrf_token %}
-        <fieldset>
-        {% if socialaccount_providers %}
-            <legend>Login with third party accounts</legend>
-            <p>
-                {% blocktrans %}
-                Please sign in with one of your existing third party accounts.
-                {% endblocktrans %}
-            </p>
-            <div class="socialaccount_ballot">
-                <ul class="socialaccount_providers">
-                    {% include "socialaccount/snippets/provider_list.html" with process="login" %}
-                </ul>
-            </div>
-        {% else %}
-            <legend>Create an account</legend>
-            <p>
-                {% blocktrans %}
-                If you have not created an account yet, then please
-                <a href="{{ signup_url }}">sign up</a> first. You may also log in with your LBL
-                account.
-                {% endblocktrans %}
-            </p>
-        {% endif %}
-        </fieldset>
-        <div class="login_or">{% trans 'or' %}</div>
-        <fieldset>
-            <legend>Login with EDD Account</legend>
-            <div>
-                {{ form.login.label_tag }}
-                {{ form.login }}
-            </div>
-            <div>
-                {{ form.password.label_tag }}
-                {{ form.password }}
-                 <div>
-                    <a class="forgotPassword" href="{% url 'account_reset_password' %}">Forgot password?</a>
-                </div>
-            </div>
+  {% get_providers as socialaccount_providers %}
+  <form class="login_form" method="POST" action="{% url 'account_login' %}">
+    {% csrf_token %}
+    {% login_welcome as welcome %}
+    {% if welcome %}
+    <p>{{ welcome }}</p>
+    {% endif %}
+    <fieldset>
+    {% if socialaccount_providers %}
+      <legend>{% trans 'Login with third-party accounts' %}</legend>
+      <p>
+        {% blocktrans %}
+        Please sign in with one of your existing third-party accounts.
+        {% endblocktrans %}
+      </p>
+      <div class="socialaccount_ballot">
+        <ul class="socialaccount_providers">
+          {% include "socialaccount/snippets/provider_list.html" with process="login" %}
+        </ul>
+      </div>
+    {% else %}
+      <legend>{% trans 'Create an account' %}</legend>
+      <p>
+        {% blocktrans %}
+        If you have not created an account yet, then please
+        <a href="{{ signup_url }}">sign up</a> first.
+        {% endblocktrans %}
+      </p>
+    {% endif %}
+    </fieldset>
+    <div class="login_or">{% trans 'or' %}</div>
+    <fieldset>
+      <legend>{% trans 'Login with EDD Account' %}</legend>
+      <div>
+        {{ form.login.label_tag }}
+        {{ form.login }}
+      </div>
+      <div>
+        {{ form.password.label_tag }}
+        {{ form.password }}
+        <div>
+          <a class="forgotPassword" href="{% url 'account_reset_password' %}">
+            {% trans 'Forgot password?' %}
+          </a>
+        </div>
+      </div>
 
-            <button id="id_click" type="submit">Login</button>
-            <input type="hidden" name="next" value="{{ next }}"/>
-        </fieldset>
+      <button id="id_click" type="submit">{% trans 'Login' %}</button>
+      <input
+          type="hidden"
+          name="{{ redirect_field_name }}"
+          value="{{ redirect_field_value }}"/>
+    </fieldset>
 
-        {% if socialaccount_providers %}
-            <p>
-                {% blocktrans with site.name as site_name %}
-                <a href="{{ signup_url }}">Sign up</a> for a {{ site_name }} account.
-                {% endblocktrans %}
-            </p>
-        {% endif %}
-    </form>
+    {% if socialaccount_providers %}
+    <p>
+      {% blocktrans with site.name as site_name %}
+      <a href="{{ signup_url }}">Sign up</a> for a {{ site_name }} account.
+      {% endblocktrans %}
+    </p>
+    {% endif %}
+  </form>
 {% endblock content %}

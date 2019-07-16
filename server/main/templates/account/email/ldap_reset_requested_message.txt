@@ -1,0 +1,9 @@
+{% load i18n %}
+{% blocktrans with site_name=current_site.name site_domain=current_site.domain %}
+Hello from {{ site_name|default:"EDD" }}!
+
+You're receiving this e-mail because you or someone else has requested a password for your user account. The account associated with this address is authenticated using LBNL LDAP credentials. To change your LBNL password, use <https://password.lbl.gov/>. If you did not request a password reset, you may ignore this message.
+
+Thank you for using {{ site_name|default:"EDD" }}!
+{{ site_domain }}
+{% endblocktrans %}
