@@ -1,8 +1,15 @@
-FROM helder/docker-gen:latest
+FROM jwilder/docker-gen:latest
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
-COPY nginx.tmpl /etc/docker-gen/templates/
-COPY entrypoint.sh /
+RUN set -ex \
+    && apk update \
+    && apk add --no-cache \
+        bash \
+        curl \
+        jq
 
-ENTRYPOINT ["/entrypoint.sh"]
+COPY nginx.tmpl /etc/docker-gen/templates/
+COPY entrypoint.sh functions.sh reload-nginx.sh /usr/local/bin/
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

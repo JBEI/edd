@@ -8,6 +8,8 @@ RUN set -ex \
     # image needs netcat to run healthcheck
     && apk --update add --no-cache netcat-openbsd
 
+COPY test_and_reload.sh /usr/local/bin/
+
 HEALTHCHECK \
     --interval=15s \
     --retries=4 \
