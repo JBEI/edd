@@ -205,7 +205,7 @@ output "EDD_DEPLOYMENT_ENVIRONMENT: ${EDD_DEPLOYMENT_ENVIRONMENT:-'Not specified
 if [ ! -x /code/manage.py ]; then
     output "Running with container copy of code …"
     # copy everything in /usr/local/edd to /code
-    cp -R /usr/local/edd/* .
+    cp -R /usr/local/edd/. .
     # if given a local.py override, copy it into place
     if [ -r "$LOCAL_PY" ]; then
         cp "$LOCAL_PY" /code/edd/settings/local.py
