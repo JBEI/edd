@@ -559,10 +559,10 @@ class CombinatorialCreationTests(TestCase):
 
             for protocol_pk, assays_list in protocol_to_assays_list.items():
                 planned_assay_names = protocol_to_planned_assay_names.get(protocol_pk)
-                self.assertEquals(len(assays_list), len(planned_assay_names))
+                self.assertEqual(len(assays_list), len(planned_assay_names))
                 for assay_index, assay in enumerate(assays_list):
                     planned_assay_name = planned_assay_names[assay_index]
-                    self.assertEquals(assay.name, planned_assay_name)
+                    self.assertEqual(assay.name, planned_assay_name)
 
             # if provided by the test code, verify that assay/line metadata match our expectations.
             # above tests verify the naming only, which is generally a result of the metadata,

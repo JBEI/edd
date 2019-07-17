@@ -359,7 +359,7 @@ class Report(SampleCollection):
 def import_xlsx_metadata(file, header_key="ID"):
     headers = []
     table = []
-    wb = load_workbook(file, read_only=True)
+    wb = load_workbook(file, read_only=True, data_only=True)
     if len(wb.worksheets) == 0:
         raise RuntimeError("No worksheets found in Excel file!")
     i_row = 0
@@ -407,7 +407,8 @@ def run(args, out=sys.stdout, err=sys.stderr):
     )
     options, args = parser.parse_args(args)
     assert len(args) == 1
-    result = Report(open(args[0], "U").readlines())
+    with open(args[0], "r") as file:
+        result = Report(file.readlines())
     assert len(result.samples) > 0
     if options.quiet:
         err = StringIO()

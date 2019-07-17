@@ -8,6 +8,7 @@ from allauth.socialaccount import providers
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.conf import settings
 from django.contrib import auth, messages, sites
+from django.contrib.auth.backends import ModelBackend
 from django.db.models import Q
 from django.shortcuts import redirect
 from django.utils.module_loading import import_string
@@ -178,13 +179,13 @@ class AllauthLDAPBackend(LDAPBackend):
                 )
 
 
-class LocalTestBackend(auth.backends.ModelBackend):
+class LocalTestBackend(ModelBackend):
     """
     A simple workaround to facilitate offsite EDD Testing. When enabled,
     login attempts that use a valid username will always succeed.
     """
 
-    def authenticate(self, username=None, password=None, **kwargs):
+    def authenticate(self, request, username=None, password=None, **kwargs):
         User = auth.get_user_model()
         queryset = User.objects.filter(username=username)
         return queryset.first()

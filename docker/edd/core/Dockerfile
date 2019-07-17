@@ -55,9 +55,6 @@ RUN set -ex \
     && pipenv --version
 
 COPY Pipfile Pipfile.lock /code/
-RUN pipenv install --system --deploy --verbose \
-    && apk del .build-deps \
-    && rm -f Pipfile Pipfile.lock
 
 # ---
 
@@ -66,7 +63,10 @@ FROM base as prod-preinstall
 # nothing special for prod
 ARG EDD_VERSION
 
-RUN echo "Production pre-install for EDD ${EDD_VERSION}"
+RUN echo "Production pre-install for EDD ${EDD_VERSION}" \
+    && pipenv install --system --deploy --verbose \
+    && apk del .build-deps \
+    && rm -f Pipfile Pipfile.lock
 
 # ---
 
@@ -76,7 +76,9 @@ ARG EDD_VERSION
 
 # install coverage-py
 RUN echo "Development pre-install for EDD ${EDD_VERSION}" \
-    && pip install coverage
+    && pipenv install --dev --system --deploy --verbose \
+    && apk del .build-deps \
+    && rm -f Pipfile Pipfile.lock
 
 # ---
 

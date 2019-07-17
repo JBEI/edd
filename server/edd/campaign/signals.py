@@ -11,19 +11,19 @@ from . import models
 
 
 def campaign_check(sender, instance, raw, using, **kwargs):
-    # don't do anything for raw loads from fixtures
+    # make sure there is a UUID set
+    if instance.uuid is None:
+        instance.uuid = uuid4()
+    # log update, make sure created is set
+    # .load_update() accesses database, do not run if raw is True
     if not raw:
-        # make sure there is a UUID set
-        if instance.uuid is None:
-            instance.uuid = uuid4()
-        # log update, make sure created is set
-        update = edd_models.Update.load_update()
+        instance.updated = edd_models.Update.load_update()
         if instance.created_id is None:
-            instance.created = update
-        instance.updated = update
-        # make sure there is a slug
-        if instance.slug is None:
-            instance.slug = instance._build_slug()
+            instance.created = instance.updated
+    # make sure there is a slug
+    # ._build_slug() accesses database, do not run if raw is True
+    if instance.slug is None and not raw:
+        instance.slug = instance._build_slug()
 
 
 # ensure that signal is only connected once if this code runs again
@@ -32,10 +32,8 @@ pre_save.connect(campaign_check, sender=models.Campaign, dispatch_uid=dispatch)
 
 
 def campaign_update(sender, instance, raw, using, **kwargs):
-    # don't do anything for raw loads from fixtures
-    if not raw:
-        # m2m relation must have IDs on both sides; has to be post_save
-        instance.updates.add(instance.updated)
+    # m2m relation must have IDs on both sides; has to be post_save
+    instance.updates.add(instance.updated)
 
 
 # ensure that signal is only connected once if this code runs again

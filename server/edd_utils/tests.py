@@ -64,7 +64,8 @@ class GCMSTests(TestCase):
         # Import .xlsx workbook
         #
         test_file = os.path.join(test_dir, "sample_gc_ms_key.xlsx")
-        headers, table = gc_ms.import_xlsx_metadata(open(test_file, "rb"))
+        with open(test_file, "rb") as file:
+            headers, table = gc_ms.import_xlsx_metadata(file)
         self.assertEqual(
             headers,
             [
@@ -84,24 +85,20 @@ class GCMSTests(TestCase):
         )
 
 
-########################################################################
-# SKYLINE
 class SkylineTests(TestCase):
     def test_1(self):
         file_name = os.path.join(test_dir, "skyline.csv")
         parser = skyline.SkylineParser()
-        with open(file_name, "U") as file:
+        with open(file_name, "r") as file:
             result = parser.export(file)
-            self.assertIn(skyline.Record("4", "A", 22), result["rows"])
+        self.assertIn(skyline.Record("4", "A", 22), result["rows"])
 
 
-########################################################################
-# BIOLECTOR IMPORT
 class BiolectorTests(TestCase):
     def test_simple(self):
         filename = "/code/edd_utils/parsers/biolector/biolector_test_file.xml"
-        file = open(filename, "U")
-        results = biolector.getRawImportRecordsAsJSON(file, 0)
+        with open(filename, "r") as file:
+            results = biolector.getRawImportRecordsAsJSON(file, 0)
         self.assertEqual(len(results), 48)
         last_v = results[-1]["data"][-1][1]
         self.assertEqual(last_v, "8.829")
@@ -109,8 +106,6 @@ class BiolectorTests(TestCase):
         self.assertEqual(well_v, "C05")
 
 
-########################################################################
-# EXCEL IMPORT
 def get_table():
     return [
         ["Some random text we want to ignore", None, None, None, None, None],
@@ -211,8 +206,6 @@ class ExcelTests(TestCase):
         get_table()
 
 
-########################################################################
-# OTHER
 class UtilsTests(TestCase):
     def test_form_handling(self):
         form = {
@@ -259,54 +252,3 @@ class UtilsTests(TestCase):
         self.assertIsNone(
             extract_floats_from_form(form, "float4", return_none_if_missing=True)
         )
-
-
-# _INITIAL_ICE_RETRY_DELAY = config['ice'].get('initial_retry_delay_seconds', 2)
-# _MAX_ICE_RETRIES = config['ice'].get('max_retries', 19)
-# _RETRY_NUMBER_FOR_ICE_NOTIFICATION = config['ice'].get('notify_after_retry', 3)
-
-
-class TestCeleryRequest:
-    def __init__(self, retries):
-        self.retries = retries
-
-
-class TestTask:
-    """
-    Defines a minimal subset of data members that approximates Celery's Task class for testing
-    purposes. Duck typing! :-)
-    """
-
-    def __init__(
-        self, retry_num, default_retry_delay, soft_time_limit=None, max_retries=None
-    ):
-        self.request = TestCeleryRequest(retry_num)
-        self.default_retry_delay = default_retry_delay
-        self.soft_time_limit = soft_time_limit
-        self.max_retries = max_retries
-
-
-def decode_test_task(dict, require_soft_time_limit=True, require_max_retries=True):
-    """
-    A JSON decoder for TestTask
-    :param dict: a dictionary containing the data for a TestTask
-    :return: the TestTask
-    """
-    retries = int(dict["retries"])
-    default_retry_delay = float(dict["default_retry_delay"])
-
-    # optionally read soft time limit
-    soft_time_limit = None
-    key = "soft_time_limit"
-    if require_soft_time_limit or key in dict:
-        soft_limit_str = dict[key]
-        soft_time_limit = int(soft_limit_str)
-
-    # optionally read max retries
-    max_retries = None
-    key = "max_retries"
-    if require_max_retries or key in dict:
-        max_retries_str = dict["max_retries"]
-        max_retries = int(max_retries_str)
-
-    return TestTask(retries, default_retry_delay, soft_time_limit, max_retries)

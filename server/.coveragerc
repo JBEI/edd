@@ -1,0 +1,11 @@
+[run]
+branch = True
+source = .
+
+[report]
+omit =
+	*test*
+	*/commands/*
+	*/migrations/*
+	edd/settings/*
+	manage.py

@@ -1,5 +1,7 @@
 # coding: utf-8
 
+from uuid import UUID
+
 from django.contrib.auth.models import AnonymousUser
 from django.urls import reverse
 from faker import Faker
@@ -86,6 +88,15 @@ class CampaignPermissionTests(TestCase):
         operation = models.CampaignPermission.ADD
         self.permission.set_allowed(edd_models.Study, operation)
         self.assertTrue(self.permission.is_allowed(edd_models.Study, operation))
+
+    def test_permission_allow_twice(self):
+        # setting an operation twice will only add one item to link_permissions
+        operation = models.CampaignPermission.ADD
+        self.permission.set_allowed(edd_models.Study, operation)
+        once_length = len(self.permission.link_permissions)
+        self.permission.set_allowed(edd_models.Study, operation)
+        twice_length = len(self.permission.link_permissions)
+        self.assertEqual(once_length, twice_length)
 
     def test_permission_disallow_operation(self):
         # disallowing an operation on permission will show as not allowed
@@ -386,3 +397,44 @@ class CampaignStudyListViewTests(CampaignDetailViewTests):
         self.assertTemplateUsed(response, "edd/campaign/study_list.html")
         self.assertContains(response, self.study_url)
         self.assertContains(response, 'id="removeStudyButton"')
+
+
+class CampaignSignalTests(TestCase):
+    def test_keep_assigned_uuid(self):
+        known_uuid = UUID("00000000-0000-0000-0000-000000000000")
+        campaign = factory.CampaignFactory(uuid=known_uuid)
+        self.assertEqual(known_uuid, campaign.uuid)
+
+    def test_keep_assigned_creation(self):
+        existing_update = edd_models.Update.load_update()
+        campaign = factory.CampaignFactory(created=existing_update)
+        self.assertEqual(existing_update.id, campaign.created_id)
+
+    def test_keep_assigned_slug(self):
+        known_slug = "42"
+        campaign = factory.CampaignFactory(slug=known_slug)
+        self.assertEqual(known_slug, campaign.slug)
+
+    def test_generate_default_fields(self):
+        campaign = factory.CampaignFactory.build()
+        self.assertIsNone(campaign.uuid)
+        self.assertIsNone(campaign.created_id)
+        self.assertIsNone(campaign.updated_id)
+        self.assertIsNone(campaign.slug)
+        campaign.save()
+        campaign.refresh_from_db()
+        self.assertIsNotNone(campaign.uuid)
+        self.assertIsNotNone(campaign.created)
+        self.assertIsNotNone(campaign.updated)
+        self.assertEqual(campaign.created_id, campaign.updated_id)
+        self.assertIsNotNone(campaign.slug)
+
+
+class CampaignSignalFixtureTests(TestCase):
+    fixtures = ["test_campaign.json"]
+
+    def test_fixture_loaded(self):
+        # covers the branches in signals where raw=True
+        # verifies that the fixture uuid value of null gets a valid uuid
+        loaded = models.Campaign.objects.get(id=999999)
+        self.assertIsNotNone(loaded.uuid)

@@ -34,15 +34,13 @@ try {
 
     node('docker') {
 
-        stage('Clean') {
+        stage('Init') {
             // Probably not necessary, as each build should launch a new container
             // Yet, it does not hurt to be careful
             deleteDir()
             // confirm that the directory is empty
             sh 'ls -halt'
-        }
 
-        stage('Checkout') {
             // does a clone/checkout based on Jenkins project config
             def checkout_result = checkout scm
             print checkout_result
@@ -55,9 +53,7 @@ try {
                 script: 'git --no-pager show -s --format=\'%ae\'',
                 returnStdout: true
             ).trim()
-        }
 
-        stage('Init') {
             // run initialization script, as described in EDD project README
             def init_script = $/#!/bin/bash -xe
                 source bin/init-config \
@@ -105,16 +101,13 @@ try {
             }
         }
 
-        stage('Prepare') {
-            // modify configuration files to prepare for launch
-            timeout(5) {
-                sh("sudo bin/jenkins/prepare.sh '${image_version}'")
-            }
-        }
-
         try {
 
             stage('Launch') {
+                // modify configuration files to prepare for launch
+                timeout(5) {
+                    sh("sudo bin/jenkins/prepare.sh '${image_version}'")
+                }
                 timeout(60) {
                     sh("sudo bin/jenkins/launch.sh '${project_name}'")
                 }
@@ -193,11 +186,8 @@ try {
                           to: committer_email,
                      replyTo: committer_email,
                         from: "jbei-edd-admin@lists.lbl.gov"
-            }
 
-            // try to clean up things to not have a zillion leftover docker resources
-            stage('Teardown') {
-                print test_output
+                // try to clean up things to not have a zillion leftover docker resources
                 sh("sudo bin/jenkins/teardown.sh '${project_name}'")
             }
 

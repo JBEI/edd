@@ -3,7 +3,7 @@
 {% block title %}{{ title }} | {{ site_title|default:_('EDD admin') }}{% endblock %}
 
 {% block extrahead %}
-    {% load staticfiles %}
+    {% load static %}
     <script type="text/javascript" src="{% static 'dist/vendor.js' %}"></script>
     <script type="text/javascript" src="{% static 'dist/Admin.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'dist/styles.css' %}" />

@@ -3,8 +3,8 @@
 from django import template
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
-from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.template import Node
+from django.templatetags.static import static
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import ugettext as _
 
@@ -103,8 +103,7 @@ def login_welcome(context):
     try:
         request = context["request"]
         site = get_current_site(request)
-        welcome = site.page.branding.login_welcome
-        return welcome
+        return site.page.branding.login_welcome
     except Exception:
         # with no branding, show no welcome message
         return ""

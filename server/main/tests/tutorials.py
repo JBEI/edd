@@ -218,7 +218,7 @@ class ImportDataTestsMixin(object):
                     mock_task.assert_called_once_with(
                         self.target_study.pk, self.user.pk, import_id
                     )
-        self.assertEquals(self._assay_count(), 0)  # view does not change assays
+        self.assertEqual(self._assay_count(), 0)  # view does not change assays
         return response
 
     def _run_parse_view(self, filename, filetype, mode):
@@ -290,7 +290,7 @@ class ImportDataTestsMixin(object):
             pages.append(json.dumps(page_series))
             self.assertTrue(page_series)
 
-        self.assertEquals(
+        self.assertEqual(
             len(pages), page_count
         )  # verify that data file content matches
 
@@ -423,7 +423,7 @@ class PagedImportTests(ImportDataTestsMixin, TestCase):
                 data=bytes("non-uuid-import-id", encoding="UTF-8"),
                 content_type="application/json",
             )
-            self.assertEquals(response.status_code, codes.bad_request)
+            self.assertEqual(response.status_code, codes.bad_request)
             storage.delete.assert_not_called()
 
             # fake a valid DELETE request
@@ -432,10 +432,10 @@ class PagedImportTests(ImportDataTestsMixin, TestCase):
                 data=bytes(self.import_id, encoding="UTF-8"),
                 content_type="application/json",
             )
-            self.assertEquals(response.status_code, codes.ok)
+            self.assertEqual(response.status_code, codes.ok)
             storage.delete.assert_called_once()
 
-        self.assertEquals(self._assay_count(), 0)  # view does not change assays
+        self.assertEqual(self._assay_count(), 0)  # view does not change assays
         return response
 
 

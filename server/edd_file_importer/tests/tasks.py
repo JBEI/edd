@@ -495,8 +495,8 @@ class LegacyIntegrationTests(EddApiTestCaseMixin, ImportTestsMixin, APITestCase)
         arcA_as = edd_models.Assay.objects.filter(
             line__name="arcA", line__study_id=study_pk
         ).count()
-        self.assertEquals(bw1_as, 1)
-        self.assertEquals(arcA_as, 1)
+        self.assertEqual(bw1_as, 1)
+        self.assertEqual(arcA_as, 1)
 
         # verify that the right number of measurements were created
         bw1_ms = edd_models.Measurement.objects.filter(
@@ -505,8 +505,8 @@ class LegacyIntegrationTests(EddApiTestCaseMixin, ImportTestsMixin, APITestCase)
         arcA_ms = edd_models.Measurement.objects.filter(
             assay__line__name="arcA", assay__line__study_id=study_pk
         )
-        self.assertEquals(len(bw1_ms), 1)
-        self.assertEquals(len(arcA_ms), 1)
+        self.assertEqual(len(bw1_ms), 1)
+        self.assertEqual(len(arcA_ms), 1)
 
         # verify the right number of values were created
         bw1_vals = edd_models.MeasurementValue.objects.filter(
@@ -517,5 +517,5 @@ class LegacyIntegrationTests(EddApiTestCaseMixin, ImportTestsMixin, APITestCase)
             measurement_id=arcA_ms.get().pk
         ).count()
 
-        self.assertEquals(bw1_vals, 7)
-        self.assertEquals(arcA_vals, 7)
+        self.assertEqual(bw1_vals, 7)
+        self.assertEqual(arcA_vals, 7)

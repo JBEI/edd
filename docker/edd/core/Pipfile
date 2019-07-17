@@ -21,7 +21,6 @@ django-threadlocals = "*"
 djangorestframework = "*"
 djangorestframework-csv = "*"
 drf-nested-routers = "*"
-factory-boy = "*"
 gevent = "*"
 graphene = "*"
 graphene-django = "*"
@@ -37,6 +36,11 @@ sqlalchemy = "*"
 watchdog = "*"
 
 [dev-packages]
+coverage = "*"
+factory-boy = "*"
+pytest-asyncio = "*"
+pytest-django = "*"
+pytest-parallel = "*"
 
 [requires]
 python_version = "3.7"

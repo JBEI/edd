@@ -122,7 +122,7 @@ class StudyInternalsFilterMixin(object):
 
 
 class StudyFilterMixin(StudyInternalsFilterMixin):
-    filter_class = StudyFilter
+    filterset_class = StudyFilter
 
 
 class StudiesViewSet(
@@ -175,7 +175,7 @@ class LineFilter(EDDObjectFilter):
 
 
 class LineFilterMixin(StudyInternalsFilterMixin):
-    filter_class = LineFilter
+    filterset_class = LineFilter
     serializer_class = serializers.LineSerializer
     _filter_joins = ["study"]
 
@@ -391,7 +391,7 @@ class ExportFilter(filters.FilterSet):
 class ExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """API endpoint for running exports of data."""
 
-    filter_class = ExportFilter
+    filterset_class = ExportFilter
     pagination_class = paginators.LinkHeaderPagination
     renderer_classes = (renderers.ExportRenderer,)
     serializer_class = serializers.ExportSerializer

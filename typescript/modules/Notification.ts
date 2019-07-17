@@ -1,14 +1,8 @@
 'use strict';
 
 import * as $ from "jquery";
-import * as RWS from "reconnectingwebsocket";
+import * as ReconnectingWebSocket from "reconnecting-websocket";
 import * as Utl from "./Utl";
-
-// TODO find out a way to do this in Typescript without relying on specific output targets
-/* tslint:disable */
-// RWS above is the type; ReconnectingWebSocket is the constructor
-const ReconnectingWebSocket = require('reconnecting-websocket');
-/* tslint:enable */
 
 
 export interface Message {
@@ -19,27 +13,12 @@ export interface Message {
     uuid: string;
 }
 
-export interface DisplayCallback {
-    (msgs: Message[], count: number): void;
-}
-
-export interface TagAction {
-    /**
-     * Callback interface for actions to take on a message based on its set tags.
-     */
-    (message: Message): void;
-}
-
-export interface MenuTagAction {
-    /**
-     * Callback interface for actions to take on a message display item based on its set tags.
-     */
-    (message: Message, item: JQuery): JQuery;
-}
+type DisplayCallback = (msgs: Message[], count: number) => void;
+type TagAction = (message: Message) => void;
 
 export class NotificationSocket {
 
-    private socket: RWS;
+    private socket: ReconnectingWebSocket;
     private messages: {[uuid: string]: Message};
     private count: number;
     private subscribers: DisplayCallback[];
@@ -47,8 +26,8 @@ export class NotificationSocket {
 
     constructor(options?: any) {
         options = options || {};
-        let path: string = options.path || 'ws/notify/';
-        let notify_url: URL = this.buildWebsocketURL(path);
+        const path: string = options.path || 'ws/notify/';
+        const notify_url: URL = this.buildWebsocketURL(path);
 
         this.messages = {};
         this.count = 0;
@@ -81,12 +60,12 @@ export class NotificationSocket {
         this.subscribers.push(callback);
     }
 
-    // adds a callback to be invoked any time a message with the provided tag
-    // is received.  Callbacks are invoked in the order in which listeners are registered,
-    // and will be invoked multiple times for the same message if it has multiple registered tags.
+    /**
+     * Registers a callback for any messages having the given tag.
+     */
     addTagAction(tag: string, callback: TagAction): void {
         let actions: TagAction[] = [];
-        if(this.tagActions.hasOwnProperty(tag)) {
+        if (this.tagActions.hasOwnProperty(tag)) {
             actions = this.tagActions[tag];
         } else {
             this.tagActions[tag] = actions;
@@ -96,7 +75,7 @@ export class NotificationSocket {
     }
 
     private buildWebsocketURL(path: string): URL {
-        let relativeURL = Utl.relativeURL(path, new URL(window.location.origin));
+        const relativeURL = Utl.relativeURL(path, new URL(window.location.origin));
         relativeURL.protocol = ('https:' === relativeURL.protocol ? 'wss:' : 'ws:');
         return relativeURL;
     }
@@ -137,7 +116,7 @@ export class NotificationSocket {
     }
 
     private processMessages(payload) {
-        for (let msg of payload.messages) {
+        for (const msg of payload.messages) {
             const message = this.loadMessage(msg);
             // only add if not seen already; a message could arrive after it was
             // dismissed *in this window* but it will already have a key with null value
@@ -146,24 +125,19 @@ export class NotificationSocket {
             }
 
             // notify listeners for specific tags
-            for(let tag of message.tags) {
-                let tagCallbacks: TagAction[] = this.tagActions[tag];
-                if (!tagCallbacks) {
-                    continue;
-                }
-                // TODO: remove log
-                console.log('Executing ' + tagCallbacks.length + ' tag callbacks: ' + tagCallbacks);
-                $.map(tagCallbacks, (callback) => {
-                    callback(message)
-                });
+            for (const tag of message.tags) {
+                $.map(this.tagActions[tag] || [], (callback) => callback(message));
             }
         }
         this.count = payload.unread;
     }
 
     private resetMessages() {
+        // clear out local message list
         this.messages = {};
         this.count = 0;
+        // request updated list from server
+        this.send({'fetch': true});
     }
 
     private send(payload): void {
@@ -172,8 +146,8 @@ export class NotificationSocket {
 
     private updateSubscribers() {
         // notify all general subscribers of un-dismissed messages
-        for (let sub of this.subscribers) {
-            let msgList: Message[] = $.map(this.messages, (v) => v);
+        for (const sub of this.subscribers) {
+            const msgList: Message[] = $.map(this.messages, (v) => v);
             msgList.sort((a, b) => a.time.getTime() - b.time.getTime());
             sub(msgList, this.count);
         }
@@ -186,15 +160,13 @@ export class NotificationMenu {
     messageList: JQuery;
     emptyMessage: JQuery;
     socket: NotificationSocket;
-    tagActions: {[tag: string]: MenuTagAction[]};
 
     constructor(element: Element, socket: NotificationSocket) {
-        let menu = $(element);
+        const menu = $(element);
         this.badge = menu.find('.badge');
         this.messageList = menu.find('.dropdown-menu');
         this.emptyMessage = this.messageList.find('.message-empty').clone();
         this.socket = socket;
-        this.tagActions = {};
 
         this.socket.subscribe(this.display.bind(this));
         this.messageList.on('click', 'li.message > .message-close', this.markRead.bind(this));
@@ -203,7 +175,7 @@ export class NotificationMenu {
         // bootstrap ends up loading twice, so every click fires two toggle events
         // this is adding a third toggle, until I can figure out where the first two are added
         menu.on('click', () => {
-            let expanded = menu.hasClass('open');
+            const expanded = menu.hasClass('open');
             menu.toggleClass('open', !expanded).attr('aria-expanded', '' + !expanded);
         });
     }
@@ -213,7 +185,7 @@ export class NotificationMenu {
         $.map(msgs, (msg) => this.messageList.append(this.processMessage(msg)));
         if (count) {
             this.badge.text('' + count);
-            let closeAll = $('<li>').addClass('close-all');
+            const closeAll = $('<li>').addClass('close-all');
             $('<span>').addClass('message-close').text('Mark All Read').appendTo(closeAll);
             closeAll.appendTo(this.messageList);
         } else {
@@ -223,7 +195,7 @@ export class NotificationMenu {
     }
 
     private markRead(event: JQueryMouseEventObject) {
-        let message = $(event.target).closest('.message');
+        const message = $(event.target).closest('.message');
         this.socket.markRead(message.data('uuid'));
         return false;
     }
@@ -233,35 +205,10 @@ export class NotificationMenu {
         return false;
     }
 
-    addTagAction(tag: string, callback: MenuTagAction): void {
-        let actions: MenuTagAction[] = [];
-        if(this.tagActions.hasOwnProperty(tag)) {
-            actions = this.tagActions[tag];
-        } else {
-            this.tagActions[tag] = actions;
-        }
-
-        actions.push(callback);
-    }
-
     private processMessage(message: Message): JQuery | null {
-        let item = $('<li>').addClass('message').data('uuid', message.uuid);
+        const item = $('<li>').addClass('message').data('uuid', message.uuid);
         $('<span>').addClass('message-text').html(message.message).appendTo(item);
         $('<span>').addClass('message-close glyphicon glyphicon-remove').appendTo(item);
-
-        // inform all subscribers to any tag included in the message
-        for (let tag of message.tags) {
-            let tagActions: MenuTagAction[] =this.tagActions[tag];
-            console.log('Callbacks: ' + tagActions);
-
-            if(!tagActions) {
-                continue;
-            }
-
-            tagActions.forEach(callback => {
-                item = callback(message, item) || item;
-            });
-        }
         return item;
     }
 }

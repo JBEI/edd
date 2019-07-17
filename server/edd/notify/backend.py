@@ -122,6 +122,34 @@ class BaseBroker(object):
             logger.debug(f"group_send to {group}: {payload}")
             async_to_sync(channel_layer.group_send)(group, payload)
 
+    async def async_mark_all_read(self, uuid=None):
+        last = self._load(uuid)
+        for note in self:
+            if last is None or note.time <= last.time:
+                await self.async_mark_read(note.uuid)
+        # send update to Channel Group
+        await self.async_send_to_groups({"type": "notification.reset"})
+
+    async def async_mark_read(self, uuid):
+        self._remove(uuid)
+        await self.async_send_to_groups(
+            {"type": "notification.dismiss", "uuid": JSONEncoder.dumps(uuid)}
+        )
+
+    async def async_notify(self, message, tags=None, payload=None, uuid=None):
+        note = Notification(message, tags=tags, payload=payload, uuid=uuid)
+        # _store notification to self
+        self._store(note)
+        # send notification to Channel Groups
+        await self.async_send_to_groups(
+            {"type": "notification", "notice": JSONEncoder.dumps(note.prepare())}
+        )
+
+    async def async_send_to_groups(self, payload):
+        for group in self.group_names():
+            logger.debug(f"async_send to {group}: {payload}")
+            await channel_layer.group_send(group, payload)
+
 
 class RedisBroker(BaseBroker):
     """
@@ -158,8 +186,7 @@ class RedisBroker(BaseBroker):
             ids = self._redis.zrevrange(self._key_user(), page, page + psize - 1)
             keys = [self._key_notification(uuid) for uuid in ids]
             for payload in self._redis.mget(keys):
-                if payload is not None:
-                    yield self._convert(payload)
+                yield self._convert(payload)
 
     def _remove(self, uuid, *args, **kwargs):
         # remove from set of notifications

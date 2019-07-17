@@ -95,6 +95,17 @@ class BrandingTagTests(TestCase):
             result = template.render(context)
             self.assertEqual(result, "EDD")
 
+    def test_welcome_message(self):
+        template = Template(r"{% load branding %}{% login_welcome %}")
+        context = Context(dict(request=None))
+        # default branding has no message
+        result = template.render(context)
+        self.assertEqual(result, "")
+        # still renders without error when no branding found
+        with self.settings(SITE_ID=None):
+            result = template.render(context)
+            self.assertEqual(result, "")
+
 
 class BrandingFaviconTests(TestCase):
     def test_favicon(self):

@@ -11,9 +11,10 @@ SERIES_PATH = "generic_import/FBA-OD-generic.xlsx.cache.series.json"
 
 class ImportTestsMixin(object):
     def _slice_series_pages(self, series_path, page_count, page_size):
-        """ Read the aggregated series data from file and if configured to test multiple pages,
-            break it up into chunks for insertion into the simulated cache. Clients of this
-            method must override EDD_IMPORT_PAGE_SIZE to get predictable results.
+        """
+        Read the aggregated series data from file and if configured to test multiple pages,
+        break it up into chunks for insertion into the simulated cache. Clients of this
+        method must override EDD_IMPORT_PAGE_SIZE to get predictable results.
         """
 
         with factory.load_test_file(series_path, "rt") as series_file:
@@ -35,8 +36,7 @@ class ImportTestsMixin(object):
             page_series = series[i * page_size : end_index]
             pages.append(json.dumps(page_series))
             self.assertTrue(page_series)
-        self.assertEquals(
-            len(pages), page_count
-        )  # verify that data file content matches
+        # verify that data file content matches
+        self.assertEqual(len(pages), page_count)
 
         return pages

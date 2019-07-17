@@ -176,7 +176,7 @@ class CampaignStudyListView(generic.detail.SingleObjectMixin, generic.ListView):
         return context
 
     def get_queryset(self):
-        qs = self.object.studies.all()
+        qs = self.object.studies.order_by("pk")
         if self.request.user.is_superuser:
             return qs
         return qs.filter(edd_models.Study.access_filter(self.request.user)).distinct()
