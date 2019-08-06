@@ -70,11 +70,11 @@ class HPLC_Parser(object):
         if not input_stream:
             raise HplcInputError("No data stream provided")
 
-        self.input_stream = input_stream  # The stream that is being parsed
+        self.input_stream = input_stream
         self.decoded_stream = None
 
         # samples format: { 'Sample Name': [CompoundEntry('compound', 'amount'), ...], ... }
-        self.samples = OrderedDict()  # The final data resulting from batch parsing
+        self.samples = OrderedDict()
 
         self.has_parsed = False
         self.formatted_results = None
@@ -96,7 +96,8 @@ class HPLC_Parser(object):
         self.saved_line = 0
 
     def parse_hplc(self):
-        """Parses textual HPLC data from the input stream, returning data formatted for use.
+        """
+        Parses textual HPLC data from the input stream, returning data formatted for use.
 
         THIS CLASS IS NOT THREAD SAFE.
 
@@ -113,8 +114,6 @@ class HPLC_Parser(object):
         # TODO: format detection is fragile... needs attention
         # TODO: Add option to return `None`s for unidenfified peaks
         # TODO: capture other data elements, and return or not based on option
-        # # ? : Messages -> Logger
-
         # TODO: Add warning if line is shorter then expected
 
         firstline = next(self.decoded_stream)
@@ -148,7 +147,8 @@ class HPLC_Parser(object):
 
             # Loop - collect each line associated with the sample
             for (line_number, line) in enumerate(self.decoded_stream, 2):
-                if line.strip() == "":  # Skip blank line
+                if line.strip() == "":
+                    # Skip blank line
                     continue
                 self.current_line = line_number
                 # get the name of the sample related to the row
@@ -330,12 +330,12 @@ class HPLC_Parser(object):
 
                 # The normally empty divider space sometimes has an
                 # important character in it.
-                #
-                # clip divider character only if empty
                 if len(line) > 0 and line[0].isspace():
+                    # clip divider character only if empty
                     line = line[1:]
                     section_width_carryover = 0
-                else:  # account for extra character in next section
+                else:
+                    # account for extra character in next section
                     section_width_carryover = 1
                 column_headers[section_index] += segment
 

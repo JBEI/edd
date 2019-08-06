@@ -916,7 +916,8 @@ class Line(EDDObject):
         Given a Protocol name, fetch all matching child Assays, and return one greater than the
         count of existing assays.
         """
-        if isinstance(protocol, string_types):  # assume Protocol.name
+        if isinstance(protocol, string_types):
+            # assume Protocol.name
             protocol = Protocol.objects.get(name=protocol)
         assays = self.assay_set.filter(protocol=protocol)
         return assays.count() + 1

@@ -210,7 +210,8 @@ class TableImport(object):
             meta = item.get("metadata_by_id", {})
             for meta_id in meta:
                 # TODO uncovered
-                self._metatype(meta_id)  # don't care about return value here
+                # don't care about return value here
+                self._metatype(meta_id)
                 # END uncovered
             if len(points) == 0 and len(meta) == 0:
                 # TODO uncovered
@@ -259,11 +260,7 @@ class TableImport(object):
             # so we check it.
             protocol = self._init_item_protocol(item)
             line = self._init_item_line(item)
-            if protocol is None or line is None:
-                # TODO uncovered
-                pass  # already logged errors, move on
-                # END uncovered
-            else:
+            if protocol is not None and line is not None:
                 if assay_name is None or assay_name.strip() == "":
                     # if we have no name, 'named_or_new' and 'new' are treated the same
                     index = line.new_assay_number(protocol)
@@ -411,8 +408,10 @@ class TableImport(object):
             if self.replace:
                 records.delete()
             else:
-                record = records[0]  # only SELECT query once
-                record.save(update_fields=["update_ref"])  # force refresh of Update
+                # only SELECT query once
+                record = records[0]
+                # force refresh of Update
+                record.save(update_fields=["update_ref"])
                 return record
             # END uncovered
         find.update(experimenter=self._user, study_id=assay.study_id)
@@ -467,7 +466,8 @@ class TableImport(object):
 
     def _load_compartment(self, item):
         compartment = item.get("compartment_id", self.master_compartment)
-        if not compartment:  # replace empty values with default
+        if not compartment:
+            # replace empty values with default
             compartment = self.master_compartment
         return compartment
 
@@ -502,6 +502,7 @@ class TableImport(object):
         """
         Attempts to infer the measurement type of the input item from the general import mode
         specified in the input / in Step 1 of the import GUI.
+
         :param item: a dictionary containing the JSON data for a single measurement item sent
             from the front end
         :return: the measurement type, or the specified default if no better one is found
@@ -571,11 +572,13 @@ class TableImport(object):
     def _mtype_guess_format(self, points):
         if self.mode == "mdv":
             # TODO uncovered
-            return models.Measurement.Format.VECTOR  # carbon ratios are vectors
+            # carbon ratios are vectors
+            return models.Measurement.Format.VECTOR
             # END uncovered
         elif self.mode in (MODE_TRANSCRIPTOMICS, MODE_PROTEOMICS):
             # TODO uncovered
-            return models.Measurement.Format.SCALAR  # always single values
+            # always single values
+            return models.Measurement.Format.SCALAR
             # END uncovered
         elif len(points):
             # if first value looks like carbon ratio (vector), treat all as vector

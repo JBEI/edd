@@ -21,9 +21,8 @@ EMPTY_RESULTS = "No lines created as a result of the input"
 DUPLICATE_COMPUTED_LINE_NAMES = (
     "Computed line names have insufficient data to make them unique"
 )
-DUPLICATE_LINE_NAME_LITERAL = (
-    "Duplicate line name"
-)  # for the simple, non-combo ED file case
+# for the simple, non-combo ED file case
+DUPLICATE_LINE_NAME_LITERAL = "Duplicate line name"
 EXISTING_LINE_NAMES = "Input would duplicate existing line names"
 DUPLICATE_INPUT_ASSAY_NAMES = (
     "Duplicate assay names within the input for a single protocol"
@@ -44,7 +43,7 @@ BAD_FILE_CATEGORY = "Incorrect file format"
 EMPTY_WORKBOOK = "Empty workbook"
 DUPLICATE_LINE_ATTR = "Duplicate line attribute column"
 DUPLICATE_ASSAY_METADATA = (
-    "Several columns specify the same (protocol + assay metadata) " "combination"
+    "Several columns specify the same (protocol + assay metadata) combination"
 )
 DUPLICATE_LINE_METADATA = "Duplicate line metadata column"
 INVALID_CELL_TYPE_TITLE = "Invalid cell type"
@@ -61,7 +60,8 @@ UNMATCHED_ASSAY_COL_HEADERS_KEY = (
 )
 INVALID_COLUMN_HEADER = "Invalid column header(s)"
 INCORRECT_TIME_FORMAT = "Incorrect time format"
-# only supported for strains, since some metadata columns purposefully allow comma-delimited entry
+# only supported for strains, since some metadata columns purposefully
+# allow comma-delimited entry
 INCONSISTENT_COMBINATORIAL_VALUE = (
     "Combinatorial value provided for single-valued column"
 )
@@ -77,8 +77,8 @@ INTERNAL_EDD_ERROR_CATEGORY = "Internal EDD error"
 POSSIBLE_USER_ERROR_CATEGORY = "Possible User Error"
 
 
-# either user input error in Experiment Description/ICE part permissions, or an ICE error (known
-# ICE errors exist in ICE 5.2.2 as of 3-1-17)
+# either user input error in Experiment Description/ICE part permissions, or
+# an ICE error (known ICE errors exist in ICE 5.2.2 as of 3-1-17)
 SINGLE_PART_ACCESS_ERROR_CATEGORY = "ICE part access problem"
 SINGLE_FOLDER_ACCESS_ERROR_CATEGORY = "ICE folder access problem"
 EMPTY_FOLDER_ERROR_CATEGORY = "Empty ICE folder(s)"
@@ -149,9 +149,8 @@ PART_NUMBER_PATTERN_UNMATCHED_WARNING = (
 UNPREDICTED_ERROR = (
     "An unpredicted error occurred, and administrators have been notified"
 )
-UNSUPPORTED_FILE_TYPE = (
-    "Unsupported file type"
-)  # TODO RESOLVE WITH incorrect file format
+# TODO RESOLVE WITH incorrect file format
+UNSUPPORTED_FILE_TYPE = "Unsupported file type"
 
 # Errors caused by outstanding curation work in JBEI's database / resulting lack of constraints in
 # EDD's DB schema...see EDD-158
@@ -191,7 +190,8 @@ ERROR_PRIORITY_ORDER[BAD_FILE_CATEGORY] = (
     # errors in defining column headers
     MISSING_REQUIRED_COLUMN_TITLE,
     INVALID_COLUMN_HEADER,
-    UNMATCHED_ASSAY_COL_HEADERS_KEY,  # TODO: specifically mention assay col header suffix
+    # TODO: specifically mention assay col header suffix
+    UNMATCHED_ASSAY_COL_HEADERS_KEY,
     DUPLICATE_LINE_ATTR,
     DUPLICATE_LINE_METADATA,
     DUPLICATE_ASSAY_METADATA,
@@ -288,7 +288,8 @@ NON_UNIQUE_LINE_NAMES_CATEGORY = "Non-unique line names"
 # in line/assay naming)
 _NAMING_OVERLAPS = (
     DUPLICATE_COMPUTED_LINE_NAMES,
-    EXISTING_LINE_NAMES,  # TODO make var name study-specific
+    # TODO make var name study-specific
+    EXISTING_LINE_NAMES,
     # TODO: included here for safety, but unlikely at present that these will be created...wait
     # until we implement/use a combinatorial GUI under EDD-257, then remove if never witnessed.
     DUPLICATE_INPUT_ASSAY_NAMES,
@@ -381,7 +382,8 @@ SINGLE_FOLDER_LOOKUP_ERRS = {
             SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
             FORBIDDEN_FOLDER_KEY,
         ),
-        IceErrCondition.STRAIN_NAMES_REQUIRED: None,  # case is unique to single-entry query
+        # case is unique to single-entry query
+        IceErrCondition.STRAIN_NAMES_REQUIRED: None,
         IceErrCondition.GENERIC_ERR: (
             SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
             FORBIDDEN_FOLDER_KEY,
@@ -392,7 +394,8 @@ SINGLE_FOLDER_LOOKUP_ERRS = {
             SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
             FOLDER_NOT_FOUND,
         ),
-        IceErrCondition.STRAIN_NAMES_REQUIRED: None,  # case is unique to single-entry query
+        # case is unique to single-entry query
+        IceErrCondition.STRAIN_NAMES_REQUIRED: None,
         IceErrCondition.GENERIC_ERR: (
             SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
             FOLDER_NOT_FOUND,

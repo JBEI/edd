@@ -457,7 +457,8 @@ class SBMLUtilTests(TestCase):
         except ImportError as e:
             warnings.warn("%s" % e)
         else:
-            libsbml.SBML_DOCUMENT  # check to make sure it loaded
+            # check to make sure it loaded
+            libsbml.SBML_DOCUMENT
             builder = sbml_export.SbmlBuilder()
             notes = builder.create_note_body()
             notes = builder.update_note_body(
@@ -501,37 +502,6 @@ class ExportTests(TestCase):
     def test_data_export_errors(self):
         # TODO tests using main.export.sbml.SbmlExport
         pass
-
-
-class IceTests(TestCase):
-    def test_entry_uri_pattern(self):
-        from jbei.rest.clients.ice.api import ICE_ENTRY_URL_PATTERN
-
-        # test matching against ICE URI's with a numeric ID
-        uri = "https://registry-test.jbei.org/entry/49194/"
-        match = ICE_ENTRY_URL_PATTERN.match(uri)
-        self.assertEqual("https", match.group(1))
-        self.assertEqual("registry-test.jbei.org", match.group(2))
-        self.assertEqual("49194", match.group(3))
-
-        # test matching against ICE URI's with a UUID
-        uri = (
-            "https://registry-test.jbei.org/entry/761ec36a-cd17-41b8-a348-45d7552d4f4f"
-        )
-        match = ICE_ENTRY_URL_PATTERN.match(uri)
-        self.assertEqual("https", match.group(1))
-        self.assertEqual("registry-test.jbei.org", match.group(2))
-        self.assertEqual("761ec36a-cd17-41b8-a348-45d7552d4f4f", match.group(3))
-
-        # verify non-match against invalid URLs
-        uri = "ftp://registry.jbei.org/entry/12345"
-        self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
-        uri = "http://registry.jbei.org/admin/12345"
-        self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
-        uri = "http://registry.jbei.org/entry/12345/experiments"
-        self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
-        uri = "http://registry.jbei.org/entry/foobar"
-        self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
 
 
 class MetaboliteTests(TestCase):

@@ -9,8 +9,8 @@ from django.db import migrations
 
 def load_bootstrap_fixture(apps, schema_editor):
     """
-    Loads the bootstrap fixture, using models generated from the migration state, rather than from
-    current model code.
+    Loads the bootstrap fixture, using models generated from the migration state,
+    rather than from current model code.
     """
     # re-define the _get_model function, using argument apps in closure
     # code copied verbatim from django.core.serializers.python
@@ -39,7 +39,8 @@ def set_default_site(apps, schema_editor):
     Site = apps.get_model("sites", "Site")
     env = environ.Env()
     domain = env("VIRTUAL_HOST", default="localhost")
-    domain = domain.split(",")[-1]  # use the last if a comma-delimited list
+    # use the last if a comma-delimited list
+    domain = domain.split(",")[-1]
     Site.objects.create(domain=domain, name="EDD")
 
 

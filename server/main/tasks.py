@@ -391,7 +391,7 @@ def link_ice_entry_to_study(self, user_token, strain, study):
                 .get()
             )
             url = build_study_url(record.study_slug)
-            ice.link_entry_to_study(record.registry_id, study, url, record.study_name)
+            ice.add_experiment_link(record.registry_id, record.study_name, url)
         except RequestException as e:
             # Retry when there are errors communicating with ICE
             raise self.retry(exc=e, countdown=delay_calculation(self), max_retries=10)
@@ -416,7 +416,7 @@ def unlink_ice_entry_from_study(self, user_token, strain, study):
             record = models.Strain.objects.get(pk=strain)
             study_obj = models.Study.objects.get(pk=study)
             url = build_study_url(study_obj.slug)
-            ice.unlink_entry_from_study(record.registry_id, study, url)
+            ice.unlink_entry_from_study(record.registry_id, url)
         except RequestException as e:
             # Retry when there are errors communicating with ICE
             raise self.retry(exc=e, countdown=delay_calculation(self), max_retries=10)

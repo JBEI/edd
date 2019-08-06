@@ -62,7 +62,8 @@ def process_gc_ms_form_and_parse_file(form, file):
         rt_ranges_and_molecules.sort(key=lambda x: x[0])
         for i_rt, (_x1, y1, _s1) in enumerate(rt_ranges_and_molecules[:-1]):
             x2, y2, s2 = rt_ranges_and_molecules[i_rt + 1]
-            assert y1 < x2  # this should really be checked server-side too
+            # this should really be checked server-side too
+            assert y1 < x2
         return result.find_peaks_by_range_and_export(
             rt_ranges=[(x, y) for (x, y, s) in rt_ranges_and_molecules],
             molecule_names=[s for (x, y, s) in rt_ranges_and_molecules],

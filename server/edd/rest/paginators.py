@@ -3,12 +3,6 @@
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from jbei.rest.clients.edd.api import (
-    DEFAULT_PAGE_SIZE,
-    PAGE_NUMBER_URL_PARAM,
-    PAGE_SIZE_QUERY_PARAM,
-)
-
 
 class ClientConfigurablePagination(PageNumberPagination):
     """
@@ -19,9 +13,9 @@ class ClientConfigurablePagination(PageNumberPagination):
     See REST_FRAMEWORK setting in edd.settings.py.
     """
 
-    page_size = DEFAULT_PAGE_SIZE
-    page_size_query_param = PAGE_SIZE_QUERY_PARAM
-    page_query_param = PAGE_NUMBER_URL_PARAM
+    page_size = 30
+    page_size_query_param = "page_size"
+    page_query_param = "page"
     max_page_size = 10000
 
 

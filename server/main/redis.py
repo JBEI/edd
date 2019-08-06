@@ -147,4 +147,5 @@ class ScratchStorage(object):
             pipe.rpush(self._key(name), data)
             pipe.expire(self._key(name), expires)
             result = pipe.execute()
-        return name, result[0]  # (name, # of cache pages)
+        # (name, # of cache pages)
+        return name, result[0]

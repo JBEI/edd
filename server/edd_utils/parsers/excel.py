@@ -269,7 +269,8 @@ def _find_possible_tables(
         # But if it doesn't contain anything that looks numeric, forget it.
         if len(contiguous_rows) < 2:
             if not has_numerical_cells(contiguous_rows):
-                continue  # Continue outer while loop - go to next chunk
+                # Continue outer while loop - go to next chunk
+                continue
 
         (
             first_non_empty_column,

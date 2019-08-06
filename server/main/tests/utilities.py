@@ -75,7 +75,6 @@ class LineMetadataChecker(object):
         if meta_type.type_field:
             line_attr = getattr(line, meta_type.type_field)
 
-        # obs_val = line.metadata_get(meta_type)  # TODO: try this approach
         many_related_obj = False
 
         # if expected metadata is a 1-M or M2M relation, get related primary keys
@@ -95,7 +94,6 @@ class LineMetadataChecker(object):
 
         # expected metadata is not captured by a relation
         else:
-            # TODO: remove debug stmt
             related_object = False
 
             # handle non-relation line fields
@@ -379,9 +377,8 @@ class CombinatorialCreationTests(TestCase):
         # key to match line hstore field)
         media_pk = str(self.media_mtype.pk)
         temp_pk = str(growth_temp_meta.pk)
-        carbon_src_pk = (
-            cache.carbon_sources_mtype.pk
-        )  # related field -> use non-string key
+        # related field -> use non-string key
+        carbon_src_pk = cache.carbon_sources_mtype.pk
 
         _LB = "LB"
         _EZ = "EZ"
@@ -573,9 +570,8 @@ class CombinatorialCreationTests(TestCase):
                 # creation_results.lines_created...possible that only a subset of lines will
                 # have metadata defined
 
-                related_object_mtypes = (
-                    cache.related_object_mtypes
-                )  # includes many_related
+                # includes many_related
+                related_object_mtypes = cache.related_object_mtypes
                 many_related_obj_mtypes = cache.many_related_mtypes
 
                 exp_metadata = exp_meta_by_line.get(created_line.name)
@@ -877,17 +873,15 @@ class CombinatorialCreationTests(TestCase):
 
         # construct a dict of expected assay metadata as a result of submitting this ED file
         time_pk_str = str(cache.assay_time_mtype.pk)
-        expected_assay_metadata = (
-            {}
-        )  # maps line name -> protocol pk -> assay name -> metadata
+        # maps line name -> protocol pk -> assay name -> metadata
+        expected_assay_metadata = {}
         for line_name in expected_line_names:
             expected_assay_metadata[line_name] = {}
             for protocol_pk, assay_suffixes in expected_assay_suffixes.items():
                 for assay_suffix in assay_suffixes:
                     assay_name = "%s-%s" % (line_name, assay_suffix)
-                    time_str = str(
-                        float(assay_suffix[0:-1])
-                    )  # re/cast to get the decimal
+                    # re/cast to get the decimal
+                    time_str = str(float(assay_suffix[0:-1]))
 
                     assay_name_to_meta_dict = expected_assay_metadata[line_name].get(
                         protocol_pk, {}

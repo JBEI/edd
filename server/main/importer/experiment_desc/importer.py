@@ -17,16 +17,7 @@ from django.urls import reverse
 from django.utils.translation import ugettext as _
 from requests import codes
 
-from jbei.rest.clients.ice.api import ENTRY_CLASS_TO_JSON_TYPE
 from jbei.rest.clients.ice.api import Strain as IceStrain
-from jbei.rest.clients.ice.constants import (
-    ENTRY_TYPE_ARABIDOPSIS,
-    ENTRY_TYPE_ENTRY,
-    ENTRY_TYPE_PLASMID,
-    ENTRY_TYPE_PROTEIN,
-    ENTRY_TYPE_STRAIN,
-)
-from jbei.rest.clients.ice.utils import build_entry_ui_url
 from main.importer.parser import ImportFileTypeFlags
 from main.models import Assay, Line, Strain
 from main.tasks import create_ice_connection
@@ -305,18 +296,10 @@ class IcePartResolver(object):
         self.parts_by_ice_id = OrderedDict()
         self.folders_by_ice_id = defaultdict(list)
 
-        self.individual_entries_found = (
-            0
-        )  # individual entries found in ICE (not counting folders)
-        self.total_filtered_entry_count = 0  # folder entries found that passed filters
-
-        self.entry_type_counts = {
-            ENTRY_TYPE_ARABIDOPSIS: 0,
-            ENTRY_TYPE_ENTRY: 0,
-            ENTRY_TYPE_PLASMID: 0,
-            ENTRY_TYPE_PROTEIN: 0,
-            ENTRY_TYPE_STRAIN: 0,
-        }
+        # entries found outside of folders
+        self.individual_entries_found = 0
+        # folder entries found that passed filters
+        self.total_filtered_entry_count = 0
 
     def _validate_strain_info_abort(self):
         # return None to abort strain resolution; otherwise an ICE connection
@@ -441,9 +424,8 @@ class IcePartResolver(object):
         # requests.ConnectionErrors that we purposefully avoid catching above since they likely
         # impact all future requests)
         except IOError:
-            self._systemic_ice_access_error(
-                self.unique_part_ids, "strain"
-            )  # TODO: enum!
+            # TODO: use enum
+            self._systemic_ice_access_error(self.unique_part_ids, "strain")
         performance.end_ice_search(
             self.folders_by_ice_id,
             len(self.unique_folder_ids),
@@ -512,7 +494,7 @@ class IcePartResolver(object):
                 name=ice_entry.name,
                 description=ice_entry.short_description,
                 registry_id=ice_entry.uuid,
-                registry_url=build_entry_ui_url(settings.ICE_URL, ice_entry.id),
+                registry_url=f"{settings.ICE_URL}/entry/{ice_entry.id}",
             )
 
             identifier = (
@@ -535,7 +517,7 @@ class IcePartResolver(object):
         """
         if unique_ids:
             logger.info(
-                f"Searching ICE for %d unique {resource_type}..." % len(unique_ids)
+                f"Searching ICE for {len(unique_ids)} unique {resource_type}..."
             )
         else:
             return  # return early if there are no folders to query
@@ -624,7 +606,7 @@ class IcePartResolver(object):
         if entry:
             return entry
 
-        entry = ice.get_entry(entry_id)
+        entry = ice.get_entry(entry_id, suppress_errors=True)
         if entry:
             self._process_entry(entry_id, entry)
             self.individual_entries_found += 1
@@ -655,9 +637,6 @@ class IcePartResolver(object):
         fail_for_non_strains = not self.options.allow_non_strains
         importer = self.importer
 
-        entry_type = ENTRY_CLASS_TO_JSON_TYPE[entry.__class__.__name__]
-        self.entry_type_counts[entry_type] += 1
-
         if fail_for_non_strains and not isinstance(entry, IceStrain):
             importer.add_error(
                 NON_STRAINS_CATEGORY, NON_STRAIN_ICE_ENTRY, entry.part_id
@@ -668,59 +647,44 @@ class IcePartResolver(object):
         Queries ICE to get all entries in a single folder, filtering the returned entries if
         requested, then caches the results
         """
-        page_num = 1
-        folder = None
+        folder = ice.get_folder_entries(folder_id, sort="created")
         filtered_entries = []
         unfiltered_entry_count = 0
         self.total_filtered_entry_count = 0
 
-        while page_num == 1 or (unfiltered_entry_count < folder.entry_count):
-            folder = ice.get_folder_entries(folder_id, page_num, sort="created")
+        if not folder:
+            return None
 
-            if not folder:
-                return None
-
-            # cache entries from this folder so we don't look them up multiple times,
-            # e.g. if included in an explicit user request or in multiple folders
-            for entry in folder.entries:
-                class_json_rep = ENTRY_CLASS_TO_JSON_TYPE[entry.__class__.__name__]
-                included_in_filter = (
-                    class_json_rep in self.ice_folder_to_filters[folder_id]
-                )
-
-                # use the same ID scheme as user input (depends on input source)
-                entry_id = (
-                    entry.part_id if self.options.use_ice_part_numbers else entry.uuid
-                )
-
-                if included_in_filter:
-                    self._process_entry(entry_id, entry)
-                    filtered_entries.append(entry)
-            unfiltered_entry_count += len(folder.entries)
-            page_num += 1
+        # cache entries from this folder so we don't look them up multiple times,
+        # e.g. if included in an explicit user request or in multiple folders
+        for entry in folder.entries:
+            # use the same ID scheme as user input (depends on input source)
+            entry_id = (
+                entry.part_id if self.options.use_ice_part_numbers else entry.uuid
+            )
+            unfiltered_entry_count += 1
+            if entry.JSON_TYPE in self.ice_folder_to_filters[folder_id]:
+                self._process_entry(entry_id, entry)
+                filtered_entries.append(entry)
 
         # Cache the most recent folder description to reduce occurrence of race conditions,
         # e.g. in case entries were added during our queries. Query above purposefully returns
         # the most recent parts last.
         folder.entries = filtered_entries
         self.folders_by_ice_id[folder_id] = folder
-
         self.total_filtered_entry_count += len(filtered_entries)
-
         logger.info(
             f'Folder "{folder.name}": found {len(folder.entries)} entries. '
             f"{unfiltered_entry_count} passed the filters "
             f"({self.ice_folder_to_filters[folder_id]})"
         )
-
-        importer = self.importer
         folder_desc = f'"{folder.name}" ({folder_id})'
         if not folder.entries:
-            importer.add_error(
+            self.importer.add_error(
                 EMPTY_FOLDER_ERROR_CATEGORY, EMPTY_FOLDER_ERROR_TITLE, folder_desc
             )
         elif not unfiltered_entry_count:
-            importer.add_error(
+            self.importer.add_error(
                 NO_FILTERED_ENTRIES_ERROR_CATEGORY, NO_ENTRIES_TITLE, folder_desc
             )
 

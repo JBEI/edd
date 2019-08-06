@@ -3,10 +3,6 @@
 
 from django.db import migrations
 
-from jbei.rest.clients.edd import constants as edd_constants
-
-ORIGINAL_I18N = "main.models.Assay.original"
-ORIGINAL_NAME = "Original Name"
 ORIGINAL_UUID = "5ef6500e-0f8b-4eef-a6bd-075bcb655caa"
 
 
@@ -44,9 +40,9 @@ def create_original_name_type(apps, schema_editor):
     MetadataType.objects.using(db_alias).bulk_create(
         [
             MetadataType(
-                for_context=edd_constants.METADATA_CONTEXT_ASSAY,
-                type_i18n=ORIGINAL_I18N,
-                type_name=ORIGINAL_NAME,
+                for_context="A",
+                type_i18n="main.models.Assay.original",
+                type_name="Original Name",
                 uuid=ORIGINAL_UUID,
             )
         ]

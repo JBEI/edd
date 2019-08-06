@@ -495,7 +495,8 @@ class StudyLinesView(StudyDetailBaseView):
                 return self.handle_line_edit(
                     request, context, selectForm.selection.lines
                 )
-        elif "lineId" in selectForm.cleaned_data:  # no selection == new line
+        elif "lineId" in selectForm.cleaned_data:
+            # no selection == new line
             return self.handle_line_new(request, context)
         messages.error(request, _("Failed to load line for editing."))
         return False
@@ -515,7 +516,8 @@ class StudyLinesView(StudyDetailBaseView):
             form = edd_forms.LineForm(
                 request.POST, instance=line, prefix="line", study=study
             )
-            form.check_bulk_edit()  # removes fields having disabled bulk edit checkbox
+            # removes fields having disabled bulk edit checkbox
+            form.check_bulk_edit()
             if form.is_valid():
                 form.save()
                 saved += 1
@@ -628,7 +630,8 @@ class StudyDetailView(StudyDetailBaseView):
             form = edd_forms.AssayForm(
                 request.POST, instance=assay, prefix="assay", study=study
             )
-            form.check_bulk_edit()  # removes fields having disabled bulk edit checkbox
+            # removes fields having disabled bulk edit checkbox
+            form.check_bulk_edit()
             if form.is_valid():
                 form.save()
                 saved += 1

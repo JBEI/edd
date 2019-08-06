@@ -1,0 +1,19 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<p>Run a search to connected ICE as user {{ impersonate.username }}.</p>
+<form action="" method="POST">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="search_ice_as_action" />
+  <input type="hidden" name="_selected_action" value="{{ impersonate.id }}" />
+  <input type="text" name="term" />
+  <button type="submit">Search</button>
+</form>
+<ol>
+  {% for link in results %}
+  <li>
+    <a href="{{ ice }}/entry/{{ link.id }}">{{ link.partId }}</a> - {{ link.name }}
+  </li>
+  {% endfor %}
+</ol>
+{% endblock content %}

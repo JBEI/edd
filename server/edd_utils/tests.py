@@ -25,7 +25,6 @@ class GCMSTests(TestCase):
         test_file = os.path.join(test_dir, "gc_ms_1.txt")
         result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
         self.assertEqual(len(result.samples), 102)
-        # result.find_consensus_peaks(show_plot=True)
         err = StringIO()
         out = StringIO()
         result.show_peak_areas(out=out, err=err)
@@ -41,28 +40,22 @@ class GCMSTests(TestCase):
 
     def test_2(self):
         # a slightly different format
-        #
         test_file = os.path.join(test_dir, "gc_ms_2.txt")
         with open(os.path.join(test_dir, "gc_ms_2.out.txt")) as f:
             test_out = f.read()
         result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
         self.assertEqual(len(result.samples), 5)
-        # print result.find_consensus_peaks()
         err = StringIO()
         out = StringIO()
         result.show_peak_areas(out=out, err=err)
         self.assertEqual(out.getvalue(), test_out)
-        #
         # Fault tolerance
-        #
         test_file = os.path.join(test_dir, "skyline.csv")
         with self.assertRaises(ValueError):
             result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
 
     def test_xls_key(self):
-        #
         # Import .xlsx workbook
-        #
         test_file = os.path.join(test_dir, "sample_gc_ms_key.xlsx")
         with open(test_file, "rb") as file:
             headers, table = gc_ms.import_xlsx_metadata(file)
@@ -149,7 +142,8 @@ class ExcelTests(TestCase):
         )
         t2 = result2["worksheets"][0][0]
         self.assertEqual(t2, t)
-        result3 = import_xlsx_table("tst1.xlsx")  # note different function
+        # note different function
+        result3 = import_xlsx_table("tst1.xlsx")
         self.assertEqual(result3, t)
         result4 = import_xlsx_table(
             "tst1.xlsx", column_labels=["sample id", "molecule1", "MOLECULE 2"]

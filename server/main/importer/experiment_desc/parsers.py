@@ -136,7 +136,8 @@ class _DecimalTimeParser(_AssayMetadataValueParser):
         match = _TIME_VALUE_PATTERN.match(raw_value_str)
         if match:
             str_value = match.group(1)
-            number_value = float(str_value)  # raises ValueError as in the spec
+            # raises ValueError as in the spec
+            number_value = float(str_value)
             stripped = (
                 str(str_value.strip())
                 .replace(",", "")
@@ -149,7 +150,8 @@ class _DecimalTimeParser(_AssayMetadataValueParser):
             # the same precision to resulting line names
             fractional_digits = 0
             if sep_index >= 0:
-                fractional_digits = (len(stripped) - sep_index) - 1  # TODO: commas!
+                # TODO: handle commas
+                fractional_digits = (len(stripped) - sep_index) - 1
 
             parser = self.parser
             parser.max_fractional_time_digits = max(
@@ -157,8 +159,8 @@ class _DecimalTimeParser(_AssayMetadataValueParser):
             )
             return number_value
         raise ValueError(
-            f'Value "{raw_value_str}" did not match the expected time pattern (e.g. '
-            f'"4.0h")'
+            f'Value "{raw_value_str}" did not match the expected time pattern '
+            f'(e.g. "4.0h")'
         )
 
 
@@ -194,7 +196,8 @@ class ColumnLayout:
         self.replicate_count_col = None
         self.strain_ids_col = None
         self.col_index_to_line_meta_pk = {}
-        self.col_index_to_assay_data = {}  # maps col index -> (Protocol, MetadataType)
+        # maps col index -> (Protocol, MetadataType)
+        self.col_index_to_assay_data = {}
 
         # indices of all *any* columns for combinatorial creation (both metadata AND strains!)
         self.combinatorial_col_indices = []
@@ -278,7 +281,9 @@ class ColumnLayout:
 
     def get_meta_pk(self, col_index):
         """
-        Gets the integer primary key of the Line OR Assay MetadataType the specified ED file column
+        Gets the integer primary key of the Line OR Assay MetadataType for
+        the specified ED file column.
+
         :param col_index: the column index
         :return: the MetadataType primary key
         """
@@ -409,7 +414,8 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
                 logger.debug(f'Built related object name segment "{meta_type}"')
                 continue
 
-            metadata_value = line_metadata.get(line_meta_pk, None)  # value is optional!
+            # value is optional!
+            metadata_value = line_metadata.get(line_meta_pk, None)
 
             if not metadata_value:
                 # TODO: add a warning that line names won't be consistent
@@ -444,6 +450,7 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
         Gets the Line MetadataTypes that represent categories of data required for computing
         line names during the automated line creation process.  E.g. any data specified
         combinatorially.
+
         :return: set of integer primary keys for Line MetadataTypes
         """
         col_layout = self.col_layout
@@ -512,10 +519,9 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
             logger.debug(f"Adding assay naming elements: {elts}")
             return self.section_separator.join(name_elts)
 
-        except KeyError:
-            raise ValueError(
-                KeyError
-            )  # raise more generic Exception published in the docstring
+        except KeyError as e:
+            # raise more generic Exception published in the docstring
+            raise ValueError from e
 
 
 class _ExperimentDescriptionFileRow(CombinatorialDescriptionInput):

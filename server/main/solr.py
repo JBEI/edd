@@ -15,10 +15,8 @@ from edd import utilities
 from . import models
 
 logger = logging.getLogger(__name__)
-timeout = (
-    10,
-    10,
-)  # tuple for request connection and read timeouts, respectively, in seconds
+# tuple for request connection and read timeouts, respectively, in seconds
+timeout = (10, 10)
 
 
 class SolrSearch(object):
@@ -67,7 +65,8 @@ class SolrSearch(object):
         headers = {"content-type": "application/json"}
         # issue the request (raises IOError)
         response = requests.post(url, data=command, headers=headers, timeout=timeout)
-        response.raise_for_status()  # raises HttpError (extends IOError)
+        # raises HttpError (extends IOError)
+        response.raise_for_status()
         return self
 
     def get_solr_payload(self, obj):
@@ -216,10 +215,12 @@ class SolrSearch(object):
 
             # if the add worked, send commit command
             add_json = response.json()
+            # raises IOError
             response = requests.post(
                 url, data=r'{"commit":{}}', headers=headers, timeout=timeout
-            )  # raises IOError
-            response.raise_for_status()  # raises HttpError (extends IOError)
+            )
+            # raises HttpError (extends IOError)
+            response.raise_for_status()
             logger.info(f"{self.__class__.__name__} commit successful with IDs: {ids}")
             response_list.append(add_json)
         return response_list

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible
 class SBMLTemplate(EDDObject):
-    """ Container for information used in SBML export. """
+    """Container for information used in SBML export."""
 
     class Meta:
         db_table = "sbml_template"
@@ -95,19 +95,15 @@ class SBMLTemplate(EDDObject):
 
 @python_2_unicode_compatible
 class MetaboliteExchange(models.Model):
-    """ Mapping for a metabolite to an exchange defined by a SBML template. """
+    """Mapping for a metabolite to an exchange defined by a SBML template."""
 
     class Meta:
         db_table = "measurement_type_to_exchange"
         index_together = (
-            (
-                "sbml_template",
-                "reactant_name",
-            ),  # reactants not unique, but should be searchable
-            (
-                "sbml_template",
-                "exchange_name",
-            ),  # index implied by unique, making explicit
+            # reactants not unique, but should be searchable
+            ("sbml_template", "reactant_name"),
+            # index implied by unique, making explicit
+            ("sbml_template", "exchange_name"),
         )
         unique_together = (
             ("sbml_template", "exchange_name"),
@@ -148,7 +144,8 @@ class MetaboliteSpecies(models.Model):
     class Meta:
         db_table = "measurement_type_to_species"
         index_together = (
-            ("sbml_template", "species"),  # index implied by unique, making explicit
+            # index implied by unique, making explicit
+            ("sbml_template", "species"),
         )
         unique_together = (
             ("sbml_template", "species"),

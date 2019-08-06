@@ -218,7 +218,7 @@ class ImportDataTestsMixin(object):
                     mock_task.assert_called_once_with(
                         self.target_study.pk, self.user.pk, import_id
                     )
-        self.assertEqual(self._assay_count(), 0)  # view does not change assays
+        self.assertEqual(self._assay_count(), 0, msg="View changed assay count")
         return response
 
     def _run_parse_view(self, filename, filetype, mode):
@@ -266,19 +266,20 @@ class ImportDataTestsMixin(object):
             storage.load_pages.assert_called_once()
 
     def _slice_series_pages(self, series_file, page_count):
-        """ Read the aggregated series data from file and if configured to test multiple pages,
-            break it up into chunks for insertion into the simulated cache. Clients of this
-            method must override EDD_IMPORT_PAGE_SIZE to get predictable results.
+        """
+        Read the aggregated series data from file and if configured to test multiple pages,
+        break it up into chunks for insertion into the simulated cache. Clients of this
+        method must override EDD_IMPORT_PAGE_SIZE to get predictable results.
         """
 
-        # if import can be completed in a single page, just return the series data directly from
-        # file
+        # if import can be completed in a single page, just return the series
+        # data directly from file
         series_str = series_file.read()
         if page_count == 1:
             return [series_str]
 
-        # since we have to page the data, parse the json and break it up into pages of the
-        # requested size
+        # since we have to page the data, parse the json and break it up into
+        # pages of the requested size
         series = json.loads(series_str)
         item_count = len(series)
         page_size = settings.EDD_IMPORT_PAGE_SIZE
@@ -290,9 +291,8 @@ class ImportDataTestsMixin(object):
             pages.append(json.dumps(page_series))
             self.assertTrue(page_series)
 
-        self.assertEqual(
-            len(pages), page_count
-        )  # verify that data file content matches
+        # verify that data file content matches
+        self.assertEqual(len(pages), page_count, msg="Page counts differ")
 
         return pages
 
@@ -371,9 +371,8 @@ class PagedImportTests(ImportDataTestsMixin, TestCase):
         self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=20)
         self.client.force_login(self.user)
-        self.import_id = (
-            "3f775231-e380-42eb-a693-cf0d88e133ba"
-        )  # same as the paged context file
+        # same as the paged context file
+        self.import_id = "3f775231-e380-42eb-a693-cf0d88e133ba"
 
     # override settings to force the import to be multi-paged, and also to future proof the
     # test against local settings changes. Otherwise, exactly the same test here as in
@@ -435,7 +434,7 @@ class PagedImportTests(ImportDataTestsMixin, TestCase):
             self.assertEqual(response.status_code, codes.ok)
             storage.delete.assert_called_once()
 
-        self.assertEqual(self._assay_count(), 0)  # view does not change assays
+        self.assertEqual(self._assay_count(), 0, msg="View changed assay count")
         return response
 
 
@@ -535,8 +534,6 @@ class FBAExportDataTests(TestCase):
 
 
 class PCAPExportDataTests(TestCase):
-    """
-    """
 
     fixtures = ["main/tutorial_pcap"]
 

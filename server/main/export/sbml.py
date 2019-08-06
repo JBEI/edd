@@ -49,7 +49,8 @@ class SbmlForm(forms.Form):
 
     @property
     def sbml_warnings(self):
-        self.is_valid()  # trigger validation if needed
+        # trigger validation if needed
+        self.is_valid()
         return self._sbml_warnings
 
 
@@ -156,9 +157,8 @@ class SbmlExport(object):
         self._from_study_page = (
             export_settings_form.add_prefix("sbml_template") not in payload
         )
-        if (
-            self._from_study_page
-        ):  # coming from study page, make sure bound data has default value
+        # coming from study page, make sure bound data has default value
+        if self._from_study_page:
             export_settings_form.update_bound_data_with_defaults()
         self._forms.update(export_settings_form=export_settings_form)
         if export_settings_form.is_valid():
@@ -169,8 +169,8 @@ class SbmlExport(object):
 
     def create_match_form(self, payload, **kwargs):
         """
-        Constructs an SbmlMatchReactions form, linking SBML reaction elements to specific
-        measurements.
+        Constructs an SbmlMatchReactions form, linking SBML reaction elements to
+        specific measurements.
 
         :param payload: the QueryDict from POST attribute of a request
         :param kwargs: any additional kwargs to pass to the form; see Django Forms
@@ -363,7 +363,8 @@ class SbmlExport(object):
         our_species = {}
         our_reactions = {}
         for mtype, match in matches.items():
-            if match:  # when not None, match[0] == species and match[1] == reaction
+            if match:
+                # when not None, match[0] == species and match[1] == reaction
                 if match[0] and match[0] not in our_species:
                     our_species[match[0]] = mtype
                 if match[1] and match[1] not in our_reactions:
@@ -626,7 +627,8 @@ class SbmlExport(object):
                     time_delta = float(time - times[-2])
                 else:
                     # calculate flux to next value for all but last value
-                    y_0 = interpolate_at(values, time)  # interpolate_at returns a float
+                    # interpolate_at returns a float
+                    y_0 = interpolate_at(values, time)
                     y_next = float(values[next_index].y[0])
                     y_delta = y_next - y_0
                     time_delta = float(times[next_index] - time)
@@ -756,13 +758,15 @@ class SbmlExportMeasurementsForm(SbmlForm):
     """Form used for selecting measurements to include in SBML exports."""
 
     measurement = MeasurementChoiceField(
-        queryset=models.Measurement.objects.none(),  # this is overridden in __init__()
+        # this is overridden in __init__()
+        queryset=models.Measurement.objects.none(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     interpolate = forms.ModelMultipleChoiceField(
         label=_("Allow interpolation for"),
-        queryset=models.Protocol.objects.none(),  # this is overridden in __init__()
+        # this is overridden in __init__()
+        queryset=models.Protocol.objects.none(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
@@ -1068,7 +1072,8 @@ class SbmlMatchReactionWidget(forms.widgets.MultiWidget):
     def decompress(self, value):
         if value is None:
             return ["", ""]
-        return value  # value is a tuple anyway
+        # value is a tuple anyway
+        return value
 
     def format_output(self, rendered_widgets):
         return "</td><td>".join(rendered_widgets)
@@ -1078,7 +1083,8 @@ class SbmlMatchReactionField(forms.MultiValueField):
     """A form Field combining the selected values of SBML species and SBML reaction."""
 
     def __init__(self, template, *args, **kwargs):
-        fields = (forms.CharField(), forms.CharField())  # these are only placeholders
+        # these are only placeholders
+        fields = (forms.CharField(), forms.CharField())
         self.widget = SbmlMatchReactionWidget(template)
         super(SbmlMatchReactionField, self).__init__(fields, *args, **kwargs)
 

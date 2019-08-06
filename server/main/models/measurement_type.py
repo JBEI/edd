@@ -28,17 +28,21 @@ logger = logging.getLogger(__name__)
 
 
 class MeasurementType(EDDSerialize, models.Model):
-    """ Defines the type of measurement being made. A generic measurement only has name and short
-        name; if the type is a metabolite, the metabolite attribute will contain additional
-        metabolite info. """
+    """
+    Defines the type of measurement being made. A generic measurement only
+    has name and short name; if the type is a metabolite, the metabolite
+    attribute will contain additional metabolite info.
+    """
 
     class Meta:
         db_table = "measurement_type"
 
     class Group(object):
-        """ Note that when a new group type is added here, code will need to be updated elsewhere,
-            including the Javascript/Typescript front end.
-            Look for the string 'MeasurementGroupCode' in comments."""
+        """
+        Note that when a new group type is added here, code will need to be
+        updated elsewhere, including the Javascript/Typescript front end.
+        Look for the string 'MeasurementGroupCode' in comments.
+        """
 
         GENERIC = "_"
         METABOLITE = "m"
@@ -405,7 +409,8 @@ class GeneIdentifier(MeasurementType):
                 link.save()
                 return gene
         except Exception:
-            pass  # fall through to raise ValidationError
+            # fall through to raise ValidationError
+            pass
         raise ValidationError(
             _u('Could not load gene "{identifier}"').format(identifier=identifier)
         )

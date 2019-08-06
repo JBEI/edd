@@ -64,9 +64,9 @@ class MetadataType(models.Model, EDDSerialize):
     """ Type information for arbitrary key-value data stored on EDDObject instances. """
 
     # defining values to use in the for_context field
-    STUDY = "S"  # metadata stored in a Study
-    LINE = "L"  # metadata stored in a Line
-    ASSAY = "A"  # metadata stored in an Assay
+    STUDY = "S"
+    LINE = "L"
+    ASSAY = "A"
     # TODO: support metadata on other EDDObject types (Protocol, Strain, Carbon Source, etc)
     CONTEXT_SET = ((STUDY, _("Study")), (LINE, _("Line")), (ASSAY, _("Assay")))
 
@@ -202,7 +202,8 @@ class MetadataType(models.Model, EDDSerialize):
         """
         try:
             if self.type_class is None:
-                return value  # for compatibility, bare strings used on None types
+                # for compatibility, bare strings used on None types
+                return value
             MetaModel = self.load_type_class()
             if MetaModel is None:
                 return json.loads(value)
@@ -219,7 +220,8 @@ class MetadataType(models.Model, EDDSerialize):
         """
         try:
             if isinstance(value, string_types) and self.type_class is None:
-                return value  # for compatibility, store strings bare
+                # for compatibility, store strings bare
+                return value
             MetaModel = self.load_type_class()
             if MetaModel is None:
                 return json.dumps(value)

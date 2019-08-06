@@ -24,7 +24,8 @@ urlpatterns = [
     path("health/", lambda request: HttpResponse(), name="healthcheck"),
     path("admin/", admin.site.urls),
     path("", include("main.urls", namespace="main")),
-    path("accounts/", include("allauth.urls")),  # allauth does not support namespacing
+    # allauth does not support namespacing
+    path("accounts/", include("allauth.urls")),
     path("utilities/", include("edd_utils.urls", namespace="edd_utils")),
     path("profile/", include("edd.profile.urls", namespace="profile")),
     path("campaign/", include("edd.campaign.urls", namespace="campaign")),

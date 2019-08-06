@@ -52,14 +52,14 @@ class NamingStrategy(object):
             via this method or from other properties). Note that even if required for line name
             uniqueness, strain names may be omitted.
         """
-        raise NotImplementedError()  # require subclasses to implement
+        raise NotImplementedError()
 
     def get_assay_name(self, line, protocol_pk, assay_metadata):
         """
         :raises ValueError if some required input isn't available for creating the name (either
             via this method or from other properties)
         """
-        raise NotImplementedError()  # require subclasses to implement
+        raise NotImplementedError()
 
     def _get_abbrev(self, field_id, raw_value):
         # not supported by ED file, overridden by AutomatedNamingStrategy
@@ -169,10 +169,10 @@ class NewLineAndAssayVisitor(object):
         self.omit_all_strains = omit_all_strains
 
     def visit_line(self, line_name, description, line_metadata_dict, replicate_num):
-        raise NotImplementedError()  # require subclasses to implement
+        raise NotImplementedError()
 
     def visit_assay(self, protocol_pk, line, assay_name, assay_metadata_dict):
-        raise NotImplementedError()  # require subclasses to implement
+        raise NotImplementedError()
 
     def get_assays_list(self, line_name, protocol_pk):
         protocols_to_assays_list = self.line_to_protocols_to_assays_list.get(
@@ -277,9 +277,8 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
             # query...TypeError.  Resulting method would be too complex with this feature?
             # TODO: ponder changing line.meta_add(values) -> meta_add(*values)
             line_attr = getattr(line, many_related_mtype.type_field)
-            line_attr.add(
-                *values
-            )  # add in bulk, which will leave the line instance out of sync
+            # add in bulk, which will leave the line instance out of sync
+            line_attr.add(*values)
 
         self.lines_created.append(line)
 
@@ -421,15 +420,15 @@ class ExperimentDescriptionContext(object):
         # pk -> MetadataType for M2M Line relations with a MetadataType analog
         self.many_related_mtypes = relation_mtypes[1]
 
-        self.related_objects = (
-            {}
-        )  # maps mtype pk -> related object pk -> related object
+        # maps mtype pk -> related object pk -> related object
+        self.related_objects = {}
 
     @staticmethod
     def query_related_object_types(line_meta_types):
-        """ Inspects the provided line metadata types to find those correspond to
-            ManyRelatedFields (e.g. Strain, CarbonSource) that may also be used in line naming
-            or needed to set foreign key relations
+        """
+        Inspects the provided line metadata types to find those correspond to
+        ManyRelatedFields (e.g. Strain, CarbonSource) that may also be used in
+        line naming or needed to set foreign key relations.
         """
         many_related_mtypes = {}
         related_object_mtypes = {}
@@ -448,8 +447,8 @@ class ExperimentDescriptionContext(object):
 
     def clear_import_specific_cache(self):
         """
-        Clears data from the cache that are the result of specific inputs in this combinatorial
-        creation attempt
+        Clears data from the cache that are the result of specific inputs in
+        this combinatorial creation attempt.
         """
         logger.debug("Clearing import-specific cache")
         self.related_objects = {}
@@ -458,14 +457,14 @@ class ExperimentDescriptionContext(object):
         """
         Gets Line-related model objects from the in-memory cache
 
-        :param mtype_pk: the MetadataType pk to get cached model object instances for
-        :param value_pks: a single primary key, or an iterable of primary keys for related
-                          objects to get from the cache.
-        :param subset: True to return the subset of requested values that were found in the
-                         cache, False to raise KeyError if any requested object was missing from
-                         the cache
-        :return: a list of model objects found in the cache (may be a subset as dictated by
-                        "optional"
+        :param mtype_pk: the MetadataType pk to get cached model object instances
+        :param value_pks: a single primary key, or an iterable of primary keys
+            for related objects to get from the cache.
+        :param subset: True to return the subset of requested values that were
+            found in the cache; False to raise KeyError if any requested object
+            was missing from the cache
+        :return: a list of model objects found in the cache; may be a subset as
+            dictated by "optional"
         :raises: KeyError if "optional" is false and a requested key isn't in the cache
         """
 
@@ -514,11 +513,12 @@ class ExperimentDescriptionContext(object):
 
 class AutomatedNamingStrategy(NamingStrategy):
     """
-    An automated naming strategy for line/assay naming during combinatorial line/assay
-    creation (but NOT Experiment Description file upload, which uses
-    _ExperimentDescNamingStrategy).
-    The user specifies the order of items in the line/assay names, then names are generated
-    automatically.
+    An automated naming strategy for line/assay naming during combinatorial
+    line/assay creation, but NOT Experiment Description file upload, which uses
+    _ExperimentDescNamingStrategy.
+
+    The user specifies the order of items in the line/assay names, then names
+    are generated automatically.
     """
 
     def __init__(
@@ -573,8 +573,8 @@ class AutomatedNamingStrategy(NamingStrategy):
 
     def get_line_name(self, line_metadata, replicate_num):
         """
-        Constructs a name for the specified line based on the order of naming elements explicitly
-        specified by the client.
+        Constructs a name for the specified line based on the order of naming
+        elements explicitly specified by the client.
         """
         line_name = None
 
@@ -620,7 +620,8 @@ class AutomatedNamingStrategy(NamingStrategy):
                             "No value found for metadata field with id %s" % field_id
                         )
                 else:
-                    raise ValueError()  # TODO: better error message?
+                    # TODO: better error message?
+                    raise ValueError()
 
             if not line_name:
                 line_name = append_value
@@ -794,7 +795,8 @@ class CombinatorialDescriptionInput(object):
                     elt, string_types
                 ):
                     for val in elt:
-                        result.add(val)  # can't do result.update(list)
+                        # can't do result.update(list)
+                        result.add(val)
                 else:
                     result.add(elt)
         else:
@@ -901,7 +903,7 @@ class CombinatorialDescriptionInput(object):
                 logger.error(
                     "ICE ID %s was found in ICE, but not in EDD. EDD strains are %s"
                     % (ice_id, edd_strains_by_ice_id)
-                )  # TODO: remove debug stmt
+                )
                 self.importer.add_error(
                     INTERNAL_EDD_ERROR_CATEGORY, UNMATCHED_PART_NUMBER, ice_id
                 )
@@ -1093,9 +1095,8 @@ class CombinatorialDescriptionInput(object):
             self._visit_new_lines_and_assays(line_metadata, visitor)
             return
 
-        unvisited_meta_pks = copy.copy(
-            unvisited_meta_pks
-        )  # only outer loop visitation counts!
+        # only outer loop visitation counts!
+        unvisited_meta_pks = copy.copy(unvisited_meta_pks)
         meta_pk = unvisited_meta_pks.pop()
         combinatorial_values = self.combinatorial_line_metadata[meta_pk]
 
@@ -1286,7 +1287,6 @@ def find_existing_edd_strains(entries_by_ice_id, importer):
     experiment with some level of duplication here. The original method in create_lines.py from
     which this one is derived uses EDD's REST API to avoid having to have database credentials.
 
-    :param edd: an authenticated EddApi instance
     :param entries_by_ice_id: a list of Ice Entry objects for which matching EDD Strains should
     be located
     :return: two collections; the first is a dict mapping ICE identifiers to existing EDD Strains,

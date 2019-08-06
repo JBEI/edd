@@ -55,7 +55,8 @@ class HiddenJSONWidget(forms.widgets.HiddenInput):
     """
 
     def value_from_datadict(self, data, files, name):
-        return data.get(name, "{}")  # default value of empty dict/object
+        # default value of empty dict/object
+        return data.get(name, "{}")
 
 
 class AutocompleteWidget(forms.widgets.MultiWidget):
@@ -194,7 +195,7 @@ class RegistryValidator(object):
             )
             ice.timeout = settings.ICE_REQUEST_TIMEOUT
             self.entry = ice.get_entry(registry_id)
-            self.entry.url = "".join((ice.base_url, "/entry/", str(self.entry.id)))
+            self.entry.url = f"{ice.base_url}/entry/{self.entry.id}"
         except Exception:
             logger.exception(
                 "Exception loading part %(part_id)s from ICE for user "
@@ -854,7 +855,8 @@ class AssayForm(BulkEditMixin, MetadataEditMixin, forms.ModelForm):
                 with transaction.atomic():
                     # wrap map in list to force iterating over the entire map, executing save
                     saved = list(map(save_linked, enumerate(linked, 1)))
-                return saved[0]  # returning only the first created assay
+                # returning only the first created assay
+                return saved[0]
         return assay
 
 

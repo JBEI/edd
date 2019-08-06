@@ -18,6 +18,9 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
+from jbei.rest.auth import HmacAuth
+from jbei.rest.clients.ice import IceApi, IceApiException
+
 from . import models
 from .export.sbml import validate_sbml_attachment
 from .forms import (
@@ -223,7 +226,8 @@ class StrainAdmin(EDDObjectAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         assert obj
-        if not obj.registry_id:  # existing strain without link to ICE
+        if not obj.registry_id:
+            # existing strain without link to ICE
             return ["study_list"]
         return ["name", "description", "registry_url", "study_list"]
 
@@ -471,11 +475,8 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
         return super(MetaboliteAdmin, self).get_fields(request, obj) + [
             "pubchem_cid",
-            (
-                "molecular_formula",
-                "molar_mass",
-                "charge",
-            ),  # grouping in tuple puts in a row
+            # grouping in tuple puts in a row
+            ("molecular_formula", "molar_mass", "charge"),
             "smiles",
             "id_map",
             "tags",
@@ -598,7 +599,8 @@ class ProteinAdmin(MeasurementTypeAdmin):
 class GeneAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
         return super(GeneAdmin, self).get_fields(request, obj) + [
-            ("gene_length")  # join these on the same row
+            # join these on the same row
+            ("gene_length",)
         ]
 
     def get_list_display(self, request):
@@ -779,7 +781,11 @@ class EDDUserAdmin(UserAdmin):
     """ Definition for admin-edit of user accounts """
 
     # actions is a list
-    actions = UserAdmin.actions + ["solr_index", "update_groups_from_ldap"]
+    actions = UserAdmin.actions + [
+        "solr_index",
+        "update_groups_from_ldap",
+        "search_ice_as_action",
+    ]
     # list_display is a tuple
     list_display = UserAdmin.list_display + ("date_joined", "last_login")
 
@@ -804,6 +810,29 @@ class EDDUserAdmin(UserAdmin):
                 user.groups.clear()
 
     update_groups_from_ldap.short_description = "Update Groups from LDAP"
+
+    def search_ice_as_action(self, request, queryset):
+        # intentionally throw error when multiple users selected
+        user = queryset.get()
+        context = self.admin_site.each_context(request)
+        auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=user.email)
+        ice = IceApi(auth=auth, verify_ssl_cert=settings.ICE_VERIFY_CERT)
+        ice.timeout = settings.ICE_REQUEST_TIMEOUT
+        results = []
+        term = request.POST.get("term", None)
+        if term is not None:
+            try:
+                results = ice.search(term)
+            except IceApiException:
+                self.message_user(
+                    request,
+                    "Failed to execute search in ICE, check the ICE logs.",
+                    messages.ERROR,
+                )
+        context.update(ice=ice.base_url, results=results, impersonate=user)
+        return render(request, "admin/strain_impersonate_search.html", context=context)
+
+    search_ice_as_action.short_description = "Search ICE as User"
 
 
 class WorklistColumnInline(admin.TabularInline):

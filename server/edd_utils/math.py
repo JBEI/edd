@@ -67,8 +67,10 @@ def find_consensus_values(
         grid = GridSearchCV(
             KernelDensity(),
             {"bandwidth": np.linspace(min_bandwidth, 0.1, 30)},
-            iid=False,  # TODO: this param is removed in sklearn 0.24, but 0.20 warns if left out
-            cv=20,  # 20-fold cross-validation
+            # TODO: this param is removed in sklearn 0.24, but 0.20 warns if left out
+            iid=False,
+            # 20-fold cross-validation
+            cv=20,
         )
         grid.fit(x[:, None])
         bandwidth = grid.best_params_["bandwidth"]
