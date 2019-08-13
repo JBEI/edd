@@ -2,19 +2,16 @@
 
 from django.db.models.signals import post_delete, post_save
 
-from .. import models as edd_models
-from . import study_modified
+from .. import models
 from .dispatcher import receiver
+from .signals import study_modified
 
-permissions = (
-    edd_models.UserPermission,
-    edd_models.GroupPermission,
-    edd_models.EveryonePermission,
-)
+permissions = (models.UserPermission, models.GroupPermission, models.EveryonePermission)
 
 
 @receiver((post_save, post_delete), sender=permissions)
 def permission_change(sender, instance, using, raw=False, **kwargs):
     # raw save == database may be inconsistent; do not forward next signal
-    if not raw and using == "default":
-        study_modified.send(sender=sender, study=instance.study, using=using)
+    if raw:
+        return
+    study_modified.send(sender=sender, study=instance.study, using=using)

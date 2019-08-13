@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
+# The F401 error code is "imported but unused" warning; we ignore it here
+#   because this __init__ module exists only to map the individual files in
+#   this directory to the signals module.
 
-import django.dispatch
-
-study_modified = django.dispatch.Signal(providing_args=["study", "using"])
-study_removed = django.dispatch.Signal(providing_args=["doc", "using"])
-type_modified = django.dispatch.Signal(providing_args=["measurement_type", "using"])
-type_removed = django.dispatch.Signal(providing_args=["doc", "using"])
-user_modified = django.dispatch.Signal(providing_args=["user", "using"])
-user_removed = django.dispatch.Signal(providing_args=["doc", "using"])
+from .core import *  # noqa: F401, F403
+from .permission import *  # noqa: F401, F403
+from .sbml import *  # noqa: F401, F403
+from .solr import *  # noqa: F401, F403
+from .user import *  # noqa: F401, F403

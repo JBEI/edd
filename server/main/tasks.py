@@ -22,7 +22,7 @@ from threadlocals.threadlocals import set_thread_variable
 
 from edd.notify.backend import RedisBroker
 from jbei.rest.auth import HmacAuth
-from jbei.rest.clients.ice import IceApi
+from jbei.rest.clients.ice import IceApi, IceApiException
 
 from . import models
 from .export import forms as export_forms
@@ -37,16 +37,15 @@ User = get_user_model()
 
 def build_study_url(slug):
     """
-    Constructs a full URL (e.g. https://example.com/edd/s/my-study/) for a study from a slug.
+    Constructs a full URL (e.g. https://example.com/edd/s/my-study/) for
+    a study from a slug.
     """
     path = reverse("main:overview", kwargs={"slug": slug})
     return get_absolute_url(path)
 
 
 def create_ice_connection(user_token):
-    """
-    Creates an instance of the ICE API using common settings.
-    """
+    """Creates an instance of the ICE API using common settings."""
     # Use getattr to load settings without raising AttributeError
     key_id = getattr(settings, "ICE_KEY_ID", None)
     url = getattr(settings, "ICE_URL", None)
@@ -66,10 +65,7 @@ def create_ice_connection(user_token):
 
 
 def delay_calculation(task):
-    """
-    Calculates a delay for a task using exponential backoff.
-    """
-    # delay is default + 2**n seconds
+    """Calculates a delay for a task using exponential backoff."""
     return task.default_retry_delay + (2 ** (task.request.retries + 1))
 
 
@@ -79,8 +75,8 @@ def export_table_task(self, user_id, param_path):
     Task runs the code for creating an export, from form data validated by a view.
 
     :param user_id: the primary key of the user running the export
-    :param param_path: the key returned from main.redis.ScratchStorage.save() used to access
-        saved export parameters
+    :param param_path: the key returned from main.redis.ScratchStorage.save()
+        used to access saved export parameters
     :throws RuntimeError: on any errors occurring while running the export
     """
     try:
@@ -134,8 +130,8 @@ def export_worklist_task(self, user_id, param_path):
     Task runs the code for creating a worklist export, from form data validated by a view.
 
     :param user_id: the primary key of the user running the worklist
-    :param param_path: the key returned from main.redis.ScratchStorage.save() used to access
-        saved worklist parameters
+    :param param_path: the key returned from main.redis.ScratchStorage.save()
+        used to access saved worklist parameters
     :returns: the key used to access worklist data from main.redis.ScratchStorage.load()
     :throws RuntimeError: on any errors occuring while running the export
     """
@@ -252,7 +248,7 @@ def import_table_task(self, study_id, user_id, import_id):
             logger.exception("Failure in import_table_task", e)
 
             # send configured error notifications
-            send_import_failure_email(study, user, import_id, import_params, start)
+            send_import_failure_email(study, user, import_id, import_params)
             message = _(
                 "Failed import to {study}, EDD encountered this problem: {e}"
             ).format(study=study.name, e=e)
@@ -319,7 +315,7 @@ Submitting user : %(username)s (%(email)s)
 %(traceback)s"""
 
 
-def send_import_failure_email(study, user, import_id, import_params, start):
+def send_import_failure_email(study, user, import_id, import_params):
     """
     Sends an import failure email to notify the user of a failed (large) import. Note that
     failure modes exist that aren't covered by this notification but it does capture the most
@@ -369,11 +365,10 @@ def send_import_failure_email(study, user, import_id, import_params, start):
 
 
 @shared_task(bind=True)
-def link_ice_entry_to_study(self, user_token, strain, study):
+def link_ice_entry_to_study(self, strain, study):
     """
     Task runs the code to register a link between an ICE entry and an EDD study.
 
-    :param user_token: the token used to identify a user to ICE
     :param strain: the primary key of the EDD main.models.Strain in the link
     :param study: the primary key of the EDD main.models.Study in the link
     :throws Exception: for any errors other than communication errors to ICE instance
@@ -382,7 +377,8 @@ def link_ice_entry_to_study(self, user_token, strain, study):
     query = models.Strain.objects.filter(pk=strain, line__study__pk=study)
     if query.exists():
         try:
-            ice = create_ice_connection(user_token)
+            # always running as configured admin account
+            ice = create_ice_connection(settings.ICE_ADMIN_ACCOUNT)
             record = (
                 query.annotate(
                     study_slug=F("line__study__slug"), study_name=F("line__study__name")
@@ -392,19 +388,16 @@ def link_ice_entry_to_study(self, user_token, strain, study):
             )
             url = build_study_url(record.study_slug)
             ice.add_experiment_link(record.registry_id, record.study_name, url)
-        except RequestException as e:
+        except IceApiException as e:
             # Retry when there are errors communicating with ICE
             raise self.retry(exc=e, countdown=delay_calculation(self), max_retries=10)
-        except Exception as e:
-            raise e
 
 
 @shared_task(bind=True)
-def unlink_ice_entry_from_study(self, user_token, strain, study):
+def unlink_ice_entry_from_study(self, strain, study):
     """
     Task runs the code to de-register a link between an ICE entry and an EDD study.
 
-    :param user_token: the token used to identify a user to ICE
     :param strain: the primary key of the EDD main.models.Strain in the former link
     :param study: the primary key of the EDD main.models.Study in the former link
     :throws Exception: for any errors other than communication errors to ICE instance
@@ -412,7 +405,8 @@ def unlink_ice_entry_from_study(self, user_token, strain, study):
     query = models.Strain.objects.filter(pk=strain, line__study__pk=study)
     if not query.exists():
         try:
-            ice = create_ice_connection(user_token)
+            # always running as configured admin account
+            ice = create_ice_connection(settings.ICE_ADMIN_ACCOUNT)
             record = models.Strain.objects.get(pk=strain)
             study_obj = models.Study.objects.get(pk=study)
             url = build_study_url(study_obj.slug)
@@ -420,8 +414,6 @@ def unlink_ice_entry_from_study(self, user_token, strain, study):
         except RequestException as e:
             # Retry when there are errors communicating with ICE
             raise self.retry(exc=e, countdown=delay_calculation(self), max_retries=10)
-        except Exception as e:
-            raise e
 
 
 @shared_task

@@ -3,12 +3,17 @@
 Factory classes used to generate objects under test.
 """
 
+from unittest import mock
+
 import environ
 import factory
+import faker
 from django.contrib.auth import get_user_model
 from django.contrib.auth import models as auth_models
 
 from .. import models
+
+fake = faker.Faker()
 
 
 def test_file_path(name):
@@ -20,6 +25,15 @@ def load_test_file(name, mode="rb"):
     "Opens test files saved in the `files` directory."
     filepath = test_file_path(name)
     return open(filepath, mode)
+
+
+def create_fake_upload():
+    fake_upload = mock.Mock()
+    fake_upload.name = fake.file_name()
+    fake_upload.size = fake.random_int()
+    fake_upload.file = mock.Mock()
+    fake_upload.file.content_type = fake.mime_type()
+    return fake_upload
 
 
 class StudyFactory(factory.django.DjangoModelFactory):
@@ -140,3 +154,8 @@ class GroupFactory(factory.django.DjangoModelFactory):
         django_get_or_create = ("name",)
 
     name = factory.Faker("word")
+
+
+class SBMLTemplateFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.SBMLTemplate
