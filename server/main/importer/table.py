@@ -34,7 +34,7 @@ class ImportBoundsException(ImportException):
     pass
 
 
-class ImportBroker(object):
+class ImportBroker:
     def __init__(self):
         self.storage = redis.ScratchStorage(
             key_prefix=f"{__name__}.{self.__class__.__name__}"
@@ -73,13 +73,27 @@ class ImportBroker(object):
             raise ImportBoundsException("Data is already cached for import")
             # END uncovered
 
+    def clear_context(self, import_id):
+        self.storage.delete(self._import_name(import_id))
+
     def clear_pages(self, import_id):
-        self.storage.delete(f"{self._import_name(import_id)}*")
+        """
+        Clears all pages associated with this import ID
+        """
+        self.storage.delete(f"{self._import_name(import_id)}:pages")
 
     def load_context(self, import_id):
+        """
+        Loads context associated with this import ID
+        :return: the context, or None if none has been set
+        """
         return self.storage.load(self._import_name(import_id))
 
     def load_pages(self, import_id):
+        """
+        Fetches the pages of series data for the specified import
+        :returns: a generator of the stored values (binary strings)
+        """
         return self.storage.load_pages(f"{self._import_name(import_id)}:pages")
 
 
