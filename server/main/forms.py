@@ -613,10 +613,6 @@ class BulkEditMixin(object):
 class MetadataEditMixin(object):
     """Mixin class adds methods to handle processing values for MetadataType."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.input_types = {}
-
     def clean_metadata(self):
         # go through and delete any keys with None values
         meta = self.cleaned_data.get("metadata", None)
@@ -638,19 +634,6 @@ class MetadataEditMixin(object):
         """Returns True when the Form is editing an instance object."""
         return self.instance and self.instance.pk is not None
 
-    def load_metadata_types(self, ids):
-        """
-        Caches MetadataType instances referenced by the Form object.
-
-        :param ids: an iterable of ID values for MetadataType to be cached/loaded
-        """
-        # check that the input_type of MetadataType is already loaded
-        to_find = set(ids)
-        missing = to_find.difference(self.input_types.keys())
-        if missing:
-            lookup = models.MetadataType.objects.filter(id__in=missing)
-            self.input_types.update(lookup.values_list("id", "input_type"))
-
     def process_metadata_inputs(self, meta):
         """
         Given input from the metadata form field, return a dict of updated keys/values
@@ -659,25 +642,22 @@ class MetadataEditMixin(object):
         :returns: a 2-tuple of a dict of updated metadata values and a set of
             removing metadata values.
         """
-        self.load_metadata_types(meta.keys())
         updating = {}
         removing = set()
         for key, value in meta.items():
-            input_type = self.input_types.get(key, None)
-            # TODO: for now, everything has None input_type. See EDD-438
-            # do different input processing depending on value of input_type; see EDD-772
-            if input_type is None:
-                # default processing:
-                # - pass strings verbatim
-                # - treat None/null/undefined as empty string
-                # - remove values with a "delete" key
-                # - ignore everything else
-                if isinstance(value, string_types):
-                    updating[key] = value
-                elif value is None:
-                    updating[key] = ""
-                elif "delete" in value:
-                    removing.add(key)
+            # TODO: do different input processing depending on value of input_type
+            #   and/or type_class; see EDD-772
+            # default processing:
+            # - pass strings verbatim
+            # - treat None/null/undefined as empty string
+            # - remove values with a "delete" key
+            # - ignore everything else
+            if isinstance(value, string_types):
+                updating[key] = value
+            elif value is None:
+                updating[key] = ""
+            elif "delete" in value:
+                removing.add(key)
         return updating, removing
 
 

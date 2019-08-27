@@ -114,7 +114,7 @@ class MetadataType(models.Model, EDDSerialize):
         help_text=_("Size of input fields for values of this Metadata Type."),
         verbose_name=_("Input Size"),
     )
-    # type of the input; support checkboxes, autocompletes, etc
+    # type of the input on front-end; support checkboxes, autocompletes, etc
     input_type = models.CharField(
         blank=True,
         help_text=_("Type of input fields for values of this Metadata Type."),
