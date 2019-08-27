@@ -3,12 +3,12 @@
 import collections
 import copy
 import logging
-from collections import OrderedDict, Sequence, defaultdict
+from collections import Sequence, defaultdict
 
 from arrow import utcnow
 from six import string_types
 
-from main.models import SYSTEM_META_TYPES, Assay, Line, MetadataType, Protocol, Strain
+from main.models import SYSTEM_META_TYPES, Assay, Line, MetadataType, Protocol
 
 from .constants import (
     BAD_GENERIC_INPUT_CATEGORY,
@@ -20,7 +20,6 @@ from .constants import (
     INVALID_PROTOCOL_META_PK,
     INVALID_RELATED_FIELD_REFERENCE,
     NAME_ELT_REPLICATE_NUM,
-    NON_UNIQUE_STRAIN_UUIDS,
     UNMATCHED_PART_NUMBER,
     ZERO_REPLICATES,
 )
@@ -762,10 +761,11 @@ class CombinatorialDescriptionInput(object):
 
     def get_related_object_ids(self, line_meta_pk, result=None):
         """
-        Builds the set of unique ID's for Line-related objects defined by the line MetadataType
-        with the given primary key.
-        :param result: an optional existing set to populate with results from this input. If None,
-        a new set will be created.
+        Builds the set of unique ID's for Line-related objects defined by the
+        line MetadataType with the given primary key.
+
+        :param result: an optional existing set to populate with results from
+            this input. If None, a new set will be created.
         """
         if result is None:
             result = set()
@@ -1275,62 +1275,3 @@ class CombinatorialCreationPerformance(object):
             "Done with study population in %0.3f seconds"
             % self.total_time_delta.total_seconds()
         )
-
-
-def find_existing_edd_strains(entries_by_ice_id, importer):
-    """
-    Directly queries EDD's database for existing Strains that match the UUID in each ICE entry.
-    To help with database curation, for unmatched strains, the database is also searched for
-    existing strains with a similar URL or name before a strain is determined to be missing.
-
-    This method is very similar to the one used in create_lines.py, but was different enough to
-    experiment with some level of duplication here. The original method in create_lines.py from
-    which this one is derived uses EDD's REST API to avoid having to have database credentials.
-
-    :param entries_by_ice_id: a list of Ice Entry objects for which matching EDD Strains should
-    be located
-    :return: two collections; the first is a dict mapping ICE identifiers to existing EDD Strains,
-    the second is a list of ICE strains not found to have EDD Strain entries
-    """
-    # TODO: following EDD-158, consider doing a bulk query here instead of tiptoeing around strain
-    # curation issues
-
-    # maps part number -> existing EDD strain (with part number temporarily cached)
-    existing = OrderedDict()
-    not_found = []
-
-    if entries_by_ice_id:
-        logger.info(f"Searching EDD for {len(entries_by_ice_id)} strains...")
-
-    for ice_entry in entries_by_ice_id.values():
-        # search for the strain by registry ID. Note we use search instead of .get() until the
-        # database consistently contains/requires ICE UUID's and enforces uniqueness
-        # constraints for them (EDD-158).
-        found_strains_qs = Strain.objects.filter(registry_id=ice_entry.uuid)
-        # if one or more strains are found with this UUID
-        if found_strains_qs:
-            if len(found_strains_qs) == 1:
-                edd_strain = found_strains_qs.get()
-                identifier = (
-                    ice_entry.part_id
-                    if importer.options.use_ice_part_numbers
-                    else ice_entry.uuid
-                )
-                existing[identifier] = edd_strain
-            else:
-                importer.add_error(
-                    INTERNAL_EDD_ERROR_CATEGORY,
-                    NON_UNIQUE_STRAIN_UUIDS,
-                    ice_entry.uuid,
-                    "",
-                )
-        else:
-            not_found.append(ice_entry)
-    return existing, not_found
-
-
-def _build_suspected_match_msg(ice_entry, found_strains_qs):
-    return "{%(ice_entry)s, suspected matches = (%(suspected_matches)s)}" % {
-        "ice_entry": ice_entry,
-        "suspected_matches": ", ".join(strain.pk for strain in found_strains_qs),
-    }

@@ -340,7 +340,9 @@ class IceApi(RestApiClient):
             response.raise_for_status()
             json_dict = json.loads(response.text)
             if json_dict:
-                return Entry.of(json_dict, False)
+                entry = Entry.of(json_dict, False)
+                entry.url = f"{self.base_url}/entry/{entry.id}"
+                return entry
         except requests.exceptions.Timeout as e:
             if not suppress_errors:
                 raise IceApiException() from e

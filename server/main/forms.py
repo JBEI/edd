@@ -179,49 +179,68 @@ class ProtocolAutocompleteWidget(AutocompleteWidget):
         super().__init__(attrs=attrs, model=Protocol, opt=opt)
 
 
-class RegistryValidator(object):
-    def __init__(self, existing_strain=None):
+class RegistryValidator:
+    """
+    Validator for Strain objects tied to ICE registry. If using outside the
+    context of Form validation (e.g. in a Celery task), ensure that the Update
+    object is created before the callable is called.
+
+    See: https://docs.djangoproject.com/en/dev/ref/validators/
+    """
+
+    def __init__(self, existing_strain=None, existing_entry=None):
+        """
+        If an already-existing Strain object in the database is being updated,
+        initialize RegistryValidator with existing_strain. If an entry has
+        already been queried from ICE, initialize with existing_entry.
+        """
         self.existing_strain = existing_strain
-        self.count = None
-        self.entry = None
+        self.existing_entry = existing_entry
 
     def load_part_from_ice(self, registry_id):
+        if self.existing_entry is not None:
+            return self.existing_entry
+        # using the Update to get the correct user for the search
         update = Update.load_update()
         user_email = update.mod_by.email
         try:
-            ice = IceApi(
-                auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email),
-                verify_ssl_cert=settings.ICE_VERIFY_CERT,
-            )
+            auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email)
+            verify = getattr(settings, "ICE_VERIFY_CERT", True)
+            ice = IceApi(auth=auth, verify_ssl_cert=verify)
             ice.timeout = settings.ICE_REQUEST_TIMEOUT
-            self.entry = ice.get_entry(registry_id)
-            self.entry.url = f"{ice.base_url}/entry/{self.entry.id}"
-        except Exception:
-            logger.exception(
-                "Exception loading part %(part_id)s from ICE for user "
-                "%(user_email)s" % {"part_id": registry_id, "user_email": user_email}
-            )
+            entry = ice.get_entry(registry_id)
+            return entry
+        except Exception as e:
             raise ValidationError(
-                _("Failed to load strain %(uuid)s from ICE"),
+                _("Failed to load strain %(uuid)s from ICE for user %(user)s"),
                 code="ice failure",
-                params={"uuid": registry_id},
-            )
+                params={"user": user_email, "uuid": registry_id},
+            ) from e
 
-    def save_strain(self):
-        if self.entry and self.existing_strain:
-            self.existing_strain.registry_id = self.entry.uuid
-            self.existing_strain.registry_url = self.entry.url
-            self.existing_strain.save()
-        elif self.entry:
-            Strain.objects.create(
-                name=self.entry.name,
-                description=self.entry.short_description,
-                registry_id=self.entry.uuid,
-                registry_url=self.entry.url,
-            )
+    def save_strain(self, entry):
+        try:
+            if entry and self.existing_strain:
+                self.existing_strain.registry_id = entry.uuid
+                self.existing_strain.registry_url = entry.url
+                self.existing_strain.save()
+            elif entry:
+                # not using get_or_create, so exception is raised if registry_id exists
+                Strain.objects.create(
+                    name=entry.name,
+                    description=entry.short_description,
+                    registry_id=entry.uuid,
+                    registry_url=entry.url,
+                )
+        except Exception as e:
+            raise ValidationError(
+                _("Failed to save strain from %(entry)s"),
+                code="db failure",
+                params={"entry": entry},
+            ) from e
 
     def validate(self, value):
         try:
+            # handle multi-valued inputs by validating each value individually
             if isinstance(value, (list, tuple)):
                 for v in value:
                     self.validate(v)
@@ -229,14 +248,10 @@ class RegistryValidator(object):
             qs = Strain.objects.filter(registry_id=value)
             if self.existing_strain:
                 qs = qs.exclude(pk__in=[self.existing_strain])
-            self.count = qs.count()
-            if self.count == 0:
-                logger.info(
-                    "No EDD Strain found with registry_id %s. Searching ICE...", value
-                )
-                self.load_part_from_ice(value)
-                self.save_strain()
-            elif self.count > 1:
+            count = qs.count()
+            if count == 0:
+                self.save_strain(self.load_part_from_ice(value))
+            elif count > 1:
                 raise ValidationError(
                     _(
                         "Selected ICE record is already linked to EDD strains: %(strains)s"
@@ -244,12 +259,17 @@ class RegistryValidator(object):
                     code="existing records",
                     params={"strains": list(qs)},
                 )
-        except ValueError:
+        except ValidationError:
+            raise
+        except Exception as e:
             raise ValidationError(
                 _("Error querying for an EDD strain with registry_id %(uuid)s"),
                 code="query failure",
                 params={"uuid": value},
-            )
+            ) from e
+
+    def __call__(self, value):
+        self.validate(value)
 
 
 class RegistryAutocompleteWidget(AutocompleteWidget):
