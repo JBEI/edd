@@ -1,11 +1,11 @@
 # coding: utf-8
-
 import logging
 from collections import Iterable, defaultdict
 
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.sites.models import Site
+from django.urls import reverse
 from six import string_types
 from threadlocals.middleware import ThreadLocalMiddleware
 from threadlocals.threadlocals import get_current_request
@@ -13,6 +13,14 @@ from threadlocals.threadlocals import get_current_request
 from . import models
 
 logger = logging.getLogger(__name__)
+
+
+def build_study_url(slug):
+    """
+    Constructs an absolute URL (e.g. https://example.com/edd/s/my-study/) for a study from a slug.
+    """
+    path = reverse("main:overview", kwargs={"slug": slug})
+    return get_absolute_url(path)
 
 
 class EDDSettingsMiddleware(object):

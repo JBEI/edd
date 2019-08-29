@@ -29,19 +29,10 @@ from .export import forms as export_forms
 from .export.broker import ExportBroker
 from .export.table import TableExport, WorklistExport
 from .importer.table import ImportBroker, TableImport
-from .utilities import get_absolute_url
+from .utilities import build_study_url
 
 logger = get_task_logger(__name__)
 User = get_user_model()
-
-
-def build_study_url(slug):
-    """
-    Constructs a full URL (e.g. https://example.com/edd/s/my-study/) for
-    a study from a slug.
-    """
-    path = reverse("main:overview", kwargs={"slug": slug})
-    return get_absolute_url(path)
 
 
 def create_ice_connection(user_token):
