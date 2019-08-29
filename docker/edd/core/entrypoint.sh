@@ -248,6 +248,9 @@ service_wait postgres 5432
 # Wait for solr to become available
 service_wait solr 8983
 
+# run checks on solr to ensure it is ready to take updates
+python /code/manage.py edd_index --check
+
 if [ $INIT_MIGRATE -eq 1 ]; then
     banner "Managing database migrations …"
 
@@ -274,6 +277,7 @@ if [ $INIT_INDEX -eq 1 ]; then
 
     if [ "$REINDEX_EDD" = "true" ]; then
         output
+        python /code/manage.py edd_index --clean
         python /code/manage.py edd_index --force &
     else
         output

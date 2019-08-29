@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema name="edd_measurement" version="1.6">
+    <fieldType name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true" />
+    <fieldType name="uuid" class="solr.UUIDField" indexed="true" />
+    <fieldType name="plong" class="solr.LongPointField" docValues="true" omitNorms="true" />
+    <fieldType name="pdouble" class="solr.DoublePointField" docValues="true"/>
+    <!-- Text field normalized to lower-case form -->
+    <fieldType name="text_lower" class="solr.TextField" positionIncrementGap="10">
+        <analyzer>
+            <tokenizer class="solr.WhitespaceTokenizerFactory" />
+            <filter class="solr.LowerCaseFilterFactory" />
+        </analyzer>
+    </fieldType>
+    <!-- Text field normalized to lower-case, without tokenizing on spaces -->
+    <fieldType name="tag_lower" class="solr.TextField" positionIncrementGap="10">
+        <analyzer>
+            <tokenizer class="solr.KeywordTokenizerFactory" />
+            <filter class="solr.LowerCaseFilterFactory" />
+        </analyzer>
+    </fieldType>
+    <!-- Text field normalized to lower-case, taking only first 30 characters, for sorting -->
+    <fieldType name="sort_lower" class="solr.TextField" positionIncrementGap="10">
+        <analyzer>
+            <tokenizer class="solr.PatternTokenizerFactory" pattern="^.{0,30}" group="0" />
+            <filter class="solr.LowerCaseFilterFactory" />
+        </analyzer>
+    </fieldType>
+    <!-- n-gram field type for substring matching -->
+    <fieldType name="ngram" class="solr.TextField" positionIncrementGap="100" stored="false"
+            multiValued="true">
+        <analyzer type="index">
+            <tokenizer class="solr.WhitespaceTokenizerFactory" />
+            <filter class="solr.LowerCaseFilterFactory" />
+            <filter class="solr.NGramFilterFactory" minGramSize="2" maxGramSize="24" />
+        </analyzer>
+        <analyzer type="query">
+            <tokenizer class="solr.WhitespaceTokenizerFactory" />
+            <filter class="solr.LowerCaseFilterFactory" />
+        </analyzer>
+    </fieldType>
+    <!-- edge n-gram field type for matching start of tokens, split on non-alphanum -->
+    <fieldType name="edge_ngram" class="solr.TextField" positionIncrementGap="100"
+            stored="false" multiValued="true">
+        <analyzer type="index">
+            <tokenizer class="solr.WhitespaceTokenizerFactory" />
+            <filter class="solr.LowerCaseFilterFactory" />
+            <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="24" />
+        </analyzer>
+        <analyzer type="query">
+            <tokenizer class="solr.WhitespaceTokenizerFactory" />
+            <filter class="solr.LowerCaseFilterFactory" />
+        </analyzer>
+    </fieldType>
+
+    <!--
+      == Incoming document fields:
+      ==    id
+      ==    name
+      ==    code
+      ==    charge
+      ==    carbons
+      ==    mass
+      ==    formula
+      ==    tags
+      ==    source
+      -->
+    <!-- a unique key for the measurement type document -->
+    <field name="id" type="string" indexed="true" stored="true" required="true" />
+    <field name="uuid" type="uuid" indexed="true" stored="true" required="true" />
+    <!-- name of the measurement type -->
+    <field name="name" type="text_lower" indexed="true" stored="true" />
+    <!-- short name / SBML code of the measurement type -->
+    <field name="code" type="text_lower" indexed="true" stored="true" />
+    <!-- flag for the family of the measurement type -->
+    <field name="family" type="text_lower" indexed="true" stored="true" />
+    <!-- source of measurement type property data -->
+    <field name="source" type="tag_lower" indexed="true" stored="true" />
+    <!-- synonyms and alternate names for measurement type -->
+    <field name="synonym" type="text_lower" indexed="true" stored="true" multiValued="true" />
+
+    <!-- == metabolite-specific fields == -->
+    <!-- metabolite physical properties -->
+    <field name="m_charge" type="plong" indexed="true" stored="true" />
+    <field name="m_carbons" type="plong" indexed="true" stored="true" />
+    <field name="m_mass" type="pdouble" indexed="true" stored="true" />
+    <!-- molecular formula stored, not indexed -->
+    <field name="m_formula" type="string" indexed="false" stored="true" />
+    <!-- tags added to metabolite -->
+    <field name="m_tags" type="tag_lower" indexed="true" stored="true" multiValued="true" />
+
+    <!-- == protein-specific fields == -->
+    <!-- protein physical properties -->
+    <field name="p_length" type="plong" indexed="true" stored="true" />
+    <field name="p_mass" type="plong" indexed="true" stored="true" />
+
+    <!--
+      == Generated fields:
+      ==    _version_
+      ==    name_ng
+      ==    name_edge
+      ==    name_s
+      -->
+    <!-- special _version_ field needed for some newer Solr features -->
+    <field name="_version_" type="plong" indexed="true" stored="true" />
+    <!-- field needed for default request handlers, not actually used -->
+    <field name="text" type="text_lower" indexed="true" stored="false" multiValued="true" />
+    <!-- name of the measurement type in ngram form for substring matches -->
+    <field name="name_ng" type="ngram" indexed="true" stored="false" />
+    <field name="name_edge" type="edge_ngram" indexed="true" stored="false" />
+    <!-- name of the metabolite in sort_lower form for sorting -->
+    <field name="name_s" type="sort_lower" indexed="true" stored="false" multiValued="false" />
+    <!-- synonyms of the measurement type in ngram form for substring matches -->
+    <field name="synonym_ng" type="ngram" indexed="true" stored="false" />
+    <field name="synonym_edge" type="edge_ngram" indexed="true" stored="false" />
+
+    <uniqueKey>id</uniqueKey>
+
+    <!-- copy ngram fields -->
+    <copyField source="name" dest="name_ng" />
+    <copyField source="name" dest="name_edge" />
+    <copyField source="name" dest="name_s" />
+    <copyField source="synonym" dest="synonym_ng" />
+    <copyField source="synonym" dest="synonym_edge" />
+
+</schema>

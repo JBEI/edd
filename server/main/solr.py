@@ -1,10 +1,12 @@
 import logging
+from datetime import datetime
 from itertools import islice
 
 import requests
 from django.conf import settings as django_settings
-from django.contrib.auth import get_user_model
+from django.contrib import auth
 from django.db.models import Count, F, Prefetch
+from django_auth_ldap.backend import _LDAPUser
 from six import string_types
 
 from edd import utilities
@@ -21,7 +23,27 @@ class SolrException(IOError):
 
 
 class SolrSearch:
-    """ Base class for interfacing with Solr indices. """
+    """
+    Base class for interfacing with Solr indices.
+
+    Solr concepts to understand:
+     - ConfigSet is the schema and configuration of searchers
+     - Collection is a grouping of documents to search using a ConfigSet
+     - Alias is a name used to reference a Collection
+     - Core is an instance of Solr serving documents
+
+    This class was originally written to use Cores directly. It is now using
+    Collections, which contain one or more Cores using a ConfigSet. It takes
+    the name of a ConfigSet, generates a Collection (and Cores) using that
+    ConfigSet, and sets an Alias with the same name as the ConfigSet to point
+    to the Collection.
+
+    :param core: the name of the ConfigSet defining the search
+    :param settings: (optional) settings dictionary containing the Solr URL
+    :param settings_key: (optional) key used to lookup settings dictionary
+        from Django setting EDD_MAIN_SOLR (default "default")
+    :param url: (optional) directly set Solr URL
+    """
 
     DEFAULT_URL = "http://localhost:8080"
 
@@ -50,6 +72,7 @@ class SolrSearch:
         **kwargs,
     ):
         self.core = core
+        self.collection = None
         self.base_url = self.resolve_url(settings, settings_key, url)
         # chop trailing slash if present
         self.base_url = self.base_url.rstrip("/")
@@ -60,29 +83,147 @@ class SolrSearch:
     def __str__(self, *args, **kwargs):
         return f"SolrSearch[{self.url}]"
 
-    def clear(self):
-        """
-        Clears the index, deleting everything.
+    def __len__(self):
+        queryopt = self.get_queryopt("*:*", size=0)
+        result = self.search(queryopt)
+        return result.get("response", {}).get("numFound")
 
-        :raises SolrException: if an error occurs during the attempt
+    def check(self):
+        """Ensures that the ConfigSet for this searcher has a Collection."""
+        # find the primary collection, creating one if it does not exist
+        primary = self._find_alias_collection()
+        if primary is None:
+            primary = self.create_collection()
+            self.commit_collection()
+        return primary
+
+    def clean(self):
         """
-        # build the request
-        url = f"{self.url}/update/json"
-        command = r'{"delete":{"query":"*:*"},"commit":{}}'
-        headers = {"content-type": "application/json"}
+        Ensures that the ConfigSet for this searcher has only one Collection.
+
+        This should be used carefully, and only run with guarantees of no other
+        potential callers (e.g. during startup).
+        """
+        # find the primary collection, creating one if it does not exist
+        primary = self.check()
+        # discard all collections that are not the primary
+        discarded = [
+            self.discard_collection(collection=name)
+            for name in self._find_collections()
+            if name != primary
+        ]
+        # return all the collection names discarded
+        return discarded
+
+    def _find_alias_collection(self):
+        url = f"{self.base_url}/admin/collections"
+        params = {"action": "LISTALIASES"}
         try:
-            # issue the request (raises IOError)
-            response = requests.post(
-                url, data=command, headers=headers, timeout=timeout
-            )
-            # raises HttpError (extends IOError)
+            response = requests.get(url, params=params, timeout=timeout)
             response.raise_for_status()
+            aliases = response.json()["aliases"]
+            return aliases.get(self.core, None)
         except Exception as e:
-            raise SolrException(f"Failed to clear index {self}") from e
-        return self
+            raise SolrException(
+                f"Failed to find collection for alias {self.core}"
+            ) from e
+
+    def _find_collections(self):
+        url = f"{self.base_url}/admin/collections"
+        params = {"action": "LIST"}
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            response.raise_for_status()
+            collections = response.json()["collections"]
+            return [name for name in collections if self.core in name]
+        except Exception as e:
+            raise SolrException(
+                f"Failed to find collections matching {self.core}"
+            ) from e
+
+    def collection_name(self):
+        now_int = int(datetime.utcnow().timestamp())
+        # 5 bytes is big enough for the maximum handled by datetime
+        now_hex = now_int.to_bytes(5, "big").hex()
+        return f"{self.core}_{now_hex}"
+
+    def create_collection(self):
+        """Creates a new collection for searching."""
+        url = f"{self.base_url}/admin/collections"
+        name = self.collection_name()
+        params = {
+            "action": "CREATE",
+            "collection.configName": self.core,
+            "name": name,
+            "numShards": 1,
+        }
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            response.raise_for_status()
+            self.collection = name
+            return self.collection
+        except Exception as e:
+            raise SolrException(f"Failed to create collection for {self.core}") from e
+
+    def commit_collection(self):
+        """Sets a collection name to point the core name alias toward."""
+        if self.collection is None:
+            raise SolrException("Must call create_collection before commit_collection")
+        url = f"{self.base_url}/admin/collections"
+        params = {
+            "action": "CREATEALIAS",
+            "collections": self.collection,
+            "name": self.core,
+        }
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            response.raise_for_status()
+            self.collection = None
+        except Exception as e:
+            raise SolrException(
+                f"Failed to commit {self.collection} to {self.core}"
+            ) from e
+
+    def discard_collection(self, collection=None):
+        """Discards a collection from search."""
+        collection = filter(None, (collection, self.collection))
+        # always reset the collection attribute
+        self.collection = None
+        if collection is None:
+            raise SolrException("No collection to discard")
+        url = f"{self.base_url}/admin/collections"
+        params = {"action": "DELETE", "name": collection}
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            response.raise_for_status()
+            return collection
+        except Exception as e:
+            raise SolrException(
+                f"Failed to discard collection {self.collection}"
+            ) from e
+
+    def reindex(self):
+        """Runs a full index for the search collection."""
+        self.create_collection()
+        try:
+            queryset = self.get_queryset()
+            self.update(queryset)
+            self.commit_collection()
+        except Exception as e:
+            self.discard_collection()
+            raise SolrException(f"Failed to reindex {self.core}") from e
+
+    def get_queryset(self):
+        """
+        Return an iterable of items that will be sent to the search index.
+        In most cases, this will be a Django QuerySet.
+        """
+        return []  # pragma: no cover
 
     def get_solr_payload(self, obj):
-        return obj.to_solr_json()
+        if callable(getattr(obj, "to_solr_json", None)):
+            return obj.to_solr_json()
+        return obj
 
     def get_queryopt(self, query, **kwargs):
         # do some basic bounds sanity checking
@@ -94,7 +235,7 @@ class SolrSearch:
 
         try:
             rows = int(kwargs.get("size", 50))
-            rows = 50 if rows < 1 else rows
+            rows = 50 if rows < 0 else rows
         except Exception:
             rows = 50
         queryopt = {
@@ -221,48 +362,11 @@ class SolrSearch:
         except Exception as e:
             raise SolrException(f"{self} failed update") from e
 
-    def swap(self):
-        """
-        Change this search object to point to the swap index. All other search
-        objects will continue to use the main index.
-        """
-        if self.core.endswith("_swap"):
-            self.core = self.core[: self.core.rfind("_swap")]
-        else:
-            self.core = self.core + "_swap"
-        return self
-
-    def swap_execute(self):
-        """
-        Change this search object AND ALL OTHERS to point to the swap index.
-        Use this to handle long-running re-index tasks; update everything in
-        the swap index, then replace the main index with the swap index.
-        """
-        url = f"{self.base_url}/admin/cores"
-        current_core = self.core
-        updated_core = self.swap().core
-        params = {"action": "SWAP", "other": updated_core, "core": current_core}
-        try:
-            # send the request to swap out the current core for the updated one
-            response = requests.get(url, params=params, timeout=timeout)
-            response.raise_for_status()
-            # swap again after the service switches the backing cores
-            return self.swap()
-        except Exception as e:
-            raise SolrException(f"Swap of {self} failed") from e
-
     @property
     def url(self):
+        if self.collection is not None:
+            return f"{self.base_url}/{self.collection}"
         return f"{self.base_url}/{self.core}"
-
-    def __len__(self):
-        url = f"{self.base_url}/admin/cores"
-        try:
-            response = requests.get(url, params={"core": self.core}, timeout=timeout)
-            response.raise_for_status()
-            return response.json()["status"][self.core]["index"]["maxDoc"]
-        except Exception as e:
-            raise SolrException(f"Could not load length of {self}") from e
 
 
 class StudySearch(SolrSearch):
@@ -306,8 +410,7 @@ class StudySearch(SolrSearch):
             " OR ".join([f"aclw:{w}" for w in acl]),
         )
 
-    @staticmethod
-    def get_queryset():
+    def get_queryset(self):
         return (
             models.Study.objects.select_related(
                 "contact",
@@ -399,13 +502,24 @@ class UserSearch(SolrSearch):
     def __init__(self, core="users", *args, **kwargs):
         super().__init__(core=core, *args, **kwargs)
 
-    @staticmethod
-    def get_queryset():
-        return (
-            get_user_model()
-            .objects.select_related("userprofile")
-            .prefetch_related("userprofile__institutions")
+    def get_queryset(self):
+        User = auth.get_user_model()
+        queryset = User.objects.select_related("userprofile").prefetch_related(
+            "userprofile__institutions"
         )
+        # load any LDAP backends
+        backends = [b for b in auth.get_backends() if hasattr(b, "ldap")]
+        # attempt to load groups from LDAP before yielding
+        for user in queryset:
+            for backend in backends:
+                # doing this saves a database query over directly loading
+                ldap_user = _LDAPUser(backend, user=user)
+                try:
+                    ldap_user._mirror_groups()
+                except Exception:
+                    # do nothing on failure to find user in backend
+                    pass
+            yield user
 
     def query(self, query="is_active:true", options=None):
         """
@@ -463,8 +577,7 @@ class MeasurementTypeSearch(SolrSearch):
     def __init__(self, core="measurement", *args, **kwargs):
         super().__init__(core=core, *args, **kwargs)
 
-    @staticmethod
-    def get_queryset():
+    def get_queryset(self):
         return models.MeasurementType.objects.annotate(
             _source_name=F("type_source__name")
         ).select_related(

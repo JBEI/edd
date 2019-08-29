@@ -26,7 +26,6 @@ from ..models import (
     Study,
     UserPermission,
 )
-from ..solr import StudySearch
 from . import factory
 
 User = get_user_model()
@@ -211,43 +210,6 @@ class StudyTests(TestCase):
         self.assertTrue(study.metadata_get(md) == "1.234")
         with self.assertRaises(ValueError):
             study.metadata_add(md3, "9.876")
-
-
-class SolrTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        super(SolrTests, cls).setUpTestData()
-        cls.admin = factory.UserFactory(is_superuser=True)
-        cls.user1 = factory.UserFactory()
-        cls.study = factory.StudyFactory(description="Lorem ipsum dolor sit amet")
-
-    def setUp(self):
-        super(SolrTests, self).setUp()
-        self.solr_admin = StudySearch(ident=self.admin)
-        self.solr_admin.clear()
-
-    def tearDown(self):
-        self.solr_admin.clear()
-        super(SolrTests, self).tearDown()
-
-    def test_initially_empty(self):
-        solr = StudySearch(ident=self.user1)
-        result = solr.query(query="*:*")
-        self.assertEqual(
-            result["response"]["numFound"], 0, "The test index is not initially empty"
-        )
-
-    def test_add_and_retrieve(self):
-        solr = StudySearch(ident=self.user1)
-        pre_add = self.solr_admin.query(query="description:dolor")
-        solr.update([self.study])
-        post_add = self.solr_admin.query(query="description:dolor")
-        self.assertEqual(
-            pre_add["response"]["numFound"], 0, "Study in index before it was added"
-        )
-        self.assertEqual(
-            post_add["response"]["numFound"], 1, "Added study was not found in query"
-        )
 
 
 class LineTests(TestCase):  # XXX also Strain, CarbonSource

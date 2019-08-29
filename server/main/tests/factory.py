@@ -43,6 +43,8 @@ class StudyFactory(factory.django.DjangoModelFactory):
     name = factory.Faker("catch_phrase")
     description = factory.Faker("text", max_nb_chars=300)
     contact_extra = ""
+    created = factory.SubFactory("main.tests.factory.UpdateFactory")
+    updated = factory.SelfAttribute("created")
 
 
 class LineFactory(factory.django.DjangoModelFactory):
@@ -154,6 +156,16 @@ class GroupFactory(factory.django.DjangoModelFactory):
         django_get_or_create = ("name",)
 
     name = factory.Faker("word")
+
+
+class UpdateFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.Update
+
+    mod_time = factory.Faker("date_time")
+    mod_by = factory.SubFactory(UserFactory)
+    path = factory.Faker("uri_path")
+    origin = factory.Faker("ipv4")
 
 
 class SBMLTemplateFactory(factory.django.DjangoModelFactory):

@@ -7,7 +7,7 @@ volumes:
   edd_staticfiles: {}
   postgres_db: {}
   redis_db: {}
-  solr_cores: {}
+  solr_home: {}
 services:
   postgres:
     build: ./docker/postgres/
@@ -53,25 +53,17 @@ services:
     command: redis-server --appendonly yes
   solr:
     build: ./docker/solr/
-    image: jbei/solr:7.3
-    entrypoint: ['/entrypoint.sh']
+    image: jbei/solr:8
     restart: always
     networks:
       - backnet
     volumes:
-      - solr_cores:/opt/solr/server/solr
-    healthcheck:
-      test: ['CMD', '/healthcheck.sh']
-      interval: 1m
-      timeout: 15s
-      retries: 3
+      - solr_home:/var/solr/data
     logging:
       driver: 'json-file'
       options:
         max-size: 1m
         max-file: '5'
-    expose:
-      - '8983'
   rabbitmq:
     build: ./docker/rabbitmq/
     image: jbei/rabbitmq:3.7-management-alpine

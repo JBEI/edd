@@ -582,26 +582,32 @@ class Study(SlugMixin, EDDObject):
         return self.contact.email
 
     def get_metabolite_types_used(self):
-        """ Returns a QuerySet of all Metabolites used in the Study. """
-        return Metabolite.objects.filter(assay__line__study=self).distinct()
+        """Returns a QuerySet of all Metabolites used in the Study."""
+        if self.pk:
+            # only do search when Study is already saved
+            return Metabolite.objects.filter(assay__study_id=self.pk).distinct()
+        return Metabolite.objects.none()
 
     def get_protocols_used(self):
-        """ Returns a QuerySet of all Protocols used in the Study. """
-        return Protocol.objects.filter(
-            Q(assay__line__study=self) | Q(study=self)
-        ).distinct()
+        """Returns a QuerySet of all Protocols used in the Study."""
+        if self.pk:
+            # only do search when Study is already saved
+            return Protocol.objects.filter(assay__study_id=self.pk).distinct()
+        return Protocol.objects.none()
 
     def get_strains_used(self, active=None):
-        """ Returns a QuerySet of all Strains used in the Study. """
-        return Strain.objects.filter(
-            qfilter(fields=["line", "active"], value=active), line__study_id=self.pk
-        ).distinct()
+        """Returns a QuerySet of all Strains used in the Study."""
+        if self.pk:
+            is_active = qfilter(fields=["line", "active"], value=active)
+            return Strain.objects.filter(is_active, line__study_id=self.pk).distinct()
+        return Strain.objects.none()
 
     def get_assays(self, active=None):
-        """ Returns a QuerySet of all Assays contained in the Study. """
-        return Assay.objects.filter(
-            qfilter(fields=["active"], value=active), line__study_id=self.pk
-        )
+        """Returns a QuerySet of all Assays contained in the Study."""
+        if self.pk:
+            is_active = qfilter(fields=["active"], value=active)
+            return Assay.objects.filter(is_active, line__study_id=self.pk)
+        return Assay.objects.none()
 
     def to_json(self, depth=0):
         json_dict = super(Study, self).to_json(depth=depth)

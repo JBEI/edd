@@ -1,6 +1,14 @@
-FROM library/solr:7.3
+FROM library/solr:8
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
-ADD entrypoint.sh healthcheck.sh /
-ADD cores /tmp/cores
+COPY entrypoint.sh /
+COPY configsets/ /opt/solr/configset.d/
+
+HEALTHCHECK \
+    --interval=60s \
+    --retries=4 \
+    --timeout=15s \
+    CMD curl -f http://localhost:8983/solr/admin/info/health || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
