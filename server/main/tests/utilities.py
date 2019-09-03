@@ -200,8 +200,8 @@ class CombinatorialCreationTests(TestCase):
         temp_pk = str(growth_temp_meta.pk)
 
         # combinations of metadata
-        ez = {media_pk: "EZ", temp_pk: "30"}
-        lb = {media_pk: "LB", temp_pk: "30"}
+        ez = {media_pk: "EZ", temp_pk: 30}
+        lb = {media_pk: "LB", temp_pk: 30}
 
         expected_line_info = {
             "58-EZ-GLU-R1": {"meta": ez, "carbon": [cs_glucose.pk]},
