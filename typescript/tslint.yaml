@@ -17,6 +17,8 @@ rules:
   no-var-keyword: false
   # always quote object literal keys
   object-literal-key-quotes: [true, "always"]
+  # disable errors for not using `{"foobar"() {}}` shorthand for functions in object literals
+  object-literal-shorthand: false
   # disable errors for unsorted object-literal keys (for now)
   object-literal-sort-keys: false
   # disable errors for multiple declarations with a single 'var' (for now)

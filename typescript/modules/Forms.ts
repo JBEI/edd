@@ -1,6 +1,7 @@
 "use strict";
 
 import * as $ from "jquery";
+import * as EDDAuto from "./EDDAutocomplete";
 
 
 export type Renderer = (record?: any) => any;
@@ -18,6 +19,7 @@ export interface IFormField {
     enabled(enabled: boolean): IFormField;
     fill(record: any): IFormField;
     name: string;
+    parse(): any;
     render(): Renderer;
     render(r: Renderer): IFormField;
     render(r?: Renderer): Renderer | IFormField;
@@ -130,6 +132,13 @@ export class Field implements IFormField {
     private _render: Renderer;
     private _required: boolean;
 
+    static build(row: JQuery, name: string): Field {
+        // row sent by FormMetadataManager already has an appropriate input element
+        const input = row.find("input");
+        const field = new Field(input, name);
+        return field;
+    }
+
     constructor(private field: JQuery, public readonly name: string) {
         // set name data on parent P element to make it easier to map events to a Field object
         field.closest("p").data("name", name);
@@ -160,11 +169,13 @@ export class Field implements IFormField {
         }
         return this;
     }
+    parse(): any {
+        return this.field.val();
+    }
     fill(record: any): Field {
         const hasValue = record.hasOwnProperty(this.name);
         this.enabled(hasValue);
-        this.field.val(this.render()(record));
-        return this;
+        return this.set(this.render()(record));
     }
     render(): Renderer;
     render(r: Renderer): Field;
@@ -175,7 +186,14 @@ export class Field implements IFormField {
         this._render = r;
         return this;
     }
+    set(value: any): Field {
+        this.field.val(value);
+        return this;
+    }
 }
+
+
+export type WidgetInit = (row: JQuery, widget: Field) => void;
 
 
 /**
@@ -183,32 +201,59 @@ export class Field implements IFormField {
  * to generate both the visible and hidden values.
  */
 export class Autocomplete extends Field {
+
+    static build(row: JQuery, name: string): Autocomplete {
+        // row sent by FormMetadataManager has visible input element
+        const visible = row.find("input");
+        const hidden = $("<input>").attr("type", "hidden").insertAfter(visible);
+        const field = new Autocomplete(visible, hidden, name);
+        return field;
+    }
+
     constructor(private visible: JQuery, private hidden: JQuery, name: string) {
-        // TODO: use EDDAutocomplete object instead of field pairs?
         super(visible, name);
+    }
+    applyAuto(row: JQuery, klass: typeof EDDAuto.BaseAuto): Autocomplete {
+        const auto = new klass({
+            "container": row,
+            "visibleInput": this.visible,
+            "hiddenInput": this.hidden,
+        });
+        auto.init();
+        return this;
     }
     clear(): Autocomplete {
         this.hidden.val("");
         this.visible.val("");
         return this;
     }
-    fill(record: any): Autocomplete {
-        const hasValue = record.hasOwnProperty(this.name);
-        const rendered = this.render()(record);
-        this.enabled(hasValue);
-        this.visible.val(rendered[0]);
-        this.hidden.val(rendered[1]);
-        return this;
+    parse(): any {
+        return this.hidden.val();
     }
     render(): AutocompleteRenderer;
     render(r: AutocompleteRenderer): Field;
     render(r?: AutocompleteRenderer): AutocompleteRenderer | Field {
         return super.render(r);
     }
+    set(value: any): Autocomplete {
+        this.visible.val(value[0]);
+        this.hidden.val(value[1]);
+        return this;
+    }
 }
 
 
 export class Checkbox extends Field {
+
+    static build(row: JQuery, name: string): Checkbox {
+        // need to replace default textbox with a checkbox
+        const existing = row.find("input");
+        const checkbox = $("<input>").attr("type", "checkbox").insertAfter(existing);
+        const field = new Checkbox(checkbox, name);
+        existing.remove();
+        return field;
+    }
+
     constructor(private checkbox: JQuery, name: string) {
         super(checkbox, name);
     }
@@ -221,15 +266,17 @@ export class Checkbox extends Field {
         // TODO: add message somehow when disabling
         return this;
     }
-    fill(record: any): Checkbox {
-        this.enabled(record.hasOwnProperty(this.name));
-        this.checkbox.prop("checked", this.render()(record));
-        return this;
+    parse(): any {
+        return this.checkbox.prop("checked");
     }
     render(): CheckboxRenderer;
     render(r: CheckboxRenderer): Field;
     render(r?: CheckboxRenderer): CheckboxRenderer | Field {
         return super.render(r);
+    }
+    set(value: any): Checkbox {
+        this.checkbox.prop("checked", value);
+        return this;
     }
 }
 
@@ -242,6 +289,24 @@ export class Checkbox extends Field {
  * for adding a new metadata value (class attribute select_metadata_row_class).
  */
 export class FormMetadataManager {
+
+    private static widget_type_lookup = {
+        "checkbox": Checkbox,
+        "user": Autocomplete,
+        "strain": Autocomplete,
+    };
+    private static widget_init_lookup = {
+        "user": (row: JQuery, widget: Autocomplete) => {
+            const name = "User";
+            const autoType = EDDAuto.class_lookup[name];
+            widget.applyAuto(row, autoType);
+        },
+        "strain": (row: JQuery, widget: Autocomplete) => {
+            const name = "Registry";
+            const autoType = EDDAuto.class_lookup[name];
+            widget.applyAuto(row, autoType);
+        },
+    };
 
     // pulling out some class names to make customizing later easier
     // note: not const because it's reasonable to allow client code to change these values
@@ -256,6 +321,8 @@ export class FormMetadataManager {
     remove_metadata_button_class: string = "meta-remove";
     restore_metadata_button_class: string = "meta-restore";
     clear_metadata_button_class: string = "meta-clear";
+
+    private _mfields: {[name: string]: IFormField} = {};
 
     constructor(private form: JQuery, private prefix?: string) {
         this.attachEvents();
@@ -288,6 +355,7 @@ export class FormMetadataManager {
         $("." + this.row_of_metadata_class)
             .not("." + this.select_metadata_row_class)
             .remove();
+        this._mfields = {};
         const blank = "{}";
         metadataInput.val(blank);
         metadataInput.next("[name^=initial-]").val(blank);
@@ -300,11 +368,12 @@ export class FormMetadataManager {
             + ":not(." + this.select_metadata_row_class + ")";
         this.form.on("change", metadataRowSelector, (ev) => {
             // when an input changes, update the serialized metadata field
-            const changedInput = $(ev.target);
+            const parent = $(ev.target).closest("p");
+            const name = parent.data("name");
+            const field = this._mfields[name];
             const metadataInput = this.getMetadataInput();
             const metadata = JSON.parse(metadataInput.val() || "{}");
-            const typeKey = this.getRowMetadataKey(changedInput);
-            metadata[typeKey] = changedInput.val();
+            metadata[name] = field.parse();
             metadataInput.val(JSON.stringify(metadata));
         });
         this.form.on("focus click", ".disabled", (ev) => {
@@ -361,17 +430,24 @@ export class FormMetadataManager {
 
     private buildInputElement(
         row: JQuery,
-        typeKey: string | number,
-        initialValue?: string,
-    ): JQuery {
-        const id = "meta-" + typeKey;
+        metaType: MetadataTypeRecord,
+        initialValue?: any,
+    ): void {
+        const metaKey = metaType.id.toString(10);
+        const id = "meta-" + metaKey;
+        const input = row.find("input");
+        // set disabled when explicit null is passed as initial value
         if (initialValue === null) {
             row.addClass("disabled");
         }
-        // TODO: change the input element based on type of metadata; see EDD-438
-        return row.find("input")
-            .attr("id", "id-" + id)
-            .val(initialValue || "");
+        const widgetType: typeof Field = this.getWidgetType(metaType);
+        const widget = widgetType.build(row, metaKey);
+        this._mfields[metaKey] = widget;
+        if (initialValue !== undefined) {
+            widget.set(initialValue);
+        }
+        const widgetInit = this.getWidgetInit(metaType);
+        widgetInit(row, widget);
     }
 
     private buildInputName(name: string): string {
@@ -380,7 +456,6 @@ export class FormMetadataManager {
         }
         return name;
     }
-
 
     private cleanMeta(a: object): object {
         // take metadata created from mergeMeta, and clean out the null values
@@ -402,8 +477,17 @@ export class FormMetadataManager {
         return row.attr("id").match(/-(\d+)$/)[1];
     }
 
-    private insertMetadataRow(typeKey: string | number, initialValue?: string): JQuery {
-        const metaType = EDDData.MetaDataTypes[typeKey];
+    private getWidgetInit(metaType: MetadataTypeRecord): WidgetInit {
+        const doNothing = () => undefined;
+        return FormMetadataManager.widget_init_lookup[metaType.input_type] || doNothing;
+    }
+
+    private getWidgetType(metaType: MetadataTypeRecord): typeof Field {
+        return FormMetadataManager.widget_type_lookup[metaType.input_type] || Field;
+    }
+
+    private insertMetadataRow(typeKey: string | number, initialValue?: any): JQuery {
+        const metaType: MetadataTypeRecord = EDDData.MetaDataTypes[typeKey];
         if (metaType) {
             const id = "meta-" + typeKey;
             const modelRow = this.form.find("." + this.model_row_class);
@@ -416,10 +500,10 @@ export class FormMetadataManager {
                 })
                 .insertBefore(selectionRow);
             addingRow.find("label").attr("for", "id-" + id).text(metaType.name);
-            this.buildInputElement(addingRow, typeKey, initialValue);
-            if (metaType.pre) {
+            this.buildInputElement(addingRow, metaType, initialValue);
+            if (metaType.prefix) {
                 addingRow.find("." + this.prefix_label_class)
-                    .text("(" + metaType.pre + ")");
+                    .text("(" + metaType.prefix + ")");
             }
             if (metaType.postfix) {
                 addingRow.find("." + this.postfix_label_class)

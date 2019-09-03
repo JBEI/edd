@@ -20,7 +20,6 @@ from django.db.models.functions import Concat
 from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
-from six import string_types
 
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
@@ -665,19 +664,16 @@ class MetadataEditMixin(object):
         updating = {}
         removing = set()
         for key, value in meta.items():
-            # TODO: do different input processing depending on value of input_type
-            #   and/or type_class; see EDD-772
             # default processing:
-            # - pass strings verbatim
             # - treat None/null/undefined as empty string
             # - remove values with a "delete" key
-            # - ignore everything else
-            if isinstance(value, string_types):
-                updating[key] = value
-            elif value is None:
+            # - pass everything else verbatim
+            if value is None:
                 updating[key] = ""
             elif "delete" in value:
                 removing.add(key)
+            else:
+                updating[key] = value
         return updating, removing
 
 

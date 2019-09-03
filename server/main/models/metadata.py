@@ -3,18 +3,14 @@
 Models for handling metadata.
 """
 
-import json
 import logging
 from functools import reduce
-from importlib import import_module
 from uuid import uuid4
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models import F, Func
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from six import string_types
 
 from .common import EDDSerialize
 
@@ -41,9 +37,8 @@ SYSTEM_META_TYPES = {
 }
 
 
-@python_2_unicode_compatible
 class MetadataGroup(models.Model):
-    """ Group together types of metadata with a label. """
+    """Group together types of metadata with a label."""
 
     class Meta:
         db_table = "metadata_group"
@@ -59,9 +54,8 @@ class MetadataGroup(models.Model):
         return self.group_name
 
 
-@python_2_unicode_compatible
 class MetadataType(models.Model, EDDSerialize):
-    """ Type information for arbitrary key-value data stored on EDDObject instances. """
+    """Type information for arbitrary key-value data stored on EDDObject instances."""
 
     # defining values to use in the for_context field
     STUDY = "S"
@@ -108,13 +102,8 @@ class MetadataType(models.Model, EDDSerialize):
         null=True,
         verbose_name=_("Field Name"),
     )
-    # size of input text field
-    input_size = models.IntegerField(
-        default=6,
-        help_text=_("Size of input fields for values of this Metadata Type."),
-        verbose_name=_("Input Size"),
-    )
     # type of the input on front-end; support checkboxes, autocompletes, etc
+    # blank/null falls back to plain text input field
     input_type = models.CharField(
         blank=True,
         help_text=_("Type of input fields for values of this Metadata Type."),
@@ -129,7 +118,7 @@ class MetadataType(models.Model, EDDSerialize):
         max_length=255,
         verbose_name=_("Default Value"),
     )
-    # lael used to prefix values
+    # label used to prefix values
     prefix = models.CharField(
         blank=True,
         help_text=_("Prefix text appearing before values of this Metadata Type."),
@@ -149,16 +138,6 @@ class MetadataType(models.Model, EDDSerialize):
         help_text=_("Type of EDD Object this Metadata Type may be added to."),
         max_length=8,
         verbose_name=_("Context"),
-    )
-    # type of data saved, None defaults to a bare string
-    type_class = models.CharField(
-        blank=True,
-        help_text=_(
-            "Type of data saved for this Metadata Type; blank saves a string type."
-        ),
-        max_length=255,
-        null=True,
-        verbose_name=_("Type Class"),
     )
     # linking together EDD instances will be easier later if we define UUIDs now
     uuid = models.UUIDField(
@@ -180,58 +159,21 @@ class MetadataType(models.Model, EDDSerialize):
             Func(F("type_name"), function="LOWER")
         )
 
-    def load_type_class(self):
-        if self.type_class is not None:
-            try:
-                module_name, class_name = self.type_class.rsplit(".", 1)
-                module = import_module(module_name)
-                return getattr(module, class_name, None)
-            except ValueError:
-                logger.warning(f"Invalid metadata type_class '{self.type_class}'.")
-            except ModuleNotFoundError:
-                logger.warning(
-                    f"Cannot find module for type_class '{self.type_class}'."
-                )
-        return None
-
     def decode_value(self, value):
         """
-        A postgres HStore column only supports string keys and string values. This method uses
-        the definition of the MetadataType to convert a string from the database into an
-        appropriate Python object.
+        Default MetadataType class reflects back the passed value loaded from
+        JSON. Subclasses may try to modify the value to convert to arbitrary
+        Python values instead of a JSON-compatible dict.
         """
-        try:
-            if self.type_class is None:
-                # for compatibility, bare strings used on None types
-                return value
-            MetaModel = self.load_type_class()
-            if MetaModel is None:
-                return json.loads(value)
-            return MetaModel.objects.get(pk=value)
-        except Exception:
-            logger.warning(f"Failed to decode metadata {self}, returning raw value")
         return value
 
     def encode_value(self, value):
         """
-        A postgres HStore column only supports string keys and string values. This method uses
-        the definition of the MetadataType to convert a Python object into a string to be
-        saved in the database.
+        Default MetadataType class reflects back the passed value to send to
+        JSON. Subclasses may try to modify the value to serialize arbitrary
+        Python values to a JSON-compatible value.
         """
-        try:
-            if isinstance(value, string_types) and self.type_class is None:
-                # for compatibility, store strings bare
-                return value
-            MetaModel = self.load_type_class()
-            if MetaModel is None:
-                return json.dumps(value)
-            elif isinstance(value, MetaModel):
-                return str(value.pk)
-        except Exception:
-            logger.warning(
-                f"Failed to encode metadata {self}, storing string representation"
-            )
-        return str(value)
+        return value
 
     def for_line(self):
         return self.for_context == self.LINE
@@ -256,7 +198,6 @@ class MetadataType(models.Model, EDDSerialize):
             "name": self.type_name,
             "i18n": self.type_i18n,
             "input_type": self.input_type,
-            "input_size": self.input_size,
             "prefix": self.prefix,
             "postfix": self.postfix,
             "default": self.default_value,

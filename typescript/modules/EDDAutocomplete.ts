@@ -2,7 +2,9 @@ import * as $ from "jquery";
 import "jquery-ui";
 import * as MultiColumnAuto from "./MultiColumnAutocomplete";
 
-var autoCache = {};
+// track automatically generated caches for values in autocomplete types
+const autoCache = {};
+
 
 export interface AutocompleteOptions {
     // Mandatory: A JQuery object identifying the DOM element that contains, or will contain,
@@ -57,7 +59,9 @@ export interface AutocompleteOptions {
 }
 
 
-export type ExtraSearchParameters = {[param: string]: string};
+export interface ExtraSearchParameters {
+    [param: string]: string;
+}
 
 
 export class BaseAuto {
@@ -85,20 +89,20 @@ export class BaseAuto {
 
     static initPreexisting(context?: Element | JQuery) {
         $('input.autocomp', context).map((i, element) => {
-            let visibleInput: JQuery = $(element);
-            let autocompleteType: string = $(element).attr('eddautocompletetype');
+            const visibleInput: JQuery = $(element);
+            const autocompleteType: string = $(element).attr('eddautocompletetype');
             if (!autocompleteType) {
                 throw Error("eddautocompletetype must be defined!");
             }
-            let opt: AutocompleteOptions = {
+            const opt: AutocompleteOptions = {
                 "container": visibleInput.parent(),
                 "visibleInput": visibleInput,
                 "hiddenInput": visibleInput.next('input[type=hidden]'),
             };
             // This will automatically attach the created object to both input elements, in
             // the jQuery data interface, under the 'edd' object, attribute 'autocompleteobj'.
-            let type_class = class_lookup[autocompleteType];
-            let widget = new type_class(opt);
+            const type_class = class_lookup[autocompleteType];
+            const widget = new type_class(opt);
             widget.init();
         });
     }
@@ -115,11 +119,14 @@ export class BaseAuto {
         autoInput = auto.visibleInput;
         oldResponse = autoInput.mcautocomplete('option', 'response');
         autoInput.mcautocomplete('option', 'response', function(ev, ui) {
-            var highest = 0, best, termLower = term.toLowerCase();
+            let highest = 0;
+            let best;
+            const termLower = term.toLowerCase();
             autoInput.mcautocomplete('option', 'response', oldResponse);
             oldResponse.call({}, ev, ui);
-            ui.content.every(function(item) {
-                var val: string, valLower: string;
+            ui.content.every((item) => {
+                let val: string;
+                let valLower: string;
                 if (item instanceof MultiColumnAuto.NonValueItem) {
                     return true;
                 }
@@ -158,7 +165,7 @@ export class BaseAuto {
      */
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
 
-        var id = BaseAuto._uniqueIndex;
+        const id = BaseAuto._uniqueIndex;
         BaseAuto._uniqueIndex += 1;
         this.uid = id;
         this.modelName = 'Generic';
@@ -195,12 +202,12 @@ export class BaseAuto {
     }
 
     clear() {
-        var blank = this.opt.emptyCreatesNew ? 'new' : '';
+        const blank = this.opt.emptyCreatesNew ? 'new' : '';
         this.hiddenInput.val(blank).trigger('change').trigger('input');
     }
 
     init() {
-        var self: BaseAuto = this;
+        const self: BaseAuto = this;
 
         // this.cacheId might have been set by a constructor in a subclass
         this.cacheId = this.cacheId
@@ -261,7 +268,7 @@ export class BaseAuto {
             // The rest of the options are for configuring the ajax webservice call.
             'minLength': 0,
             'source': function(request, response) {
-                let termCachedResults = self.loadModelCache()[request.term];
+                const termCachedResults = self.loadModelCache()[request.term];
                 if (termCachedResults) {
                     response(termCachedResults);
                     return;
@@ -299,7 +306,7 @@ export class BaseAuto {
             // if the keydown ends up clearing the visible input, set flag
             self.delete_last = self.visibleInput.val().trim() === '';
         });
-    };
+    }
 
     loadDisplayValue(record: any): any {
         return record[this.display_key] || '';
@@ -310,20 +317,21 @@ export class BaseAuto {
     }
 
     loadModelCache(): any {
-        var cache = BaseAuto._request_cache[this.modelName] || {};
+        const cache = BaseAuto._request_cache[this.modelName] || {};
         BaseAuto._request_cache[this.modelName] = cache;
         return cache;
     }
 
     loadRecord(item: any): any {
-        var cacheKey = item[this.value_key],
-            record = (this.cache[cacheKey] = this.cache[cacheKey] || {});
+        const cacheKey = item[this.value_key];
+        const record = (this.cache[cacheKey] = this.cache[cacheKey] || {});
         $.extend(record, item);
         return record;
     }
 
     processResults(request, response, data: any): void {
-        var result, modelCache = this.loadModelCache();
+        const modelCache = this.loadModelCache();
+        let result;
         // The default handler will display "No Results Found" if no items are returned.
         if (!data || !data.rows || data.rows.length === 0) {
             result = [MultiColumnAuto.NonValueItem.NO_RESULT];
@@ -331,8 +339,8 @@ export class BaseAuto {
             // store returned results in cache
             result = data.rows;
             result.forEach((item) => {
-                var cacheKey = item[this.value_key],
-                    cacheRecord = this.cache[cacheKey] || {};
+                const cacheKey = item[this.value_key];
+                const cacheRecord = this.cache[cacheKey] || {};
                 this.cache[cacheKey] = cacheRecord;
                 $.extend(cacheRecord, item);
             });
@@ -342,12 +350,12 @@ export class BaseAuto {
     }
 
     undo(): void {
-        var old: any = this.cache[this.valKey()] || {};
+        const old: any = this.cache[this.valKey()] || {};
         this.visibleInput.val(this.loadDisplayValue(old));
     }
 
     val(): string {
-        return <string> this.hiddenInput.val();
+        return this.hiddenInput.val() as string;
     }
 
     valKey(): any {
@@ -375,7 +383,7 @@ export class User extends BaseAuto {
     }
 
     loadDisplayValue(record: any): any {
-        var value = super.loadDisplayValue(record);
+        const value = super.loadDisplayValue(record);
         if (value.trim() === '') {
             return record.email;
         } else {
@@ -427,7 +435,7 @@ export class MetadataType extends BaseAuto {
     static columns = [
         new MultiColumnAuto.AutoColumn('Name', '200px', 'name'),
         new MultiColumnAuto.AutoColumn('For', '50px', function(item, column, index) {
-            var con = item.context;
+            const con = item.context;
             return $('<span>').addClass('tag').text(
                 con === 'L' ? 'Line' : con === 'A' ? 'Assay' : con === 'S' ? 'Study' : '?');
         }),
@@ -597,7 +605,7 @@ export class GenericOrMetabolite extends BaseAuto {
     }
 
     static type_label(item: any, col: MultiColumnAuto.AutoColumn, i: number): string {
-        var type_family = GenericOrMetabolite.family_lookup[item.family];
+        const type_family = GenericOrMetabolite.family_lookup[item.family];
         if (type_family !== undefined) {
             return type_family;
         }
@@ -733,7 +741,7 @@ export class Registry extends BaseAuto {
  * Now it will use:
  *    new class_lookup[classname]()
  */
-const class_lookup: {[name: string]: typeof BaseAuto} = {
+export const class_lookup: {[name: string]: typeof BaseAuto} = {
     "User": User,
     "Group": Group,
     "CarbonSource": CarbonSource,
