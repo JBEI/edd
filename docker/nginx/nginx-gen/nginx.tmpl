@@ -112,8 +112,8 @@ server {
     listen [::]:80;
     {{ end }}
     access_log /var/log/nginx/access.log vhost;
-    # this is the default server, just close the connection
-    return 444;
+    # this is the default server, return empty 200 so healthcheck works
+    return 200;
 }
 
 {{ if (and (exists "/etc/nginx/certs/default.crt") (exists "/etc/nginx/certs/default.key")) }}
