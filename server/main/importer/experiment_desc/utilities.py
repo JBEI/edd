@@ -173,16 +173,6 @@ class NewLineAndAssayVisitor(object):
     def visit_assay(self, protocol_pk, line, assay_name, assay_metadata_dict):
         raise NotImplementedError()
 
-    def get_assays_list(self, line_name, protocol_pk):
-        protocols_to_assays_list = self.line_to_protocols_to_assays_list.get(
-            line_name, None
-        )
-
-        if not protocols_to_assays_list:
-            return []
-
-        return protocols_to_assays_list.get(protocol_pk, [])
-
 
 class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
     """
@@ -444,14 +434,6 @@ class ExperimentDescriptionContext(object):
 
         return related_object_mtypes, many_related_mtypes
 
-    def clear_import_specific_cache(self):
-        """
-        Clears data from the cache that are the result of specific inputs in
-        this combinatorial creation attempt.
-        """
-        logger.debug("Clearing import-specific cache")
-        self.related_objects = {}
-
     def get_related_objects(self, mtype_pk, value_pks, subset=False):
         """
         Gets Line-related model objects from the in-memory cache
@@ -499,15 +481,11 @@ class ExperimentDescriptionContext(object):
 
     @property
     def strains_by_pk(self):
-        if not self.related_objects:
-            return None
-
-        return self.related_objects[self.strains_mtype.pk]
+        return self.related_objects.get(self.strains_mtype.pk, None)
 
     @strains_by_pk.setter
     def strains_by_pk(self, strains_by_pk):
-        strains_mtype = self.strains_mtype
-        self.related_objects[strains_mtype.pk] = strains_by_pk
+        self.related_objects[self.strains_mtype.pk] = strains_by_pk
 
 
 class AutomatedNamingStrategy(NamingStrategy):

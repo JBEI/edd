@@ -61,6 +61,7 @@ class LineFactory(factory.django.DjangoModelFactory):
 class ProtocolFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.Protocol
+        django_get_or_create = ("name",)
 
     name = factory.Faker("bs")
     categorization = factory.Iterator(
