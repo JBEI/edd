@@ -32,25 +32,18 @@ services:
       - '5432'
   redis:
     build: ./docker/redis/
-    image: jbei/redis:3.2
+    command: ['redis-server', '--appendonly', 'yes']
+    image: jbei/redis:5
     restart: always
     networks:
       - backnet
     volumes:
       - redis_db:/data
-    healthcheck:
-      test: ['CMD', '/healthcheck.sh']
-      interval: 1m
-      timeout: 5s
-      retries: 3
     logging:
       driver: 'json-file'
       options:
         max-size: 1m
         max-file: '5'
-    expose:
-      - '6379'
-    command: redis-server --appendonly yes
   solr:
     build: ./docker/solr/
     image: jbei/solr:8
