@@ -490,10 +490,17 @@ class StudySearch(SolrSearch):
             queryopt["q.alt"] = "*:*"
         if not kwargs.get("showDisabled", False):
             fq.append("active:true")
-        if kwargs.get("showMine", False):
+        if kwargs.get("showMine", False) and self.ident:
             fq.append(f"creator:{self.ident.pk}")
         queryopt["fq"] = fq
         return queryopt
+
+
+class StudyAdminSearch(StudySearch):
+    """StudySearch that acts as an admin user without explictly passing one."""
+
+    def build_acl_filter(self):
+        return ("", "id:*")
 
 
 class UserSearch(SolrSearch):

@@ -7,7 +7,6 @@ import time
 from django.core.management.base import BaseCommand, CommandError
 
 from main import solr
-from main.tests import factory
 
 retry_limit = 10
 retry_duration = 15
@@ -18,9 +17,7 @@ class Command(BaseCommand):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # don't need to query the real system user, this is enough
-        system = factory.UserFactory.build(username="system", is_superuser=True)
-        self.study_core = solr.StudySearch(ident=system)
+        self.study_core = solr.StudyAdminSearch()
         self.user_core = solr.UserSearch()
         self.measurement_core = solr.MeasurementTypeSearch()
 
