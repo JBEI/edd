@@ -68,26 +68,31 @@ class ExportSelectionForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        # incoming IDs
-        studyId = data.get("studyId", [])
-        lineId = data.get("lineId", [])
-        assayId = data.get("assayId", [])
-        measureId = data.get("measurementId", [])
-        if not (studyId or lineId or assayId or measureId):
-            if self._fallback:
-                studyId = self._fallback.get("studyId", [])
-                lineId = self._fallback.get("lineId", [])
-                assayId = self._fallback.get("assayId", [])
-                measureId = self._fallback.get("measurementId", [])
-            if not (studyId or lineId or assayId or measureId):
+        # names of form fields
+        id_fields = ["studyId", "lineId", "assayId", "measurementId"]
+        # values coming from parent clean()
+        incoming_values = [data.get(f, []) for f in id_fields]
+        # using the incoming values if they validate below
+        values = incoming_values
+        if not any(incoming_values):
+            # default to empty fallback dict when None
+            fallback = self._fallback or {}
+            fallback_values = [fallback.get(f, []) for f in id_fields]
+            if not any(fallback_values):
                 raise forms.ValidationError("Selection cannot be empty.")
+            # have to mess with internal _mutable to persist our fallback
+            self.data._mutable = True
+            for f, v in zip(id_fields, fallback_values):
+                self.data.setlist(f, v)
+            self.data._mutable = False
+            # incoming values didn't validate, use fallback values
+            values = fallback_values
+        # table.ExportSelection uses slightly different kwarg names
+        selection_fields = ["studyId", "lineId", "assayId", "measureId"]
         self._selection = table.ExportSelection(
             self._user,
             exclude_disabled=self._exclude_disabled,
-            studyId=studyId,
-            lineId=lineId,
-            assayId=assayId,
-            measureId=measureId,
+            **dict(zip(selection_fields, values))
         )
         return data
 
