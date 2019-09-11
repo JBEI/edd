@@ -663,6 +663,20 @@ class StudyViewTests(TestCase):
             follow=True,
         )
         self.assertTemplateUsed(response, "main/export.html")
+        self.assertContains(response, self.target_study.name)
+        # TODO: replace with a proper parser to eliminate brittle exact match
+        self.assertContains(response, f'name="assayId" value="{assay.pk}"')
+
+    def test_detail_export_without_selection(self):
+        response = self.client.post(
+            reverse("main:detail", kwargs=self.target_kwargs),
+            data={"action": "export"},
+            follow=True,
+        )
+        self.assertTemplateUsed(response, "main/export.html")
+        self.assertContains(response, self.target_study.name)
+        # TODO: replace with a proper parser to eliminate brittle exact match
+        self.assertContains(response, f'name="studyId" value="{self.target_study.pk}"')
 
     def test_detail_measurement_add(self):
         target_url = reverse("main:detail", kwargs=self.target_kwargs)
