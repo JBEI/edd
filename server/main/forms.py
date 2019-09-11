@@ -666,11 +666,11 @@ class MetadataEditMixin(object):
         for key, value in meta.items():
             # default processing:
             # - treat None/null/undefined as empty string
-            # - remove values with a "delete" key
+            # - remove values with a "delete" key in a dict
             # - pass everything else verbatim
             if value is None:
                 updating[key] = ""
-            elif "delete" in value:
+            elif isinstance(value, dict) and "delete" in value:
                 removing.add(key)
             else:
                 updating[key] = value
