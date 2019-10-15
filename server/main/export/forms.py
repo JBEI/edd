@@ -92,7 +92,7 @@ class ExportSelectionForm(forms.Form):
         self._selection = table.ExportSelection(
             self._user,
             exclude_disabled=self._exclude_disabled,
-            **dict(zip(selection_fields, values))
+            **dict(zip(selection_fields, values)),
         )
         return data
 
@@ -195,17 +195,18 @@ class WorklistDefaultsForm(forms.Form):
         self._created_fields = {}
         super().__init__(*args, **kwargs)
         # create a field for default values in each column of template
-        for x in self._template.worklistcolumn_set.order_by("ordering"):
-            form_name = "col.%s" % (x.pk,)
-            self.initial[form_name] = x.get_default()
-            self.fields[form_name] = self._created_fields[form_name] = forms.CharField(
-                help_text=x.help_text,
-                initial=x.get_default(),
-                label=str(x),
+        for column in self._template.worklistcolumn_set.order_by("ordering"):
+            field_name = f"col.{column.pk}"
+            self.initial[field_name] = column.get_default()
+            self.fields[field_name] = forms.CharField(
+                help_text=column.help_text,
+                initial=column.get_default(),
+                label=str(column),
                 required=False,
                 widget=forms.TextInput(attrs={"size": 30}),
             )
-            self._lookup[form_name] = x
+            self._created_fields[field_name] = self.fields[field_name]
+            self._lookup[field_name] = column
 
     def clean(self):
         data = super().clean()
@@ -225,7 +226,8 @@ class WorklistDefaultsForm(forms.Form):
         return data
 
     def get_columns(self):
-        return [x.get_column() for x in self._lookup.values()]
+        """The ColumnChoice objects for this worklist."""
+        return [table.ColumnChoice.from_model(x) for x in self._lookup.values()]
 
     columns = property(get_columns)
 

@@ -1,11 +1,6 @@
-# coding: utf-8
-"""
-The core models: Study, Line, Assay, Measurement, MeasurementValue.
-"""
-
 import json
 import os
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from itertools import chain
 
 import arrow
@@ -15,7 +10,6 @@ from django.db import models
 from django.db.models import Q
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
-from six import string_types
 
 from .common import EDDSerialize, qfilter
 from .measurement_type import MeasurementType, MeasurementUnit, Metabolite
@@ -23,9 +17,15 @@ from .metadata import EDDMetadata, MetadataType
 from .permission import StudyPermission
 from .update import Update
 
+__doc__ = """
+The core models: Study, Line, Assay, Measurement, MeasurementValue.
+"""
+
 
 class Comment(models.Model):
-    """ Text blob attached to an EDDObject by a given user at a given time/Update. """
+    """
+    Text blob attached to an EDDObject by a given user at a given time/Update.
+    """
 
     class Meta:
         db_table = "comment"
@@ -48,7 +48,10 @@ class Comment(models.Model):
 
 
 class Attachment(models.Model):
-    """ File uploads attached to an EDDObject; include MIME, file name, and description. """
+    """
+    File uploads attached to an EDDObject; include MIME, file name,
+    and description.
+    """
 
     class Meta:
         db_table = "attachment"
@@ -142,19 +145,22 @@ class Attachment(models.Model):
         return self.extensions_to_icons[ext]
 
     def user_can_delete(self, user):
-        """ Verify that a user has the appropriate permissions to delete an attachment. """
+        """
+        Verify that a user has the appropriate permissions to delete
+        an attachment.
+        """
         return self.object_ref.user_can_write(user)
 
     def user_can_read(self, user):
         """
-        Verify that a user has the appropriate permissions to see (that is, download) an
-        attachment.
+        Verify that a user has the appropriate permissions to see (that is,
+        download) an attachment.
         """
         return self.object_ref.user_can_read(user)
 
 
 class EDDObject(EDDMetadata, EDDSerialize):
-    """ A first-class EDD object, with update trail, comments, attachments. """
+    """A first-class EDD object, with update trail, comments, attachments."""
 
     class Meta:
         db_table = "edd_object"
@@ -279,8 +285,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
 
     def to_json_str(self, depth=0):
         """
-        Used in overview.html.  Serializing directly in the template creates strings like
-        "u'description'" that Javascript can't parse.
+        Used in overview.html. Serializing directly in the template creates
+        strings like "u'description'" that Javascript can't parse.
         """
         json_dict = self.to_json(depth)
         return json.dumps(json_dict, ensure_ascii=False).encode("utf8")
@@ -292,7 +298,7 @@ class EDDObject(EDDMetadata, EDDSerialize):
         return user and user.is_superuser
 
 
-class SlugMixin(object):
+class SlugMixin:
     """
     Mixin class for models with a slug field.
 
@@ -301,24 +307,20 @@ class SlugMixin(object):
 
     def _build_slug(self, name=None, uuid=None):
         """
-        Builds a slug for this object; by default uses name field. If there is a
-        collision, append truncated UUID; if there is still a collision, use full UUID.
+        Builds a slug for this object; by default uses name field. If there is
+        a collision, append truncated UUID; if there is still a collision, use
+        full UUID.
 
-        :param name: text to use as basis of slugified name; defaults to the object name
+        :param name: text to use as basis of slugified name; defaults to the
+            object name
         :param uuid: text for UUID; defaults to the object UUID
         :returns: a slug without collisions
         """
         # sanity check parameters, default to object attribute values
-        name = (
-            name if isinstance(name, string_types) else self.name if self.name else ""
-        )
-        uuid = (
-            uuid
-            if isinstance(uuid, string_types)
-            else self.uuid.hex
-            if self.uuid
-            else ""
-        )
+        if not isinstance(name, str):
+            name = self.name if self.name else ""
+        if not isinstance(uuid, str):
+            uuid = self.uuid.hex if self.uuid else ""
         # generate slug from only the name; keep base_slug in case truncation is required
         base_slug = self._slug_append(name)
         slug = base_slug
@@ -333,7 +335,7 @@ class SlugMixin(object):
 
     def _slug_append(self, *items):
         max_length = self._meta.get_field("slug").max_length
-        base = " ".join((str(i) for i in items))
+        base = " ".join(str(i) for i in items)
         return slugify(base)[:max_length]
 
     def _slug_concat(self, name, uuid, frag_length=4):
@@ -347,7 +349,7 @@ class SlugMixin(object):
 
 
 class Study(SlugMixin, EDDObject):
-    """ A collection of items to be studied. """
+    """A collection of items to be studied."""
 
     class Meta:
         db_table = "study"
@@ -358,8 +360,9 @@ class Study(SlugMixin, EDDObject):
     )
     # contact info has two fields to support:
     # 1. linking to a specific user in EDD
-    # 2. "This is data I got from 'Improving unobtanium production in Bio-Widget using foobar'
-    #    published in Feb 2016 Bio-Widget Journal, paper has hpotter@hogwarts.edu as contact"
+    # 2. "This is data I got from 'Improving unobtanium production in
+    #    Bio-Widget using foobar' published in Feb 2016 Bio-Widget Journal,
+    #    paper has hpotter@hogwarts.edu as contact"
     contact = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         blank=True,
@@ -371,8 +374,8 @@ class Study(SlugMixin, EDDObject):
     )
     contact_extra = models.TextField(
         help_text=_(
-            "Additional field for contact information about this study (e.g. contact is "
-            "not a User of EDD)."
+            "Additional field for contact information about this study "
+            "(e.g. contact is not a User of EDD)."
         ),
         verbose_name=_("Contact (extra)"),
     )
@@ -384,10 +387,11 @@ class Study(SlugMixin, EDDObject):
         on_delete=models.SET_NULL,
         verbose_name=_("Metabolic Map"),
     )
-    # NOTE: this is NOT a field for a definitive list of Protocols on a Study; it is for Protocols
-    #   which may not have been paired with a Line in an Assay. e.g. when creating a blank Study
-    #   pre-filled with the Protocols to be used. Get definitive list by doing union of this field
-    #   and Protocols linked via Assay-Line-Study chain.
+    # NOTE: this is NOT a field for a definitive list of Protocols on a Study;
+    #   it is for Protocols which may not have been paired with a Line in an
+    #   Assay. e.g. when creating a blank Study pre-filled with the Protocols
+    #   to be used. Get definitive list by doing union of this field and
+    #   Protocols linked via Assay-Line-Study chain.
     protocols = models.ManyToManyField(
         "Protocol",
         blank=True,
@@ -405,7 +409,7 @@ class Study(SlugMixin, EDDObject):
 
     @classmethod
     def export_columns(cls, table_generator, instances=None):
-        super(Study, cls).export_columns(table_generator, instances=instances)
+        super().export_columns(table_generator, instances=instances)
         # define column for study description
         table_generator.define_field_column(
             cls._meta.get_field("description"), heading=_("Study Description")
@@ -421,7 +425,7 @@ class Study(SlugMixin, EDDObject):
         return self.name
 
     def to_solr_json(self):
-        """ Convert the Study model to a dict structure formatted for Solr JSON. """
+        """Convert the Study model to a dict structure formatted for Solr JSON."""
         created = self.created
         updated = self.updated
         return {
@@ -443,12 +447,8 @@ class Study(SlugMixin, EDDObject):
             "metabolite": [m.to_solr_value() for m in self.get_metabolite_types_used()],
             "protocol": [p.to_solr_value() for p in self.get_protocols_used()],
             "part": [s.to_solr_value() for s in self.get_strains_used()],
-            "aclr": [
-                p.__str__() for p in self.get_combined_permission() if p.is_read()
-            ],
-            "aclw": [
-                p.__str__() for p in self.get_combined_permission() if p.is_write()
-            ],
+            "aclr": [str(p) for p in self.get_combined_permission() if p.is_read()],
+            "aclw": [str(p) for p in self.get_combined_permission() if p.is_write()],
         }
 
     def allow_metadata(self, metatype):
@@ -457,11 +457,12 @@ class Study(SlugMixin, EDDObject):
     @staticmethod
     def access_filter(user, access=StudyPermission.CAN_VIEW, via=None):
         """
-        Creates a filter expression to limit queries to objects where a user has a given access
-        level to the study containing the objects under query. Note that in nearly all cases, this
-        call should be used in concert with a .distinct() on the queryset using the filter, as it
-        uses a JOIN, and will return multiple copies of an object if the user in the argument has
-        multiple permission routes to the parent Study.
+        Creates a filter expression to limit queries to objects where a user
+        has a given access level to the study containing the objects under
+        query. Note that in nearly all cases, this call should be used in
+        concert with a .distinct() on the queryset using the filter, as it uses
+        a JOIN, and will return multiple copies of an object if the user in the
+        argument has multiple permission routes to the parent Study.
 
         Examples:
 
@@ -478,16 +479,18 @@ class Study(SlugMixin, EDDObject):
             )
 
         :param user: the user
-        :param access: access level for permission; should be StudyPermission.CAN_VIEW or
-            StudyPermission.CAN_EDIT; defaults to StudyPermission.CAN_VIEW
-        :param via: an iterable of field names to traverse to get to the parent study
+        :param access: access level for permission; should be
+            StudyPermission.CAN_VIEW or StudyPermission.CAN_EDIT; defaults to
+            StudyPermission.CAN_VIEW
+        :param via: an iterable of field names to traverse to get to the
+            parent study
         """
         if user and getattr(user, "is_superuser", False):
             return Q()
-        if isinstance(access, string_types):
+        if isinstance(access, str):
             access = (access,)
         # enforce list type to via, and ensure that we work with a copy of argument
-        if isinstance(via, string_types):
+        if isinstance(via, str):
             via = [via]
         elif via:
             via = list(via)
@@ -525,15 +528,16 @@ class Study(SlugMixin, EDDObject):
     @staticmethod
     def user_role_can_read(user):
         """
-            Tests whether the user's role alone is sufficient to grant read access to this
-            study.
-            :param user: the user
-            :return: True if the user role has read access, false otherwise
+        Tests whether the user's role alone is sufficient to grant read access
+        to this study.
+
+        :param user: the user
+        :return: True if the user role has read access, false otherwise
         """
         return user.is_superuser
 
     def user_can_read(self, user):
-        """ Utility method testing if a user has read access to a Study. """
+        """Utility method testing if a user has read access to a Study."""
         return user and (
             self.user_role_can_read(user)
             or any(
@@ -547,8 +551,8 @@ class Study(SlugMixin, EDDObject):
         )
 
     def user_can_write(self, user):
-        """ Utility method testing if a user has write access to a Study. """
-        return super(Study, self).user_can_write(user) or any(
+        """Utility method testing if a user has write access to a Study."""
+        return super().user_can_write(user) or any(
             p.is_write()
             for p in chain(
                 self.userpermission_set.filter(user=user),
@@ -567,7 +571,10 @@ class Study(SlugMixin, EDDObject):
         return True
 
     def get_combined_permission(self):
-        """ Returns a chained iterator over all user and group permissions on a Study. """
+        """
+        Returns a chained iterator over all user and group permissions on
+        a Study.
+        """
         return chain(
             self.userpermission_set.all(),
             self.grouppermission_set.all(),
@@ -575,8 +582,10 @@ class Study(SlugMixin, EDDObject):
         )
 
     def get_contact(self):
-        """ Returns the contact email, or supplementary contact information if no contact user is
-            set. """
+        """
+        Returns the contact email, or supplementary contact information if no
+        contact user is set.
+        """
         if self.contact is None:
             return self.contact_extra
         return self.contact.email
@@ -610,23 +619,20 @@ class Study(SlugMixin, EDDObject):
         return Assay.objects.none()
 
     def to_json(self, depth=0):
-        json_dict = super(Study, self).to_json(depth=depth)
+        json_dict = super().to_json(depth=depth)
         contact = self.get_attr_depth("contact", depth, default={})
         if isinstance(contact, dict):
             contact["extra"] = self.contact_extra
         else:
             contact = {"id": contact, "extra": self.contact_extra}
         json_dict.update(
-            {
-                "contact": contact,
-                "metabolic_map": self.get_attr_depth("metabolic_map", depth),
-            }
+            contact=contact, metabolic_map=self.get_attr_depth("metabolic_map", depth)
         )
         return json_dict
 
 
 class Protocol(EDDObject):
-    """ A defined method of examining a Line. """
+    """A defined method of examining a Line."""
 
     class Meta:
         db_table = "protocol"
@@ -694,7 +700,7 @@ class Protocol(EDDObject):
         return self.updated.mod_time
 
     def to_solr_value(self):
-        return "%(id)s@%(name)s" % {"id": self.pk, "name": self.name}
+        return f"{self.pk}@{self.name}"
 
     def __str__(self):
         return self.name
@@ -706,12 +712,12 @@ class Protocol(EDDObject):
         if (self.id is not None and p.count() > 1) or (
             self.id is None and p.count() > 0
         ):
-            raise ValueError("There is already a protocol named '%s'." % self.name)
-        return super(Protocol, self).save(*args, **kwargs)
+            raise ValueError(f"There is already a protocol named '{self.name}'.")
+        return super().save(*args, **kwargs)
 
 
 class Strain(EDDObject):
-    """ A link to a strain/part in the JBEI ICE Registry. """
+    """A link to a strain/part in the JBEI ICE Registry."""
 
     class Meta:
         db_table = "strain"
@@ -737,13 +743,11 @@ class Strain(EDDObject):
         return self.name
 
     def to_solr_value(self):
-        return "%(id)s@%(name)s" % {"id": self.registry_id, "name": self.name}
+        return f"{self.registry_id}@{self.name}"
 
     def to_json(self, depth=0):
-        json_dict = super(Strain, self).to_json(depth)
-        json_dict.update(
-            {"registry_id": self.registry_id, "registry_url": self.registry_url}
-        )
+        json_dict = super().to_json(depth)
+        json_dict.update(registry_id=self.registry_id, registry_url=self.registry_url)
         return json_dict
 
     @staticmethod
@@ -760,7 +764,7 @@ class Strain(EDDObject):
 
 
 class CarbonSource(EDDObject):
-    """ Information about carbon sources, isotope labeling. """
+    """Information about carbon sources, isotope labeling."""
 
     class Meta:
         db_table = "carbon_source"
@@ -781,16 +785,16 @@ class CarbonSource(EDDObject):
     )
 
     def to_json(self, depth=0):
-        json_dict = super(CarbonSource, self).to_json(depth)
-        json_dict.update({"labeling": self.labeling, "volume": self.volume})
+        json_dict = super().to_json(depth)
+        json_dict.update(labeling=self.labeling, volume=self.volume)
         return json_dict
 
     def __str__(self):
-        return "%s (%s)" % (self.name, self.labeling)
+        return f"{self.name} ({self.labeling})"
 
 
 class Line(EDDObject):
-    """ A single item to be studied (contents of well, tube, dish, etc). """
+    """A single item to be studied (contents of well, tube, dish, etc)."""
 
     class Meta:
         db_table = "line"
@@ -821,8 +825,8 @@ class Line(EDDObject):
     )
     contact_extra = models.TextField(
         help_text=_(
-            "Additional field for contact information about this Line (e.g. contact is "
-            "not a User of EDD)."
+            "Additional field for contact information about this Line "
+            "(e.g. contact is not a User of EDD)."
         ),
         verbose_name=_("Contact (extra)"),
     )
@@ -861,7 +865,7 @@ class Line(EDDObject):
 
     @classmethod
     def export_columns(cls, table_generator, instances=None):
-        super(Line, cls).export_columns(table_generator, instances=instances)
+        super().export_columns(table_generator, instances=instances)
         instances = [] if instances is None else instances
         table_generator.define_field_column(
             cls._meta.get_field("description"), heading=_("Line Description")
@@ -897,7 +901,7 @@ class Line(EDDObject):
         return self.name
 
     def to_json(self, depth=0):
-        json_dict = super(Line, self).to_json(depth)
+        json_dict = super().to_json(depth)
         # for backward-compatibility, add the 'extra' item to contact dict
         contact = self.get_attr_depth("contact", depth, default={})
         if isinstance(contact, dict):
@@ -905,13 +909,11 @@ class Line(EDDObject):
         else:
             contact = {"user_id": contact, "extra": self.contact_extra}
         json_dict.update(
-            {
-                "control": self.control,
-                "contact": contact,
-                "experimenter": self.get_attr_depth("experimenter", depth),
-                "strain": [s.pk for s in self.strains.all()],
-                "carbon": [c.pk for c in self.carbon_source.all()],
-            }
+            control=self.control,
+            contact=contact,
+            experimenter=self.get_attr_depth("experimenter", depth),
+            strain=[s.pk for s in self.strains.all()],
+            carbon=[c.pk for c in self.carbon_source.all()],
         )
         if depth > 0:
             json_dict.update(study=self.study_id)
@@ -919,10 +921,10 @@ class Line(EDDObject):
 
     def new_assay_number(self, protocol):
         """
-        Given a Protocol name, fetch all matching child Assays, and return one greater than the
-        count of existing assays.
+        Given a Protocol name, fetch all matching child Assays, and return one
+        greater than the count of existing assays.
         """
-        if isinstance(protocol, string_types):
+        if isinstance(protocol, str):
             # assume Protocol.name
             protocol = Protocol.objects.get(name=protocol)
         assays = self.assay_set.filter(protocol=protocol)
@@ -936,7 +938,9 @@ class Line(EDDObject):
 
 
 class Assay(EDDObject):
-    """ An examination of a Line, containing the Protocol and set of Measurements. """
+    """
+    An examination of a Line, containing the Protocol and set of Measurements.
+    """
 
     class Meta:
         db_table = "assay"
@@ -986,62 +990,94 @@ class Assay(EDDObject):
 
     @classmethod
     def build_name(cls, line, protocol, index):
-        return "%(line)s-%(protocol)s-%(index)s" % {
-            "line": line.name,
-            "protocol": protocol.name,
-            "index": str(index),
-        }
+        return f"{line.name}-{protocol.name}-{index}"
 
     def to_json(self, depth=0):
-        json_dict = super(Assay, self).to_json(depth)
+        json_dict = super().to_json(depth)
         json_dict.update(
-            {
-                "lid": self.get_attr_depth("line", depth),
-                "pid": self.get_attr_depth("protocol", depth),
-                "experimenter": self.get_attr_depth("experimenter", depth),
-            }
+            lid=self.get_attr_depth("line", depth),
+            pid=self.get_attr_depth("protocol", depth),
+            experimenter=self.get_attr_depth("experimenter", depth),
         )
         return json_dict
 
 
 class Measurement(EDDMetadata, EDDSerialize):
-    """ A plot of data points for an (assay, measurement type) pair. """
+    """A plot of data points for an (assay, measurement type) pair."""
 
     class Meta:
         db_table = "measurement"
 
-    class Compartment(object):
-        """ Enumeration of localized compartments applying to the measurement.
-            UNKNOWN = default; no specific localization
-            INTRACELLULAR = measurement inside of a cell, in cytosol
-            EXTRACELLULAR = measurement outside of a cell
+    class Compartment:
+        """
+        Enumeration of localized compartments applying to the measurement.
+
+        UNKNOWN = default; no specific localization
+        INTRACELLULAR = measurement inside of a cell, in cytosol
+        EXTRACELLULAR = measurement outside of a cell
         """
 
-        UNKNOWN, INTRACELLULAR, EXTRACELLULAR = map(str, range(3))
-        short_names = ["", "IC", "EC"]
-        names = [_("N/A"), _("Intracellular/Cytosol (Cy)"), _("Extracellular")]
-        CHOICE = [(str(i), cn) for i, cn in enumerate(names)]
+        UNKNOWN = "0"
+        INTRACELLULAR = "1"
+        EXTRACELLULAR = "2"
+        namecode = namedtuple("namecode", ("name", "code"))
+        names = {
+            UNKNOWN: namecode(_("N/A"), _("")),
+            INTRACELLULAR: namecode(_("Intracellular/Cytosol (Cy)"), _("IC")),
+            EXTRACELLULAR: namecode(_("Extracellular"), _("EC")),
+        }
+        CHOICE = tuple((k, v.name) for k, v in names.items())
 
         @classmethod
         def to_json(cls):
-            return {
-                i: {"name": str(cls.names[i]), "code": cls.short_names[i]}
-                for i in range(3)
-            }
+            return {k: v._asdict() for k, v in cls.names.items()}
 
-    class Format(object):
-        """ Enumeration of formats measurement values can take.
-            SCALAR = single timepoint X value, single measurement Y value (one item array)
-            VECTOR = single timepoint X value, vector measurement Y value (mass-distribution, index
-                by labeled carbon count; interpret each value as ratio with sum of all values)
-            HISTOGRAM = single timepoint X value, vector measurement Y value (bins with counts of
-                population measured within bin value, bin size/range set via y_units)
-            SIGMA = single timepoint X value, 3-item-list Y value (average, variance, sample size)
+    class Format:
+        """
+        Enumeration of formats measurement values can take.
+
+        SCALAR = single timepoint X value, single measurement Y value
+            (one item array)
+        VECTOR = single timepoint X value, vector measurement Y value
+            (mass-distribution, index by labeled carbon count; interpret each
+            value as ratio with sum of all values)
+        HISTOGRAM_NAIVE = single timepoint X value, vector measurement Y value
+            (bins with counts of population measured within bin value, bin
+            size/range set via y_units)
+        SIGMA = single timepoint X value, 3-item-list Y value (average,
+            variance, sample size)
+        RANGE = single timepoint X value, 3-item-list Y value (best, hi, lo)
+        VECTOR_RANGE = single timepoint X value, 3n vector Y value
+            (mass-distribution, n best values first, n hi values, n lo values,
+            index by xn + labeled carbon count)
+        PACKED = series of scalar values packed into a single pair of
+            value vectors
+        HISTOGRAM = timepoint plus n+1 X values, vector of n Y values per bin
+        HISTOGRAM_STEP = timepoint, start, step X values, vector Y values
+            per bin
         """
 
-        SCALAR, VECTOR, HISTOGRAM, SIGMA = map(str, range(4))
-        names = [_("scalar"), _("vector"), _("histogram"), _("sigma")]
-        CHOICE = [(str(i), n) for i, n in enumerate(names)]
+        SCALAR = "0"
+        VECTOR = "1"
+        HISTOGRAM_NAIVE = "2"
+        SIGMA = "3"
+        RANGE = "4"
+        VECTOR_RANGE = "5"
+        PACKED = "6"
+        HISTOGRAM = "7"
+        HISTOGRAM_STEP = "8"
+        names = {
+            SCALAR: _("scalar"),
+            VECTOR: _("vector"),
+            HISTOGRAM_NAIVE: _("histogram (deprecated)"),
+            SIGMA: _("sigma"),
+            RANGE: _("range"),
+            VECTOR_RANGE: _("vector range"),
+            PACKED: _("packed"),
+            HISTOGRAM: _("histogram"),
+            HISTOGRAM_STEP: _("stepped histogram"),
+        }
+        CHOICE = tuple(names.items())
 
     study = models.ForeignKey(
         Study,
@@ -1154,7 +1190,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         }
 
     def __str__(self):
-        return "Measurement{%d}{%s}" % (self.assay_id, self.measurement_type)
+        return f"Measurement[{self.assay_id}][{self.measurement_type}]"
 
     # may not be the best method name, if we ever want to support other
     # types of data as vectors in the future
@@ -1162,7 +1198,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         return self.measurement_format == Measurement.Format.VECTOR
 
     def valid_data(self):
-        """ Data for which the y-value is defined (non-NULL, non-blank). """
+        """Data for which the y-value is defined (non-NULL, non-blank)."""
         mdata = list(self.data())
         return [md for md in mdata if md.is_defined()]
 
@@ -1170,12 +1206,12 @@ class Measurement(EDDMetadata, EDDSerialize):
         return self.compartment == Measurement.Compartment.EXTRACELLULAR
 
     def data(self):
-        """ Return the data associated with this measurement. """
+        """Return the data associated with this measurement."""
         return self.measurementvalue_set.all()
 
     @property
     def name(self):
-        """ alias for self.measurement_type.type_name """
+        """alias for self.measurement_type.type_name"""
         return self.measurement_type.type_name
 
     @property
@@ -1184,7 +1220,7 @@ class Measurement(EDDMetadata, EDDSerialize):
 
     @property
     def full_name(self):
-        """ measurement compartment plus measurement_type.type_name """
+        """measurement compartment plus measurement_type.type_name"""
         lookup = dict(Measurement.Compartment.CHOICE)
         return (lookup.get(self.compartment) + " " + self.name).strip()
 
@@ -1193,7 +1229,8 @@ class Measurement(EDDMetadata, EDDSerialize):
         qs = self.measurementvalue_set.all()
         if defined_only:
             qs = qs.exclude(Q(y=None) | Q(y__len=0))
-        # first index unpacks single value from tuple; second index unpacks first value from X
+        # first index unpacks single value from tuple
+        # second index unpacks first value from X
         return [x[0][0] for x in qs.values_list("x")]
 
     # this shouldn't need to handle vectors
@@ -1205,8 +1242,10 @@ class Measurement(EDDMetadata, EDDSerialize):
 
     @property
     def y_axis_units_name(self):
-        """ Human-readable units for Y-axis.  Not intended for repeated/bulk use, since it
-            involves a foreign key lookup. """
+        """
+        Human-readable units for Y-axis. Not intended for repeated/bulk use,
+        since it involves a foreign key lookup.
+        """
         return self.y_units.unit_name
 
     def is_concentration_measurement(self):
@@ -1214,7 +1253,10 @@ class Measurement(EDDMetadata, EDDSerialize):
 
 
 class MeasurementValue(models.Model):
-    """ Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of a measurement """
+    """
+    Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of
+    a measurement.
+    """
 
     class Meta:
         db_table = "measurement_value"
@@ -1249,7 +1291,7 @@ class MeasurementValue(models.Model):
     )
 
     def __str__(self):
-        return "(%s, %s)" % (self.x, self.y)
+        return f"({self.x}, {self.y})"
 
     @property
     def fx(self):
