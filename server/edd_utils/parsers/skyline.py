@@ -10,8 +10,6 @@ from collections import defaultdict, namedtuple
 from decimal import Decimal
 from itertools import product
 
-from six import string_types
-
 from .util import RawImportRecord
 
 Record = namedtuple("Record", ["sample", "measurement", "value"])
@@ -19,20 +17,21 @@ decimal_pattern = re.compile(r"^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?")
 default_record_layout = Record(0, 1, 3)
 
 
-class SkylineParser(object):
+class SkylineParser:
     __slots__ = ["col_index"]
 
     def __init__(self, col_index=default_record_layout, *args, **kwargs):
         """
-        Optionally take indices for the columns containing sample name, measurement type, and
-        value; defaults to assuming 0th, 1st, and 3rd columns (2nd is discarded peptide seq).
+        Optionally take indices for the columns containing sample name,
+        measurement type, and value; defaults to assuming 0th, 1st, and 3rd
+        columns (2nd is discarded peptide seq).
         """
         self.col_index = col_index
 
     def export(self, input_data):
         """
-        This "export" takes a two-dimensional array of input data and creates a data structure
-        used by the old proteomics skyline conversion tool.
+        This "export" takes a two-dimensional array of input data and creates a
+        data structure used by the old proteomics skyline conversion tool.
         """
         samples = set()
         proteins = set()
@@ -46,7 +45,7 @@ class SkylineParser(object):
             try:
                 summed_areas[(item.sample, item.measurement)] += Decimal(item.value)
             except ValueError:
-                errors.append('Could not parse value "%s"' % (item.value,))
+                errors.append(f'Could not parse value "{item.value}"')
         samples = sorted(samples)
         proteins = sorted(proteins)
         # 'short and wide'
@@ -93,46 +92,31 @@ class SkylineParser(object):
         """
         Convert some input data into a generator of Record tuples.
 
-        :param input_data: either a 2D list-of-lists (e.g. parsed from Excel), or a file-like
-            object to be parsed as a CSV input.
-        :return: a generator yielding Record tuples for Skyline records in the input.
+        :param input_data: an iterable yielding lists of items in a row
+        :return: a generator yielding Record tuples for Skyline records in
+            the input.
         """
         # the input_data could be a 2D array parsed from excel or CSV
-        if isinstance(input_data, list):
-            return (
-                self._row_to_record(item)
-                for item in filter(self._real_values, input_data)
-            )
-        # or input_data could be a file with lines of CSV text
         return (
-            self._row_to_record(cols)
-            for cols in filter(
-                self._real_values, map(self._split_to_columns, input_data)
-            )
+            self._row_to_record(item) for item in filter(self._real_values, input_data)
         )
 
     def _real_values(self, row):
         """
-        Function should evaluate to True if the row has a numeric value in the value column.
+        Function should evaluate to True if the row has a numeric value in the
+        value column.
         """
         test_value = row[self.col_index.value]
         if isinstance(test_value, numbers.Number):
             return True
-        elif isinstance(test_value, string_types):
-            return bool(decimal_pattern.match(test_value))
+        elif isinstance(test_value, str):
+            return bool(decimal_pattern.match(test_value.strip()))
         return False
 
     def _row_to_record(self, row):
-        """ Converting array of spreadsheet cells to a Record tuple. """
+        """Converting array of spreadsheet cells to a Record tuple."""
         return Record(
             row[self.col_index.sample],
             row[self.col_index.measurement],
             row[self.col_index.value],
         )
-
-    def _split_to_columns(self, line):
-        if isinstance(line, bytes):
-            # the chunks returned from Django UploadFile could be bytes instead of str
-            # convert it here
-            line = line.decode("utf-8")
-        return line.split(",")

@@ -1,6 +1,7 @@
 # coding: utf-8
 """ Miscellaneous data-processing utilities. """
 
+import csv
 import json
 import logging
 import re
@@ -87,12 +88,13 @@ def skyline_home(request):
 def skyline_parse(request):
     parser = skyline.SkylineParser()
     try:
-        result = parser.export(request.FILES["file"])
-        assert result is not None
+        file = request.FILES["file"]
+        reader = csv.reader(row.decode(file.charset or "utf8") for row in file)
+        result = parser.export(row for row in reader)
         return JsonResponse(result)
     except Exception as e:
-        logger.exception("Problem parsing skyline file: %s", e)
-        return JsonResponse({"python_error": "%s" % e}, status=500)
+        logger.exception(f"Problem parsing skyline file: {e}")
+        return JsonResponse({"python_error": f"{e}"}, status=500)
 
 
 ########################################################################

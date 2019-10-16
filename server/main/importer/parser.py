@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import codecs
+import csv
 import mimetypes
 from collections import namedtuple
 
@@ -9,7 +10,7 @@ from edd_utils.parsers import biolector, excel, hplc, skyline
 ParsedInput = namedtuple("ParsedInput", ["file_type", "parsed_data"])
 
 
-class ImportModeFlags(object):
+class ImportModeFlags:
     BIOLECTOR = "biolector"
     HPLC = "hplc"
     MASS_DISTRIBUTION = "mdv"
@@ -18,7 +19,7 @@ class ImportModeFlags(object):
     TRANSCRIPTOMICS = "tr"
 
 
-class ImportFileTypeFlags(object):
+class ImportFileTypeFlags:
     CSV = "csv"
     EXCEL = "xlsx"
     PLAINTEXT = "txt"
@@ -42,7 +43,7 @@ def guess_extension(file_type):
     return extension
 
 
-class ParserFunction(object):
+class ParserFunction:
     def __init__(self, mode, ext):
         self.signature = (mode, ext)
 
@@ -85,7 +86,8 @@ def skyline_csv_parser(request):
     # we could get Mac-style \r line endings, need to use StringIO to handle
     parser = skyline.SkylineParser()
     # row will be bytes, need to decode (to probably utf8)
-    spreadsheet = [row.decode(request.charset or "utf8").split(",") for row in request]
+    reader = csv.reader(row.decode(request.charset or "utf8") for row in request)
+    spreadsheet = (row for row in reader)
     return ParsedInput(
         ImportFileTypeFlags.CSV, parser.getRawImportRecordsAsJSON(spreadsheet)
     )
