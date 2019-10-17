@@ -4,11 +4,19 @@ import collections
 import copy
 import logging
 from collections import Sequence, defaultdict
+from typing import Dict, Iterable, List, Tuple, Union
 
 from arrow import utcnow
 from six import string_types
 
-from main.models import SYSTEM_META_TYPES, Assay, Line, MetadataType, Protocol
+from main.models import (
+    SYSTEM_META_TYPES,
+    Assay,
+    EDDObject,
+    Line,
+    MetadataType,
+    Protocol,
+)
 
 from .constants import (
     BAD_GENERIC_INPUT_CATEGORY,
@@ -25,6 +33,12 @@ from .constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class ExperimentDescriptionContext:
+    # placeholder definition for use in type annotations within the module, while
+    # preserving diffs. redefined further down
+    pass
 
 
 class NamingStrategy(object):
@@ -183,7 +197,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
     def __init__(
         self,
         study_pk,
-        cache,
+        cache: ExperimentDescriptionContext,
         replicate_count,
         omit_all_strains=False,
         omit_missing_strains=False,
@@ -196,20 +210,16 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         )
         self.lines_created = []
         self.require_strains = True
-        self.cache = cache
+        self.cache: ExperimentDescriptionContext = cache
 
     def visit_line(self, line_name, description, line_metadata_dict, replicate_num):
 
         cache = self.cache
 
-        # Create a dict for all native Line attributes and 1-to-1 related object fields. In some
-        #  cases, this will allow us to complete work on the line in a single database query
-
-        # build an hstore-compliant metadata dictionary, omitting metadata values that represent
-        # 1-to-M or M2M relations, which can't be set until after a Line pk is
-        # defined
-        hstore_compliant_dict = {
-            str(pk): cache.line_meta_types.get(pk).encode_value(value)
+        # build a metadata dictionary, omitting metadata values that represent
+        # 1-to-M or M2M relations, which can't be set until after a Line pk is defined
+        meta_subset = {
+            pk: cache.line_meta_types.get(pk).encode_value(value)
             for pk, value in line_metadata_dict.items()
             if value and pk not in cache.related_objects
         }
@@ -218,7 +228,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
             "name": line_name,
             "description": description,
             "study_id": self.study_pk,
-            "metadata": hstore_compliant_dict,
+            "metadata": meta_subset,
         }
 
         # add in values for single-valued relations captured by specialized MetadataTypes
@@ -273,13 +283,16 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
 
         return line
 
-    def visit_assay(self, protocol_pk, line, assay_name, assay_metadata_dict):
+    def visit_assay(
+        self, protocol_pk, line, assay_name, assay_metadata_dict: Dict[int, list]
+    ):
         protocol_to_assays_list = self.line_to_protocols_to_assays_list[line.name]
         assays_list = protocol_to_assays_list[protocol_pk]
 
-        # make sure everything gets cast to str to comply with Postgres' hstore field
-        hstore_compliant_dict = {
-            str(pk): str(value) for pk, value in assay_metadata_dict.items() if value
+        # consistently encode values
+        meta_dict = {
+            pk: self.cache.assay_meta_types.get(pk).encode_value(value)
+            for pk, value in assay_metadata_dict.items()
         }
 
         assay = Assay.objects.create(
@@ -287,7 +300,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
             study_id=line.study_id,
             line_id=line.pk,
             protocol_id=protocol_pk,
-            metadata=hstore_compliant_dict,
+            metadata=meta_dict,
         )
         assays_list.append(assay)
 
@@ -296,7 +309,7 @@ class LineAndAssayNamingVisitor(NewLineAndAssayVisitor):
     """
     A NewLineAndAssayVisitor that computes Line and Assay names to be created, without actually
     making any database modifications. This supports line/assay naming preview functionality needed
-    for the eventual combinatorial line creation GUI (EDD-257).
+    for the "add line combos" GUI.
     """
 
     def __init__(
@@ -363,7 +376,7 @@ ALLOWED_RELATED_OBJECT_FIELDS = {
 }
 
 
-class ExperimentDescriptionContext(object):
+class ExperimentDescriptionContext:
     """
     Captures database and ICE context queried during the Experiment Description process
     and cached to avoid repetitive lookups during line creation. All the data stored in this class
@@ -374,29 +387,31 @@ class ExperimentDescriptionContext(object):
     def __init__(self):
 
         # build up a dictionary of protocols
-        self.protocols = {protocol.pk: protocol for protocol in Protocol.objects.all()}
+        self.protocols: Dict[int, Protocol] = {
+            protocol.pk: protocol for protocol in Protocol.objects.all()
+        }
 
         # build up dictionaries of Line and Assay metadata types
         line_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.LINE)
-        self.line_meta_types = {
+        self.line_meta_types: Dict[int, MetadataType] = {
             meta_type.pk: meta_type for meta_type in line_metadata_qs
         }
 
-        self.assay_meta_types = {
+        self.assay_meta_types: Dict[int, MetadataType] = {
             meta_type.pk: meta_type
             for meta_type in MetadataType.objects.filter(for_context=MetadataType.ASSAY)
         }
 
         # line metadata types
-        self.strains_mtype = MetadataType.objects.filter(
+        self.strains_mtype: MetadataType = MetadataType.objects.filter(
             uuid=SYSTEM_META_TYPES["Strain(s)"]
         ).get()
-        self.carbon_sources_mtype = MetadataType.objects.filter(
+        self.carbon_sources_mtype: MetadataType = MetadataType.objects.filter(
             uuid=SYSTEM_META_TYPES["Carbon Source(s)"]
         ).get()
         ##################################################
 
-        self.assay_time_mtype = MetadataType.objects.filter(
+        self.assay_time_mtype: MetadataType = MetadataType.objects.filter(
             for_context=MetadataType.ASSAY, uuid=SYSTEM_META_TYPES["Time"]
         ).get()
 
@@ -404,23 +419,25 @@ class ExperimentDescriptionContext(object):
         relation_mtypes = self.query_related_object_types(self.line_meta_types)
 
         # pk -> MetadataType for all Line relations (including M2M below)
-        self.related_object_mtypes = relation_mtypes[0]
+        self.related_object_mtypes: Dict[int, MetadataType] = relation_mtypes[0]
 
         # pk -> MetadataType for M2M Line relations with a MetadataType analog
-        self.many_related_mtypes = relation_mtypes[1]
+        self.many_related_mtypes: Dict[int, MetadataType] = relation_mtypes[1]
 
         # maps mtype pk -> related object pk -> related object
-        self.related_objects = {}
+        self.related_objects: Dict[int, Dict[int, EDDObject]] = {}
 
     @staticmethod
-    def query_related_object_types(line_meta_types):
+    def query_related_object_types(
+        line_meta_types: Dict[int, MetadataType]
+    ) -> Tuple[Dict[int, MetadataType], Dict[int, MetadataType]]:
         """
         Inspects the provided line metadata types to find those correspond to
         ManyRelatedFields (e.g. Strain, CarbonSource) that may also be used in
-        line naming or needed to set foreign key relations.
+        line naming or needed to set foreign key relations
         """
-        many_related_mtypes = {}
-        related_object_mtypes = {}
+        many_related_mtypes: Dict[int, MetadataType] = {}
+        related_object_mtypes: Dict[int, MetadataType] = {}
         for meta_pk, meta_type in line_meta_types.items():
             if meta_type.type_field:
                 line_attr = Line._meta.get_field(meta_type.type_field)
@@ -434,7 +451,12 @@ class ExperimentDescriptionContext(object):
 
         return related_object_mtypes, many_related_mtypes
 
-    def get_related_objects(self, mtype_pk, value_pks, subset=False):
+    def get_related_objects(
+        self,
+        mtype_pk,
+        value_pks: Union[Union[int, str], Iterable[Union[int, str]]],
+        subset=False,
+    ):
         """
         Gets Line-related model objects from the in-memory cache
 
@@ -455,7 +477,7 @@ class ExperimentDescriptionContext(object):
         if isinstance(value_pks, Sequence) and not isinstance(value_pks, string_types):
             pks_set = set(value_pks)
         else:
-            pks_set = set([value_pks])
+            pks_set = {[value_pks]}
 
         # common use is to expect all values to be cached and fail if they aren't
         # TODO: this is essentially a 3-LOC stopgap for getting integration tests up and running
@@ -671,7 +693,7 @@ class CombinatorialDescriptionInput(object):
     Defines the set of inputs required to combinatorially create Lines and Assays for a Study.
     """
 
-    def __init__(self, naming_strategy, importer, **kwargs):
+    def __init__(self, naming_strategy: NamingStrategy, importer, **kwargs):
         """
         :param naming_strategy: a NamingStrategy instance used to compute line/assay names from a
             combination of user input and information from the database (e.g. protocol names).
@@ -708,10 +730,11 @@ class CombinatorialDescriptionInput(object):
         ###########################################################################################
         protocol_to_assay_meta = kwargs.pop("protocol_to_assay_metadata", {})
         self.unique_protocols = set(protocol_to_assay_meta)
-        self.unique_protocols.update(protocol_to_assay_meta)
 
         # optional. maps protocol pk -> { MetadataType.pk -> [values] }
-        self.protocol_to_assay_metadata = defaultdict(lambda: defaultdict(list))
+        self.protocol_to_assay_metadata: Dict[int, Dict[int, List]] = defaultdict(
+            lambda: defaultdict(list)
+        )
 
         if protocol_to_assay_meta:
             self.protocol_to_assay_metadata.update(protocol_to_assay_meta)
@@ -927,7 +950,7 @@ class CombinatorialDescriptionInput(object):
     def has_assay_metadata_type(self, protocol_pk, metadata_type_pk):
         return metadata_type_pk in self.protocol_to_assay_metadata.get(protocol_pk, [])
 
-    def verify_pks(self, cache, importer):
+    def verify_pks(self, cache: ExperimentDescriptionContext, importer):
         """
         Examines all primary keys cached in this instance and compares them against reference
         dictionaries provided as input.  Any primary keys that don't match the expected values
@@ -1098,7 +1121,9 @@ class CombinatorialDescriptionInput(object):
 
     def _visit_new_for_protocol(self, visitor, line, protocol_pk):
         # get common assay metadata for this protocol
-        assay_metadata = copy.copy(self.protocol_to_assay_metadata[protocol_pk])
+        assay_metadata: Dict[int, List] = copy.copy(
+            self.protocol_to_assay_metadata[protocol_pk]
+        )
 
         ###############################################################################
         # loop over combinatorial assay creation metadata
@@ -1109,8 +1134,8 @@ class CombinatorialDescriptionInput(object):
         # outer loop for combinatorial
         for metadata_pk, values in combo.items():
             visited_pks.add(metadata_pk)
-            for value in values:
-                assay_metadata[metadata_pk] = value
+            for outer_value in values:
+                assay_metadata[metadata_pk] = outer_value
                 # inner loop for combinatorial
                 for k, v in combo.items():
                     if k in visited_pks:
@@ -1207,33 +1232,6 @@ class CombinatorialCreationPerformance(object):
             f"folders ({folder_entries} entries / {filtered_entry_count} filtered). Found "
             f"{found_indiv_entry_count}/{total_entry_count} individual entries. Total "
             f"search time {duration_s:0.3f} seconds"
-        )
-
-    def end_edd_strain_search(self, search_strain_count, found_strain_count):
-        now = utcnow()
-        self.edd_strain_search_delta = now - self._subsection_start_time
-        self._subsection_start_time = now
-        logger.info(
-            "Done with EDD search.  Found local cache for %(found_count)d/"
-            "%(search_count)d ICE entries in %(seconds)0.3f seconds"
-            % {
-                "found_count": found_strain_count,
-                "search_count": search_strain_count,
-                "seconds": self.edd_strain_search_delta.total_seconds(),
-            }
-        )
-
-    def end_edd_strain_creation(self, strain_count):
-        now = utcnow()
-        self.edd_strain_creation_delta = now - self._subsection_start_time
-        self._subsection_start_time = now
-        logger.info(
-            "Done with attempted EDD strain creation for %(strain_count)d strains in "
-            "%(seconds)0.3f seconds"
-            % {
-                "strain_count": strain_count,
-                "seconds": self.edd_strain_creation_delta.total_seconds(),
-            }
         )
 
     def end_naming_check(self):
