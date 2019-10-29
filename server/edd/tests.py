@@ -1,4 +1,6 @@
+from django.urls import reverse
 from django.views import debug
+from requests import codes
 
 from . import TestCase
 
@@ -41,3 +43,10 @@ class TestCleanseSetting(TestCase):
         original = "http://user:12345@ex[ample.com/"
         cleansed = debug.cleanse_setting("SOME_URL", original)
         self.assertEqual(original, cleansed)
+
+
+class RestDocsTest(TestCase):
+
+    def test_docs_loads_without_error(self):
+        response = self.client.get(reverse("rest:docs"))
+        self.assertEqual(response.status_code, codes.ok)
