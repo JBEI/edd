@@ -164,18 +164,30 @@ class AllauthLDAPBackend(LDAPBackend):
         return user
 
     def _createAndVerifyEmail(self, user):
+        # validate user has email in LDAP
         if user and user.email:
-            has_primary = models.EmailAddress.objects.filter(
-                user=user, primary=True
-            ).exists()
-            defaults = {"primary": not has_primary, "verified": True}
+            # check if the user has any *other* address set as primary already
+            has_primary = (
+                models.EmailAddress.objects.exclude(email__iexact=user.email)
+                .filter(user=user, primary=True)
+                .exists()
+            )
+            # duplicate email here
+            # because update_or_create will drop it
+            # due to __iexact lookup
+            defaults = {
+                "email": user.email,
+                "primary": not has_primary,
+                "verified": True,
+            }
             try:
                 models.EmailAddress.objects.update_or_create(
                     user=user, email__iexact=user.email, defaults=defaults
                 )
             except Exception:
                 logger.exception(
-                    f"Failed to check or update email verification for {user.email} from LDAP!"
+                    "Failed to check or update email verification "
+                    f"for {user.email} from LDAP!"
                 )
 
 
