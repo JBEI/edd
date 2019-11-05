@@ -63,7 +63,7 @@ class WorklistExportTests(TestCase):
         cls.assays = [
             factory.AssayFactory(
                 line=cls.lines[line],
-                metadata={f"{time.pk}": 12 * i},
+                metadata={time.pk: 12 * i},
                 name=f"{cls.lines[line].name}-A{i}",
                 protocol=cls.protocol,
             )

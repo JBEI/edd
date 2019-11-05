@@ -1,5 +1,4 @@
 import * as $ from "jquery";
-import "bootstrap-loader";
 
 
 // called when the page loads

@@ -1,9 +1,10 @@
 "use strict";
 
-import * as $ from "jquery";
-import "jquery.cookie";
 import * as d3 from "d3";
 import Handsontable from "handsontable";
+import * as $ from "jquery";
+
+import * as Utl from "../modules/Utl";
 
 // TODO find out a way to do this in Typescript without relying on specific output targets
 /* tslint:disable */
@@ -26,7 +27,8 @@ $(document).ready(() => {
 
 // http://stackoverflow.com/questions/22063612
 $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
-  jqXHR.setRequestHeader('X-CSRFToken', jQuery.cookie('csrftoken'));
+  const token = Utl.EDD.findCSRFToken();
+  jqXHR.setRequestHeader('X-CSRFToken', token);
 });
 
 Dropzone.options.gcmsDropzone = {
@@ -50,11 +52,6 @@ Dropzone.options.gcmsDropzone = {
         }
         gcms_dz.processQueue();
       });
-  },
-  // add CSRF token to xmlHTTPRequest headers
-  sending : function (evt, xhr, fd) {
-    var csrftoken = jQuery.cookie('csrftoken');
-    xhr.setRequestHeader("X-CSRFToken", csrftoken);
   },
   // reset file preview div when a new file is dropped
   drop: function (e) {
@@ -290,7 +287,7 @@ function onFinalize (table) {
     contentType: 'application/json; charset=UTF-8',
     dataType: 'json',
     data: JSON.stringify({
-      'CSRFToken' : jQuery.cookie('csrftoken'),
+      'CSRFToken' : Utl.EDD.findCSRFToken(),
       'molecules' : processed.molecules,
       'data' : processed.data,
       'key_headers' : xlsx.headers,
@@ -318,7 +315,7 @@ function onFinalize (table) {
 function download_xlsx (headers, table, prefix) {
   var form = $('<form method="POST" action="/utilities/gc_ms/export">');
   form.append($('<input type="hidden" name="csrfmiddlewaretoken"/>').val(
-    jQuery.cookie('csrftoken')));
+    Utl.EDD.findCSRFToken()));
   form.append($('<input type="hidden" name="headers"/>').val(JSON.stringify(headers)));
   form.append($('<input type="hidden" name="table"/>').val(JSON.stringify(table)));
   form.append($('<input type="hidden" name="prefix"/>').val(prefix));

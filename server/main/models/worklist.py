@@ -6,6 +6,8 @@ import arrow
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
+from main.utilities import flatten_json
+
 from . import core, metadata
 
 
@@ -97,10 +99,6 @@ class WorklistColumn(models.Model):
         Build dict used in format string for columns that use it. This
         implementation re-uses EDDObject.to_json(), in a flattened format.
         """
-        # Must import inside method to avoid circular import
-        # TODO: EDD-1186
-        from main.utilities import flatten_json
-
         fmt_dict = flatten_json(instance.to_json(depth=1) if instance else {})
         # add in: date
         # TODO: pass in tz based on user profile?

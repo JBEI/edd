@@ -196,12 +196,9 @@ class CombinatorialCreationTests(TestCase):
             }
         )
 
-        media_pk = str(self.media_mtype.pk)
-        temp_pk = str(growth_temp_meta.pk)
-
         # combinations of metadata
-        ez = {media_pk: "EZ", temp_pk: 30}
-        lb = {media_pk: "LB", temp_pk: 30}
+        ez = {self.media_mtype.pk: "EZ", growth_temp_meta.pk: 30}
+        lb = {self.media_mtype.pk: "LB", growth_temp_meta.pk: 30}
 
         expected_line_info = {
             "58-EZ-GLU-R1": {"meta": ez, "carbon": [cs_glucose.pk]},
@@ -302,7 +299,7 @@ class CombinatorialCreationTests(TestCase):
             self.assertFalse(line.control)
             strains_list = list(line.strains.values_list("id", flat=True))
             self.assertEqual(strains_list, [strain.pk])
-            self.assertEqual(line.metadata, {str(self.media_mtype.pk): "LB"})
+            self.assertEqual(line.metadata, {self.media_mtype.pk: "LB"})
 
     def test_advanced_experiment_description_xlsx(self):
         strain, _ = Strain.objects.get_or_create(name="JW0111")

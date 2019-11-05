@@ -27,6 +27,7 @@
 </div>
 <div id="add-ice-folder-dialog" title="Add ICE Folder" class="hide">
     <form id="ice-folder-form" class="needs-validation" novalidate>
+        {% csrf_token %}
         <div class="form-group">
             <label for="ice-folder-url-input">Folder:</label>
             <input type="url" id="ice-folder-url-input" placeholder="Folder url" size="40"

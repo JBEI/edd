@@ -1,7 +1,7 @@
+import * as $ from "jquery";
+
 import * as Dragboxes from "./Dragboxes";
 import * as Utl from "./Utl";
-import * as $ from "jquery";
-import * as _ from "underscore";
 
 export class DataGrid {
 
@@ -539,12 +539,12 @@ export class DataGrid {
             });
 
             // iterate over the different replicate groups
-            _.each(rowGroupSpec, (grouping) => {
+            $.each(rowGroupSpec, (grouping) => {
                 // find the assay ids associated with the replicate group
                 var replicateIds = this._findReplicateLines(this._groupReplicates(), grouping);
                 // find the lines associated with the replicate group
                 var lines = this.addReplicateRows(replicateIds);
-                _.each(lines, function(line) {
+                $.each(lines, function(line) {
                     // hide the lines associated with the replicate group
                     $(line).hide();
                 });
@@ -560,7 +560,7 @@ export class DataGrid {
         // TODO: This really needs to be moved
         if ($('#GroupStudyReplicatesCB').prop('checked') === false) {
             var lines = $(frag).children();
-            _.each(lines, function(line) {
+            $.each(lines, function(line) {
                 $(line).removeClass('replicateLineShow');
                 $(line).show();
             });
@@ -861,7 +861,7 @@ export class DataGrid {
         rowGroup.disclosed = false;
         var lines = this.addReplicateRows(replicateIds);
         $(rowGroup.replicateGroupTitleRow).removeClass('replicate');
-        _.each(lines, function(line) {
+        $.each(lines, function(line) {
             $(line).hide();
         });
         this.scheduleTimer('arrangeTableDataRows', () => this.arrangeTableDataRows());
@@ -879,7 +879,7 @@ export class DataGrid {
         rowGroup.disclosed = true;
         var lines = this.addReplicateRows(replicateIds);
         $(rowGroup.replicateGroupTitleRow).addClass('replicate');
-        _.each(lines, (line: any) => {
+        $.each(lines, (line: any) => {
             $(line).show().addClass('replicateLineShow');
             $(rowGroup.replicateGroupTitleRow).after(line);
         });

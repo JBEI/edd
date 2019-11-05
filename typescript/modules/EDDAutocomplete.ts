@@ -1,5 +1,5 @@
 import * as $ from "jquery";
-import "jquery-ui";
+
 import * as MultiColumnAuto from "./MultiColumnAutocomplete";
 
 // track automatically generated caches for values in autocomplete types
@@ -304,7 +304,8 @@ export class BaseAuto {
             self.delete_last = false;
         }).on('keydown', function(ev: JQueryKeyEventObject) {
             // if the keydown ends up clearing the visible input, set flag
-            self.delete_last = self.visibleInput.val().trim() === '';
+            const val = self.visibleInput.val().toString()
+            self.delete_last = val.trim() === '';
         });
     }
 

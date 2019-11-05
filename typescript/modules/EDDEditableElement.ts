@@ -1,5 +1,5 @@
-import * as Utl from "./Utl";
 import * as EDDAuto from "./EDDAutocomplete";
+import * as Utl from "./Utl";
 
 // TODO find out a way to do this in Typescript without relying on specific output targets
 /* tslint:disable */
@@ -57,7 +57,7 @@ export class EditableElement {
     //   If no element is provided, the class creates an element and assumes
     // it will be added to the DOM later by a call to its appendTo method, which
     // provides a parent element.
-    constructor(parentOrElement: Element, style?: string) {
+    constructor(parentOrElement: HTMLElement, style?: string) {
         // If we've been given no element, make one.
         if (!parentOrElement) {
             this.elementJQ = $('<div/>').addClass(style || '');
@@ -555,7 +555,7 @@ export class EditableAutocomplete extends EditableElement {
     autoCompleteObject: EDDAuto.BaseAuto;
 
 
-    constructor(inputElement: Element, style?: string) {
+    constructor(inputElement: HTMLElement, style?: string) {
         super(inputElement, style);
         this.autoCompleteObject = null;
     }

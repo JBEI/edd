@@ -2,33 +2,15 @@
 
 declare var EDDData: EDDData;
 
-import * as Utl from "../modules/Utl";
+import * as $ from "jquery";
+
+import * as EDDAuto from "../modules/EDDAutocomplete";
 import * as EDDEditable from "../modules/EDDEditableElement";
 import * as StudyBase from "../modules/Study";
-import * as EDDAuto from "../modules/EDDAutocomplete";
+import * as Utl from "../modules/Utl";
 
 
-// TODO find out a way to do this in Typescript without relying on specific output targets
-/* tslint:disable */
-declare function require(name: string): any;  // avoiding warnings for require calls below
-// as of JQuery UI 1.12, need to require each dependency individually
-require('jquery-ui/themes/base/core.css');
-require('jquery-ui/themes/base/menu.css');
-require('jquery-ui/themes/base/button.css');
-require('jquery-ui/themes/base/draggable.css');
-require('jquery-ui/themes/base/resizable.css');
-require('jquery-ui/themes/base/dialog.css');
-require('jquery-ui/themes/base/tooltip.css');
-require('jquery-ui/themes/base/theme.css');
-require('jquery-ui/ui/widgets/button');
-require('jquery-ui/ui/widgets/draggable');
-require('jquery-ui/ui/widgets/resizable');
-require('jquery-ui/ui/widgets/dialog');
-require('jquery-ui/ui/widgets/tooltip');
-// TODO find out a way to do this in Typescript without relying on specific output targets
-/* tslint:enable */
-
-let studyBaseUrl: URL = Utl.relativeURL('../');
+const studyBaseUrl: URL = Utl.relativeURL('../');
 
 function preparePermissions() {
     var user: EDDAuto.User, group: EDDAuto.Group;
@@ -54,12 +36,14 @@ function preparePermissions() {
 
     $('form#permissions')
         .on('submit', (ev: JQueryEventObject): boolean => {
-            var perm: any = {}, klass: any, auto: JQuery, token: string;
-            auto = $('form#permissions').find('[name=class]:checked');
-            klass = auto.val();
+            const perm: any = {};
+            const auto: JQuery = $('form#permissions').find('[name=class]:checked');
+            const klass: string = auto.val() as string;
+            const token: string = $('form#permissions')
+                .find('[name=csrfmiddlewaretoken]')
+                .val() as string;
             perm.type = $(auto).siblings('select').val();
             perm[klass.toLowerCase()] = {'id': $(auto).siblings('input:hidden').val()};
-            token = $('form#permissions').find('[name=csrfmiddlewaretoken]').val();
             $.ajax({
                 'url': Utl.relativeURL('permissions/', studyBaseUrl).toString(),
                 'type': 'POST',
@@ -125,7 +109,7 @@ export class EditableStudyDescription extends StudyBase.EditableStudyElement {
 
     minimumRows: number;
 
-    constructor(inputElement: Element, style?: string) {
+    constructor(inputElement: HTMLElement, style?: string) {
         super(inputElement, style);
         this.minimumRows = 4;
         this.fieldName('description');
@@ -144,7 +128,7 @@ export class EditableStudyDescription extends StudyBase.EditableStudyElement {
 
 export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
 
-    constructor(inputElement: Element, style?: string) {
+    constructor(inputElement: HTMLElement, style?: string) {
         super(inputElement, style);
         this.fieldName('contact_id');
         this.formURL($(inputElement).parents('form').attr('data-rest'));
@@ -162,8 +146,10 @@ export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
 
 // Called when the page loads.
 export function prepareIt() {
-    let contactEdit = new EditableStudyContact($('#editable-study-contact').get()[0]);
-    let descEdit = new EditableStudyDescription($('#editable-study-description').get()[0]);
+    const contact = $('#editable-study-contact').get()[0] as HTMLElement;
+    const desc = $('#editable-study-description').get()[0] as HTMLElement;
+    const contactEdit = new EditableStudyContact(contact);
+    const descEdit = new EditableStudyDescription(desc);
     contactEdit.getValue();
     descEdit.getValue();
 
@@ -177,8 +163,8 @@ export function prepareIt() {
         },
     });
 
-    var helper = new Utl.FileDropZoneHelpers({
-       pageRedirect: 'experiment-description',
+    const helper = new Utl.FileDropZoneHelpers({
+       "pageRedirect": 'experiment-description',
     });
 
     Utl.FileDropZone.create({

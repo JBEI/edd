@@ -96,12 +96,12 @@ export class BulkFormManager {
                 .find(".bulk").prop("checked", false).end()
                 // event handler to enable inputs on click/focus
                 .on("click.bulk focus.bulk", ":input", (ev: JQueryEventObject) => {
-                    const input = $(ev.target);
+                    const input = $(ev.target as HTMLElement);
                     this.enable(input, true);
                 })
                 // event handler for ignore field buttons
                 .on("click.bulk", ".bulk-ignore", (ev: JQueryEventObject) => {
-                    const input = $(ev.target);
+                    const input = $(ev.target as HTMLElement);
                     this.enable(input, false);
                     return false;
                 });
@@ -372,7 +372,7 @@ export class FormMetadataManager {
             const name = parent.data("name");
             const field = this._mfields[name];
             const metadataInput = this.getMetadataInput();
-            const metadata = JSON.parse(metadataInput.val() || "{}");
+            const metadata = JSON.parse(metadataInput.val() as string || "{}");
             metadata[name] = field.parse();
             metadataInput.val(JSON.stringify(metadata));
         });
@@ -384,7 +384,7 @@ export class FormMetadataManager {
         this.form.on("click", ".btn." + this.select_metadata_button_class, (ev) => {
             // add new inputs for the selected type of metadata
             const selectionRow = $(ev.target).closest("." + this.select_metadata_row_class);
-            const typeKey = selectionRow.find("input[type=hidden]").val();
+            const typeKey = selectionRow.find("input[type=hidden]").val() as string;
             if (typeKey) {
                 this.insertMetadataRow(typeKey);
                 // reset the autocomplete
@@ -397,7 +397,7 @@ export class FormMetadataManager {
             // remove inputs for a type of metadata
             const metadataRow = $(ev.target).closest("." + this.row_of_metadata_class);
             const metadataInput = this.getMetadataInput();
-            const metadata = JSON.parse(metadataInput.val() || "{}");
+            const metadata = JSON.parse(metadataInput.val() as string || "{}");
             const typeKey = this.getRowMetadataKey(metadataRow);
             delete metadata[typeKey];
             metadataInput.val(JSON.stringify(metadata));
@@ -407,7 +407,7 @@ export class FormMetadataManager {
             // remove inputs for a type of metadata and add deletion command for the type
             const metadataRow = $(ev.target).closest("." + this.row_of_metadata_class);
             const metadataInput = this.getMetadataInput();
-            const metadata = JSON.parse(metadataInput.val() || "{}");
+            const metadata = JSON.parse(metadataInput.val() as string || "{}");
             const typeKey = this.getRowMetadataKey(metadataRow);
             metadata[typeKey] = {"delete": true};
             metadataInput.val(JSON.stringify(metadata));

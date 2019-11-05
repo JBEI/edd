@@ -5,7 +5,8 @@ import * as EDDEditable from "./EDDEditableElement";
 
 // Called when the page loads.
 export function prepareIt() {
-    return new EditableStudyName($('#editable-study-name').get()[0]);
+    const title = $('#editable-study-name').get()[0] as HTMLElement;
+    return new EditableStudyName(title);
 }
 
 
