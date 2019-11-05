@@ -13,5 +13,5 @@ app_name = "edd.rest"
 urlpatterns = [
     path(r"", include(routers.base_rest_api_router.urls)),
     path(r"", include(routers.study_router.urls)),
-    path(r"docs/", views.schema_view),
+    path(r"docs/", views.schema_view, name="docs"),
 ]

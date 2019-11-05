@@ -4,7 +4,7 @@ import logging
 import operator
 from collections import OrderedDict
 from functools import reduce
-from itertools import islice
+from itertools import chain, islice
 
 from django.contrib.postgres.aggregates import ArrayAgg, JSONBAgg
 from django.db.models import Prefetch, Q
@@ -15,7 +15,7 @@ from .. import models
 logger = logging.getLogger(__name__)
 
 
-class TableOptions(object):
+class TableOptions:
     def __init__(self, model, instances=None):
         self.model = model
         self._columns = []
@@ -52,7 +52,7 @@ class TableOptions(object):
         )
 
 
-class ColumnChoice(object):
+class ColumnChoice:
     def __init__(self, model, key, label, lookup, heading=None, lookup_kwargs=None):
         self.model = model
         self.key = ".".join([model.__name__, key]) if model else key
@@ -62,9 +62,30 @@ class ColumnChoice(object):
         self.lookup_kwargs = {} if lookup_kwargs is None else lookup_kwargs
 
     @classmethod
-    def coerce(cls, instances):
-        lookup = {col.key: col for col in instances}
-        return lambda key: lookup.get(key, None)
+    def from_model(cls, column):
+        type_context = None
+
+        def lookup_format(instance, **kwargs):
+            return column.get_default() % column.get_format_dict(instance, **kwargs)
+
+        def lookup_meta(instance, **kwargs):
+            default = column.get_default() % kwargs
+            if instance:
+                return instance.metadata_get(column.meta_type, default=default)
+            return default
+
+        if column.meta_type:
+            type_context = column.meta_type.for_context
+            lookup = lookup_meta
+        else:
+            type_context = None
+            lookup = lookup_format
+        model = {
+            models.MetadataType.STUDY: models.Study,
+            models.MetadataType.LINE: models.Line,
+            models.MetadataType.ASSAY: models.Assay,
+        }.get(type_context, None)
+        return cls(model, f"worklist_column_{column.pk}", str(column), lookup)
 
     def convert_instance_from_measure(self, measure, default=None):
         try:
@@ -76,18 +97,19 @@ class ColumnChoice(object):
                 models.Line: measure.assay.line,
                 models.Measurement: measure,
                 models.Protocol: measure.assay.protocol,
-                models.Study: measure.assay.line.study,
+                models.Study: measure.study,
             }.get(self.model, default)
         except AttributeError:
             return default
 
-    def convert_instance_from_line(self, line, protocol, default=None):
+    def convert_instance_from_assay(self, assay, default=None):
         try:
             return {
-                models.Line: line,
-                models.Protocol: protocol or default,
-                models.Study: line.study,
-                None: line,
+                models.Assay: assay,
+                models.Line: assay.line,
+                models.Protocol: assay.protocol,
+                models.Study: assay.study,
+                None: assay.line,
             }.get(self.model, default)
         except AttributeError:
             return default
@@ -107,14 +129,14 @@ class ColumnChoice(object):
 
 
 class EmptyChoice(ColumnChoice):
-    """ Always inserts an empty value on lookup callback. """
+    """Always inserts an empty value on lookup callback."""
 
     def __init__(self):
         super().__init__(str, "", "", lambda x: "")
 
 
-class ExportSelection(object):
-    """ Object used for selecting objects for export. """
+class ExportSelection:
+    """Object used for selecting objects for export."""
 
     def __init__(
         self,
@@ -136,9 +158,10 @@ class ExportSelection(object):
 
         def build_path(start, end):
             """
-            Programmatically build a path to another level of EDD hierarchy; e.g. if you have a
-            Study queryset, and want to match to those containing specific Assay objects, call
-            with start = 'study'; and end = 'assay'; result will be ['line', 'assay']
+            Programmatically build a path to another level of EDD hierarchy;
+            e.g. if you have a Study queryset, and want to match to those
+            containing specific Assay objects, call with start = 'study'; and
+            end = 'assay'; result will be ['line', 'assay']
             """
             a = hierarchy.index(start)
             b = hierarchy.index(end)
@@ -154,7 +177,8 @@ class ExportSelection(object):
             for id_type, ids in input_ids.items():
                 if not ids:
                     continue
-                # non-empty ids to filter on, build path from target query to current type
+                # non-empty ids to filter on
+                # build path from target query to current type
                 path = build_path(target_type, id_type)
                 if path:
                     filters.append(
@@ -164,11 +188,15 @@ class ExportSelection(object):
                 else:
                     # empty path means query and id target are the same, use PK
                     filters.append(Q(pk__in=ids) & Q_active(active=True))
-            # chain together all with an OR operator, finding all that match at least one
+            # chain together all with an OR operator
+            # finding all that match at least one
             return reduce(operator.or_, filters, Q())
 
         def Q_active(**kwargs):
-            """ Conditionally returns a QuerySet Q filter if exclude_disabled flag is set. """
+            """
+            Conditionally returns a QuerySet Q filter if exclude_disabled flag
+            is set.
+            """
             if exclude_disabled:
                 return Q(**kwargs)
             return Q()
@@ -180,7 +208,8 @@ class ExportSelection(object):
             # then find all studies that match at least one of the inputs
             ids_filter("study", ids),
         )
-        # find all lines containing the listed (line|assay|measure) IDs, or contained by study IDs
+        # find all lines containing the listed (line|assay|measure) IDs
+        # or contained by study IDs
         self._line_queryset = models.Line.objects.distinct().filter(
             # first filter based on whether user has access
             models.Study.access_filter(user, via=("study",)),
@@ -190,7 +219,8 @@ class ExportSelection(object):
         # select_related('experimenter__userprofile', 'updated')
         # prefetch_related(strains, carbon_source)
 
-        # find all assays containing the listed (assay|measure) IDs, or contained by (study|line)
+        # find all assays containing the listed (assay|measure) IDs
+        # or contained by (study|line)
         self._assay_queryset = models.Assay.objects.distinct().filter(
             # first filter based on whether user has access
             models.Study.access_filter(user, via=("study",)),
@@ -220,12 +250,12 @@ class ExportSelection(object):
 
     @property
     def studies(self):
-        """ List of studies allowed to be viewed in the selection. """
+        """List of studies allowed to be viewed in the selection."""
         return self._study_queryset
 
     @property
     def lines(self):
-        """ A queryset of lines included in the selection. """
+        """A queryset of lines included in the selection."""
         return (
             self._line_queryset.select_related("experimenter__userprofile", "updated")
             .annotate(
@@ -240,18 +270,18 @@ class ExportSelection(object):
 
     @property
     def assays(self):
-        """ A queryset of assays included in the selection. """
+        """A queryset of assays included in the selection."""
         return self._assay_queryset
 
     @property
     def measurements(self):
-        """ A queryset of measurements to include. """
+        """A queryset of measurements to include."""
         # TODO: add in empty measurements for assays that have none?
         return self._measure_queryset
 
 
-class ExportOption(object):
-    """ Object used for options on a table export. """
+class ExportOption:
+    """Object used for options on a table export."""
 
     DATA_COLUMN_BY_LINE = "dbyl"
     DATA_COLUMN_BY_POINT = "dbyp"
@@ -312,37 +342,40 @@ class ExportOption(object):
 
 
 def value_str(value):
-    """ used to format value lists to a colon-delimited (unicode) string """
+    """used to format value lists to a colon-delimited (unicode) string"""
     # cast to float to remove 0-padding
     return ":".join(map(str, map(float, value)))
 
 
-class CellQuote(object):
-    """ Object defining how to quote table cell values. """
+class CellQuote:
+    """Object defining how to quote table cell values."""
 
     def __init__(self, always_quote=False, separator_string=",", quote_string='"'):
-        """ Defines how to quote values.
-            :param always_quote: if True, always quote values, instead of conditionally quote
-            :param separator_string: sequence that separates cell values, requiring quotation
-            :param quote_string: sequence used to surround quoted values
+        """
+        Defines how to quote values.
+
+        :param always_quote: if True, always quote values, instead of
+            conditionally quote
+        :param separator_string: sequence that separates cell values,
+            requiring quotation
+        :param quote_string: sequence used to surround quoted values
         """
         self.always_quote = always_quote
         self.separator_string = separator_string
         self.quote_string = quote_string
 
     def quote(self, value):
-        """ Quotes a value based on object parameters. """
+        """Quotes a value based on object parameters."""
         if self.always_quote or self.separator_string in value:
             # wrap in quotes, replace any quote sequences with a doubled sequence
-            return "%(quote)s%(value)s%(quote)s" % {
-                "quote": self.quote_string,
-                "value": value.replace(self.quote_string, self.quote_string * 2),
-            }
+            quote = self.quote_string
+            escaped = value.replace(quote, quote * 2)
+            return f"{quote}{escaped}{quote}"
         return value
 
 
-class TableExport(object):
-    """ Outputs tables for export of EDD objects. """
+class TableExport:
+    """Outputs tables for export of EDD objects."""
 
     def __init__(self, selection, options, worklist=None):
         self.selection = selection
@@ -351,9 +384,11 @@ class TableExport(object):
         self._x_values = {}
 
     def output(self):
-        """ Builds the CSV of the table export output. """
-        # store tables; protocol PK keys table for measurements under a protocol, 'line' keys table
-        #   for line-only section (if enabled), 'all' keys table including everything.
+        """Builds the CSV of the table export output."""
+        # store tables
+        # protocol PK keys table for measurements under a protocol
+        # 'line' keys table for line-only section (if enabled)
+        # 'all' keys table including everything.
         tables = OrderedDict()
         if self.options.line_section:
             tables["line"] = OrderedDict()
@@ -494,16 +529,13 @@ class TableExport(object):
     def _output_line_header(self):
         return self._output_header([models.Line, models.Study])
 
-    def _output_row_with_line(
-        self, line, protocol, models=None, columns=None, **kwargs
-    ):
+    def _output_row_with_assay(self, assay, columns=None):
         row = []
         if columns is None:
             columns = self.options.columns
         for column in columns:
-            if models is None or column._model in models:
-                instance = column.convert_instance_from_line(line, protocol)
-                row.append(column.get_value(instance, **kwargs))
+            instance = column.convert_instance_from_assay(assay)
+            row.append(column.get_value(instance))
         return row
 
     def _output_row_with_measure(self, measure, models=None):
@@ -526,7 +558,7 @@ class TableExport(object):
 
 
 class WorklistExport(TableExport):
-    """ Outputs tables for line worklists. """
+    """Outputs tables for line worklists."""
 
     def __init__(self, selection, options, worklist=None):
         super().__init__(selection, options)
@@ -541,19 +573,53 @@ class WorklistExport(TableExport):
             self._do_worklist(tables)
         return self._build_output(tables)
 
+    def _build_assay(self, line):
+        return models.Assay(
+            name=models.Assay.build_name(line, self.worklist.protocol, 1),
+            study=line.study,
+            line=line,
+            protocol=self.worklist.protocol,
+        )
+
+    def _build_list(self, lines, assays):
+        """Generates list of existing assays and created assays from lines having none."""
+        # keep place in assays sequence
+        assay_iter = iter(assays)
+        for line in lines:
+            # assume building new assays
+            build = True
+            for assay in assay_iter:
+                if assay.line_id == line.pk:
+                    # when assay sequence overlaps line sequence, assays win
+                    yield assay
+                    # don't build assays once existing assays found
+                    build = False
+                    continue
+                elif build:
+                    yield self._build_assay(line)
+                # put current assay back into iteration
+                assay_iter = chain([assay], assay_iter)
+                break
+            else:
+                # assay sequence exhausted
+                if build:
+                    yield self._build_assay(line)
+
     def _do_worklist(self, tables):
-        # if export is a worklist, go off of lines instead of measurements
-        lines = self.selection.lines
         protocol = self.worklist.protocol
+        assays = self.selection.assays.filter(protocol_id=protocol.id).order_by(
+            "line_id"
+        )
+        lines = self.selection.lines.order_by("pk")
         table = tables["all"]
-        # lines is a QuerySet of the lines to use in worklist creation
-        for i, line in enumerate(lines):
-            # build row with study/line info
-            row = self._output_row_with_line(line, protocol)
-            table[str(line.pk)] = row
-            # when modulus set, insert 'blank' row every modulus rows
-            if self.options.blank_mod and not (i + 1) % self.options.blank_mod:
-                blank = self._output_row_with_line(
-                    None, protocol, columns=self.options.blank_columns
+
+        # looping over both assays and lines
+        # favor adding rows from assay when available
+        # otherwise add row from unsaved assay created from line/protocol
+        # line_id values on assays will be a strict subset of pk values on lines
+        for i, assay in enumerate(self._build_list(lines, assays), 1):
+            table[f"{i}"] = self._output_row_with_assay(assay)
+            if self.options.blank_mod and i % self.options.blank_mod == 0:
+                table[f"blank{i}"] = self._output_row_with_assay(
+                    None, columns=self.options.blank_columns
                 )
-                table["blank%s" % i] = blank

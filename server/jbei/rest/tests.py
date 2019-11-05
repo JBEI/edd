@@ -166,6 +166,23 @@ def test_Entry_json_convert():
     assert entry.to_json_dict() == input_json
 
 
+def test_Entry_json_with_parents_no_partId():
+    # ICE does not set "partId" on parent entries
+    input_json = {
+        "id": 800,
+        "linked_parts": [],
+        "links": [],
+        "modificationTime": 1563590257660,
+        "parents": [{"id": 109878, "type": "STRAIN"}, {"id": 109879, "type": "STRAIN"}],
+        "partId": "TEST_000800",
+        "recordId": "66dab63b-7b0e-4949-9498-24da495df4ce",
+        "type": "PLASMID",
+    }
+    entry = api.Entry.of(input_json)
+    assert entry.part_id == "TEST_000800"
+    assert len(entry.parents) == 2
+
+
 def test_IceApi_requires_auth():
     with pytest.raises(ValueError):
         api.IceApi(auth=None)

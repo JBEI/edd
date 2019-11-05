@@ -215,7 +215,7 @@
           <label for="masterProtocol">
             <span>Data are for protocol:</span>
             <select name="masterProtocol" id="masterProtocol">
-               <option value="unspecified_protocol">---</option>
+               <option value="0">---</option>
               {% for protocol in protocols %}
               <option value="{{ protocol.id }}">{{ protocol.name }}</option>
               {% endfor %}

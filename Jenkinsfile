@@ -20,21 +20,22 @@ def projectProperties = [
 def committer_email = "wcmorrell@lbl.gov"
 def test_output = "Tests did not execute."
 def commit_hash = "_"
+def stage_name = "_"
+// Store results from `checkout scm` because ${env.GIT_URL}, etc are not available
+def git_url = ""
+def git_branch = ""
+def image_version = ""
+def project_name = ""
 
 // set the properties
 properties(projectProperties)
 
 try {
 
-    // Store results from `checkout scm` because ${env.GIT_URL}, etc are not available
-    def git_url = ""
-    def git_branch = ""
-    def image_version = ""
-    def project_name = ""
-
     node('docker') {
 
         stage('Init') {
+            stage_name = "Init"
             // Probably not necessary, as each build should launch a new container
             // Yet, it does not hurt to be careful
             deleteDir()
@@ -68,6 +69,7 @@ try {
         }
 
         stage('Build') {
+            stage_name = "Build"
             // build edd-node and edd-core images outside docker-compose to use --build-args!
             // tag both with build-specific versions, ensure edd-core builds off correct edd-node
             // NOTE: sudo is required to execute docker commands
@@ -104,6 +106,7 @@ try {
         try {
 
             stage('Launch') {
+                stage_name = "Launch"
                 // modify configuration files to prepare for launch
                 timeout(5) {
                     sh("sudo bin/jenkins/prepare.sh '${image_version}'")
@@ -114,6 +117,7 @@ try {
             }
 
             stage('Test') {
+                stage_name = "Test"
                 // previous stage does not finish until EDD up and reporting healthy
                 // only try to test for 30 minutes before bugout
                 timeout(30) {
@@ -138,6 +142,7 @@ try {
             }
 
             stage('Publish Internal') {
+                stage_name = "Publish Internal"
                 timeout(5) {
                     withCredentials([
                         usernamePassword(
@@ -169,24 +174,8 @@ try {
             throw exc
         } finally {
 
-            stage('Notify') {
-                def status = "Success"
-                if (currentBuild.currentResult == 'FAILURE') {
-                    status = "Failed"
-                }
-                def mail_body = $/Completed build of ${commit_hash} in ${currentBuild.durationString}.
-
-                See build information at <${env.BUILD_URL}>.
-
-                Output from running tests is:
-                ${test_output}
-                /$
-                mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} ${status}",
-                        body: mail_body,
-                          to: committer_email,
-                     replyTo: committer_email,
-                        from: "jbei-edd-admin@lists.lbl.gov"
-
+            stage('Teardown') {
+                stage_name = "Teardown"
                 // try to clean up things to not have a zillion leftover docker resources
                 sh("sudo bin/jenkins/teardown.sh '${project_name}'")
             }
@@ -196,16 +185,21 @@ try {
     }
 } catch (exc) {
     echo "Caught ${exc}"
-    print test_output
-
-    def mail_body = $/Jenkins build at ${env.BUILD_URL} has failed with commit ${commit_hash}!
-
-    The problem is: ${exc}
-    /$
-
-    mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} Aborted",
-            body: mail_body,
-              to: committer_email,
-         replyTo: committer_email,
-            from: 'jbei-edd-admin@lists.lbl.gov'
+    currentBuild.result = "FAILURE"
+    test_output += "\n${exc}"
 }
+
+def status = currentBuild.currentResult
+def duration = currentBuild.durationString
+def mail_body = $/Build of ${commit_hash}: ${status} in ${stage_name} after ${duration}.
+
+See build information at <${env.BUILD_URL}>.
+
+Output from running tests is:
+${test_output}
+/$
+mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} ${status}",
+        body: mail_body,
+          to: committer_email,
+     replyTo: committer_email,
+        from: "jbei-edd-admin@lists.lbl.gov"

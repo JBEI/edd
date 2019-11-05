@@ -48,12 +48,13 @@ def set_file_info(sender, instance, raw, using, **kwargs):
 # ----- common signal handlers -----
 
 has_uuid = [
-    models.Study,
-    models.Line,
-    models.CarbonSource,
-    models.Strain,
-    models.Protocol,
     models.Assay,
+    models.CarbonSource,
+    models.Line,
+    models.Protocol,
+    models.Strain,
+    models.Study,
+    models.WorklistTemplate,
 ]
 has_update = has_uuid + [
     models.Attachment,

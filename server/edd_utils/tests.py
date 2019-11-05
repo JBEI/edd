@@ -1,8 +1,11 @@
 # coding: utf-8
 
+import csv
 import logging
 import os.path
 from io import StringIO
+
+import pytest
 
 from edd import TestCase
 
@@ -20,83 +23,102 @@ logger = logging.getLogger(__name__)
 
 ########################################################################
 # GC-MS
-class GCMSTests(TestCase):
-    def test_1(self):
-        test_file = os.path.join(test_dir, "gc_ms_1.txt")
-        result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
-        self.assertEqual(len(result.samples), 102)
-        err = StringIO()
-        out = StringIO()
-        result.show_peak_areas(out=out, err=err)
-        self.assertIn("0059.D          562         None         None", out.getvalue())
-        self.assertIn("0062.D       104049      1192526        35926", out.getvalue())
-        self.assertIn("WARNING: 2 peaks near 8.092 for sample 0062.D", err.getvalue())
-        self.assertEqual(err.getvalue().count("WARNING"), 44)
-        err = StringIO()
-        out = StringIO()
-        result.show_peak_areas_csv(out=out, err=err)
-        self.assertIn("0059.D,562,None,None", out.getvalue())
-        self.assertIn("0062.D,104049,1192526,35926", out.getvalue())
+def test_gcms_peak_areas_report_example_1():
+    err = StringIO()
+    out = StringIO()
+    test_file = os.path.join(test_dir, "gc_ms_1.txt")
 
-    def test_2(self):
-        # a slightly different format
-        test_file = os.path.join(test_dir, "gc_ms_2.txt")
-        with open(os.path.join(test_dir, "gc_ms_2.out.txt")) as f:
-            test_out = f.read()
-        result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
-        self.assertEqual(len(result.samples), 5)
-        err = StringIO()
-        out = StringIO()
-        result.show_peak_areas(out=out, err=err)
-        self.assertEqual(out.getvalue(), test_out)
-        # Fault tolerance
-        test_file = os.path.join(test_dir, "skyline.csv")
-        with self.assertRaises(ValueError):
-            result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
+    # not testing output of run
+    result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
+    result.show_peak_areas(out=out, err=err)
 
-    def test_xls_key(self):
-        # Import .xlsx workbook
-        test_file = os.path.join(test_dir, "sample_gc_ms_key.xlsx")
-        with open(test_file, "rb") as file:
-            headers, table = gc_ms.import_xlsx_metadata(file)
-        self.assertEqual(
-            headers,
-            [
-                "sample ID (could be vial #)",
-                "label to display",
-                "parent strain",
-                "plasmid/change",
-                "colony number",
-                "time point",
-                "media (induction, etc.)",
-                "sample type",
-                None,
-                "user field 1",
-                "user field 2",
-                "user field 3",
-            ],
-        )
+    assert len(result.samples) == 102
+    assert "0059.D          562         None         None" in out.getvalue()
+    assert "0062.D       104049      1192526        35926" in out.getvalue()
+    assert "WARNING: 2 peaks near 8.092 for sample 0062.D" in err.getvalue()
+    assert err.getvalue().count("WARNING") == 44
 
 
-class SkylineTests(TestCase):
-    def test_1(self):
-        file_name = os.path.join(test_dir, "skyline.csv")
-        parser = skyline.SkylineParser()
-        with open(file_name, "r") as file:
-            result = parser.export(file)
-        self.assertIn(skyline.Record("4", "A", 22), result["rows"])
+def test_gcms_peak_areas_csv_example_1():
+    err = StringIO()
+    out = StringIO()
+    test_file = os.path.join(test_dir, "gc_ms_1.txt")
+
+    # not testing output of run
+    result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
+    result.show_peak_areas_csv(out=out, err=err)
+
+    assert "0059.D,562,None,None" in out.getvalue()
+    assert "0062.D,104049,1192526,35926" in out.getvalue()
 
 
-class BiolectorTests(TestCase):
-    def test_simple(self):
-        filename = "/code/edd_utils/parsers/biolector/biolector_test_file.xml"
-        with open(filename, "r") as file:
-            results = biolector.getRawImportRecordsAsJSON(file, 0)
-        self.assertEqual(len(results), 48)
-        last_v = results[-1]["data"][-1][1]
-        self.assertEqual(last_v, "8.829")
-        well_v = results[20]["metadata_by_name"]["Bio:well"]
-        self.assertEqual(well_v, "C05")
+def test_gcms_peak_areas_report_example_2():
+    # a slightly different format
+    err = StringIO()
+    out = StringIO()
+    test_file = os.path.join(test_dir, "gc_ms_2.txt")
+    with open(os.path.join(test_dir, "gc_ms_2.out.txt")) as f:
+        test_out = f.read()
+
+    result = gc_ms.run([test_file], out=StringIO(), err=StringIO())
+    result.show_peak_areas(out=out, err=err)
+
+    assert len(result.samples) == 5
+    assert out.getvalue() == test_out
+
+
+def test_gcms_run_errors_on_malformed_input():
+    test_file = os.path.join(test_dir, "skyline.csv")
+    with pytest.raises(ValueError):
+        gc_ms.run([test_file], out=StringIO(), err=StringIO())
+
+
+def test_gcms_xls_key():
+    # Import .xlsx workbook
+    test_file = os.path.join(test_dir, "sample_gc_ms_key.xlsx")
+    expected_headers = [
+        "sample ID (could be vial #)",
+        "label to display",
+        "parent strain",
+        "plasmid/change",
+        "colony number",
+        "time point",
+        "media (induction, etc.)",
+        "sample type",
+        None,
+        "user field 1",
+        "user field 2",
+        "user field 3",
+    ]
+
+    with open(test_file, "rb") as file:
+        headers, table = gc_ms.import_xlsx_metadata(file)
+
+    assert headers == expected_headers
+
+
+def test_skyline_parsing():
+    file_name = os.path.join(test_dir, "skyline.csv")
+    parser = skyline.SkylineParser()
+
+    with open(file_name, "r") as file:
+        reader = csv.reader(file)
+        result = parser.export(reader)
+
+    assert skyline.Record("4", "A", 22) in result["rows"]
+
+
+def test_simple_biolector_file():
+    filename = "/code/edd_utils/parsers/biolector/biolector_test_file.xml"
+
+    with open(filename, "r") as file:
+        results = biolector.getRawImportRecordsAsJSON(file, 0)
+
+    assert len(results) == 48
+    last_v = results[-1]["data"][-1][1]
+    well_v = results[20]["metadata_by_name"]["Bio:well"]
+    assert last_v == "8.829"
+    assert well_v == "C05"
 
 
 def get_table():

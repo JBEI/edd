@@ -5,7 +5,7 @@ from collections import namedtuple
 from uuid import UUID, uuid4
 
 import arrow
-from asgiref.sync import async_to_sync
+from asgiref.sync import async_to_sync, sync_to_async
 from channels.layers import get_channel_layer
 from django_redis import get_redis_connection
 
@@ -22,7 +22,8 @@ NotificationBase = namedtuple(
 
 class Notification(NotificationBase):
     """
-    A notification message to be stored in a notification backend and delivered to users.
+    A notification message to be stored in a notification backend and delivered
+    to users.
     """
 
     __slots__ = ()
@@ -42,7 +43,8 @@ class Notification(NotificationBase):
 
     def prepare(self):
         """
-        Return a copy of the Notification with any lazy strings force-cast to concrete strings.
+        Return a copy of the Notification with any lazy strings force-cast to
+        concrete strings.
         """
         prep = Notification(
             message=str(self.message),
@@ -91,6 +93,12 @@ class BaseBroker(object):
     def group_names(self):
         return [f"edd.notify.{self.user.username}"]
 
+    async def agroup_names(self):
+        # in case child class overrides group_names()
+        groups = await sync_to_async(self.group_names)()
+        for group in groups:
+            yield group
+
     def mark_all_read(self, uuid=None):
         last = self._load(uuid)
         for note in self:
@@ -123,15 +131,17 @@ class BaseBroker(object):
             async_to_sync(channel_layer.group_send)(group, payload)
 
     async def async_mark_all_read(self, uuid=None):
-        last = self._load(uuid)
-        for note in self:
+        last = await sync_to_async(self._load)(uuid)
+        seq = await sync_to_async(self._loadAll)()
+        # TODO loop blocks on IO because _loadAll() is not async generator
+        for note in seq:
             if last is None or note.time <= last.time:
                 await self.async_mark_read(note.uuid)
         # send update to Channel Group
         await self.async_send_to_groups({"type": "notification.reset"})
 
     async def async_mark_read(self, uuid):
-        self._remove(uuid)
+        await sync_to_async(self._remove)(uuid)
         await self.async_send_to_groups(
             {"type": "notification.dismiss", "uuid": JSONEncoder.dumps(uuid)}
         )
@@ -139,15 +149,14 @@ class BaseBroker(object):
     async def async_notify(self, message, tags=None, payload=None, uuid=None):
         note = Notification(message, tags=tags, payload=payload, uuid=uuid)
         # _store notification to self
-        self._store(note)
+        await sync_to_async(self._store)(note)
         # send notification to Channel Groups
         await self.async_send_to_groups(
             {"type": "notification", "notice": JSONEncoder.dumps(note.prepare())}
         )
 
     async def async_send_to_groups(self, payload):
-        for group in self.group_names():
-            logger.debug(f"async_send to {group}: {payload}")
+        async for group in self.agroup_names():
             await channel_layer.group_send(group, payload)
 
 
@@ -207,7 +216,12 @@ class RedisBroker(BaseBroker):
 
     def mark_all_read(self, uuid=None):
         if uuid is None:
-            # shortcut for redis when not marking read from a given point: delete everything
-            self._redis.delete(self._key_user(), f"{self._key_user()}:*")
-        # parent will loop over all and remove anything older than uuid; then send reset message
+            # shortcut for redis
+            # when not marking read from a given point: delete everything
+            self._redis.delete(
+                self._key_user(), *self._redis.keys(f"{self._key_user()}:*")
+            )
+        # parent will loop over all
+        # remove anything older than uuid
+        # then send reset message
         super().mark_all_read(uuid=uuid)

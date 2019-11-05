@@ -180,7 +180,7 @@ def _construct_part(python_params, part_type, silence_warnings):
             "JSON for {class_name} '{part_id}' has type={type}, "
             "but no {field_name} field.".format(
                 class_name=part_class.__name__,
-                part_id=python_params["part_id"],
+                part_id=python_params.get("part_id", "no-part-id"),
                 type=part_type,
                 field_name=keyword,
             )

@@ -29,7 +29,7 @@ from .export import forms as export_forms
 from .export.broker import ExportBroker
 from .export.table import TableExport, WorklistExport
 from .importer.table import ImportBroker, TableImport
-from .utilities import build_study_url
+from .query import build_study_url
 
 logger = get_task_logger(__name__)
 User = get_user_model()

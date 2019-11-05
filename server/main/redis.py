@@ -89,7 +89,8 @@ class ScratchStorage(object):
 
     def save(self, data, name=None, expires=None):
         """
-        Saves data to storage, with optional name and expiration.
+        Saves data to storage, with optional name and expiration. Note that subsequent calls to
+        save() with the same name will *not* overwrite.
 
         :param data: the object to save
         :param name: (optional) the name to use for looking up the saved data later

@@ -18,7 +18,7 @@ from requests import codes
 from edd import utilities
 
 from .. import models as edd_models
-from .. import utilities as main_utilities
+from .. import query
 from .study import StudyObjectMixin, load_study
 
 logger = logging.getLogger(__name__)
@@ -124,8 +124,8 @@ def study_edddata(request, pk=None, slug=None):
     """
     model = load_study(request, pk=pk, slug=slug)
     # TODO: uncovered code
-    data_misc = main_utilities.get_edddata_misc()
-    data_study = main_utilities.get_edddata_study(model)
+    data_misc = query.get_edddata_misc()
+    data_study = query.get_edddata_study(model)
     data_study.update(data_misc)
     return JsonResponse(data_study, encoder=utilities.JSONEncoder)
     # END uncovered
@@ -152,7 +152,7 @@ def study_assay_table_data(request, pk=None, slug=None):
                     )
                 },
             },
-            "EDDData": main_utilities.get_edddata_study(model),
+            "EDDData": query.get_edddata_study(model),
         },
         encoder=utilities.JSONEncoder,
     )
