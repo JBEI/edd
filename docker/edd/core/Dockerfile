@@ -61,9 +61,7 @@ COPY Pipfile Pipfile.lock /code/
 FROM base as prod-preinstall
 
 # nothing special for prod
-ARG EDD_VERSION
-
-RUN echo "Production pre-install for EDD ${EDD_VERSION}" \
+RUN echo "Production pre-install" \
     && pipenv install --system --deploy --verbose \
     && apk del .build-deps \
     && rm -f Pipfile Pipfile.lock
@@ -72,10 +70,8 @@ RUN echo "Production pre-install for EDD ${EDD_VERSION}" \
 
 FROM base as dev-preinstall
 
-ARG EDD_VERSION
-
 # install coverage-py
-RUN echo "Development pre-install for EDD ${EDD_VERSION}" \
+RUN echo "Development pre-install" \
     && pipenv install --dev --system --deploy --verbose \
     && apk del .build-deps \
     && rm -f Pipfile Pipfile.lock
