@@ -1,6 +1,4 @@
 import * as d3 from "d3";
-import * as _ from "underscore";
-import "../src/EDDDataInterface";
 
 
 export interface GraphParams {
@@ -110,9 +108,9 @@ export class EDDGraphingTools {
      *  measurement name
      */
     private measurementName(measurementId: number, compId?: string): string {
-        let name = this.globalInfo.MeasurementTypes[measurementId].name;
+        const name = this.globalInfo.MeasurementTypes[measurementId].name;
         if (!!compId) {
-            let comp = this.globalInfo.MeasurementTypeCompartments[compId];
+            const comp = this.globalInfo.MeasurementTypeCompartments[compId];
             return [comp.code, name].join(' ').trim();
         }
         return name;
@@ -121,28 +119,29 @@ export class EDDGraphingTools {
     /**
      *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
      *  transforms it into the following schema:
-     *    [{label: "dt9304, x: 1, y: 2.5, x_unit: "n/a", y_unit: "cmol",  name: "i'm a protein
-     *    name"},
-     *    {label: "dt3903, x: 1, y: 23.5, x_unit: "n/a", y_unit: "cmol",  name: "i'm another protein
-     *    name"}
-     *    ...
+     *    [
+     *      {label: "dt9304, x: 1, y: 2.5, x_unit: "n/a", y_unit: "cmol",
+     *        name: "i'm a protein name"},
+     *      {label: "dt3903, x: 1, y: 23.5, x_unit: "n/a", y_unit: "cmol",
+     *        name: "i'm another protein name"},
+     *      ...
      *    ]
      */
     transformSingleLineItem(item: AssayMeasurementRecord, color: Color): GraphValue[] {
         // array of x and y values for sorting
-        let assay: AssayRecord = this.globalInfo.Assays[item.assay];
-        let line: LineRecord = this.globalInfo.Lines[assay.lid];
-        let x_units: string = this.unitName(item.x_units);
-        let y_units: string = this.unitName(item.y_units);
-        let measurementName = this.measurementName(item.type, item.comp);
-        let values = item.values.map((dataValue: number[][], index): GraphValue => {
-            let dataset: GraphValue = {} as GraphValue;
+        const assay: AssayRecord = this.globalInfo.Assays[item.assay];
+        const line: LineRecord = this.globalInfo.Lines[assay.lid];
+        const x_units: string = this.unitName(item.x_units);
+        const y_units: string = this.unitName(item.y_units);
+        const measurementName = this.measurementName(item.type, item.comp);
+        const values = item.values.map((dataValue: number[][], index): GraphValue => {
+            const dataset: GraphValue = {} as GraphValue;
             // abort if dataValue is not a 2-item array for x and y
             if (dataValue.length !== 2) {
                 return;
             }
-            let x = dataValue[0];
-            let y = dataValue[1];
+            const x = dataValue[0];
+            const y = dataValue[1];
             // skip adding any invalid values
             if (x.length === 0 || y.length === 0 || !isFinite(x[0]) || !isFinite(y[0])) {
                 return;
@@ -166,8 +165,8 @@ export class EDDGraphingTools {
      */
     transformNewLineItem(singleData: GraphingSet): GraphValue[] {
         // array of x and y values for sorting
-        let values = singleData.data.map((value: XYPair): GraphValue => {
-            let dataset: GraphValue = {} as GraphValue;
+        const values = singleData.data.map((value: XYPair): GraphValue => {
+            const dataset: GraphValue = {} as GraphValue;
             // can also change to omit data point with null which was done before..
             if (value[0] === null) {
                 value[0] = 0;
@@ -195,11 +194,11 @@ export class EDDGraphingTools {
      */
     renderColor(lines: RecordList<LineRecord>): any {
         // new color object with assay ids and color hex
-        var lineColors = {};
+        const lineColors = {};
         // values of line obj
-        var lineValues: LineRecord[] = _.values(lines);
+        const lineValues: LineRecord[] = $.map(lines, (v) => v);
         lineValues.forEach((line, index) => {
-            let color = EDDGraphingTools.colors[index % EDDGraphingTools.colors.length];
+            const color = EDDGraphingTools.colors[index % EDDGraphingTools.colors.length];
             // adding color values to existing interface
             line.color = color;
             lineColors[line.id] = color;
@@ -214,9 +213,9 @@ export class EDDGraphingTools {
     colorQueue(selectedColor: Color): Color {
         // normalize input
         selectedColor = selectedColor || '';
-        let foundIndex = EDDGraphingTools.colors.indexOf(selectedColor.toUpperCase());
+        const foundIndex = EDDGraphingTools.colors.indexOf(selectedColor.toUpperCase());
         // when not found, start at beginning; loop around at end
-        let nextIndex = (foundIndex + 1) % EDDGraphingTools.colors.length;
+        const nextIndex = (foundIndex + 1) % EDDGraphingTools.colors.length;
         return this.nextColor = EDDGraphingTools.colors[nextIndex];
     }
 
@@ -274,7 +273,7 @@ export class GraphView {
         },
         // square icon
         (plot: GenericSelection, pos: Positioning): GenericSelection => {
-            let squareSize = 6;
+            const squareSize = 6;
             return plot.append('svg:rect')
                 .attr('class', 'icon')
                 .attr('x', pos.x(-squareSize / 2))  // old: 843
@@ -284,10 +283,10 @@ export class GraphView {
         },
         // cross icon
         (plot: GenericSelection, pos: Positioning): GenericSelection => {
-            let squareSize = 5;
-            let narrow = squareSize * 0.4;
-            let wide = squareSize * 1.6;
-            let icon = plot.append('g')
+            const squareSize = 5;
+            const narrow = squareSize * 0.4;
+            const wide = squareSize * 1.6;
+            const icon = plot.append('g')
                 .attr('class', 'icon');
             // horizontal bar
             icon.append('svg:rect')
@@ -319,19 +318,19 @@ export class GraphView {
     // map BarGraphMode to a GroupingMode priority of groupings
     private static readonly groupingLookup: {[k: string]: GroupingMode} = {
         'line': {
-            primary: GraphView.keyingLookup.line,
-            secondary: GraphView.keyingLookup.time,
-            tertiary: GraphView.keyingLookup.measurement,
+            "primary": GraphView.keyingLookup.line,
+            "secondary": GraphView.keyingLookup.time,
+            "tertiary": GraphView.keyingLookup.measurement,
         },
         'time': {
-            primary: GraphView.keyingLookup.time,
-            secondary: GraphView.keyingLookup.line,
-            tertiary: GraphView.keyingLookup.measurement,
+            "primary": GraphView.keyingLookup.time,
+            "secondary": GraphView.keyingLookup.line,
+            "tertiary": GraphView.keyingLookup.measurement,
         },
         'measurement': {
-            primary: GraphView.keyingLookup.measurement,
-            secondary: GraphView.keyingLookup.time,
-            tertiary: GraphView.keyingLookup.line,
+            "primary": GraphView.keyingLookup.measurement,
+            "secondary": GraphView.keyingLookup.time,
+            "tertiary": GraphView.keyingLookup.line,
         },
     };
 
@@ -350,8 +349,8 @@ export class GraphView {
      */
     buildLineGraph(params: GraphParams): void {
 
-        var values = this.sortOnX(params.values),
-            x_extent: [number, number] = d3.extent(values, (v: GraphValue) => v.x);
+        const values = this.sortOnX(params.values);
+        const x_extent: [number, number] = d3.extent(values, (v: GraphValue) => v.x);
 
         // tool tip svg
         d3.select("body").append("div")
@@ -359,8 +358,8 @@ export class GraphView {
             .style("opacity", 0);
 
         // x axis range
-        let x_scale = d3.scaleLinear().domain(x_extent).range([0, params.width]);
-        let ordinalColors = d3.scaleOrdinal(EDDGraphingTools.colors);
+        const x_scale = d3.scaleLinear().domain(x_extent).range([0, params.width]);
+        const ordinalColors = d3.scaleOrdinal(EDDGraphingTools.colors);
 
         // create x axis svg
         this.buildXAxis(params, x_scale, 'time');
@@ -370,19 +369,19 @@ export class GraphView {
             .key((v: GraphValue) => v.y_unit)
             .entries(values)
             .forEach((grouping: Nested<GraphValue>, index: number) => {
-                let y_extent: [number, number] = this.yExtent(grouping);
-                let y_scale = d3.scaleLinear().rangeRound([params.height, 0]).domain(y_extent);
+                const y_extent: [number, number] = this.yExtent(grouping);
+                const y_scale = d3.scaleLinear().rangeRound([params.height, 0]).domain(y_extent);
                 // nest values using the same units by the value fullName (line name + measurement)
                 // TODO: this should nest by Measurement ID for existing data OR
                 //   by Line/Assay ID + measurement label for importing data
-                let curves: Nested<GraphValue>[] = d3.nest<GraphValue>()
+                const curves: Array<Nested<GraphValue>> = d3.nest<GraphValue>()
                     .key((d: GraphValue): string => d.fullName)
                     .entries(grouping.values);
                 // define axes and icons for this unit grouping
-                let icon = this.buildUnitAxis(params, index, y_scale, grouping.key);
+                const icon = this.buildUnitAxis(params, index, y_scale, grouping.key);
                 // plot lines for each assay name
                 curves.forEach((unitData) => {
-                    let firstPoint = unitData.values[0];
+                    const firstPoint = unitData.values[0];
                     let color = firstPoint.color;
                     if (firstPoint.newLine) {
                         color = ordinalColors(firstPoint.fullName);
@@ -395,16 +394,16 @@ export class GraphView {
     }
 
     buildGroupedBarGraph(params: GraphParams, mode: BarGraphMode) {
-        let values: GraphValue[] = this.sortOnX(params.values);
-        let grouping: GroupingMode = GraphView.groupingLookup[mode];
+        const values: GraphValue[] = this.sortOnX(params.values);
+        const grouping: GroupingMode = GraphView.groupingLookup[mode];
         // define the x-axis primary scale; d3.set() keeps items in insertion order
-        let primary_scale = d3.scaleBand()
+        const primary_scale = d3.scaleBand()
             .domain(d3.set(values, grouping.primary).values())
             .rangeRound([0, params.width]).padding(0.1);
         // define the x-axis itself
         this.buildXAxis(params, primary_scale, mode);
         // function used later to set translation offsets for groupings
-        let translate = (scale: d3.ScaleBand<string>) => {
+        const translate = (scale: d3.ScaleBand<string>) => {
             return (d: Nested<any>) => 'translate(' + scale(d.key) + ')';
         };
         // set y-axis scaling on all measurements
@@ -413,34 +412,34 @@ export class GraphView {
             .entries(values)
             .forEach((nest: Nested<GraphValue>, index: number) => {
                 // scale y values so maxima goes to top of graph, and minima goes to bottom
-                let y_scale = d3.scaleLinear()
+                const y_scale = d3.scaleLinear()
                     .domain(this.yExtent(nest))
                     .range([params.height, 0]);
                 // attach the computed scale to every value
-                nest.values.forEach((v: GraphValue) => (<ScaledValue> v).scaled_y = y_scale(v.y));
+                nest.values.forEach((v: GraphValue) => (v as ScaledValue).scaled_y = y_scale(v.y));
                 // define axes and icons for this unit grouping
                 this.buildUnitAxis(params, index, y_scale, nest.key);
             });
         // nest the values again based on BarGraphMode groupings
-        let subnest: Nested<Nested<ScaledValue>>[] = d3.nest<ScaledValue>()
+        const subnest: Array<Nested<Nested<ScaledValue>>> = d3.nest<ScaledValue>()
             .key(grouping.primary)
             .key(grouping.secondary)
-            .entries(<ScaledValue[]> values);  // values is converted in y_unit nest
+            .entries(values as ScaledValue[]);  // values is converted in y_unit nest
         // define x-axis secondary scale; d3.set() keeps items in insertion order
-        let secondary_scale = d3.scaleBand()
+        const secondary_scale = d3.scaleBand()
             .domain(d3.set(values, grouping.secondary).values())
             .range([0, primary_scale.bandwidth()]);
-        let tertiary_scale = d3.scaleBand()
+        const tertiary_scale = d3.scaleBand()
             .domain(d3.set(values, grouping.tertiary).values())
             .range([0, secondary_scale.bandwidth()]);
         // insert SVG group tags for every grouping key in the subnest
-        let primary_group = this.svg.selectAll('.pgroup')
+        const primary_group = this.svg.selectAll('.pgroup')
             .data(subnest)
             .enter().append('g')
                 .attr('class', 'pgroup')
                 .attr('transform', translate(primary_scale));
         // insert SVG group tags for time offsets for every time in the grouping key
-        let secondary_group = primary_group.selectAll('.sgroup')
+        const secondary_group = primary_group.selectAll('.sgroup')
             .data((d: Nested<Nested<GraphValue>>) => d.values)
             .enter().append('g')
                 .attr('class', 'sgroup')
@@ -463,9 +462,9 @@ export class GraphView {
     }
 
     private yExtent(grouping: Nested<GraphValue>): [number, number] {
-        let y_extent: [number, number] = d3.extent(
+        const y_extent: [number, number] = d3.extent(
             grouping.values,
-            (d: GraphValue): number => d.y
+            (d: GraphValue): number => d.y,
         );
         // forcing bottom of y domain to 0, otherwise single-item graphs will not show
         y_extent[0] = Math.min(y_extent[0], 0);
@@ -488,7 +487,7 @@ export class GraphView {
         params: GraphParams,
         index: number,
         y_scale: d3.AxisScale<number>,
-        label: string
+        label: string,
     ): GraphDecorator {
         // define axes and icons for this unit grouping
         let icon: GraphDecorator = null;
@@ -499,7 +498,7 @@ export class GraphView {
             this.buildLeftYAxis(params, y_scale, label, icon);
         } else if (index < 4) {
             // next three axes go on right
-            let offset = params.width + (52 * (index - 1));
+            const offset = params.width + (52 * (index - 1));
             icon = GraphView.lineIcons[index];
             this.buildRightYAxis(params, y_scale, label, offset, icon);
         }
@@ -509,21 +508,21 @@ export class GraphView {
     private buildXAxis<T extends d3.AxisDomain>(
         params: GraphParams,
         scale: d3.AxisScale<T>,
-        mode: BarGraphMode
+        mode: BarGraphMode,
     ): d3.Axis<T> {
         // define the x-axis itself
         let x_axis: d3.Axis<T> = d3.axisBottom<T>(scale);
-        let domain: T[] = scale.domain();
-        let max_show: number = 20;
+        const domain: T[] = scale.domain();
+        const max_show: number = 20;
         if (domain.length === 2 && domain[0] instanceof Number) {
             // in a numeric domain, just use normal formatting
-            (<d3.Axis<number>> <any> x_axis).ticks(10).tickFormat(d3.format('.2s'));
+            (x_axis as d3.Axis<number>).ticks(10).tickFormat(d3.format('.2s'));
         } else if (domain.length <= max_show) {
             // non-numeric domain with 20 or fewer items, display everything
             x_axis = x_axis.tickFormat((v: T): string => this.truncateLabel(v));
         } else {
             // non-numeric domain with more than 20 items, choose at most 20 items to display
-            let chosen: number[] = [];
+            const chosen: number[] = [];
             // select the indices to show
             for (let i = 0; i < max_show; ++i) {
                 chosen[i] = Math.ceil(i * domain.length / max_show);
@@ -534,7 +533,7 @@ export class GraphView {
             });
         }
         // add group containing axis elements
-        let axis_group = this.svg.append('g')
+        const axis_group = this.svg.append('g')
             .attr('class', 'x axis')
             .style('font-size', '12px')
             .attr('transform', 'translate(0,' + params.height + ')')
@@ -576,7 +575,7 @@ export class GraphView {
             if (v instanceof Number) {
                 // special-case numbers, to use two significant figures
                 // we know it's a number-type because of instanceof, double-cast informs compiler
-                return d3.format('.2s')((<number> <any> v));
+                return d3.format('.2s')((v as any as number));
             }
             // otherwise coerce directly to string
             return '' + v;
@@ -595,18 +594,18 @@ export class GraphView {
         if (!label || label === 'undefined') {
             label = 'n/a';
         }
-        let yAxis = d3.axisLeft(y_scale).ticks(5);
+        const yAxis = d3.axisLeft(y_scale).ticks(5);
         // write the group containing axis elements
-        let axisGroup = this.svg.append("g")
+        const axisGroup = this.svg.append("g")
             .attr("class", "y axis")
             .style("font-size", "12px")
             .call(this.addAxisTickFormat(yAxis));
         // entire label group is rotated counter-clockwise about a top-left origin
-        let axisLabel = axisGroup.append('g')
+        const axisLabel = axisGroup.append('g')
             .attr('transform', 'rotate(-90)')
             .attr("fill", "#000");
-        let text_x = -(params.height / 2);
-        let text_y = -55;  // TODO: compute this somehow
+        const text_x = -(params.height / 2);
+        const text_y = -55;  // TODO: compute this somehow
         // add a text label for the axis
         axisLabel.append('text')
             .attr('class', 'axis-text')
@@ -618,16 +617,16 @@ export class GraphView {
         if (icon) {
             // x position = text_x + radius + padding = text_x + 5 + 3 = text_x + 8
             // y position = text_y + (font_size * 0.66) = text_y + 8
-            let fakeValue: GraphValue = (<GraphValue> {
+            const fakeValue: GraphValue = ({
                 'x': text_x + 8,
                 'y': text_y + 8,
-            });
+            } as GraphValue);
             // create an enter selection with a fake value at icon location
-            let labelIcon = axisLabel.selectAll('.icon')
+            const labelIcon = axisLabel.selectAll('.icon')
                 .data([fakeValue])
                 .enter();
             // using absolute coordinates, identity scale
-            let ident = d3.scaleIdentity();
+            const ident = d3.scaleIdentity();
             icon.call(this, labelIcon, new Positioning(ident, ident));
         }
         // Draw the y Grid lines in a separate group
@@ -651,18 +650,18 @@ export class GraphView {
         if (!label || label === 'undefined') {
             label = 'n/a';
         }
-        let yAxis = d3.axisRight(y_scale).ticks(5);
+        const yAxis = d3.axisRight(y_scale).ticks(5);
         // write the group containing axis elements
-        let axisGroup = this.svg.append("g")
+        const axisGroup = this.svg.append("g")
             .attr("class", "y axis")
             .attr("transform", "translate(" + spacing + " ,0)")
             .style("font-size", "12px")
             .call(this.addAxisTickFormat(yAxis));
-        let axisLabel = axisGroup.append('g')
+        const axisLabel = axisGroup.append('g')
             .attr('transform', 'rotate(-90)')
             .attr("fill", "#000");
-        let text_x = -(params.height / 2);
-        let text_y = 40;  // TODO: compute this somehow
+        const text_x = -(params.height / 2);
+        const text_y = 40;  // TODO: compute this somehow
         // add a text label for the axis; flipped to right-side
         axisLabel.append('text')
             .attr('class', 'axis-text')
@@ -676,16 +675,16 @@ export class GraphView {
         if (icon) {
             // x position = text_x + radius + padding = text_x + 5 + 3 = text_x + 8
             // y position = text_y - (font_size * 0.33) = text_y - 4
-            let fakeValue: GraphValue = (<GraphValue> {
+            const fakeValue: GraphValue = ({
                 'x': text_x + 8,
                 'y': text_y - 4,
-            });
+            } as GraphValue);
             // create an enter selection with a fake value at icon location
-            let labelIcon = axisLabel.selectAll('.icon')
+            const labelIcon = axisLabel.selectAll('.icon')
                 .data([fakeValue])
                 .enter();
             // using absolute coordinates, identity scale
-            let ident = d3.scaleIdentity();
+            const ident = d3.scaleIdentity();
             icon.call(this, labelIcon, new Positioning(ident, ident));
         }
         return yAxis;
@@ -701,10 +700,10 @@ export class GraphView {
         color: Color,
         icon?: GraphDecorator,
     ): void {
-        let lineGenerator = d3.line<GraphValue>()
+        const lineGenerator = d3.line<GraphValue>()
             .x((d: GraphValue) => x_scale(d.x))
             .y((d: GraphValue) => y_scale(d.y));
-        let curve = this.svg.append('g')
+        const curve = this.svg.append('g')
             .attr('class', 'graphValue')
             .attr('stroke', color)
             .attr('fill', 'none');
@@ -716,7 +715,7 @@ export class GraphView {
             .on('mouseout', this.tooltip_out.bind(this));
         // add icon glyphs if passed in
         if (icon) {
-            let pointGroup = curve.append('g')
+            const pointGroup = curve.append('g')
                 .attr('fill', color)
                 .attr('class', 'pointIcons')
                 .selectAll('.icon')
@@ -730,7 +729,7 @@ export class GraphView {
 
     private tooltip_over(v?: GraphValue): void {
         if (v) {
-            let html = [
+            const html = [
                 ['<strong>', v.name, '</strong>:'].join(''),
                 '' + v.measurement,
                 [v.y, v.y_unit].join(' '),

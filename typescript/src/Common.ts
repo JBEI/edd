@@ -1,5 +1,13 @@
 import * as $ from "jquery";
-import "bootstrap-loader";
+// including these here to make sure available on every page extending edd_base.html
+import "jquery-ui/themes/base/all.css";
+import "jquery-ui/ui/effects/effect-bounce";
+import "jquery-ui/ui/widgets/button";
+import "jquery-ui/ui/widgets/dialog";
+import "jquery-ui/ui/widgets/selectable";
+import "jquery-ui/ui/widgets/sortable";
+import "jquery-ui/ui/widgets/spinner";
+
 import * as Notification from "../modules/Notification";
 
 export const notificationSocket = new Notification.NotificationSocket();
@@ -9,9 +17,9 @@ export function prepareIt() {
 
     // adding click handlers to close buttons on status messages
     $(document).on('click', '.statusMessage a.close', function (ev) {
-        var link = $(this),
-            href = link.attr('close-href'),
-            token = $('.statusMessage [name=csrfmiddlewaretoken]').first().val();
+        const link = $(this);
+        const href = link.attr('close-href');
+        const token = $('.statusMessage [name=csrfmiddlewaretoken]').first().val();
         ev.preventDefault();
         if (href) {
             $.post(href, {'csrfmiddlewaretoken': token}, function () {
@@ -23,8 +31,8 @@ export function prepareIt() {
     });
 
     // adding handlers for notifications in menubar
-    let menuElement = document.getElementById('notification-dropdown');
-    let menu = new Notification.NotificationMenu(menuElement, notificationSocket);
+    const menuElement = document.getElementById('notification-dropdown');
+    const menu = new Notification.NotificationMenu(menuElement, notificationSocket);
 
     // Add a handler to auto-download messages with the "download" tag
     // This handler is somewhat special in that it uses the browser to parse the HTML message
@@ -32,20 +40,13 @@ export function prepareIt() {
     notificationSocket.addTagAction('download', (message) => {
         // only acting if the current document is active and focused
         if (document.hasFocus()) {
-            let downloadLink = message.payload.url;
+            const downloadLink = message.payload.url;
             // and only act if a link is found
             if (downloadLink) {
                 notificationSocket.markRead(message.uuid);
                 window.location.replace(downloadLink);
             }
         }
-    });
-
-    // as a stopgap, silence menubar-level user notifications resulting from progression
-    // through the steps of the import process.  These notifications will eventually be valuable
-    // once we have support for monitoring imports or resumption of a work-in-progress import
-    notificationSocket.addTagAction('import-status-update', (message) => {
-        notificationSocket.markRead(message.uuid);
     });
 }
 

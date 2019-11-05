@@ -1,11 +1,11 @@
-import * as EddRest from "../modules/EDDRest";
 import * as $ from "jquery";
+import * as EddRest from "../modules/EDDRest";
 
 // This module contains code for dynamically loading lists of metadata types into the help page
 // for Experiment Description files.
-var ASSAY_DIV_SELECTOR = '#assayMetadataTypes';
-var LINE_DIV_SELECTOR = '#lineMetadataTypes';
-var PROTOCOL_DIV_SELECTOR = '#protocols';
+const ASSAY_DIV_SELECTOR = '#assayMetadataTypes';
+const LINE_DIV_SELECTOR = '#lineMetadataTypes';
+const PROTOCOL_DIV_SELECTOR = '#protocols';
 
 var protocols = [];
 
@@ -74,7 +74,7 @@ function loadAllMeasurementUnits(): void {
             'success': measurementUnitsSuccessHandler,
             'error': measurementUnitsErrorHandler,
             'request_all': true,
-        }
+        },
     );
 }
 
@@ -83,7 +83,7 @@ function measurementUnitsSuccessHandler(measurementUnitsLoaded: any[]): void {
     // cache measurement units as a dictionary of pk -> value so we can easily look them up
     measurementUnits = {};
     measurementUnitsLoaded.forEach((measurementUnit: any) => {
-        var pk: number = measurementUnit.pk;
+        const pk: number = measurementUnit.pk;
         measurementUnits[pk] = measurementUnit;
     });
 
@@ -197,12 +197,12 @@ function showMetadataTypes(
         metadataTypes.forEach((metadataType: any): boolean => {
 
             // omit items included in the 'primary characteristics' table
-            let omit: boolean = omitFromDisplay.indexOf(metadataType.uuid) >= 0;
+            const omit: boolean = omitFromDisplay.indexOf(metadataType.uuid) >= 0;
             if (omit) {
                 return true;
             }
 
-            let row: JQuery = $('<tr>')
+            const row: JQuery = $('<tr>')
                 .appendTo(body);
             $('<td>')
                 .text(metadataType.type_name)
@@ -226,7 +226,7 @@ function assayErrorHandler(jqXHR, textStatus: string, errorThrown: string): void
 }
 
 function measurementUnitsErrorHandler(jqXHR, textStatus: string, errorThrown: string): void {
-    console.error('Error loading measurement units: ', textStatus, ' ', errorThrown);
+    return;
 }
 
 function showLoadFailed(divSelector: string): void {
@@ -247,7 +247,6 @@ function showLoadFailed(divSelector: string): void {
                 loadAllProtocols();
                 break;
             default:
-                console.error('Unsupported value ', divSelector);
         }
     }).appendTo(span);
 }

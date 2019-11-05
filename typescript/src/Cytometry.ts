@@ -1,9 +1,9 @@
 "use strict";
 
-import "../src/EDDDataInterface";
 import * as jQuery from "jquery";
-import "jquery.cookie";
+
 import * as EDDAuto from "../modules/EDDAutocomplete";
+import * as Utl from "../modules/Utl";
 
 // TODO find out a way to do this in Typescript without relying on specific output targets
 /* tslint:disable */
@@ -35,7 +35,7 @@ var Dropzone = require('dropzone');
 
     function parseRawText(ev) {
         var rows: string[], delim, comma, tab;
-        rows = $(ev.target).val().split(/[ \r]*\n/);
+        rows = ($(ev.target).val() as string).split(/[ \r]*\n/);
         if (rows.length) {
             comma = /\s*,\s*/;
             tab = /\t/;
@@ -92,20 +92,20 @@ var Dropzone = require('dropzone');
             if (val === 'meta') {
                 auto = EDDAuto.BaseAuto.create_autocomplete(auto);
                 auto.next().attr('name', 'meta' + colId);
-                let widget = new EDDAuto.MetadataType({
-                    container: auto.parent(),
-                    visibleInput: auto,
-                    hiddenInput: auto.next(),
+                const widget = new EDDAuto.MetadataType({
+                    "container": auto.parent(),
+                    "visibleInput": auto,
+                    "hiddenInput": auto.next(),
                 });
                 widget.init();
                 auto.focus();
             } else if (val === 'avg') {
                 auto = EDDAuto.BaseAuto.create_autocomplete(auto);
                 auto.next().attr('name', 'type' + colId);
-                let widget = new EDDAuto.Phosphor({
-                    container: auto.parent(),
-                    visibleInput: auto,
-                    hiddenInput: auto.next(),
+                const widget = new EDDAuto.Phosphor({
+                    "container": auto.parent(),
+                    "visibleInput": auto,
+                    "hiddenInput": auto.next(),
                 });
                 widget.init();
                 auto.focus().toggleClass('autocomp_signal', val === 'avg');
@@ -126,8 +126,15 @@ var Dropzone = require('dropzone');
         inter_col = $('#id_first_col').empty();
         table = $('<table>').appendTo(inter_col).wrap('<div class="disambiguationSection"></div>');
         assaySel = $('<select>').addClass('disamAssay');
-        $('<option>').text('(Create New Assay)').appendTo(assaySel).val('new').prop('selected', true);
-        $('<option>').text('Ignore').appendTo(assaySel).val('ignore');
+        $('<option>')
+            .text('(Create New Assay)')
+            .appendTo(assaySel)
+            .val('new')
+            .prop('selected', true);
+        $('<option>')
+            .text('Ignore')
+            .appendTo(assaySel)
+            .val('ignore');
         optgroup = $('<optgroup>').attr('label', 'Existing Assays').appendTo(assaySel);
         $.each(EDDData.Assays || {}, function (id, assay) {
             var line, protocol;
@@ -138,7 +145,11 @@ var Dropzone = require('dropzone');
             }
         });
         lineSel = $('<select>').addClass('disamLine');
-        $('<option>').text('(Create New Line)').appendTo(lineSel).val('new').prop('selected', true);
+        $('<option>')
+            .text('(Create New Line)')
+            .appendTo(lineSel)
+            .val('new')
+            .prop('selected', true);
         optgroup = $('<optgroup>').attr('label', 'Existing Lines').appendTo(lineSel);
         $.each(EDDData.Lines || {}, function (id, line) {
             $('<option>').text(line.name).appendTo(optgroup).val(id.toString());
@@ -176,13 +187,17 @@ var Dropzone = require('dropzone');
         } else {
             ok = ok && checkHasValue($('#id_study_1'));
         }
-        ok = ok && checkHasValue($('#id_data'), 'Could not parse this input! Email jbei-help@lbl.gov');
+        ok = ok && checkHasValue(
+            $('#id_data'),
+            'Could not parse this input! Email jbei-help@lbl.gov',
+        );
         ok = ok && checkHasValue($('#id_time'));
         return !!ok;
     }
 
     function checkHasValue(jq: JQuery, message?: string): boolean {
-        if (!jq.val() || !jq.val().trim()) {
+        const val: string = jq.val() as string;
+        if (!val || !val.trim()) {
             $('<div>').addClass('errorMessage').text(message || 'This field is required.')
                 .appendTo(jq).wrap('<span>');
             return false;
@@ -194,16 +209,14 @@ var Dropzone = require('dropzone');
         var _dropzone, _textarea, _auto, stdRows;
         // http://stackoverflow.com/questions/22063612
         $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
-            jqXHR.setRequestHeader('X-CSRFToken', jQuery.cookie('csrftoken'));
+            jqXHR.setRequestHeader('X-CSRFToken', Utl.EDD.findCSRFToken());
         });
         _textarea = $('#id_rawtext');
         _dropzone = new Dropzone(_textarea[0], {
             'clickable': false,
             'url': '/utilities/cytometry/parse/',
         });
-        _dropzone.on('sending', function (event, xhr, formdata) {
-            xhr.setRequestHeader("X-CSRFToken", $.cookie('csrftoken'));
-        }).on('success', function (file, response) {
+        _dropzone.on('success', function (file, response) {
             if (response.python_error) {
                 window.alert(response.python_error);
             } else {
@@ -222,7 +235,7 @@ var Dropzone = require('dropzone');
         // unhide the study creation form and toggle box
         $('#import_step_1').find('.off').removeClass('off');
         $('#id_create_study').change(function (ev) {
-            var checked = $(ev.target).prop('checked');
+            const checked = $(ev.target).prop('checked');
             $('#import_step_1').find('.edd-form :input').prop('disabled', !checked);
             $('#id_study_0').prop('disabled', checked);
             $('#import_step_2').toggleClass('off', !(checked || (!checked && EDDData.Lines)));

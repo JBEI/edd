@@ -7,6 +7,10 @@
 // then triggers a callback function, announcing the availability of its own new data.
 // The callback function triggers the instance of the next step.
 
+import * as $ from "jquery";
+import "jquery-ui/ui/widgets/dialog";
+import "jquery-ui/ui/widgets/progressbar";
+
 import { EDDATDGraphing } from "../modules/AssayTableDataGraphing";
 import * as EDDAuto from "../modules/EDDAutocomplete";
 import {
@@ -17,24 +21,6 @@ import {
 } from "../modules/EDDGraphingTools";
 import * as Utl from "../modules/Utl";
 
-
-// TODO find out a way to do this in Typescript without relying on specific output targets
-/* tslint:disable */
-declare function require(name: string): any;  // avoiding warnings for require calls below
-// as of JQuery UI 1.12, need to require each dependency individually
-require('jquery-ui/themes/base/core.css');
-require('jquery-ui/themes/base/button.css');
-require('jquery-ui/themes/base/draggable.css');
-require('jquery-ui/themes/base/resizable.css');
-require('jquery-ui/themes/base/dialog.css');
-require('jquery-ui/themes/base/progressbar.css');
-require('jquery-ui/themes/base/theme.css');
-require('jquery-ui/ui/widgets/button');
-require('jquery-ui/ui/widgets/draggable');
-require('jquery-ui/ui/widgets/resizable');
-require('jquery-ui/ui/widgets/dialog');
-require('jquery-ui/ui/widgets/progressbar');
-/* tslint:enable */
 
 // Doing this bullshit because TypeScript/InternetExplorer do not recognize
 // static methods on Number
@@ -297,7 +283,7 @@ export class SelectMajorKindStep {
         // irritating Chrome inconsistency
         // For some of these, changing them shouldn't actually affect processing until we
         // implement an overwrite-checking feature or something similar
-        $(':radio[name=datalayout]', '#selectMajorKindStep').on(
+        $('#selectMajorKindStep :radio[name=datalayout]').on(
             'change', this.queueReconfigure.bind(this),
         );
     }
@@ -344,7 +330,7 @@ export class SelectMajorKindStep {
     // If the master Protocol pulldown value has changed, note the change and return 'true'.
     // Otherwise return 'false'.
     checkMasterProtocol(): boolean {
-        const protocolRaw: string = $('#masterProtocol').val();
+        const protocolRaw: string = $('#masterProtocol').val() as string;
         const p: number = parseInt(protocolRaw, 10);
         if (this.masterProtocol === p) { return false; }
         this.masterProtocol = p;
@@ -750,7 +736,8 @@ export class RawInputStep {
         // with a range in between based on the length of the input data.
         // This way a person making a minor correction to a small data set can see
         // their results more quickly, but we don't overload when working on large sets.
-        delay = Math.max(500, Math.min(3000, $('#step2textarea').val().length));
+        const pasted = $('#step2textarea').val() as string;
+        delay = Math.max(500, Math.min(3000, pasted.length));
 
         this.inputRefreshTimerID = window.setTimeout(this.reprocessRawData.bind(this), delay);
     }
@@ -987,7 +974,7 @@ export class RawInputStep {
         // We do this using a timeout so the rest of the paste events fire, and get the
         // pasted result.
         this.haveInputData = true;
-        window.setTimeout(this.inferSeparatorType.bind(this), 1);
+        window.window.setTimeout(this.inferSeparatorType.bind(this), 1);
     }
 
 
@@ -1459,13 +1446,13 @@ export class IdentifyStructuresStep implements ImportStep {
         table = $('<table>').attr('cellspacing', '0')
             .appendTo($('#dataTableDiv'))
             .on('click', '[name=enableColumn]', (ev: JQueryMouseEventObject) => {
-                that.toggleTableColumn(ev.target);
+                that.toggleTableColumn(ev.target as HTMLElement);
             }).on('click', '[name=enableRow]', (ev: JQueryMouseEventObject) => {
-                that.toggleTableRow(ev.target);
+                that.toggleTableRow(ev.target as HTMLElement);
             }).on('change', '.pulldownCell > select', (ev: JQueryInputEventObject) => {
-                const targ: JQuery = $(ev.target);
+                const targ: JQuery = $(ev.target as HTMLElement);
                 const i: number = parseInt(targ.attr('i'), 10);
-                const val: number = parseInt(targ.val(), 10);
+                const val: number = parseInt(targ.val() as string, 10);
                 $('body').addClass('waitCursor');
                 that.changedRowDataTypePulldown(i, val);
                 $('body').removeClass('waitCursor');
@@ -1780,10 +1767,10 @@ export class IdentifyStructuresStep implements ImportStep {
     }
 
 
-    toggleTableRow(box: Element): void {
+    toggleTableRow(box: HTMLElement): void {
         const checkbox: JQuery = $(box);
         const pulldown: JQuery = checkbox.next();
-        const input: number = parseInt(checkbox.val(), 10);
+        const input: number = parseInt(checkbox.val() as string, 10);
         const active = checkbox.prop('checked');
         this.activeRowFlags[input] = active;
         if (active) {
@@ -1800,11 +1787,11 @@ export class IdentifyStructuresStep implements ImportStep {
     }
 
 
-    toggleTableColumn(box: Element): void {
+    toggleTableColumn(box: HTMLElement): void {
         var value: number | string, input: JQuery;
         $('body').addClass('waitCursor');
         input = $(box);
-        value = parseInt(input.val(), 10);
+        value = parseInt(input.val() as string, 10);
         this.activeColFlags[value] = input.prop('checked');
         this.interpretDataTable();
         this.redrawEnabledFlagMarkers();
@@ -2252,13 +2239,12 @@ export class IdentifyStructuresStep implements ImportStep {
 
 
     highlighterF(e: JQueryMouseEventObject): void {
-        var cell: JQuery, x: number, y: number;
         // Walk up the item tree until we arrive at a table cell,
         // so we can get the index of the table cell in the table.
-        cell = $(e.target).closest('td');
+        const cell = $(e.target).closest('td');
         if (cell.length) {
-            x = parseInt(cell.attr('x'), 10);
-            y = parseInt(cell.attr('y'), 10);
+            const x = parseInt(cell.attr('x'), 10);
+            const y = parseInt(cell.attr('y'), 10);
             if (x) {
                 $(this.colObjects[x - 1]).toggleClass('hoverLines', e.type === 'mouseover');
             }
@@ -2270,15 +2256,14 @@ export class IdentifyStructuresStep implements ImportStep {
 
 
     singleValueDisablerF(e: JQueryMouseEventObject): void {
-        var cell: JQuery, x: number, y: number;
         // Walk up the item tree until we arrive at a table cell,
         // so we can get the index of the table cell in the table.
-        cell = $(e.target).closest('td');
+        const cell = $(e.target).closest('td');
         if (!cell.length) {
             return;
         }
-        x = parseInt(cell.attr('x'), 10);
-        y = parseInt(cell.attr('y'), 10);
+        let x = parseInt(cell.attr('x'), 10);
+        let y = parseInt(cell.attr('y'), 10);
         if (!x || !y || x < 1 || y < 1) {
             return;
         }
@@ -2352,13 +2337,16 @@ export class IdentifyStructuresStep implements ImportStep {
     requiredInputsProvided(): boolean {
         var needPulldownSet: boolean;
         // require user input for every non-ignored row
-        needPulldownSet = this.pulldownObjects.some((p: HTMLElement, row: number): boolean => {
-            if (!this.activeRowFlags[row]) {
-                return false;
-            } else {
-                return $(p).val() === IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE;
-            }
-        });
+        needPulldownSet = this.pulldownObjects.some(
+            (pulldown: HTMLElement, row: number): boolean => {
+                if (!this.activeRowFlags[row]) {
+                    return false;
+                } else {
+                    const value = parseInt($(pulldown).val() as string, 10);
+                    return value === IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE;
+                }
+            },
+        );
         $('#missingStep3InputDiv').toggleClass('off', !needPulldownSet);
         return !needPulldownSet && this.parsedSets.length > 0;
     }
@@ -2479,7 +2467,7 @@ export class TypeDisambiguationStep {
     setAllInputsEnabled(enabled: boolean) {
         const allUserInputs: JQuery = $("." + TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
 
-        allUserInputs.each(function (index: number, domElement: Element) {
+        allUserInputs.each(function (index: number, domElement: HTMLElement) {
             const input = $(domElement);
             if (enabled) {
                 input.removeAttr('disabled');
@@ -2632,9 +2620,9 @@ export class TypeDisambiguationStep {
 
     toggleAllSubsectionItems(ev: JQueryEventObject): void {
         let allSelected: boolean = true;
-        const parentDiv: JQuery = $(ev.target).parent();
-        const checkboxes: JQuery = ($(parentDiv)
-            .find('.' + TypeDisambiguationStep.STEP_4_TOGGLE_ROW_CHECKBOX));
+        const parentDiv: JQuery = $(ev.target as HTMLElement).parent();
+        const cb_filter = "." + TypeDisambiguationStep.STEP_4_TOGGLE_ROW_CHECKBOX;
+        const checkboxes: JQuery = $(parentDiv).find(cb_filter);
 
         checkboxes.toArray().some((elt: any): boolean => {
             const checkbox = $(elt);
@@ -2653,7 +2641,7 @@ export class TypeDisambiguationStep {
 
 
         // un/check all checkboxes based on their previous state
-        checkboxes.each((index: number, elt: Element) => {
+        checkboxes.each((index: number, elt: HTMLElement) => {
             const checkbox = $(elt);
             checkbox.prop('checked', !allSelected);
             DisambiguationRow.toggleTableRowEnabled(checkbox);
@@ -2710,7 +2698,7 @@ export class TypeDisambiguationStep {
             .attr({ 'id': 'disambiguateLinesTable', 'cellspacing': 0 })
             .appendTo(parentDiv.removeClass('off'))
             .on('change', 'select', (ev: JQueryInputEventObject): void => {
-                this.userChangedLineDisam(ev.target);
+                this.userChangedLineDisam(ev.target as HTMLElement);
             })[0] as HTMLTableElement;
         const header = $('<thead>').appendTo(table);
         $('<th>').text('Line Imported').appendTo(header);
@@ -2798,7 +2786,7 @@ export class TypeDisambiguationStep {
             .attr({ 'id': 'matchedAssaysTable', 'cellspacing': 0 })
             .appendTo(childDivMatched)
             .on('change', 'select', (ev: JQueryInputEventObject): void => {
-                this.userChangedAssayDisam(ev.target);
+                this.userChangedAssayDisam(ev.target as HTMLElement);
             })[0] as HTMLTableElement;
         parentDivMatched.removeClass('off');
         const thead = $('<thead>');
@@ -3024,7 +3012,8 @@ export class TypeDisambiguationStep {
     // Such changes may affect the available contents of some of the pulldowns in the step.
     changedAnyMasterPulldown(): void {
         // Show the master line dropdown if the master assay dropdown is set to new
-        $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() !== 'named_or_new');
+        const assay = $('#masterAssay').val() as string;
+        $('#masterLineSpan').toggleClass('off', assay !== 'named_or_new');
         this.queueReconfigure();
     }
 
@@ -3032,9 +3021,10 @@ export class TypeDisambiguationStep {
     // If the pulldown is being set to 'new', walk down the remaining pulldowns in the section,
     // in order, setting them to 'new' as well, stopping just before any pulldown marked as
     // being 'set by the user'.
-    userChangedLineDisam(lineEl: Element): boolean {
+    userChangedLineDisam(lineEl: HTMLElement): boolean {
         const changed: JQuery = $(lineEl).data('setByUser', true);
-        if (changed.val() !== 'new') {
+        const lineId = changed.val() as string;
+        if (lineId !== 'new') {
             // stop here for anything other than 'new'; only 'new' cascades to
             // following pulldowns
             return false;
@@ -3058,19 +3048,18 @@ export class TypeDisambiguationStep {
     // 2. If the pulldown is being set to 'new', walk down the remaining pulldowns in the
     //    section, in order, setting them to 'new' as well, stopping just before any pulldown
     //    marked as being 'set by the user'.
-    userChangedAssayDisam(assayEl: Element): boolean {
-        var changed: JQuery,
-            v: number;
-        changed = $(assayEl).data('setByUser', true);
+    userChangedAssayDisam(assayEl: HTMLElement): boolean {
+        const changed = $(assayEl).data('setByUser', true);
         // The span with the corresponding Line pulldown is always right next to the
         // Assay pulldown
-        changed.next().toggleClass('off', changed.val() !== 'named_or_new');
-        if (changed.val() !== 'named_or_new') {
+        const assayId = changed.val() as string;
+        changed.next().toggleClass('off', assayId !== 'named_or_new');
+        if (assayId !== 'named_or_new') {
             // stop here for anything other than 'new'; only 'new' cascades to
             // following pulldowns
             return false;
         }
-        v = changed.data('visibleIndex') || 0;
+        const v = changed.data('visibleIndex') || 0;
         this.currentlyVisibleAssayObjSets.slice(v).forEach((obj: any): void => {
             const assaySelect: JQuery = obj.selectAssayJQElement;
             if (assaySelect.data('setByUser')) {
@@ -3083,7 +3072,7 @@ export class TypeDisambiguationStep {
     }
 
 
-    userChangedMeasurementDisam(element: Element): void {
+    userChangedMeasurementDisam(element: HTMLElement): void {
         let auto: EDDAuto.BaseAuto;
         let hiddenInput: JQuery;
         let textInput: JQuery;
@@ -3127,8 +3116,9 @@ export class TypeDisambiguationStep {
         const allSet: boolean = this.currentlyVisibleMeasurementObjSets.every(
             (obj: any): boolean => {
                 const compAuto: EDDAuto.MeasurementCompartment = obj.compAuto;
-                if (compAuto.visibleInput.data('setByUser')
-                        || (compAuto.visibleInput.val() && compAuto.val() !== '0')) {
+                const label = compAuto.visibleInput.val() as string;
+                const id = compAuto.val() as string;
+                if (compAuto.visibleInput.data('setByUser') || (!!label && id !== '0')) {
                     return true;
                 }
                 return false;
@@ -3154,15 +3144,15 @@ export class TypeDisambiguationStep {
         let resolvedSets: ResolvedImportSet[];
 
         // From this Step
-        const masterAssay: any = $('#masterAssay').val();
-        const masterAssayLine: any = $('#masterAssayLine').val();
-        const masterComp: any = $('#masterCompValue').val();
-        const masterLine: any = $('#masterLine').val();
-        const masterMComp: any = $('#masterMCompValue').val();
-        const masterMType: any = $('#masterMTypeValue').val();
-        const masterMUnits: any = $('#masterMUnitsValue').val();
-        const masterTime: any = parseFloat($('#masterTimestamp').val());
-        const masterUnits: any = $('#masterUnitsValue').val();
+        const masterAssay: string = $('#masterAssay').val() as string;
+        const masterAssayLine: string = $('#masterAssayLine').val() as string;
+        const masterComp: string = $('#masterCompValue').val() as string;
+        const masterLine: string = $('#masterLine').val() as string;
+        const masterMComp: string = $('#masterMCompValue').val() as string;
+        const masterMType: string = $('#masterMTypeValue').val() as string;
+        const masterMUnits: string = $('#masterMUnitsValue').val() as string;
+        const masterTime: number = parseFloat($('#masterTimestamp').val() as string);
+        const masterUnits: string = $('#masterUnitsValue').val() as string;
         this.errorMessages = [];
         this.warningMessages = [];
 
@@ -3239,7 +3229,7 @@ export class TypeDisambiguationStep {
                         if (lineIdInput.prop('disabled')) {
                             return;  // continue to the next loop iteration parsedSets.forEach
                         }
-                        lineId = lineIdInput.val();
+                        lineId = lineIdInput.val() as string;
                     }
                 }
             } else {
@@ -3258,9 +3248,9 @@ export class TypeDisambiguationStep {
                         if (assaySelect.is(':disabled')) {
                             return;  // continue to the next loop iteration parsedSets.forEach
                         }
-                        assay_id = assaySelect.val();
+                        assay_id = assaySelect.val() as string;
                         lineIdInput = assayDisam.lineAuto.hiddenInput;
-                        lineId = lineIdInput.val();
+                        lineId = lineIdInput.val() as string;
                     }
                 }
             }
@@ -3371,7 +3361,7 @@ export class TypeDisambiguationStep {
         let missing = false;
         allRequiredInputs.each((i, input) => {
             missing = $(input).val() === '';
-            return !missing;
+            if (missing) { return false; }  // break
         });
         return allRequiredInputs.length > 0 && !missing;
     }
@@ -3440,7 +3430,7 @@ export class DisambiguationRow {
         const enabled = checkbox.is(':checked');
 
         // iterate over cells in the row
-        checkbox.parent().nextAll().each((index: number, elt: Element): void => {
+        checkbox.parent().nextAll().each((index: number, elt: HTMLElement): void => {
             const tableCell: JQuery = $(elt);
             tableCell.toggleClass('disabledTextLabel', !enabled);
             // manage text input(s)
@@ -3525,7 +3515,7 @@ export class MeasurementDisambiguationRow extends DisambiguationRow {
 
         $(this.row).on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
             // only watch for changes on the hidden portion, let autocomplete work
-            typeDisambiguationStep.userChangedMeasurementDisam(ev.target);
+            typeDisambiguationStep.userChangedMeasurementDisam(ev.target as HTMLElement);
         });
         EDDAuto.BaseAuto.initial_search(this.typeAuto, name);
     }
@@ -3640,11 +3630,9 @@ export class AssayDisambiguationRow extends LineDisambiguationRow {
 
             // a table column to contain the text label for the Line pulldown, and the
             // pulldown itself
-            cell = $('<td>').appendTo(cell);
             this.appendLineAutoselect(cell, defaultSel);
             // create another column
-            let td = $(this.row.insertCell()).css('text-align', 'left');
-            td = $('<td>').appendTo(td);
+            const td = $(this.row.insertCell()).css('text-align', 'left');
             aSelect = $('<select>').appendTo(td)
                 .data({ 'setByUser': false })
                 .attr('name', 'disamAssay' + i)
@@ -3921,7 +3909,7 @@ export class ReviewStep {
         $('#importWaitingDiv, #submit-result').removeClass('off');
         const resolvedSets = this.step4.createSetsForSubmission();
         // make sure to parse string value from #pageSizeLimit to a number
-        const pageSizeLimit: number = parseInt($('#pageSizeLimit').val(), 10) || 1000;
+        const pageSizeLimit: number = parseInt($('#pageSizeLimit').val() as string, 10) || 1000;
         const pageCount: number = Math.ceil(resolvedSets.length / pageSizeLimit);
         let begin: number = 0;
         let currentPage: number = 0;
@@ -3973,12 +3961,15 @@ export class ReviewStep {
         $('#importWaitingDiv').removeClass('off');
         progressbar.progressbar('option', 'value', false);
         // first attempt to delete any state cached during the previous import attempt.
-        $.ajax({
-            'headers': {'Content-Type': 'application/json'},
-            'method': 'DELETE',
-            'data': $('#importId').val(),
-            'processData': false,
-        }).done(() => {
+        $.ajax(
+            "",
+            {
+                'headers': {'Content-Type': 'application/json'},
+                'method': 'DELETE',
+                'data': $('#importId').val() as string,
+                'processData': false,
+            },
+        ).done(() => {
             window.setTimeout(() => this.startImport(), 0);
         }).fail(() => {
             $('#importSubmitErrorDiv').removeClass('off');

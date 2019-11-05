@@ -2,6 +2,8 @@
 
 declare var EDDData: EDDData;  // sticking this here as IDE isn't following references
 
+import * as $ from "jquery";
+
 import {
     DataGrid,
     DataGridColumnGroupSpec,
@@ -18,25 +20,6 @@ import {
 import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
-
-
-// TODO find out a way to do this in Typescript without relying on specific output targets
-/* tslint:disable */
-declare function require(name: string): any;  // avoiding warnings for require calls below
-// as of JQuery UI 1.12, need to require each dependency individually
-require('jquery-ui/themes/base/core.css');
-require('jquery-ui/themes/base/menu.css');
-require('jquery-ui/themes/base/button.css');
-require('jquery-ui/themes/base/draggable.css');
-require('jquery-ui/themes/base/resizable.css');
-require('jquery-ui/themes/base/dialog.css');
-require('jquery-ui/themes/base/theme.css');
-require('jquery-ui/ui/widgets/button');
-require('jquery-ui/ui/widgets/draggable');
-require('jquery-ui/ui/widgets/resizable');
-require('jquery-ui/ui/widgets/dialog');
-/* tslint:enable */
-/* tslint:disable:prefer-const */
 
 
 var linesActionPanelRefreshTimer: NodeJS.Timer;
@@ -106,7 +89,8 @@ export function prepareIt() {
     });
 
     // set up editable study name
-    let nameEdit = new StudyBase.EditableStudyName($('#editable-study-name').get()[0]);
+    const title = $('#editable-study-name').get()[0] as HTMLElement;
+    let nameEdit = new StudyBase.EditableStudyName(title);
     nameEdit.getValue();
 
     $.ajax({

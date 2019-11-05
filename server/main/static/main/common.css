@@ -1993,7 +1993,6 @@ body > .navbar {
 .nav {
     list-style: none;
     padding-left: 0;
-    margin-right:-40px;
 }
 
 .studyNav .navbar .nav > .active > a {

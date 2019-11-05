@@ -247,7 +247,7 @@ class EDDMetadata(models.Model):
                     value = prev
                 elif prev is not None:
                     value = [prev, value]
-            self.metadata[str(metatype.pk)] = metatype.encode_value(value)
+            self.metadata[metatype.pk] = metatype.encode_value(value)
         else:
             temp = getattr(self, metatype.type_field)
             if hasattr(temp, "add"):
@@ -259,9 +259,11 @@ class EDDMetadata(models.Model):
                 setattr(self, metatype.type_field, value)
 
     def metadata_clear(self, metatype):
-        """ Removes all metadata of the type from this object. """
+        """Removes all metadata of the type from this object."""
         if metatype.type_field is None:
-            del self.metadata[str(metatype.pk)]
+            del self.metadata[metatype.pk]
+            # for backward-compatibility, also check string version
+            del self.metadata[f"{metatype.pk}"]
         else:
             temp = getattr(self, metatype.type_field)
             if hasattr(temp, "clear"):
@@ -272,7 +274,10 @@ class EDDMetadata(models.Model):
     def metadata_get(self, metatype, default=None):
         """ Returns the metadata on this object matching the type. """
         if metatype.type_field is None:
-            value = self.metadata.get(str(metatype.pk), None)
+            # for backward-compatibility, also check string version
+            value = self.metadata.get(
+                metatype.pk, self.metadata.get(f"{metatype.pk}", None)
+            )
             if value is None:
                 return default
             return metatype.decode_value(value)
@@ -287,6 +292,6 @@ class EDDMetadata(models.Model):
             else:
                 try:
                     prev.remove(value)
-                    self.metadata[str(metatype.pk)] = prev
+                    self.metadata_add(metatype, prev)
                 except ValueError:
                     pass

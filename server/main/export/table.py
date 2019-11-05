@@ -1,5 +1,7 @@
 # coding: utf-8
 
+import csv
+import io
 import logging
 import operator
 from collections import OrderedDict
@@ -63,8 +65,6 @@ class ColumnChoice:
 
     @classmethod
     def from_model(cls, column):
-        type_context = None
-
         def lookup_format(instance, **kwargs):
             return column.get_default() % column.get_format_dict(instance, **kwargs)
 
@@ -75,16 +75,15 @@ class ColumnChoice:
             return default
 
         if column.meta_type:
-            type_context = column.meta_type.for_context
+            model = {
+                models.MetadataType.STUDY: models.Study,
+                models.MetadataType.LINE: models.Line,
+                models.MetadataType.ASSAY: models.Assay,
+            }.get(column.meta_type.for_context, None)
             lookup = lookup_meta
         else:
-            type_context = None
+            model = None
             lookup = lookup_format
-        model = {
-            models.MetadataType.STUDY: models.Study,
-            models.MetadataType.LINE: models.Line,
-            models.MetadataType.ASSAY: models.Assay,
-        }.get(type_context, None)
         return cls(model, f"worklist_column_{column.pk}", str(column), lookup)
 
     def convert_instance_from_measure(self, measure, default=None):
@@ -347,40 +346,12 @@ def value_str(value):
     return ":".join(map(str, map(float, value)))
 
 
-class CellQuote:
-    """Object defining how to quote table cell values."""
-
-    def __init__(self, always_quote=False, separator_string=",", quote_string='"'):
-        """
-        Defines how to quote values.
-
-        :param always_quote: if True, always quote values, instead of
-            conditionally quote
-        :param separator_string: sequence that separates cell values,
-            requiring quotation
-        :param quote_string: sequence used to surround quoted values
-        """
-        self.always_quote = always_quote
-        self.separator_string = separator_string
-        self.quote_string = quote_string
-
-    def quote(self, value):
-        """Quotes a value based on object parameters."""
-        if self.always_quote or self.separator_string in value:
-            # wrap in quotes, replace any quote sequences with a doubled sequence
-            quote = self.quote_string
-            escaped = value.replace(quote, quote * 2)
-            return f"{quote}{escaped}{quote}"
-        return value
-
-
 class TableExport:
     """Outputs tables for export of EDD objects."""
 
-    def __init__(self, selection, options, worklist=None):
+    def __init__(self, selection, options):
         self.selection = selection
         self.options = options
-        self.worklist = worklist
         self._x_values = {}
 
     def output(self):
@@ -401,45 +372,37 @@ class TableExport:
 
     def _build_output(self, tables):
         layout = self.options.layout
-        table_separator = "\n\n"
-        row_separator = "\n"
-        cell_separator = self.options.separator
-        cell_format = CellQuote(separator_string=cell_separator)
+        if self.options.separator == ",":
+            dialect = "excel"
+        else:
+            dialect = "excel-tab"
+        out_csv = io.StringIO(newline="")
+        writer = csv.writer(out_csv, dialect=dialect)
         if layout == ExportOption.DATA_COLUMN_BY_POINT:
             # data is already in correct orientation, join and return
-            return table_separator.join(
-                [
-                    row_separator.join(
-                        [
-                            cell_separator.join(map(cell_format.quote, rrow))
-                            for rkey, rrow in ttable.items()
-                        ]
-                    )
-                    for tkey, ttable in tables.items()
-                ]
-            )
+            for table in tables:
+                writer.writerows(table)
+                writer.writerow([])
         # both LINE_COLUMN_BY_DATA and DATA_COLUMN_BY_LINE are constructed similarly
         # each table in LINE_COLUMN_BY_DATA is transposed
-        out = []
-        for tkey, table in tables.items():
-            # sort x values by original numeric values
-            all_x = sorted(
-                list(self._x_values.get(tkey, {}).items()), key=lambda a: a[1]
-            )
-            # generate header row
-            rows = [list(map(str, table["header"] + [x[0] for x in all_x]))]
-            # go through non-header rows; unsquash final column
-            for row in islice(table.values(), 1, None):
-                unsquash = self._output_unsquash(all_x, row[-1:][0])
-                rows.append(list(map(str, row[:-1] + unsquash)))
-            # do the transpose here if needed
-            if layout == ExportOption.LINE_COLUMN_BY_DATA:
-                rows = zip(*rows)
-            # join the cells
-            rows = [cell_separator.join(map(cell_format.quote, row)) for row in rows]
-            # join the rows
-            out.append(row_separator.join(rows))
-        return table_separator.join(out)
+        else:
+            for tkey, table in tables.items():
+                # sort x values by original numeric values
+                all_x = sorted(
+                    list(self._x_values.get(tkey, {}).items()), key=lambda a: a[1]
+                )
+                # generate header row
+                rows = [list(map(str, table["header"] + [x[0] for x in all_x]))]
+                # go through non-header rows; unsquash final column
+                for row in islice(table.values(), 1, None):
+                    unsquash = self._output_unsquash(all_x, row[-1:][0])
+                    rows.append(list(map(str, row[:-1] + unsquash)))
+                # do the transpose here if needed
+                if layout == ExportOption.LINE_COLUMN_BY_DATA:
+                    rows = zip(*rows)
+                writer.writerows(rows)
+                writer.writerow([])
+        return out_csv.getvalue()
 
     def _do_export(self, tables):
         # add data from each exported measurement; already sorted by protocol

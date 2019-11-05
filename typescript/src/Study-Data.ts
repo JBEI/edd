@@ -1,6 +1,7 @@
 "use strict";
 
 import * as $ from "jquery";
+
 import {
     DataGrid,
     DataGridColumnGroupSpec,
@@ -25,26 +26,6 @@ import {
 import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
-
-
-// TODO find out a way to do this in Typescript without relying on specific output targets
-/* tslint:disable */
-declare function require(name: string): any;  // avoiding warnings for require calls below
-// as of JQuery UI 1.12, need to require each dependency individually
-require('jquery-ui/themes/base/core.css');
-require('jquery-ui/themes/base/menu.css');
-require('jquery-ui/themes/base/button.css');
-require('jquery-ui/themes/base/draggable.css');
-require('jquery-ui/themes/base/resizable.css');
-require('jquery-ui/themes/base/dialog.css');
-require('jquery-ui/themes/base/theme.css');
-require('jquery-ui/ui/widgets/button');
-require('jquery-ui/ui/widgets/draggable');
-require('jquery-ui/ui/widgets/resizable');
-require('jquery-ui/ui/widgets/dialog');
-require('jquery-ui/ui/widgets/tooltip');
-/* tslint:enable */
-/* tslint:disable:prefer-const */
 
 
 var viewingMode: ViewingMode;
@@ -170,11 +151,17 @@ export class ProgressiveFilteringWidget {
         $('#mainFilterSection').append(this.filterTableJQ);
 
         // First do some basic sanity filtering on the list
-        $.each(EDDData.Assays, (assayId: string, assay: any): void => {
+        $.each(EDDData.Assays, (assayId: string, assay: AssayRecord): void => {
             var line = EDDData.Lines[assay.lid];
             if (!line || !line.active) { return ; }
-            $.each(assay.meta || [], (metadataId) => { seenInAssaysHash[metadataId] = true; });
-            $.each(line.meta || [], (metadataId) => { seenInLinesHash[metadataId] = true; });
+            $.each(
+                assay.meta || [],
+                (metadataId: string) => { seenInAssaysHash[metadataId] = true; },
+            );
+            $.each(
+                line.meta || [],
+                (metadataId: string) => { seenInLinesHash[metadataId] = true; },
+            );
         });
 
         // Create filters on assay tables
@@ -1405,7 +1392,8 @@ export function prepareIt() {
     actionPanelRefreshTimer = null;
 
     // set up editable study name
-    let nameEdit = new StudyBase.EditableStudyName($('#editable-study-name').get()[0]);
+    const title = $('#editable-study-name').get()[0] as HTMLElement;
+    let nameEdit = new StudyBase.EditableStudyName(title);
     nameEdit.getValue();
     // This only adds code that turns the other buttons off when a button is made active,
     // and does the same to elements named in the 'for' attributes of each button.

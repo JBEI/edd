@@ -1,6 +1,7 @@
 'use strict';
 
 import * as $ from "jquery";
+
 import * as ReconnectingWebSocket from "reconnecting-websocket";
 import * as Utl from "./Utl";
 
@@ -58,6 +59,7 @@ export class NotificationSocket {
 
     subscribe(callback: DisplayCallback): void {
         this.subscribers.push(callback);
+        this.updateSubscriber(callback);
     }
 
     /**
@@ -144,13 +146,23 @@ export class NotificationSocket {
         this.socket.send(JSON.stringify(payload));
     }
 
+    private sortMessages(): Message[] {
+        const msgList: Message[] = $.map(this.messages, (v) => v);
+        msgList.sort((a, b) => a.time.getTime() - b.time.getTime());
+        return msgList;
+    }
+
     private updateSubscribers() {
         // notify all general subscribers of un-dismissed messages
+        const messages = this.sortMessages();
         for (const sub of this.subscribers) {
-            const msgList: Message[] = $.map(this.messages, (v) => v);
-            msgList.sort((a, b) => a.time.getTime() - b.time.getTime());
-            sub(msgList, this.count);
+            sub(messages, this.count);
         }
+    }
+
+    private updateSubscriber(callback: DisplayCallback) {
+        const messages = this.sortMessages();
+        callback(messages, this.count);
     }
 }
 
@@ -161,7 +173,7 @@ export class NotificationMenu {
     emptyMessage: JQuery;
     socket: NotificationSocket;
 
-    constructor(element: Element, socket: NotificationSocket) {
+    constructor(element: HTMLElement, socket: NotificationSocket) {
         const menu = $(element);
         this.badge = menu.find('.badge');
         this.messageList = menu.find('.dropdown-menu');
@@ -171,13 +183,6 @@ export class NotificationMenu {
         this.socket.subscribe(this.display.bind(this));
         this.messageList.on('click', 'li.message > .message-close', this.markRead.bind(this));
         this.messageList.on('click', 'li.close-all', this.markAllRead.bind(this));
-
-        // bootstrap ends up loading twice, so every click fires two toggle events
-        // this is adding a third toggle, until I can figure out where the first two are added
-        menu.on('click', () => {
-            const expanded = menu.hasClass('open');
-            menu.toggleClass('open', !expanded).attr('aria-expanded', '' + !expanded);
-        });
     }
 
     display(msgs: Message[], count: number) {

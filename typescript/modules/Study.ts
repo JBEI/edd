@@ -3,6 +3,9 @@
 // Code that all Study sub-pages have in common
 
 import * as $ from "jquery";
+import "jquery-ui/ui/widgets/dialog";
+import "jquery-ui/ui/widgets/tooltip";
+
 import * as EDDAuto from "./EDDAutocomplete";
 import * as EDDEditable from "./EDDEditableElement";
 
@@ -19,7 +22,7 @@ $( window ).on("load", function() { // Shortcutting this to .load confuses jQuer
 
 // Base class for the non-autocomplete inline editing fields for the Study
 export class EditableStudyElement extends EDDEditable.EditableElement {
-    constructor(inputElement: Element, style?: string) {
+    constructor(inputElement: HTMLElement, style?: string) {
         super(inputElement, style);
     }
 
@@ -29,7 +32,7 @@ export class EditableStudyElement extends EDDEditable.EditableElement {
 
 
 export class EditableStudyName extends EditableStudyElement {
-    constructor(inputElement: Element) {
+    constructor(inputElement: HTMLElement) {
         super(inputElement);
         this.fieldName('name');
         this.formURL($(inputElement).parents('form').attr('data-rest'));
@@ -40,7 +43,7 @@ export class EditableStudyName extends EditableStudyElement {
     }
 
     getValue(): string {
-        return $(this.inputElement).val();
+        return $(this.inputElement).val() as string;
     }
 
     blankLabel(): string {
@@ -60,7 +63,7 @@ function patchedFocusTabbable() {
 
 // Called when the page loads.
 export function prepareIt() {
-    const editable = new EditableStudyName($('#editable-study-name').get()[0]);
+    const editable = new EditableStudyName($('#editable-study-name').get()[0] as HTMLElement);
     // put the click handler at the document level, then filter to any link inside a .disclose
     $(document).on('click', '.disclose .discloseLink', (e) => {
         $(e.target).closest('.disclose').toggleClass('discloseHide');
@@ -205,12 +208,12 @@ function mergeMeta(a: object, b: object): object {
         if (propertyEqual(a, b, key)) {
             meta[key] = value;
         } else {
-            meta[key] = null;
+            (meta[key] as any) = null;
         }
     });
     $.each(b || {}, (key, value) => {
         if (!meta.hasOwnProperty(key)) {
-            meta[key] = null;
+            (meta[key] as any) = null;
         }
     });
     return meta;
