@@ -5,7 +5,6 @@ import * as MultiColumnAuto from "./MultiColumnAutocomplete";
 // track automatically generated caches for values in autocomplete types
 const autoCache = {};
 
-
 export interface AutocompleteOptions {
     // Mandatory: A JQuery object identifying the DOM element that contains, or will contain,
     // the input elements used by this autocomplete object.
@@ -38,17 +37,17 @@ export interface AutocompleteOptions {
 
     // Whether the field must have some value before submission (i.e. cannot be blank).
     // Default is false.
-    nonEmptyRequired?: boolean;   // TODO: Implement
+    nonEmptyRequired?: boolean; // TODO: Implement
 
     // Whether the field's contents must resolve to a valid Id before submission.
     // Default is usually true - it depends on the subclass.
     // Note that when nonEmptyRequired is false, a blank value is considered valid!
-    validIdRequired?: boolean;    // TODO: Implement
+    validIdRequired?: boolean; // TODO: Implement
 
     // Whether a blank field defaults to show a "(Create New)" placeholder and submits
     // a hidden Id of 'new'.
     // Default is false.
-    emptyCreatesNew?: boolean;    // TODO: Implement
+    emptyCreatesNew?: boolean; // TODO: Implement
 
     // an optional dictionary to use / maintain as a cache of query results for this
     // autocomplete. Maps search term -> results.
@@ -58,14 +57,11 @@ export interface AutocompleteOptions {
     search_uri?: string;
 }
 
-
 export interface ExtraSearchParameters {
     [param: string]: string;
 }
 
-
 export class BaseAuto {
-
     container: JQuery;
     visibleInput: JQuery;
     hiddenInput: JQuery;
@@ -82,22 +78,22 @@ export class BaseAuto {
     cache: any;
     search_uri: string;
 
-    delete_last: boolean = false;
+    delete_last = false;
 
     static _uniqueIndex = 1;
     static _request_cache = {};
 
     static initPreexisting(context?: Element | JQuery) {
-        $('input.autocomp', context).map((i, element) => {
+        $("input.autocomp", context).map((i, element) => {
             const visibleInput: JQuery = $(element);
-            const autocompleteType: string = $(element).attr('eddautocompletetype');
+            const autocompleteType: string = $(element).attr("eddautocompletetype");
             if (!autocompleteType) {
                 throw Error("eddautocompletetype must be defined!");
             }
             const opt: AutocompleteOptions = {
                 "container": visibleInput.parent(),
                 "visibleInput": visibleInput,
-                "hiddenInput": visibleInput.next('input[type=hidden]'),
+                "hiddenInput": visibleInput.next("input[type=hidden]"),
             };
             // This will automatically attach the created object to both input elements, in
             // the jQuery data interface, under the 'edd' object, attribute 'autocompleteobj'.
@@ -108,33 +104,31 @@ export class BaseAuto {
     }
 
     static create_autocomplete(container: JQuery): JQuery {
-        var visibleInput, hiddenInput;
-        visibleInput = $('<input type="text"/>').addClass('autocomp').appendTo(container);
-        hiddenInput = $('<input type="hidden"/>').appendTo(container);
+        const visibleInput = $('<input type="text"/>')
+            .addClass("autocomp")
+            .appendTo(container);
+        const hiddenInput = $('<input type="hidden"/>').appendTo(container);
         return visibleInput;
     }
 
     static initial_search(auto: BaseAuto, term: string): void {
-        var autoInput: JQuery, oldResponse: any;
-        autoInput = auto.visibleInput;
-        oldResponse = autoInput.mcautocomplete('option', 'response');
-        autoInput.mcautocomplete('option', 'response', function(ev, ui) {
+        const autoInput = auto.visibleInput;
+        const oldResponse = autoInput.mcautocomplete("option", "response");
+        autoInput.mcautocomplete("option", "response", function(ev, ui) {
             let highest = 0;
             let best;
             const termLower = term.toLowerCase();
-            autoInput.mcautocomplete('option', 'response', oldResponse);
+            autoInput.mcautocomplete("option", "response", oldResponse);
             oldResponse.call({}, ev, ui);
             ui.content.every((item) => {
-                let val: string;
-                let valLower: string;
                 if (item instanceof MultiColumnAuto.NonValueItem) {
                     return true;
                 }
-                val = item[auto.display_key];
-                valLower = val.toLowerCase();
+                const val = item[auto.display_key];
+                const valLower = val.toLowerCase();
                 if (val === term) {
                     best = item;
-                    return false;  // do not need to continue
+                    return false; // do not need to continue
                 } else if (highest < 8 && valLower === termLower) {
                     highest = 8;
                     best = item;
@@ -147,13 +141,15 @@ export class BaseAuto {
                 }
             });
             if (best) {
-                autoInput.mcautocomplete('instance')._trigger('select', 'autocompleteselect', {
-                    'item': best,
-                });
+                autoInput
+                    .mcautocomplete("instance")
+                    ._trigger("select", "autocompleteselect", {
+                        "item": best,
+                    });
             }
         });
-        autoInput.mcautocomplete('search', term);
-        autoInput.mcautocomplete('close');
+        autoInput.mcautocomplete("search", term);
+        autoInput.mcautocomplete("close");
     }
 
     /**
@@ -164,11 +160,10 @@ export class BaseAuto {
      *     as part of the autocomplete search request.
      */
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
-
         const id = BaseAuto._uniqueIndex;
         BaseAuto._uniqueIndex += 1;
         this.uid = id;
-        this.modelName = 'Generic';
+        this.modelName = "Generic";
 
         this.opt = $.extend({}, opt);
         this.search_opt = $.extend({}, search_options);
@@ -178,9 +173,13 @@ export class BaseAuto {
         }
         this.container = this.opt.container;
 
-        this.visibleInput = this.opt.visibleInput ||
-            $('<input type="text"/>').addClass('autocomp').appendTo(this.container);
-        this.hiddenInput = this.opt.hiddenInput ||
+        this.visibleInput =
+            this.opt.visibleInput ||
+            $('<input type="text"/>')
+                .addClass("autocomp")
+                .appendTo(this.container);
+        this.hiddenInput =
+            this.opt.hiddenInput ||
             $('<input type="hidden"/>').appendTo(this.container);
         if ("visibleValue" in this.opt) {
             this.visibleInput.val(this.opt.visibleValue);
@@ -188,66 +187,75 @@ export class BaseAuto {
         if ("hiddenValue" in this.opt) {
             this.hiddenInput.val(this.opt.hiddenValue);
         }
-        this.visibleInput.data('edd', { 'autocompleteobj': this });
-        this.hiddenInput.data('edd', { 'autocompleteobj': this });
+        this.visibleInput.data("edd", { "autocompleteobj": this });
+        this.hiddenInput.data("edd", { "autocompleteobj": this });
 
-        this.display_key = 'name';
-        this.value_key = 'id';
+        this.display_key = "name";
+        this.value_key = "id";
         this.search_uri = this.opt.search_uri || "/search/";
 
         // Static specification of column layout for each model in EDD that we want to
         // make searchable.  (This might be better done as a static JSON file
         // somewhere.)
-        this.columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+        this.columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
     }
 
     clear() {
-        const blank = this.opt.emptyCreatesNew ? 'new' : '';
-        this.hiddenInput.val(blank).trigger('change').trigger('input');
+        const blank = this.opt.emptyCreatesNew ? "new" : "";
+        this.hiddenInput
+            .val(blank)
+            .trigger("change")
+            .trigger("input");
     }
 
     init() {
-        const self: BaseAuto = this;
-
         // this.cacheId might have been set by a constructor in a subclass
-        this.cacheId = this.cacheId
-            || 'cache_' + (this.uid);
-        this.cache = this.opt.cache
-            || (autoCache[this.cacheId] = autoCache[this.cacheId] || {});
+        this.cacheId = this.cacheId || "cache_" + this.uid;
+        this.cache =
+            this.opt.cache || (autoCache[this.cacheId] = autoCache[this.cacheId] || {});
 
         // TODO add flag(s) to handle multiple inputs
         // TODO possibly also use something like https://github.com/xoxco/jQuery-Tags-Input
-        this.visibleInput.addClass('autocomp');
+        this.visibleInput.addClass("autocomp");
         if (this.opt.emptyCreatesNew) {
-            this.visibleInput.attr('placeholder', '(Create New)');
+            this.visibleInput.attr("placeholder", "(Create New)");
         }
         if (this.opt.visibleInputName) {
-            this.visibleInput.attr('name', this.opt.visibleInputName);
+            this.visibleInput.attr("name", this.opt.visibleInputName);
         }
         if (this.opt.name) {
-            this.hiddenInput.attr('name', this.opt.name);
+            this.hiddenInput.attr("name", this.opt.name);
         }
 
-        this.visibleInput.mcautocomplete({
-            // These next two options are what this plugin adds to the autocomplete widget.
-            // FIXME these will need to vary depending on record type
-            'showHeader': true,
-            'columns': this.columns,
-            // Event handler for when a list item is selected.
-            'select': function(event, ui) {
-                var record, visibleValue, hiddenValue;
-                if (ui.item) {
-                    record = self.loadRecord(ui.item);
-                    self.visibleInput.val(visibleValue = self.loadDisplayValue(record));
-                    self.hiddenInput.val(hiddenValue = self.loadHiddenValue(record))
-                        .trigger('change')
-                        .trigger('input');
-                    self.visibleInput.trigger('autochange', [visibleValue, hiddenValue]);
-                }
-                return false;
-            },
-            'focus': function(event, ui) { event.preventDefault(); },
-            /* Always append to the body instead of searching for a ui-front class.
+        this.visibleInput
+            .mcautocomplete({
+                // These next two options are what this plugin adds to the autocomplete widget.
+                // FIXME these will need to vary depending on record type
+                "showHeader": true,
+                "columns": this.columns,
+                // Event handler for when a list item is selected.
+                "select": (event, ui) => {
+                    let record, visibleValue, hiddenValue;
+                    if (ui.item) {
+                        record = this.loadRecord(ui.item);
+                        this.visibleInput.val(
+                            (visibleValue = this.loadDisplayValue(record)),
+                        );
+                        this.hiddenInput
+                            .val((hiddenValue = this.loadHiddenValue(record)))
+                            .trigger("change")
+                            .trigger("input");
+                        this.visibleInput.trigger("autochange", [
+                            visibleValue,
+                            hiddenValue,
+                        ]);
+                    }
+                    return false;
+                },
+                "focus": (event, ui) => {
+                    event.preventDefault();
+                },
+                /* Always append to the body instead of searching for a ui-front class.
                This way a click on the results list does not bubble up into a jQuery modal
              and compel it to steal focus.
                Losing focus on the click is bad, because directly afterwards the
@@ -264,57 +272,62 @@ export class BaseAuto {
              results panel is already open (and do nothing if so), because by the time the
              input gets focus again (triggering that event), the results panel has already
              been destroyed. */
-            'appendTo': "body",
-            // The rest of the options are for configuring the ajax webservice call.
-            'minLength': 0,
-            'source': function(request, response) {
-                const termCachedResults = self.loadModelCache()[request.term];
-                if (termCachedResults) {
-                    response(termCachedResults);
-                    return;
+                "appendTo": "body",
+                // The rest of the options are for configuring the ajax webservice call.
+                "minLength": 0,
+                "source": (request, response) => {
+                    const termCachedResults = this.loadModelCache()[request.term];
+                    if (termCachedResults) {
+                        response(termCachedResults);
+                        return;
+                    }
+                    $.ajax({
+                        "url": this.search_uri,
+                        "dataType": "json",
+                        "data": $.extend(
+                            {
+                                "model": this.modelName,
+                                "term": request.term,
+                            },
+                            this.search_opt,
+                        ),
+                        "success": this.processResults.bind(this, request, response),
+                        "error": (jqXHR, status, err) => {
+                            response([MultiColumnAuto.NonValueItem.ERROR]);
+                        },
+                    });
+                },
+                "search": (ev, ui) => {
+                    $(ev.target).addClass("wait");
+                },
+                "response": (ev, ui) => {
+                    $(ev.target).removeClass("wait");
+                },
+            })
+            .on("blur", (ev) => {
+                if (this.delete_last) {
+                    // User cleared value in autocomplete, remove value from hidden ID
+                    this.clear();
+                } else {
+                    // User modified value in autocomplete without selecting new one
+                    // restore previous value
+                    this.undo();
                 }
-                $.ajax({
-                    'url': self.search_uri,
-                    'dataType': 'json',
-                    'data': $.extend({
-                        'model': self.modelName,
-                        'term': request.term,
-                    }, self.search_opt),
-                    'success': self.processResults.bind(self, request, response),
-                    'error': function(jqXHR, status, err) {
-                        response([MultiColumnAuto.NonValueItem.ERROR]);
-                    },
-                });
-            },
-            'search': function(ev, ui) {
-                $(ev.target).addClass('wait');
-            },
-            'response': function(ev, ui) {
-                $(ev.target).removeClass('wait');
-            },
-        }).on('blur', function(ev) {
-            if (self.delete_last) {
-                // User cleared value in autocomplete, remove value from hidden ID
-                self.clear();
-            } else {
-                // User modified value in autocomplete without selecting new one
-                // restore previous value
-                self.undo();
-            }
-            self.delete_last = false;
-        }).on('keydown', function(ev: JQueryKeyEventObject) {
-            // if the keydown ends up clearing the visible input, set flag
-            const val = self.visibleInput.val().toString()
-            self.delete_last = val.trim() === '';
-        });
+                this.delete_last = false;
+            })
+            .on("keydown", (ev: JQueryKeyEventObject) => {
+                // if the keydown ends up clearing the visible input, set flag
+                const val = this.visibleInput.val().toString();
+                this.delete_last = val.trim() === "";
+            });
     }
 
     loadDisplayValue(record: any): any {
-        return record[this.display_key] || '';
+        return record[this.display_key] || "";
     }
 
     loadHiddenValue(record: any): any {
-        return record[this.value_key] || '';
+        return record[this.value_key] || "";
     }
 
     loadModelCache(): any {
@@ -365,27 +378,25 @@ export class BaseAuto {
     }
 }
 
-
 // .autocomp_user
 export class User extends BaseAuto {
-
     static columns = [
-        new MultiColumnAuto.AutoColumn('User', '150px', 'fullname'),
-        new MultiColumnAuto.AutoColumn('Initials', '60px', 'initials'),
-        new MultiColumnAuto.AutoColumn('E-mail', '150px', 'email'),
+        new MultiColumnAuto.AutoColumn("User", "150px", "fullname"),
+        new MultiColumnAuto.AutoColumn("Initials", "60px", "initials"),
+        new MultiColumnAuto.AutoColumn("E-mail", "150px", "email"),
     ];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'User';
+        this.modelName = "User";
         this.columns = User.columns;
-        this.display_key = 'fullname';
-        this.cacheId = 'Users';
+        this.display_key = "fullname";
+        this.cacheId = "Users";
     }
 
     loadDisplayValue(record: any): any {
         const value = super.loadDisplayValue(record);
-        if (value.trim() === '') {
+        if (value.trim() === "") {
             return record.email;
         } else {
             return value;
@@ -393,112 +404,106 @@ export class User extends BaseAuto {
     }
 }
 
-
 export class Group extends BaseAuto {
-
-    static columns = [
-        new MultiColumnAuto.AutoColumn('Group', '200px', 'name'),
-    ];
+    static columns = [new MultiColumnAuto.AutoColumn("Group", "200px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'Group';
+        this.modelName = "Group";
         this.columns = Group.columns;
-        this.display_key = 'name';
-        this.cacheId = 'Groups';
+        this.display_key = "name";
+        this.cacheId = "Groups";
     }
 }
-
 
 // .autocomp_carbon
 export class CarbonSource extends BaseAuto {
-
     static columns = [
-        new MultiColumnAuto.AutoColumn('Name', '150px', 'name'),
-        new MultiColumnAuto.AutoColumn('Volume', '60px', 'volume'),
-        new MultiColumnAuto.AutoColumn('Labeling', '100px', 'labeling'),
-        new MultiColumnAuto.AutoColumn('Description', '250px', 'description', '600px'),
-        new MultiColumnAuto.AutoColumn('Initials', '60px', 'initials'),
+        new MultiColumnAuto.AutoColumn("Name", "150px", "name"),
+        new MultiColumnAuto.AutoColumn("Volume", "60px", "volume"),
+        new MultiColumnAuto.AutoColumn("Labeling", "100px", "labeling"),
+        new MultiColumnAuto.AutoColumn("Description", "250px", "description", "600px"),
+        new MultiColumnAuto.AutoColumn("Initials", "60px", "initials"),
     ];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'CarbonSource';
+        this.modelName = "CarbonSource";
         this.columns = CarbonSource.columns;
-        this.cacheId = 'CSources';
+        this.cacheId = "CSources";
     }
 }
 
-
 // .autocomp_type
 export class MetadataType extends BaseAuto {
-
     static columns = [
-        new MultiColumnAuto.AutoColumn('Name', '200px', 'name'),
-        new MultiColumnAuto.AutoColumn('For', '50px', function(item, column, index) {
+        new MultiColumnAuto.AutoColumn("Name", "200px", "name"),
+        new MultiColumnAuto.AutoColumn("For", "50px", function(item, column, index) {
             const con = item.context;
-            return $('<span>').addClass('tag').text(
-                con === 'L' ? 'Line' : con === 'A' ? 'Assay' : con === 'S' ? 'Study' : '?');
+            return $("<span>")
+                .addClass("tag")
+                .text(
+                    con === "L"
+                        ? "Line"
+                        : con === "A"
+                        ? "Assay"
+                        : con === "S"
+                        ? "Study"
+                        : "?",
+                );
         }),
     ];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'MetadataType';
+        this.modelName = "MetadataType";
         this.columns = MetadataType.columns;
-        this.cacheId = 'MetaDataTypes';
+        this.cacheId = "MetaDataTypes";
     }
 }
-
 
 // .autocomp_atype
 export class AssayMetadataType extends BaseAuto {
-
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'AssayMetadataType';
+        this.modelName = "AssayMetadataType";
         this.columns = AssayMetadataType.columns;
-        this.cacheId = 'MetaDataTypes';
+        this.cacheId = "MetaDataTypes";
     }
 }
-
 
 // a special case autocomplete for use in the Assay creation / edit form.
 // excludes types that map to Assay fields
 export class AssayFormMetadataType extends AssayMetadataType {
-
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         // default to sort by type name
-        search_options = $.extend({"sort": "type_name"}, search_options);
+        search_options = $.extend({ "sort": "type_name" }, search_options);
         super(opt, search_options);
         this.modelName = "AssayFormMetadataType";
     }
 }
 
-
 // .autocomp_altype
 export class AssayLineMetadataType extends BaseAuto {
-
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'AssayLineMetadataType';
+        this.modelName = "AssayLineMetadataType";
         this.columns = MetadataType.columns;
-        this.cacheId = 'MetaDataTypes';
+        this.cacheId = "MetaDataTypes";
     }
 }
 
-
 // .autocomp_ltype
 export class LineMetadataType extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'LineMetadataType';
+        this.modelName = "LineMetadataType";
         this.columns = LineMetadataType.columns;
-        this.cacheId = 'MetaDataTypes';
+        this.cacheId = "MetaDataTypes";
     }
 }
 
@@ -506,103 +511,92 @@ export class LineMetadataType extends BaseAuto {
 // parameters defined here work around inclusion of metadata types that replicate Line fields
 // already included in the form. EDD-1131
 export class LineFormMetadataType extends LineMetadataType {
-
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         // default to sort by type name
-        search_options = $.extend({"sort": "type_name"}, search_options);
+        search_options = $.extend({ "sort": "type_name" }, search_options);
         super(opt, search_options);
-        this.modelName = 'LineFormMetadataType';
+        this.modelName = "LineFormMetadataType";
     }
 }
-
 
 // .autocomp_stype
 export class StudyMetadataType extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'StudyMetadataType';
+        this.modelName = "StudyMetadataType";
         this.columns = StudyMetadataType.columns;
-        this.cacheId = 'MetaDataTypes';
+        this.cacheId = "MetaDataTypes";
     }
 }
-
 
 // .autocomp_metabol
 export class Metabolite extends BaseAuto {
-
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'Metabolite';
+        this.modelName = "Metabolite";
         this.columns = Metabolite.columns;
-        this.cacheId = 'MetaboliteTypes';
-        this.visibleInput.attr('size', 45);
+        this.cacheId = "MetaboliteTypes";
+        this.visibleInput.attr("size", 45);
     }
 }
-
 
 export class Protein extends BaseAuto {
-
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'ProteinIdentifier';
+        this.modelName = "ProteinIdentifier";
         this.columns = Protein.columns;
-        this.cacheId = 'Proteins';
-        this.visibleInput.attr('size', 45);
+        this.cacheId = "Proteins";
+        this.visibleInput.attr("size", 45);
     }
 }
-
 
 export class Gene extends BaseAuto {
-
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'GeneIdentifier';
+        this.modelName = "GeneIdentifier";
         this.columns = Gene.columns;
-        this.cacheId = 'Genes';
-        this.visibleInput.attr('size', 45);
+        this.cacheId = "Genes";
+        this.visibleInput.attr("size", 45);
     }
 }
-
 
 export class Phosphor extends BaseAuto {
-
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'Phosphor';
+        this.modelName = "Phosphor";
         this.columns = Phosphor.columns;
-        this.cacheId = 'Phosphors';
-        this.visibleInput.attr('size', 45);
+        this.cacheId = "Phosphors";
+        this.visibleInput.attr("size", 45);
     }
 }
-
 
 export class GenericOrMetabolite extends BaseAuto {
     static columns = [
-        new MultiColumnAuto.AutoColumn('Name', '300px', 'name'),
-        new MultiColumnAuto.AutoColumn('Type', '100px', GenericOrMetabolite.type_label),
+        new MultiColumnAuto.AutoColumn("Name", "300px", "name"),
+        new MultiColumnAuto.AutoColumn("Type", "100px", GenericOrMetabolite.type_label),
     ];
     static family_lookup = {
-        'm': 'Metabolite',
-        'p': 'Protein',
-        'g': 'Gene',
+        "m": "Metabolite",
+        "p": "Protein",
+        "g": "Gene",
     };
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'GenericOrMetabolite';
+        this.modelName = "GenericOrMetabolite";
         this.columns = GenericOrMetabolite.columns;
-        this.cacheId = 'GenericOrMetaboliteTypes';
-        this.visibleInput.attr('size', 45);
+        this.cacheId = "GenericOrMetaboliteTypes";
+        this.visibleInput.attr("size", 45);
     }
 
     static type_label(item: any, col: MultiColumnAuto.AutoColumn, i: number): string {
@@ -610,122 +604,117 @@ export class GenericOrMetabolite extends BaseAuto {
         if (type_family !== undefined) {
             return type_family;
         }
-        return 'Generic';
+        return "Generic";
     }
 }
-
 
 // .autocomp_measure
 export class MeasurementType extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'MeasurementType';
+        this.modelName = "MeasurementType";
         this.columns = MeasurementType.columns;
-        this.cacheId = 'MeasurementTypes';
-        this.visibleInput.attr('size', 45);
+        this.cacheId = "MeasurementTypes";
+        this.visibleInput.attr("size", 45);
     }
 }
-
 
 export class MeasurementCompartment extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '200px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "200px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'MeasurementCompartment';
+        this.modelName = "MeasurementCompartment";
         this.columns = MeasurementCompartment.columns;
-        this.cacheId = 'MeasurementTypeCompartments';
-        this.visibleInput.attr('size', 20);
+        this.cacheId = "MeasurementTypeCompartments";
+        this.visibleInput.attr("size", 20);
     }
 }
-
 
 export class MeasurementUnit extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '150px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "150px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'MeasurementUnit';
+        this.modelName = "MeasurementUnit";
         this.columns = MeasurementUnit.columns;
-        this.cacheId = 'UnitTypes';
-        this.visibleInput.attr('size', 10);
+        this.cacheId = "UnitTypes";
+        this.visibleInput.attr("size", 10);
     }
 }
-
 
 // .autocomp_sbml_r
 export class MetaboliteExchange extends BaseAuto {
-
     static columns = [
-        new MultiColumnAuto.AutoColumn('Exchange', '200px', 'exchange'),
-        new MultiColumnAuto.AutoColumn('Reactant', '200px', 'reactant'),
+        new MultiColumnAuto.AutoColumn("Exchange", "200px", "exchange"),
+        new MultiColumnAuto.AutoColumn("Reactant", "200px", "reactant"),
     ];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'MetaboliteExchange';
+        this.modelName = "MetaboliteExchange";
         this.columns = MetaboliteExchange.columns;
-        this.cacheId = 'Exchange';
-        this.display_key = 'exchange';
-        $.extend(this.search_opt, { 'template': $(this.visibleInput).data('template') });
+        this.cacheId = "Exchange";
+        this.display_key = "exchange";
+        $.extend(this.search_opt, {
+            "template": $(this.visibleInput).data("template"),
+        });
     }
 }
-
 
 // .autocomp_sbml_s
 export class MetaboliteSpecies extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'MetaboliteSpecies';
+        this.modelName = "MetaboliteSpecies";
         this.columns = MetaboliteSpecies.columns;
-        this.cacheId = 'Species';
-        $.extend(this.search_opt, { 'template': $(this.visibleInput).data('template') });
+        this.cacheId = "Species";
+        $.extend(this.search_opt, {
+            "template": $(this.visibleInput).data("template"),
+        });
     }
 }
-
 
 export class StudyWritable extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'StudyWritable';
+        this.modelName = "StudyWritable";
         this.columns = StudyWritable.columns;
-        this.cacheId = 'StudiesWritable';
+        this.cacheId = "StudiesWritable";
     }
 }
-
 
 export class StudyLine extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn('Name', '300px', 'name')];
+    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'StudyLine';
+        this.modelName = "StudyLine";
         this.columns = StudyLine.columns;
-        this.cacheId = 'Lines';
+        this.cacheId = "Lines";
     }
 }
-
 
 export class Registry extends BaseAuto {
     static columns = [
-        new MultiColumnAuto.AutoColumn('Part ID', '100px', 'partId'),
-        new MultiColumnAuto.AutoColumn('Type', '100px', 'type'),
-        new MultiColumnAuto.AutoColumn('Name', '150px', 'name'),
-        new MultiColumnAuto.AutoColumn('Description', '250px', 'shortDescription'),
+        new MultiColumnAuto.AutoColumn("Part ID", "100px", "partId"),
+        new MultiColumnAuto.AutoColumn("Type", "100px", "type"),
+        new MultiColumnAuto.AutoColumn("Name", "150px", "name"),
+        new MultiColumnAuto.AutoColumn("Description", "250px", "shortDescription"),
     ];
 
     constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
         super(opt, search_options);
-        this.modelName = 'Registry';
+        this.modelName = "Registry";
         this.columns = Registry.columns;
-        this.cacheId = 'Registries';
-        this.value_key = 'recordId';
+        this.cacheId = "Registries";
+        this.value_key = "recordId";
     }
 
     valKey(): any {
@@ -734,7 +723,6 @@ export class Registry extends BaseAuto {
     }
 }
 
-
 /**
  * Adding this because looking up classes by name in the module no longer works correctly.
  * Where code was using:
@@ -742,7 +730,7 @@ export class Registry extends BaseAuto {
  * Now it will use:
  *    new class_lookup[classname]()
  */
-export const class_lookup: {[name: string]: typeof BaseAuto} = {
+export const class_lookup: { [name: string]: typeof BaseAuto } = {
     "User": User,
     "Group": Group,
     "CarbonSource": CarbonSource,

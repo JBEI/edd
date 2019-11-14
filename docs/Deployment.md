@@ -13,9 +13,9 @@ the target host.
 There are many configuration options that can be set before launching EDD. The `init-config`
 script handles creating additional options based on included example files:
 
-  * __`secrets`__: Directory contains secret values loaded into containers at launch; these
+-   **`secrets`**: Directory contains secret values loaded into containers at launch; these
     values will generally be passwords, keys, and other secret information.
-  * __`docker-compose.override.yml`__: Overrides the default configuration used to launch the
+-   **`docker-compose.override.yml`**: Overrides the default configuration used to launch the
     Docker containers. Non-secret environment, and other launch options will be put into this file.
 
 More information and example configuration options can be found in the example files, and copied
@@ -84,16 +84,16 @@ page, which will load the administration interface when clicked.
 Inside the administration interface, a few items should be modified prior to serious use of the
 application.
 
-1. Set the site name and domain in __Sites__. The default confirmation email will use `example.com`
+1. Set the site name and domain in **Sites**. The default confirmation email will use `example.com`
    as the name of the EDD site, because that is the default value set in the Sites admin. Click
-   through to __Sites__, and then through to __example.com__ to edit the name and domain to match
+   through to **Sites**, and then through to **example.com** to edit the name and domain to match
    your deployment.
-2. Set __Brandings__ to use. This admin section sets the logo, favicon, and custom stylesheets
-   used in EDD. Click through to __Add Branding__ to upload these custom files and associate them
+2. Set **Brandings** to use. This admin section sets the logo, favicon, and custom stylesheets
+   used in EDD. Click through to **Add Branding** to upload these custom files and associate them
    with the default site set in the previous step.
-3. Create __Flat pages__. These are simple text pages to display in EDD. Here is where you can
+3. Create **Flat pages**. These are simple text pages to display in EDD. Here is where you can
    add pages containing information like Privacy Policies, Terms of Service, etc.
-4. Add __Social applications__. This section is where you can configure logins using OAuth from
+4. Add **Social applications**. This section is where you can configure logins using OAuth from
    other services, such as Google, LinkedIn, etc. This will also require changes to `local.py` to
    add the Django apps for each login provider. See the [django-allauth documentation][5] for more
    details.
@@ -102,43 +102,43 @@ application.
 
 The following configuration options are specific to EDD and may be overridden in a `local.py`.
 
-  * `EDD_ALLOW_SIGNUP` -- boolean flag; if True, self-registration of accounts is enabled.
-  * `EDD_DEPLOYMENT_ENVIRONMENT` -- string value, changes background color and adds a visual
+-   `EDD_ALLOW_SIGNUP` -- boolean flag; if True, self-registration of accounts is enabled.
+-   `EDD_DEPLOYMENT_ENVIRONMENT` -- string value, changes background color and adds a visual
     environment label to assist in telling apart testing vs production instances. A None value
     will result in no visual changes added to the interface.
-  * `EDD_ENABLE_GRAPHQL` -- boolean flag; if True, publish a GraphQL endpoint for EDD.
-  * `EDD_EXTERNAL_SCRIPTS` -- iterable of URL strings; these will be scripts added to the default
+-   `EDD_ENABLE_GRAPHQL` -- boolean flag; if True, publish a GraphQL endpoint for EDD.
+-   `EDD_EXTERNAL_SCRIPTS` -- iterable of URL strings; these will be scripts added to the default
     EDD page template. Put links for any external scripts here, to avoid creating custom
     HTML templates.
-  * `EDD_LATEST_CACHE` -- string value; the name of the Django cache to use for storing a user's
+-   `EDD_LATEST_CACHE` -- string value; the name of the Django cache to use for storing a user's
     latest viewed studies.
-  * `EDD_ONLY_SUPERUSER_CREATE` -- boolean flag; if True, only superuser accounts may create
+-   `EDD_ONLY_SUPERUSER_CREATE` -- boolean flag; if True, only superuser accounts may create
     new studies.
-  * `ICE_KEY_ID` -- string value, the identifier of the shared key used to communicate with ICE.
-  * `ICE_SECRET_HMAC_KEY` -- string value, base64-encoded key used to sign requests to ICE.
-  * `ICE_URL` -- URL of the ICE instance associated with EDD.
-  * `ICE_REQUEST_TIMEOUT` -- 2-tuple of integers, for the seconds to set connection and read
+-   `ICE_KEY_ID` -- string value, the identifier of the shared key used to communicate with ICE.
+-   `ICE_SECRET_HMAC_KEY` -- string value, base64-encoded key used to sign requests to ICE.
+-   `ICE_URL` -- URL of the ICE instance associated with EDD.
+-   `ICE_REQUEST_TIMEOUT` -- 2-tuple of integers, for the seconds to set connection and read
     timeouts in communication with ICE.
-  * `ICE_VERIFY_CERT` -- boolean flag; if True, use strict certificate verification when
+-   `ICE_VERIFY_CERT` -- boolean flag; if True, use strict certificate verification when
     connecting to ICE. _Note_: older versions of EDD used the name `VERIFY_ICE_CERT` instead. EDD
     will check for this name and emit a warning; the old name will be removed at a future date.
-  * `REQUIRE_UNIPROT_ACCESSION_IDS` -- boolean flag; if True, protein measurement IDs must conform
+-   `REQUIRE_UNIPROT_ACCESSION_IDS` -- boolean flag; if True, protein measurement IDs must conform
     to the pattern of UniProt identifiers. Otherwise, arbitrary text may label a protein.
 
 ## Entrypoint options
 
 The entrypoint script for the `edd-core` image uses this approximate workflow:
 
-  1. Load custom `local.py`
-  2. Wait on custom service dependencies (if any, none by default)
-  3. Wait on redis
-  4. Initialize static files (Javascript, stylesheets, and images included in EDD image)
-  5. Wait on postgres
-  6. Wait on solr
-  7. Run pending database migrations (if any)
-  8. Re-index solr (if any changes made to database)
-  9. Wait on rabbitmq
-  10. Execute entrypoint command
+1. Load custom `local.py`
+2. Wait on custom service dependencies (if any, none by default)
+3. Wait on redis
+4. Initialize static files (Javascript, stylesheets, and images included in EDD image)
+5. Wait on postgres
+6. Wait on solr
+7. Run pending database migrations (if any)
+8. Re-index solr (if any changes made to database)
+9. Wait on rabbitmq
+10. Execute entrypoint command
 
 The entrypoint workflow can be modified with the flags defined below. Set these flags in the
 `command` entry of the service using the `jbei/edd-core` image in `docker-compose.override.yml`.
@@ -202,7 +202,6 @@ This output can be recreated with `docker-compose exec edd entrypoint.sh --help`
         channel [... [name]]
             Start a Django Channels worker listening on listed channel names (runworker).
 
-
 ## Starting EDD
 
 Once configured, EDD is launched with either `docker-compose` for a single-node deployment, or
@@ -227,13 +226,13 @@ To shut down EDD:
     # For Swarm deployment (replace [NAME] with deployed stack name)
     docker stack down [NAME]
 
----------------------------------------------------------------------------------------------------
+---
 
-[1]:    https://docker.io/
-[2]:    https://docs.docker.com/compose/overview/
-[3]:    https://nginx.org/en/docs/
-[4]:    https://letsencrypt.org/about/
-[5]:    http://django-allauth.readthedocs.org/en/latest/index.html
-[6]:    https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
-[7]:    http://ice.jbei.org/
-[8]:    http://virtualenvwrapper.readthedocs.io/en/latest/index.html
+[1]: https://docker.io/
+[2]: https://docs.docker.com/compose/overview/
+[3]: https://nginx.org/en/docs/
+[4]: https://letsencrypt.org/about/
+[5]: http://django-allauth.readthedocs.org/en/latest/index.html
+[6]: https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
+[7]: http://ice.jbei.org/
+[8]: http://virtualenvwrapper.readthedocs.io/en/latest/index.html

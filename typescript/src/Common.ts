@@ -1,6 +1,5 @@
 import * as $ from "jquery";
 // including these here to make sure available on every page extending edd_base.html
-import "jquery-ui/themes/base/all.css";
 import "jquery-ui/ui/effects/effect-bounce";
 import "jquery-ui/ui/widgets/button";
 import "jquery-ui/ui/widgets/dialog";
@@ -10,19 +9,22 @@ import "jquery-ui/ui/widgets/spinner";
 
 import * as Notification from "../modules/Notification";
 
+import "../modules/Styles";
+
 export const notificationSocket = new Notification.NotificationSocket();
 
 // called when the page loads
 export function prepareIt() {
-
     // adding click handlers to close buttons on status messages
-    $(document).on('click', '.statusMessage a.close', function (ev) {
+    $(document).on("click", ".statusMessage a.close", function(ev) {
         const link = $(this);
-        const href = link.attr('close-href');
-        const token = $('.statusMessage [name=csrfmiddlewaretoken]').first().val();
+        const href = link.attr("close-href");
+        const token = $(".statusMessage [name=csrfmiddlewaretoken]")
+            .first()
+            .val();
         ev.preventDefault();
         if (href) {
-            $.post(href, {'csrfmiddlewaretoken': token}, function () {
+            $.post(href, { "csrfmiddlewaretoken": token }, function() {
                 link.parent().fadeOut();
             });
         } else {
@@ -31,13 +33,13 @@ export function prepareIt() {
     });
 
     // adding handlers for notifications in menubar
-    const menuElement = document.getElementById('notification-dropdown');
+    const menuElement = document.getElementById("notification-dropdown");
     const menu = new Notification.NotificationMenu(menuElement, notificationSocket);
 
     // Add a handler to auto-download messages with the "download" tag
     // This handler is somewhat special in that it uses the browser to parse the HTML message
     // content to extract the download link
-    notificationSocket.addTagAction('download', (message) => {
+    notificationSocket.addTagAction("download", (message) => {
         // only acting if the current document is active and focused
         if (document.hasFocus()) {
             const downloadLink = message.payload.url;

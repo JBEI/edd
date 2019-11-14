@@ -11,9 +11,8 @@ path `/opt/solr/configset.d/`, and get added to ZooKeeper in the container
 entrypoint script. Mounting volumes inside this directory will also attempt
 loading the mounted data as a ConfigSet at startup.
 
----------------------------------------------------------------------------------------------------
+---
 
-
-[1]:    http://lucene.apache.org/solr/
-[2]:    https://hub.docker.com/_/solr/
-[3]:    ../../README.md
+[1]: http://lucene.apache.org/solr/
+[2]: https://hub.docker.com/_/solr/
+[3]: ../../README.md

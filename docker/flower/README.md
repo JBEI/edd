@@ -9,35 +9,37 @@ for reproducing environments. e.g. jbei/flower:1.0.1 will point to the latest bu
 Flower v1.0.1, and jbei/flower:1.0.1-20180613 will point to the image built on 13 June, 2018.
 
 The container makes use of the following environment:
-* __AMQP_ADMIN_HOST__: the host to use when connecting to RabbitMQ admin (default `rabbitmq`)
-* __AMQP_ADMIN_PORT__: the port to use when connecting to RabbitMQ admin (default `15672`)
-* __AMQP_ADMIN_USERNAME__: the username to use when connecting to RabbitMQ admin (default `guest`)
-* __AMQP_HOST__: the host to use when connecting to RabbitMQ (default `rabbitmq`)
-* __AMQP_PORT__: the port to use when connecting to RabbitMQ (default `5672`)
-* __AMQP_USERNAME__: the username to use when connecting to RabbitMQ (default `guest`)
-* __FLOWER_MAX_TASKS__: the maximum number of tasks to keep in memory (default `3600`)
-* __FLOWER_PASSWORD__: the password used to access the Flower interface w/ HTTP Basic Auth
-* __FLOWER_PASSWORD_FILE__: a file containing a password in lieu of using __FLOWER_PASSWORD__
-* __FLOWER_PORT__: the port used to access the Flower interface (default `5555`)
-* __FLOWER_URL_PREFIX__: the URL prefix to access the Flower interface from a non-root URL (root
-  is default)
-* __FLOWER_USERNAME__: the username used to access the Flower interface w/ HTTP Basic Auth
-  (default `root`)
+
+-   **AMQP_ADMIN_HOST**: the host to use when connecting to RabbitMQ admin (default `rabbitmq`)
+-   **AMQP_ADMIN_PORT**: the port to use when connecting to RabbitMQ admin (default `15672`)
+-   **AMQP_ADMIN_USERNAME**: the username to use when connecting to RabbitMQ admin (default `guest`)
+-   **AMQP_HOST**: the host to use when connecting to RabbitMQ (default `rabbitmq`)
+-   **AMQP_PORT**: the port to use when connecting to RabbitMQ (default `5672`)
+-   **AMQP_USERNAME**: the username to use when connecting to RabbitMQ (default `guest`)
+-   **FLOWER_MAX_TASKS**: the maximum number of tasks to keep in memory (default `3600`)
+-   **FLOWER_PASSWORD**: the password used to access the Flower interface w/ HTTP Basic Auth
+-   **FLOWER_PASSWORD_FILE**: a file containing a password in lieu of using **FLOWER_PASSWORD**
+-   **FLOWER_PORT**: the port used to access the Flower interface (default `5555`)
+-   **FLOWER_URL_PREFIX**: the URL prefix to access the Flower interface from a non-root URL (root
+    is default)
+-   **FLOWER_USERNAME**: the username used to access the Flower interface w/ HTTP Basic Auth
+    (default `root`)
 
 The container expects to find Docker secrets of the following names:
-* __flower_amqp_admin_password__: the password to use when connecting to RabbitMQ admin
-  (default `guest`)
-* __flower_amqp_password__: the password to use when connecting to RabbitMQ
-  (default `guest`)
-* __flower_basic_auth__:the HTTP Basic Auth string used to access the Flower interface
-  (default constructed using __flower_amqp_password__)
-* __flower_broker_api__: the full connection URL when connecting to RabbitMQ admin
-  (defaults to constructed URL using __flower_amqp_admin_password__)
-* __edd_broker_url__: the full connection URL when connecting to RabbitMQ
-  (defaults to consturcted URL using __flower_amqp_password__)
 
----------------------------------------------------------------------------------------------------
+-   **flower_amqp_admin_password**: the password to use when connecting to RabbitMQ admin
+    (default `guest`)
+-   **flower_amqp_password**: the password to use when connecting to RabbitMQ
+    (default `guest`)
+-   **flower_basic_auth**:the HTTP Basic Auth string used to access the Flower interface
+    (default constructed using **flower_amqp_password**)
+-   **flower_broker_api**: the full connection URL when connecting to RabbitMQ admin
+    (defaults to constructed URL using **flower_amqp_admin_password**)
+-   **edd_broker_url**: the full connection URL when connecting to RabbitMQ
+    (defaults to consturcted URL using **flower_amqp_password**)
 
-[1]:    http://flower.readthedocs.io/en/latest/
-[2]:    http://www.celeryproject.org/
-[3]:    ../rabbitmq/README.md
+---
+
+[1]: http://flower.readthedocs.io/en/latest/
+[2]: http://www.celeryproject.org/
+[3]: ../rabbitmq/README.md

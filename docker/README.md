@@ -124,24 +124,24 @@ Containers are designed to be stateless. Any filesystem changes to a container w
 removal and re-launch of that container. Stateful changes are handled via mounting Docker Volumes
 in the container. EDD defines the following Volumes:
 
-* __postgres_db__: the Postgres databases.
-* __solr_cores__: Solr search indices.
-* __edd_attachments__: uploaded attachments in the EDD application.
-* __edd_staticfiles__: static assets used in the EDD application (e.g. images, scripts).
-* __redis_db__: the Redis append-only file.
+-   **postgres_db**: the Postgres databases.
+-   **solr_cores**: Solr search indices.
+-   **edd_attachments**: uploaded attachments in the EDD application.
+-   **edd_staticfiles**: static assets used in the EDD application (e.g. images, scripts).
+-   **redis_db**: the Redis append-only file.
 
 If EDD is running with the Nginx proxy enabled, the following additional volumes are defined:
 
-* __nginx_certs__: cryptographic keys and certificates for securing with TLS.
-* __nginx_confd__: the configuration directory for Nginx.
-* __nginx_vhost__: the vhost directory for Nginx.
-* __nginx_webroot__: the root of the Nginx web directory tree.
+-   **nginx_certs**: cryptographic keys and certificates for securing with TLS.
+-   **nginx_confd**: the configuration directory for Nginx.
+-   **nginx_vhost**: the vhost directory for Nginx.
+-   **nginx_webroot**: the root of the Nginx web directory tree.
 
 If EDD is running with a bundled ICE service, the following additional volumes are defined:
 
-* __ice_index__: the Lucene / Hibernate Search data directory.
-* __ice_local__: the local working directory used by ICE WAR file.
-* __ice_pg__: the Postgres database used by ICE.
+-   **ice_index**: the Lucene / Hibernate Search data directory.
+-   **ice_local**: the local working directory used by ICE WAR file.
+-   **ice_pg**: the Postgres database used by ICE.
 
 Docker Compose will create volumes using the default `local` storage driver, using the names
 `PROJECTNAME_VOLUME`, e.g. `edd_postgres_db`. Alternate existing volumes may be used by setting
@@ -154,17 +154,17 @@ a mix of "official" images from the [Docker Hub][4], and custom images defined b
 this repository. The bold links below point to the README documentation for each image. Custom
 images also include links to the README for the base image.
 
-* __[edd-core][5]__: custom Dockerfile, based on official Python alpine image
-  (via jbei/scikit-learn)
-* __[postgres][7]__: custom Dockerfile, based on official Postgres image, using version 9.6
-* __[redis][8]__: custom Dockerfile, based on official Redis image, using version 3.2
-* __[solr][9]__: custom Dockerfile, based on the [official Solr image][10] version 7.3
-* __[rabbitmq][11]__: custom Dockerfile, based on official RabbitMQ image, using version
-  3.7-management-alpine
-* __[flower][12]__: custom Dockerfile, based on official Python alpine image (optional)
-* __[nginx][14]__: based on [official Nginx image][15], using mainline version
-* __nginx-gen__: based on [jwilder/docker-gen][16], using a custom template file
-* __[jrcs/letsencrypt-nginx-proxy-companion][17]__: third-party image, using latest release
+-   **[edd-core][5]**: custom Dockerfile, based on official Python alpine image
+    (via jbei/scikit-learn)
+-   **[postgres][7]**: custom Dockerfile, based on official Postgres image, using version 9.6
+-   **[redis][8]**: custom Dockerfile, based on official Redis image, using version 3.2
+-   **[solr][9]**: custom Dockerfile, based on the [official Solr image][10] version 7.3
+-   **[rabbitmq][11]**: custom Dockerfile, based on official RabbitMQ image, using version
+    3.7-management-alpine
+-   **[flower][12]**: custom Dockerfile, based on official Python alpine image (optional)
+-   **[nginx][14]**: based on [official Nginx image][15], using mainline version
+-   **nginx-gen**: based on [jwilder/docker-gen][16], using a custom template file
+-   **[jrcs/letsencrypt-nginx-proxy-companion][17]**: third-party image, using latest release
 
 ### Services (Containers)
 
@@ -174,18 +174,18 @@ the service is run. With the exception of the first two services -- `edd`, and `
 is a one-to-one relationship from images to services. The two exceptions both make use of the
 `edd-core` image, and execute different commands to use the same code for different roles.
 
-* __edd__: runs initial startup tasks and prepares the other services, and runs the EDD webapp
-* __worker__: long-running and background tasks are run here with Celery
-* __websocket__: handles processing HTTP and WebSocket messages
-* __postgres__: provides EDD's database
-* __redis__: provides the cache back-end for EDD
-* __solr__: provides a search index for EDD
-* __rabbitmq__: messaging bus that supports Celery
-* __flower__: management / monitoring application for Celery (optional)
-* __smtp__: mail server that supports emails from EDD
-* __nginx__: webserver that proxies clients' HTTP requests to other Docker services
-* __nginx-gen__: listens for container events, generates nginx config to proxy requests
-* __letsencrypt__: monitors TLS certificates and creates/renews with [Let's Encrypt][18]
+-   **edd**: runs initial startup tasks and prepares the other services, and runs the EDD webapp
+-   **worker**: long-running and background tasks are run here with Celery
+-   **websocket**: handles processing HTTP and WebSocket messages
+-   **postgres**: provides EDD's database
+-   **redis**: provides the cache back-end for EDD
+-   **solr**: provides a search index for EDD
+-   **rabbitmq**: messaging bus that supports Celery
+-   **flower**: management / monitoring application for Celery (optional)
+-   **smtp**: mail server that supports emails from EDD
+-   **nginx**: webserver that proxies clients' HTTP requests to other Docker services
+-   **nginx-gen**: listens for container events, generates nginx config to proxy requests
+-   **letsencrypt**: monitors TLS certificates and creates/renews with [Let's Encrypt][18]
 
 ## Extending to run local ICE
 
@@ -205,23 +205,23 @@ this manually, or generate a new Compose file using commands like the following:
     # or run as a Swarm stack
     docker stack deploy -c combined.yml [NAME]
 
----------------------------------------------------------------------------------------------------
+---
 
-[1]:    ../README.md
-[2]:    https://docker.io
-[3]:    https://docs.docker.com/compose/overview/
-[4]:    https://hub.docker.com/explore/
-[5]:    edd/README.md
-[6]:    https://hub.docker.com/_/buildpack-deps/
-[7]:    https://hub.docker.com/_/postgres/
-[8]:    https://hub.docker.com/_/redis/
-[9]:    solr/README.md
-[10]:   https://hub.docker.com/_/solr/
-[11]:   https://hub.docker.com/_/rabbitmq/
-[12]:   flower/README.md
-[13]:   smtp/README.md
-[14]:   nginx/README.md
-[15]:   https://hub.docker.com/_/nginx/
-[16]:   https://github.com/jwilder/docker-gen
-[17]:   https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
-[18]:   https://letsencrypt.org
+[1]: ../README.md
+[2]: https://docker.io
+[3]: https://docs.docker.com/compose/overview/
+[4]: https://hub.docker.com/explore/
+[5]: edd/README.md
+[6]: https://hub.docker.com/_/buildpack-deps/
+[7]: https://hub.docker.com/_/postgres/
+[8]: https://hub.docker.com/_/redis/
+[9]: solr/README.md
+[10]: https://hub.docker.com/_/solr/
+[11]: https://hub.docker.com/_/rabbitmq/
+[12]: flower/README.md
+[13]: smtp/README.md
+[14]: nginx/README.md
+[15]: https://hub.docker.com/_/nginx/
+[16]: https://github.com/jwilder/docker-gen
+[17]: https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
+[18]: https://letsencrypt.org

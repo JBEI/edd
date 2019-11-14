@@ -1,16 +1,14 @@
 /* <!-- http://www.dummies.com/how-to/content/using-the-div-tag-to-create-tables.html */
 
-.bulk-line-table
-{
+.bulk-line-table {
     display: table;
-    border-collapse:collapse;  /* allow err message styling to come through */
+    border-collapse: collapse; /* allow err message styling to come through */
     width: auto;
     margin-right: auto;
     margin-bottom: 15px;
 }
 
-.title
-{
+.title {
     display: table-caption;
     text-align: center;
     font-weight: bold;
@@ -20,7 +18,8 @@
     display: table-row;
 }
 
-.step2_table_heading, .step2_table_heading label {
+.step2_table_heading,
+.step2_table_heading label {
     font-weight: bold;
     text-decoration: underline;
     text-align: left;
@@ -30,12 +29,14 @@
     display: table-row;
 }
 
-.step2_table_heading, .step2_table_heading label{
+.step2_table_heading,
+.step2_table_heading label {
     text-decoration: underline;
     text-align: left;
 }
 
-.step2_table_heading div, .step2_table_heading div {
+.step2_table_heading div,
+.step2_table_heading div {
     vertical-align: bottom;
 }
 
@@ -82,7 +83,8 @@
     padding-right: 8px;
 }
 
-#no-abbrevs-div, #no-custom-elts-div {
+#no-abbrevs-div,
+#no-custom-elts-div {
     margin-top: 10px;
     margin-left: 20px;
 }
@@ -98,28 +100,70 @@
 
 /* TODO: unused! fix and use! */
 .odd_row {
-    background: linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
-    background: -o-linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
-    background: -moz-linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
-    background: -webkit-linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
-    background: -ms-linear-gradient(top, rgba(183,253,25,0.5) 100%, rgba(200,200,200,0.1) 100%);
+    background: linear-gradient(
+        top,
+        rgba(183, 253, 25, 0.5) 100%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
+    background: -o-linear-gradient(
+        top,
+        rgba(183, 253, 25, 0.5) 100%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
+    background: -moz-linear-gradient(
+        top,
+        rgba(183, 253, 25, 0.5) 100%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
+    background: -webkit-linear-gradient(
+        top,
+        rgba(183, 253, 25, 0.5) 100%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
+    background: -ms-linear-gradient(
+        top,
+        rgba(183, 253, 25, 0.5) 100%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
 }
 
 /* TODO: unused! fix and use! */
 .even_row {
-    background: linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    background: -o-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    background: -moz-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    background: -webkit-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
-    background: -ms-linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
+    background: linear-gradient(
+        top,
+        rgba(200, 200, 200, 0.5) 0%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
+    background: -o-linear-gradient(
+        top,
+        rgba(200, 200, 200, 0.5) 0%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
+    background: -moz-linear-gradient(
+        top,
+        rgba(200, 200, 200, 0.5) 0%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
+    background: -webkit-linear-gradient(
+        top,
+        rgba(200, 200, 200, 0.5) 0%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
+    background: -ms-linear-gradient(
+        top,
+        rgba(200, 200, 200, 0.5) 0%,
+        rgba(200, 200, 200, 0.1) 100%
+    );
 }
 
-#step1_list,#step2_sample_position_list{
+#step1_list,
+#step2_sample_position_list {
     padding-top: 8px;
     list-style-type: none;
 }
 
-#step1_list li,#step2_sample_position_list li {
+#step1_list li,
+#step2_sample_position_list li {
     padding-bottom: 8px;
 }
 
@@ -136,7 +180,9 @@ input[type="radio"] {
     margin: auto;
 }
 
-#name_ordering_table, #custom_elements_table, #abbreviations-table {
+#name_ordering_table,
+#custom_elements_table,
+#abbreviations-table {
     /* margin-left: 10px; */
     margin-top: 8px;
     min-width: 50px;
@@ -163,17 +209,20 @@ input[type="radio"] {
     flex-grow: 1;
 }
 
-#line_name_elts .required-name-elt, #unused_line_name_elts .required-name-elt {
+#line_name_elts .required-name-elt,
+#unused_line_name_elts .required-name-elt {
     font-weight: bold;
 }
 
 .inputCell {
     display: table-cell;
     width: auto;
-    min-width: 210px;  /* prevents cells from resizing when new rows are added */
+    min-width: 210px; /* prevents cells from resizing when new rows are added */
 }
 
-.inputCell input, .inputCell button, .inputCell .ice-folder-name{
+.inputCell input,
+.inputCell button,
+.inputCell .ice-folder-name {
     margin-left: 5px;
 }
 
@@ -191,7 +240,10 @@ input[type="radio"] {
     display: inline-block;
 }
 
-#line-properties-list, #line_name_elts, #unused_line_name_elts, #line-name-abbrev-list {
+#line-properties-list,
+#line_name_elts,
+#unused_line_name_elts,
+#line-name-abbrev-list {
     vertical-align: text-top;
     min-height: 100px;
     min-width: 212px;
@@ -199,19 +251,28 @@ input[type="radio"] {
     border: 1px solid #eee;
 }
 
-#line-properties-list li, #line_name_elts li, #unused_line_name_elts li, #line-name-abbrev-list li {
+#line-properties-list li,
+#line_name_elts li,
+#unused_line_name_elts li,
+#line-name-abbrev-list li {
     height: 100%;
     margin: 0 5px 5px 5px;
     padding: 5px;
 }
-#line_name_elts li .ui-icon, #unused_line_name_elts li .ui-icon {
+#line_name_elts li .ui-icon,
+#unused_line_name_elts li .ui-icon {
     float: right;
     margin-left: 1.3em;
 }
 
-#line-properties-list .ui-selecting, #line-name-abbrev-list .ui-selecting { background: #FECA40; }
-#line-properties-list .ui-selected, #line-name-abbrev-list .ui-selected {
-    background: #F39814; color: white;
+#line-properties-list .ui-selecting,
+#line-name-abbrev-list .ui-selecting {
+    background: #feca40;
+}
+#line-properties-list .ui-selected,
+#line-name-abbrev-list .ui-selected {
+    background: #f39814;
+    color: white;
 }
 
 .addButton {
@@ -222,7 +283,7 @@ input[type="radio"] {
 
 .addCell {
     padding: 0px;
-    width: 25px;  /* prevent table from jumping when a combinatorial property with this button is added */
+    width: 25px; /* prevent table from jumping when a combinatorial property with this button is added */
 }
 
 .removeButton {
@@ -234,8 +295,11 @@ input[type="radio"] {
     margin-left: 20px;
 }
 
-#no-custom-elts-div,#no-abbrevs-div, .loading-resource-message, .disabledStep3 {
-    color:#BBB;
+#no-custom-elts-div,
+#no-abbrevs-div,
+.loading-resource-message,
+.disabledStep3 {
+    color: #bbb;
 }
 
 .disabledErrMsg {
@@ -252,10 +316,11 @@ input[type="radio"] {
     margin-bottom: 20px;
 }
 
-.next-btn, #add-lines-btn {
+.next-btn,
+#add-lines-btn {
     margin-top: 20px;
     margin-left: 500px;
-    margin-bottom: 10px
+    margin-bottom: 10px;
 }
 
 #add-lines-btn {
@@ -265,7 +330,6 @@ input[type="radio"] {
 #force-creation-btn {
     margin-left: 334px;
 }
-
 
 /* TODO: consider relocating these import-derived classes to a "multistep.css" or similar. */
 div.sectionContent {
@@ -281,8 +345,8 @@ div.sectionContent {
 }
 
 .stepSeparator {
-    border-top:1px solid #6CA5E9;
-    padding:0em 1em 3px 3em;
+    border-top: 1px solid #6ca5e9;
+    padding: 0em 1em 3px 3em;
 }
 
 /* TODO: consider altering common.cs where this came from. Doesnt work here!*/
@@ -294,7 +358,8 @@ div.sectionContent {
     border: double;
 }
 
-#no-properties-div, #no-abbrev-options-div {
+#no-properties-div,
+#no-abbrev-options-div {
     color: grey;
 }
 
@@ -324,7 +389,7 @@ div.sectionContent {
 }
 
 .entry-filter-value {
-    text-transform:capitalize;
+    text-transform: capitalize;
 }
 
 #step3-waiting-div {
@@ -334,13 +399,13 @@ div.sectionContent {
 .preview-wait-lg {
     height: 60px;
     width: 60px;
-    display:inline-block;
+    display: inline-block;
 }
 
 .waitbadge-new {
-    margin:0px 2px 0px 2px;
-    padding:0px 2px 0px 2px;
-    display:inline-block;
-    width:16px;
-    height:16px;
+    margin: 0px 2px 0px 2px;
+    padding: 0px 2px 0px 2px;
+    display: inline-block;
+    width: 16px;
+    height: 16px;
 }

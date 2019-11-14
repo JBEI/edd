@@ -346,7 +346,7 @@ class IceApi(RestApiClient):
         except requests.exceptions.Timeout as e:
             if not suppress_errors:
                 raise IceApiException() from e
-            logger.exception("Timeout requesting part %s: %s", entry_id)
+            logger.exception(f"Timeout requesting part {entry_id}: {e}")
         except requests.exceptions.HTTPError as e:
             if response.status_code == requests.codes.not_found:
                 return None

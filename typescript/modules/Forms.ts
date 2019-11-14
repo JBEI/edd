@@ -3,7 +3,6 @@
 import * as $ from "jquery";
 import * as EDDAuto from "./EDDAutocomplete";
 
-
 export type Renderer = (record?: any) => any;
 export interface FieldRenderer extends Renderer {
     (record?: any): string;
@@ -29,7 +28,7 @@ export interface IFormField {
  * Handles interactions with forms that can use bulk editing.
  */
 export class BulkFormManager {
-    private _fields: {[name: string]: IFormField} = {};
+    private _fields: { [name: string]: IFormField } = {};
     private _selection: JQuery;
 
     constructor(private form: JQuery, private prefix?: string) {}
@@ -46,11 +45,14 @@ export class BulkFormManager {
         $.each(this._fields, (name, f) => f.fill(record));
         // only when selection has multiple items, show ignore buttons on non-disabled inputs
         if (this._selection.length > 1) {
-            this.form.find(".bulk").closest("p").each((i, element) => {
-                const input = $(element);
-                const enabled = !input.hasClass("disabled");
-                this.enable(input, enabled);
-            });
+            this.form
+                .find(".bulk")
+                .closest("p")
+                .each((i, element) => {
+                    const input = $(element);
+                    const enabled = !input.hasClass("disabled");
+                    this.enable(input, enabled);
+                });
         }
         return this;
     }
@@ -59,19 +61,33 @@ export class BulkFormManager {
         this._selection = selection;
         this.form
             // remove reported errors
-            .find(".errorlist").remove().end()
+            .find(".errorlist")
+            .remove()
+            .end()
             // hide bulk edit notice
-            .find(".bulk-note").addClass("off").end()
+            .find(".bulk-note")
+            .addClass("off")
+            .end()
             // hide ignore field buttons
-            .find(".bulk-ignore").addClass("off").end()
+            .find(".bulk-ignore")
+            .addClass("off")
+            .end()
             // remove any disabled class
-            .find(".bulk").closest("p").removeClass("disabled").end().end()
+            .find(".bulk")
+            .closest("p")
+            .removeClass("disabled")
+            .end()
+            .end()
             // remove bulk handlers
             .off(".bulk")
             // remove previous selection
-            .find(prev).remove().end()
+            .find(prev)
+            .remove()
+            .end()
             // clone selection to the form
-            .find("form").append(selection.clone().addClass("off")).end();
+            .find("form")
+            .append(selection.clone().addClass("off"))
+            .end();
 
         if (selection.length > 1) {
             // clone ignore field buttons if needed; last one should be the template
@@ -87,13 +103,19 @@ export class BulkFormManager {
             this.form
                 // get the bulk fields
                 .find(".bulk")
-                    // init the ignore field buttons on each field
-                    .closest("p").each(init_buttons).end()
+                // init the ignore field buttons on each field
+                .closest("p")
+                .each(init_buttons)
+                .end()
                 .end()
                 // show bulk notice
-                .find(".bulk-note").removeClass("off").end()
+                .find(".bulk-note")
+                .removeClass("off")
+                .end()
                 // uncheck bulk checkboxes
-                .find(".bulk").prop("checked", false).end()
+                .find(".bulk")
+                .prop("checked", false)
+                .end()
                 // event handler to enable inputs on click/focus
                 .on("click.bulk focus.bulk", ":input", (ev: JQueryEventObject) => {
                     const input = $(ev.target as HTMLElement);
@@ -115,12 +137,14 @@ export class BulkFormManager {
         const field = this._fields[name];
         if (field) {
             field.enabled(on);
-            parent.toggleClass("disabled", !on)
-                .children("label").find(".bulk").prop("checked", on);
+            parent
+                .toggleClass("disabled", !on)
+                .children("label")
+                .find(".bulk")
+                .prop("checked", on);
         }
     }
 }
-
 
 /**
  * Basic field; a single input element, having a single value mapped to a record property.
@@ -159,13 +183,18 @@ export class Field implements IFormField {
             this.field
                 .removeProp("placeholder")
                 .prop("required", this._required)
-                .closest("p").removeClass("disabled").end();
+                .closest("p")
+                .removeClass("disabled")
+                .end();
         } else {
             this.field
                 .prop("placeholder", message)
                 // sometimes the attribute re-asserts itself on save
-                .removeProp("required").removeAttr("required")
-                .closest("p").addClass("disabled").end();
+                .removeProp("required")
+                .removeAttr("required")
+                .closest("p")
+                .addClass("disabled")
+                .end();
         }
         return this;
     }
@@ -192,20 +221,19 @@ export class Field implements IFormField {
     }
 }
 
-
 export type WidgetInit = (row: JQuery, widget: Field) => void;
-
 
 /**
  * Autocomplete field; has a visible element and a hidden element. Overrides the Renderer used
  * to generate both the visible and hidden values.
  */
 export class Autocomplete extends Field {
-
     static build(row: JQuery, name: string): Autocomplete {
         // row sent by FormMetadataManager has visible input element
         const visible = row.find("input");
-        const hidden = $("<input>").attr("type", "hidden").insertAfter(visible);
+        const hidden = $("<input>")
+            .attr("type", "hidden")
+            .insertAfter(visible);
         const field = new Autocomplete(visible, hidden, name);
         return field;
     }
@@ -242,13 +270,13 @@ export class Autocomplete extends Field {
     }
 }
 
-
 export class Checkbox extends Field {
-
     static build(row: JQuery, name: string): Checkbox {
         // need to replace default textbox with a checkbox
         const existing = row.find("input");
-        const checkbox = $("<input>").attr("type", "checkbox").insertAfter(existing);
+        const checkbox = $("<input>")
+            .attr("type", "checkbox")
+            .insertAfter(existing);
         const field = new Checkbox(checkbox, name);
         existing.remove();
         return field;
@@ -280,7 +308,6 @@ export class Checkbox extends Field {
     }
 }
 
-
 /**
  * FormMetadataManager has the responsibility to manipulate the dynamic inputs defining
  * metadata values in EDD's forms. The class expects to get a JQuery object with the
@@ -289,7 +316,6 @@ export class Checkbox extends Field {
  * for adding a new metadata value (class attribute select_metadata_row_class).
  */
 export class FormMetadataManager {
-
     private static widget_type_lookup = {
         "checkbox": Checkbox,
         "user": Autocomplete,
@@ -310,35 +336,36 @@ export class FormMetadataManager {
 
     // pulling out some class names to make customizing later easier
     // note: not const because it's reasonable to allow client code to change these values
-    metadata_input_base_name: string = "metadata";
-    row_of_metadata_class: string = "meta-row";
-    model_row_class: string = "meta-model";
-    clearing_metadata_class: string = "meta-clearing";
-    select_metadata_row_class: string = "meta-add-row";
-    select_metadata_button_class: string = "meta-add";
-    prefix_label_class: string = "meta-prefix";
-    postfix_label_class: string = "meta-postfix";
-    remove_metadata_button_class: string = "meta-remove";
-    restore_metadata_button_class: string = "meta-restore";
-    clear_metadata_button_class: string = "meta-clear";
+    metadata_input_base_name = "metadata";
+    row_of_metadata_class = "meta-row";
+    model_row_class = "meta-model";
+    clearing_metadata_class = "meta-clearing";
+    select_metadata_row_class = "meta-add-row";
+    select_metadata_button_class = "meta-add";
+    prefix_label_class = "meta-prefix";
+    postfix_label_class = "meta-postfix";
+    remove_metadata_button_class = "meta-remove";
+    restore_metadata_button_class = "meta-restore";
+    clear_metadata_button_class = "meta-clear";
 
-    private _mfields: {[name: string]: IFormField} = {};
+    private _mfields: { [name: string]: IFormField } = {};
 
     constructor(private form: JQuery, private prefix?: string) {
         this.attachEvents();
     }
 
     // use given metadata to populate form with inputs for that metadata
-    metadata(metadata: {[key: number]: any}): FormMetadataManager {
+    metadata(metadata: { [key: number]: any }): FormMetadataManager {
         const metadataInput = this.getMetadataInput();
         // sort incoming metadata by type name
         const typeList: MetadataTypeRecord[] = $.map(
-                metadata, (value, key) => EDDData.MetaDataTypes[key],
-            ).sort((a: MetadataTypeRecord, b: MetadataTypeRecord) => {
-                const aName = a.name;
-                const bName = b.name;
-                return aName < bName ? -1 : aName > bName ? 1 : 0;
-            });
+            metadata,
+            (value, key) => EDDData.MetaDataTypes[key],
+        ).sort((a: MetadataTypeRecord, b: MetadataTypeRecord) => {
+            const aName = a.name;
+            const bName = b.name;
+            return aName < bName ? -1 : aName > bName ? 1 : 0;
+        });
         // insert rows in alphabetical order
         typeList.forEach((type) => this.insertMetadataRow(type.id, metadata[type.id]));
         // set the hidden field values; both the metadata input and its initial field
@@ -364,26 +391,36 @@ export class FormMetadataManager {
 
     private attachEvents(): void {
         // the row with select_metadata_row_class will also have row_of_metadata class
-        const metadataRowSelector = "." + this.row_of_metadata_class
-            + ":not(." + this.select_metadata_row_class + ")";
+        const metadataRowSelector =
+            "." +
+            this.row_of_metadata_class +
+            ":not(." +
+            this.select_metadata_row_class +
+            ")";
         this.form.on("change", metadataRowSelector, (ev) => {
             // when an input changes, update the serialized metadata field
             const parent = $(ev.target).closest("p");
             const name = parent.data("name");
             const field = this._mfields[name];
             const metadataInput = this.getMetadataInput();
-            const metadata = JSON.parse(metadataInput.val() as string || "{}");
+            const metadata = JSON.parse((metadataInput.val() as string) || "{}");
             metadata[name] = field.parse();
             metadataInput.val(JSON.stringify(metadata));
         });
         this.form.on("focus click", ".disabled", (ev) => {
             // un-disable anything initially disabled because of conflicting values
-            $(ev.target).closest(".disabled").removeClass("disabled")
-                .find(":input").first().trigger("change");
+            $(ev.target)
+                .closest(".disabled")
+                .removeClass("disabled")
+                .find(":input")
+                .first()
+                .trigger("change");
         });
         this.form.on("click", ".btn." + this.select_metadata_button_class, (ev) => {
             // add new inputs for the selected type of metadata
-            const selectionRow = $(ev.target).closest("." + this.select_metadata_row_class);
+            const selectionRow = $(ev.target).closest(
+                "." + this.select_metadata_row_class,
+            );
             const typeKey = selectionRow.find("input[type=hidden]").val() as string;
             if (typeKey) {
                 this.insertMetadataRow(typeKey);
@@ -397,7 +434,7 @@ export class FormMetadataManager {
             // remove inputs for a type of metadata
             const metadataRow = $(ev.target).closest("." + this.row_of_metadata_class);
             const metadataInput = this.getMetadataInput();
-            const metadata = JSON.parse(metadataInput.val() as string || "{}");
+            const metadata = JSON.parse((metadataInput.val() as string) || "{}");
             const typeKey = this.getRowMetadataKey(metadataRow);
             delete metadata[typeKey];
             metadataInput.val(JSON.stringify(metadata));
@@ -407,14 +444,15 @@ export class FormMetadataManager {
             // remove inputs for a type of metadata and add deletion command for the type
             const metadataRow = $(ev.target).closest("." + this.row_of_metadata_class);
             const metadataInput = this.getMetadataInput();
-            const metadata = JSON.parse(metadataInput.val() as string || "{}");
+            const metadata = JSON.parse((metadataInput.val() as string) || "{}");
             const typeKey = this.getRowMetadataKey(metadataRow);
-            metadata[typeKey] = {"delete": true};
+            metadata[typeKey] = { "delete": true };
             metadataInput.val(JSON.stringify(metadata));
             // adding class hides most things; shows clearing message + restore button
-            metadataRow.addClass(this.clearing_metadata_class)
+            metadataRow
+                .addClass(this.clearing_metadata_class)
                 .find("." + this.restore_metadata_button_class)
-                    .removeClass("off")
+                .removeClass("off")
                 .end();
         });
         this.form.on("click", ".btn." + this.restore_metadata_button_class, (ev) => {
@@ -493,20 +531,26 @@ export class FormMetadataManager {
             const modelRow = this.form.find("." + this.model_row_class);
             const selectionRow = this.form.find("." + this.select_metadata_row_class);
             // defaults to inserting just before the select metadata row at the end of the form
-            const addingRow = modelRow.clone()
+            const addingRow = modelRow
+                .clone()
                 .attr({
                     "class": this.row_of_metadata_class,
                     "id": "row-" + id,
                 })
                 .insertBefore(selectionRow);
-            addingRow.find("label").attr("for", "id-" + id).text(metaType.name);
+            addingRow
+                .find("label")
+                .attr("for", "id-" + id)
+                .text(metaType.name);
             this.buildInputElement(addingRow, metaType, initialValue);
             if (metaType.prefix) {
-                addingRow.find("." + this.prefix_label_class)
+                addingRow
+                    .find("." + this.prefix_label_class)
                     .text("(" + metaType.prefix + ")");
             }
             if (metaType.postfix) {
-                addingRow.find("." + this.postfix_label_class)
+                addingRow
+                    .find("." + this.postfix_label_class)
                     .text("(" + metaType.postfix + ")");
             }
             return addingRow;

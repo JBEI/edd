@@ -7,11 +7,11 @@ infrastructure, the section on [Alternate Stacks](#alternate) describes how to a
 web stack.
 
 ## Contents
-* [Launching nginx](#launch)
-* [docker-gen configuration template](#docker-gen)
-* [Let's Encrypt proxy companion](#letsencrypt)
-* [Alternate Stacks](#alternate)
 
+-   [Launching nginx](#launch)
+-   [docker-gen configuration template](#docker-gen)
+-   [Let's Encrypt proxy companion](#letsencrypt)
+-   [Alternate Stacks](#alternate)
 
 ## Launching nginx <a name="#launch"/>
 
@@ -75,28 +75,28 @@ installed into nginx. The value of `LETSENCRYPT_HOST` should almost always be a 
 There are a handful of configuration options that should change to fit EDD into an existing or
 alternate web stack.
 
-1. __Open ports__: the base `docker-compose.yml` exposes port `8000` from the `edd` service to
+1. **Open ports**: the base `docker-compose.yml` exposes port `8000` from the `edd` service to
    _other containers_. To use another proxy, either:
-        * map port 8000 to a port on the Docker host, e.g. `ports: ['0.0.0.0:8000:8000']`; or,
-        * publish a container to proxy using the Docker virtual network
-2. __Static files__: Assets like icons, stylesheets, and Javascript are mounted into the `edd`
+   _ map port 8000 to a port on the Docker host, e.g. `ports: ['0.0.0.0:8000:8000']`; or,
+   _ publish a container to proxy using the Docker virtual network
+2. **Static files**: Assets like icons, stylesheets, and Javascript are mounted into the `edd`
    service with a named Docker volume, `staticdata`. The definition of `staticdata` can be
    overwritten with another named volume; see the Docker documentation for `docker volume create`
    for more information on how to mount existing filesystems as a Docker volume. Alternately,
    the `local.py` Django settings can change the value of `STATICFILES_STORAGE` to use a different
    storage driver to use a CDN or cloud storage. See the [STATICFILES_STORAGE documentation][6]
    from the Django project.
-3. __Media files__: Similar to static files, EDD includes an `attachdata` volume to store all
+3. **Media files**: Similar to static files, EDD includes an `attachdata` volume to store all
    uploaded files. Your options are to use an alternate named volume in place of `attachdata`, or
    alter the Django configuration to use a different storage backend, such as with the
    [django-storages project][7].
 
---------------------------------------------------------------------------------
+---
 
-[1]:  https://hub.docker.com/_/nginx/
-[2]:  https://github.com/jwilder/docker-gen
-[3]:  https://golang.org/pkg/text/template/
-[4]:  https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
-[5]:  https://letsencrypt.org/
-[6]:  https://docs.djangoproject.com/en/dev/howto/static-files/deployment/#staticfiles-from-cdn
-[7]:  https://django-storages.readthedocs.io/en/latest/
+[1]: https://hub.docker.com/_/nginx/
+[2]: https://github.com/jwilder/docker-gen
+[3]: https://golang.org/pkg/text/template/
+[4]: https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
+[5]: https://letsencrypt.org/
+[6]: https://docs.djangoproject.com/en/dev/howto/static-files/deployment/#staticfiles-from-cdn
+[7]: https://django-storages.readthedocs.io/en/latest/

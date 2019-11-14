@@ -18,11 +18,12 @@
     margin-top: 10px;
 }
 
-.emphasizeErrorSubject, .contextSectionHeader {
+.emphasizeErrorSubject,
+.contextSectionHeader {
     text-decoration: underline;
 }
 
-#importWizard H2 {
+#importWizard h2 {
     margin-top: 30px;
     margin-bottom: 10px;
 }
@@ -75,11 +76,11 @@
 }
 
 .step2-wait {
-    margin:0px 2px 0px 2px;
-    padding:0px 2px 0px 2px;
-    display:inline-block;
-    width:16px;
-    height:16px;
+    margin: 0px 2px 0px 2px;
+    padding: 0px 2px 0px 2px;
+    display: inline-block;
+    width: 16px;
+    height: 16px;
 }
 
 /* Clean up default styles from StepZilla */

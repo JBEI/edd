@@ -17,7 +17,7 @@ The source code of EDD is published on [GitHub][9]. Pull requests should adhere 
 [Contributing Guidelines][10], and bug reports or feature requests should be directed to the
 GitHub project.
 
----------------------------------------------------------------------------------------------------
+---
 
 ## Getting Started <a name="#Getting_Started"/>
 
@@ -56,7 +56,7 @@ order to complete the tutorial. Creating an account without configuring EDD will
 confirmation message does not appear within a few minutes. Once the email is confirmed, the user
 name for logging in is the part of your email before the `@` sign.
 
----------------------------------------------------------------------------------------------------
+---
 
 ## More Resources <a name="#More_Resources"/>
 
@@ -66,23 +66,23 @@ and steps to deploy a new instance are in the [Deployment][5] document. Getting 
 environment set up to modify or contribute to EDD is outlined in the [Developer Setup][12]
 document. The [Troubleshooting][17] guide details some commands to diagnose problems.
 
----------------------------------------------------------------------------------------------------
+---
 
-[1]:    https://public-edd.jbei.org
-[2]:    https://docker.io
-[3]:    https://docs.docker.com/compose/overview/
-[4]:    docs/Configuration.md
-[5]:    docs/Deployment.md
-[6]:    LICENSE.txt
-[7]:    https://www.lbl.gov
-[8]:    https://www.jbei.org
-[9]:    https://github.com/JBEI/edd
-[10]:   Contributing.md
-[11]:   docs/Administration.md
-[12]:   docs/Developer_Setup.md
-[13]:   http://edd.lvh.me
-[14]:   https://public-edd.jbei.org/pages/tutorials/
-[15]:   https://www.docker.com/community-edition#/download
-[16]:   https://docs.docker.com/compose/install/
-[17]:   docs/Troubleshooting.md
-[18]:   http://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204
+[1]: https://public-edd.jbei.org
+[2]: https://docker.io
+[3]: https://docs.docker.com/compose/overview/
+[4]: docs/Configuration.md
+[5]: docs/Deployment.md
+[6]: LICENSE.txt
+[7]: https://www.lbl.gov
+[8]: https://www.jbei.org
+[9]: https://github.com/JBEI/edd
+[10]: Contributing.md
+[11]: docs/Administration.md
+[12]: docs/Developer_Setup.md
+[13]: http://edd.lvh.me
+[14]: https://public-edd.jbei.org/pages/tutorials/
+[15]: https://www.docker.com/community-edition#/download
+[16]: https://docs.docker.com/compose/install/
+[17]: docs/Troubleshooting.md
+[18]: http://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204

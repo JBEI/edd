@@ -26,13 +26,13 @@ span.icon {
     width: 16px;
 }
 span.icon.primary {
-    background-image: url('/static/main/images/star.png');
+    background-image: url("/static/main/images/star.png");
 }
 span.icon.verified {
-    background-image: url('/static/main/images/award_star_gold_3.png');
+    background-image: url("/static/main/images/award_star_gold_3.png");
 }
 span.icon.unverified {
-    background-image: url('/static/main/images/lock.png');
+    background-image: url("/static/main/images/lock.png");
 }
 span.socialaccount_provider {
     background-repeat: no-repeat;
@@ -41,13 +41,13 @@ span.socialaccount_provider {
     padding-left: 24px;
 }
 span.socialaccount_provider.github {
-    background-image: url('/static/main/images/github-icon.png');
+    background-image: url("/static/main/images/github-icon.png");
 }
 span.socialaccount_provider.google {
-    background-image: url('/static/main/images/google-icon.png');
+    background-image: url("/static/main/images/google-icon.png");
 }
 span.socialaccount_provider.linkedin {
-    background-image: url('/static/main/images/linkedin-icon.png');
+    background-image: url("/static/main/images/linkedin-icon.png");
 }
 a.socialaccount_provider {
     background-repeat: no-repeat;
@@ -57,13 +57,13 @@ a.socialaccount_provider {
     width: 200px;
 }
 a.socialaccount_provider.github {
-    background-image: url('/static/main/images/github-login.png');
+    background-image: url("/static/main/images/github-login.png");
 }
 a.socialaccount_provider.google {
-    background-image: url('/static/main/images/google-login.png');
+    background-image: url("/static/main/images/google-login.png");
 }
 a.socialaccount_provider.linkedin_oauth2 {
-    background-image: url('/static/main/images/linkedin-login.png');
+    background-image: url("/static/main/images/linkedin-login.png");
     background-position-x: 8px;
 }
 .buttonHolder {
