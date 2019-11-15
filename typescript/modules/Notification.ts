@@ -1,10 +1,9 @@
-'use strict';
+"use strict";
 
 import * as $ from "jquery";
 
 import * as ReconnectingWebSocket from "reconnecting-websocket";
 import * as Utl from "./Utl";
-
 
 export interface Message {
     message: string;
@@ -18,16 +17,15 @@ type DisplayCallback = (msgs: Message[], count: number) => void;
 type TagAction = (message: Message) => void;
 
 export class NotificationSocket {
-
     private socket: ReconnectingWebSocket;
-    private messages: {[uuid: string]: Message};
+    private messages: { [uuid: string]: Message };
     private count: number;
     private subscribers: DisplayCallback[];
-    private tagActions: {[tag: string]: TagAction[]};
+    private tagActions: { [tag: string]: TagAction[] };
 
     constructor(options?: any) {
         options = options || {};
-        const path: string = options.path || 'ws/notify/';
+        const path: string = options.path || "ws/notify/";
         const notify_url: URL = this.buildWebsocketURL(path);
 
         this.messages = {};
@@ -42,7 +40,7 @@ export class NotificationSocket {
     }
 
     markAllRead() {
-        this.send({'reset': true});
+        this.send({ "reset": true });
         this.resetMessages();
         this.updateSubscribers();
     }
@@ -53,7 +51,7 @@ export class NotificationSocket {
             this.messages[uuid] = null;
             --this.count;
         }
-        this.send({'dismiss': uuid});
+        this.send({ "dismiss": uuid });
         this.updateSubscribers();
     }
 
@@ -78,7 +76,7 @@ export class NotificationSocket {
 
     private buildWebsocketURL(path: string): URL {
         const relativeURL = Utl.relativeURL(path, new URL(window.location.origin));
-        relativeURL.protocol = ('https:' === relativeURL.protocol ? 'wss:' : 'ws:');
+        relativeURL.protocol = "https:" === relativeURL.protocol ? "wss:" : "ws:";
         return relativeURL;
     }
 
@@ -92,11 +90,11 @@ export class NotificationSocket {
 
     private receive(event) {
         const payload = JSON.parse(event.data);
-        if (payload.hasOwnProperty('messages')) {
+        if (payload.hasOwnProperty("messages")) {
             this.processMessages(payload);
-        } else if (payload.hasOwnProperty('reset')) {
+        } else if (payload.hasOwnProperty("reset")) {
             this.resetMessages();
-        } else if (payload.hasOwnProperty('dismiss')) {
+        } else if (payload.hasOwnProperty("dismiss")) {
             this.dismissMessage(payload);
         }
         this.updateSubscribers();
@@ -109,11 +107,11 @@ export class NotificationSocket {
 
     private loadMessage(msg: any[]): Message {
         return {
-            'message': msg[0],
-            'tags': msg[1],
-            'payload': msg[2],
-            'time': new Date(msg[3] * 1000),  // comes in sec instead of ms
-            'uuid': msg[4],
+            "message": msg[0],
+            "tags": msg[1],
+            "payload": msg[2],
+            "time": new Date(msg[3] * 1000), // comes in sec instead of ms
+            "uuid": msg[4],
         };
     }
 
@@ -139,7 +137,7 @@ export class NotificationSocket {
         this.messages = {};
         this.count = 0;
         // request updated list from server
-        this.send({'fetch': true});
+        this.send({ "fetch": true });
     }
 
     private send(payload): void {
@@ -167,7 +165,6 @@ export class NotificationSocket {
 }
 
 export class NotificationMenu {
-
     badge: JQuery;
     messageList: JQuery;
     emptyMessage: JQuery;
@@ -175,23 +172,30 @@ export class NotificationMenu {
 
     constructor(element: HTMLElement, socket: NotificationSocket) {
         const menu = $(element);
-        this.badge = menu.find('.badge');
-        this.messageList = menu.find('.dropdown-menu');
-        this.emptyMessage = this.messageList.find('.message-empty').clone();
+        this.badge = menu.find(".badge");
+        this.messageList = menu.find(".dropdown-menu");
+        this.emptyMessage = this.messageList.find(".message-empty").clone();
         this.socket = socket;
 
         this.socket.subscribe(this.display.bind(this));
-        this.messageList.on('click', 'li.message > .message-close', this.markRead.bind(this));
-        this.messageList.on('click', 'li.close-all', this.markAllRead.bind(this));
+        this.messageList.on(
+            "click",
+            "li.message > .message-close",
+            this.markRead.bind(this),
+        );
+        this.messageList.on("click", "li.close-all", this.markAllRead.bind(this));
     }
 
     display(msgs: Message[], count: number) {
         this.messageList.empty();
         $.map(msgs, (msg) => this.messageList.append(this.processMessage(msg)));
         if (count) {
-            this.badge.text('' + count);
-            const closeAll = $('<li>').addClass('close-all');
-            $('<span>').addClass('message-close').text('Mark All Read').appendTo(closeAll);
+            this.badge.text("" + count);
+            const closeAll = $("<li>").addClass("close-all");
+            $("<span>")
+                .addClass("message-close")
+                .text("Mark All Read")
+                .appendTo(closeAll);
             closeAll.appendTo(this.messageList);
         } else {
             this.badge.empty();
@@ -200,8 +204,8 @@ export class NotificationMenu {
     }
 
     private markRead(event: JQueryMouseEventObject) {
-        const message = $(event.target).closest('.message');
-        this.socket.markRead(message.data('uuid'));
+        const message = $(event.target).closest(".message");
+        this.socket.markRead(message.data("uuid"));
         return false;
     }
 
@@ -211,9 +215,16 @@ export class NotificationMenu {
     }
 
     private processMessage(message: Message): JQuery | null {
-        const item = $('<li>').addClass('message').data('uuid', message.uuid);
-        $('<span>').addClass('message-text').html(message.message).appendTo(item);
-        $('<span>').addClass('message-close glyphicon glyphicon-remove').appendTo(item);
+        const item = $("<li>")
+            .addClass("message")
+            .data("uuid", message.uuid);
+        $("<span>")
+            .addClass("message-text")
+            .html(message.message)
+            .appendTo(item);
+        $("<span>")
+            .addClass("message-close glyphicon glyphicon-remove")
+            .appendTo(item);
         return item;
     }
 }

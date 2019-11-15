@@ -1,129 +1,113 @@
 // This file is nothing but Typescript declarations, and doesn't technically need to be passed
 // to client browsers.
 
-
 interface UpdateRecord {
-    time: number;    // update timestamp
-    user: number;    // User ID
+    time: number; // update timestamp
+    user: number; // User ID
 }
 
-
 interface EDDRecord {
-    id: number;          // object ID
-    name: string;        // object name
+    id: number; // object ID
+    name: string; // object name
     description: string; // object description
-    meta: any;           // Metadata structure
+    meta: any; // Metadata structure
     created: UpdateRecord;
     modified: UpdateRecord;
 }
 
-
 interface RecordList<U> {
     [id: number]: U;
 }
-
 
 interface BasicContact {
     user_id: number;
     extra: string;
 }
 
-
 // This is what we expect in EDDData.Lines
 interface LineRecord extends EDDRecord {
-    active: boolean;      // Active line
-    control: boolean;     // Is Control
+    active: boolean; // Active line
+    control: boolean; // Is Control
     // contact can vary depending on source call
     contact: number | UserRecord | BasicContact;
     // experimenter can vary depending on source call
     experimenter: number | UserRecord | BasicContact;
-    strain: number[];     // Strain ID array
-    carbon: number[];     // Carbon Sources ID array
+    strain: number[]; // Strain ID array
+    carbon: number[]; // Carbon Sources ID array
 
     // optional properties, set only in graphing code, not received from backend
-    identifier?: string;   // HTML ID for the line filter checkbox
+    identifier?: string; // HTML ID for the line filter checkbox
     color?: string;
 }
 
-
 // This is what we expect in EDDData.Assays
 interface AssayRecord extends EDDRecord {
-    active: boolean;          // Active assay
-    lid: number;              // Line ID
-    pid: number;              // Protocol ID
-    experimenter: number;     // Experimenter ID
-    measures: number[];       // All collected measurements associated with Assay
-    metabolites: number[];    // Metabolite measurements associated with Assay
+    active: boolean; // Active assay
+    lid: number; // Line ID
+    pid: number; // Protocol ID
+    experimenter: number; // Experimenter ID
+    measures: number[]; // All collected measurements associated with Assay
+    metabolites: number[]; // Metabolite measurements associated with Assay
     transcriptions: number[]; // Transcription measurements associated with Assay
-    proteins: number[];       // Proteins measurements associated with Assay
-    general: number[];        // Measurements for everything else
+    proteins: number[]; // Proteins measurements associated with Assay
+    general: number[]; // Measurements for everything else
     count: number;
 }
 
-
 // This is what we expect in EDDData.AssayMeasurements
 interface AssayMeasurementRecord {
-    id: number;             // Measurement ID
-    assay: number;          // Assay ID
-    type: number;           // MeasurementTypeRecord ID
-    comp: string;           // see main/models.py:MeasurementCompartment for enum choices
-    format: string;         // see main/models.py:MeasurementFormat for enum choices
-    values: number[][][];   // array of data values
+    id: number; // Measurement ID
+    assay: number; // Assay ID
+    type: number; // MeasurementTypeRecord ID
+    comp: string; // see main/models.py:MeasurementCompartment for enum choices
+    format: string; // see main/models.py:MeasurementFormat for enum choices
+    values: number[][][]; // array of data values
     x_units: number;
     y_units: number;
     /////// BELOW ARE DEPRECATED ////////
-    aid: number;     // Assay ID
-    dis: boolean;    // Disabled
-    lid: number;     // Line ID
-    mf: number;      // Measurement Type Format
-    mt: number;      // Measurement Type ID
-    mst: number;     // Measurement Subtype
-    mq: number;      // Measurement Type Compartment
-    mtdf: number;    // Display Format
-    uid: number;     // Y Axis Units ID
-    d: any[];        // Data (array of x,y pairs)
+    aid: number; // Assay ID
+    dis: boolean; // Disabled
+    lid: number; // Line ID
+    mf: number; // Measurement Type Format
+    mt: number; // Measurement Type ID
+    mst: number; // Measurement Subtype
+    mq: number; // Measurement Type Compartment
+    mtdf: number; // Display Format
+    uid: number; // Y Axis Units ID
+    d: any[]; // Data (array of x,y pairs)
 }
-
 
 interface MeasurementCompartmentRecord {
     name: string;
     code: string;
 }
 
-
 interface MeasurementTypeRecord {
-    id: number;     // Type ID
-    uuid: string;   // Type UUID
-    name: string;   // Type name
+    id: number; // Type ID
+    uuid: string; // Type UUID
+    name: string; // Type name
     family: string; // 'm', 'g', 'p' for metabolite, gene, protien
 }
 
-
 // This is what we expect in EDDData.MetaboliteTypes
 interface MetaboliteTypeRecord extends MeasurementTypeRecord {
-    formula: string;    // Molecular Formula
-    molar: number;      // Molar Mass As Number
-    carbons: number;    // Carbon Count As Number
+    formula: string; // Molecular Formula
+    molar: number; // Molar Mass As Number
+    carbons: number; // Carbon Count As Number
 }
-
 
 // This is what we expect in EDDData.ProteinTypes
 // tslint:disable-next-line:no-empty-interface
-interface ProteinTypeRecord extends MeasurementTypeRecord {
-}
-
+interface ProteinTypeRecord extends MeasurementTypeRecord {}
 
 // This is what we expect in EDDData.GeneTypes
 // tslint:disable-next-line:no-empty-interface
-interface GeneTypeRecord extends MeasurementTypeRecord {
-}
-
+interface GeneTypeRecord extends MeasurementTypeRecord {}
 
 interface UnitType {
     id: number;
     name: string;
 }
-
 
 interface MetadataTypeRecord {
     id: number;
@@ -134,26 +118,21 @@ interface MetadataTypeRecord {
     prefix: string;
     postfix: string;
     default: string;
-    context: string;  // maybe switch to an enum
+    context: string; // maybe switch to an enum
 }
-
 
 // tslint:disable-next-line:no-empty-interface
-interface ProtocolRecord extends EDDRecord {
-}
-
+interface ProtocolRecord extends EDDRecord {}
 
 interface StrainRecord extends EDDRecord {
-    registry_id: string;  // a UUID
+    registry_id: string; // a UUID
     registry_url: string;
 }
-
 
 interface CarbonSourceRecord extends EDDRecord {
     labeling: string;
     volume: number;
 }
-
 
 interface UserRecord {
     id: number;
@@ -168,15 +147,14 @@ interface UserRecord {
     disabled: boolean;
 }
 
-
 // Declare interface and EDDData variable for highlight support
 interface EDDData {
-    currentStudyID: number;    // Can be null/undefined when no Study is chosen
+    currentStudyID: number; // Can be null/undefined when no Study is chosen
     Studies: RecordList<any>;
     AssayMeasurements: RecordList<AssayMeasurementRecord>;
     Assays: RecordList<AssayRecord>;
     CSources: RecordList<CarbonSourceRecord>;
-    GeneTypes: RecordList<ProteinTypeRecord>;
+    GeneTypes: RecordList<GeneTypeRecord>;
     Lines: RecordList<LineRecord>;
     MeasurementTypeCompartments: RecordList<MeasurementCompartmentRecord>;
     MeasurementTypes: RecordList<MeasurementTypeRecord>;
@@ -192,10 +170,9 @@ interface EDDData {
     Species: any;
 
     // TODO: is this used anymore?
-    MediaTypes: {[shortform: string]: string};
+    MediaTypes: { [shortform: string]: string };
 }
 
-
 /* tslint:disable:no-unused-variable */
-declare var EDDData: EDDData;
+declare let EDDData: EDDData;
 /* tslint:enable:no-unused-variable */

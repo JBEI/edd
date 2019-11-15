@@ -2,11 +2,11 @@
 
 img.exampleImage {
     border: none;
-    padding:4px;
-    margin:8px 8px 6px 5px;
-    -webkit-box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
-    -moz-box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
-    box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
+    padding: 4px;
+    margin: 8px 8px 6px 5px;
+    -webkit-box-shadow: 3px 3px 8px 2px rgba(0, 0, 0, 0.4);
+    -moz-box-shadow: 3px 3px 8px 2px rgba(0, 0, 0, 0.4);
+    box-shadow: 3px 3px 8px 2px rgba(0, 0, 0, 0.4);
 }
 
 .form-control-import {
@@ -26,11 +26,11 @@ img.exampleImage {
 img.exampleImageProteomics {
     width: 98%;
     border: none;
-    padding:4px;
-    margin:8px 8px 6px 5px;
-    -webkit-box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
-    -moz-box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
-    box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
+    padding: 4px;
+    margin: 8px 8px 6px 5px;
+    -webkit-box-shadow: 3px 3px 8px 2px rgba(0, 0, 0, 0.4);
+    -moz-box-shadow: 3px 3px 8px 2px rgba(0, 0, 0, 0.4);
+    box-shadow: 3px 3px 8px 2px rgba(0, 0, 0, 0.4);
 }
 
 .stepBorder {
@@ -42,21 +42,22 @@ img.exampleImageProteomics {
 }
 
 .stepSeparator {
-    border-top:1px solid #6CA5E9;
-    padding:0em 1em 3px 3em;
+    border-top: 1px solid #6ca5e9;
+    padding: 0em 1em 3px 3em;
 }
 
 /* Formatting for the label that appears when a step is disabled or irrelevant */
 
 div.disabledStepLabel {
-    height:50px;
+    height: 50px;
 
-    text-align:center;
+    text-align: center;
     margin-top: 15px;
 }
 
-.disabledTextLabel, div.disabledStepLabel {
-    color:#BBB;
+.disabledTextLabel,
+div.disabledStepLabel {
+    color: #bbb;
 }
 
 /* Reset buttons for the various steps */
@@ -64,19 +65,19 @@ div.disabledStepLabel {
 div.resetButtonDiv {
     cursor: pointer;
     display: inline-block;
-    padding:1px 5px;
-    margin:auto 6px 0px 4px;
-    color:#400;
-    font-size:9px;
-    text-align:center;
-    border:2px solid #800;
+    padding: 1px 5px;
+    margin: auto 6px 0px 4px;
+    color: #400;
+    font-size: 9px;
+    text-align: center;
+    border: 2px solid #800;
     border-radius: 6px;
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
 
 div.resetButtonDiv:hover {
-    background-color:#F00;
+    background-color: #f00;
 }
 
 .mergeOrReplace {
@@ -89,105 +90,104 @@ div#importDropZone {
 }
 
 textarea.dataTextArea {
-    margin:0px;
-    font-size:8.5pt;
-    width:100%;
+    margin: 0px;
+    font-size: 8.5pt;
+    width: 100%;
 }
 
 /* (The file drop zone styling is in common.css) */
 
-
 /* The Step 3 data layout table and graph */
 
 div.dataTableDiv {
-    width:98%;
-    border:0px solid;
-    padding:3px 6px 12px 6px;
+    width: 98%;
+    border: 0px solid;
+    padding: 3px 6px 12px 6px;
     max-height: 300px;
     overflow-x: auto;
     overflow-y: auto;
 }
 
 div.dataTableDiv table {
-    border:0px solid;
-    margin:0px;
-    padding:0px;
+    border: 0px solid;
+    margin: 0px;
+    padding: 0px;
 }
 
 div.dataTableDiv table tr {
-    border:0px solid;
+    border: 0px solid;
 }
 
 div.dataTableDiv table tr td {
-    line-height:13px;
-    border:0px solid;
+    line-height: 13px;
+    border: 0px solid;
     font-family: monospace;
     font-size: 12px;
-    text-align:left;
-    padding:0px;
+    text-align: left;
+    padding: 0px;
 }
 
 div.dataTableDiv table tr td:hover {
-    background-color:#CECEFF;
+    background-color: #ceceff;
 }
 
 div.dataTableDiv table tr td input {
-    padding:0px;
-    margin:0px;
-    font-size:9pt;
+    padding: 0px;
+    margin: 0px;
+    font-size: 9pt;
 }
 
 div.dataTableDiv table tr td > div {
-    line-height:13px;
-    white-space:nowrap;
-    margin:2px 0px 1px 1px;
-    padding:0px 5px 1px 3px;
-    border:0px solid;
+    line-height: 13px;
+    white-space: nowrap;
+    margin: 2px 0px 1px 1px;
+    padding: 0px 5px 1px 3px;
+    border: 0px solid;
 }
 
 div.dataTableDiv table tr > td.pulldownCell {
-    padding:0px;
+    padding: 0px;
 }
 div.dataTableDiv table tr > td.pulldownCell select {
-    margin:0;
+    margin: 0;
 }
 
 div.dataTableDiv table tr > td.checkBoxCell {
-    text-align:center;
+    text-align: center;
 }
 div.dataTableDiv table tr > td.checkBoxCell input[type="checkbox"] {
-    margin:0px 6px 0px 6px;
+    margin: 0px 6px 0px 6px;
 }
 
 div.dataTableDiv table tr > td.dataTypeCell > div {
-    font-weight:bold;
-    white-space:nowrap;
-    margin:1px 0px 1px 1px;
-    padding:0px 4px 1px 2px;
+    font-weight: bold;
+    white-space: nowrap;
+    margin: 1px 0px 1px 1px;
+    padding: 0px 4px 1px 2px;
     border-radius: 4px;
     -webkit-border-radius: 4px;
     -moz-border-radius: 4px;
-    border:1px solid #ACD1FF;
+    border: 1px solid #acd1ff;
 }
 
 div.dataTableDiv table tr > td.hoverLines {
-    background-color:#E4E4FF;
+    background-color: #e4e4ff;
 }
 div.dataTableDiv table tr.hoverLines {
-    background-color:#E4E4FF;
+    background-color: #e4e4ff;
 }
 div.dataTableDiv table col.hoverLines {
-    background-color:#E4E4FF;
+    background-color: #e4e4ff;
 }
 
 div.dataTableDiv table tr > td.missingInterpretationRow {
-    color:#000000;
-    background-color:#FFE0CC;
+    color: #000000;
+    background-color: #ffe0cc;
 }
 
 div.dataTableDiv table tr > td.disabledInput {
-    color:#000000;
-    background-color:#B2B4C4;
+    color: #000000;
+    background-color: #b2b4c4;
 }
 
 .step3Legend {
@@ -199,20 +199,21 @@ div.dataTableDiv table tr > td.disabledInput {
 }
 
 .disabledRowLegendBox {
-    background-color: #B2B4C4;
+    background-color: #b2b4c4;
 }
 
 .ignoredRowLegendBox {
-    background-color:#FFE0CC;
+    background-color: #ffe0cc;
 }
 
-.disabledRowLegendBox, .ignoredRowLegendBox {
+.disabledRowLegendBox,
+.ignoredRowLegendBox {
     display: inline-block;
     vertical-align: middle;
     width: 10px;
     height: 10px;
     border-style: solid;
-    border-width:  1px;
+    border-width: 1px;
 }
 
 .legendCell {
@@ -233,66 +234,65 @@ div.dataTableDiv table tr > td.disabledInput {
     margin: 10px;
 }
 
-
 /* The Step 4 disambiguation section */
 
 div.disambiguationSections > div {
-    padding:6px 0em 3px 0em;
+    padding: 6px 0em 3px 0em;
 }
 
 div.disambiguationSections h3 {
     font-size: 14px;
-    margin:0.5em 0px 18px 0.5em;
-
+    margin: 0.5em 0px 18px 0.5em;
 }
 
 div.disambiguationSections > div table {
-    border:0px solid;
-    margin:0px 0px 8px 1.2em;
-    padding:0px;
+    border: 0px solid;
+    margin: 0px 0px 8px 1.2em;
+    padding: 0px;
     font-size: 12px;
 }
 
 div.disambiguationSections > div table tr {
-    border:0px solid;
+    border: 0px solid;
 }
 div.disambiguationSections > div table tr > td {
-    vertical-align:middle;
-    padding:1px 2px 0px 2px;
-    border:0px solid;
-    text-align:left;
+    vertical-align: middle;
+    padding: 1px 2px 0px 2px;
+    border: 0px solid;
+    text-align: left;
 }
 div.disambiguationSections > div table tr > td.disamDataCell {
-    padding:1px 2px 0px 0px;
+    padding: 1px 2px 0px 0px;
 }
 
 div.disambiguationSections > div table tr > th {
-    padding:0px 26px 5px 0px;
+    padding: 0px 26px 5px 0px;
 }
 
-#disambiguateMeasurementsTable th, #masterMTypeDiv th {
-    text-align:left;
+#disambiguateMeasurementsTable th,
+#masterMTypeDiv th {
+    text-align: left;
     font-size: 9px;
-    font-weight:normal;
+    font-weight: normal;
 }
 div.disambiguationSections > div table tr > td > div {
-    padding-left:10px;
-    padding-right:10px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 div.disambiguationSections > div table tr > td select {
-    margin:0px 3px 0px 3px;
+    margin: 0px 3px 0px 3px;
 }
 div.disambiguationSections > div table tr > td > p {
     font-size: 13px;
-    margin:0px 2px 0px 2px;
-    padding:0;
+    margin: 0px 2px 0px 2px;
+    padding: 0;
 }
 div.disambiguationSections > div table tr > td > span {
     font-size: 13px;
-    margin:0px 0px 0px 4px;
+    margin: 0px 0px 0px 4px;
 }
 div.disambiguationSections > div table tr > td input[type="text"] {
-    margin:0px 2px 0px 0px;
+    margin: 0px 2px 0px 0px;
 }
 
 p.warningUnmatched {
@@ -318,17 +318,17 @@ select.disamStd {
     margin-left: 25px;
 }
 
-
 /* The Step 5 review section */
 .step5Subsection {
     margin-top: 30px;
 }
 
-.step5Subsection p, .step5Subsection table {
+.step5Subsection p,
+.step5Subsection table {
     margin-left: 10px;
 }
 
-#reviewWarningsSection table th{
+#reviewWarningsSection table th {
     margin-bottom: 10px;
 }
 
@@ -347,7 +347,7 @@ select.disamStd {
 /************************************************************************************************/
 
 .sectionContent table {
-    border-spacing: 10px
+    border-spacing: 10px;
 }
 
 .sectionContent th {
@@ -359,7 +359,7 @@ select.disamStd {
 }
 
 .errorMessage {
-    background: #FFF0F0;
+    background: #fff0f0;
     padding: 2px;
     border: 2px solid red;
     border-radius: 6px;
@@ -368,7 +368,7 @@ select.disamStd {
 }
 
 .successMessage {
-    background: #FFF0F0;
+    background: #fff0f0;
     padding: 2px;
     border: 2px solid green;
     border-radius: 6px;

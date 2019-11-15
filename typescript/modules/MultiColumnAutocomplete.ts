@@ -23,8 +23,8 @@ export class AutoColumn {
  * Insert these items to display autocomplete messages which are not selectable values.
  */
 export class NonValueItem {
-    static NO_RESULT: NonValueItem = new NonValueItem('No Results Found');
-    static ERROR: NonValueItem = new NonValueItem('Server Error');
+    static NO_RESULT: NonValueItem = new NonValueItem("No Results Found");
+    static ERROR: NonValueItem = new NonValueItem("Server Error");
 
     // the autocomplete JQuery UI plugin expects items with label and value properties
     // anything without those properties gets converted to a plain object that does
@@ -37,7 +37,8 @@ export class NonValueItem {
     }
 }
 
-(function ($) { // immediately invoked function to bind jQuery to $
+(function($) {
+    // immediately invoked function to bind jQuery to $
 
     /*
      * jQuery UI Multicolumn Autocomplete Widget Plugin 2.2
@@ -51,62 +52,67 @@ export class NonValueItem {
      *   http://www.gnu.org/licenses/gpl.html
      *
      * Heavily modified by JBEI to not use "float:left", as it has been Deemed Harmful.
-    */
-    $.widget('custom.mcautocomplete', $.ui.autocomplete, {
+     */
+    $.widget("custom.mcautocomplete", $.ui.autocomplete, {
         "_create": function() {
             this._super();
             this.widget().menu("option", "items", "> :not(.ui-widget-header)");
         },
         "_valOrNbsp": function(jQ, value) {
-            if (typeof value === 'object') {
+            if (typeof value === "object") {
                 jQ.append(value);
             } else if (value && value.trim()) {
                 jQ.text(value);
             } else {
-                jQ.html('&nbsp;');
+                jQ.html("&nbsp;");
             }
         },
         "_appendCell": function(row, column, label) {
-            const cell = $('<div></div>');
-            if (column && column.width) { cell.css('minWidth', column.width); }
-            if (column && column.maxWidth) { cell.css('maxWidth', column.maxWidth); }
+            const cell = $("<div></div>");
+            if (column && column.width) {
+                cell.css("minWidth", column.width);
+            }
+            if (column && column.maxWidth) {
+                cell.css("maxWidth", column.maxWidth);
+            }
             this._valOrNbsp(cell, label);
             row.append(cell);
             return cell;
         },
         "_appendMessage": function(row, label) {
-            const cell = $('<div></div>').appendTo(row);
-            $('<i>').text(label).appendTo(cell);
+            const cell = $("<div></div>").appendTo(row);
+            $("<i>")
+                .text(label)
+                .appendTo(cell);
             return cell;
         },
         "_renderMenu": function(ul, items) {
-            const self = this;
-
-            if (self.options.showHeader) {
+            if (this.options.showHeader) {
                 const table = $('<li class="ui-widget-header"></div>');
                 // Column headers
-                $.each(self.options.columns, function(index, column) {
-                    self._appendCell(table, column, column.name);
+                $.each(this.options.columns, (index, column) => {
+                    this._appendCell(table, column, column.name);
                 });
                 ul.append(table);
             }
             // List items
-            $.each(items, function(index, item) {
-                self._renderItem(ul, item);
+            $.each(items, (index, item) => {
+                this._renderItem(ul, item);
             });
-            $(ul).addClass("edd-autocomplete-list").find("li:odd").addClass("odd");
+            $(ul)
+                .addClass("edd-autocomplete-list")
+                .find("li:odd")
+                .addClass("odd");
         },
         "_renderItem": function(ul, item) {
-            const self = this;
-            const result = $('<li>').data('ui-autocomplete-item', item);
-
+            const result = $("<li>").data("ui-autocomplete-item", item);
             if (item instanceof NonValueItem) {
-                self._appendMessage(result, item.label);
+                this._appendMessage(result, item.label);
             } else {
-                $.each(self.options.columns, function(index, column) {
-                    var value;
+                $.each(this.options.columns, (index, column) => {
+                    let value;
                     if (column.valueField) {
-                        if (typeof column.valueField === 'function') {
+                        if (typeof column.valueField === "function") {
                             value = column.valueField.call({}, item, column, index);
                         } else {
                             value = item[column.valueField];
@@ -115,15 +121,13 @@ export class NonValueItem {
                         value = item[index];
                     }
                     if (value instanceof Array) {
-                        value = value[0] || '';
+                        value = value[0] || "";
                     }
-                    self._appendCell(result, column, value);
+                    this._appendCell(result, column, value);
                 });
             }
-
             result.appendTo(ul);
             return result;
         },
     });
-
-}(jQuery));
+})(jQuery);

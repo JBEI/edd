@@ -8,5 +8,5 @@
 
 #experimentDescDropZone > #dz-title > span {
     margin: 0 auto;
-    padding-left: 3em;  /* compensate for width of help button */
+    padding-left: 3em; /* compensate for width of help button */
 }

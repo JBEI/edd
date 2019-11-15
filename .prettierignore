@@ -1,0 +1,7 @@
+# ignore testing/fixture files
+**/test*
+**/fixtures/*
+
+# ignore template HTML
+# see: https://github.com/prettier/prettier/issues/5581
+**/templates/**/*.html

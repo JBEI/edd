@@ -3,7 +3,7 @@
 #   docker-compose*.yml files like so:
 #     docker-compose -f docker-compose.yml -f docker-compose.override.yml -f ice.yml {COMMAND}
 
-version: '3.7'
+version: "3.7"
 networks:
   icenet: {}
 volumes:
@@ -15,7 +15,7 @@ services:
   edd:
     environment:
       ICE_NAME: edd
-      ICE_URL: 'http://ice:8080/'
+      ICE_URL: "http://ice:8080/"
     links:
       - ice
     networks:
@@ -23,7 +23,7 @@ services:
   websocket:
     environment:
       ICE_NAME: edd
-      ICE_URL: 'http://ice:8080/'
+      ICE_URL: "http://ice:8080/"
     links:
       - ice
     networks:
@@ -31,7 +31,7 @@ services:
   worker:
     environment:
       ICE_NAME: edd
-      ICE_URL: 'http://ice:8080/'
+      ICE_URL: "http://ice:8080/"
     links:
       - ice
     networks:
@@ -64,7 +64,7 @@ services:
       - ice_local:/usr/local/tomcat/data
       - ice_keys:/usr/local/tomcat/rest-auth
     ports:
-      - '127.0.0.1:8080:8080'
+      - "127.0.0.1:8080:8080"
       # - '127.0.0.1:9999:8000'
   ice_db:
     image: jbei/postgres:9.6

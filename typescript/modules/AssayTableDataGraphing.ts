@@ -1,18 +1,13 @@
 import * as d3 from "d3";
 import * as $ from "jquery";
-import {
-    GraphParams,
-    GraphValue,
-    GraphView,
-} from "./EDDGraphingTools";
+import { GraphParams, GraphValue, GraphView } from "./EDDGraphingTools";
 import * as Utl from "./Utl";
 
 export class EDDATDGraphing {
-
     graphDiv: JQuery;
 
-    constructor() {
-        this.graphDiv = $("#graphDiv");
+    constructor(graphDiv) {
+        this.graphDiv = graphDiv;
     }
 
     clearAllSets(): void {
@@ -21,16 +16,13 @@ export class EDDATDGraphing {
 
     addNewSet(newSet: GraphValue[][]): void {
         // data for graphs
-        let graphSet: GraphParams = {
-            values: Utl.chainArrays(newSet),
-            width: 750,
-            height: 220,
+        const graphSet: GraphParams = {
+            "values": Utl.chainArrays(newSet),
+            "width": 750,
+            "height": 220,
         };
         // create respective graphs
-        let view = new GraphView($('.linechart')[0]);
+        const view = new GraphView($(".linechart", this.graphDiv)[0]);
         view.buildLineGraph(graphSet);
     }
-};
-
-
-window.addEventListener('load', this.graphDiv, false);
+}

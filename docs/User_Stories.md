@@ -4,7 +4,7 @@ Here we present real EDD user stories and how users interact with EDD.
 
 ## Proteomic user story
 
-__User Goals__:
+**User Goals**:
 
 1. Build a study to hold experiment(s)
 2. Submit samples for proteomic analysis
@@ -12,7 +12,7 @@ __User Goals__:
 4. Import proteomic data
 5. Visualize proteomic data
 
-__Steps in EDD__:
+**Steps in EDD**:
 
 1. Create Study
 2. Drag and drop experiment detail excel file (includes strains/plasmids and meta data - ie
@@ -21,7 +21,7 @@ __Steps in EDD__:
 4. Import data from skyline machine.
 5. Visualize data in line and bar charts with ability to filter data.
 
-__Jen's User Story__:
+**Jen's User Story**:
 
 Jennifer is a scientist at JBEI interested in engineering E. coli to produce a biofuel. She
 chooses a pathway to produce a good biofuel and finds genes for each step in the pathway. She
@@ -49,14 +49,14 @@ to win a Nobel prize.
 
 ## Import Data for a completed experiment
 
-__User Goals__:
+**User Goals**:
 
 1. Build a study
 2. Import data from experiment user has run
 3. Verify data is correctly imported
 4. View study data has been imported
 
-__Steps__:
+**Steps**:
 
 1. Create study by giving study a name. Optional add description and enter contact for who to
    contact re experiment.
@@ -68,13 +68,13 @@ __Steps__:
     - Experiment detail lines are created.
 3. Import Data
     - Select type of file to import
-        a. Generic CSV
-        b. Skyline output
-        c. Gene transcription data (as table fo RPKM values)
-        d. HPLC instrument data file
-        e. Proteomics data
-        f. Mass Distrubution Vector
-        g. Biolector XML
+      a. Generic CSV
+      b. Skyline output
+      c. Gene transcription data (as table fo RPKM values)
+      d. HPLC instrument data file
+      e. Proteomics data
+      f. Mass Distrubution Vector
+      g. Biolector XML
     - Drag/drop file
     - Verify data (table and graph form)
     - Confirm assays correspond to lines created from Experiment Description
@@ -84,7 +84,7 @@ __Steps__:
     - view graph
     - view table
 
-__Daniel's User Story__:
+**Daniel's User Story**:
 
 Daniel is a scientist. He works at JBEI and he did an experiment on something. Given that
 he works at JBEI his data is most likely a chromatogram in the form of an Agilent .D file. He’s
@@ -100,7 +100,7 @@ experiment details by downloading a sample template. He enters the shaking speed
 experiments he has already completed for the experiment description file. He also decides to
 link his electronic notebooks so that others can see more of his protocols. He then looks at
 the list of available data types and chooses the type of data he would like to input. He chooses
-the data type and sees  “have you put your data in the correct format?” This sentence is a
+the data type and sees “have you put your data in the correct format?” This sentence is a
 link that expands. When he clicks to expand, he sees examples of the correct way to format
 his data. He sees that his data is not in the right format and then spends several days
 analyzing his chromatograms and then typing the results into Excel for normalization and
@@ -114,21 +114,20 @@ his excel file. He then makes sure all of his lines are input and clicks
 his information has been successfully uploaded. He sees a graph with his measurements and
 a table that includes his assays.
 
-__Problem Daniel is Facing__:
+**Problem Daniel is Facing**:
 Major problem here is that Daniel’s experiment involves a metabolite for which the EDD does
 not know about, and he needs to be able to add it. Daniel’s experiment also involves a
 measurement data type that is not already in EDD and he needs to add it (for example 3 gene
 cluster copy number measurements, every experiment has weird twists and the EDD should handle
 them flawlessly and intuitively).
 
-
 ## Data Download
 
-__User Goals__:
+**User Goals**:
 
 1. Download data from an experiment
 
-__Steps__:
+**Steps**:
 
 1. Navigate to the EDD study of interest
     - Search by name, contact, date.
@@ -140,7 +139,7 @@ __Steps__:
 5. Click download.
 6. Lines are downloaded with assays and measurements.
 
-__Eli's User Story__:
+**Eli's User Story**:
 
 Eli is a scientist interested in running a flux analysis on David's data. He searches studies
 based on David's name. He finds the study he is interested in and clicks on it. He clicks on

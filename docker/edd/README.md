@@ -79,7 +79,7 @@ of commands is provided below, or can be found by executing `docker run --rm -it
 To run a container without going through the entrypoint script, use a command similar to
 `docker run --rm -it --entrypoint /bin/bash edd-core`.
 
----------------------------------------------------------------------------------------------------
+---
 
-[1]:    ../../README.md
-[2]:    https://hub.docker.com/_/buildpack-deps/
+[1]: ../../README.md
+[2]: https://hub.docker.com/_/buildpack-deps/

@@ -6,32 +6,33 @@ Some of these sample commands will only work as written at JBEI, but should serv
 examples for common development tasks. Directions assume that Docker containers are already
 running in the development environment.
 
-* __Run automated tests__
-    * Python tests: `docker-compose exec edd python manage.py test`
+-   **Run automated tests**
 
-* __Test EDD/ICE communication__:
-  `docker-compose exec edd /code/manage.py test_ice_communication`
+    -   Python tests: `docker-compose exec edd python manage.py test`
 
-* __Test email configuration__:
-  `docker-compose exec edd /code/manage.py sendtestemail you@example.com`
+-   **Test EDD/ICE communication**:
+    `docker-compose exec edd /code/manage.py test_ice_communication`
 
-* __Create an unprivileged test account__
-  `docker-compose exec edd /code/manage.py edd_create_user`
+-   **Test email configuration**:
+    `docker-compose exec edd /code/manage.py sendtestemail you@example.com`
 
-* __Dump the production database to file and load into a local test deployment__
-    * Create the dump file:
+-   **Create an unprivileged test account**
+    `docker-compose exec edd /code/manage.py edd_create_user`
 
-          pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U {your_username}
+-   **Dump the production database to file and load into a local test deployment**
 
-    * Load the dump file:
-        * Backup and remove the existing `postgres_db` volume
-        * Add the dump file to a volume mount in `/docker-entrypoint-initdb.d/` in the
-          `postgres` service
-        * Re-launch postgres with the new volumes
+    -   Create the dump file:
 
-* __Rebuild Solr indexes:__
-  `docker-compose exec edd /code/manage.py edd_index`
+            pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U {your_username}
 
+    -   Load the dump file:
+        -   Backup and remove the existing `postgres_db` volume
+        -   Add the dump file to a volume mount in `/docker-entrypoint-initdb.d/` in the
+            `postgres` service
+        -   Re-launch postgres with the new volumes
+
+-   **Rebuild Solr indexes:**
+    `docker-compose exec edd /code/manage.py edd_index`
 
 ## Upgrading EDD
 

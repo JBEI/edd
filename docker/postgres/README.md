@@ -19,7 +19,7 @@ by the EDD application.
 A simple healthcheck script that verifies that the database server is up and responding to query
 requests.
 
----------------------------------------------------------------------------------------------------
+---
 
-[1]:    ../../README.md
-[2]:    https://www.postgresql.org/
+[1]: ../../README.md
+[2]: https://www.postgresql.org/

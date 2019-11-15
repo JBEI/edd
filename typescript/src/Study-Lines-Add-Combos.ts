@@ -1,5 +1,4 @@
 import * as $ from "jquery";
-import "jquery-ui/themes/base/all.css";
 import "jquery-ui/ui/effects/effect-bounce";
 import "jquery-ui/ui/widgets/button";
 import "jquery-ui/ui/widgets/dialog";
@@ -11,6 +10,7 @@ import * as EDDAuto from "../modules/EDDAutocomplete";
 import * as EddRest from "../modules/EDDRest";
 import * as Utl from "../modules/Utl";
 
+import "../modules/Styles";
 
 // line metadata types that should use an autocomplete to gather user input
 export const AUTOCOMPLETE_META_UUIDS: string[] = [
@@ -58,18 +58,19 @@ interface LinePropertyInputOptions extends MultiValueInputOptions {
 
 // special case JSON identifier for replicate count, which has no direct association to a line
 // metadata type
-const REPLICATE_COUNT_JSON_ID = 'replicate_count';
-const REPLICATE_NUM_NAME_ID = 'replicate_num';
+const REPLICATE_COUNT_JSON_ID = "replicate_count";
+const REPLICATE_NUM_NAME_ID = "replicate_num";
 
-const ICE_FOLDER_JSON_ID = 'ice_folder';
+const ICE_FOLDER_JSON_ID = "ice_folder";
 
-const STRAIN_NAME_ELT_LABEL = 'ICE Entry Name(s)';
+const STRAIN_NAME_ELT_LABEL = "ICE Entry Name(s)";
 
 // back-end error messages associated with specific conditions that the UI has to handle
-const NON_STRAINS_ERR_CATEGORY = 'Non-Strains';
-const NON_UNIQUE_NAMES_ERR_CATEGORY = 'Non-unique line names';
-const ICE_ACCESS_ERROR_CATEGORIES = ['ICE part access problem', 'ICE access error'];
-const UNRESOLVABLE_ACCESS_ERR = 'ICE strains are required for combinatorial line creation';
+const NON_STRAINS_ERR_CATEGORY = "Non-Strains";
+const NON_UNIQUE_NAMES_ERR_CATEGORY = "Non-unique line names";
+const ICE_ACCESS_ERROR_CATEGORIES = ["ICE part access problem", "ICE access error"];
+const UNRESOLVABLE_ACCESS_ERR =
+    "ICE strains are required for combinatorial line creation";
 
 const SCROLL_DURATION_MS = 2000;
 
@@ -77,71 +78,67 @@ const SCROLL_DURATION_MS = 2000;
 const LINES_PER_ROW = 4;
 
 // max # of line name previews displayed on the page
-const MAX_PREVIEW_LINE_NAMES: number = 51;
+const MAX_PREVIEW_LINE_NAMES = 51;
 
 // animation parameters to help users understand when duplicate controls are triggered
 const BOUNCES = 5;
-const BOUNCE_SPEED = 'slow';
-
+const BOUNCE_SPEED = "slow";
 
 function loadAllLineMetadataTypes(): void {
-    $('#addPropertyButton').prop('disabled', true);
-    EddRest.loadMetadataTypes(
-        {
-            'success': creationManager.setLineMetaTypes.bind(creationManager),
-            'error': showMetaLoadFailed,
-            'request_all': true, // get all result pages
-            'wait': showMetaWaitMessage,
-            'context': EddRest.LINE_METADATA_CONTEXT,
-            'ordering': 'type_name',
-        });
+    $("#addPropertyButton").prop("disabled", true);
+    EddRest.loadMetadataTypes({
+        "success": creationManager.setLineMetaTypes.bind(creationManager),
+        "error": showMetaLoadFailed,
+        "request_all": true, // get all result pages
+        "wait": showMetaWaitMessage,
+        "context": EddRest.LINE_METADATA_CONTEXT,
+        "ordering": "type_name",
+    });
 }
-
 
 function addRetryButton(container: JQuery, retryFunction): JQuery {
     const btn = $("<button type='button'>")
-        .addClass('retry-btn btn btn-secondary')
-        .on('click', (event: Event) => {
-            $(event.target).prop('disabled', true);
+        .addClass("retry-btn btn btn-secondary")
+        .on("click", (event: Event) => {
+            $(event.target).prop("disabled", true);
             retryFunction();
         });
 
     // set button icon in a span, per Bootstrap suggestion
-    $('<span>')
-        .addClass('glyphicon glyphicon-refresh')
+    $("<span>")
+        .addClass("glyphicon glyphicon-refresh")
         .appendTo(btn)
-        .after(' ');
+        .after(" ");
 
     // set button text
-    $('<span>').text('Retry').appendTo(btn);
+    $("<span>")
+        .text("Retry")
+        .appendTo(btn);
 
     return btn.appendTo(container);
 }
 
-
 function showMetaWaitMessage(): void {
-    const div = $('#step1_loading_metadata_status_div').empty();
+    const div = $("#step1_loading_metadata_status_div").empty();
 
     $("<span>")
-        .text('Loading line metadata types...')
-        .addClass('loading-resource-message')
+        .text("Loading line metadata types...")
+        .addClass("loading-resource-message")
         .appendTo(div);
 
-    $('<span>')
-        .addClass('wait waitbadge-new')
+    $("<span>")
+        .addClass("wait waitbadge-new")
         .appendTo(div);
 }
 
-
 function showMetaLoadFailed(jqXHR, textStatus: string, errorThrown: string): void {
-    const div = $('#step1_loading_metadata_status_div').empty();
+    const div = $("#step1_loading_metadata_status_div").empty();
     const span = $("<span>")
-        .text('Unable to load line metadata from EDD. Property selection is disabled.')
-        .addClass('alert alertDanger')
+        .text("Unable to load line metadata from EDD. Property selection is disabled.")
+        .addClass("alert alertDanger")
         .appendTo(div);
     addRetryButton(span, loadAllLineMetadataTypes);
 }
-
 
 class NameElement {
     nameEltLabel: string;
@@ -154,7 +151,7 @@ class NameElement {
     // which have no representation in the database,
     // from line metadata types which do.
     // No need to worry about naming overlaps, etc.
-    static nameElementCounter: number = 0;
+    static nameElementCounter = 0;
     static strainNameGuiId = -1;
 
     constructor(label: string, nameEltJsonId: any) {
@@ -179,7 +176,6 @@ class NameElement {
     }
 }
 
-
 class LinePropertyDescriptor extends NameElement {
     // integer pk for line metadata
     // string for special cases
@@ -202,23 +198,20 @@ class LinePropertyDescriptor extends NameElement {
     }
 
     toString(): string {
-        return '(' + this.jsonId.toString() + ', ' + this.inputLabel + ')';
+        return "(" + this.jsonId.toString() + ", " + this.inputLabel + ")";
     }
 }
 
-
 class CustomNameElement extends NameElement {
-
     constructor() {
-        super('', null);
-        this.nameEltJsonId = '_custom_' + this.nameEltGuiId;
+        super("", null);
+        this.nameEltJsonId = "_custom_" + this.nameEltGuiId;
     }
 
     toString(): string {
-        return '(' + this.nameEltJsonId + ', ' + this.nameEltLabel + ')';
+        return "(" + this.nameEltJsonId + ", " + this.nameEltLabel + ")";
     }
 }
-
 
 class ErrSummary {
     iceAccessErrors: boolean;
@@ -236,7 +229,6 @@ class ErrSummary {
     }
 }
 
-
 export class MultiValueInput {
     uiLabel: JQuery;
     maxRows: number;
@@ -246,20 +238,26 @@ export class MultiValueInput {
     addButton: JQuery;
 
     constructor(label: string, options: MultiValueInputOptions) {
-        this.uiLabel = $('<label>')
+        this.uiLabel = $("<label>")
             .text(label)
-            .addClass('not-in-use');
+            .addClass("not-in-use");
         this.maxRows = options.maxRows === undefined ? 30 : options.maxRows;
         this.minEntries = options.minEntries || 0;
     }
 
     hasValidInput(rowIndex: number): boolean {
-        return this.rows[rowIndex].find('input').first().val().trim() !== '';
+        return (
+            this.rows[rowIndex]
+                .find("input")
+                .first()
+                .val()
+                .trim() !== ""
+        );
     }
 
     validInputCount(): number {
-        var count: number = 0;
-        for (var i = 0; i < this.rows.length; i++) {
+        let count = 0;
+        for (let i = 0; i < this.rows.length; i++) {
             if (this.hasValidInput(i)) {
                 count++;
             }
@@ -268,10 +266,11 @@ export class MultiValueInput {
     }
 
     highlightRowLabel(anyValidInput: boolean): void {
-        this.rows[0].find('label')
+        this.rows[0]
+            .find("label")
             .first()
-            .toggleClass('in-use', anyValidInput)
-            .toggleClass('not-in-use', !anyValidInput);
+            .toggleClass("in-use", anyValidInput)
+            .toggleClass("not-in-use", !anyValidInput);
     }
 
     getLabel(): JQuery {
@@ -279,17 +278,17 @@ export class MultiValueInput {
     }
 
     buildRemoveBtn(container: JQuery): JQuery {
-        var btn: JQuery, rowIndex: number;
+        let btn: JQuery, rowIndex: number;
         // add a delete button in the same cell as the input controls
 
         if (this.getRowCount() > this.minEntries) {
             rowIndex = this.getRowCount() - 1;
-            btn = $('<button>')
-                .addClass('removeButton')
+            btn = $("<button>")
+                .addClass("removeButton")
                 .appendTo(container);
-            $('<span>')
-                .addClass('ui-icon')
-                .addClass('ui-icon-trash')
+            $("<span>")
+                .addClass("ui-icon")
+                .addClass("ui-icon-trash")
                 .appendTo(btn);
             this.registerRemoveRowEvtHandler(btn, rowIndex);
             return btn;
@@ -305,14 +304,14 @@ export class MultiValueInput {
 
     buildAddBtn(container: JQuery) {
         // only add the control to the first row
-        if ((this.getRowCount() === 1) && (this.getRowCount() < this.maxRows)) {
-            this.addButton = $('<button>')
-                .addClass('addButton')
-                .on('click', this.appendRow.bind(this))
+        if (this.getRowCount() === 1 && this.getRowCount() < this.maxRows) {
+            this.addButton = $("<button>")
+                .addClass("addButton")
+                .on("click", this.appendRow.bind(this))
                 .appendTo(container);
-            $('<span>')
-                .addClass('ui-icon')
-                .addClass('ui-icon-plus')
+            $("<span>")
+                .addClass("ui-icon")
+                .addClass("ui-icon-plus")
                 .appendTo(this.addButton);
         }
     }
@@ -322,13 +321,13 @@ export class MultiValueInput {
     }
 
     getRowCount(): number {
-         return this.rows.length;
+        return this.rows.length;
     }
 
     appendRow(initialInput?: any): void {
         const prevRow = this.rows[this.rows.length - 1];
-        const newRow = $('<div>')
-            .addClass('table-row')
+        const newRow = $("<div>")
+            .addClass("table-row")
             .insertAfter(prevRow);
         this.fillRowControls(newRow, initialInput);
         this.updateInputState();
@@ -337,14 +336,16 @@ export class MultiValueInput {
     promoteRowContent(firstRow: JQuery, nextRow: JQuery) {
         // remove only the input cell content from this row,
         // leaving labeling and controls in place
-        const inputCell = firstRow.children('.inputCell').empty();
+        const inputCell = firstRow.children(".inputCell").empty();
         // detach and relocate input cell content
         // from the following row, moving it up
         nextRow
-            .children('.inputCell')
+            .children(".inputCell")
             .children()
             .each((index: number, element: Element) => {
-                $(element).detach().appendTo(inputCell);
+                $(element)
+                    .detach()
+                    .appendTo(inputCell);
             });
     }
 
@@ -372,7 +373,7 @@ export class MultiValueInput {
         // to get the correct index number
         // following the removal of a preceding row
         this.rows.slice(rowIndex).forEach((following, i) => {
-            const removeBtn = following.find('.removeButton').first();
+            const removeBtn = following.find(".removeButton").first();
             this.registerRemoveRowEvtHandler(removeBtn, i);
         });
 
@@ -413,24 +414,25 @@ export class MultiValueInput {
     }
 }
 
-
 export class LinePropertyInput extends MultiValueInput {
     lineProperty: LinePropertyDescriptor;
     supportsCombinations: boolean;
 
     constructor(options: LinePropertyInputOptions) {
-        super(options.lineProperty.inputLabel + ':', options);
+        super(options.lineProperty.inputLabel + ":", options);
         this.lineProperty = options.lineProperty;
         if (!this.lineProperty) {
-           throw Error('lineProperty is required');
+            throw Error("lineProperty is required");
         }
-        this.supportsCombinations = options.supportsCombinations === undefined ?
-           true : options.supportsCombinations;
+        this.supportsCombinations =
+            options.supportsCombinations === undefined
+                ? true
+                : options.supportsCombinations;
     }
 
     updateInputState() {
         if (this.addButton) {
-            this.addButton.prop('disabled', !this.canAddRows());
+            this.addButton.prop("disabled", !this.canAddRows());
         }
         this.highlightRowLabel(this.validInputCount() > 0);
         this.autoUpdateCombinations();
@@ -456,30 +458,33 @@ export class LinePropertyInput extends MultiValueInput {
     }
 
     getInput(rowIndex: number): any {
-        const value = this.rows[rowIndex].find('input').first().val() as string;
+        const value = this.rows[rowIndex]
+            .find("input")
+            .first()
+            .val() as string;
         return value.trim();
     }
 
     buildYesComboButton(): JQuery {
         return $('<input type="radio">')
-            .prop('name', this.lineProperty.jsonId)
-            .val('Yes')
-            .addClass('property_radio');
+            .prop("name", this.lineProperty.jsonId)
+            .val("Yes")
+            .addClass("property_radio");
     }
 
     buildNoComboButton(): JQuery {
         return $('<input type="radio">')
-            .prop('name', this.lineProperty.jsonId)
-            .prop('checked', true)
-            .val('No')
-            .addClass('property_radio');
+            .prop("name", this.lineProperty.jsonId)
+            .prop("checked", true)
+            .val("No")
+            .addClass("property_radio");
     }
 
     /*
      * Tests whether this property has *controls* to provide combinatorial inputs, though
-      * not whether multiple valid combinatorial inputs are actually provided */
+     * not whether multiple valid combinatorial inputs are actually provided */
     hasMultipleInputs(): boolean {
-         return this.rows.length > 1;
+        return this.rows.length > 1;
     }
 
     /**
@@ -526,42 +531,42 @@ export class LinePropertyInput extends MultiValueInput {
     autoUpdateCombinations() {
         let combosButton: JQuery;
 
-        const noCombosButton = this.rows[0].find('input:radio[value=No]');
-        const namingElt = $('#' + this.lineProperty.nameEltGuiId);
+        const noCombosButton = this.rows[0].find("input:radio[value=No]");
+        const namingElt = $("#" + this.lineProperty.nameEltGuiId);
 
         if (this.supportsCombinations) {
             // note: not all inputs will have a "make combos" button  -- need enclosing check
-            combosButton = this.rows[0].find('input:radio[value=Yes]');
+            combosButton = this.rows[0].find("input:radio[value=Yes]");
             // for the moment, just disable both buttons
             // and treat them as indicators rather than user inputs
-            combosButton.prop('disabled', true);
+            combosButton.prop("disabled", true);
         }
 
         // TODO: make use of this to enable user to toggle "apply all/make combos" radio
         // buttons! With a manageable amt of additional UI, that should enable multivalued
         // combinations...e.g. strain groups.
         const jsonId = this.lineProperty.jsonId as number;
-        const supportsMultivalue = creationManager.multivaluedMetaTypePks.indexOf(jsonId) >= 0;
+        const supportsMultivalue =
+            creationManager.multivaluedMetaTypePks.indexOf(jsonId) >= 0;
 
         // update the state of the radio buttons to reflect whether valid inputs will result
         // in combinatorial line creation...inputs may not be provided yet, but best to give
         // feedback right away re: intention when a new row is added
         const isIceFolder = this.lineProperty.jsonId === ICE_FOLDER_JSON_ID;
         const isStrains = this.lineProperty.metaUUID === EddRest.LINE_STRAINS_META_UUID;
-        const aggregateComboIntended = (
+        const aggregateComboIntended =
             isIceFolder ||
-            (isStrains && !!creationManager.getPropertyInput(ICE_FOLDER_JSON_ID))
-        );
+            (isStrains && !!creationManager.getPropertyInput(ICE_FOLDER_JSON_ID));
         const comboInputIntended = this.hasMultipleInputs() || aggregateComboIntended;
 
         let wasChecked: boolean, btn: JQuery;
         if (comboInputIntended) {
-            wasChecked = combosButton.prop('checked');
-            combosButton.prop('checked', true);
+            wasChecked = combosButton.prop("checked");
+            combosButton.prop("checked", true);
             btn = combosButton;
         } else {
-            wasChecked = noCombosButton.prop('checked');
-            noCombosButton.prop('checked', true);
+            wasChecked = noCombosButton.prop("checked");
+            noCombosButton.prop("checked", true);
             btn = noCombosButton;
         }
 
@@ -569,10 +574,10 @@ export class LinePropertyInput extends MultiValueInput {
         // animate the newly selected button
         // to call the user's attention to it
         if (!wasChecked) {
-            btn.effect('bounce', {"times": BOUNCES}, BOUNCE_SPEED);
+            btn.effect("bounce", { "times": BOUNCES }, BOUNCE_SPEED);
         }
 
-        noCombosButton.prop('disabled', true);
+        noCombosButton.prop("disabled", true);
 
         // update step 2 naming elements for this line property... if valid values are provided
         // for combinatorial input, style the step 2 naming element to reflect that its
@@ -581,13 +586,16 @@ export class LinePropertyInput extends MultiValueInput {
             // do special-case processing for replicate count input...though it's displayed
             // in step 1 as "apply to all lines", if > 1, then it's "combinatorial" from the
             // standpoint that replicate # is required input to computing unique line names
-            namingElt.toggleClass('required-name-elt', this.getInput(0) > 1);
+            namingElt.toggleClass("required-name-elt", this.getInput(0) > 1);
             return;
         }
 
         const nameInputRequired = this.hasValidCombinations();
-        namingElt.toggleClass('required-name-elt', nameInputRequired);
-        noCombosButton.attr('disabled', String(nameInputRequired || this.supportsCombinations));
+        namingElt.toggleClass("required-name-elt", nameInputRequired);
+        noCombosButton.attr(
+            "disabled",
+            String(nameInputRequired || this.supportsCombinations),
+        );
     }
 
     getValueJson(): any {
@@ -607,37 +615,41 @@ export class LinePropertyInput extends MultiValueInput {
 
     fillRowControls(row: JQuery, initialValue?: any): void {
         this.rows.push(row);
-        const addCell = $('<div>')
-            .addClass('bulk_lines_table_cell')
-            .addClass('addCell')
+        const addCell = $("<div>")
+            .addClass("bulk_lines_table_cell")
+            .addClass("addCell")
             .appendTo(row);
-        const labelCell = $('<div>')
-            .addClass('bulk_lines_table_cell')
+        const labelCell = $("<div>")
+            .addClass("bulk_lines_table_cell")
             .appendTo(row);
         const firstRow = this.getRowCount() === 1;
         if (firstRow) {
             this.buildAddBtn(addCell);
             this.getLabel().appendTo(labelCell);
         }
-        const inputCell = $('<div>')
-            .addClass('bulk_lines_table_cell')
-            .addClass('inputCell')
+        const inputCell = $("<div>")
+            .addClass("bulk_lines_table_cell")
+            .addClass("inputCell")
             .appendTo(row);
-        const flewGrowWrapper = $('<div>').addClass('inputContent').appendTo(inputCell);
+        const flewGrowWrapper = $("<div>")
+            .addClass("inputContent")
+            .appendTo(inputCell);
         this.fillInputControls(flewGrowWrapper, initialValue);
-        const applyAllCell = $('<div>')
-            .addClass('bulk_lines_table_cell')
-            .addClass('centered_radio_btn_parent')
+        const applyAllCell = $("<div>")
+            .addClass("bulk_lines_table_cell")
+            .addClass("centered_radio_btn_parent")
             .appendTo(row);
-        const makeComboCell = $('<div>')
-            .addClass('bulk_lines_table_cell')
-            .addClass('centered_radio_btn_parent')
+        const makeComboCell = $("<div>")
+            .addClass("bulk_lines_table_cell")
+            .addClass("centered_radio_btn_parent")
             .appendTo(row);
         if (firstRow) {
             const noComboButton = this.buildNoComboButton().appendTo(applyAllCell);
             if (firstRow && this.supportsCombinations) {
-                const yesComboButton = this.buildYesComboButton().appendTo(makeComboCell);
-                noComboButton.prop('checked', true);
+                const yesComboButton = this.buildYesComboButton().appendTo(
+                    makeComboCell,
+                );
+                noComboButton.prop("checked", true);
             }
         }
         this.updateInputState();
@@ -647,8 +659,8 @@ export class LinePropertyInput extends MultiValueInput {
         // by default, just fill in a single text box.
         // child classes may override with alternate user inputs
         $('<input type="text">')
-            .addClass('columnar-text-input')
-            .on('change', () => {
+            .addClass("columnar-text-input")
+            .on("change", () => {
                 this.updateInputState();
                 creationManager.updateNameEltChoices(false);
             })
@@ -658,11 +670,11 @@ export class LinePropertyInput extends MultiValueInput {
 
     registerRemoveRowEvtHandler(removeButton: JQuery, rowIndex: number) {
         removeButton
-            .off('click')
+            .off("click")
             .on(
-                'click',
+                "click",
                 null,
-                {'rowIndex': rowIndex, 'propertyInput': this},
+                { "rowIndex": rowIndex, "propertyInput": this },
                 (ev: JQueryMouseEventObject) => {
                     ev.data.propertyInput.removeRow(ev.data.rowIndex);
                 },
@@ -680,12 +692,11 @@ export class LinePropertyInput extends MultiValueInput {
     }
 }
 
-
 export class CustomElementInput extends MultiValueInput {
     element: CustomNameElement;
 
     constructor() {
-        super('', {"maxRows": 1});
+        super("", { "maxRows": 1 });
         this.element = new CustomNameElement();
     }
 
@@ -698,11 +709,14 @@ export class CustomElementInput extends MultiValueInput {
     }
 
     hasValidInput(rowIndex: number): boolean {
-        var match: any, abbrev: any;
-        match = this.rows[0].find('.custom-name-input').val();
-        abbrev = this.rows[rowIndex].find('.custom-val-input').val();
-        return (match !== undefined) && match.toString().trim() &&
-               (abbrev !== undefined) && abbrev.toString().trim();
+        const match = this.rows[0].find(".custom-name-input").val();
+        const abbrev = this.rows[rowIndex].find(".custom-val-input").val();
+        return (
+            match !== undefined &&
+            match.toString().trim() &&
+            abbrev !== undefined &&
+            abbrev.toString().trim()
+        );
     }
 
     getValueJson(): any {
@@ -711,9 +725,9 @@ export class CustomElementInput extends MultiValueInput {
             return null;
         }
         this.rows.forEach((currentValue, rowIndex) => {
-            var staticText: any;
+            let staticText: any;
             if (this.hasValidInput(rowIndex)) {
-                staticText = this.rows[rowIndex].find('.custom-val-input').val();
+                staticText = this.rows[rowIndex].find(".custom-val-input").val();
                 values[this.element.nameEltJsonId] = staticText;
             }
         });
@@ -724,39 +738,40 @@ export class CustomElementInput extends MultiValueInput {
         const rowIndex = this.rows.length;
         this.rows.push(row);
         // TODO: consider what happens when user deletes all the text!
-        this.addCustomNameInput(row, 'custom-name-cell', 'custom-name-input')
-            .children('.custom-name-input')
+        this.addCustomNameInput(row, "custom-name-cell", "custom-name-input")
+            .children(".custom-name-input")
             .on(
-                'change',
+                "change",
                 null,
-                {'rowIndex': rowIndex, 'elementInput': this},
+                { "rowIndex": rowIndex, "elementInput": this },
                 (ev: JQueryMouseEventObject) => {
-                    let target: number;
-                    let elementInput: CustomElementInput;
-
-                    elementInput = ev.data.elementInput;
-                    target = ev.data.rowIndex;
-
+                    const elementInput: CustomElementInput = ev.data.elementInput;
+                    const target: number = ev.data.rowIndex;
                     // update internal state to reflect user input
-                    this.element.nameEltLabel = this.rows[0].find('.custom-name-input').val();
-
+                    this.element.nameEltLabel = this.rows[0]
+                        .find(".custom-name-input")
+                        .val();
                     // update labeling for list item in the 'name element order' subsection
-                    $('#name_elt' + this.element.nameEltGuiId).text(this.element.nameEltLabel);
-
+                    $("#name_elt" + this.element.nameEltGuiId).text(
+                        this.element.nameEltLabel,
+                    );
                     creationManager.updateNameEltChoices(true);
                 },
             );
-        const valCell = this.addCustomNameInput(row, 'custom-val-cell', 'custom-val-input')
-            .on(
-                'change',
-                null,
-                {'rowIndex': rowIndex, 'elementInput': this},
-                (ev: JQueryMouseEventObject) => {
-                    // TODO: cache previous hasValidInput() state
-                    // and use here to avoid extra processing / back end requests
-                    creationManager.updateNameEltChoices(true);
-                },
-            );
+        const valCell = this.addCustomNameInput(
+            row,
+            "custom-val-cell",
+            "custom-val-input",
+        ).on(
+            "change",
+            null,
+            { "rowIndex": rowIndex, "elementInput": this },
+            (ev: JQueryMouseEventObject) => {
+                // TODO: cache previous hasValidInput() state
+                // and use here to avoid extra processing / back end requests
+                creationManager.updateNameEltChoices(true);
+            },
+        );
 
         this.buildRemoveBtn(valCell);
         this.updateInputState();
@@ -765,20 +780,28 @@ export class CustomElementInput extends MultiValueInput {
     promoteRowContent(firstRow: JQuery, nextRow: JQuery) {
         // remove only the input cell content from this row,
         // leaving labeling and controls in place
-        const firstRowCell = firstRow.children('.custom-name-cell').empty();
+        const firstRowCell = firstRow.children(".custom-name-cell").empty();
         // detach and relocate input cell content from the following row, moving it up
-        nextRow.children('.custom-val-cell').each((index: number, element: Element) => {
-            $(element).detach().appendTo(firstRowCell);
+        nextRow.children(".custom-val-cell").each((index: number, element: Element) => {
+            $(element)
+                .detach()
+                .appendTo(firstRowCell);
         });
     }
 
-    addCustomNameInput(row: JQuery, cellClassName: string, inputClassName: string): JQuery {
-        const cell = $('<div>')
-            .addClass(cellClassName + ' columnar-text-input bulk_lines_table_cell inputCell')
+    addCustomNameInput(
+        row: JQuery,
+        cellClassName: string,
+        inputClassName: string,
+    ): JQuery {
+        const cell = $("<div>")
+            .addClass(
+                cellClassName + " columnar-text-input bulk_lines_table_cell inputCell",
+            )
             .appendTo(row);
         $('<input type="text">')
             .addClass(inputClassName)
-            .on('change', () => {
+            .on("change", () => {
                 this.updateInputState();
                 // TODO: implement!!
                 // creationManager.updateCustomNamingElements();
@@ -789,15 +812,14 @@ export class CustomElementInput extends MultiValueInput {
 
     registerRemoveRowEvtHandler(removeButton, rowIndex) {
         removeButton
-            .off('click')
+            .off("click")
             .on(
-                'click',
+                "click",
                 null,
-                {'rowIndex': rowIndex, 'customInput': this},
+                { "rowIndex": rowIndex, "customInput": this },
                 (ev: JQueryMouseEventObject) => {
-                    var target: number, customEltInput: CustomElementInput;
-                    target = ev.data.rowIndex;
-                    customEltInput = ev.data.customInput;
+                    const target: number = ev.data.rowIndex;
+                    const customEltInput: CustomElementInput = ev.data.customInput;
                     customEltInput.removeRow(target);
                 },
             );
@@ -812,23 +834,24 @@ export class CustomElementInput extends MultiValueInput {
     }
 }
 
-
 export class AbbreviationInput extends LinePropertyInput {
-
     constructor(options: LinePropertyInputOptions) {
         super(options);
         // override default labeling from the parent
-        this.uiLabel = $('<label>')
-            .text(this.lineProperty.nameEltLabel + ':')
-            .addClass('not-in-use');
+        this.uiLabel = $("<label>")
+            .text(this.lineProperty.nameEltLabel + ":")
+            .addClass("not-in-use");
     }
 
     hasValidInput(rowIndex: number): boolean {
-        var match: any, abbrev: any;
-        match = this.rows[rowIndex].find('.abbrev-match-input').val();
-        abbrev = this.rows[rowIndex].find('.abbrev-val-input').val();
-        return (match !== undefined) && match.toString().trim() &&
-               (abbrev !== undefined) && abbrev.toString().trim();
+        const match = this.rows[rowIndex].find(".abbrev-match-input").val();
+        const abbrev = this.rows[rowIndex].find(".abbrev-val-input").val();
+        return (
+            match !== undefined &&
+            match.toString().trim() &&
+            abbrev !== undefined &&
+            abbrev.toString().trim()
+        );
     }
 
     removeFromForm() {
@@ -848,10 +871,10 @@ export class AbbreviationInput extends LinePropertyInput {
             return null;
         }
         this.rows.forEach((currentValue, rowIndex) => {
-            var match: any, abbrev: any;
+            let match: any, abbrev: any;
             if (this.hasValidInput(rowIndex)) {
-                match = this.rows[rowIndex].find('.abbrev-match-input').val();
-                abbrev = this.rows[rowIndex].find('.abbrev-val-input').val();
+                match = this.rows[rowIndex].find(".abbrev-match-input").val();
+                abbrev = this.rows[rowIndex].find(".abbrev-val-input").val();
                 values[match] = abbrev;
             }
         });
@@ -860,20 +883,20 @@ export class AbbreviationInput extends LinePropertyInput {
 
     fillRowControls(row: JQuery, initialValue?: any): void {
         this.rows.push(row);
-        const addCell = $('<div>')
-            .addClass('bulk_lines_table_cell')
-            .addClass('addCell')
+        const addCell = $("<div>")
+            .addClass("bulk_lines_table_cell")
+            .addClass("addCell")
             .appendTo(row);
-        const labelCell = $('<div>')
-            .addClass('bulk_lines_table_cell')
+        const labelCell = $("<div>")
+            .addClass("bulk_lines_table_cell")
             .appendTo(row);
         const firstRow = this.getRowCount() === 1;
         if (firstRow) {
             this.buildAddBtn(addCell);
             this.getLabel().appendTo(labelCell);
         }
-        this.addAbbrevInput(row, 'abbrev-match-cell', 'abbrev-match-input');
-        const valCell = this.addAbbrevInput(row, 'abbrev-val-cell', 'abbrev-val-input');
+        this.addAbbrevInput(row, "abbrev-match-cell", "abbrev-match-input");
+        const valCell = this.addAbbrevInput(row, "abbrev-val-cell", "abbrev-val-input");
         this.buildRemoveBtn(valCell);
         this.updateInputState();
     }
@@ -881,23 +904,27 @@ export class AbbreviationInput extends LinePropertyInput {
     promoteRowContent(firstRow: JQuery, nextRow: JQuery) {
         // remove only the input cell content from this row,
         // leaving labeling and controls in place
-        const firstRowCell = firstRow.children('.abbrev-match-cell').empty();
+        const firstRowCell = firstRow.children(".abbrev-match-cell").empty();
         // detach and relocate input cell content from the following row, moving it up
         nextRow
-            .children('.abbrev-match-cell')
-            .children('.abbrev-val-cell')
+            .children(".abbrev-match-cell")
+            .children(".abbrev-val-cell")
             .each((index: number, element: Element) => {
-                $(element).detach().appendTo(firstRowCell);
+                $(element)
+                    .detach()
+                    .appendTo(firstRowCell);
             });
     }
 
     addAbbrevInput(row: JQuery, cellClassName: string, inputClassName: string): JQuery {
-        const cell = $('<div>')
-            .addClass(cellClassName + ' columnar-text-input bulk_lines_table_cell inputCell')
+        const cell = $("<div>")
+            .addClass(
+                cellClassName + " columnar-text-input bulk_lines_table_cell inputCell",
+            )
             .appendTo(row);
         $('<input type="text">')
             .addClass(inputClassName)
-            .on('change', () => {
+            .on("change", () => {
                 this.updateInputState();
                 // TODO: test for input validity or validity change first!
                 creationManager.queuePreviewUpdate();
@@ -908,21 +935,19 @@ export class AbbreviationInput extends LinePropertyInput {
 
     registerRemoveRowEvtHandler(removeButton, rowIndex) {
         removeButton
-            .off('click')
+            .off("click")
             .on(
-                'click',
+                "click",
                 null,
-                {'rowIndex': rowIndex, 'abbrevInput': this},
+                { "rowIndex": rowIndex, "abbrevInput": this },
                 (ev: JQueryMouseEventObject) => {
-                    var target: number, abbrevInput: AbbreviationInput;
-                    target = ev.data.rowIndex;
-                    abbrevInput = ev.data.abbrevInput;
+                    const target: number = ev.data.rowIndex;
+                    const abbrevInput: AbbreviationInput = ev.data.abbrevInput;
                     abbrevInput.removeRow(target);
                 },
             );
     }
 }
-
 
 export class LinePropertyAutoInput extends LinePropertyInput {
     autoInput: EDDAuto.BaseAuto;
@@ -935,37 +960,42 @@ export class LinePropertyAutoInput extends LinePropertyInput {
     // whose type depends on the data type
     // of the Line attribute they configure
     fillInputControls(inputCell: JQuery): void {
-        const visible = $('<input type="text" autocomplete="off">')
-            .addClass('columnar-text-input autocomp autocomp_search ui-autocomplete-input');
+        const visible = $('<input type="text" autocomplete="off">').addClass(
+            "columnar-text-input autocomp autocomp_search ui-autocomplete-input",
+        );
         const hidden = $('<input type="hidden">')
-            .addClass('step2-value-input')
-            .on('change', () => {
+            .addClass("step2-value-input")
+            .on("change", () => {
                 this.updateInputState();
                 creationManager.updateNameEltChoices(true);
             });
         inputCell.append(visible).append(hidden);
-        if (creationManager.userMetaTypePks.indexOf(this.lineProperty.jsonId as number) >= 0) {
-            visible.attr('eddautocompletetype', "User");
+        if (
+            creationManager.userMetaTypePks.indexOf(
+                this.lineProperty.jsonId as number,
+            ) >= 0
+        ) {
+            visible.attr("eddautocompletetype", "User");
             this.autoInput = new EDDAuto.User({
-                'container': inputCell,
-                'visibleInput': visible,
-                'hiddenInput': hidden,
+                "container": inputCell,
+                "visibleInput": visible,
+                "hiddenInput": hidden,
             });
             this.autoInput.init();
         } else if (EddRest.CARBON_SRC_META_UUID === this.lineProperty.metaUUID) {
-            visible.attr('eddautocompletetype', "CarbonSource");
+            visible.attr("eddautocompletetype", "CarbonSource");
             this.autoInput = new EDDAuto.CarbonSource({
-                'container': inputCell,
-                'visibleInput': visible,
-                'hiddenInput': hidden,
+                "container": inputCell,
+                "visibleInput": visible,
+                "hiddenInput": hidden,
             });
             this.autoInput.init();
         } else if (EddRest.LINE_STRAINS_META_UUID === this.lineProperty.metaUUID) {
-            visible.attr('eddautocompletetype', "Registry");
+            visible.attr("eddautocompletetype", "Registry");
             this.autoInput = new EDDAuto.Registry({
-                'container': inputCell,
-                'visibleInput': visible,
-                'hiddenInput': hidden,
+                "container": inputCell,
+                "visibleInput": visible,
+                "hiddenInput": hidden,
             });
             this.autoInput.init();
         }
@@ -973,7 +1003,10 @@ export class LinePropertyAutoInput extends LinePropertyInput {
     }
 
     getInput(rowIndex: number): any {
-        const stringVal = this.rows[rowIndex].find('input[type=hidden]').first().val();
+        const stringVal = this.rows[rowIndex]
+            .find("input[type=hidden]")
+            .first()
+            .val();
         if (this.lineProperty.metaUUID === EddRest.LINE_STRAINS_META_UUID) {
             // strain autocomplete uses UUID
             return stringVal;
@@ -992,37 +1025,39 @@ export class BooleanInput extends LinePropertyInput {
     }
 
     fillInputControls(rowContainer: JQuery): void {
-        const buttonsDiv = $('<div>')
+        const buttonsDiv = $("<div>")
             // TODO: rename class for this new use
-            .addClass('columnar-text-input')
+            .addClass("columnar-text-input")
             .appendTo(rowContainer);
         this.yesCheckbox = $('<input type="checkbox">')
-            .on('change', () => {
+            .on("change", () => {
                 this.updateInputState();
                 creationManager.updateNameEltChoices(true);
             })
             .appendTo(buttonsDiv);
-        $('<label>').text('Yes').appendTo(buttonsDiv);
+        $("<label>")
+            .text("Yes")
+            .appendTo(buttonsDiv);
         this.noCheckbox = $('<input type="checkbox">')
-            .addClass('noCheckBox')
-            .on('change', () => {
+            .addClass("noCheckBox")
+            .on("change", () => {
                 this.updateInputState();
                 creationManager.updateNameEltChoices(true);
             })
             .appendTo(buttonsDiv);
-        $('<label>').text('No').appendTo(buttonsDiv);
+        $("<label>")
+            .text("No")
+            .appendTo(buttonsDiv);
         const removeBtn = this.buildRemoveBtn(rowContainer);
-        removeBtn.addClass('controlRemoveBtn');
+        removeBtn.addClass("controlRemoveBtn");
     }
 
     hasMultipleInputs(): boolean {
-        return this.yesCheckbox.prop('checked') &&
-            this.noCheckbox.prop('checked');
+        return this.yesCheckbox.prop("checked") && this.noCheckbox.prop("checked");
     }
 
     hasValidInput(rowIndex: number) {
-        return this.yesCheckbox.prop('checked')
-            || this.noCheckbox.prop('checked');
+        return this.yesCheckbox.prop("checked") || this.noCheckbox.prop("checked");
     }
 
     getValueJson(): any {
@@ -1031,10 +1066,10 @@ export class BooleanInput extends LinePropertyInput {
 
     getInput(rowIndex: number): any {
         const values = [];
-        if (this.yesCheckbox.prop('checked')) {
+        if (this.yesCheckbox.prop("checked")) {
             values.push(true);
         }
-        if (this.noCheckbox.prop('checked')) {
+        if (this.noCheckbox.prop("checked")) {
             values.push(false);
         }
         if (values.length === 1) {
@@ -1058,16 +1093,18 @@ export class NumberInput extends LinePropertyInput {
         // for controling combinatorial replicate creation
         // add spinner to the DOM first so spinner() function will work
         const spinner = $('<input id="replicate_spinner">')
-            .addClass('columnar-text-input step2-value-input')
+            .addClass("columnar-text-input step2-value-input")
             .appendTo(inputCell);
         // add spinner styling
-        spinner.spinner({
-            "min": 1,
-            "change": (event, ui) => {
-                this.updateInputState();
-                creationManager.updateNameEltChoices(true);
-            },
-        }).val(1);
+        spinner
+            .spinner({
+                "min": 1,
+                "change": (event, ui) => {
+                    this.updateInputState();
+                    creationManager.updateNameEltChoices(true);
+                },
+            })
+            .val(1);
         this.buildRemoveBtn(inputCell);
     }
 
@@ -1076,7 +1113,6 @@ export class NumberInput extends LinePropertyInput {
         return parseInt(value, 10);
     }
 }
-
 
 export class IceFolderInput extends LinePropertyInput {
     constructor(options: LinePropertyInputOptions) {
@@ -1104,32 +1140,35 @@ export class IceFolderInput extends LinePropertyInput {
     // will be read-only feedback of user selections made in the dialog.
     buildAddBtn(container: JQuery) {
         // only add the control to the first row
-        if ((this.getRowCount() === 1) && (this.getRowCount() < this.maxRows)) {
-            this.addButton = $('<button>')
-                .addClass('addButton')
-                .on('click', () => { this.appendRow(); })
+        if (this.getRowCount() === 1 && this.getRowCount() < this.maxRows) {
+            this.addButton = $("<button>")
+                .addClass("addButton")
+                .on("click", () => {
+                    this.appendRow();
+                })
                 .appendTo(container);
-            $('<span>').addClass('ui-icon')
-                .addClass('ui-icon-plus')
+            $("<span>")
+                .addClass("ui-icon")
+                .addClass("ui-icon-plus")
                 .appendTo(this.addButton);
         }
     }
 
     fillInputControls(inputCell: JQuery, folder: IceFolder): void {
         this.rows[this.rows.length - 1].data(folder);
-        $('<a>')
-            .prop('href', folder.url)
-            .prop('target', '_blank')
+        $("<a>")
+            .prop("href", folder.url)
+            .prop("target", "_blank")
             .text(folder.name)
-            .addClass('ice-folder-name')
+            .addClass("ice-folder-name")
             .appendTo(inputCell);
-        const filtersDiv = $('<div>')
-            .addClass('ice-folder-filters-div')
+        const filtersDiv = $("<div>")
+            .addClass("ice-folder-filters-div")
             .appendTo(inputCell);
         folder.entryTypes.forEach((entryType) => {
-            $('<span>')
+            $("<span>")
                 .text(entryType.toLowerCase())
-                .addClass('badge badge-default entry-filter-value')
+                .addClass("badge badge-default entry-filter-value")
                 .appendTo(filtersDiv);
         });
         this.buildRemoveBtn(inputCell);
@@ -1145,8 +1184,8 @@ export class IceFolderInput extends LinePropertyInput {
             return;
         }
         const prevRow = this.rows[this.rows.length - 1];
-        const newRow = $('<div>')
-            .addClass('table-row')
+        const newRow = $("<div>")
+            .addClass("table-row")
             .insertAfter(prevRow);
         this.fillRowControls(newRow, initialInput);
         this.updateInputState();
@@ -1176,21 +1215,22 @@ export class IceFolderInput extends LinePropertyInput {
     autoUpdateCombinations() {
         // get references to the buttons used to indicate
         // whether this ICE folder results in combinatorial line creation.
-        const noCombosButton = this.rows[0].find('input:radio[value=No]');
-        const combosButton = this.rows[0].find('input:radio[value=Yes]');
+        const noCombosButton = this.rows[0].find("input:radio[value=No]");
+        const combosButton = this.rows[0].find("input:radio[value=Yes]");
         // Note: this control depends on guarantee
         // that the controller will create the same GUI id for strain name,
         // regardless of whether it origiated w/ an ICE folder
         // or direct strain entry
-        const namingElt = $('#' + this.lineProperty.nameEltGuiId)
-            .toggleClass('required-name-elt');
+        const namingElt = $("#" + this.lineProperty.nameEltGuiId).toggleClass(
+            "required-name-elt",
+        );
         // Set static state associated with this input.
         // Though other inputs may eventually allow users to choose
         // whether to treat inputs as multivalued or combinatorial,
         // the existence of an ICE folder in the form
         // requires that combinatorial line creation be performed
-        combosButton.attr('checked', 'checked').prop('disabled', true);
-        noCombosButton.prop('disabled', true);
+        combosButton.attr("checked", "checked").prop("disabled", true);
+        noCombosButton.prop("disabled", true);
     }
 }
 
@@ -1201,7 +1241,7 @@ export class CreationManager {
     autocompleteLineMetaTypes: any = {};
     userMetaTypePks: number[];
     multivaluedMetaTypePks: number[] = [];
-    strainMetaPk: number = -1;
+    strainMetaPk = -1;
     strainNameEltJsonId: string = null;
     // step 1 : line property inputs (one per line property, regardless of row count)
     lineProperties: LinePropertyInput[] = [];
@@ -1225,48 +1265,53 @@ export class CreationManager {
             clearTimeout(this.previewUpdateTimerID);
         }
         // TODO: 250 in import
-        this.previewUpdateTimerID = window.setTimeout(this.updatePreview.bind(this), 500);
+        this.previewUpdateTimerID = window.setTimeout(
+            this.updatePreview.bind(this),
+            500,
+        );
     }
 
     /*
      * Adds an empty input into the form. Most form elements are added this
      * way, with the exception of ICE folders, which must first have a valid
      * value in order to be added to the form.
-    */
+     */
     addEmptyInput(lineProperty: LinePropertyDescriptor): void {
         let newInput: LinePropertyInput;
-        const autocompleteMetaItem = this.autocompleteLineMetaTypes[lineProperty.jsonId];
+        const autocompleteMetaItem = this.autocompleteLineMetaTypes[
+            lineProperty.jsonId
+        ];
         if (autocompleteMetaItem) {
-            newInput = new LinePropertyAutoInput({'lineProperty': lineProperty});
+            newInput = new LinePropertyAutoInput({ "lineProperty": lineProperty });
         } else if (EddRest.CONTROL_META_UUID === lineProperty.metaUUID) {
-            newInput = new BooleanInput({'lineProperty': lineProperty, 'maxRows': 1});
+            newInput = new BooleanInput({ "lineProperty": lineProperty, "maxRows": 1 });
         } else if (REPLICATE_COUNT_JSON_ID === lineProperty.jsonId) {
-            newInput = new NumberInput({'lineProperty': lineProperty});
+            newInput = new NumberInput({ "lineProperty": lineProperty });
         } else {
-            newInput = new LinePropertyInput({'lineProperty': lineProperty});
+            newInput = new LinePropertyInput({ "lineProperty": lineProperty });
         }
         this.addLineProperty(newInput);
     }
 
     removeLineProperty(lineProperty: LinePropertyDescriptor): void {
-        var foundIndex = -1, propertyInput: LinePropertyInput;
+        let foundIndex = -1;
         this.lineProperties.forEach((property, index: number) => {
             if (property.lineProperty.jsonId === lineProperty.jsonId) {
                 foundIndex = index;
-                return false;  // stop looping
+                return false; // stop looping
             }
         });
         // remove the property from our tracking and from the DOM
         if (foundIndex >= 0) {
-            propertyInput = this.lineProperties[foundIndex];
+            const propertyInput = this.lineProperties[foundIndex];
             this.lineProperties.splice(foundIndex, 1);
-            $('#line-properties-table')
-                .children('.line_attr_' + lineProperty.jsonId)
+            $("#line-properties-table")
+                .children(".line_attr_" + lineProperty.jsonId)
                 .remove();
             this.updateLinkedStrainInputs(propertyInput, false);
         }
         // restore user's ability to choose this option via the "add property" dialog
-        $('#lineProp' + lineProperty.jsonId).removeClass('hide');
+        $("#lineProp" + lineProperty.jsonId).removeClass("hide");
         // TODO: optimize by detecting whether the remaining row was non-blank...
         // this always forces a preview update,
         // which is sometimes unnecessary
@@ -1274,44 +1319,46 @@ export class CreationManager {
     }
 
     removeAbbrev(lineProperty: LinePropertyDescriptor): void {
-        var foundIndex = -1, abbrevInput: AbbreviationInput;
-        this.abbreviations.forEach(function(abbrev, index: number) {
+        let foundIndex = -1;
+        this.abbreviations.forEach((abbrev, index: number) => {
             if (abbrev.lineProperty.jsonId === lineProperty.jsonId) {
                 foundIndex = index;
-                abbrevInput = abbrev;
-                return false;  // stop looping
+                return false; // stop looping
             }
         });
         // remove the abbreviation from our tracking and from the DOM
         this.abbreviations.splice(foundIndex, 1);
-        $('#abbreviations-table')
-            .children('.line_attr_' + lineProperty.jsonId)
+        $("#abbreviations-table")
+            .children(".line_attr_" + lineProperty.jsonId)
             .remove();
         this.updateHasAbbrevInputs();
         this.queuePreviewUpdate();
     }
 
     removeCustomElt(customEltId: number): void {
-        var foundIndex = -1, rowClass: string;
-        this.customNameAdditions.forEach((customInput: CustomElementInput, index: number) => {
-            if (customInput.element.nameEltGuiId === customEltId) {
-                foundIndex = index;
-                return false; // stop looping
-            }
-        });
+        let foundIndex = -1;
+        this.customNameAdditions.forEach(
+            (customInput: CustomElementInput, index: number) => {
+                if (customInput.element.nameEltGuiId === customEltId) {
+                    foundIndex = index;
+                    return false; // stop looping
+                }
+            },
+        );
         // remove the custom element from our tracking and from the DOM
         this.customNameAdditions.splice(foundIndex, 1);
-        rowClass = 'custom_name_elt_' + customEltId;
-        $('#custom-elements-table').children(rowClass).remove();
+        const rowClass = "custom_name_elt_" + customEltId;
+        $("#custom-elements-table")
+            .children(rowClass)
+            .remove();
         this.updateHasCustomNameElts();
         this.queuePreviewUpdate();
     }
 
     addLineProperty(input: LinePropertyInput, initialValue?: any): void {
         this.lineProperties.push(input);
-        var parentDiv: JQuery, rowClass: string;
-        parentDiv = $('#line-properties-table');
-        rowClass = 'line_attr_' + input.lineProperty.nameEltJsonId;
+        const parentDiv = $("#line-properties-table");
+        const rowClass = "line_attr_" + input.lineProperty.nameEltJsonId;
         this.insertRow(input, parentDiv, rowClass, initialValue);
         this.updateLinkedStrainInputs(input, true);
         // if new input has a valid initial value, update state,
@@ -1337,17 +1384,17 @@ export class CreationManager {
     }
 
     addAbbreviation(lineAttr: LinePropertyDescriptor): void {
-        const parentDiv = $('#abbreviations-table');
-        const input = new AbbreviationInput({'lineProperty': lineAttr});
-        const rowClass = 'line_attr_' + input.lineProperty.nameEltJsonId;
+        const parentDiv = $("#abbreviations-table");
+        const input = new AbbreviationInput({ "lineProperty": lineAttr });
+        const rowClass = "line_attr_" + input.lineProperty.nameEltJsonId;
         this.abbreviations.push(input);
         this.insertRow(input, parentDiv, rowClass);
     }
 
     addCustomNameInput(): void {
-        const parentDiv = $('#custom-elements-table');
+        const parentDiv = $("#custom-elements-table");
         const input = new CustomElementInput();
-        const rowClass = 'custom_name_elt_' + input.element.nameEltGuiId;
+        const rowClass = "custom_name_elt_" + input.element.nameEltGuiId;
         this.customNameAdditions.push(input);
         this.insertRow(input, parentDiv, rowClass);
         this.updateHasCustomNameElts();
@@ -1359,58 +1406,62 @@ export class CreationManager {
         rowClass: string,
         initialValue?: any,
     ): void {
-        const row = $('<div>')
-            .addClass(rowClass + ' table-row')
+        const row = $("<div>")
+            .addClass(rowClass + " table-row")
             .appendTo(parentDiv);
         input.fillRowControls(row, initialValue);
     }
 
     buildStep2Inputs(): void {
         // set up connected lists for naming elements
-        $( "#line_name_elts, #unused_line_name_elts" ).sortable({
-            "connectWith": ".connectedSortable",
-            "update": (event, ui) => {
-                creationManager.queuePreviewUpdate();
-            },
-        }).disableSelection();
-        $('#add-custom-elt-btn').on('click', this.addCustomNameInput.bind(this));
-        $('#step2-next-btn').on('click', this.showStep3.bind(this));
-        $('#addAbbreviationButton')
-            .on('click', creationManager.showAddAbbreviation.bind(this));
+        $("#line_name_elts, #unused_line_name_elts")
+            .sortable({
+                "connectWith": ".connectedSortable",
+                "update": (event, ui) => {
+                    creationManager.queuePreviewUpdate();
+                },
+            })
+            .disableSelection();
+        $("#add-custom-elt-btn").on("click", this.addCustomNameInput.bind(this));
+        $("#step2-next-btn").on("click", this.showStep3.bind(this));
+        $("#addAbbreviationButton").on(
+            "click",
+            creationManager.showAddAbbreviation.bind(this),
+        );
     }
 
     buildStep3Inputs(): void {
-        $('#refresh-summary-div').on('click', () => {
+        $("#refresh-summary-div").on("click", () => {
             creationManager.queuePreviewUpdate();
         });
         creationManager.buildAbbrevDialog();
         // set up selectable list for abbreviations dialog
-        $('#line-name-abbrev-list').selectable();
-        $('#add-lines-btn').on('click', this.createLines.bind(this));
+        $("#line-name-abbrev-list").selectable();
+        $("#add-lines-btn").on("click", this.createLines.bind(this));
         // set up behavior for supported error workarounds
         // 1) De-emphasize related error messages when workaround is in place
-        $('#non-strains-opts-chkbx').on(
-            'change',
+        $("#non-strains-opts-chkbx").on(
+            "change",
             {
-                "alertClass": '.non-strains-err-message',
-                "chkbxClass": '.non-strains-chkbx',
+                "alertClass": ".non-strains-err-message",
+                "chkbxClass": ".non-strains-chkbx",
             },
             creationManager.duplicateCheckboxChecked,
         );
-        $('#ignore-ice-access-errors-opts-chkbx').on(
-            'change',
+        $("#ignore-ice-access-errors-opts-chkbx").on(
+            "change",
             {
-                "alertClass": '.ice-access-err-message',
-                "chkbxClass": '.ignore-ice-errors-chkbx',
-                "showWhenCheckedSelector": '#strains-omitted-span',
+                "alertClass": ".ice-access-err-message",
+                "chkbxClass": ".ignore-ice-errors-chkbx",
+                "showWhenCheckedSelector": "#strains-omitted-span",
             },
             creationManager.duplicateCheckboxChecked,
         );
-        $('#completion-email-opt-chkbx').on(
-            'change',
+        $("#completion-email-opt-chkbx").on(
+            "change",
             {
-                "alertClass": '.timeout-error-alert',
-                "chkbxClass": '.completion-email-chkbx',
+                "alertClass": ".timeout-error-alert",
+                "chkbxClass": ".completion-email-chkbx",
             },
             (evt) => creationManager.duplicateCheckboxChecked(evt, false),
         );
@@ -1418,30 +1469,32 @@ export class CreationManager {
 
     duplicateCheckboxChecked(event, updatePreview?: boolean): void {
         const chxbx = $(event.target);
-        const checked = chxbx.prop('checked');
-        const targetId = chxbx.prop('id');
+        const checked = chxbx.prop("checked");
+        const targetId = chxbx.prop("id");
         const alertClass = event.data.alertClass;
         const chkboxClass = event.data.chkbxClass;
         // if visible, change styling on the related Step 3 alert
         // to show it's been aknowleged
         $(alertClass)
-            .toggleClass('alert-danger', !checked)
-            .toggleClass('alert-warning', checked);
+            .toggleClass("alert-danger", !checked)
+            .toggleClass("alert-warning", checked);
         let completeFunction = () => creationManager.queuePreviewUpdate();
         // true except when param is explicitly false
         updatePreview = updatePreview !== false;
         if (!updatePreview) {
-            completeFunction = () => { return; };
+            completeFunction = () => {
+                return;
+            };
         }
         // animate, then auto-check the other (duplicate) checkbox in the form,
         // then resubmit the back-end preview request
         const otherChkbx = $(chkboxClass)
             .filter((idx: number, elt: Element) => {
-                return $(elt).prop('id') !== targetId;
+                return $(elt).prop("id") !== targetId;
             })
-            .prop('checked', checked)
+            .prop("checked", checked)
             .effect(
-                'bounce',
+                "bounce",
                 {
                     "times": BOUNCES,
                     "complete": completeFunction,
@@ -1455,7 +1508,7 @@ export class CreationManager {
             completeFunction();
         }
         if (event.data.showWhenCheckedSelector) {
-            $(event.data.showWhenCheckedSelector).toggleClass('hide', !checked);
+            $(event.data.showWhenCheckedSelector).toggleClass("hide", !checked);
         }
     }
 
@@ -1463,44 +1516,40 @@ export class CreationManager {
         creationManager.buildAddPropDialog();
         creationManager.buildAddIceFolderDialog();
         // set up selectable list for abbreviations dialog
-        $('#line-properties-list').selectable();
-        $('#step1-next-btn').on('click', this.showStep2.bind(this));
+        $("#line-properties-list").selectable();
+        $("#step1-next-btn").on("click", this.showStep2.bind(this));
     }
 
     showStep2(): void {
-        const step2: JQuery = $('#step2').removeClass('hide');
-        $('html, body').animate({"scrollTop": step2.offset().top}, SCROLL_DURATION_MS);
+        const step2: JQuery = $("#step2").removeClass("hide");
+        $("html, body").animate(
+            { "scrollTop": step2.offset().top },
+            SCROLL_DURATION_MS,
+        );
     }
 
     showStep3(): void {
-        const step3: JQuery = $('#step3').removeClass('hide');
-        $('html, body').animate({"scrollTop": step3.offset().top}, SCROLL_DURATION_MS);
+        const step3: JQuery = $("#step3").removeClass("hide");
+        $("html, body").animate(
+            { "scrollTop": step3.offset().top },
+            SCROLL_DURATION_MS,
+        );
     }
 
     updateNameEltChoices(forcePreviewUpdate: boolean): boolean {
-        let availableElts: any[];
-        let newElts: LinePropertyDescriptor[];
-        let unusedList: JQuery;
-        let unusedChildren: JQuery;
-        let nameEltsChanged: boolean;
-        let step2Disabled: boolean;
-        let step3Disabled: boolean;
-        let step2: JQuery;
-        let step3: JQuery;
-        let prevEltCount: number;
-
-        prevEltCount = this.lineNameElements.length;
+        const prevEltCount = this.lineNameElements.length;
         this.lineNameElements = [];
 
-        // build an updated list of available/unique naming elements based on user entries in
-        // step 1.
-        availableElts = [];
+        // build an updated list of available/unique naming elements
+        // based on user entries in step 1.
+        const availableElts = [];
         this.lineProperties.forEach((input: LinePropertyInput): void => {
             const elts: LinePropertyDescriptor[] = input.getNameElements();
             // append only unique name elements... Strain properties, for example can be
             // options for Step 1 input of either ICE folders or strains
             elts.forEach((newElt) => {
-                const isNameIdEqual = (elt) => elt.nameEltJsonId === newElt.nameEltJsonId;
+                const isNameIdEqual = (elt) =>
+                    elt.nameEltJsonId === newElt.nameEltJsonId;
                 if (availableElts.filter(isNameIdEqual).length === 0) {
                     availableElts.push(newElt);
                 }
@@ -1516,25 +1565,27 @@ export class CreationManager {
         // constructing a list of those newly added in step 2,
         // so they can be appended at the end of the step 3 list
         // without altering previous user entries into WIP line name ordering
-        newElts = availableElts.slice();
-        $('#line_name_elts').children().each((childIndex: number, childElt) => {
-            // start to build up a list of newly-available selections.
-            // we'll clear out more of them from the list of unavailable ones
-            const child = $(childElt);
-            const nameElement = child.data();
-            for (let newEltIndex = 0; newEltIndex < newElts.length; newEltIndex++) {
-                const element = newElts[newEltIndex];
-                if (element.nameEltGuiId === nameElement.nameEltGuiId) {
-                    creationManager.lineNameElements.push(nameElement);
-                    newElts.splice(newEltIndex, 1);
-                    return true;  // continue outer loop
+        const newElts = availableElts.slice();
+        $("#line_name_elts")
+            .children()
+            .each((childIndex: number, childElt) => {
+                // start to build up a list of newly-available selections.
+                // we'll clear out more of them from the list of unavailable ones
+                const child = $(childElt);
+                const nameElement = child.data();
+                for (let newEltIndex = 0; newEltIndex < newElts.length; newEltIndex++) {
+                    const element = newElts[newEltIndex];
+                    if (element.nameEltGuiId === nameElement.nameEltGuiId) {
+                        creationManager.lineNameElements.push(nameElement);
+                        newElts.splice(newEltIndex, 1);
+                        return true; // continue outer loop
+                    }
                 }
-            }
-            child.remove();
-            return true;  // continue looping
-         });
-        unusedList = $('#unused_line_name_elts');
-        unusedChildren = unusedList.children();
+                child.remove();
+                return true; // continue looping
+            });
+        const unusedList = $("#unused_line_name_elts");
+        const unusedChildren = unusedList.children();
         if (unusedChildren) {
             unusedChildren.each((unusedIndex: number, listElement: Element) => {
                 for (let newIndex = 0; newIndex < newElts.length; newIndex++) {
@@ -1552,9 +1603,9 @@ export class CreationManager {
         // add newly-inserted elements into the 'unused' section.
         // that way previous configuration stays unaltered
         newElts.forEach((elt: NameElement) => {
-            const li = $('<li>')
-                .attr('id', elt.nameEltGuiId)
-                .addClass('ui-state-default')
+            const li = $("<li>")
+                .attr("id", elt.nameEltGuiId)
+                .addClass("ui-state-default")
                 .data(elt)
                 .appendTo(unusedList);
             // if this naming element is for a line property
@@ -1568,40 +1619,40 @@ export class CreationManager {
                     break;
                 }
             }
-            $('<span>')
-                .attr('id', 'name_elt' + elt.nameEltGuiId)
+            $("<span>")
+                .attr("id", "name_elt" + elt.nameEltGuiId)
                 .text(elt.nameEltLabel)
                 .appendTo(li);
             // add an arrow to indicate the item can be dragged between lists
-            $('<span>')
-                .addClass('ui-icon ui-icon-arrowthick-2-n-s name-elt-icon')
+            $("<span>")
+                .addClass("ui-icon ui-icon-arrowthick-2-n-s name-elt-icon")
                 .appendTo(li);
         });
         // enable / disable "next" buttons based on user actions in earlier steps
-        step2Disabled = availableElts.length === 0;
-        step3Disabled = this.lineNameElements.length === 0;
-        $('#step1-next-btn').prop('disabled', step2Disabled);
-        $('#step2-next-btn').prop('disabled', step3Disabled);
+        const step2Disabled = availableElts.length === 0;
+        const step3Disabled = this.lineNameElements.length === 0;
+        $("#step1-next-btn").prop("disabled", step2Disabled);
+        $("#step2-next-btn").prop("disabled", step3Disabled);
         // auto-hide steps 2 and 3
         // if user went back to an earlier step
         // and removed their required inputs.
         // Note we purposefully *don't* auto-show them,
         // since we want user to confirm completion of the previous step by clicking "next".
         // Note we hide step 3 first to prevent "jumping" behavior
-        step2 = $('#step2');
-        step3 = $('#step3');
-        if (step3Disabled && !step3.hasClass('hide')) {
-            step3.addClass('hide');
+        const step2 = $("#step2");
+        const step3 = $("#step3");
+        if (step3Disabled && !step3.hasClass("hide")) {
+            step3.addClass("hide");
         }
-        if (step2Disabled && !step2.hasClass('hide')) {
-            step2.addClass('hide');
+        if (step2Disabled && !step2.hasClass("hide")) {
+            step2.addClass("hide");
         }
         // TODO: skip JSON reconstruction / resulting server request
         // if selected naming elements are the same
         // as before preceding changes added additional unselected options.
         // Note that since the form will never add a naming element automatically,
         // comparing array dimensions is enough
-        nameEltsChanged = this.lineNameElements.length !== prevEltCount;
+        const nameEltsChanged = this.lineNameElements.length !== prevEltCount;
         if (nameEltsChanged || forcePreviewUpdate) {
             this.queuePreviewUpdate();
             return true;
@@ -1610,60 +1661,56 @@ export class CreationManager {
     }
 
     updatePreview(): void {
-        var self: CreationManager, json: string, url: string, step3Allowed: boolean;
-        self = this;
         // build an updated list of naming elements based on user entries in step 2. Note
         // that events from the connected lists don't give us enough info to know which element
         // was just changed in line names
         this.lineNameElements = [];
-        $('#line_name_elts').children().each((index: number, elt: any) => {
-            const nameElement = $(elt).data();
-            self.lineNameElements.push(nameElement);
-        });
-        step3Allowed = (
-            $('#unused_line_name_elts').children('.required-name-elt').length === 0
-            && this.lineNameElements.length > 0
-        );
-        $('#step2-next-btn').prop('disabled', !step3Allowed);
+        $("#line_name_elts")
+            .children()
+            .each((index: number, elt: any) => {
+                const nameElement = $(elt).data();
+                this.lineNameElements.push(nameElement);
+            });
+        const step3Allowed =
+            $("#unused_line_name_elts").children(".required-name-elt").length === 0 &&
+            this.lineNameElements.length > 0;
+        $("#step2-next-btn").prop("disabled", !step3Allowed);
         // if user went back up and added combinatorial data to step 1,
         // hide step 3 until step 2 is complete
         if (!step3Allowed) {
-             $('#step3').addClass('hide');
-             return;
+            $("#step3").addClass("hide");
+            return;
         }
         // before submitting the potentially long-running AJAX request,
         // disable all Step 3 inputs and show a basic progress indicator
         creationManager.setStep3InputsEnabled(false);
-        $('#step3-waiting-div').removeClass('hide');
-        json = this.buildJson();
-        url = this.buildRequestUrl(true);
+        $("#step3-waiting-div").removeClass("hide");
+        const json = this.buildJson();
+        const url = this.buildRequestUrl(true);
         // submit a query to the back end
         // to compute line / assay names and detect errors
         // before actually making any changes
-        $.ajax(
-            url,
-            {
-                "headers": {'Content-Type' : 'application/json'},
-                "method": 'POST',
-                "dataType": 'json',
-                "data": json,
-                "processData": false,
-                "success": this.updateStep3Summary.bind(this),
-                "error": this.updateStep3Error.bind(this),
-            },
-        );
-        $('#step3Label').removeClass('wait');
+        $.ajax(url, {
+            "headers": { "Content-Type": "application/json" },
+            "method": "POST",
+            "dataType": "json",
+            "data": json,
+            "processData": false,
+            "success": this.updateStep3Summary.bind(this),
+            "error": this.updateStep3Error.bind(this),
+        });
+        $("#step3Label").removeClass("wait");
     }
 
     setStep3InputsEnabled(enabled: boolean) {
-        $('#step3 :input').prop('disabled', !enabled);
-        $('#step3').toggleClass('disabledStep3', !enabled);
-        $('#step3 #step3-waiting-div').removeClass('disabledStep3');
+        $("#step3 :input").prop("disabled", !enabled);
+        $("#step3").toggleClass("disabledStep3", !enabled);
+        $("#step3 #step3-waiting-div").removeClass("disabledStep3");
     }
 
     buildRequestUrl(dryRun: boolean): string {
         const params: any = {};
-        const url = '../../describe/';
+        const url = "../../describe/";
         // aggregate GET parameters to include with the request.
         // Though these could be included in the JSON,
         // they're purposefully separate
@@ -1671,9 +1718,11 @@ export class CreationManager {
         if (dryRun) {
             params.DRY_RUN = "True";
         }
-        const allowNonStrains = $('#non-strains-opts-chkbx').prop('checked');
-        const isIgnoreIceErrors = $('#ignore-ice-access-errors-opts-chkbx').prop('checked');
-        const sendEmail = $('#completion-email-opt-chkbx').is(':checked');
+        const allowNonStrains = $("#non-strains-opts-chkbx").prop("checked");
+        const isIgnoreIceErrors = $("#ignore-ice-access-errors-opts-chkbx").prop(
+            "checked",
+        );
+        const sendEmail = $("#completion-email-opt-chkbx").is(":checked");
         if (sendEmail) {
             params.EMAIL_WHEN_FINISHED = "True";
         }
@@ -1687,67 +1736,57 @@ export class CreationManager {
     }
 
     createLines(): void {
-        var url: string, json: string;
         this.showCreatingLinesDialog();
-        json = this.buildJson();
-        url = this.buildRequestUrl(false);
+        const json = this.buildJson();
+        const url = this.buildRequestUrl(false);
         // submit a query to the back end
         // to compute line / assay names
         // and detect errors before actually making any changes
-        $.ajax(
-            url,
-            {
-                "headers": {'Content-Type' : 'application/json'},
-                "method": 'POST',
-                "dataType": 'json',
-                "data": json,
-                "processData": false,
-                "success": this.lineCreationSuccess.bind(this),
-                "error": this.lineCreationError.bind(this),
-            },
-        );
+        $.ajax(url, {
+            "headers": { "Content-Type": "application/json" },
+            "method": "POST",
+            "dataType": "json",
+            "data": json,
+            "processData": false,
+            "success": this.lineCreationSuccess.bind(this),
+            "error": this.lineCreationError.bind(this),
+        });
     }
 
     lineCreationSuccess(responseJson): void {
-        $('#creation-wait-spinner').addClass('hide');
-        $('<span>')
-            .text('Success')
-            .addClass('alert alert-success')
-            .appendTo('#creation-status-div');
-        $('#return-to-study-btn').prop('disabled', false);
-        $('#create-more-btn').prop('disabled', false);
+        $("#creation-wait-spinner").addClass("hide");
+        $("<span>")
+            .text("Success")
+            .addClass("alert alert-success")
+            .appendTo("#creation-status-div");
+        $("#return-to-study-btn").prop("disabled", false);
+        $("#create-more-btn").prop("disabled", false);
     }
 
     lineCreationError(jqXHR, textStatus: string, errorThrown: string): void {
-        $('#creation-wait-spinner').addClass('hide');
-        const statusDiv = $('#creation-status-div').empty();
+        $("#creation-wait-spinner").addClass("hide");
+        const statusDiv = $("#creation-status-div").empty();
         const json = jqXHR.responseJSON;
-        this.showErrorMessages(
-            statusDiv,
-            json,
-            jqXHR.status,
-            false,
-            () => creationManager.createLines(),
+        this.showErrorMessages(statusDiv, json, jqXHR.status, false, () =>
+            creationManager.createLines(),
         );
     }
 
     updateStep3Error(jqXHR, textStatus: string, errorThrown: string): void {
         const json = jqXHR.responseJSON;
-        $('#line-preview-div').addClass('hide');
-        const errsDiv = $('#step3-errors-div').empty().removeClass('hide');
-        const summary = this.showErrorMessages(
-            errsDiv,
-            json,
-            jqXHR.status,
-            true,
-            () => creationManager.queuePreviewUpdate(),
+        $("#line-preview-div").addClass("hide");
+        const errsDiv = $("#step3-errors-div")
+            .empty()
+            .removeClass("hide");
+        const summary = this.showErrorMessages(errsDiv, json, jqXHR.status, true, () =>
+            creationManager.queuePreviewUpdate(),
         );
-        const enableAddLines = (
-            $('#non-strains-opts-chkbx').prop('checked')
-            || !summary.nonStrainErrors
-        ) && !summary.nonUniqueLineNames;
-        $('#step3-waiting-div').addClass('hide');
-        $('#add-lines-btn').prop('disabled', !enableAddLines);
+        const enableAddLines =
+            ($("#non-strains-opts-chkbx").prop("checked") ||
+                !summary.nonStrainErrors) &&
+            !summary.nonUniqueLineNames;
+        $("#step3-waiting-div").addClass("hide");
+        $("#add-lines-btn").prop("disabled", !enableAddLines);
     }
 
     showErrorMessages(
@@ -1758,45 +1797,52 @@ export class CreationManager {
         retryFunction,
     ): ErrSummary {
         creationManager.setStep3InputsEnabled(true);
-        const div = $('<div>').addClass('add-combos-subsection').appendTo(parentDiv);
-        $('<label>').text('Error(s):').appendTo(div);
-        const tableDiv = $('<div>').addClass('bulk-line-table').appendTo(parentDiv);
-        let anyNonStrainErr: boolean = false;
-        let anyIceAccessErr: boolean = false;
-        let nonUniqueLineNames: boolean = false;
+        const div = $("<div>")
+            .addClass("add-combos-subsection")
+            .appendTo(parentDiv);
+        $("<label>")
+            .text("Error(s):")
+            .appendTo(div);
+        const tableDiv = $("<div>")
+            .addClass("bulk-line-table")
+            .appendTo(parentDiv);
+        let anyNonStrainErr = false;
+        let anyIceAccessErr = false;
+        let nonUniqueLineNames = false;
         if (json) {
             const errors = json.errors;
             if (errors) {
                 errors.forEach((error, index: number) => {
                     const isNonStrainErr = NON_STRAINS_ERR_CATEGORY === error.category;
-                    const isIceAccessErr = (
-                        ICE_ACCESS_ERROR_CATEGORIES.indexOf(error.category) >= 0
-                    );
+                    const isIceAccessErr =
+                        ICE_ACCESS_ERROR_CATEGORIES.indexOf(error.category) >= 0;
                     anyNonStrainErr = anyNonStrainErr || isNonStrainErr;
                     anyIceAccessErr = anyIceAccessErr || isIceAccessErr;
-                    nonUniqueLineNames = (
-                        nonUniqueLineNames
-                        || NON_UNIQUE_NAMES_ERR_CATEGORY === error.category
-                    );
+                    nonUniqueLineNames =
+                        nonUniqueLineNames ||
+                        NON_UNIQUE_NAMES_ERR_CATEGORY === error.category;
                     const row = this.appendAlert(tableDiv, error);
                     if (isNonStrainErr) {
                         creationManager.addAlertChkbx(
                             row,
-                            'non-strains-alert-chkbx',
-                            'non-strains-opts-chkbx',
-                            'non-strains-chkbx',
-                            'non-strains-err-message',
+                            "non-strains-alert-chkbx",
+                            "non-strains-opts-chkbx",
+                            "non-strains-chkbx",
+                            "non-strains-err-message",
                         );
                     }
                     if (isIceAccessErr) {
-                        if (error.summary && !error.summary.startsWith(UNRESOLVABLE_ACCESS_ERR)) {
+                        if (
+                            error.summary &&
+                            !error.summary.startsWith(UNRESOLVABLE_ACCESS_ERR)
+                        ) {
                             creationManager.addAlertChkbx(
                                 row,
-                                'ignore-ice-access-errs-alert-chkbx',
-                                'ignore-ice-access-errors-opts-chkbx',
-                                'ignore-ice-errors-chkbx',
-                                'ice-access-err-message',
-                                '#strains-omitted-span',
+                                "ignore-ice-access-errs-alert-chkbx",
+                                "ignore-ice-access-errors-opts-chkbx",
+                                "ignore-ice-errors-chkbx",
+                                "ice-access-err-message",
+                                "#strains-omitted-span",
                             );
                         }
                     }
@@ -1806,76 +1852,78 @@ export class CreationManager {
                 // Once workarounds have been displayed,
                 // they should stay visible so user inputs don't get lost,
                 // even as other earlier form entries are altered
-                const ignoreIceErrorsDiv = $('#ignore-ice-errors-opts-div');
-                const nonStrainsDiv = $('#non-strains-opts-div');
-                if (anyIceAccessErr && ignoreIceErrorsDiv.hasClass('hide')) {
-                    ignoreIceErrorsDiv.removeClass('hide');
+                const ignoreIceErrorsDiv = $("#ignore-ice-errors-opts-div");
+                const nonStrainsDiv = $("#non-strains-opts-div");
+                if (anyIceAccessErr && ignoreIceErrorsDiv.hasClass("hide")) {
+                    ignoreIceErrorsDiv.removeClass("hide");
                 }
-                if (anyNonStrainErr && nonStrainsDiv.hasClass('hide')) {
-                    nonStrainsDiv.removeClass('hide');
+                if (anyNonStrainErr && nonStrainsDiv.hasClass("hide")) {
+                    nonStrainsDiv.removeClass("hide");
                 }
             } else {
                 this.addUnexpectedErrResult(parentDiv, retryFunction);
             }
         } else if (httpStatus === 503) {
-            // provide a special-case error message to help users work around timeouts until
-            // the back-end is migrated to a Celery task with Websocket notifications.
+            // provide a special-case error message
+            // to help users work around timeouts
+            // until the back-end is migrated to a Celery task
+            // with Websocket notifications.
             let details: string[];
             if (preview) {
                 details = [
-                    "This can occur when you ask EDD to create a" +
-                    " very large number of lines, e.g. from a large ICE folder.  You can try" +
-                    " again, or attempt to create lines anyway, then have EDD email you" +
-                    " when line creation succeeds or fails. It's unlikely that EDD will be" +
-                    " able to preview the results for you, so we only suggest proceeding" +
-                    " if this is an empty study, or you're experienced in using this tool." +
-                    " It's very likely that EDD will time out again during line creation, so" +
-                    " consider using email to monitor success.",
+                    "This can occur when you ask EDD to create a very large " +
+                        "number of lines, e.g. from a large ICE folder. You can try " +
+                        "again, or attempt to create lines anyway, then have EDD " +
+                        "email you when line creation succeeds or fails. It's " +
+                        "unlikely that EDD will be able to preview the results for " +
+                        "you, so we only suggest proceeding if this is an empty " +
+                        "study, or you're experienced in using this tool. It's very " +
+                        "likely that EDD will time out again during line creation, " +
+                        "so consider using email to monitor success.",
                 ];
             } else {
                 details = [
-                    "This can occur when you ask EDD to create a" +
-                    " very large number of lines, e.g. from a large ICE folder.  EDD may" +
-                    " still succeed in creating your lines after a delay, but it won't be able" +
-                    " to display a success message here.  Check your study after a few minutes," +
-                    " then consider trying again, perhaps using email notification to" +
-                    " monitor progress.",
+                    "This can occur when you ask EDD to create a very large " +
+                        "number of lines, e.g. from a large ICE folder. EDD may " +
+                        "still succeed in creating your lines after a delay, but it " +
+                        "won't be able to display a success message here.  Check " +
+                        "your study after a few minutes, then consider trying " +
+                        "again, perhaps using email notification to monitor " +
+                        "progress.",
                 ];
             }
-            const row = this.appendAlert(
-                tableDiv,
-                {
-                    "category": 'Request timed out',
-                    "summary": "EDD is unavailable or took too long to respond",
-                    "details": details,
-                },
-            );
+            const row = this.appendAlert(tableDiv, {
+                "category": "Request timed out",
+                "summary": "EDD is unavailable or took too long to respond",
+                "details": details,
+            });
             if (preview) {
-                let btnDiv: JQuery, retryButton: JQuery, forceBtn: JQuery;
                 creationManager.addAlertChkbx(
                     row,
-                    'completion-email-alert-chkbx',
-                    'completion-email-opt-chkbx',
-                    'completion-email-chkbx',
-                    'timeout-error-alert',
+                    "completion-email-alert-chkbx",
+                    "completion-email-opt-chkbx",
+                    "completion-email-chkbx",
+                    "timeout-error-alert",
                     null,
                     false,
                 );
-                btnDiv = $('<div>');
-                retryButton = addRetryButton(btnDiv, retryFunction);
-                retryButton.removeClass('btn-secondary').addClass('btn-primary');
-                forceBtn = $("<button type='button'>")
-                    .prop('id', 'force-creation-btn')
-                    .addClass('btn btn-secondary')
-                    .on('click', (event: Event) => {
-                        $(event.target).prop('disabled', true);
+                const btnDiv = $("<div>");
+                const retryButton = addRetryButton(btnDiv, retryFunction);
+                retryButton.removeClass("btn-secondary").addClass("btn-primary");
+                const forceBtn = $("<button type='button'>")
+                    .prop("id", "force-creation-btn")
+                    .addClass("btn btn-secondary")
+                    .on("click", (event: Event) => {
+                        $(event.target).prop("disabled", true);
                         creationManager.createLines();
                     });
-                $('<span>')
-                    .addClass('glyphicon glyphicon-warning-sign')
+                $("<span>")
+                    .addClass("glyphicon glyphicon-warning-sign")
                     .appendTo(forceBtn)
-                    .after(' ');
-                $('<span>').text('Force Line Creation').appendTo(forceBtn);
+                    .after(" ");
+                $("<span>")
+                    .text("Force Line Creation")
+                    .appendTo(forceBtn);
                 forceBtn.appendTo(btnDiv);
                 btnDiv.appendTo(row);
             }
@@ -1904,85 +1952,93 @@ export class CreationManager {
         // make a new checkbox to put in the alert,
         // linking it with the "options" checkbox
         const alertChkbx = $('<input type="checkbox">')
-            .attr('id', alertChkbxId)
+            .attr("id", alertChkbxId)
             .addClass(checkboxClass)
-            .on('click', {
-                "alertClass": '.' + alertClass,
-                "chkbxClass": '.' + checkboxClass,
-                "showWhenCheckedSelector": showWhenCheckedSelector,
-            }, (evt) => {
-                creationManager.duplicateCheckboxChecked(evt, updatePreview);
-            });
+            .on(
+                "click",
+                {
+                    "alertClass": "." + alertClass,
+                    "chkbxClass": "." + checkboxClass,
+                    "showWhenCheckedSelector": showWhenCheckedSelector,
+                },
+                (evt) => {
+                    creationManager.duplicateCheckboxChecked(evt, updatePreview);
+                },
+            );
         // copy the "options" label into the alert
         const optLabel = $('label[for="' + optsChkbxId + '"]');
-        const alertLbl = $('<label>')
+        const alertLbl = $("<label>")
             .text(optLabel.text())
-            .attr('for', alertChkbxId);
-        $('<div>').append(alertChkbx).append(alertLbl).appendTo(alert);
+            .attr("for", alertChkbxId);
+        $("<div>")
+            .append(alertChkbx)
+            .append(alertLbl)
+            .appendTo(alert);
         // add a class that allows us to locate and restyle the alert later
         // if the workaround is selected
         alert.addClass(alertClass);
     }
 
     addUnexpectedErrResult(statusDiv: JQuery, retryFunction): void {
-        const alertDiv = this.appendAlert(
-            statusDiv,
-            {
-                "category": 'Error',
-                "summary": 'An unexpected error occurred. Sorry about that!',
-            },
-        );
+        const alertDiv = this.appendAlert(statusDiv, {
+            "category": "Error",
+            "summary": "An unexpected error occurred. Sorry about that!",
+        });
         addRetryButton(alertDiv, retryFunction);
     }
 
     updateStep3Summary(responseJson): void {
         let lines: any;
         const count = responseJson.count;
-        if (responseJson.hasOwnProperty('lines')) {
+        if (responseJson.hasOwnProperty("lines")) {
             lines = responseJson.lines;
         }
         this.plannedLineCount = count;
-        $('#step3-errors-div').empty().addClass('hide');
+        $("#step3-errors-div")
+            .empty()
+            .addClass("hide");
         // show # lines to be created
-        $('#line-count-div').text(count);
+        $("#line-count-div").text(count);
         this.addLineNamesToTable(lines);
         creationManager.setStep3InputsEnabled(true);
-        $('#add-lines-btn').prop('disabled', false);
-        $('#step3-waiting-div').addClass('hide');
+        $("#add-lines-btn").prop("disabled", false);
+        $("#step3-waiting-div").addClass("hide");
     }
 
     addLineNamesToTable(lines) {
-        var i: number, row: JQuery, cell: JQuery;
+        let i: number, row: JQuery, cell: JQuery;
         // remove any earlier previews
-        $('.line-names-preview-row').remove();
-        const table = $('#line-preview-table');
+        $(".line-names-preview-row").remove();
+        const table = $("#line-preview-table");
         i = 0;
         for (const lineName in lines) {
             if (lines.hasOwnProperty(lineName)) {
-                if (i === 0 || (i % LINES_PER_ROW === 0)) {
-                    row = $('<div>')
-                        .addClass('table-row line-names-preview-row')
+                if (i === 0 || i % LINES_PER_ROW === 0) {
+                    row = $("<div>")
+                        .addClass("table-row line-names-preview-row")
                         .appendTo(table);
                 }
-                cell = $('<div>').addClass('bulk_lines_table_cell')
+                cell = $("<div>")
+                    .addClass("bulk_lines_table_cell")
                     .text(lineName)
                     .appendTo(row);
                 if (i === MAX_PREVIEW_LINE_NAMES) {
-                    const remainder = Object.keys(lines).length - MAX_PREVIEW_LINE_NAMES;
+                    const remainder =
+                        Object.keys(lines).length - MAX_PREVIEW_LINE_NAMES;
                     if (remainder > 0) {
-                        cell.text('... (' + remainder + ' more)');
+                        cell.text("... (" + remainder + " more)");
                     }
                     break;
                 }
                 i++;
             }
         }
-        $('#line-preview-div').removeClass('hide');
+        $("#line-preview-div").removeClass("hide");
     }
 
     setLineMetaTypes(metadataTypes: any[]) {
-        $('#step1_loading_metadata_status_div').empty();
-        $('#addPropertyButton').prop('disabled', false);
+        $("#step1_loading_metadata_status_div").empty();
+        $("#addPropertyButton").prop("disabled", false);
         this.userMetaTypePks = [];
         this.nonAutocompleteLineMetaTypes = [];
         this.autocompleteLineMetaTypes = {};
@@ -1995,8 +2051,10 @@ export class CreationManager {
             // since the normal case for this GUI
             // should be to compute line names from combinatorial metadata values,
             // and combinatorial entry of line descriptions isn't really possible
-            if (EddRest.LINE_NAME_META_UUID === meta.uuid ||
-                EddRest.LINE_DESCRIPTION_META_UUID === meta.uuid) {
+            if (
+                EddRest.LINE_NAME_META_UUID === meta.uuid ||
+                EddRest.LINE_DESCRIPTION_META_UUID === meta.uuid
+            ) {
                 return true; // keep looping!
             }
             // if this metadata type matches the name of one we have autocomplete inputs for
@@ -2018,7 +2076,7 @@ export class CreationManager {
             }
             const postfix = meta.postfix;
             if (postfix.length) {
-                uiLabel = uiLabel + ' (' + postfix + ')';
+                uiLabel = uiLabel + " (" + postfix + ")";
             }
             let nameEltLabel: string = uiLabel;
             let nameEltJsonId: number | string = meta.pk;
@@ -2028,8 +2086,8 @@ export class CreationManager {
             // or its naming elements
             let propertyDescriptor: LinePropertyDescriptor;
             if (USER_META_TYPE_UUIDS.indexOf(meta.uuid) >= 0) {
-                nameEltLabel = uiLabel + ' Last Name';
-                nameEltJsonId = meta.pk + '__last_name';
+                nameEltLabel = uiLabel + " Last Name";
+                nameEltJsonId = meta.pk + "__last_name";
                 propertyDescriptor = new LinePropertyDescriptor(
                     meta.pk,
                     uiLabel,
@@ -2039,19 +2097,18 @@ export class CreationManager {
                 );
                 this.userMetaTypePks.push(meta.pk);
             } else if (
-                EddRest.LINE_STRAINS_META_UUID === meta.uuid
-                || EddRest.CARBON_SRC_META_UUID === meta.uuid
+                EddRest.LINE_STRAINS_META_UUID === meta.uuid ||
+                EddRest.CARBON_SRC_META_UUID === meta.uuid
             ) {
-                nameEltJsonId = meta.pk + '__name';
+                nameEltJsonId = meta.pk + "__name";
                 if (EddRest.LINE_STRAINS_META_UUID === meta.uuid) {
                     nameEltLabel = STRAIN_NAME_ELT_LABEL;
                     this.strainNameEltJsonId = nameEltJsonId;
                     this.strainMetaPk = meta.pk;
                 } else {
-                    nameEltLabel = meta.type_name.substring(
-                        0,
-                        meta.type_name.indexOf('(s)'),
-                    ) + ' Name(s)';
+                    nameEltLabel =
+                        meta.type_name.substring(0, meta.type_name.indexOf("(s)")) +
+                        " Name(s)";
                 }
                 propertyDescriptor = new LinePropertyDescriptor(
                     meta.pk,
@@ -2070,7 +2127,7 @@ export class CreationManager {
                 );
             }
             lineProps.push(propertyDescriptor);
-            this.allLineMetaTypes[meta.pk] = meta;  // TODO: still need this?
+            this.allLineMetaTypes[meta.pk] = meta; // TODO: still need this?
         });
         // add in special-case hard-coded items
         // that make sense to put in this list,
@@ -2080,15 +2137,15 @@ export class CreationManager {
         lineProps.push(
             new LinePropertyDescriptor(
                 REPLICATE_COUNT_JSON_ID,
-                'Replicates',
-                'Replicate #',
+                "Replicates",
+                "Replicate #",
                 REPLICATE_NUM_NAME_ID,
             ),
         );
         lineProps.push(
             new LinePropertyDescriptor(
                 ICE_FOLDER_JSON_ID,
-                'Strain(s) - ICE folder',
+                "Strain(s) - ICE folder",
                 STRAIN_NAME_ELT_LABEL,
                 this.strainNameEltJsonId,
             ),
@@ -2100,10 +2157,10 @@ export class CreationManager {
         });
         // with labeling now sorted alphabetically, create list items
         lineProps.forEach((lineProp: LinePropertyDescriptor) => {
-            const linePropsList = $('#line-properties-list');
-            $('<li>')
-                .attr('id', 'lineProp' + lineProp.jsonId)
-                .addClass('ui-widget-content')
+            const linePropsList = $("#line-properties-list");
+            $("<li>")
+                .attr("id", "lineProp" + lineProp.jsonId)
+                .addClass("ui-widget-content")
                 .text(lineProp.inputLabel)
                 .appendTo(linePropsList)
                 .data(lineProp);
@@ -2111,123 +2168,128 @@ export class CreationManager {
     }
 
     showAddProperty(): void {
-        $('#add-prop-dialog').dialog('open');
+        $("#add-prop-dialog").dialog("open");
     }
 
     buildAddPropDialog(): void {
-        const addPropDialog = $('#add-prop-dialog').dialog({
-            "resizable": true,
-            "height": 500,
-            "minWidth": 188,
-            "maxWidth": 750,
-            "modal": true,
-            "autoOpen": false,
-            "buttons": [
-                {
-                    "text": 'Add Selected',
-                    "class": 'btn btn-primary',
-                    "click": () => {
-                        const propsList = $('#line-properties-list');
-                        const selectedItems = propsList.children('.ui-selected')
-                            .removeClass('ui-selected')
-                            .addClass('hide')
-                            .each((index: number, elt: Element) => {
-                                const descriptor = $(elt).data() as LinePropertyDescriptor;
-                                if (descriptor.jsonId === ICE_FOLDER_JSON_ID) {
-                                    // show folder dialog,
-                                    // which will control whether the folder
-                                    // eventually gets added as an input (once validated)
-                                    creationManager.showIceFolderDialog();
-                                    return true;  // keep iterating
-                                }
-                                creationManager.addEmptyInput(descriptor);
-                            });
+        const addPropDialog = $("#add-prop-dialog")
+            .dialog({
+                "resizable": true,
+                "height": 500,
+                "minWidth": 188,
+                "maxWidth": 750,
+                "modal": true,
+                "autoOpen": false,
+                "buttons": [
+                    {
+                        "text": "Add Selected",
+                        "class": "btn btn-primary",
+                        "click": () => {
+                            const propsList = $("#line-properties-list");
+                            const selectedItems = propsList
+                                .children(".ui-selected")
+                                .removeClass("ui-selected")
+                                .addClass("hide")
+                                .each((index: number, elt: Element) => {
+                                    const descriptor = $(
+                                        elt,
+                                    ).data() as LinePropertyDescriptor;
+                                    if (descriptor.jsonId === ICE_FOLDER_JSON_ID) {
+                                        // show folder dialog,
+                                        // which will control whether the folder
+                                        // eventually gets added as an input (once validated)
+                                        creationManager.showIceFolderDialog();
+                                        return true; // keep iterating
+                                    }
+                                    creationManager.addEmptyInput(descriptor);
+                                });
+                        },
                     },
-                },
-                {
-                    "text": 'Close',
-                    "class": 'btn btn-secondary',
-                    "click": () => {
-                        addPropDialog.dialog('close');
-                        // de-select anything user left selected
-                        $('#line-properties-list')
-                            .children('.ui-selected')
-                            .removeClass('ui-selected');
+                    {
+                        "text": "Close",
+                        "class": "btn btn-secondary",
+                        "click": () => {
+                            addPropDialog.dialog("close");
+                            // de-select anything user left selected
+                            $("#line-properties-list")
+                                .children(".ui-selected")
+                                .removeClass("ui-selected");
+                        },
                     },
-                },
-            ],
-        // remove class that hides it during initial page load
-        }).removeClass('hide');
+                ],
+                // remove class that hides it during initial page load
+            })
+            .removeClass("hide");
 
         // add click behavior to the "add property" button
-        $('#addPropertyButton')
-            .on('click', creationManager.showAddProperty.bind(this));
+        $("#addPropertyButton").on("click", creationManager.showAddProperty.bind(this));
     }
 
     showIceFolderDialog(): void {
         // reset form defaults
-        $('#ice-folder-url-input').val('');
-        $('#folder-lookup-status-div').empty();
-        $('type-strain').attr('checked', 'checked');
+        $("#ice-folder-url-input").val("");
+        $("#folder-lookup-status-div").empty();
+        $("type-strain").attr("checked", "checked");
         // show the dialog
-        $('#add-ice-folder-dialog').dialog('open');
+        $("#add-ice-folder-dialog").dialog("open");
     }
 
     buildAddIceFolderDialog(): void {
-        const folderDialog = $('#add-ice-folder-dialog').dialog({
-            "resizable": true,
-            "height": 405,
-            "width": 572,
-            "minWidth": 345,
-            "maxWidth": 750,
-            "modal": true,
-            "autoOpen": false,
-            "buttons": [
-                {
-                    "text": 'Add Folder',
-                    "class": 'btn btn-primary',
-                    "click": () => {
-                        const url = $('#ice-folder-url-input').val();
-                        // submit a query to the back end to compute line / assay names
-                        // and detect errors before actually making any changes
-                        $.ajax(
-                            '/ice_folder/',
-                            {
-                                "headers": {'Content-Type': 'application/json'},
-                                "method": 'GET',
-                                "dataType": 'json',
+        const folderDialog = $("#add-ice-folder-dialog")
+            .dialog({
+                "resizable": true,
+                "height": 405,
+                "width": 572,
+                "minWidth": 345,
+                "maxWidth": 750,
+                "modal": true,
+                "autoOpen": false,
+                "buttons": [
+                    {
+                        "text": "Add Folder",
+                        "class": "btn btn-primary",
+                        "click": () => {
+                            const url = $("#ice-folder-url-input").val();
+                            // submit a query to the back end to compute line / assay names
+                            // and detect errors before actually making any changes
+                            $.ajax("/ice_folder/", {
+                                "headers": { "Content-Type": "application/json" },
+                                "method": "GET",
+                                "dataType": "json",
                                 "data": { "url": url },
                                 "success": this.iceFolderLookupSuccess.bind(this),
                                 "error": this.iceFolderLookupError.bind(this),
-                            },
-                        );
+                            });
+                        },
                     },
-                },
-                {
-                    "text": 'Cancel',
-                    "class": 'btn btn-secondary',
-                    "click": () => {
-                        folderDialog.dialog('close');
-                        // de-select anything user left selected
-                        $('#line-properties-list')
-                            .children('.ui-selected')
-                            .removeClass('ui-selected');
-                        // if no corresponding rows exist yet in the main form,
-                        // restore this option to the line properties dialag
-                        // so it can be added later
-                        const folderInput: any = this.getPropertyInput(ICE_FOLDER_JSON_ID);
-                        if (!folderInput) {
-                            $('#lineProp' + ICE_FOLDER_JSON_ID)
-                                .removeClass('hide')
-                                .addClass('ui-selected');
-                        }
+                    {
+                        "text": "Cancel",
+                        "class": "btn btn-secondary",
+                        "click": () => {
+                            folderDialog.dialog("close");
+                            // de-select anything user left selected
+                            $("#line-properties-list")
+                                .children(".ui-selected")
+                                .removeClass("ui-selected");
+                            // if no corresponding rows exist yet in the main form,
+                            // restore this option to the line properties dialag
+                            // so it can be added later
+                            const folderInput: any = this.getPropertyInput(
+                                ICE_FOLDER_JSON_ID,
+                            );
+                            if (!folderInput) {
+                                $("#lineProp" + ICE_FOLDER_JSON_ID)
+                                    .removeClass("hide")
+                                    .addClass("ui-selected");
+                            }
+                        },
                     },
-                },
-            ],
-        // remove class that hides it during initial page load
-        }).removeClass('hide');
+                ],
+                // remove class that hides it during initial page load
+            })
+            .removeClass("hide");
         // add click behavior to the "add property" button
-        $('#addPropertyButton').on('click', creationManager.showAddProperty.bind(this));
+        $("#addPropertyButton").on("click", creationManager.showAddProperty.bind(this));
     }
 
     getPropertyInput(jsonId: any) {
@@ -2235,23 +2297,27 @@ export class CreationManager {
         this.lineProperties.forEach(function(input) {
             if (input.lineProperty.jsonId === jsonId) {
                 result = input;
-                return false;  // stop looping
+                return false; // stop looping
             }
         });
         return result;
     }
 
-    iceFolderLookupSuccess(folder_json: any, textStatus: string, jqXHR: JQueryXHR): void {
+    iceFolderLookupSuccess(
+        folder_json: any,
+        textStatus: string,
+        jqXHR: JQueryXHR,
+    ): void {
         // look for any existing form input for ICE folders.
         // If there is one, we'll just add a row to it for the newly validated folder
         const iceInput = this.getPropertyInput(ICE_FOLDER_JSON_ID) as IceFolderInput;
-        $('#add-ice-folder-dialog').dialog('close');
+        $("#add-ice-folder-dialog").dialog("close");
         const toggleIds = [
-            '#type-strain',
-            '#type-protein',
-            '#type-plasmid',
-            '#type-part',
-            '#type-seed',
+            "#type-strain",
+            "#type-protein",
+            "#type-plasmid",
+            "#type-part",
+            "#type-seed",
         ];
         // gather all the relevant inputs for displaying user entry in the main form
         const filterTypes = toggleIds
@@ -2260,7 +2326,7 @@ export class CreationManager {
         const folder = {
             "id": folder_json.id,
             "name": folder_json.folderName,
-            "url": $('#ice-folder-url-input').val(),
+            "url": $("#ice-folder-url-input").val(),
             "entryTypes": filterTypes,
         };
         if (iceInput != null) {
@@ -2270,13 +2336,13 @@ export class CreationManager {
         // grab the "LineProperty" entry from the 'Add property" dialog's list,
         // then use it to create a new input,
         // including the validated folder in the first row
-        $('#line-properties-list')
+        $("#line-properties-list")
             .children()
             .each((index: number, elt: Element) => {
                 const descriptor = $(elt).data() as LinePropertyDescriptor;
                 if (descriptor.jsonId === ICE_FOLDER_JSON_ID) {
                     const input = new IceFolderInput({
-                        'lineProperty': descriptor,
+                        "lineProperty": descriptor,
                     });
                     creationManager.addLineProperty(input, folder);
                     return false; // stop looping
@@ -2285,17 +2351,16 @@ export class CreationManager {
     }
 
     iceFolderLookupError(jqXHR, textStatus: string, errorThrown: string): void {
-        const contentType = jqXHR.getResponseHeader('Content-Type');
-        const statusDiv = $('#folder-lookup-status-div').empty();
+        const contentType = jqXHR.getResponseHeader("Content-Type");
+        const statusDiv = $("#folder-lookup-status-div").empty();
         const genericErrorMsg = {
-            'category': 'ICE lookup error',
-            'summary': 'An unknown error has occurred while resolving the ' +
-                       'folder with ICE. Please try again.',
+            "category": "ICE lookup error",
+            "summary":
+                "An unknown error has occurred while resolving the " +
+                "folder with ICE. Please try again.",
         };
-        if (contentType === 'application/json') {
-            let json, errors;
-            json = jqXHR.responseJSON;
-            errors = json.errors;
+        if (contentType === "application/json") {
+            const errors = jqXHR.responseJSON.errors;
             if (errors) {
                 errors.forEach((error) => {
                     this.appendAlert(statusDiv, error);
@@ -2309,116 +2374,127 @@ export class CreationManager {
     }
 
     appendAlert(statusDiv: JQuery, message: ErrorSummary): JQuery {
-        const div = $('<div>').addClass('alert alert-danger').appendTo(statusDiv);
-        $('<h4>').text(message.category).appendTo(div);
+        const div = $("<div>")
+            .addClass("alert alert-danger")
+            .appendTo(statusDiv);
+        $("<h4>")
+            .text(message.category)
+            .appendTo(div);
         if (message.details) {
-            $('<p>')
-                .text(message.summary + ': ' + message.details)
+            $("<p>")
+                .text(message.summary + ": " + message.details)
                 .appendTo(div);
         } else {
-            $('<p>').text(message.summary).appendTo(div);
+            $("<p>")
+                .text(message.summary)
+                .appendTo(div);
         }
         return div;
     }
 
     showCreatingLinesDialog(): void {
         // disable buttons and set styling to match the rest of EDD
-        $('#return-to-study-btn')
-            .prop('disabled', true)
-            .addClass('actionButton');
-        $('#create-more-btn')
-            .prop('disabled', true)
-            .addClass('actionButton');
-        $('#creation-wait-spinner')
-            .removeClass('hide');
-        $('#creation-status-div')
-            .empty();
-        $('#line-count-span')
-            .text(this.plannedLineCount);
-        $('#creating-lines-dialog')
-            .dialog('option', 'title', 'Creating ' + this.plannedLineCount + ' Lines...')
-            .dialog('open');
+        $("#return-to-study-btn")
+            .prop("disabled", true)
+            .addClass("actionButton");
+        $("#create-more-btn")
+            .prop("disabled", true)
+            .addClass("actionButton");
+        $("#creation-wait-spinner").removeClass("hide");
+        $("#creation-status-div").empty();
+        $("#line-count-span").text(this.plannedLineCount);
+        $("#creating-lines-dialog")
+            .dialog(
+                "option",
+                "title",
+                "Creating " + this.plannedLineCount + " Lines...",
+            )
+            .dialog("open");
     }
 
     buildLineCreationDialog(): void {
-        $('#creating-lines-dialog').dialog({
-            // let users see err messages (if any)
-            "resizable": true,
-            "modal": true,
-            "autoOpen": false,
-            "buttons": [
-                {
-                    "text": 'Create More',
-                    "id": 'create-more-btn',
-                    "click": () => {
-                        $('#creating-lines-dialog').dialog('close');
-                        // if lines have just been created,
-                        // we need updated feedback from the back end
-                        // since unchanged settings will now produce duplicate names
-                        creationManager.queuePreviewUpdate();
+        $("#creating-lines-dialog")
+            .dialog({
+                // let users see err messages (if any)
+                "resizable": true,
+                "modal": true,
+                "autoOpen": false,
+                "buttons": [
+                    {
+                        "text": "Create More",
+                        "id": "create-more-btn",
+                        "click": () => {
+                            $("#creating-lines-dialog").dialog("close");
+                            // if lines have just been created,
+                            // we need updated feedback from the back end
+                            // since unchanged settings will now produce duplicate names
+                            creationManager.queuePreviewUpdate();
+                        },
                     },
-                },
-                {
-                    "text": 'Return to Study',
-                    "id": 'return-to-study-btn',
-                    "click": () => {
-                        window.location.href = '../';
+                    {
+                        "text": "Return to Study",
+                        "id": "return-to-study-btn",
+                        "click": () => {
+                            window.location.href = "../";
+                        },
                     },
-                },
-            ],
-        // remove the class that hides it during page load
-        }).removeClass('hide');
+                ],
+                // remove the class that hides it during page load
+            })
+            .removeClass("hide");
     }
 
     showAddAbbreviation(): void {
-        const list = $('#line-name-abbrev-list').empty();
+        const list = $("#line-name-abbrev-list").empty();
         this.lineNameElements.forEach((namingElement: LinePropertyDescriptor) => {
-            var existingAbbreviation = false;
+            let existingAbbreviation = false;
             this.abbreviations.forEach((abbreviation: AbbreviationInput) => {
                 if (abbreviation.lineProperty.jsonId === namingElement.jsonId) {
                     existingAbbreviation = true;
-                    return false;  // stop inner loop
+                    return false; // stop inner loop
                 }
             });
             // skip list item creation for any line property
             // that we already have an abbreviation for
             if (existingAbbreviation) {
-                return true;  // continue looping
+                return true; // continue looping
             }
-            $('<li>')
+            $("<li>")
                 .text(namingElement.nameEltLabel)
-                .addClass('ui-widget-content')
+                .addClass("ui-widget-content")
                 .data(namingElement)
                 .appendTo(list);
         });
         creationManager.updateHasAbbrevDialogOptions(list);
-        $('#add-abbrev-dialog').dialog('open');
+        $("#add-abbrev-dialog").dialog("open");
     }
 
     buildAbbrevDialog(): void {
-        const abbrevDialog = $('#add-abbrev-dialog').dialog({
-            "resizable": false,
-            "modal": true,
-            "autoOpen": false,
-            "buttons": {
-                'Add Abbreviation(s)': () => {
-                    creationManager.addSelectedAbbreviations();
+        const abbrevDialog = $("#add-abbrev-dialog")
+            .dialog({
+                "resizable": false,
+                "modal": true,
+                "autoOpen": false,
+                "buttons": {
+                    "Add Abbreviation(s)": () => {
+                        creationManager.addSelectedAbbreviations();
+                    },
+                    "Close": () => {
+                        abbrevDialog.dialog("close");
+                    },
                 },
-                'Close': () => {
-                    abbrevDialog.dialog('close');
-                },
-            },
-        }).removeClass('hide'); // remove class that hides it during initial page load
+            })
+            .removeClass("hide"); // remove class that hides it during initial page load
     }
 
     addSelectedAbbreviations() {
-        $('#abbreviations-table').removeClass('hide');
+        $("#abbreviations-table").removeClass("hide");
         // build the list of line attributes selected in the dialog
-        const abbreviationsList = $('#line-name-abbrev-list');
-        const selectedItems = abbreviationsList.children('.ui-selected');
-        const selectedProperties = selectedItems.get().map(
-            (element) => $(element).data() as LinePropertyDescriptor,
-        );
+        const abbreviationsList = $("#line-name-abbrev-list");
+        const selectedItems = abbreviationsList.children(".ui-selected");
+        const selectedProperties = selectedItems
+            .get()
+            .map((element) => $(element).data() as LinePropertyDescriptor);
         if (!selectedProperties.length) {
             return;
         }
@@ -2432,27 +2508,27 @@ export class CreationManager {
     }
 
     updateHasAbbrevInputs(): void {
-        const hasInputs: boolean = $('#abbreviations-table').children('.table-row').length !== 0;
+        const hasInputs: boolean =
+            $("#abbreviations-table").children(".table-row").length !== 0;
         // show table header, since there's at least one abbreviation row
-        $('#abbreviations-table').toggleClass('hide', !hasInputs);
-        $('#no-abbrevs-div').toggleClass('hide', hasInputs);
+        $("#abbreviations-table").toggleClass("hide", !hasInputs);
+        $("#no-abbrevs-div").toggleClass("hide", hasInputs);
     }
 
     updateHasAbbrevDialogOptions(list: JQuery): void {
-        const hasOptions = list.children('li').length !== 0;
-        $('#no-abbrev-options-div').toggleClass('hide', hasOptions);
-        list.toggleClass('hide', !hasOptions);
+        const hasOptions = list.children("li").length !== 0;
+        $("#no-abbrev-options-div").toggleClass("hide", hasOptions);
+        list.toggleClass("hide", !hasOptions);
     }
 
     updateHasCustomNameElts(): void {
-        const customEltsTable = $('#custom-elements-table');
-        const hasInputs = customEltsTable.children('.table-row').length !== 0;
-        customEltsTable.toggleClass('hide', !hasInputs);
-        $('#no-custom-elts-div').toggleClass('hide', hasInputs);
+        const customEltsTable = $("#custom-elements-table");
+        const hasInputs = customEltsTable.children(".table-row").length !== 0;
+        customEltsTable.toggleClass("hide", !hasInputs);
+        $("#no-custom-elts-div").toggleClass("hide", hasInputs);
     }
 
     buildJson(): string {
-        let iceFolderInput: IceFolderInput;
         // name element ordering
         const nameElts: any = {};
         const elts = [];
@@ -2467,7 +2543,7 @@ export class CreationManager {
             if (!value) {
                 return true; // continue looping
             }
-            $.extend(customElts, value);  // TODO: point out overlapping inputs!
+            $.extend(customElts, value); // TODO: point out overlapping inputs!
         });
         // abbreviations
         if (this.abbreviations.length) {
@@ -2481,7 +2557,7 @@ export class CreationManager {
             });
             nameElts.abbreviations = abbrevs;
         }
-        const result: any = {"name_elements": nameElts};
+        const result: any = { "name_elements": nameElts };
         if (customElts) {
             result.custom_name_elts = customElts;
         }
@@ -2508,17 +2584,16 @@ export class CreationManager {
             // results in combinatorial line creation.
             // later on, we may add support for non-combinatorial multiples
             // (e.g. co-culture \ multiple carbon sources)
-            const multiValuedInput = (
-                MULTIVALUED_LINE_META_UUIDS.indexOf(input.lineProperty.metaUUID) >= 0
-            );
+            const multiValuedInput =
+                MULTIVALUED_LINE_META_UUIDS.indexOf(input.lineProperty.metaUUID) >= 0;
             if (multiValuedInput && validInputCount > 1) {
                 let value = input.getValueJson();
                 if (value.constructor === Array) {
-                   for (let v = 0; v < value.length; v++) {
-                       value[v] = [value[v]];
-                   }
+                    for (let v = 0; v < value.length; v++) {
+                        value[v] = [value[v]];
+                    }
                 } else {
-                     value = [value];
+                    value = [value];
                 }
                 combinatorialValues[input.lineProperty.jsonId] = value;
                 return true;
@@ -2531,7 +2606,9 @@ export class CreationManager {
         });
         result.combinatorial_line_metadata = combinatorialValues;
         result.common_line_metadata = commonValues;
-        iceFolderInput = this.getPropertyInput(ICE_FOLDER_JSON_ID) as IceFolderInput;
+        const iceFolderInput = this.getPropertyInput(
+            ICE_FOLDER_JSON_ID,
+        ) as IceFolderInput;
         if (iceFolderInput) {
             result.ice_folder_to_filters = iceFolderInput.getFiltersJson();
         }
@@ -2539,9 +2616,7 @@ export class CreationManager {
     }
 }
 
-
 export const creationManager = new CreationManager();
-
 
 // As soon as the window load signal is sent, call back to the server for the set of reference
 // records that will be used to disambiguate labels in imported data.
@@ -2574,11 +2649,11 @@ export function onDocumentReady(): void {
 
     // send CSRF header on each AJAX request from this page
     $.ajaxSetup({
-        "beforeSend": function (xhr) {
+        "beforeSend": function(xhr) {
             const csrfToken = Utl.EDD.findCSRFToken();
-            xhr.setRequestHeader('X-CSRFToken', csrfToken);
+            xhr.setRequestHeader("X-CSRFToken", csrfToken);
         },
     });
 }
 
-$(window).on('load', onDocumentReady);
+$(window).on("load", onDocumentReady);

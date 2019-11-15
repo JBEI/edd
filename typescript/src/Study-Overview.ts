@@ -1,6 +1,6 @@
 "use strict";
 
-declare var EDDData: EDDData;
+declare let EDDData: EDDData;
 
 import * as $ from "jquery";
 
@@ -9,88 +9,104 @@ import * as EDDEditable from "../modules/EDDEditableElement";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
 
-
-const studyBaseUrl: URL = Utl.relativeURL('../');
+const studyBaseUrl: URL = Utl.relativeURL("../");
 
 function preparePermissions() {
-    var user: EDDAuto.User, group: EDDAuto.Group;
-    user = new EDDAuto.User({
-        "container": $('#permission_user_box'),
+    const user = new EDDAuto.User({
+        "container": $("#permission_user_box"),
     });
     user.init();
-    group = new EDDAuto.Group({
-        "container": $('#permission_group_box'),
+    const group = new EDDAuto.Group({
+        "container": $("#permission_group_box"),
     });
     group.init();
 
     // check public permission input on click
-    $('#set_everyone_permission').on('click', function () {
-        $('#permission_public').prop('checked', true);
+    $("#set_everyone_permission").on("click", function() {
+        $("#permission_public").prop("checked", true);
     });
-    $('#set_group_permission').on('click', function () {
-        $('#permission_group').prop('checked', true);
+    $("#set_group_permission").on("click", function() {
+        $("#permission_group").prop("checked", true);
     });
-    $('#set_user_permission').on('click', function () {
-        $('#permission_user').prop('checked', true);
+    $("#set_user_permission").on("click", function() {
+        $("#permission_user").prop("checked", true);
     });
 
-    $('form#permissions')
-        .on('submit', (ev: JQueryEventObject): boolean => {
+    $("form#permissions")
+        .on("submit", (ev: JQueryEventObject): boolean => {
             const perm: any = {};
-            const auto: JQuery = $('form#permissions').find('[name=class]:checked');
+            const auto: JQuery = $("form#permissions").find("[name=class]:checked");
             const klass: string = auto.val() as string;
-            const token: string = $('form#permissions')
-                .find('[name=csrfmiddlewaretoken]')
+            const token: string = $("form#permissions")
+                .find("[name=csrfmiddlewaretoken]")
                 .val() as string;
-            perm.type = $(auto).siblings('select').val();
-            perm[klass.toLowerCase()] = {'id': $(auto).siblings('input:hidden').val()};
+            perm.type = $(auto)
+                .siblings("select")
+                .val();
+            perm[klass.toLowerCase()] = {
+                "id": $(auto)
+                    .siblings("input:hidden")
+                    .val(),
+            };
             $.ajax({
-                'url': Utl.relativeURL('permissions/', studyBaseUrl).toString(),
-                'type': 'POST',
-                'data': {
-                    'data': JSON.stringify([perm]),
-                    'csrfmiddlewaretoken': token,
+                "url": Utl.relativeURL("permissions/", studyBaseUrl).toString(),
+                "type": "POST",
+                "data": {
+                    "data": JSON.stringify([perm]),
+                    "csrfmiddlewaretoken": token,
                 },
-                'success': (): void => {
+                "success": (): void => {
                     // reset permission options
-                    $('form#permissions').find('.autocomp_search')
-                        .siblings('select')
-                        .val('N');
+                    $("form#permissions")
+                        .find(".autocomp_search")
+                        .siblings("select")
+                        .val("N");
                     // reset input
-                    $('form#permissions').find('.autocomp_search').val('');
+                    $("form#permissions")
+                        .find(".autocomp_search")
+                        .val("");
 
-                    $('<div>').text('Permission Updated')
-                        .addClass('success')
-                        .appendTo($('form#permissions'))
+                    $("<div>")
+                        .text("Permission Updated")
+                        .addClass("success")
+                        .appendTo($("form#permissions"))
                         .delay(2000)
                         .fadeOut(2000);
                 },
-                'error': (xhr, status, err): void => {
+                "error": (xhr, status, err): void => {
                     // reset permission options
-                    $('form#permissions').find('.autocomp_search')
-                        .siblings('select')
-                        .val('N');
+                    $("form#permissions")
+                        .find(".autocomp_search")
+                        .siblings("select")
+                        .val("N");
                     // reset input
-                    $('form#permissions').find('.autocomp_search').val('');
-                    $('<div>').text('Server Error: ' + err)
-                        .addClass('bad')
-                        .appendTo($('form#permissions'))
+                    $("form#permissions")
+                        .find(".autocomp_search")
+                        .val("");
+                    $("<div>")
+                        .text("Server Error: " + err)
+                        .addClass("bad")
+                        .appendTo($("form#permissions"))
                         .delay(5000)
                         .fadeOut(2000);
                 },
             });
             return false;
         })
-        .find(':radio').trigger('change').end()
-        .removeClass('off');
+        .find(":radio")
+        .trigger("change")
+        .end()
+        .removeClass("off");
     // set style on inputs for permissions
-    $('#permission_user_box').find('input')
-        .insertBefore('#user_permission_options')
-        .addClass('permissionUser');
-    $('#permission_group_box').find('input')
-        .insertBefore('#group_permission_options')
-        .addClass('permissionGroup');
-    $('#permission_public_box').addClass('permissionGroup');
+    $("#permission_user_box")
+        .find("input")
+        .insertBefore("#user_permission_options")
+        .addClass("permissionUser");
+    $("#permission_group_box")
+        .find("input")
+        .insertBefore("#group_permission_options")
+        .addClass("permissionGroup");
+    $("#permission_public_box").addClass("permissionGroup");
 
     // Set up the Add Measurement to Assay modal
     $("#permissionsSection").dialog({
@@ -98,22 +114,26 @@ function preparePermissions() {
         "autoOpen": false,
     });
 
-    $("#addPermission").click(function () {
-        $("#permissionsSection").removeClass('off').dialog("open");
+    $("#addPermission").click(function() {
+        $("#permissionsSection")
+            .removeClass("off")
+            .dialog("open");
         return false;
     });
 }
 
-
 export class EditableStudyDescription extends StudyBase.EditableStudyElement {
-
     minimumRows: number;
 
     constructor(inputElement: HTMLElement, style?: string) {
         super(inputElement, style);
         this.minimumRows = 4;
-        this.fieldName('description');
-        this.formURL($(inputElement).parents('form').attr('data-rest'));
+        this.fieldName("description");
+        this.formURL(
+            $(inputElement)
+                .parents("form")
+                .attr("data-rest"),
+        );
     }
 
     getValue(): string {
@@ -121,21 +141,23 @@ export class EditableStudyDescription extends StudyBase.EditableStudyElement {
     }
 
     blankLabel(): string {
-        return '(click to add description)';
+        return "(click to add description)";
     }
 }
 
-
 export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
-
     constructor(inputElement: HTMLElement, style?: string) {
         super(inputElement, style);
-        this.fieldName('contact_id');
-        this.formURL($(inputElement).parents('form').attr('data-rest'));
+        this.fieldName("contact_id");
+        this.formURL(
+            $(inputElement)
+                .parents("form")
+                .attr("data-rest"),
+        );
     }
 
     canCommit(value): boolean {
-        return '' !== value.trim();
+        return "" !== value.trim();
     }
 
     getValue(): string {
@@ -143,43 +165,42 @@ export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
     }
 }
 
-
 // Called when the page loads.
 export function prepareIt() {
-    const contact = $('#editable-study-contact').get()[0] as HTMLElement;
-    const desc = $('#editable-study-description').get()[0] as HTMLElement;
+    const contact = $("#editable-study-contact").get()[0] as HTMLElement;
+    const desc = $("#editable-study-description").get()[0] as HTMLElement;
     const contactEdit = new EditableStudyContact(contact);
     const descEdit = new EditableStudyDescription(desc);
     contactEdit.getValue();
     descEdit.getValue();
 
-    $('#helpExperimentDescription').tooltip({
-        'content': () => $('#helpExperimentDescription > .helpContent').html(),
-        'items': '#helpExperimentDescription',
-        'position': {
-            'my': "right top",
-            'at': "right bottom",
-            'of': "#helpExperimentDescription",
+    $("#helpExperimentDescription").tooltip({
+        "content": () => $("#helpExperimentDescription > .helpContent").html(),
+        "items": "#helpExperimentDescription",
+        "position": {
+            "my": "right top",
+            "at": "right bottom",
+            "of": "#helpExperimentDescription",
         },
     });
 
     const helper = new Utl.FileDropZoneHelpers({
-       "pageRedirect": 'experiment-description',
+        "pageRedirect": "experiment-description",
     });
 
     Utl.FileDropZone.create({
-        'elementId': "experimentDescDropZone",
-        'url': Utl.relativeURL('describe/', studyBaseUrl),
+        "elementId": "experimentDescDropZone",
+        "url": Utl.relativeURL("describe/", studyBaseUrl),
         // must bind these functions; otherwise the function this will be the options object
         // here, instead of the helper object
-        'processResponseFn': helper.fileReturnedFromServer.bind(helper),
-        'processErrorFn': helper.fileErrorReturnedFromServer.bind(helper),
-        'processWarningFn': helper.fileWarningReturnedFromServer.bind(helper),
+        "processResponseFn": helper.fileReturnedFromServer.bind(helper),
+        "processErrorFn": helper.fileErrorReturnedFromServer.bind(helper),
+        "processWarningFn": helper.fileWarningReturnedFromServer.bind(helper),
     });
 
     Utl.Tabs.prepareTabs();
 
-    $(window).on('load', preparePermissions);
+    $(window).on("load", preparePermissions);
 }
 
 // use JQuery ready event shortcut to call prepareIt when page is ready

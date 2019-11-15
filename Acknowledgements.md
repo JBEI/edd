@@ -17,8 +17,8 @@ The EDD project logo was created by [Daniel Lopez][4].
 Some of the icons used in EDD are sourced from the [famfamfam Silk icon set][16], under a
 Creative Commons (CC-BY 3.0) license.
 
-[1]:    https://www.jbei.org/
-[2]:    https://jgi.doe.gov/
-[3]:    https://www.agilebiofoundry.org/
-[4]:    mailto:daniellopez03@gmail.com
-[16]:   http://www.famfamfam.com/lab/icons/silk/
+[1]: https://www.jbei.org/
+[2]: https://jgi.doe.gov/
+[3]: https://www.agilebiofoundry.org/
+[4]: mailto:daniellopez03@gmail.com
+[16]: http://www.famfamfam.com/lab/icons/silk/

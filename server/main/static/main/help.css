@@ -1,4 +1,9 @@
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     margin-top: 1em;
 }
 
@@ -12,7 +17,8 @@ h1, h2, h3, h4, h5, h6 {
     margin: 0.5em;
 }
 
-.figureTable td, .figureTable th {
+.figureTable td,
+.figureTable th {
     border: 1px solid black;
     padding: 5px;
 }
@@ -22,7 +28,8 @@ h1, h2, h3, h4, h5, h6 {
     margin-right: auto;
 }
 
-.figureTable, .caption {
+.figureTable,
+.caption {
     margin-top: 0.5em;
     margin-bottom: 0.5em;
     margin-left: 3em;
@@ -34,9 +41,9 @@ h1, h2, h3, h4, h5, h6 {
 
 /* specific to the Experiment Description help*/
 .discloseBody {
-	color:#444;
-	font-size:12px;
-	margin-left:1.2em;
+    color: #444;
+    font-size: 12px;
+    margin-left: 1.2em;
 }
 
 .discloseBody ol {
@@ -45,7 +52,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .TODO {
     display: inline-block; /*none;*/ /*  */
-    background-color: #FFFF00;
+    background-color: #ffff00;
 }
 
 .metadataList {
@@ -56,6 +63,7 @@ h1, h2, h3, h4, h5, h6 {
     list-style-type: none;
 }
 
-#lineNamePartsTable, #lineNamePartsTable td {
+#lineNamePartsTable,
+#lineNamePartsTable td {
     border: none;
 }

@@ -362,32 +362,32 @@ This adds a Python-based application to watch for changes to the filesystem. EDD
 detect changes in TypeScript code, and copy the compiled files to the webserver serving static
 files, using Django's `collectstatic` command. [Source][24]
 
----------------------------------------------------------------------------------------------------
+---
 
-[1]:    ./requirements.txt
-[2]:    https://pypi.python.org/pypi/pipdeptree
-[3]:    https://www.djangoproject.com/
-[4]:    https://arrow.readthedocs.io/en/latest/
-[5]:    https://www.celeryproject.org/
-[6]:    https://django-allauth.readthedocs.io/en/latest/
-[7]:    https://github.com/django-auth-ldap/django-auth-ldap
-[8]:    https://django-debug-toolbar.readthedocs.io/en/stable/
-[9]:    https://django-environ.readthedocs.io/en/latest/
-[10]:   https://www.12factor.net/
-[11]:   https://django-extensions.readthedocs.io/en/latest/
-[12]:   https://github.com/AliLozano/django-messages-extends
-[13]:   https://www.django-rest-framework.org/
-[14]:   https://django-filter.readthedocs.io/en/1.1.0/
-[15]:   https://python-jsonschema.readthedocs.io/en/latest/
-[16]:   https://github.com/alanjds/drf-nested-routers
-[17]:   https://www.sqlalchemy.org/
-[18]:   https://github.com/benrobster/django-threadlocals
-[19]:   https://factoryboy.readthedocs.io/en/latest/
-[20]:   https://pypi.python.org/pypi/mock
-[21]:   https://gunicorn.org/
-[22]:   https://openpyxl.readthedocs.io/en/stable/
-[23]:   https://pillow.readthedocs.io/en/latest/
-[24]:   https://pythonhosted.org/watchdog/
-[25]:   https://service-identity.readthedocs.io/en/stable/
-[26]:   http://sbml.org/Software/libSBML
-[27]:   http://graphene-python.org/
+[1]: ./requirements.txt
+[2]: https://pypi.python.org/pypi/pipdeptree
+[3]: https://www.djangoproject.com/
+[4]: https://arrow.readthedocs.io/en/latest/
+[5]: https://www.celeryproject.org/
+[6]: https://django-allauth.readthedocs.io/en/latest/
+[7]: https://github.com/django-auth-ldap/django-auth-ldap
+[8]: https://django-debug-toolbar.readthedocs.io/en/stable/
+[9]: https://django-environ.readthedocs.io/en/latest/
+[10]: https://www.12factor.net/
+[11]: https://django-extensions.readthedocs.io/en/latest/
+[12]: https://github.com/AliLozano/django-messages-extends
+[13]: https://www.django-rest-framework.org/
+[14]: https://django-filter.readthedocs.io/en/1.1.0/
+[15]: https://python-jsonschema.readthedocs.io/en/latest/
+[16]: https://github.com/alanjds/drf-nested-routers
+[17]: https://www.sqlalchemy.org/
+[18]: https://github.com/benrobster/django-threadlocals
+[19]: https://factoryboy.readthedocs.io/en/latest/
+[20]: https://pypi.python.org/pypi/mock
+[21]: https://gunicorn.org/
+[22]: https://openpyxl.readthedocs.io/en/stable/
+[23]: https://pillow.readthedocs.io/en/latest/
+[24]: https://pythonhosted.org/watchdog/
+[25]: https://service-identity.readthedocs.io/en/stable/
+[26]: http://sbml.org/Software/libSBML
+[27]: http://graphene-python.org/

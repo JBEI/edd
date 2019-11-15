@@ -1,5 +1,5 @@
 ---
-version: '3.7'
+version: "3.7"
 networks:
   backnet: {}
 volumes:
@@ -19,20 +19,20 @@ services:
     volumes:
       - postgres_db:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', '/healthcheck.sh']
+      test: ["CMD", "/healthcheck.sh"]
       interval: 1m
       timeout: 5s
       retries: 3
     logging:
-      driver: 'json-file'
+      driver: "json-file"
       options:
         max-size: 1m
-        max-file: '5'
+        max-file: "5"
     expose:
-      - '5432'
+      - "5432"
   redis:
     build: ./docker/redis/
-    command: ['redis-server', '--appendonly', 'yes']
+    command: ["redis-server", "--appendonly", "yes"]
     image: jbei/redis:5
     restart: always
     networks:
@@ -40,10 +40,10 @@ services:
     volumes:
       - redis_db:/data
     logging:
-      driver: 'json-file'
+      driver: "json-file"
       options:
         max-size: 1m
-        max-file: '5'
+        max-file: "5"
   solr:
     build: ./docker/solr/
     image: jbei/solr:8
@@ -53,10 +53,10 @@ services:
     volumes:
       - solr_home:/var/solr/data
     logging:
-      driver: 'json-file'
+      driver: "json-file"
       options:
         max-size: 1m
-        max-file: '5'
+        max-file: "5"
   rabbitmq:
     build: ./docker/rabbitmq/
     image: jbei/rabbitmq:3.7-management-alpine
@@ -69,38 +69,38 @@ services:
       RABBITMQ_DEFAULT_VHOST: edd
       RABBITMQ_NODENAME: rabbit@rabbitmq
     expose:
-      - '5672'
-      - '15672'
+      - "5672"
+      - "15672"
     networks:
       - backnet
     healthcheck:
-      test: ['CMD', '/healthcheck.sh']
+      test: ["CMD", "/healthcheck.sh"]
       interval: 1m
       retries: 3
       start_period: 1m
       timeout: 30s
     logging:
-      driver: 'json-file'
+      driver: "json-file"
       options:
         max-size: 1m
-        max-file: '5'
+        max-file: "5"
   smtp:
     image: tianon/exim4
     restart: always
     networks:
       - backnet
     expose:
-      - '25'
+      - "25"
     logging:
-      driver: 'json-file'
+      driver: "json-file"
       options:
         max-size: 1m
-        max-file: '5'
+        max-file: "5"
   edd:
     build: ./docker/edd/core/
     image: jbei/edd-core:latest
     restart: always
-    command: ['application']
+    command: ["application"]
     environment:
       CACHE_URL: "rediscache://redis:6379/1?client_class=django_redis.client.DefaultClient"
       EDD_DEBUG: "false"
@@ -115,23 +115,23 @@ services:
       - smtp
       - solr
     expose:
-      - '8000'
+      - "8000"
     networks:
       - backnet
     volumes:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
     healthcheck:
-      test: ['CMD', 'curl', '--fail', '-LSs', 'http://localhost:8000/health/']
+      test: ["CMD", "curl", "--fail", "-LSs", "http://localhost:8000/health/"]
       interval: 15s
       start_period: 60s
       timeout: 5s
       retries: 5
     logging:
-      driver: 'json-file'
+      driver: "json-file"
       options:
         max-size: 1m
-        max-file: '5'
+        max-file: "5"
   websocket:
     image: jbei/edd-core:latest
     environment:
@@ -142,14 +142,14 @@ services:
       VIRTUAL_PATH_GROUP: "/ws"
       VIRTUAL_PORT: "8000"
     expose:
-      - '8000'
+      - "8000"
     networks:
       - backnet
     volumes:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
     restart: always
-    command: [-A, -w, edd, -p, '8000', daphne]
+    command: [-A, -w, edd, -p, "8000", daphne]
     links:
       - edd
       - postgres
@@ -158,10 +158,10 @@ services:
       - smtp
       - solr
     logging:
-      driver: 'json-file'
+      driver: "json-file"
       options:
         max-size: 1m
-        max-file: '5'
+        max-file: "5"
   worker:
     image: jbei/edd-core:latest
     environment:
@@ -175,7 +175,7 @@ services:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
     restart: always
-    command: [-A, -w, edd, -p, '8000', worker]
+    command: [-A, -w, edd, -p, "8000", worker]
     links:
       - edd
       - postgres
@@ -184,12 +184,12 @@ services:
       - smtp
       - solr
     healthcheck:
-      test: ['CMD', 'celery', 'inspect', 'ping', '-A', 'edd', '--workdir', '/code']
+      test: ["CMD", "celery", "inspect", "ping", "-A", "edd", "--workdir", "/code"]
       interval: 1m
       timeout: 20s
       retries: 3
     logging:
-      driver: 'json-file'
+      driver: "json-file"
       options:
         max-size: 1m
-        max-file: '5'
+        max-file: "5"

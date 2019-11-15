@@ -2,16 +2,9 @@
 
 import * as $ from "jquery";
 
-import "../src/EDDDataInterface";
+import * as Dropzone from "dropzone";
 
-// TODO find out a way to do this in Typescript without relying on specific output targets
-/* tslint:disable */
-declare function require(name: string): any;
-// load dropzone module
-var Dropzone = require('dropzone');
-require('dropzone/dist/dropzone.css');
-/* tslint:enable */
-
+import "../modules/Styles";
 
 export function relativeURL(path: string, base?: URL): URL {
     // Defining this to clean up boilerplate as TypeScript compiler requires URL constructor
@@ -23,48 +16,51 @@ export function relativeURL(path: string, base?: URL): URL {
     return new URL(path, baseStr);
 }
 
-
 export function lookup<U>(list: RecordList<U>, key: number | string): U {
     // return item or an empty null type
-    return list[key] || {} as U;
+    return list[key] || ({} as U);
 }
-
 
 /**
  * Takes an array-of-arrays, and returns a joined array of the concatenated sub-arrays.
  */
 export function chainArrays<T>(a: T[][]): T[] {
-    return [].concat.apply([], a);
+    return [].concat(...a);
 }
 
-
 export class EDD {
-
-    static resolveMeasurementRecordToName(measurementRecord: AssayMeasurementRecord): string {
-        let mName = '';
+    static resolveMeasurementRecordToName(
+        measurementRecord: AssayMeasurementRecord,
+    ): string {
+        let mName = "";
         // We figure out the name and units differently based on the subtype.
         const mst = measurementRecord.mst;
-        if (mst === 1) { // Metabolite type.  Magic numbers.  EW!  TODO: Eeeew!
-            var compName = '';
+        if (mst === 1) {
+            // Metabolite type.  Magic numbers.  EW!  TODO: Eeeew!
+            let compName = "";
             const compID = measurementRecord.mq;
             if (compID) {
                 const cRecord = EDDData.MeasurementTypeCompartments[compID];
                 if (cRecord) {
-                    compName = cRecord.code + ' ';
+                    compName = cRecord.code + " ";
                 }
             }
             const mRecord = EDDData.MetaboliteTypes[measurementRecord.mt];
             mName = compName + mRecord.name;
-        } else if (mst === 2) {  // Gene type.  EWW EWW
+        } else if (mst === 2) {
+            // Gene type.  EWW EWW
             mName = EDDData.GeneTypes[measurementRecord.mt].name;
-        } else if (mst === 3) {  // Protein type.  EWW EWW
+        } else if (mst === 3) {
+            // Protein type.  EWW EWW
             mName = EDDData.ProteinTypes[measurementRecord.mt].name;
         }
         return mName;
     }
 
-    static resolveMeasurementRecordToUnits(measurementRecord: AssayMeasurementRecord): string {
-        let mUnits = '';
+    static resolveMeasurementRecordToUnits(
+        measurementRecord: AssayMeasurementRecord,
+    ): string {
+        let mUnits = "";
         const mst = measurementRecord.mst;
         if (mst === 1) {
             if (measurementRecord.uid) {
@@ -75,15 +71,15 @@ export class EDD {
             }
         } else if (mst === 2) {
             // Units for Proteomics? Anyone?
-            mUnits = '';
+            mUnits = "";
         } else if (mst === 3) {
-            mUnits = 'RPKM';
+            mUnits = "RPKM";
         }
         return mUnits;
     }
 
     static findCSRFToken(): string {
-        return $('input[name=csrfmiddlewaretoken]').val() as string || '';
+        return ($("input[name=csrfmiddlewaretoken]").val() as string) || "";
     }
 
     // Helper function to do a little more prep on objects when calling jQuery's Alax handler.
@@ -98,39 +94,49 @@ export class EDD {
     static callAjax(options) {
         let processData = false;
         const formData = options.rawdata || options.data;
-        const url = options.url || '';
-        const type = options.type || 'POST';
-        if ((options.rawdata) && (type !== 'POST')) {
+        const url = options.url || "";
+        const type = options.type || "POST";
+        if (options.rawdata && type !== "POST") {
             // Turns object name/attribute pairs into a query string, e.g. ?a=4&b=3 .
             // Never what we want when using POST.
             processData = true;
         }
         const headers = {};
-        if (type === 'POST') {
+        if (type === "POST") {
             headers["X-CSRFToken"] = EDD.findCSRFToken();
         }
         $.ajax({
             "xhr": () => {
                 const xhr = new XMLHttpRequest();
-                if (options.progressBar && (options.upEnd - options.upStart > 0)) {
-                    xhr.upload.addEventListener("progress", (evt) => {
-                        if (evt.lengthComputable) {
-                            const p = ((evt.loaded / evt.total) *
-                                (options.upEnd - options.upStart)
-                            ) + options.upStart;
-                            options.progressBar.setProgress(p);
-                        }
-                    }, false);
+                if (options.progressBar && options.upEnd - options.upStart > 0) {
+                    xhr.upload.addEventListener(
+                        "progress",
+                        (evt) => {
+                            if (evt.lengthComputable) {
+                                const p =
+                                    (evt.loaded / evt.total) *
+                                        (options.upEnd - options.upStart) +
+                                    options.upStart;
+                                options.progressBar.setProgress(p);
+                            }
+                        },
+                        false,
+                    );
                 }
-                if (options.progressBar && (options.downEnd - options.downStart > 0)) {
-                    xhr.addEventListener("progress", (evt) => {
-                        if (evt.lengthComputable) {
-                            const p = ((evt.loaded / evt.total) *
-                                (options.downEnd - options.downStart)
-                            ) + options.downStart;
-                            options.progressBar.setProgress(p);
-                        }
-                    }, false);
+                if (options.progressBar && options.downEnd - options.downStart > 0) {
+                    xhr.addEventListener(
+                        "progress",
+                        (evt) => {
+                            if (evt.lengthComputable) {
+                                const p =
+                                    (evt.loaded / evt.total) *
+                                        (options.downEnd - options.downStart) +
+                                    options.downStart;
+                                options.progressBar.setProgress(p);
+                            }
+                        },
+                        false,
+                    );
                 }
                 return xhr;
             },
@@ -146,33 +152,31 @@ export class EDD {
     }
 }
 
-
 export class Tabs {
     // Set up click-to-browse tabs
     static prepareTabs() {
         // declare the click handler at the document level, then filter to any link inside
         // a .tabBar
-        $(document).on('click', '.tabBar span:not(.active)', (e) => {
-            const targetTab = $(e.target).closest('span');
-            const activeTabs = targetTab.closest('div.tabBar').children('span.active');
-            activeTabs.removeClass('active');
-            targetTab.addClass('active');
-            const targetTabContentID = targetTab.attr('for');
+        $(document).on("click", ".tabBar span:not(.active)", (e) => {
+            const targetTab = $(e.target).closest("span");
+            const activeTabs = targetTab.closest("div.tabBar").children("span.active");
+            activeTabs.removeClass("active");
+            targetTab.addClass("active");
+            const targetTabContentID = targetTab.attr("for");
             if (targetTabContentID) {
                 // Hide the content section for whatever tabs were active,
                 // then show the one selected
                 activeTabs.each((i, tab) => {
-                    const contentId = $(tab).attr('for');
+                    const contentId = $(tab).attr("for");
                     if (contentId) {
-                        $(document.getElementById(contentId)).addClass('off');
+                        $(document.getElementById(contentId)).addClass("off");
                     }
                 });
-                $(document.getElementById(targetTabContentID)).removeClass('off');
+                $(document.getElementById(targetTabContentID)).removeClass("off");
             }
         });
     }
 }
-
 
 // This is currently implemented almost exactly like Tabs above.
 export class ButtonBar {
@@ -180,27 +184,28 @@ export class ButtonBar {
     static prepareButtonBars() {
         // declare the click handler at the document level, then filter to any link inside
         // a .buttonBar
-        $(document).on('click', '.buttonBar span:not(.active)', (e) => {
-            const targetButton = $(e.target).closest('span');
-            const activeButtons = targetButton.closest('div.buttonBar').children('span.active');
-            activeButtons.removeClass('active');
-            targetButton.addClass('active');
-            const targetButtonContentID = targetButton.attr('for');
+        $(document).on("click", ".buttonBar span:not(.active)", (e) => {
+            const targetButton = $(e.target).closest("span");
+            const activeButtons = targetButton
+                .closest("div.buttonBar")
+                .children("span.active");
+            activeButtons.removeClass("active");
+            targetButton.addClass("active");
+            const targetButtonContentID = targetButton.attr("for");
             if (targetButtonContentID) {
                 // Hide the content section for whatever buttons were active,
                 // then show the one selected
                 activeButtons.each((i, button) => {
-                    const contentId = $(button).attr('for');
+                    const contentId = $(button).attr("for");
                     if (contentId) {
-                        $(document.getElementById(contentId)).addClass('off');
+                        $(document.getElementById(contentId)).addClass("off");
                     }
                 });
-                $(document.getElementById(targetButtonContentID)).removeClass('off');
+                $(document.getElementById(targetButtonContentID)).removeClass("off");
             }
         });
     }
 }
-
 
 export class QtipHelper {
     public create(linkElement, contentFunction, params: any): void {
@@ -219,19 +224,20 @@ export class QtipHelper {
         // It's incredibly stupid that we have to do this to work around qtip2's 280px
         // max-width default. We have to do it here rather than immediately after calling
         // qtip() because qtip waits to create the actual element.
-        $(this._getQTipElement()).css('max-width', 'none').css('width', 'auto');
+        $(this._getQTipElement())
+            .css("max-width", "none")
+            .css("width", "auto");
         return this._contentFunction();
     }
 
     // Get the HTML element for the qtip. Usually we use this to unset max-width.
     private _getQTipElement(): HTMLElement {
-        return document.getElementById(this.qtip.attr('aria-describedby'));
+        return document.getElementById(this.qtip.attr("aria-describedby"));
     }
 
     public qtip: any;
     private _contentFunction: any;
 }
-
 
 // RGBA helper class.
 // Values are 0-255 (although toString() makes alpha 0-1 since that's how CSS likes it).
@@ -272,14 +278,20 @@ export class Color {
 
     static toString(clr: any): string {
         // If it's something else (like a string) already, just return that value.
-        if (typeof clr === 'string') {
+        if (typeof clr === "string") {
             return clr;
         }
-        return 'rgba(' +
-            Math.floor(clr.r) + ', ' +
-            Math.floor(clr.g) + ', ' +
-            Math.floor(clr.b) + ', ' +
-            (clr.a / 255) + ')';
+        return (
+            "rgba(" +
+            Math.floor(clr.r) +
+            ", " +
+            Math.floor(clr.g) +
+            ", " +
+            Math.floor(clr.b) +
+            ", " +
+            clr.a / 255 +
+            ")"
+        );
     }
 
     toString(): string {
@@ -293,19 +305,17 @@ export class Color {
     static white = Color.rgb(255, 255, 255);
 }
 
-
 export class Table {
-
     constructor(tableID: string, width?: number, height?: number) {
-        this.table = document.createElement('table');
+        this.table = document.createElement("table");
         this.table.id = tableID;
 
         if (width) {
-            $(this.table).css('width', width);
+            $(this.table).css("width", width);
         }
 
         if (height) {
-            $(this.table).css('height', height);
+            $(this.table).css("height", height);
         }
     }
 
@@ -324,17 +334,15 @@ export class Table {
     }
 
     table: HTMLTableElement = null;
-    _currentRow: number = 0;
+    _currentRow = 0;
 }
-
 
 // Javascript utilities
 export class JS {
-
     static assert(condition: boolean, message: string): void {
         if (!condition) {
             message = message || "Assertion failed";
-            if (typeof Error !== 'undefined') {
+            if (typeof Error !== "undefined") {
                 throw Error(message);
             } else {
                 throw message;
@@ -348,52 +356,64 @@ export class JS {
     // with exceptions for 'Today' and 'Yesterday', e.g. "Yesterday, 3:12pm".
     static timestampToTodayString(timestamp: number): string {
         if (!timestamp || timestamp < 1) {
-            return '<span style="color:#888;">N/A</span>';
+            return "<span style=\"color:#888;\">N/A</span>";
         }
         const time: Date = new Date(Math.round(timestamp * 1000));
         const now: Date = new Date();
         const yesterday: Date = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         let day_str: string;
-        let time_str: string;
-        if ((time.getFullYear() === now.getFullYear()) &&
-            (time.getMonth() === now.getMonth()) &&
-            (time.getDate() === now.getDate())) {
-            day_str = 'Today';
-        } else if ((time.getFullYear() === yesterday.getFullYear()) &&
-            (time.getMonth() === yesterday.getMonth()) &&
-            (time.getDate() === yesterday.getDate())) {
-            day_str = 'Yesterday';
+        if (
+            time.getFullYear() === now.getFullYear() &&
+            time.getMonth() === now.getMonth() &&
+            time.getDate() === now.getDate()
+        ) {
+            day_str = "Today";
+        } else if (
+            time.getFullYear() === yesterday.getFullYear() &&
+            time.getMonth() === yesterday.getMonth() &&
+            time.getDate() === yesterday.getDate()
+        ) {
+            day_str = "Yesterday";
         } else if (time.getFullYear() === now.getFullYear()) {
-            day_str = new Intl.DateTimeFormat(
-                'en-US',
-                {"month": 'short', "day": 'numeric'},
-            ).format(time);
+            day_str = new Intl.DateTimeFormat("en-US", {
+                "month": "short",
+                "day": "numeric",
+            }).format(time);
         } else {
-            day_str = new Intl.DateTimeFormat(
-                'en-US',
-                {"month": 'short', "day": 'numeric', "year": 'numeric'},
-            ).format(time);
+            day_str = new Intl.DateTimeFormat("en-US", {
+                "month": "short",
+                "day": "numeric",
+                "year": "numeric",
+            }).format(time);
         }
-        time_str = new Intl.DateTimeFormat(
-            'en-US',
-            {"hour": 'numeric', "minute": 'numeric'},
-        ).format(time);
-        return day_str + ', ' + time_str;
+        const time_str = new Intl.DateTimeFormat("en-US", {
+            "hour": "numeric",
+            "minute": "numeric",
+        }).format(time);
+        return day_str + ", " + time_str;
     }
 
     static utcToTodayString(utc: string): string {
-        let m: any[];
         let timestamp: number;
-        m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.?(\d{1,6})?Z$/.exec(utc);
-        if (m) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.?(\d{1,6})?Z$/.exec(
+            utc,
+        );
+        if (match) {
             // get rid of overall match, we don't care
-            m.shift();
+            match.shift();
             // convert strings to numbers
-            m.map((v) => parseInt(v, 10));
+            const values = match.map((v) => parseInt(v, 10));
             // Date uses 0-based months, so decrement month
-            m[1]--;
-            timestamp = Date.UTC(m[0], m[1], m[2], m[3], m[4], m[5]);
+            values[1]--;
+            timestamp = Date.UTC(
+                values[0], // year
+                values[1], // month
+                values[2], // day
+                values[3], // hour
+                values[4], // minute
+                values[5], // second
+            );
             // the timestampToTodayString expects seconds, not milliseconds
             timestamp /= 1000;
             return JS.timestampToTodayString(timestamp);
@@ -401,7 +421,6 @@ export class JS {
         return JS.timestampToTodayString(null);
     }
 }
-
 
 // A class wrapping dropzone (http://www.dropzonejs.com/)
 // and providing some additional structure.
@@ -426,16 +445,16 @@ export class FileDropZone {
         const element = document.getElementById(options.elementId);
         const clickable = options.clickable === undefined ? true : options.clickable;
         if (element) {
-            $(element).addClass('dropzone');
+            $(element).addClass("dropzone");
             this.csrftoken = EDD.findCSRFToken();
             this.fileInitFn = options.fileInitFn;
             this.options = options;
             this.dropzone = new Dropzone(element, {
-                'url': options.url,
-                'params': {'csrfmiddlewaretoken': this.csrftoken},
-                'maxFilesize': 2,
-                'acceptedFiles': ".doc,.docx,.pdf,.txt,.xls,.xlsx, .xml, .csv",
-                'clickable': clickable,
+                "url": options.url,
+                "params": { "csrfmiddlewaretoken": this.csrftoken },
+                "maxFilesize": 2,
+                "acceptedFiles": ".doc,.docx,.pdf,.txt,.xls,.xlsx, .xml, .csv",
+                "clickable": clickable,
             });
         }
     }
@@ -449,38 +468,29 @@ export class FileDropZone {
     }
 
     setEventHandlers(): void {
-        this.dropzone.on(
-            'sending',
-            (file, xhr, formData) => {
-                // for import
-                if (this.options.fileInitFn) {
-                    this.options.fileInitFn(file, formData);
+        this.dropzone.on("sending", (file, xhr, formData) => {
+            // for import
+            if (this.options.fileInitFn) {
+                this.options.fileInitFn(file, formData);
+            }
+        });
+        this.dropzone.on("error", (file, msg, xhr) => {
+            if (typeof this.options.processErrorFn === "function") {
+                this.options.processErrorFn(this, file, msg, xhr);
+            }
+        });
+        this.dropzone.on("success", (file) => {
+            const xhr = file.xhr;
+            const response = JSON.parse(xhr.response);
+            if (response.warnings) {
+                if ("function" === typeof this.options.processWarningFn) {
+                    this.options.processWarningFn(file, response);
                 }
-            },
-        );
-        this.dropzone.on(
-            'error',
-            (file, msg, xhr) => {
-                if (typeof this.options.processErrorFn === 'function') {
-                    this.options.processErrorFn(this, file, msg, xhr);
-                }
-            },
-        );
-        this.dropzone.on(
-            'success',
-            (file) => {
-                const xhr = file.xhr;
-                const response = JSON.parse(xhr.response);
-                if (response.warnings) {
-                    if ('function' === typeof this.options.processWarningFn) {
-                        this.options.processWarningFn(file, response);
-                    }
-                } else if ('function' === typeof this.options.processResponseFn) {
-                    this.options.processResponseFn(this, file, response);
-                }
-                this.dropzone.removeAllFiles();
-            },
-        );
+            } else if ("function" === typeof this.options.processResponseFn) {
+                this.options.processResponseFn(this, file, response);
+            }
+            this.dropzone.removeAllFiles();
+        });
     }
 }
 
@@ -494,7 +504,7 @@ export class FileDropZoneHelpers {
 
     constructor(options?: any) {
         options = options || {};
-        this.pageRedirect = options.pageRedirect || '';
+        this.pageRedirect = options.pageRedirect || "";
         this.actionPanelIsCopied = false;
     }
 
@@ -502,75 +512,76 @@ export class FileDropZoneHelpers {
     // fileRead(), is passed a processed result from the server as a second argument,
     // rather than the raw contents of the file.
     fileReturnedFromServer(fileContainer, result): void {
-        const base = relativeURL('../');
+        const base = relativeURL("../");
         const redirect = relativeURL(this.pageRedirect, base);
         const message = JSON.parse(result.xhr.response);
-        $('<p>', {
-            "text": ['Success!', message.lines_created, 'lines added!'].join(' '),
-            "style": 'margin:auto',
-        }).appendTo('#linesAdded');
-        $('#linesAdded').removeClass('off');
+        $("<p>", {
+            "text": ["Success!", message.lines_created, "lines added!"].join(" "),
+            "style": "margin:auto",
+        }).appendTo("#linesAdded");
+        $("#linesAdded").removeClass("off");
         this.successfulRedirect(redirect.pathname);
     }
 
     fileWarningReturnedFromServer(fileContainer, result): void {
-        const base = relativeURL('../');
+        const base = relativeURL("../");
         const redirect = relativeURL(this.pageRedirect, base);
         this.copyActionButtons();
-        $('#acceptWarnings').find('.acceptWarnings')
-            .on(
-                'click',
-                (ev: JQueryMouseEventObject): boolean => {
-                    this.successfulRedirect(redirect.pathname);
-                    return false;
-                },
-            );
+        $("#acceptWarnings")
+            .find(".acceptWarnings")
+            .on("click", (ev: JQueryMouseEventObject): boolean => {
+                this.successfulRedirect(redirect.pathname);
+                return false;
+            });
 
-        $('<p>', {
-            "text": 'Success! ' + result.lines_created + ' lines added!',
-            "style": 'margin:auto',
-        }).appendTo('#linesAdded');
+        $("<p>", {
+            "text": "Success! " + result.lines_created + " lines added!",
+            "style": "margin:auto",
+        }).appendTo("#linesAdded");
         // display success message
-        $('#linesAdded').removeClass('off');
-        this.generateMessages('warnings', result.warnings);
+        $("#linesAdded").removeClass("off");
+        this.generateMessages("warnings", result.warnings);
         this.generateAcceptWarning();
     }
 
     private successfulRedirect(linesPathName): void {
         // redirect to lines page
-        window.setTimeout(
-            () => { window.location.pathname = linesPathName; },
-            1000,
-        );
+        window.setTimeout(() => {
+            window.location.pathname = linesPathName;
+        }, 1000);
     }
 
     private copyActionButtons(): void {
         if (!this.actionPanelIsCopied) {
-            const original: JQuery = $('#actionWarningBar');
-            const copy: JQuery = original.clone().appendTo('#bottomBar').hide();
-            // forward click events on copy to the original button
-            copy.on('click', 'button', (e) => {
-                original.find('#' + e.target.id).trigger(e);
-            });
-            const originalDismiss: JQuery = $('#dismissAll').find('.dismissAll');
-            const copyDismiss: JQuery = originalDismiss.clone().appendTo('#bottomBar').hide();
-            // forward click events on copy to the original button
-            copyDismiss.on(
-                'click',
-                'button',
-                (e) => { originalDismiss.trigger(e); },
-            );
-            const originalAcceptWarnings: JQuery = $('#acceptWarnings').find('.acceptWarnings');
-            const copyAcceptWarnings: JQuery = originalAcceptWarnings
+            const original: JQuery = $("#actionWarningBar");
+            const copy: JQuery = original
                 .clone()
-                .appendTo('#bottomBar')
+                .appendTo("#bottomBar")
                 .hide();
             // forward click events on copy to the original button
-            copyAcceptWarnings.on(
-                'click',
-                'button',
-                (e) => { originalAcceptWarnings.trigger(e); },
+            copy.on("click", "button", (e) => {
+                original.find("#" + e.target.id).trigger(e);
+            });
+            const originalDismiss: JQuery = $("#dismissAll").find(".dismissAll");
+            const copyDismiss: JQuery = originalDismiss
+                .clone()
+                .appendTo("#bottomBar")
+                .hide();
+            // forward click events on copy to the original button
+            copyDismiss.on("click", "button", (e) => {
+                originalDismiss.trigger(e);
+            });
+            const originalAcceptWarnings: JQuery = $("#acceptWarnings").find(
+                ".acceptWarnings",
             );
+            const copyAcceptWarnings: JQuery = originalAcceptWarnings
+                .clone()
+                .appendTo("#bottomBar")
+                .hide();
+            // forward click events on copy to the original button
+            copyAcceptWarnings.on("click", "button", (e) => {
+                originalAcceptWarnings.trigger(e);
+            });
             this.actionPanelIsCopied = true;
         }
     }
@@ -579,21 +590,21 @@ export class FileDropZoneHelpers {
     // is passed an unprocessed result from the server as a second argument.
     fileErrorReturnedFromServer(dropZone: FileDropZone, file, msg, xhr): void {
         this.copyActionButtons();
-        const parent: JQuery = $('#alert_placeholder');
-        const dismissAll: JQuery = $('#dismissAll');
-        const baseUrl: URL = relativeURL('../');
+        const parent: JQuery = $("#alert_placeholder");
+        const dismissAll: JQuery = $("#dismissAll");
+        const baseUrl: URL = relativeURL("../");
         // reset the drop zone here
         // parse xhr.response
-        const contentType = xhr.getResponseHeader('Content-Type');
+        const contentType = xhr.getResponseHeader("Content-Type");
 
         if (xhr.status === 504) {
             this.generate504Error();
         } else if (xhr.status === 413) {
             this.generate413Error();
-        } else if (contentType === 'application/json') {
+        } else if (contentType === "application/json") {
             const json = JSON.parse(xhr.response);
             if (json.errors) {
-                if (json.errors[0].category.indexOf('ICE') > -1) {
+                if (json.errors[0].category.indexOf("ICE") > -1) {
                     // first remove all files in upload
                     dropZone.dropzone.removeAllFiles();
                     file.status = undefined;
@@ -601,27 +612,30 @@ export class FileDropZoneHelpers {
                     // create alert notification
                     this.processICEerror(json.errors);
                     // click handler for omit strains
-                    $('#alert_placeholder').find('.omitStrains')
-                        .on(
-                            'click',
-                            (ev): void => {
-                                const parsedUrl: URL = new URL(
-                                    dropZone.dropzone.options.url,
-                                    window.location.toString(),
-                                );
-                                $(ev.target).parent().remove();
-                                parsedUrl.searchParams.append('IGNORE_ICE_ACCESS_ERRORS', 'true');
-                                dropZone.dropzone.options.url = parsedUrl.toString();
-                                dropZone.dropzone.addFile(file);
-                            },
-                        );
+                    $("#alert_placeholder")
+                        .find(".omitStrains")
+                        .on("click", (ev): void => {
+                            const parsedUrl: URL = new URL(
+                                dropZone.dropzone.options.url,
+                                window.location.toString(),
+                            );
+                            $(ev.target)
+                                .parent()
+                                .remove();
+                            parsedUrl.searchParams.append(
+                                "IGNORE_ICE_ACCESS_ERRORS",
+                                "true",
+                            );
+                            dropZone.dropzone.options.url = parsedUrl.toString();
+                            dropZone.dropzone.addFile(file);
+                        });
                 } else {
-                    this.generateMessages('error', json.errors);
+                    this.generateMessages("error", json.errors);
                 }
             }
             // Note: there may be warnings in addition to errors displayed above
             if (json.warnings) {
-                this.generateMessages('warnings', json.warnings);
+                this.generateMessages("warnings", json.warnings);
             }
         } else {
             // if there is a back end or proxy error (likely html response), show this
@@ -633,81 +647,72 @@ export class FileDropZoneHelpers {
             this.alertError(defaultError);
         }
         // remove the unhelpful DZ default err message ("object")
-        $('.dz-error-message').text('File errors (see above)');
+        $(".dz-error-message").text("File errors (see above)");
 
-        dismissAll.toggleClass('off', ($('.alert').length <= 2));
+        dismissAll.toggleClass("off", $(".alert").length <= 2);
 
         // set up click handler events
-        parent.find('.omitStrains')
-            .on(
-                'click',
-                (ev: JQueryMouseEventObject): boolean => {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    $('#iceError').hide();
-                    return false;
-                },
-            );
-        parent.find('.allowDuplicates')
-            .on(
-                'click',
-                (ev: JQueryMouseEventObject): boolean => {
-                    const f = file.file;
-                    const targetUrl = new URL('describe', baseUrl.toString());
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    targetUrl.searchParams.append('ALLOW_DUPLICATE_NAMES', 'true');
-                    f.sendTo(targetUrl.toString());
-                    $('#duplicateError').hide();
-                    return false;
-                },
-            );
-        $('.noDuplicates, .noOmitStrains')
-            .on(
-                'click',
-                (ev: JQueryMouseEventObject): boolean => {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    window.location.reload();
-                    return false;
-                },
-            );
-        // dismiss all alerts
-        dismissAll.on(
-            'click',
-            '.dismissAll',
+        parent
+            .find(".omitStrains")
+            .on("click", (ev: JQueryMouseEventObject): boolean => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                $("#iceError").hide();
+                return false;
+            });
+        parent
+            .find(".allowDuplicates")
+            .on("click", (ev: JQueryMouseEventObject): boolean => {
+                const f = file.file;
+                const targetUrl = new URL("describe", baseUrl.toString());
+                ev.preventDefault();
+                ev.stopPropagation();
+                targetUrl.searchParams.append("ALLOW_DUPLICATE_NAMES", "true");
+                f.sendTo(targetUrl.toString());
+                $("#duplicateError").hide();
+                return false;
+            });
+        $(".noDuplicates, .noOmitStrains").on(
+            "click",
             (ev: JQueryMouseEventObject): boolean => {
                 ev.preventDefault();
                 ev.stopPropagation();
-                parent.find('.close').click();
                 window.location.reload();
                 return false;
             },
         );
-        $('#acceptWarnings').find('.acceptWarnings')
-            .on(
-                'click',
-                (ev): boolean => {
-                    const redirect = relativeURL('experiment-description/', baseUrl);
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    this.successfulRedirect(redirect.pathname);
-                    return false;
-                },
-            );
+        // dismiss all alerts
+        dismissAll.on("click", ".dismissAll", (ev: JQueryMouseEventObject): boolean => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            parent.find(".close").click();
+            window.location.reload();
+            return false;
+        });
+        $("#acceptWarnings")
+            .find(".acceptWarnings")
+            .on("click", (ev): boolean => {
+                const redirect = relativeURL("experiment-description/", baseUrl);
+                ev.preventDefault();
+                ev.stopPropagation();
+                this.successfulRedirect(redirect.pathname);
+                return false;
+            });
     }
 
     private generateMessages(type, response) {
         const responseMessages = this.organizeMessages(response);
         $.each(responseMessages, (key: string, value: any) => {
-            const template = type === 'error' ? '.alert-danger' : '.alert-warning';
-            const div = $(template).eq(0).clone();
+            const template = type === "error" ? ".alert-danger" : ".alert-warning";
+            const div = $(template)
+                .eq(0)
+                .clone();
             this.alertMessage(key, value, div, type);
         });
     }
 
     private processICEerror(responses): void {
-        $('.noDuplicates, .noOmitStrains').on('click', (ev): boolean => {
+        $(".noDuplicates, .noOmitStrains").on("click", (ev): boolean => {
             ev.preventDefault();
             ev.stopPropagation();
             window.location.reload();
@@ -720,12 +725,12 @@ export class FileDropZoneHelpers {
     }
 
     private generateAcceptWarning(): void {
-        const warningAlerts = $('.alert-warning:visible');
-        const acceptWarningDiv = $('#acceptWarnings').find('.acceptWarnings');
+        const warningAlerts = $(".alert-warning:visible");
+        const acceptWarningDiv = $("#acceptWarnings").find(".acceptWarnings");
         if (warningAlerts.length === 1) {
             $(warningAlerts).append(acceptWarningDiv);
         } else {
-            $('#alert_placeholder').prepend(acceptWarningDiv);
+            $("#alert_placeholder").prepend(acceptWarningDiv);
         }
         acceptWarningDiv.show();
     }
@@ -756,51 +761,67 @@ export class FileDropZoneHelpers {
         const response = {
             "category": "",
             "summary": "File too large",
-            "details": "Please contact system administrators or break your file into parts.",
+            "details":
+                "Please contact system administrators or break your file into parts.",
         };
         this.alertError(response);
     }
 
     private alertIceWarning(response): void {
-        const iceError = $('#iceError');
+        const iceError = $("#iceError");
         response.category = "Warning! " + response.category;
         this.createAlertMessage(iceError, response);
     }
 
     private alertError(response): void {
-        const newErrorAlert = $('.alert-danger').eq(0).clone();
+        const newErrorAlert = $(".alert-danger")
+            .eq(0)
+            .clone();
         this.createAlertMessage(newErrorAlert, response);
         this.clearDropZone();
     }
 
     private createAlertMessage(alertClone, response) {
-        $(alertClone).children('h4').text(response.category);
-        $(alertClone).children('p').text(response.summary + ": " + response.details);
-        $('#alert_placeholder').append(alertClone);
-        $(alertClone).removeClass('off').show();
+        $(alertClone)
+            .children("h4")
+            .text(response.category);
+        $(alertClone)
+            .children("p")
+            .text(response.summary + ": " + response.details);
+        $("#alert_placeholder").append(alertClone);
+        $(alertClone)
+            .removeClass("off")
+            .show();
     }
-
 
     private alertMessage(subject, messages, newAlert, type): void {
         if (type === "warnings") {
-            $(newAlert).children('h4').text("Warning! " + subject);
+            $(newAlert)
+                .children("h4")
+                .text("Warning! " + subject);
         } else {
-            $(newAlert).children('h4').text("Error! " + subject);
+            $(newAlert)
+                .children("h4")
+                .text("Error! " + subject);
             this.clearDropZone();
         }
         $.each(messages, (key, message) => {
-            const summary = $('<p>').addClass('alertWarning').text(message);
+            const summary = $("<p>")
+                .addClass("alertWarning")
+                .text(message);
             $(newAlert).append(summary);
         });
-        $('#alert_placeholder').append(newAlert);
-        $(newAlert).removeClass('off').show();
+        $("#alert_placeholder").append(newAlert);
+        $(newAlert)
+            .removeClass("off")
+            .show();
     }
 
     private clearDropZone(): void {
-        $('#experimentDescDropZone').removeClass('off');
-        $('#fileDropInfoIcon').addClass('off');
-        $('#fileDropInfoName').addClass('off');
-        $('#fileDropInfoSending').addClass('off');
-        $(".linesDropZone").addClass('off');
+        $("#experimentDescDropZone").removeClass("off");
+        $("#fileDropInfoIcon").addClass("off");
+        $("#fileDropInfoName").addClass("off");
+        $("#fileDropInfoSending").addClass("off");
+        $(".linesDropZone").addClass("off");
     }
 }
