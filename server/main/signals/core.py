@@ -136,10 +136,9 @@ def study_contact_extra(sender, instance, raw, using, **kwargs):
 @receiver(post_save, sender=models.Study)
 def study_update_ice(sender, instance, created, raw, using, **kwargs):
     """
-    Checks whether the study has been renamed by comparing its current name
-    with the one set in study_name_change_check. If it has, and if the study
-    is associated with any ICE strains, updates the corresponding ICE
-    entry(ies) to label links to this study with its new name.
+    Checks whether the study has been renamed. If it has, and if the study
+    is associated with any ICE strains, updates those ICE entries to label
+    links to this study with its new name.
     """
     if check_ice_cannot_proceed():
         # abort when no ICE configured
@@ -157,7 +156,7 @@ def study_update_ice(sender, instance, created, raw, using, **kwargs):
     )
     queryset = models.Strain.objects.filter(eligible).distinct()
     to_link = set(queryset.values_list("id", flat=True))
-    partial = functools.partial(submit_ice_link, instance, to_link)
+    partial = functools.partial(submit_ice_link, instance.pk, to_link)
     connection.on_commit(partial)
 
 
