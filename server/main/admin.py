@@ -5,7 +5,7 @@ import logging
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, hashers
 from django.contrib.auth.admin import UserAdmin
 from django.core.validators import RegexValidator
 from django.db import connection
@@ -777,6 +777,22 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
         return exchange_name
 
 
+class UserHasLocalLoginFilter(admin.SimpleListFilter):
+
+    title = _("Has Local Login")
+    parameter_name = "localauth"
+
+    def lookups(self, request, model_admin):
+        return (("T", _("Has Local")),)
+
+    def queryset(self, request, queryset):
+        # ignoring the system user and inactive accounts
+        active = queryset.exclude(username="system").exclude(is_active=False)
+        if self.value() == "T":
+            return active.exclude(password__startswith="!")
+        return queryset
+
+
 class EDDUserAdmin(UserAdmin):
     """ Definition for admin-edit of user accounts """
 
@@ -785,9 +801,12 @@ class EDDUserAdmin(UserAdmin):
         "solr_index",
         "update_groups_from_ldap",
         "search_ice_as_action",
+        "deactivate_user_action",
+        "migrate_local_to_ldap",
     ]
     # list_display is a tuple
     list_display = UserAdmin.list_display + ("date_joined", "last_login")
+    list_filter = UserAdmin.list_filter + (UserHasLocalLoginFilter,)
 
     def solr_index(self, request, queryset):
         solr = UserSearch()
@@ -797,7 +816,7 @@ class EDDUserAdmin(UserAdmin):
         q = q.prefetch_related("groups", "userprofile__institutions")
         solr.update(q)
 
-    solr_index.short_description = "Index in Solr"
+    solr_index.short_description = _("Index in Solr")
 
     def update_groups_from_ldap(self, request, queryset):
         backend = LDAPBackend()
@@ -809,7 +828,7 @@ class EDDUserAdmin(UserAdmin):
                 # _mirror_groups fails when ldap_user is not Active, so delete all groups
                 user.groups.clear()
 
-    update_groups_from_ldap.short_description = "Update Groups from LDAP"
+    update_groups_from_ldap.short_description = _("Update Groups from LDAP")
 
     def search_ice_as_action(self, request, queryset):
         # intentionally throw error when multiple users selected
@@ -826,13 +845,61 @@ class EDDUserAdmin(UserAdmin):
             except IceApiException:
                 self.message_user(
                     request,
-                    "Failed to execute search in ICE, check the ICE logs.",
+                    _("Failed to execute search in ICE, check the ICE logs."),
                     messages.ERROR,
                 )
         context.update(ice=ice.base_url, results=results, impersonate=user)
         return render(request, "admin/strain_impersonate_search.html", context=context)
 
-    search_ice_as_action.short_description = "Search ICE as User"
+    search_ice_as_action.short_description = _("Search ICE as User")
+
+    def deactivate_user_action(self, request, queryset):
+        try:
+            count = queryset.update(is_active=False)
+            self.message_user(
+                request,
+                _("Deactivated {count} users").format(count=count),
+                messages.SUCCESS,
+            )
+        except Exception as e:
+            logger.exception(f"User deactivation failed {e}")
+            self.message_user(
+                request,
+                _("Failed to deactivate users, check the EDD logs"),
+                messages.ERROR,
+            )
+
+    deactivate_user_action.short_description = _("Deactivate Users")
+
+    def migrate_local_to_ldap(self, request, queryset):
+        backend = LDAPBackend()
+        for user in queryset:
+            # annotate with ldap_user
+            user = backend.get_user(user.pk)
+            try:
+                if user.ldap_user.dn is not None:
+                    # replace local password with an invalid one
+                    user.password = hashers.make_password(None)
+                    user.save(update_fields="password")
+                    # populate local record with LDAP values
+                    user.ldap_user.populate_user()
+                else:
+                    self.message_user(
+                        request,
+                        _("Did not find matching LDAP record for {user}").format(
+                            user=user.username
+                        ),
+                        messages.WARNING,
+                    )
+            except Exception as e:
+                logger.exception(f"User migration to LDAP account failed {e}")
+                self.message_user(
+                    request,
+                    _("Failed to migrate {user}").format(user=user.username),
+                    messages.ERROR,
+                )
+
+    migrate_local_to_ldap.short_description = _("Migrate account to LDAP")
 
 
 class WorklistColumnInline(admin.TabularInline):
