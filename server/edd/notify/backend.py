@@ -91,7 +91,9 @@ class BaseBroker(object):
         raise NotImplementedError("This broker does not support count() method")
 
     def group_names(self):
-        return [f"edd.notify.{self.user.username}"]
+        # channels group name must be *only* ASCII alphanum, hyphen, period
+        # the primary key fits better than arbitrary unicode usernames
+        return [f"edd.notify.{self.user.pk}"]
 
     async def agroup_names(self):
         # in case child class overrides group_names()

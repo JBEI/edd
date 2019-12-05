@@ -2,7 +2,7 @@
 
 import logging
 
-from allauth.account import adapter, app_settings, models, utils
+from allauth.account import adapter, models, utils
 from allauth.exceptions import ImmediateHttpResponse
 from allauth.socialaccount import providers
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
@@ -43,17 +43,13 @@ class EDDAccountAdapter(adapter.DefaultAccountAdapter):
 
     def populate_username(self, request, user):
         """
-        Takes a partial user, and sets the username if missing based on existing fields.
+        Takes a partial user, and sets the username if missing
+        to user email.
         """
-        first_name = utils.user_field(user, "first_name")
-        last_name = utils.user_field(user, "last_name")
         email = utils.user_email(user)
         username = utils.user_username(user)
-        if app_settings.USER_MODEL_USERNAME_FIELD:
-            username = username or self.generate_unique_username(
-                [email, first_name, last_name, "user"]
-            )
-            utils.user_username(user, username)
+        if not username:
+            utils.user_username(user, email)
 
     def password_reset_request(self, request, email):
         """
