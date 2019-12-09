@@ -46,7 +46,7 @@ class NotificationTests(TestCase):
         # these should work
         groups = broker.group_names()
         self.assertEqual(len(groups), 1)
-        self.assertIn(self.user.username, groups[0])
+        self.assertIn(f"{self.user.pk}", groups[0])
 
     def test_redisbroker(self):
         broker = backend.RedisBroker(self.user)
