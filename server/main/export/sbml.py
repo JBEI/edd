@@ -1332,5 +1332,6 @@ def validate_sbml_attachment(file_data):
     if errors.getNumErrors() > 0:
         raise ValueError(errors.getError(1).getMessage())
     model = sbml.getModel()
-    assert model is not None
+    if model is None:
+        raise ValueError("Could not load SBML Model")
     return sbml
