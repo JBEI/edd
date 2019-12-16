@@ -26,7 +26,8 @@ def export_to_xlsx(table, headers=None, title="Exported table", file_name=None):
     ws = wb.active
     ws.title = title
     if headers is not None:
-        assert (len(table) == 0) or (len(headers) == len(table[0]))
+        if len(table) != 0 and len(headers) != len(table[0]):
+            raise ValueError("Export headers do not match table dimensions")
         ws.append(headers)
     for row in table:
         ws.append(row)
@@ -375,15 +376,20 @@ def assert_is_two_dimensional_list(table, allow_tuple_values=False):
     Verify that what we expect to be a 2D list (i.e. a list of lists) really is
     that - with the optional exception of tuple cell values.
     """
-    assert isinstance(table, list)
+    if not isinstance(table, list):
+        raise ValueError(f"Expected to get a two-dimensional list, got {type(table)}")
     for row in table:
-        assert isinstance(row, list) or isinstance(row, tuple), row
+        if not row or not isinstance(row, (list, tuple)):
+            raise ValueError(
+                f"Expected list or tuple as second dimension of list, "
+                f"but instead got {type(row)}"
+            )
         for cell in row:
             valid_cell = isinstance(cell, string_types) or not hasattr(cell, "__iter__")
             if allow_tuple_values:
-                assert isinstance(cell, tuple) or valid_cell, cell
-            else:
-                assert valid_cell, cell
+                valid_cell = valid_cell or isinstance(cell, tuple)
+            if not valid_cell:
+                raise ValueError(f"Invalid value in two-dimensional list: '{cell}'")
 
 
 def has_numerical_cells(rows):

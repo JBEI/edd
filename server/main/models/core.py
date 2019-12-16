@@ -1235,7 +1235,8 @@ class Measurement(EDDMetadata, EDDSerialize):
 
     # this shouldn't need to handle vectors
     def interpolate_at(self, x):
-        assert self.measurement_format == Measurement.Format.SCALAR
+        if self.measurement_format != Measurement.Format.SCALAR:
+            raise ValueError("Can only interpolate scalar values")
         from main.utilities import interpolate_at
 
         return interpolate_at(self.valid_data(), x)

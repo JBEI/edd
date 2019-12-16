@@ -26,13 +26,14 @@ re_acq_time = re.compile(r"(Acq\ On\s*:)(.*)")
 
 class Peak(object):
     """
-    An individual peak from a sample run.  Corresponds to a single line in
+    An individual peak from a sample run. Corresponds to a single line in
     the raw logfile.
     """
 
     def __init__(self, line):
         fields = line.strip().split()
-        assert len(fields) == 10, fields
+        if len(fields) != 10:
+            raise ValueError(f"Could not convert input line to Peak: '{line}'")
         self.number = int(fields[0])
         self.retention_time = float(fields[1])
         self.peak_height = int(fields[6])
@@ -108,13 +109,18 @@ class Sample(object):
     def get_unrecognized_peaks(
         self, peak_times=None, rt_tolerance=None, rt_ranges=None
     ):
-        assert [peak_times, rt_ranges].count(None) == 1
-        assert (peak_times is None) or (rt_tolerance is not None)
+        if (peak_times, rt_ranges).count(None) != 1:
+            raise ValueError(
+                "Must call get_unrecognized_peaks with either peak_times "
+                "OR rt_ranges as non-None, but not both."
+            )
+        if peak_times is not None and rt_tolerance is None:
+            raise ValueError(
+                "Must call get_unrecognized_peaks with rt_tolerance value "
+                "if passing in peak_times."
+            )
         if peak_times is not None:
-            assert rt_tolerance is not None
-            rt_ranges = []
-            for rt in peak_times:
-                rt_ranges.append((rt - rt_tolerance, rt + rt_tolerance))
+            rt_ranges = [(rt - rt_tolerance, rt + rt_tolerance) for rt in peak_times]
         peaks = []
         for peak in self.peaks:
             for (rt_min, rt_max) in rt_ranges:
@@ -285,7 +291,12 @@ class SampleCollection(object):
         }
 
     def find_peaks_by_range_and_export(self, rt_ranges, molecule_names=None):
-        assert (molecule_names is None) or (len(molecule_names) == len(rt_ranges))
+        if molecule_names is not None and len(molecule_names) != len(rt_ranges):
+            raise ValueError(
+                "Must call find_peaks_by_range_and_export "
+                "with matching lengths of rt_ranges and molecule_names "
+                "if molecule_names is provided."
+            )
         table, errors = self.extract_peak_areas_by_range(rt_ranges)
         peak_ranges = ["%.4f - %.4fm" % (x, y) for (x, y) in rt_ranges]
         if molecule_names is not None:
@@ -324,9 +335,8 @@ class Report(SampleCollection):
                     k += 1
                     if line == "":
                         continue
-                    assert (not re_signal_new.match(line)) and (
-                        not re_area_sum.match(line)
-                    )
+                    if re_signal_new.match(line) or re_area_sum.match(line):
+                        raise ValueError("Found unexpected signal or sum line.")
                     if re_table_rule.match(line):
                         k = self._extract_sample(k, lines, sample_id)
                         break
@@ -406,10 +416,12 @@ def run(args, out=sys.stdout, err=sys.stderr):
         help="Suppress non-essential output",
     )
     options, args = parser.parse_args(args)
-    assert len(args) == 1
+    if len(args) != 1:
+        raise ValueError("Must execute with one and only one filename.")
     with open(args[0], "r") as file:
         result = Report(file.readlines())
-    assert len(result.samples) > 0
+    if len(result.samples) == 0:
+        raise ValueError(f"No samples found in '{args[0]}'")
     if options.quiet:
         err = StringIO()
     if options.csv:

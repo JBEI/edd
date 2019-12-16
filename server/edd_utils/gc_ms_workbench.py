@@ -36,7 +36,8 @@ def process_gc_ms_form_and_parse_file(form, file):
             headers, table = gc_ms.import_xlsx_metadata(file)
         except Exception:
             raise ValueError(
-                "The uploaded file could not be processed as either an MSDChemStation report "
+                "The uploaded file could not be processed "
+                "as either an MSDChemStation report "
                 "or an Excel workbook."
             )
         else:
@@ -60,10 +61,16 @@ def process_gc_ms_form_and_parse_file(form, file):
             )
             rt_ranges_and_molecules.append((rt_min, rt_max, mol_name))
         rt_ranges_and_molecules.sort(key=lambda x: x[0])
-        for i_rt, (_x1, y1, _s1) in enumerate(rt_ranges_and_molecules[:-1]):
-            x2, y2, s2 = rt_ranges_and_molecules[i_rt + 1]
-            # this should really be checked server-side too
-            assert y1 < x2
+        # making sure ranges do not overlap
+        for i_rt, (min1, max1, name1) in enumerate(
+            rt_ranges_and_molecules[:-1], start=1
+        ):
+            min2, max2, name2 = rt_ranges_and_molecules[i_rt]
+            if min2 <= max1:
+                raise ValueError(
+                    f"RT ranges overlap: "
+                    f"{name1} ({min1},{max1}) <> {name2} ({min2},{max2})"
+                )
         return result.find_peaks_by_range_and_export(
             rt_ranges=[(x, y) for (x, y, s) in rt_ranges_and_molecules],
             molecule_names=[s for (x, y, s) in rt_ranges_and_molecules],
@@ -125,7 +132,9 @@ def combine_processed_peaks_and_metadata(
     combined_col_names.extend(molecules)
     peaks = {}
     for sample_row in peak_table:
-        assert len(sample_row) == len(molecules) + 1
+        expected_row_length = len(molecules) + 1
+        if len(sample_row) != expected_row_length:
+            raise ValueError("Table row length does not match molecule count")
         sample_id = sample_row[0]
         peaks[sample_id] = sample_row[1:]
     missing_samples = []
@@ -140,7 +149,8 @@ def combine_processed_peaks_and_metadata(
             field for i, field in enumerate(sample_info) if i != i_sample
         ]
         row.extend(peaks[sample_id])
-        assert len(row) == len(combined_col_names)
+        if len(row) != len(combined_col_names):
+            raise RuntimeError(f"Output row for {sample_id} missing data")
         combined_table.append(row)
     if len(combined_table) == 0:
         raise RuntimeError(
@@ -158,7 +168,8 @@ def export_to_xlsx(table, headers=None, title="GC-MS processing"):
     ws = wb.active
     ws.title = "GC-MS processing"
     if headers is not None:
-        assert len(headers) == len(table[0])
+        if len(headers) != len(table[0]):
+            raise ValueError("Output header length does not match data length")
         ws.append(headers)
     for row in table:
         ws.append(row)

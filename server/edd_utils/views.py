@@ -41,10 +41,9 @@ def gcms_parse(request):
         json_result = gc_ms_workbench.process_gc_ms_form_and_parse_file(
             form=request.POST, file=request.FILES["file"]
         )
-        assert isinstance(json_result, dict)
         return JsonResponse(json_result)
-    except (AttributeError, KeyError, ValueError) as e:
-        return JsonResponse({"python_error": "%s" % e}, status=500)
+    except Exception as e:
+        return JsonResponse({"python_error": f"{e}"}, status=500)
 
 
 def gcms_merge(request):
@@ -52,7 +51,7 @@ def gcms_merge(request):
     try:
         return JsonResponse(gc_ms_workbench.finalize_gc_ms_spreadsheet(data))
     except RuntimeError as e:
-        return JsonResponse({"python_error": "%s" % e}, status=500)
+        return JsonResponse({"python_error": f"{e}"}, status=500)
 
 
 def gcms_export(request):
@@ -61,7 +60,8 @@ def gcms_export(request):
         prefix = form["prefix"]
         headers = json.loads(form["headers"])
         table = json.loads(form["table"])
-        assert len(table) > 0
+        if len(table) == 0:
+            raise ValueError("Empty table value")
         # XXX but note below that the Workbook needs to be created with specific
         # options, otherwise this won't work
         f = BytesIO(gc_ms_workbench.export_to_xlsx(table, headers))
@@ -70,10 +70,10 @@ def gcms_export(request):
             f,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        response["Content-Disposition"] = 'attachment; filename="%s"' % file_name
+        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
         return response
     except Exception as e:
-        messages.error(request, "Could not generate the GC-MS export file: %s" % e)
+        messages.error(request, f"Could not generate the GC-MS export file: {e}")
         return HttpResponse(status=500)
 
 
@@ -132,7 +132,7 @@ def cytometry_parse(request):
             # try to parse as plain text
             return JsonResponse({"data": upload.read()})
     except Exception as e:
-        return JsonResponse({"python_error": "%s" % e}, status=500)
+        return JsonResponse({"python_error": f"{e}"}, status=500)
 
 
 def cytometry_import(request):
