@@ -1,21 +1,6 @@
 [
   {
     "model": "edd_file_importer.baseimportmodel",
-    "pk": 5,
-    "fields": {
-      "name": "Generic",
-      "description": "",
-      "active": true,
-      "created": 1,
-      "updated": 1,
-      "uuid": "0306a2f5-2a25-4546-8fc9-37019c895d39",
-      "updates": [
-        1
-      ]
-    }
-  },
-  {
-    "model": "edd_file_importer.baseimportmodel",
     "pk": 1,
     "fields": {
       "name": "Proteomics",
@@ -75,13 +60,87 @@
     }
   },
   {
-    "model": "edd_file_importer.importformat",
+    "model": "edd_file_importer.baseimportmodel",
     "pk": 5,
     "fields": {
-      "parser_class": "edd_file_importer.parsers.table.GenericImportParser",
+      "name": "Generic",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "0306a2f5-2a25-4546-8fc9-37019c895d39",
       "updates": [
         1
       ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importformat",
+    "pk": 5,
+    "fields": {
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importparser",
+    "pk": 1,
+    "fields": {
+      "format": 5,
+      "parser_class": "edd_file_importer.parsers.GenericExcelParser",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    }
+  },
+  {
+    "model": "edd_file_importer.importparser",
+    "pk": 2,
+    "fields": {
+      "format": 5,
+      "parser_class": "edd_file_importer.parsers.GenericCsvParser",
+      "mime_type": "text/csv"
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 6,
+    "fields": {
+      "name": "Skyline",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "cf31be5e-456c-43b2-819e-99b68611d7eb",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importformat",
+    "pk": 6,
+    "fields": {
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importparser",
+    "pk": 3,
+    "fields": {
+      "format": 6,
+      "parser_class": "edd_file_importer.parsers.SkylineExcelParser",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    }
+  },
+  {
+    "model": "edd_file_importer.importparser",
+    "pk": 4,
+    "fields": {
+      "format": 6,
+      "parser_class": "edd_file_importer.parsers.SkylineCsvParser",
+      "mime_type": "text/csv"
     }
   },
   {
@@ -112,7 +171,7 @@
     "model": "edd_file_importer.importcategory",
     "pk": 3,
     "fields": {
-      "default_mtype_group": "t",
+      "default_mtype_group": "g",
       "display_order": 3,
       "updates": [
         1
@@ -138,7 +197,7 @@
     "fields": {
       "format": 5,
       "category": 1,
-      "display_order": 1
+      "display_order": 2
     }
   },
   {
@@ -165,6 +224,15 @@
     "fields": {
       "format": 5,
       "category": 4,
+      "display_order": 1
+    }
+  },
+  {
+    "model": "edd_file_importer.categoryformat",
+    "pk": 5,
+    "fields": {
+      "format": 6,
+      "category": 1,
       "display_order": 1
     }
   },

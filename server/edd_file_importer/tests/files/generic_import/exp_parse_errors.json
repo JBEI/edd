@@ -3,34 +3,26 @@
     {
       "category": "Bad file",
       "summary": "Duplicate column headers",
-      "resolution": null,
-      "doc_url": null,
-      "detail": "\"Time\" (E1)"
+      "subcategory": "\"Time\"",
+      "detail": "D1, E1"
     },
     {
       "category": "Bad file",
       "summary": "Required values missing",
       "subcategory": "Measurement Type",
-      "resolution": null,
-      "doc_url": null,
       "detail": "B2"
     },
     {
       "category": "Bad file",
       "summary": "Required values missing",
       "subcategory": "Value",
-      "resolution": null,
-      "doc_url": null,
       "detail": "C2"
     },
     {
       "category": "Bad file",
       "summary": "Invalid value",
-      "resolution": null,
-      "doc_url": null,
       "detail": "\"A\" (D3)",
       "subcategory": "Time"
     }
-  ],
-  "warnings" : []
+  ]
 }

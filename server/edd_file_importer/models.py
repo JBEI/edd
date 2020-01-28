@@ -87,12 +87,31 @@ class ImportFormat(BaseImportModel):
     different EDD deployments to add in custom parser formats and configure them via the admin app.
     """
 
+    object_ref = models.OneToOneField(
+        BaseImportModel, on_delete=models.CASCADE, parent_link=True, related_name="+"
+    )
+
+
+class ImportParser(models.Model):
+    """
+    Represents a mime type-specific parser for a given file format, e.g. a different parser for
+    each of Excel, CSV for a single file format.
+    """
+
+    class Meta:
+        verbose_name_plural = "Import Parsers"
+        unique_together = ("format", "mime_type")
+
+    format = models.ForeignKey(
+        "ImportFormat", on_delete=models.CASCADE, related_name="parsers"
+    )
+
     parser_class = models.CharField(
         help_text=_("Parser class"), max_length=255, verbose_name=_("Parser")
     )
 
-    object_ref = models.OneToOneField(
-        BaseImportModel, on_delete=models.CASCADE, parent_link=True, related_name="+"
+    mime_type = models.CharField(
+        help_text=_("Mime type"), max_length=255, verbose_name=_("Mime type")
     )
 
 
@@ -240,7 +259,7 @@ class Import(BaseImportModel):
     )
 
     file = models.ForeignKey(
-        "ImportFile", on_delete=models.CASCADE, related_name="import_ref"
+        "ImportFile", on_delete=models.CASCADE, null=True, related_name="import_ref"
     )
 
     file_format = models.ForeignKey(
@@ -282,9 +301,55 @@ class Import(BaseImportModel):
         verbose_name=_("Compartment"),
     )
 
+    email_when_complete = models.BooleanField(
+        default=False,
+        help_text=_(
+            "Flag indicating whether to email the user on import success/failure"
+        ),
+        verbose_name=_("Email When Complete"),
+    )
+
+    allow_overwrite = models.BooleanField(
+        default=False,
+        help_text=_(
+            "Flag indicating whether the import may overwrite existing values in the "
+            "study"
+        ),
+        verbose_name=_("Allow overwrite"),
+    )
+
+    allow_duplication = models.BooleanField(
+        default=False,
+        help_text=_(
+            "Flag indicating whether the import may duplicate measurements in the study"
+        ),
+        verbose_name=_("Allow duplication"),
+    )
+
     object_ref = models.OneToOneField(
         BaseImportModel, on_delete=models.CASCADE, parent_link=True, related_name="+"
     )
+
+    def __str__(self):
+        # build up a list of optional parameters that default to None/False.  For brevity,
+        # we'll only print them when they're truthy
+        opt = [
+            "x_units",
+            "y_units",
+            "compartment",
+            "email_when_complete",
+            "allow_overwrite",
+            "allow_duplication",
+        ]
+        opts_str = ", ".join(
+            f"{key}={getattr(self, key)}" for key in opt if getattr(self, key, False)
+        )
+        # print required data plus optional true params
+        return (
+            f"Import pk={self.pk}, study={self.study_id}, status={self.status}, "
+            f"cat={self.category}, fmt={self.file_format}, protocol={self.protocol} "
+            f"{opts_str}"
+        )
 
 
 class ImportFile(models.Model):

@@ -99,6 +99,7 @@ INSTALLED_APPS = (
     "graphene_django",  # graphene-django in pip
     # EDD apps
     "main.apps.EDDConfig",
+    "edd_file_importer",
     "edd_utils.apps.UtilsConfig",
     "edd.profile.apps.ProfileConfig",
     "edd.branding.apps.BrandingConfig",
@@ -179,7 +180,7 @@ SWAGGER_SETTINGS = {"USE_SESSION_AUTH": True, "VALIDATOR_URL": None}
 
 
 # WebSockets / Channels
-ASGI_APPLICATION = "edd.notify.routing.application"
+ASGI_APPLICATION = "edd.routing.application"
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",

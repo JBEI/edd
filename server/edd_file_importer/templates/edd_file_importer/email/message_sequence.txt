@@ -1,0 +1,16 @@
+{% if messages %}
+    {{title}}
+
+    {% for msg in messages %}
+        {# print the category, if different from the previous #}
+        {% ifchanged msg.category %}
+            {{msg.category}}
+        {% endifchanged %}
+        {# print the actual message content #}
+        {{ msg.summary }}
+        {% if 'subcategory' in msg %} - {{ msg.subcategory }}</span>{% endif %}
+        {% if 'detail' in msg %} : {{msg.detail}} {% endif %}
+        {% if 'resolution' in msg %}{{msg.resolution}}{% endif %}
+        {% if 'docs_link' in msg %} {{msg.docs_link|safe}} {% endif %}
+        {% endfor %}
+{% endif %}

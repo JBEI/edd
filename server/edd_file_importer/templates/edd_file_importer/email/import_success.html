@@ -1,0 +1,13 @@
+{% extends "edd_file_importer/email/email_base.html" %}
+{% load i18n %}
+{% block body %}
+    <h2>{% trans 'Import Complete!' %}</h2>
+        <div class="alert alert-success">
+            {% blocktrans %}
+            Your data import is complete for file {{file}}.
+            The import added {{added}} and updated {{updated}} values in study"
+            <a href="{{study_uri}}">{{study}}</a>" in {{duration}}.
+            {% endblocktrans %}
+        </div>
+        {% include "edd_file_importer/email/message_sequence.html" with title='Warnings' messages=warnings classes="alert alert-warning"%}
+{% endblock %}

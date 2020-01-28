@@ -28,15 +28,21 @@ def load_bootstrap_fixture(apps, schema_editor):
     # load bootstrap fixture
     call_command("loaddata", "bootstrap.json", app_label="edd_file_importer")
 
-    # create reference to OD600 protocol, which is in EDD's bootstrap.json, but for historical
-    # reasons isn't yet consistently defined in either PK or UUID across EDD deployments
+    # create reference to several protocols, which *are* in EDD's bootstrap.json,
+    # but for historical reasons aren't yet consistently defined in either PK or UUID across EDD
+    # deployments
     Protocol = apps.get_model("main", "Protocol")
-    od600_protocol = Protocol.objects.get(name="OD600")
-
     ImportCategory = apps.get_model("edd_file_importer", "ImportCategory")
-    od_category = ImportCategory.objects.get(name="OD")
 
+    # OD600
+    od600_protocol = Protocol.objects.get(name="OD600")
+    od_category = ImportCategory.objects.get(name="OD")
     od_category.protocols.add(od600_protocol)
+
+    # Targeted Proteomics
+    targeted_proteomics = Protocol.objects.get(name="Targeted Proteomics")
+    prot_category = ImportCategory.objects.get(name="Proteomics")
+    prot_category.protocols.add(targeted_proteomics)
 
     # revert monkey-patch
     python._get_model = backup

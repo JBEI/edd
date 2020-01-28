@@ -47,18 +47,28 @@ class ImportCategoryForm(forms.ModelForm):
 class ImportFormatForm(forms.ModelForm):
     class Meta:
         model = models.ImportFormat
-        fields = ("name", "active", "description", "parser_class")
+        fields = ("name", "active", "description")
         labels = {
             "name": _("Format"),
             "active": _("Is Active"),
             "description": _("Description"),
-            "parser_class": _("Parser class"),
         }
+
+
+class ImportParserForm(forms.ModelForm):
+    class Meta:
+        model = models.ImportParser
+        fields = ("mime_type", "parser_class")
+
+
+class FormatParsersInline(admin.TabularInline):
+    model = models.ImportParser
 
 
 class ImportFormatAdmin(EDDObjectAdmin):
     form = ImportFormatForm
     list_display = ("name", "description", "active", "created", "updated")
+    inlines = (FormatParsersInline,)
 
 
 class ProtocolCategoriesInline(admin.TabularInline):

@@ -38,11 +38,6 @@ INTERNAL_IPS = ["127.0.0.1", "::1"]
 #     'main.account.adapter.LocalTestBackend', # uncomment to simplify off-site development
 # )
 
-
-# Add any in-progress app development like this:
-INSTALLED_APPS = INSTALLED_APPS + ("edd_file_importer",)  # noqa: F405
-
-
 # Uncomment below to use DEBUG mode and include the debug toolbar
 # DEBUG = True
 

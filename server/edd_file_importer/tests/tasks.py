@@ -1,521 +1,515 @@
 # coding: utf-8
 
-import json
 import os
-import uuid
 from unittest.mock import call, patch
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
-from rest_framework.test import APITestCase
 
-from edd.rest.tests import EddApiTestCaseMixin
-from edd.utilities import JSONEncoder
+from edd.tests import TestCase
 from main import models as edd_models
-from main.tasks import import_table_task
 
-from .. import tasks as tasks
+from .. import tasks
 from ..models import Import
-from . import factory
-from .test_utils import CONTEXT_PATH, SERIES_PATH, ImportTestsMixin
+from .test_utils import MsgContent, WSTestMixin, clear_import_cache
+
+# TODO: for final pass/fail disposition, also check for menu notifications:
+#  patch("edd_file_importer.utilities.NotificationWsBroker")
+
+# TODO: test admin emails
+
+# TODO: add tests that also cover complete_import_task(), which at the time of writing can be
+# quickly tested via a combination of existing manual and unit tests.  Include single-request
+# submit workflow, including resolve/parse warnings available in the final status message
 
 
-def load_permissions(model, *codenames):
-    ct = ContentType.objects.get_for_model(model)
-    return list(Permission.objects.filter(content_type=ct, codename__in=codenames))
+User = get_user_model()
+
+_TEST_FILES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "files")
+_GENERIC_FILES_DIR = os.path.join(_TEST_FILES_DIR, "generic_import")
+_SKYLINE_FILES_DIR = os.path.join(_TEST_FILES_DIR, "skyline")
 
 
-_TEST_FILES_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "files", "generic_import"
-)
-
-
-# use example files as the basis for DB records created by the fixture
-@override_settings(MEDIA_ROOT=_TEST_FILES_DIR)
-class FileProcessingTests(EddApiTestCaseMixin, ImportTestsMixin, APITestCase):
+@override_settings(MEDIA_ROOT=_GENERIC_FILES_DIR)
+class ErrPropagationTests(WSTestMixin, TestCase):
     """
-    Tests the file processing step of the import (step 2), as well as single-request imports
+    Tests that errors from an incorrectly-formatted file propagate as expected through
+    process_import_file(), and have the desired high-level outcome.  This is a representative
+    test for errors thrown in the body of process_import_file.  We probably don't need to test
+    error propagation separately at this level for each different error condition.
     """
 
-    fixtures = ["edd_file_importer/import_models"]
+    fixtures = ["edd_file_importer/generic_fba_imports"]
 
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
+        cls.write_user = User.objects.get(username="study.writer.user")
 
-        # create a test user and give it permission to write to the study
-        User = get_user_model()
-        cls.write_user = User.objects.create(username="study.writer.user")
+    def _file_path(self, filename):
+        return os.path.join("generic_import", filename)
 
-        # create a study only writeable by a single user
-        cls.user_write_study = edd_models.Study.objects.get(pk=10)
-        permissions = cls.user_write_study.userpermission_set
-        permissions.update_or_create(
-            permission_type=edd_models.UserPermission.WRITE, user=cls.write_user
-        )
-
-    # future proof the test against local settings changes
-    @override_settings(EDD_IMPORT_PAGE_SIZE=1, EDD_IMPORT_CACHE_LENGTH=5)
-    def test_process_import_file(self):
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_submit_failed_parse_err_workflow(self):
         """
-        Tests successful processing of the generic-format FBA OD tutorial data, corresponding
-        to Import Step 2.
-        :return:
+        Tests that process_import_file() fails an import and doesn't call process_import_file()
+        when parsing errors occur.
         """
-        notify_path = "generic_import/FBA-OD-generic.xlsx.ws-ready-payload.json"
-        ready_msg = 'Your file "FBA-OD-generic.xlsx" is ready to import'
-        self._test_successful_processing(
-            13, CONTEXT_PATH, SERIES_PATH, notify_path, ready_msg, page_count=2
-        )
+        import_pk = 16
 
-    def _test_successful_processing(
-        self,
-        import_pk,
-        context_path,
-        series_path,
-        ready_payload_path,
-        ready_msg,
-        page_count,
-        submitted_msg=None,
-    ):
-        # mock notifications so we can tests for required ones, as well as avoid actually
-        # sending any
-        with patch("edd_file_importer.tasks.RedisBroker") as MockNotification:
-            notify = MockNotification.return_value
+        with patch("edd_file_importer.tasks.complete_import_task") as MockCompleteTask:
+            complete_import_task = MockCompleteTask.return_value
 
-            # mock the Redis broker so we can test cache entries created by the task
-            with patch("edd_file_importer.importer.table.ImportBroker") as MockBroker:
-                broker = MockBroker.return_value
-
-                # process the "Created" import included in the fixture...corresponds to DB
-                # state when the Celery task is submitted to process the new upload
-                write_user = FileProcessingTests.write_user
-                requested_status = Import.Status.SUBMITTED if submitted_msg else None
-
-                # celery chain, which may be called to invoke the legacy import task
-                with patch("celery.chain.apply") as mock_apply:
-
-                    # process the file synchronously to stay within this DB transaction
-                    tasks.process_import_file(
-                        import_pk, write_user.pk, requested_status, True
-                    )
-
-                    # load expected context and series cache data from file
-                    import_uuid, context_str = self._load_context_file(context_path)
-                    series_pages = self._slice_series_pages(
-                        series_path, page_count, settings.EDD_IMPORT_PAGE_SIZE
-                    )
-
-                    # test that expected cache entries were made
-                    broker.clear_pages.assert_not_called()
-                    broker.set_context.assert_called_once_with(import_uuid, context_str)
-                    broker.add_page.assert_has_calls(
-                        [call(import_uuid, page) for page in series_pages]
-                    )
-
-                    self._test_success_notification(
-                        import_pk,
-                        import_uuid,
-                        notify,
-                        mock_apply,
-                        ready_payload_path,
-                        submitted_msg,
-                        ready_msg,
-                    )
-
-    def _test_success_notification(
-        self,
-        import_pk,
-        import_uuid,
-        notify,
-        mock_apply,
-        ready_payload_path,
-        submitted_msg,
-        ready_msg,
-    ):
-        """
-        Tests for expected notifications from successfully processing a user-uploaded file. Note
-        that this may include fully processing the import, if requested.
-        """
-        # load expected notification payload from file
-        ready_payload_json = self._load_ready_payload_json(ready_payload_path)
-
-        # test expected notification payloads, depending on whether the import was
-        # submitted, or just uploaded and initially processed
-        if not submitted_msg:
-            # ready notification
-            notify.notify.assert_called_once_with(
-                ready_msg, tags=["import-status-update"], payload=ready_payload_json
+            # run the task synchronously to verify expected user notifications
+            tasks.process_import_file(
+                import_pk,
+                self.write_user.pk,
+                requested_status=Import.Status.SUBMITTED,
+                initial_upload=True,
             )
-            mock_apply.assert_not_called()
-        else:
-            # manually deconstruct test args and test those...for some reason just using
-            # assert_has_calls() doesn't seem to work here...possible dict order, but other case
-            # above works with the same data & apparent same code path...??
 
-            # test ready notification
-            # call(
-            #     ready_msg,
-            #     tags=['import-status-update'],
-            #     payload=ready_payload_json
-            # ),
-            args, kwargs = notify.notify.call_args_list[0]
-            self.assertEqual(args[0], ready_msg)
-            self.assertEqual(kwargs["tags"], ["import-status-update"])
-            self.assertDictEqual(kwargs["payload"], ready_payload_json)
-            self.assertEqual(kwargs["payload"], ready_payload_json)
-            self.assertEqual(len(args), 1)
-            self.assertEqual(len(kwargs), 2)
+            # verify final import status ends is FAILED
+            import_ = Import.objects.get(pk=import_pk)
+            self.assertEqual(import_.status, Import.Status.FAILED)
 
-            # test submitted notification
-            # call(
-            #     submitted_msg,
-            #     tags=['import-status-update'],
-            #     payload={
-            #         'status': 'Submitted',
-            #         'pk': import_pk,
-            #         'uuid': import_uuid
-            #     }
-            # ),
-            args, kwargs = notify.notify.call_args_list[1]
-            self.assertEqual(args[0], submitted_msg)
-            self.assertEqual(kwargs["tags"], ["import-status-update"])
-            self.assertDictEqual(
-                kwargs["payload"],
-                {"status": "Submitted", "pk": import_pk, "uuid": import_uuid},
+            # verify complete task was not called either synchronously or asynchronously following
+            # failure
+            complete_import_task.assert_not_called()
+            complete_import_task.delay.assert_not_called()
+
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_submit_failed_parse_err_notifications(self):
+        """
+        Tests that ImportResolver sends a WS notification and email when a submit fails due to a
+        parse error
+        """
+        payload_path = os.path.join(
+            "generic_import", "generic_import_parse_errs.xlsx.ws-failed-payload.json"
+        )
+
+        # mock import-specific WS notifications so we can verify WS notifications
+        # generated by the task
+        with patch("edd_file_importer.tasks.ImportWsBroker") as MockImportWs:
+            ws = MockImportWs.return_value
+
+            # run the task synchronously to verify expected user notifications
+            tasks.process_import_file(
+                16,
+                self.write_user.pk,
+                requested_status=Import.Status.SUBMITTED,
+                initial_upload=True,
             )
-            self.assertEqual(
-                kwargs["payload"],
-                {"status": "Submitted", "pk": import_pk, "uuid": import_uuid},
+
+            # test that resolver initiates the WS notification indicating FAILED state
+            ws.notify.assert_called_once_with(
+                'Your import for file "generic_import_parse_errs.xlsx" failed. The problem was: '
+                '"Invalid file"',
+                tags=["import-status-update"],
+                payload=MsgContent.load_payload_file(payload_path),
             )
-            self.assertEqual(len(args), 1)
-            self.assertEqual(len(kwargs), 2)
-
-            self.assertEqual(len(notify.notify.call_args_list), 2)
-
-            # TODO: after replacing the legacy background task, also check for
-            # processing/completion
-            # notifications. For now, because of the way we're wrapping the legacy task,
-            # the submission notification doesn't get generated during the test.  It should be
-            # integrated into the replacement task, and then tested here
-            mock_apply.assert_called_once()
-
-    def _load_ready_payload_json(self, notify_path):
-        ready_payload_json = factory.load_test_json(notify_path)
-
-        # convert UUID's stored as strings into UUID's for comparison with actual cache method
-        # calls
-        ready_payload_json["uuid"] = uuid.UUID(ready_payload_json["uuid"])
-        for type in ready_payload_json["types"].values():
-            type["uuid"] = uuid.UUID(type["uuid"])
-        return ready_payload_json
-
-    def _load_context_file(self, context_path):
-        with factory.load_test_file(context_path, "rt") as context_file:
-            context_str = context_file.read().strip()
-            import_uuid = uuid.UUID(json.loads(context_str)["importId"])
-        return import_uuid, context_str
-
-    # future proof the test against local settings changes
-    @override_settings(EDD_IMPORT_PAGE_SIZE=1, EDD_IMPORT_CACHE_LENGTH=5)
-    def test_single_request_submit(self):
-        """
-        Tests the correct task behavior for a single request import.  This test is very similar to
-        _test_successful_processing(), except that we also expect the import to be submitted for
-        final processing.
-        """
-        ready_msg = 'Your file "FBA-OD-generic.xlsx" is ready to import'
-        submitted_msg = 'Your import for file "FBA-OD-generic.xlsx" is submitted'
-        notify_path = "generic_import/FBA-OD-generic.xlsx.ws-ready-payload.json"
-        self._test_successful_processing(
-            13,
-            CONTEXT_PATH,
-            SERIES_PATH,
-            notify_path,
-            ready_msg,
-            page_count=2,
-            submitted_msg=submitted_msg,
-        )
-
-    # future proof the test against local settings changes
-    @override_settings(EDD_IMPORT_PAGE_SIZE=1, EDD_IMPORT_CACHE_LENGTH=5)
-    def test_duplicate_active_line_names(self):
-        """
-        Tests that an otherwise valid import fails with a helpful message if the study contains
-        duplicate lines named for one or more line names included in the file.
-        """
-        # create a line that duplicates an existing one in the FBA tutorial study fixture...
-        # the overloaded line name should cause the import to fail
-        edd_models.Line.objects.create(name="arcA", study=self.user_write_study)
-
-        # process the file and look for failure
-        msg = 'Processing for your import file "FBA-OD-generic.xlsx" has failed'
-        payload_file = factory.test_file_path(
-            "generic_import", "FBA-OD-generic.xlsx.ws-failed-duplicate-payload.json"
-        )
-        self._run_failed_fba_od_import(msg, payload_file)
-
-    def _run_failed_fba_od_import(self, msg, payload_file, tags=None):
-        tags = tags if tags is not None else ["import-status-update"]
-
-        # mock notifications so we can tests for required ones, as well as avoid actually
-        # sending any
-        with patch("edd_file_importer.tasks.RedisBroker") as MockNotification:
-            notify = MockNotification.return_value
-
-            # mock the Redis broker so that stored data is just cached in memory during the
-            # test
-            with patch("edd_file_importer.importer.table.ImportBroker") as MockBroker:
-                broker = MockBroker.return_value
-
-                # process the "Created" import included in the fixture...corresponds to DB
-                # state when the Celery task is submitted to process the new upload
-                user_pk = FileProcessingTests.write_user.pk
-                tasks.process_import_file(13, user_pk, None, True)
-
-                payload_json = factory.load_test_json(payload_file)
-                payload_json["uuid"] = uuid.UUID(payload_json["uuid"])
-
-                notify.notify.assert_called_once_with(
-                    msg, payload=payload_json, tags=tags
-                )
-                broker.clear_pages.assert_not_called()
-                broker.set_context.assert_not_called()
-                broker.add_page.assert_not_called()
-
-    def test_duplicate_inactive_line_names(self):
-        """
-        Tests that inactive lines don't influence the outcome of a valid import, even if they
-        use names referenced in the input file
-        """
-
-        # create *disabled* lines that duplicate existing ones in the FBA tutorial study fixture...
-        # the overloaded line names should be overlooked by the import
-        edd_models.Line.objects.create(
-            name="arcA", study=self.user_write_study, active=False
-        )
-        edd_models.Line.objects.create(
-            name="BW1", study=self.user_write_study, active=False
-        )
-
-        # run the FBA OD processing test (should succeed)
-        self.test_process_import_file()
-
-    def test_missing_line_name(self):
-        # delete a line from the fixture
-        result = edd_models.Line.objects.filter(
-            name="arcA", study=self.user_write_study
-        ).delete()
-        self.assertEqual(result[1]["main.Line"], 1)  # verify the line was deleted
-
-        # re-run the (normally successful) import with the line missing
-        err_msg = 'Processing for your import file "FBA-OD-generic.xlsx" has failed'
-        err_payload_file = "FBA-OD-generic.xlsx.ws-missing-line-name-payload.json"
-        self._test_failed_upload(13, err_msg, err_payload_file)
-
-    def test_parse_err_propagation(self):
-        """"
-        Tests parse error propagation through the view by checking for the same errors as the
-        parser test. Note that this test is dependent on correct operation of the parser, but
-        it's simpler not to mock the parser for functionality that's already unit tested.
-        """
-
-        err_msg = (
-            'Processing for your import file "generic_import_parse_errs.xlsx" has '
-            "failed"
-        )
-        err_payload_file = "generic_import_parse_errs.xlsx.ws-failed-payload.json"
-        self._test_failed_upload(16, err_msg, err_payload_file)
-
-    def test_processing_err_detection(self):
-        """"
-        Tests file processing error detection
-        """
-        err_msg = (
-            'Processing for your import file "FBA-OD-generic-processing-errs.xlsx" has '
-            "failed"
-        )
-        err_payload_file = "generic_import_processing_errs.xlsx.ws-failed-payload.json"
-        self._test_failed_upload(18, err_msg, err_payload_file)
-
-    def _test_failed_upload(self, import_pk, err_msg, err_payload_file):
-        # mock notifications so we can tests for required ones, as well as avoid actually
-        # sending any
-        with patch("edd_file_importer.tasks.RedisBroker") as MockNotification:
-            notify = MockNotification.return_value
-
-            # mock the Redis broker so that stored data is just cached in memory during the
-            # test
-            with patch("edd_file_importer.importer.table.ImportBroker") as MockBroker:
-                broker = MockBroker.return_value
-
-                # process the "Created" import included in the fixture...corresponds to DB
-                # state when the Celery task is submitted to process the new upload
-                tasks.process_import_file(import_pk, 1, None, True)
-
-                broker.clear_pages.assert_not_called()
-                broker.set_context.assert_not_called()
-                broker.add_page.assert_not_called()
-
-                # test expected notification payload
-                payload_file = factory.test_file_path(
-                    "generic_import", err_payload_file
-                )
-
-                payload_json = factory.load_test_json(payload_file)
-                payload_json["uuid"] = uuid.UUID(payload_json["uuid"])
-
-                notify.notify.assert_called_once_with(
-                    err_msg, tags=["import-status-update"], payload=payload_json
-                )
 
 
-@override_settings(MEDIA_ROOT=_TEST_FILES_DIR)
-class LegacyIntegrationTests(EddApiTestCaseMixin, ImportTestsMixin, APITestCase):
+@override_settings(MEDIA_ROOT=_GENERIC_FILES_DIR)
+class ProcessingSuccessWorkflowTests(WSTestMixin, TestCase):
     """
-    Sets of tests to exercise the Experiment Description view.
+    Tests basic functionality of the process_import_file() for successfully resolving import file
+    data against a study
     """
 
-    fixtures = ["edd_file_importer/import_models"]
+    fixtures = ["edd_file_importer/generic_fba_imports"]
 
     @classmethod
     def setUpTestData(cls):
-        super(LegacyIntegrationTests, cls).setUpTestData()
+        super().setUpTestData()
+        cls.write_user = User.objects.get(username="study.writer.user")
 
-        # get the study from the fixture
-        cls.user_write_study = edd_models.Study.objects.get(pk=10)
+    def _file_path(self, filename):
+        return os.path.join("generic_import", filename)
 
-        # create a user with write permissions on the study
-        User = get_user_model()
-        cls.write_user = User.objects.create(username="study.writer.user")
-        permissions = cls.user_write_study.userpermission_set
-        permissions.update_or_create(
-            permission_type=edd_models.UserPermission.WRITE, user=cls.write_user
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_ready_workflow_no_submit(self):
+        """
+        Tests that successful processing of an import by process_import_file() leaves the import
+        READY to execute, but does not process it if client did not request that.  This workflow is
+        important to import step 3, where user will want to verify that inputs for
+        interpreting the file were correct, but not necessarily process the import until hitting
+        "go".
+        """
+        import_pk = 13
+        import_ = Import.objects.get(pk=import_pk)
+
+        with patch("edd_file_importer.tasks.complete_import_task") as MockCompleteTask:
+            complete_import_task = MockCompleteTask.return_value
+
+            # run the task synchronously to verify expected user notifications
+            tasks.process_import_file(
+                import_.pk,
+                self.write_user.pk,
+                requested_status=None,
+                initial_upload=True,
+            )
+
+            # verify final import status ends is READY
+            import_ = Import.objects.get(pk=import_.pk)
+            self.assertEqual(import_.status, Import.Status.READY)
+
+            # verify complete task was not called either synchronously or asynchronously
+            # since we didn't request a submit
+            complete_import_task.assert_not_called()
+            complete_import_task.delay.assert_not_called()
+
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_ready_notification_no_submit(self):
+        """
+        Tests that ImportResolver sends a WS notification when its work is done and the import
+        is ready to execute.  This will be important for confirming in the UI that user entries
+        for interpreting the file are correct, but before the import is finally executed.
+        """
+        import_pk = 13
+        import_ = Import.objects.get(pk=import_pk)
+        ws_payload_path = self._file_path("FBA-OD-generic.xlsx.ws-ready-payload.json")
+
+        # mock import-specific WS notifications so we can verify WS notifications
+        # generated by the task
+        with patch("edd_file_importer.tasks.ImportWsBroker") as MockImportWs:
+            ws = MockImportWs.return_value
+
+            # run the task synchronously to verify expected user notifications
+            tasks.process_import_file(
+                import_.pk,
+                self.write_user.pk,
+                requested_status=None,
+                initial_upload=True,
+            )
+
+            # test that resolver initiates the WS notification indicating READY state
+            ws.notify.assert_called_once_with(
+                'Your file "FBA-OD-generic.xlsx" is ready to import',
+                tags=["import-status-update"],
+                payload=MsgContent.load_payload_file(ws_payload_path),
+            )
+
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_submit_success_workflow(self):
+        """
+        Tests that process_import_file() has the correct workflow and calls complete_import_task()
+        synchronously when user request is to submit.  This test is very similar to
+        rest_ready_workflow_no_submit(), only client request is to submit the import.
+
+        This workflow is important for propagating warning output from the resolution step to the
+        final user notification that the import was completed.
+        """
+        import_pk = 13
+        import_ = Import.objects.get(pk=import_pk)
+
+        with patch(
+            "edd_file_importer.tasks.complete_import_task"
+        ) as complete_import_task:
+
+            # run the task synchronously to verify expected outcomes
+            tasks.process_import_file(
+                import_.pk,
+                self.write_user.pk,
+                requested_status=Import.Status.SUBMITTED,
+                initial_upload=True,
+            )
+
+            # verify final import status ends is SUBMITTED
+            import_ = Import.objects.get(pk=import_.pk)
+            self.assertEqual(import_.status, Import.Status.SUBMITTED)
+
+            # verify complete task was not called either synchronously or asynchronously
+            # since user didn't request a submit
+            complete_import_task.assert_called_once()
+            complete_import_task.delay.assert_not_called()
+
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_submit_success_notifications(self):
+        """
+        Tests that process_import_file() produces the expected WS notifications as an import
+        progresses to the SUBMITTED state.
+        """
+        import_pk = 13
+        import_ = Import.objects.get(pk=import_pk)
+        ready_payload_path = self._file_path(
+            "FBA-OD-generic.xlsx.ws-ready-payload.json"
+        )
+        submitted_payload_path = self._file_path(
+            "FBA-OD-generic.xlsx.ws-submitted-payload.json"
         )
 
-    # future proof the test against local settings changes, and ensure its redis data gets
-    # deleted promptly
-    @override_settings(EDD_IMPORT_PAGE_SIZE=1, EDD_IMPORT_CACHE_LENGTH=5)
-    def test_legacy_task_integration(self):
-        """
-        Tests integration of the new import with the legacy celery task that supports final
-        submission. Uses the FBA tutorial data to perform an import using the legacy celery task,
-        then verifies the results.
-        """
+        # mock complete_import_task so it doesn't execute
+        with patch("edd_file_importer.tasks.complete_import_task"):
+            # mock import-specific WS notifications so we can verify them
+            with patch("edd_file_importer.tasks.ImportWsBroker") as MockImportWs:
+                ws = MockImportWs.return_value
 
-        # get DB model created by the fixture...corresponds to an import that's uploaded and
-        # cached in the database, but not yet processed by the Celery task.  This is the second
-        # step of the upload process.
-        import_ = Import.objects.get(pk=15)
-
-        # TODO: after replacing the legacy import task, verify Submitted, Processing, and Success
-        # notifications...ATM, they aren't easily testable bc of the Celery chain used to
-        # wrap the legacy task
-        # notify_path = 'generic_import/FBA-OD-generic.xlsx.ws-ready-payload.json'
-
-        with patch("edd.notify.backend.RedisBroker"):
-
-            # mock the redis broker used by the legacy task to consume cache entries
-            with patch("main.tasks.ImportBroker") as MockStorage:
-                cache_consumer = MockStorage.return_value
-                context_str, series_pages = self._configure_cache_consumer(
-                    cache_consumer, import_
+                # run the task synchronously to verify expected user notifications
+                tasks.process_import_file(
+                    import_.pk,
+                    self.write_user.pk,
+                    requested_status=Import.Status.SUBMITTED,
+                    initial_upload=True,
                 )
 
-                # mock the celery chain used to execute the legacy import task
-                def call_tasks(*args, **kwargs):
-                    import_table_task(import_.study_id, self.write_user.pk, import_.pk)
+                # test that resolver initiates the WS notification indicating SUBMITTED state
+                ws.notify.assert_has_calls(
+                    [
+                        call(
+                            'Your file "FBA-OD-generic.xlsx" is ready to import',
+                            tags=["import-status-update"],
+                            payload=MsgContent.load_payload_file(ready_payload_path),
+                        ),
+                        call(
+                            'Your import for file "FBA-OD-generic.xlsx" is submitted',
+                            tags=["import-status-update"],
+                            payload=MsgContent.load_payload_file(
+                                submitted_payload_path
+                            ),
+                        ),
+                    ]
+                )
+                self.assertEqual(len(ws.notify.call_args_list), 2)
 
-                # run the celery task synchronously in the test so there's no need to have Celery
-                # itself running
-                with patch("celery.chain.apply", new=call_tasks):
-                    with patch(
-                        "edd_file_importer.importer.table.ImportBroker"
-                    ) as ProducerBroker:
-                        cache_producer = ProducerBroker.return_value
 
-                        # run new task.  with chain.apply mock configured above, it'll run the
-                        # legacy task synchronously
-                        tasks.process_import_file(
-                            import_.pk,
-                            LegacyIntegrationTests.write_user.pk,
-                            Import.Status.SUBMITTED,
-                            True,
-                        )
+@override_settings(MEDIA_ROOT=_GENERIC_FILES_DIR)
+class OverwriteTests(TestCase):
+    """
+    Tests basic high-level functionality of the process_import_file() task that's
+    more-or-less unique to the task itself rather than it's constituent parts
+    ImportParseExecutor and ImportResolver: transitioning the import through the expected
+    workflow, and providing client WS notifications as the processing progresses (or fails).
+    """
 
-                        # check that new import code produced the expected Redis cache entries
-                        # for consumption by the legacy import task
-                        cache_producer.set_context.assert_called_once_with(
-                            import_.uuid, context_str
-                        )
-                        exp_calls = [call(import_.uuid, page) for page in series_pages]
-                        cache_producer.add_page.assert_has_calls(exp_calls)
+    fixtures = [
+        "edd_file_importer/generic_fba_imports",
+        "edd_file_importer/generic_fba_imported",
+    ]
 
-                # verify that the data was successfully added to the database
-                self._verify_fba_od_data(import_.study_id)
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.write_user = User.objects.get(username="study.writer.user")
 
-    def _configure_cache_consumer(self, cache_consumer, import_):
-        cache_consumer.page_count.return_value = 0
-        cache_consumer.save.return_value = import_.uuid
-        cache_page_count = 2
-        cache_consumer.add_page.side_effect = (
-            (import_.uuid, i + 1) for i in range(0, cache_page_count)
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_resolved_overwrite_ws_notification(self):
+        """
+        Tests WS notifications for the overwrite detection workflow.  This is a special case where
+        the import progresses to resolved, but needs additional user input in the form of a
+        confirmation that overwriting study data is ok.  Rather than failing, the import
+        progresses to RESOLVED and stays there.
+        """
+        # get the import in its initial CREATED state
+        import_ = Import.objects.get(pk=13)
+
+        # mock import-specific WS notifications so we can verify WS notifications
+        # generated by the task
+        with patch("edd_file_importer.tasks.ImportWsBroker") as MockImportWs:
+            ws = MockImportWs.return_value
+
+            # run the task synchronously to verify expected user notifications
+            tasks.process_import_file(
+                import_.pk,
+                self.write_user.pk,
+                requested_status=Import.Status.SUBMITTED,
+                initial_upload=True,
+            )
+
+            # test that resolver initiates the WS notification indicating RESOLVED state
+            ws_payload_path = self._file_path(
+                "FBA-OD-generic.xslx.ws-overwrite-payload.json"
+            )
+            ws.notify.assert_called_once_with(
+                "Acknowledge warnings before your import can continue for file "
+                '"FBA-OD-generic.xlsx"',
+                tags=["import-status-update"],
+                payload=MsgContent.load_payload_file(ws_payload_path),
+            )
+
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_resolved_overwrite_workflow(self):
+        """
+        Tests the overwrite detection workflow.  This is a special case where the import
+        progresses to resolved, but needs additional user input in the form of a confirmation
+        that overwriting study data is ok.  Rather than failing, the import progresses to
+        RESOLVED and stays there, even though the client request was to submit.  This is a common
+        use case for the front end.
+        """
+        # get the import in its initial CREATED state
+        import_ = Import.objects.get(pk=13)
+
+        # mock complete_import_task() so we can verify it isn't called
+        with patch("edd_file_importer.tasks.complete_import_task") as MockCompleteTask:
+            complete_import_task = MockCompleteTask.return_value
+
+            # run the task synchronously to verify expected user notifications
+            tasks.process_import_file(
+                import_.pk,
+                self.write_user.pk,
+                requested_status=Import.Status.SUBMITTED,
+                initial_upload=True,
+            )
+
+            # verify final import status ends is RESOLVED
+            import_ = Import.objects.get(pk=import_.pk)
+            self.assertEqual(import_.status, Import.Status.RESOLVED)
+
+            # verify complete task was not called either synchronously or asynchronously
+            complete_import_task.assert_not_called()
+            complete_import_task.delay.assert_not_called()
+
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EMAIL_SUBJECT_PREFIX="[EDD]: ")
+    def test_resolved_overwrite_email_notification(self):
+        import_ = Import.objects.get(pk=13)
+
+        # set the flag for email notification
+        import_.email_when_complete = True
+        import_.save()
+
+        # mock send_mail so we can verify that an email gets sent.  Note that even when
+        # process_import_file() is run synchronously here, Celery seems to interfere with the
+        # normal django email testing via mail.outbox.
+        with patch("django.core.mail.send_mail") as send_mail:
+
+            # run the task synchronously and verify it attempted to send the user notification.
+            # a request for SUBMITTED status is needed to generate the email
+            tasks.process_import_file(
+                import_.pk,
+                self.write_user.pk,
+                requested_status=Import.Status.SUBMITTED,
+                initial_upload=True,
+            )
+            send_mail.assert_called_once()
+
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_resolved_duplicate_workflow(self):
+        """
+        Tests the duplicate detection workflow.  This is a special case where the import
+        progresses to resolved, but needs additional user input in the form of a confirmation that
+        duplicating study data is ok.  Rather than failing, the import progresses to RESOLVED
+        and stays there, even though the client request was to submit.  This is a common use case
+        for the front end.
+        """
+        # rename both assays from the fixture so that assay name checks totally fail and the
+        # import drops back to matching against line names
+        edd_models.Assay.objects.filter(study_id=10, name="arcA").update(
+            name="arc_original"
+        )
+        edd_models.Assay.objects.filter(study_id=10, name="BW1").update(
+            name="BW1_original"
         )
 
-        # load expected Redis cache content from files and compare with actual calls.
-        # Note that these roughly parallel, but are distinct from, similar files in the
-        # main tutorial tests...these ones have a lot of the cruft removed from the
-        # legacy import, and are generated on the back end rather than by the UI
-        context_str = factory.load_test_file(CONTEXT_PATH).read()
-        context_json = json.loads(context_str)
+        # get the import in its initial CREATED state
+        import_ = Import.objects.get(pk=13)
 
-        # replace UUID from the file...it's the same content, but a different UUID
-        # for this import so it's in the Ready state
-        context_json["importId"] = import_.uuid
-        context_str = json.dumps(context_json, cls=JSONEncoder)
+        with patch("edd_file_importer.tasks.complete_import_task") as MockCompleteTask:
+            complete_import_task = MockCompleteTask.return_value
 
-        # load series data, slicing it up into pages if requested
-        series_pages = self._slice_series_pages(
-            SERIES_PATH, cache_page_count, settings.EDD_IMPORT_PAGE_SIZE
+            # run the task synchronously and verify that even when client requests submitted
+            # status, e.g. the normal case for the front end, the
+            tasks.process_import_file(
+                import_.pk,
+                self.write_user.pk,
+                requested_status=Import.Status.SUBMITTED,
+                initial_upload=True,
+            )
+
+            # verify final import status ends is RESOLVED
+            import_ = Import.objects.get(pk=import_.pk)
+            self.assertEqual(import_.status, Import.Status.RESOLVED)
+
+            # verify complete task was not called either synchronously or asynchronously
+            complete_import_task.assert_not_called()
+            complete_import_task.delay.assert_not_called()
+
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
+    def test_resolved_duplicate_ws_notification(self):
+        """
+        Tests the duplicate detection workflow in process_import_file().  This is a special case
+        where the import gets to resolved, but needs additional user input in the form of a
+        confirmation that duplicating study data is ok.  Rather than failing, the import
+        progresses to RESOLVED and stays there.  This is a common use case for the front end.
+        """
+        # rename both assays from the fixture so that assay name checks totally fail and the
+        # import drops back to matching against line names
+        edd_models.Assay.objects.filter(study_id=10, name="arcA").update(
+            name="arc_original"
+        )
+        edd_models.Assay.objects.filter(study_id=10, name="BW1").update(
+            name="BW1_original"
         )
 
-        cache_consumer.load_context.return_value = context_str
-        cache_consumer.load_pages.return_value = [page for page in series_pages]
+        # get the import in its initial CREATED state
+        import_ = Import.objects.get(pk=13)
 
-        return context_str, series_pages
+        # mock import-specific WS notifications so we can verify WS notifications
+        # generated by the resolver
+        with patch("edd_file_importer.tasks.ImportWsBroker") as MockImportWs:
+            ws = MockImportWs.return_value
 
-    def _verify_fba_od_data(self, study_pk):
-        # verify correct number of assays created (1 per line)
-        bw1_as = edd_models.Assay.objects.filter(
-            line__name="BW1", line__study_id=study_pk
-        ).count()
-        arcA_as = edd_models.Assay.objects.filter(
-            line__name="arcA", line__study_id=study_pk
-        ).count()
-        self.assertEqual(bw1_as, 1)
-        self.assertEqual(arcA_as, 1)
+            # run the task synchronously and verify it attempted to send the user notification
+            tasks.process_import_file(
+                import_.pk,
+                self.write_user.pk,
+                requested_status=Import.Status.SUBMITTED,
+                initial_upload=True,
+            )
 
-        # verify that the right number of measurements were created
-        bw1_ms = edd_models.Measurement.objects.filter(
-            assay__line__name="BW1", assay__line__study_id=study_pk
+            # test that resolver initiates the WS notification indicating READY state
+            ws_payload_path = self._file_path(
+                "FBA-OD-generic.xlsx.ws-duplicate-payload.json"
+            )
+            ws.notify.assert_called_once_with(
+                "Acknowledge warnings before your import can continue for file "
+                '"FBA-OD-generic.xlsx"',
+                tags=["import-status-update"],
+                payload=MsgContent.load_payload_file(ws_payload_path),
+            )
+
+    @clear_import_cache(import_uuid="ec2e3a30-3f35-4219-88a8-cf78fb100a98")
+    @override_settings(EMAIL_SUBJECT_PREFIX="[EDD]: ")
+    def test_resolved_duplicate_email_notification(self):
+        """
+        Tests that if the user requested an email notification re: disposition of the import,
+        they get an email regarding need for additional input before it can be completed
+        """
+        # rename both assays from the fixture so that assay name checks fail and the import
+        # drops back to matching against line names
+        edd_models.Assay.objects.filter(study_id=10, name="arcA").update(
+            name="arc_original"
         )
-        arcA_ms = edd_models.Measurement.objects.filter(
-            assay__line__name="arcA", assay__line__study_id=study_pk
+        edd_models.Assay.objects.filter(study_id=10, name="BW1").update(
+            name="BW1_original"
         )
-        self.assertEqual(len(bw1_ms), 1)
-        self.assertEqual(len(arcA_ms), 1)
 
-        # verify the right number of values were created
-        bw1_vals = edd_models.MeasurementValue.objects.filter(
-            measurement_id=bw1_ms.get().pk
-        ).count()
+        import_ = Import.objects.get(pk=13)
 
-        arcA_vals = edd_models.MeasurementValue.objects.filter(
-            measurement_id=arcA_ms.get().pk
-        ).count()
+        # set the flag for email notification
+        import_.email_when_complete = True
+        import_.save()
 
-        self.assertEqual(bw1_vals, 7)
-        self.assertEqual(arcA_vals, 7)
+        # mock send_mail so we can verify that an email gets sent.  Note that even when
+        # process_import_file() is run synchronously here, Celery seems to interfere with the
+        # normal django email testing via mail.outbox.
+        with patch("django.core.mail.send_mail") as send_mail:
+            tasks.process_import_file(
+                import_.pk,
+                self.write_user.pk,
+                requested_status=Import.Status.SUBMITTED,
+                initial_upload=True,
+            )
+            send_mail.assert_called_once()
+
+    def _file_path(self, filename):
+        return os.path.join("generic_import", filename)

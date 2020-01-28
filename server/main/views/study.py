@@ -165,7 +165,9 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             rest=rest_reverse(
                 "rest:studies-detail", kwargs={"pk": instance.pk}, request=self.request
             ),
-            showImportPrototype="edd_file_importer" in settings.INSTALLED_APPS,
+            showImportPrototype=bool(
+                getattr(settings, "EDD_USE_PROTOTYPE_IMPORT", False)
+            ),
             writable=instance.user_can_write(self.request.user),
         )
         return context

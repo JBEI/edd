@@ -1,0 +1,274 @@
+[
+  {
+    "loa_name": "arcA",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        0
+      ],
+      [
+        0.1
+      ]
+    ],
+    "src_ids": [2]
+  },
+  {
+    "loa_name": "arcA",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        7.5
+      ],
+      [
+        1.49
+      ]
+    ],
+    "src_ids": [3]
+  },
+  {
+    "loa_name": "arcA",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        7.5
+      ],
+      [
+        1.49
+      ]
+    ],
+    "src_ids": [4]
+  },
+  {
+    "loa_name": "arcA",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        9.5
+      ],
+      [
+        2.62
+      ]
+    ],
+    "src_ids": [5]
+  },
+  {
+    "loa_name": "arcA",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        7.5
+      ],
+      [
+        1.49
+      ]
+    ],
+    "src_ids": [6]
+  },
+  {
+    "loa_name": "arcA",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        11
+      ],
+      [
+        2.96
+      ]
+    ],
+    "src_ids": [7]
+  },
+  {
+    "loa_name": "arcA",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        13
+      ],
+      [
+        3.58
+      ]
+    ],
+    "src_ids": [8]
+  },
+  {
+    "loa_name": "arcA",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        15
+      ],
+      [
+        3.98
+      ]
+    ],
+    "src_ids": [9]
+  },
+  {
+    "loa_name": "arcA",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        17
+      ],
+      [
+        4.31
+      ]
+    ],
+    "src_ids": [10]
+  },
+  {
+    "loa_name": "BW1",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        0
+      ],
+      [
+        0.1
+      ]
+    ],
+    "src_ids": [11]
+  },
+  {
+    "loa_name": "BW1",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        0
+      ],
+      [
+        0.1
+      ]
+    ],
+    "src_ids": [12]
+  },
+  {
+    "loa_name": "BW1",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        7.5
+      ],
+      [
+        1.49
+      ]
+    ],
+    "src_ids": [13]
+  },
+  {
+    "loa_name": "BW1",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        9.5
+      ],
+      [
+        2.72
+      ]
+    ],
+    "src_ids": [14]
+  },
+  {
+    "loa_name": "BW1",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        11
+      ],
+      [
+        3.95
+      ]
+    ],
+    "src_ids": [15]
+  },
+  {
+    "loa_name": "BW1",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        13
+      ],
+      [
+        5.69
+      ]
+    ],
+    "src_ids": [16]
+  },
+  {
+    "loa_name": "BW1",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        15
+      ],
+      [
+        6.41
+      ]
+    ],
+    "src_ids": [17]
+  },
+  {
+    "loa_name": "BW1",
+    "measurement_name": "Optical Density",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        17
+      ],
+      [
+        6.51
+      ]
+    ],
+    "src_ids": [18]
+  }
+]

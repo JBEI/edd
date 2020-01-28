@@ -57,11 +57,33 @@ ICE_VERIFY_CERT = True
 
 # Import related settings
 # --------------------
-# TODO: below values should have defaults defined at point-of-use
+# TODO: below values should have defaults defined at point-of-use once legacy import is replaced
+# and there is a single / maintainable point-of-use
+# the max # of data items in a single page of import data
 EDD_IMPORT_PAGE_SIZE = 1000
+# the max # of pages allowed in a single import
 EDD_IMPORT_PAGE_LIMIT = 1000
+# expiration time in seconds of data submitted for import (24 hrs)
 EDD_IMPORT_CACHE_LENGTH = 60 * 60 * 24
-EDD_IMPORT_LOOKUP_ERR_LIMIT = 50
+
+# number of failed MeasurementType lookups after which EDD will no longer attempt any more.
+# This is separate from EDD_IMPORT_ERR_REPORTING_LIMIT, since it helps control the number of
+# potentially expensive external lookups performed, and helps keep the import responsive in case
+# of external errors
+EDD_IMPORT_MTYPE_LOOKUP_ERR_LIMIT = 25
+
+# number of occurrences for each unique error categorization after which further errors
+# will not be reported to the UI. Note this includes error occurrences not limited by
+# EDD_IMPORT_MTYPE_LOOKUP_ERR_LIMIT, such as unmatched line or assay names
+EDD_IMPORT_ERR_REPORTING_LIMIT = 25
+
+# maximum number of bulk object creations to perform in a batch (where batching is supported).
+# None results in all objects up to EDD_IMPORT_PAGE_SIZE being created in a single batch (i.e.
+# in one query).
+EDD_IMPORT_BULK_CREATE_BATCH_SIZE = None
+
+# maximum number of pk checks to use in a single query
+EDD_IMPORT_BULK_PK_LOOKUP_BATCH = 100
 
 
 # Index page related settings

@@ -37,6 +37,7 @@ module.exports = {
             "react-stepzilla.css",
             path.resolve(__dirname, "./src/Import2.tsx"),
         ],
+        Import2Help: path.resolve(__dirname, "./src/Import2-Help.tsx"),
         index: path.resolve(__dirname, "./src/index.ts"),
         RNASeq: path.resolve(__dirname, "./src/RNASeq.ts"),
         Skyline_Convert: path.resolve(__dirname, "./src/Skyline_Convert.ts"),

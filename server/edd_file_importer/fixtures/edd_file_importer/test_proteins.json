@@ -1,0 +1,86 @@
+[
+  {
+    "fields": {
+      "short_name": "A",
+      "type_group": "p",
+      "type_name": "Test protein A",
+      "type_source": 2,
+      "uuid": "fac87ee9-6450-443a-b9e5-132bad4d3432"
+    },
+    "model": "main.measurementtype",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "accession_code": "A",
+      "accession_id": null,
+      "length": 1,
+      "mass": "0"
+    },
+    "model": "main.proteinidentifier",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "short_name": "B",
+      "type_group": "p",
+      "type_name": "Test protein B",
+      "type_source": 2,
+      "uuid": "1ff91ba0-21fa-438d-9da5-2221f03b8e6b"
+    },
+    "model": "main.measurementtype",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "accession_code": "B",
+      "accession_id": null,
+      "length": 1,
+      "mass": "0"
+    },
+    "model": "main.proteinidentifier",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "short_name": "C",
+      "type_group": "p",
+      "type_name": "Test protein C",
+      "type_source": 2,
+      "uuid": "de88ad37-93b5-4958-9f52-7090dd3398e3"
+    },
+    "model": "main.measurementtype",
+    "pk": 3
+  },
+  {
+    "fields": {
+      "accession_code": "C",
+      "accession_id": null,
+      "length": 1,
+      "mass": "0"
+    },
+    "model": "main.proteinidentifier",
+    "pk": 3
+  },
+  {
+    "fields": {
+      "short_name": "D",
+      "type_group": "p",
+      "type_name": "Test protein D",
+      "type_source": 2,
+      "uuid": "aa2f1099-8e8e-40ee-8220-604b0a81c27c"
+    },
+    "model": "main.measurementtype",
+    "pk": 4
+  },
+  {
+    "fields": {
+      "accession_code": "D",
+      "accession_id": null,
+      "length": 1,
+      "mass": "0"
+    },
+    "model": "main.proteinidentifier",
+    "pk": 4
+  }
+]

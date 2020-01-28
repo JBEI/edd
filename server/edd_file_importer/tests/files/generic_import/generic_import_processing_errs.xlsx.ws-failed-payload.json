@@ -5,7 +5,7 @@
       "category": "Measurement collision",
       "summary": "Duplicate simultaneous measurements",
       "resolution": null,
-      "doc_url": null,
+      "docs_link": null,
       "subcategory": "(arcA: Optical Density, T=0)",
       "detail": "row 3"
     },
@@ -13,7 +13,7 @@
       "category": "Measurement collision",
       "summary": "Duplicate simultaneous measurements",
       "resolution": null,
-      "doc_url": null,
+      "docs_link": null,
       "subcategory": "(BW1: Optical Density, T=0)",
       "detail": "row 11"
     }

@@ -2,6 +2,7 @@
 from rest_framework import serializers
 
 from edd.rest.serializers import ProtocolSerializer, UpdateSerializer
+from main.importer.parser import guess_extension
 
 from .. import models
 
@@ -17,12 +18,29 @@ class BaseImportObjectSerializer(serializers.ModelSerializer):
         fields = ("active", "created", "description", "name", "pk", "updated", "uuid")
 
 
+class ImportParserSerializer(serializers.ModelSerializer):
+    mime_type = serializers.CharField(read_only=True)
+    extension = serializers.SerializerMethodField("get_extension")
+
+    class Meta:
+        model = models.ImportParser
+        fields = ("mime_type", "extension")
+
+    def get_extension(self, parser):
+        """
+        Guesses the file extension from the parser's MIME type as input to building helpful
+        client-side error messages.
+        """
+        return guess_extension(parser.mime_type)
+
+
 class ImportFormatSerializer(BaseImportObjectSerializer):
     pk = serializers.IntegerField(read_only=True)
+    parsers = ImportParserSerializer(many=True)
 
     class Meta:
         model = models.ImportFormat
-        fields = BaseImportObjectSerializer.Meta.fields
+        fields = BaseImportObjectSerializer.Meta.fields + ("parsers",)
 
 
 class ImportCategorySerializer(BaseImportObjectSerializer):

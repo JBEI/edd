@@ -1,0 +1,18 @@
+[
+  {
+    "loa_name": "arcA",
+    "measurement_name": "UnknownMeasurementType",
+    "y_unit_name": "n/a",
+    "x_unit_name": "hours",
+    "format": "0",
+    "data": [
+      [
+        0
+      ],
+      [
+        0.1
+      ]
+    ],
+    "src_ids": []
+  }
+]

@@ -1,0 +1,13 @@
+{% load i18n %}
+
+{% blocktrans %}
+    Your import from file "{{file}}" to study "{{study}}" is paused and awaiting your input.
+
+    You can complete your import after you've acknowledged warnings listed below. If you still have
+a browser window open to your import, you may use that window to acknowledge the warnings and
+complete the process. Support is not yet provided for resuming an import after you've closed the
+browser or navigated away from it. If you've already done so, please upload your file again and
+keep the browser open to acknowledge warnings.
+{% endblocktrans %}
+{% include "edd_file_importer/email/message_sequence.txt" with title='Errors' messages=errors %}
+{% include "edd_file_importer/email/message_sequence.txt" with title='Warnings' messages=warnings %}

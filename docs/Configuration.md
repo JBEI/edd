@@ -40,7 +40,7 @@ detailed description of some of the options.
 
 ## EDD Django Configuration Files
 
-As a Django application, EDD loads its configuration with Python code. The settings of EDD are
+As a Django application, EDD loads its configuration with Python code. EDD's settings are
 designed to load in default values, while allowing for overrides with a `local.py` settings file.
 An example of this file can be found at `edd/settings/local.py-example`. Custom settings are
 loaded with a `volume` definition and the `--local PATH` option to the `command` in each of the
@@ -57,14 +57,16 @@ used by EDD can be found with each individual project:
 -   [messages_extends][17]
 -   [django-allauth][5]
 
-The defaults used by EDD are defined in the following files found under `edd/settings`:
+The defaults used by EDD are defined in the following files found under `server/edd/settings`:
 
 -   `base.py`: defines baseline default settings that make EDD work out-of-the box.
 -   `celery.py`: Defines EDD's Celery-specific configuration.
+-   `edd.py`: Defines custom settings for EDD itself
 -   `auth.py`: Defines authentication-specific settings.
 
 Settings unique to EDD will generally be prefixed with `EDD_`. Commentary for each of these,
-including possible values, should be included in the `local.py-example` file.
+including possible values, should be included in the `local.py-example` file. See "Custom
+Python Configuration" under [Deployment][18] for specific examples.
 
 ### Configuring Social Logins <a name="Social"/>
 
@@ -108,3 +110,4 @@ in EDD's default `docker-compose.yml`. If so, you'll want to follow this general
 [15]: http://www.django-rest-framework.org/
 [16]: https://bitbucket.org/carljm/django-form-utils/
 [17]: https://github.com/AliLozano/django-messages-extends/
+[18]: Deployment.md#Python_Config

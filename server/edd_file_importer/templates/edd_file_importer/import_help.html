@@ -1,0 +1,388 @@
+{% extends "edd_base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block js_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/help.css' %}" />
+    {% autoescape off %}
+        {% for script in include_scripts %}
+            {{ script }}
+        {% endfor %}
+    {% endautoescape %}
+{% endblock js_css %}
+
+
+{% block head_title %}
+    {{ block.super }} &mdash; Import Prototype
+{% endblock head_title %}
+
+
+{% block body_title %}
+    {{ block.super }} &mdash; Import Prototype
+{% endblock body_title %}
+
+
+{% block content %}
+<div class="masterHelpDiv">
+    <div class="helpNavBar">
+        <ol>
+            <li><a href="#category">{% trans "Category" %}</a></li>
+            <li><a href="#protocol">{% trans "Protocol" %}</a></li>
+            <li><a href="#format">{% trans "File format" %}</a>
+                <ol>
+                    <li><a href="#generic">{% trans "Generic" %}</a></li>
+                    <li><a href="#skyline">{% trans "Skyline" %}</a></li>
+                    <li><a href="#custom">{% trans "Custom File Format" %}</a></li>
+                </ol>
+            </li>
+            <li>
+                <a href="#file-content">{% trans "File Content" %}</a>
+                <ol>
+                    <li><a href="#ids">{% trans "Standard Identifiers" %}</a></li>
+                    <li><a href="#omics-refs">{% trans "'Omics references" %}</a></li>
+                    <li><a href="#generic-mtypes">{% trans "Generic types" %}</a></li>
+                    <li><a href="#units">{% trans "Measurement units" %}</a></li>
+                    <li><a href="#size">{% trans "File Size Limits" %}</a></li>
+                </ol>
+            </li>
+            <li><a href="#advanced">{% trans "Advanced" %}</a></li>
+        </ol>
+    </div>
+    <div class="helpMasterContent">
+        <div class="helpSectionContent">
+            <p>
+                {% blocktrans %}
+                This prototype is a work in progress! Our goal is to eventually replace EDD's
+                existing  import tool with an updated version, and we're adding support for new
+                data categories and file formats over time.
+                {% endblocktrans %}
+            </p>
+        </div>
+        <a name="category"></a>
+        <h2 class="helpSectionHeader">Category</h2>
+        <div class="helpSectionContent">
+            <p>
+                {% blocktrans %}
+                Your choice of category dictates how measurement types (e.g. chemical identifiers)
+                from your file are resolved to known types during the import.  The category you
+                choose will also affect which protocols and file formats are available.  See
+                <a href="#file-content">File content</a> below for more information on how your
+                choice of category impacts EDD's interpretation of your file.
+                {% endblocktrans %}
+            </p>
+        </div>
+        <a name="protocol"></a>
+        <h2 class="helpSectionHeader">{% trans "Protocol" %}</h2>
+        <div class="helpSectionContent">
+             <p>
+                 {% blocktrans %}
+                 A protocol is the series of unique steps performed in the lab,
+                 including the instrumentation used, as well as how the instruments were
+                 configured. Ideally another scientist should be able to reproduce your study
+                 solely from the protocol and the metadata you've entered into EDD.
+                 {% endblocktrans %}
+            </p>
+            <div id="protocolsTable"></div>
+            <h4>{% trans "Adding new protocols" %}</h4>
+            <p>
+                {% blocktrans %}
+                If EDD doesn't already contain a protocol that matches in your experiment, new
+                protocols can be added with relative ease.
+                {% endblocktrans %}
+                {% if prot_scripts %}
+                <button id="request-protocol">{% trans "Request a protocol" %}</button>
+                {% endif %}
+            </p>
+        </div>
+        <a name="format"></a>
+        <h2 class="helpSectionHeader">{% trans "File format" %}</h2>
+        <div class="helpSectionContent">
+            <p>
+                {% blocktrans %}
+                EDD includes parsing of a relatively small, and growing, number of file formats.
+                EDD also supports adding custom parsers that may not be included in the base
+                distribution. Built-in formats are described below.
+                {% endblocktrans %}
+                {% if format_scripts %}
+                    {% blocktrans %}
+                    You can also submit a request to parse a new file format.
+                    {% endblocktrans %}
+                    <button id="request-format">{% trans "Request a format" %}</button>
+                {% endif %}
+            </p>
+            <a name="generic"></a>
+            <h3>{% trans "Generic" %}</h3>
+            <p>
+                {% blocktrans %}
+                EDD defines a "generic" file format that is the default in case there is no
+                well-known file format for your workflow. In principal, EDD should be
+                configured to accept files directly from the instruments, but if your
+                instrumentation is not supported yet you can always expect the generic format to
+                be available.
+                {% endblocktrans %}
+            </p>
+            <table class="figureTable">
+                <thead>
+                    <tr>
+                        <th>Line Name</th>
+                        <th>Measurement Type</th>
+                        <th>Time</th>
+                        <th>Value</th>
+                        <th>Units</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>r1</td>
+                        <td>CID:8193</td>
+                        <td>24</td>
+                        <td>0.5</td>
+                        <td>g/L</td>
+                    </tr>
+                </tbody>
+                <p>
+                    {% blocktrans with "https://pubchem.ncbi.nlm.nih.gov/compound/8193" as url %}
+                    In this simplified example, a single flask (line R1) is measured for
+                    concentration of
+                    <a href="{{ url }}">Lauryl Alcohol</a> (a.k.a butanol), using the PubChem
+                    CID (8193) at time = 24 hours after the beginning of the experiment.  The
+                    concentration is 0.5 g/L.
+                    {% endblocktrans %}
+                </p>
+            </table>
+            <a name="skyline"></a>
+            <h3>{% trans "Skyline" %}</h3>
+            <p>
+                {% with url="https://skyline.ms/project/home/software/Skyline/begin.view" %}
+                    {% blocktrans with url=url %}
+                    Skyline is an <a href="{{ url }}">open source tool</a> used to analyse mass
+                    spec data, including targeted proteomics data. By default, this format is
+                    only available under the Proteomics category. Each row of the table
+                    describes the number of detections of a particular peptide, as well as the
+                    name of the assay or line the measurement should be attributed to.
+                    {% endblocktrans %}
+                {% endwith %}
+            </p>
+            <table class="figureTable">
+                <thead>
+                    <tr>
+                        <th>Replicate Name</th>
+                        <th>Protein Name</th>
+                        <th>Peptide</th>
+                        <th>Total Area</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>r1</td>
+                        <td>sp|P76461|ATOB_ECOLI</td>
+                        <td>LGDGQVYDVILR</td>
+                        <td>120726</td>
+                    </tr>
+                    <tr>
+                        <td>r1</td>
+                        <td>sp|P76461|ATOB_ECOLI</td>
+                        <td>ILVTLLHAMQAR</td>
+                        <td>11931</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="caption">{% trans "Figure 2: Partial Skyline file" %}
+            </div>
+            {% blocktrans %}
+            When EDD processes Skyline files for Proteomics, it sums measurements for each peptide
+            associated with the same protein, and reports summed measurement counts. EDD also
+            treats the "#N/A" values produced by Skyline as zero detections (a measurement of
+            zero).
+            {% endblocktrans %}
+            <a name="custom"></a>
+            <h3>{% trans "Custom format" %}</h3>
+            <p>
+                {% blocktrans %}
+                Support for configurable parsing of custom file formats will be added in a future
+                version. In the meantime, there a placeholder "Interpret" step in the prototype
+                where you'll eventually be able to inform EDD about how your file is formatted.
+                {% endblocktrans %}
+            </p>
+        </div>
+        <a name="file-content"></a>
+        <h2 class="helpSectionHeader">{% trans "File Content" %}</h2>
+        <div class="helpSectionContent">
+            <a name="ids"></a>
+            <h4>{% trans "Standard identifiers" %}</h4>
+            <p>
+                {% blocktrans %}
+                In most cases, EDD requires that you use standard identifiers to import your data.
+                While each researcher may have a naming convention or shorthand they prefer to use
+                for chemicals or other quantities being measured,
+                it's important to make experiments understandable to collaborators and to promote
+                transparency in the legacy of research as captured in EDD.
+                {% endblocktrans %}
+            </p>
+            <a name="omics-refs"></a>
+            <h4>{% trans "Reference Databases for 'Omics measurements" %}</h4>
+            <p>
+                {% blocktrans %}
+                EDD uses several third-party databases to provide standard identifiers for 'omics
+                data:
+                {% endblocktrans %}
+            </p>
+            <table class="figureTable">
+                <thead>
+                    <tr>
+                        <th>{% trans "Import Category" %}</th>
+                        <th>{% trans "Reference Databases" %}</th>
+                        <th>{% trans "Required Identifier" %}</th>
+                        <th>{% trans "Examples" %} </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{% trans "Proteomics" %}</td>
+                        <td>
+                            {% with uniprot_url="https://www.uniprot.org" %}
+                                {% if ice_url %}
+                                    {% blocktrans with ice_url=ice_url uniprot_url=uniprot_url %}
+                                    <a href="{{ uniprot_url }}">Uniprot</a> and
+                                    <a href="{{ ice_url }}">ICE</a>
+                                    {% endblocktrans %}
+                                {% else %}
+                                    {% blocktrans %}
+                                    <a href="{{ uniprot_url }}">Uniprot</a> and ICE
+                                    {% endblocktrans %}
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% with url="https://www.uniprot.org/help/accession_numbers" %}
+                                {% blocktrans with url=url %}
+                                <a href="{{ url }}">Uniprot Accession ID</a>, or ICE part ID's
+                                accepted for custom proteins
+                                {% endblocktrans %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <a href="https://www.uniprot.org/uniprot/P76461">
+                                sp|P76461|ATOB_ECOLI
+                            </a>, JBx_12345, ABF_12345, JPUB_12345
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>{% trans "Metabolomics" %}</td>
+                        <td>
+                            <a href="https://pubchem.ncbi.nlm.nih.gov/">{% trans "PubChem"%}</a>
+                        </td>
+                        <td>CID</td>
+                        <td>
+                            "<a href="https://pubchem.ncbi.nlm.nih.gov/compound/440917">CID:440917
+                        </a>"
+                            or "CID:440917:Limonene"
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>{% trans "Transcriptomics" %}</td>
+                        <td>{% if ice_url %}
+                                {% blocktrans with ice_url=ice_url %}
+                                <a href="{{ ice_url }}">ICE</a> preferred, or direct EDD input
+                                (arbitrary ID's accepted)
+                                {% endblocktrans %}
+                            {% else %}
+                                {% blocktrans %}
+                                Genbank Gene ID or ICE part ID preferred.  Direct EDD input
+                                (arbitrary ID's accepted)
+                                {% endblocktrans %}
+                            {% endif%}
+                        </td>
+                        <td>{% trans "ICE Part Number preferred" %}</td>
+                        <td>JBx_12345, ABF_12345, JPUB_12345</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>
+                {% blocktrans %}
+                In addition to the built-in categories above, EDD's categories are configurable,
+                so you might see others.
+                {% endblocktrans %}
+            </p>
+            <a name="generic-mtypes"></a>
+            <h4>{% trans "Generic measurement types" %}</h4>
+            <p>
+                {% blocktrans %}
+                EDD largely relies on other domain-specific databases such as PubChem or
+                GenBank to provide identifiers for the quantities being measured.
+                However, EDD also needs to store measurements of a few other important
+                quantities that aren't represented in other well-known databases. For example,
+                optical density is a widely used proxy for cell growth, but it doesn't fall into
+                one of the more biologically-defined categories like "Metabolites" that are
+                tracked by other domain databases such as PubChem.  EDD includes a small handful of
+                these generic measurement types by default, and others can be added with
+                relative ease.
+                {% endblocktrans %}
+            </p>
+            <div id="genericMtypesTable"></div>
+            {% if mtype_scripts %}
+            <button id="request-mtype">{% trans "Request a measurement type" %}</button>
+            {% endif %}
+            <a name="units"></a>
+            <h4>{% trans "Measurement Units" %}</h4>
+            <p>
+                {% blocktrans %}
+                EDD also requires that imported files use known units.  EDD comes configured with a
+                set of commonly-used units, and new units can also be added as needed.
+                {% endblocktrans %}
+                <div id="unitsTable"></div>
+                <script type="text/javascript" src="{% static 'dist/Import2Help.js' %}"></script>
+                {% if units_scripts %}
+                <button id="request-units">{% trans "Request units" %}</button>
+                {% endif %}
+            </p>
+            <a name="size"></a>
+            <h4>{% trans "File size limits" %}</h4>
+            <p>
+                {% blocktrans with limit=upload_limit_mb %}
+                For performance and security reasons, EDD must limit the size of files uploaded in
+                a single import.  The maximum file size for import files is {{ limit }} MB. If
+                you need to upload larger files, EDD administrators may be able to adjust the
+                limit, weighing your needs with other technical concerns.
+                {% endblocktrans %}
+            </p>
+        </div>
+        <a name="advanced"></a>
+        <div class="helpSectionContent">
+            <h2 class="helpSectionHeader">{% trans "Advanced" %}</h2>
+            <h3>{% trans "Assay metadata workflow" %}</h3>
+            <p>
+                {% blocktrans with ed_held=ed_help %}
+                Some file formats generated by instrumentation won't include all the data that EDD
+                needs to create complete, unambiguous records of your experiment.  For example,
+                Skyline is important to the default proteomics workflow, but the files it
+                generates don't include measurement time that's critical to understanding the
+                experiment.  To support this case, the import tool allows you to pre-define time as
+                assay metadata when you first upload your Experiment Description file.  For an
+                example, see the <a href="{{ed_help}}#assay_creation">Assay Creation</a> section in
+                the Experiment Description help. If assay time data is detected during the import
+                process, it will be used when the data file doesn't contain time.
+                {% endblocktrans %}
+            </p>
+        </div>
+        <div class="helpSectionContent">
+        <h3 class="helpSectionHeader">{% trans "Planning for success" %}</h3>
+            <p>
+                {% blocktrans %}
+                EDD's import tool requires your file to match line/assay names from your study,
+                as well standard measurement type identifiers.  A common workflow that helps
+                avoid identifier mismatches is to first create lines in EDD, then generate a
+                worklist to help configure the instrumentation with standard identifiers.
+                Planning can pay big dividends later on.  EDD will warn you when the import
+                detects identifiers it doesn't understand, but for large files it can required a
+                lot of manual effort or scripting to fix problems. Inconsistencies often aren't
+                apparent until you attempt to import your data into EDD, and it can be labor
+                intensive to fix them at that late stage.
+                {% endblocktrans %}
+                </p>
+            </div>
+    </div>
+</div>
+
+{% endblock content %}

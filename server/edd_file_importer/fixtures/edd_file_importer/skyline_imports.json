@@ -1,0 +1,261 @@
+[
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "",
+      "first_name": "Study writer user",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "study.writer.user"
+    },
+    "model": "auth.user",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "permission_type": "W",
+      "study": 1000,
+      "user": 2
+    },
+    "model": "main.userpermission",
+    "pk": 1
+  },
+  {
+    "model": "main.eddobject",
+    "pk": 1000,
+    "fields": {
+      "metadata": {},
+      "name": "Skyline study",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "de284f6c-f7e8-440f-b7a5-a3254164265f",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "main.study",
+    "pk": 1000,
+    "fields": {
+      "contact": 1,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "slug": "fba",
+      "updates": [
+        1
+      ],
+      "protocols": []
+    }
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "arcA ko",
+      "metadata": {},
+      "name": "arcA",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "6fe8d002-d627-4261-9a87-6b92504dd10b"
+    },
+    "model": "main.eddobject",
+    "pk": 1001
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "strains": [],
+      "study": 1000,
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.line",
+    "pk": 1001
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "KEIO wild type",
+      "metadata": {},
+      "name": "BW1",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "09faa44f-0a5d-4029-8644-79ec02391cf8"
+    },
+    "model": "main.eddobject",
+    "pk": 1002
+  },
+  {
+    "fields": {
+      "carbon_source": [],
+      "contact": null,
+      "contact_extra": "",
+      "control": false,
+      "experimenter": null,
+      "strains": [],
+      "study": 1000,
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.line",
+    "pk": 1002
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": null,
+      "metadata": {},
+      "name": "arcA",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "a4c1cc7a-bfd9-4750-929a-d97ff0fb0ef7"
+    },
+    "model": "main.eddobject",
+    "pk": 1003
+  },
+  {
+    "fields": {
+      "line":  1001,
+      "protocol": 1,
+      "experimenter": null,
+      "study": 1000,
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.assay",
+    "pk": 1003
+  },
+  {
+    "fields": {
+      "active": true,
+      "created": 1,
+      "description": "",
+      "metadata": {},
+      "name": "BW1",
+      "updated": 1,
+      "updates": [
+        1
+      ],
+      "uuid": "0f2a6710-479f-4b07-8a94-1d7f8bda9bf5"
+    },
+    "model": "main.eddobject",
+    "pk": 1004
+  },
+  {
+    "fields": {
+      "line":  1002,
+      "protocol": 1,
+      "experimenter": null,
+      "study": 1000,
+      "updates": [
+        1
+      ]
+    },
+    "model": "main.assay",
+    "pk": 1004
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 20,
+    "fields": {
+      "name": "Skyline import",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "61b7c373-7fef-41e9-a045-6b16f72787a4",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 20,
+    "fields": {
+      "meta_store": {},
+      "study": 1000,
+      "status": "Created",
+      "category": 1,
+      "file": 21,
+      "file_format": 6,
+      "protocol": 1,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importfile",
+    "pk": 21,
+    "fields": {
+      "file": "skyline.xlsx",
+      "filename": "skyline.xlsx",
+      "created": 1,
+      "description": "",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "file_size": 9143
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 23,
+    "fields": {
+      "name": "",
+      "description": "Submitted",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "bd2d34a7-d360-4392-a6dd-d224de7bd4da",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 23,
+    "fields": {
+      "meta_store": {},
+      "study": 1000,
+      "status": "Submitted",
+      "category": 1,
+      "file": 21,
+      "file_format": 6,
+      "protocol": 1,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  }
+]

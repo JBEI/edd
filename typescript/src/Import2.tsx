@@ -3,13 +3,12 @@
 import * as $ from "jquery";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import ReactTooltip from "react-tooltip";
 import * as ReconnectingWebsocket from "reconnecting-websocket";
 
 import classNames from "classnames";
 import DropZone from "react-dropzone";
 import StepZilla from "react-stepzilla";
-// TODO: this should go away
-import * as uuidv4 from "uuid/v4";
 
 import * as Utl from "../modules/Utl";
 import { notificationSocket } from "./Common";
@@ -124,15 +123,34 @@ class ImportSocket {
 }
 
 export interface HelpProps {
+    toolTipId: string;
     url: string;
-    content: any;
+    toolTipContent: string;
 }
 
 class HelpButton extends React.Component<HelpProps> {
     render() {
+        // note we only use dangerouslySetInnerHTML to set translated / hyperlinked tooltip
+        // from the trusted server.  contains zero user-provided content, so should be safe
+        // from XSS
         return (
             <a href={this.props.url} target="_blank" className="helpButton">
-                <div className="glyphicon glyphicon-question-sign" />
+                <div
+                    data-tip
+                    data-for={this.props.toolTipId}
+                    className="glyphicon glyphicon-question-sign"
+                />
+                <ReactTooltip
+                    id={this.props.toolTipId}
+                    className="toolTipContent"
+                    delayHide={500}
+                    effect="solid"
+                    place="bottom"
+                >
+                    <div
+                        dangerouslySetInnerHTML={{ __html: this.props.toolTipContent }}
+                    />
+                </ReactTooltip>
             </a>
         );
     }
@@ -146,7 +164,16 @@ export interface Selectable {
 
 export interface Category extends Selectable {
     protocols: Selectable[];
-    file_formats: Selectable[];
+    file_formats: Format[];
+}
+
+export interface Parser extends Selectable {
+    mime_type: string;
+    extension: string;
+}
+
+export interface Format extends Selectable {
+    parsers: Parser[];
 }
 
 export interface SelectProps<T extends Selectable> {
@@ -190,7 +217,6 @@ class MultiButtonSelect<T extends Selectable> extends React.Component<
 }
 
 export interface Step2State extends ImportContextProps {
-    acceptMimeTypes: string[];
     fileSizeLimit: number;
     uploadWait: boolean;
     uploadProcessingWait: boolean;
@@ -199,6 +225,8 @@ export interface Step2State extends ImportContextProps {
     uploadErrors: ErrorSummary[];
     uploadWarnings: ErrorSummary[];
     requiredValues: string[];
+    submitPending: boolean;
+    submitWait: boolean;
 }
 
 export interface Step2Props extends Step2State {
@@ -206,10 +234,10 @@ export interface Step2Props extends Step2State {
     errorCallback: any;
     clearFeedbackFn: any;
     overwrite: boolean;
-    submitCallback: any;
     jumpToStep: any; // injected by StepZilla
     stepChangeFnCallback: any; // hacky way of giving the Import component access to change steps
     warningWorkarounds: any;
+    format: Format;
 }
 
 // TODO: merge with similar TS class in Study-Lines-Add-Combos.ts
@@ -219,7 +247,7 @@ export interface ErrorSummary {
     subcategory?: string;
     detail?: string[];
     resolution?: string;
-    doc_url?: string;
+    docs_link?: string;
     id?: string;
     workaround_text?: string;
 }
@@ -305,6 +333,7 @@ class BgTaskFeedback extends React.Component<BgProcessingProps, any> {
         const errorAlerts = errsByCategory.map((categoryErrors: ErrorSummary[]) => {
             return (
                 <ErrCategoryAlert
+                    allowHide={true}
                     errs={categoryErrors}
                     workaroundCallbacks={{}}
                     alertClass="alert alert-danger"
@@ -320,6 +349,7 @@ class BgTaskFeedback extends React.Component<BgProcessingProps, any> {
             (categoryWarnings: ErrorSummary[]) => {
                 return (
                     <ErrCategoryAlert
+                        allowHide={true}
                         errs={categoryWarnings}
                         workaroundCallbacks={this.props.warningWorkarounds}
                         alertClass="alert alert-warning"
@@ -363,6 +393,7 @@ export interface ErrSequenceProps {
     errs: ErrorSummary[];
     alertClass: string;
     workaroundCallbacks: any;
+    allowHide: boolean;
 }
 
 // essentially a workaround for the fact that bootstrap's dismissable alerts don't play well with
@@ -374,7 +405,7 @@ export interface ErrSequenceState {
 export interface ImportContextProps {
     category: Category;
     protocol: Selectable;
-    format: Selectable;
+    format: Format;
     uploadedFileName: string;
     submitSuccess: boolean;
     submitWait: boolean;
@@ -485,9 +516,11 @@ class ErrCategoryAlert extends React.Component<ErrSequenceProps, any> {
             !this.state.hide &&
             this.props.errs.length && (
                 <div className={this.props.alertClass}>
-                    <a href="#" className="close" onClick={this.hide.bind(this)}>
-                        &times;
-                    </a>
+                    {this.props.allowHide && (
+                        <a href="#" className="close" onClick={this.hide.bind(this)}>
+                            &times;
+                        </a>
+                    )}
                     <h4 className="alertSubject">{this.props.errs[0].category}</h4>
                     {content}
                 </div>
@@ -504,12 +537,21 @@ class ErrCategoryAlert extends React.Component<ErrSequenceProps, any> {
             const summarySpan = <span className={cls}>{err.summary}</span>;
             const detail = err.detail ? ": " + err.detail : "";
             const resolution = err.resolution ? <div>{err.resolution}</div> : <span />;
+            // set translated / hyperlinked help text from the trusted server.  contains zero
+            // user-provided content, so should be safe from XSS
+            const docs = err.docs_link ? (
+                <div dangerouslySetInnerHTML={{ __html: err.docs_link }} />
+            ) : (
+                <div />
+            );
+            const hideBtn = this.props.allowHide && (
+                <button onClick={this.hide.bind(this)}>Cancel</button>
+            );
 
-            const subcategorySpan = (
+            const subcategorySpan = err.subcategory && (
                 <span>
-                    {err.subcategory && (
-                        <span>&nbsp;&ndash;&nbsp;{err.subcategory}</span>
-                    )}
+                    <span className="alertSubcategoryDelim">-</span>
+                    <span className="alertSubcategory">{err.subcategory}</span>
                 </span>
             );
 
@@ -517,7 +559,7 @@ class ErrCategoryAlert extends React.Component<ErrSequenceProps, any> {
             if (err.id && this.props.workaroundCallbacks[err.id]) {
                 workaround = (
                     <div>
-                        <button onClick={this.hide.bind(this)}>Cancel</button>
+                        {hideBtn}
                         <button
                             onClick={this.props.workaroundCallbacks[err.id]}
                             className="bg-task-callback-btn"
@@ -533,6 +575,7 @@ class ErrCategoryAlert extends React.Component<ErrSequenceProps, any> {
                     {subcategorySpan}
                     {detail}
                     {resolution}
+                    {docs}
                     {workaround}
                 </div>
             );
@@ -550,6 +593,7 @@ class Step2 extends React.Component<Step2Props, any> {
         const disableDrop: boolean =
             this.props.uploadWait ||
             this.props.uploadProcessingWait ||
+            this.props.submitPending ||
             this.props.submitSuccess ||
             this.props.submitWait;
         const directions: any = !disableDrop && (
@@ -558,7 +602,13 @@ class Step2 extends React.Component<Step2Props, any> {
         const successMsg =
             'Your file has been accepted for import. Press "Next" to complete' +
             " your import.";
-        const accept: string = this.props.acceptMimeTypes.join(",");
+
+        // build the list of accepted mime types
+        let accept = "";
+        const format: any = this.props.format;
+        if (format) {
+            accept = format.parsers.map((parser) => parser.mime_type).join(",");
+        }
 
         return (
             <div id="step2" className="stepDiv">
@@ -733,8 +783,12 @@ export interface Step1State {
     categories: any[];
     category: Category;
     protocol: Selectable;
-    format: Selectable;
+    format: Format;
     emailWhenComplete: any;
+    creationErrs: ErrorSummary[];
+    categoryHelpContent: string;
+    protocolHelpContent: string;
+    formatHelpContent: string;
 }
 
 export interface Step1Props extends Step1State {
@@ -742,8 +796,10 @@ export interface Step1Props extends Step1State {
     protocolSelectedCallback: any;
     formatSelectedCallback: any;
     emailSelectedCallback: any;
+    importUUID: string;
     overwriteSelectedCallback: any;
     duplicateSelectedCallback: any;
+    createNewImportCallback: any;
     allowOverwrite: boolean;
     allowDuplication: boolean;
     helpUrl: string;
@@ -763,7 +819,12 @@ class Step1 extends React.Component<Step1Props, Step1InternalState> {
     }
 
     isValidated() {
-        return this.props.category && this.props.protocol && this.props.format;
+        return (
+            this.props.category &&
+            this.props.protocol &&
+            this.props.format &&
+            this.props.importUUID
+        );
     }
 
     toggleAdvancedOpts(evt) {
@@ -779,66 +840,35 @@ class Step1 extends React.Component<Step1Props, Step1InternalState> {
         const protocol = this.props.protocol;
         const format = this.props.format;
 
-        const categoryHelpContent = (
-            <div className="helpTooltip">
-                <h3>Category</h3>
-                <p>
-                    {" "}
-                    The choice of category influences which protocols and file formats
-                    are available, and also dictates how chemical identifiers from your
-                    file are resolved to known compounds.
-                </p>
-                <p>Click on this icon to get more information in a separate tab</p>
-            </div>
-        );
-
-        const protocolHelpContent = (
-            <div className="helpTooltip">
-                <h3>Protocol</h3>
-                <p>
-                    Each protocol should uniquely describe both the sample prep you
-                    performed, as well as the instrumentation and unique configuration
-                    used. Ideally, another researcher should be able to replicate the
-                    experiment using your protocol and the information captured in EDD.
-                </p>
-                <p>
-                    Minor variations in protocol should be captured in EDD, for example
-                    in your study description or in line metadata.
-                </p>
-                <p>Click on this icon to get more information in a separate tab</p>
-            </div>
-        );
-
-        const formatHelpContent = (
-            <div className="helpTooltip">
-                <h3>File Format</h3>
-                <p>
-                    EDD supports a limited number of well-defined file formats, and it
-                    also supports user-defined tabular input. In this version, use the{" "}
-                    <a href="../import/">legacy import tool</a> to upload
-                    custom-formatted data. This capability will also eventually be
-                    ported to the newer import tool.
-                </p>
-                <p>
-                    You can also contact EDD administrators to request support for
-                    parsing a new file format.
-                </p>
-            </div>
-        );
-
+        const workaroundCallbacks = {
+            "creation_error": this.props.createNewImportCallback,
+        };
+        const creationErrs = this.props.creationErrs;
         const advancedClass = this.state.showAdvancedOpts
             ? "disclose"
             : "disclose discloseHide";
-        const categoryHelp: string = this.props.helpUrl + "#category";
-        const protocolHelp: string = this.props.helpUrl + "#protocol";
-        const formatHelp: string = this.props.helpUrl + "#format";
+        const categoryHelpUri: string = this.props.helpUrl + "#category";
+        const protocolHelpUri: string = this.props.helpUrl + "#protocol";
+        const formatHelpUri: string = this.props.helpUrl + "#format";
 
         return (
             <div className="pageSection stepBorder">
+                {creationErrs != null && creationErrs.length > 0 && (
+                    <ErrCategoryAlert
+                        allowHide={false}
+                        errs={this.props.creationErrs}
+                        workaroundCallbacks={workaroundCallbacks}
+                        alertClass="alert alert-danger"
+                    />
+                )}
                 <div className="step1Section">
                     <div className="import2SectionHead">
                         <h2>What category of data do you have?</h2>
-                        <HelpButton url={categoryHelp} content={categoryHelpContent} />
+                        <HelpButton
+                            url={categoryHelpUri}
+                            toolTipId="categoryHelp"
+                            toolTipContent={this.props.categoryHelpContent}
+                        />
                     </div>
                     <MultiButtonSelect
                         options={categories}
@@ -851,8 +881,9 @@ class Step1 extends React.Component<Step1Props, Step1InternalState> {
                         <div className="import2SectionHead">
                             <h2>What lab protocol did you use?</h2>
                             <HelpButton
-                                url={protocolHelp}
-                                content={protocolHelpContent}
+                                url={protocolHelpUri}
+                                toolTipId="protocolHelp"
+                                toolTipContent={this.props.protocolHelpContent}
                             />
                         </div>
                         <MultiButtonSelect
@@ -866,7 +897,11 @@ class Step1 extends React.Component<Step1Props, Step1InternalState> {
                     <div className="step1Section">
                         <div className="import2SectionHead">
                             <h2>What file format is your data in?</h2>
-                            <HelpButton url={formatHelp} content={formatHelpContent} />
+                            <HelpButton
+                                url={formatHelpUri}
+                                toolTipId="formatHelp"
+                                toolTipContent={this.props.formatHelpContent}
+                            />
                         </div>
                         <MultiButtonSelect
                             options={category.file_formats}
@@ -907,7 +942,7 @@ class Step1 extends React.Component<Step1Props, Step1InternalState> {
                                 Email me when finished
                             </label>
                         </div>
-                        <div className={advancedClass}>
+                        <div id="advancedDiv" className={advancedClass}>
                             <span>
                                 <a
                                     href="#"
@@ -958,8 +993,10 @@ export interface ImportState extends Step1State, Step2State, Step5State {
     "nextButtonText": string;
     "importPk": number;
     "importUUID": string;
+    "importStatus": string;
     "helpUrl": string;
     "jumpToStep": any;
+    // file can be autosubmitted without additional user input. (it's not Table of Data)
     "autoSubmit": boolean;
     "allowOverwrite": boolean; // modifiable in steps 1 and 2
     "allowDuplication": boolean; // step 2 only
@@ -986,14 +1023,10 @@ class Import extends React.Component<any, ImportState> {
     buildResetDict(): ImportState {
         // builds a dict of the subset of values defined in ImportState that should be
         // reset when a new import is begun
-        /* TODO: mime types should eventually depend on user-selected file format */
-        const mimeTypes = [
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/csv",
-        ];
         return {
             "importPk": null,
-            "importUUID": uuidv4(),
+            "importUUID": null,
+            "importStatus": null,
             "nextButtonText": "Next",
 
             /* Step 1 state */
@@ -1003,7 +1036,6 @@ class Import extends React.Component<any, ImportState> {
             "emailWhenComplete": false,
 
             /* Step 2 state */
-            "acceptMimeTypes": mimeTypes,
             "uploadedFileName": null,
             "uploadWait": false,
             "uploadProcessingWait": false,
@@ -1024,6 +1056,60 @@ class Import extends React.Component<any, ImportState> {
             "submitWarnings": [],
             "submitSuccessMsg": null,
         } as ImportState;
+    }
+
+    createNewImport() {
+        // create the new import so we can get its UUID to avoid race conditions in processing
+        // WS messages following file upload.   If protocol/file format aren't selected yet, we'll
+        // select them arbitrarily for now and replace with user selections later in the upload
+        // request
+
+        if (!this.state.categories) {
+            return;
+        }
+
+        const category = this.state.category || this.state.categories[0];
+        const protocol = this.state.protocol || category.protocols[0];
+        const format = this.state.format || category.file_formats[0];
+        $.ajax("/rest/studies/" + EDDData.currentStudyID + "/imports/", {
+            "method": "POST",
+            "cache": false,
+            "contentType": "application/json",
+            "data": JSON.stringify({
+                "category": category.pk,
+                "protocol": protocol.pk,
+                "file_format": format.pk,
+                "email_when_complete": this.state.emailWhenComplete,
+                "allow_overwrite": this.state.allowOverwrite,
+                "allow_duplication": this.state.allowDuplication,
+            }),
+            "dataType": "json",
+            "processData": false,
+            "success": this.createSuccess.bind(this),
+            "error": this.createErr.bind(this),
+        });
+    }
+
+    createSuccess(result: any, textStatus: string, jqXHR: JQueryXHR): void {
+        this.setState({
+            "creationErrs": [],
+            "importUUID": result.uuid,
+            "importPk": result.pk,
+        });
+    }
+
+    createErr(jqXHR, textStatus: string, errorThrown: string): void {
+        this.setState({
+            "creationErrs": [
+                {
+                    "category": "Error creating import",
+                    "summary": "",
+                    "resolution": "",
+                    "id": "creation_error",
+                    "workaround_text": "Retry",
+                },
+            ],
+        });
     }
 
     setEmailWhenComplete(evt) {
@@ -1056,8 +1142,11 @@ class Import extends React.Component<any, ImportState> {
 
     reset() {
         const params = this.buildResetDict();
+        params["categories"] = this.state.categories;
+        this.autoSelectCategory(params);
         this.setState(params);
         this.state.jumpToStep(0);
+        this.createNewImport();
     }
 
     backToStudy() {
@@ -1081,15 +1170,21 @@ class Import extends React.Component<any, ImportState> {
                     <Step1
                         categories={this.state.categories}
                         category={this.state.category}
+                        creationErrs={this.state.creationErrs}
+                        categoryHelpContent={this.state.categoryHelpContent}
                         protocol={this.state.protocol}
                         format={this.state.format}
+                        formatHelpContent={this.state.formatHelpContent}
                         helpUrl={this.state.helpUrl}
+                        importUUID={this.state.importUUID}
                         categorySelectedCallback={this.categorySelected.bind(this)}
+                        protocolHelpContent={this.state.protocolHelpContent}
                         protocolSelectedCallback={this.protocolSelected.bind(this)}
                         formatSelectedCallback={this.formatSelected.bind(this)}
                         emailSelectedCallback={this.setEmailWhenComplete.bind(this)}
                         emailWhenComplete={this.state.emailWhenComplete}
                         overwriteSelectedCallback={this.overwriteChecked.bind(this)}
+                        createNewImportCallback={this.createNewImport.bind(this)}
                         duplicateSelectedCallback={this.duplicateChecked.bind(this)}
                         allowOverwrite={this.state.allowOverwrite}
                         allowDuplication={this.state.allowDuplication}
@@ -1100,7 +1195,6 @@ class Import extends React.Component<any, ImportState> {
                 "name": "2. Upload",
                 "component": (
                     <Step2
-                        acceptMimeTypes={this.state.acceptMimeTypes}
                         fileSizeLimit={this.state.fileSizeLimit}
                         category={this.state.category}
                         protocol={this.state.protocol}
@@ -1114,9 +1208,9 @@ class Import extends React.Component<any, ImportState> {
                         errorCallback={this.setState.bind(this)}
                         onDropCallback={this.onFileDrop.bind(this)}
                         clearFeedbackFn={this.clearUploadErrors.bind(this)}
-                        submitCallback={this.enqueSubmit.bind(this)}
                         overwrite={this.state.allowOverwrite}
                         requiredValues={this.state.requiredValues}
+                        submitPending={this.state.submitPending}
                         submitSuccess={this.state.submitSuccess}
                         submitWait={this.state.submitWait}
                         jumpToStep={null}
@@ -1146,7 +1240,7 @@ class Import extends React.Component<any, ImportState> {
                         protocol={this.state.protocol}
                         format={this.state.format}
                         uploadedFileName={this.state.uploadedFileName}
-                        submitCallback={this.enqueSubmit.bind(this)}
+                        submitCallback={this.enqueueSubmit.bind(this)}
                         submitWait={this.state.submitWait}
                         submitProcessingWait={this.state.submitProcessingWait}
                         submitSuccess={this.state.submitSuccess}
@@ -1176,18 +1270,26 @@ class Import extends React.Component<any, ImportState> {
         jqXHR: JQueryXHR,
     ): void {
         // filter out any categories that don't have sufficient configuration to make them useful
-        const configuredCategories = result_json.results.filter((category) => {
+        const useableCategories = result_json.results.filter((category) => {
             return category.protocols.length > 0 && category.file_formats.length > 0;
         });
 
         // auto-select the category if there's only one
-        const state = { "categories": configuredCategories } as any;
-        if (configuredCategories.length === 1) {
-            const category = configuredCategories[0];
+        const state = { "categories": useableCategories } as any;
+        this.autoSelectCategory(state);
+        this.setState(state);
+
+        // create the new import record so we can get its UUID
+        this.createNewImport();
+    }
+
+    autoSelectCategory(state: any) {
+        const categories = state["categories"];
+        if (categories.length === 1) {
+            const category = categories[0];
             state.category = category;
             this.autoSelectProtocolAndFormat(category, state);
         }
-        this.setState(state);
     }
 
     setJumpToStep(jumpToStepFn: any) {
@@ -1236,7 +1338,7 @@ class Import extends React.Component<any, ImportState> {
             return;
         }
 
-        const format = null;
+        const format = null; // clear file format when protocol is changed
         this.setState({
             protocol,
             format,
@@ -1259,11 +1361,24 @@ class Import extends React.Component<any, ImportState> {
     }
 
     uploadSuccess(result: any, textStatus: string, jqXHR: JQueryXHR): void {
+        const newImport = !this.state.importUUID;
+
+        // save the import identifiers so we can monitor further status updates to the import and
+        // ignore status updates for any others
         this.setState({
             "importPk": result.pk,
+            "importUUID": result.uuid,
             "uploadWait": false,
             "uploadProcessingWait": true,
         });
+
+        if (newImport && this.state.autoSubmit) {
+            // if the import was just created by the file upload, schedule a second HTTP request to
+            // submit it. this sequencing prevents race conditions where the WS status updates,
+            // which come over a different TCP connection, could be delivered before the upload
+            // POST response, causing the UI to hang even though the import was processed
+            this.enqueueSubmit();
+        }
     }
 
     uploadErr(jqXHR, textStatus: string, errorThrown: string): void {
@@ -1349,13 +1464,14 @@ class Import extends React.Component<any, ImportState> {
         this.clearUploadErrors(true);
 
         if (acceptedFiles.length) {
+            // build form data to submit to the back end, updating all the config that may have
+            // been updated since initial record creation
             const data: FormData = new FormData();
             const file: File = acceptedFiles[0]; // DZ is configured to only accept one
             data.set("category", "" + this.state.category.pk);
             data.set("protocol", "" + this.state.protocol.pk);
             data.set("file_format", "" + this.state.format.pk);
             data.set("file", file);
-            data.set("uuid", this.state.importUUID);
             data.set("email_when_complete", "" + this.state.emailWhenComplete);
             data.set("allow_overwrite", "" + this.state.allowOverwrite);
             data.set("allow_duplication", "" + this.state.allowDuplication);
@@ -1407,14 +1523,45 @@ class Import extends React.Component<any, ImportState> {
                     "resolution": "Please break up your file for upload",
                 });
             }
-            if (this.state.acceptMimeTypes.indexOf(file.type) < 0) {
+            const format: Format = this.state.format;
+            const supportedType = format.parsers.some(
+                (parser) => parser.mime_type === file.type,
+            );
+            if (!supportedType) {
+                // if we don't have a parser for this mime type, build a helpful error message for
+                // the user
+                const uniqueExtensions = format.parsers
+                    .map((parser) => parser.extension)
+                    .filter((v, i, a) => a.indexOf(v) === i)
+                    .sort();
                 errs.push({
                     "category": "Unsupported file format",
                     "summary":
                         'File "' +
                         rejectedFiles[0].name +
-                        '" is the wrong format.' +
-                        " Only .XLSX and .CSV files are supported",
+                        '" does not match format "' +
+                        format.name +
+                        "\", or the file's format was not detected " +
+                        'correctly. Files in the "' +
+                        format.name +
+                        '" format should ' +
+                        "have one of the following extensions: " +
+                        uniqueExtensions.join(", ") +
+                        ".",
+                    "resolution":
+                        "Go back to Step 1 and select the correct format for this" +
+                        " file, or reformat your data in a supported format.",
+                });
+            }
+
+            if (!errs.length) {
+                errs.push({
+                    "category": "Unexpected error",
+                    "summary":
+                        'Your file "' + rejectedFiles[0].name + '" was rejected.',
+                    "resolution":
+                        "Please contact administrators for help resolving this" +
+                        " problem",
                 });
             }
             this.setState({
@@ -1437,7 +1584,7 @@ class Import extends React.Component<any, ImportState> {
                 !this.state.submitProcessingWait &&
                 !this.state.submitSuccess
             ) {
-                this.enqueSubmit();
+                this.enqueueSubmit();
             }
         } else if (stepIndex === 2) {
             // don't allow the user to use the "prev" button to go back to step 3, which isn't
@@ -1488,17 +1635,22 @@ class Import extends React.Component<any, ImportState> {
             .removeClass("progtrckr-failed");
     }
 
-    enqueSubmit() {
+    enqueueSubmit() {
         this.setState({ "submitPending": true });
     }
 
     submitImport() {
+        // sends an AJAX request to submit the import independently of a file upload. To see
+        // client code that triggers this submit, look for usages of enqueueSubmit().
+        // All simple  parameters from step 1 are always included.
+
         // TODO: disable changes in previous steps, short of clearing all the state...otherwise
         // subsequent use of the form to upload new files risks overwriting records of previous
         // imports performed without reloading the page
 
         // TODO: provide required values entered in earlier steps, if any
         this.setState({
+            "uploadProcessingWait": false,
             "submitPending": false,
             "submitWait": true,
             "submitSuccess": false,
@@ -1516,6 +1668,9 @@ class Import extends React.Component<any, ImportState> {
                 "cache": false,
                 "contentType": "application/json",
                 "data": JSON.stringify({
+                    "category": this.state.category.pk,
+                    "protocol": this.state.protocol.pk,
+                    "file_format": this.state.format.pk,
                     "status": "Submitted",
                     "email_when_complete": this.state.emailWhenComplete,
                     "allow_overwrite": this.state.allowOverwrite,
@@ -1575,26 +1730,37 @@ class Import extends React.Component<any, ImportState> {
     }
 
     importMsgReceived(msg: Message) {
+        // processes incoming WS messages from the import.  Note that messages will include all
+        // imports for this user ID, which could potentially be many in parallel.
         if (!msg.hasOwnProperty("payload")) {
             return;
         }
         const json = msg.payload;
 
-        // ignore notifications for other simultaneous imports by this user (e.g. from another tab)
+        // ignore notifications for other simultaneous imports by this user (e.g. from another
+        // tab).  Depending on unprdictable delivery order of the initial CREATED WS message vs the
+        // synchronous HTTP response from uploading the file, we may ignore the initial CREATED msg
         if (json.uuid !== this.state.importUUID) {
             return;
         }
 
         let state: any;
 
+        // do processing based on the latest status of this import as determined by the back end.
+        // note this is the ONLY place in the code where the import's status should be modified.
+        // Otherwise, we risk race conditions in message delivery, e.g. when re-uploading a
+        // corrected file
         switch (msg.payload.status) {
             case "Created":
-                // handled by the upload request
+                // we can't depend on this message, since we have no way of knowing it's for
+                // this import unless it happens to be delivered *after* the sync HTTP request
+                // for the upload
                 break;
             case "Resolved":
                 const errors = json.errors || [];
                 const warnings = json.warnings || [];
                 this.setState({
+                    "importStatus": msg.payload.status,
                     "postUploadStep": 2,
                     "uploadWait": false,
                     "uploadProcessingWait": false,
@@ -1614,6 +1780,7 @@ class Import extends React.Component<any, ImportState> {
                 break;
             case "Ready":
                 state = {
+                    "importStatus": msg.payload.status,
                     "postUploadStep": 3,
                     "uploadWait": false,
                     "uploadProcessingWait": false,
@@ -1622,8 +1789,8 @@ class Import extends React.Component<any, ImportState> {
                     "nextButtonText": "Submit Import", // StepZilla bug?
                 } as any;
 
-                // if import matched a known, data-complete file format, skip past user feedback
-                // for the "ready" state
+                // if import was auto-submitted, set state that indicates we're waiting for it to
+                // process
                 if (this.state.autoSubmit) {
                     state.submitProcessingWait = true;
                 }
@@ -1635,6 +1802,7 @@ class Import extends React.Component<any, ImportState> {
                 break;
             case "Failed":
                 state = {
+                    "importStatus": msg.payload.status,
                     "uploadWait": false,
                     "uploadProcessingWait": false,
                     "submitWait": false,
@@ -1656,6 +1824,7 @@ class Import extends React.Component<any, ImportState> {
                 break;
             case "Submitted":
                 this.setState({
+                    "importStatus": msg.payload.status,
                     "submitProcessingWait": true,
                     "submitWait": false,
                     "submitSuccess": false,
@@ -1669,6 +1838,7 @@ class Import extends React.Component<any, ImportState> {
                 break;
             case "Completed":
                 this.setState({
+                    "importStatus": msg.payload.status,
                     "submitSuccess": true,
                     "submitSuccessMsg": msg.message,
                     "submitErrors": json.errors || [],
@@ -1689,7 +1859,7 @@ class Import extends React.Component<any, ImportState> {
             },
         });
 
-        // get categories and associated protocols, file formats
+        // get categories and associated protocols & file formats
         $.ajax("/rest/import_categories/?ordering=display_order", {
             "headers": { "Content-Type": "application/json" },
             "method": "GET",
@@ -1716,7 +1886,26 @@ class Import extends React.Component<any, ImportState> {
             }
         });
 
+        // get translated help content from the template for use in step 1 rendering
+        const categoryHelpContent: string = $("#categoryHelpContent")
+            .remove()
+            .removeClass("hide")
+            .html();
+
+        const protocolHelpContent: string = $("#protocolHelpContent")
+            .remove()
+            .removeClass("hide")
+            .html();
+
+        const formatHelpContent: string = $("#formatHelpContent")
+            .remove()
+            .removeClass("hide")
+            .html();
+
         this.setState({
+            categoryHelpContent,
+            formatHelpContent,
+            protocolHelpContent,
             "fileSizeLimit": uploadLimit,
             importSocket,
             helpUrl,

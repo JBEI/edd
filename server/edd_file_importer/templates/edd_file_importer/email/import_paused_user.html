@@ -1,0 +1,24 @@
+{% extends "edd_file_importer/email/email_base.html" %}
+{% load i18n %}
+{% block body %}
+    <h2>{% trans 'Import Paused' %}</h2>
+    <p>
+        {% blocktrans %}
+            Your import from file "{{file}}" to study "<a href="{{study_uri}}">{{study}}</a>" is paused
+            and awaiting your input.
+        {% endblocktrans %}
+    </p>
+    <p>
+        {% blocktrans %}
+            You can complete your import after you've acknowledged warnings listed below. If you still
+            have a browser window open to your import, you may use that window to acknowledge the
+            warnings and complete the process. EDD doesn't yet support resuming an import after
+            you've closed the browser or navigated away from it. If you no longer have your import
+            open in the browser, please upload your file again and keep the browser open to
+            acknowledge warnings.
+        {% endblocktrans %}
+    </p>
+
+    {% include "edd_file_importer/email/message_sequence.html" with title='Errors' messages=errors classes="alert alert-danger"%}
+    {% include "edd_file_importer/email/message_sequence.html" with title='Warnings' messages=warnings classes="alert alert-warning"%}
+{% endblock %}

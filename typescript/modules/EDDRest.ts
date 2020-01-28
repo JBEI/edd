@@ -105,6 +105,103 @@ export function loadMetadataTypes(options: any): void {
     });
 }
 
+export interface EDDRestOptions {
+    ordering?: string;
+    request_all?: boolean;
+    wait?: any;
+    page_size?: number;
+    received_so_far?: any[];
+    page?: number;
+    success?: any;
+    error?: any;
+}
+
+export interface MTypeOptions extends EDDRestOptions {
+    type_name?: string;
+    type_group?: string;
+}
+
+export interface MeasurementType {
+    pk: number;
+    uuid: any;
+    type_name: string;
+    type_group: string;
+}
+
+export interface MeasurementUnits {
+    pk: number;
+    type_group: string;
+    display: boolean;
+    alternate_names: string;
+    unit_name: string;
+}
+
+export interface Protocol {
+    pk: number;
+    uuid: any;
+    name: string;
+    description: string;
+}
+
+/**
+ * Initiates one or more asynchronous requests to load MeasurementTypes from the REST API back
+ * end.
+ */
+export function loadMeasurementTypes(options: MTypeOptions): void {
+    let success: any, error: any, pageNum;
+
+    const requestAll: boolean = options.request_all === true;
+
+    const waitHandler = options.wait;
+    if (waitHandler) {
+        waitHandler();
+    }
+
+    // build up a dictionary of query parameters based on optional function inputs
+    const queryParams: any = {};
+    const typeName = options.type_name;
+    if (typeName) {
+        queryParams.type_name = typeName;
+    }
+    const typeGroup = options.type_group;
+    if (typeGroup) {
+        queryParams.type_group = typeGroup;
+    }
+
+    insertPaginationParams(options, queryParams);
+    insertSortOrderParam(options, queryParams);
+
+    let receivedSoFar = options.received_so_far || [];
+
+    // query the REST API for requested metadata types
+    jQuery.ajax("/rest/measurement_types/", {
+        "dataType": "json",
+        "data": queryParams,
+        "success": function(responseJson) {
+            const singlePageResults: any[] = responseJson.results;
+            receivedSoFar = receivedSoFar.concat(singlePageResults);
+
+            // if results had to be paginated and aren't all received yet, make a
+            // recursive call to get the rest
+            if (requestAll && responseJson.next !== null) {
+                options.received_so_far = receivedSoFar;
+                pageNum = options.page || 1;
+                options.page = pageNum + 1;
+                loadMeasurementTypes(options);
+            } else {
+                success = options.success;
+                success(receivedSoFar);
+            }
+        },
+        "error": (jqXHR, textStatus: string, errorThrown: string) => {
+            error = options.error;
+            if (error) {
+                error(jqXHR, textStatus, errorThrown);
+            }
+        },
+    });
+}
+
 /**
  * Initiates one or more asynchronous requests to load MeasurementUnits
  * from the REST API back end.

@@ -7,6 +7,7 @@ import os
 import uuid
 from io import BytesIO
 from unittest.mock import patch
+from uuid import UUID
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -19,10 +20,11 @@ from rest_framework.test import APITestCase
 from edd.rest.tests import EddApiTestCaseMixin
 from edd.utilities import JSONDecoder
 from main import models as edd_models
+from main.importer.table import ImportBroker
 from main.tests import factory as main_factory
 
 from . import factory
-from .test_utils import CONTEXT_PATH
+from .test_utils import GENERIC_XLS_CREATED_CONTEXT_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +40,6 @@ _FBA_UPLOAD_PAYLOAD = {
     "y_units": 1,  # n/a
     "compartment": edd_models.Measurement.Compartment.UNKNOWN,
     "mime_type": "",
-    "uuid": "69827386-d5f9-41b9-81d2-8469d735ed56",
 }
 
 
@@ -50,7 +51,7 @@ def load_permissions(model, *codenames):
 # use example files as the basis for DB records created by the fixture
 @override_settings(MEDIA_ROOT=_TEST_FILES_DIR)
 class ImportPatchTests(EddApiTestCaseMixin, APITestCase):
-    fixtures = ["edd_file_importer/import_models"]
+    fixtures = ["edd_file_importer/generic_fba_imports"]
 
     @classmethod
     def setUpTestData(cls):
@@ -58,7 +59,7 @@ class ImportPatchTests(EddApiTestCaseMixin, APITestCase):
 
         # create a test user and give it permission to write to the study
         User = get_user_model()
-        cls.write_user = User.objects.create(username="study.writer.user")
+        cls.write_user = User.objects.get(username="study.writer.user")
         cls.unprivileged_user = User.objects.create(username="unprivileged_user")
 
         cls.user_write_study = main_factory.StudyFactory(name="User-writeable study")
@@ -85,29 +86,31 @@ class ImportPatchTests(EddApiTestCaseMixin, APITestCase):
 
     def test_final_submit(self):
         """
-        Does a simple test that submits a "Ready" import defined in the fixture
+        Submits a READY import defined in the fixture, ensuring that
+        a previously-resolved import can be submitted on request as expected.
         """
         # load expected Redis context data from file
-        with factory.load_test_file(CONTEXT_PATH) as file:
+        with factory.load_test_file(GENERIC_XLS_CREATED_CONTEXT_PATH) as file:
             context_str = file.read()
 
-        # mock the notification broker
-        with patch("edd_file_importer.tasks.RedisBroker") as MockNotify:
-            notify = MockNotify.return_value
+        context_dict = json.loads(context_str)
+        import_uuid = UUID(context_dict["importId"])
 
-            # mock the import broker
-            with patch("edd_file_importer.rest.views.ImportBroker") as MockBroker:
-                broker = MockBroker.return_value
-                broker.load_context.return_value = context_str
+        redis = ImportBroker()
+        try:
+            # simulate Redis state that would result from prior processing of the import.
+            # REST endpoint will need the "required_post_resolve" data to test whether the submit
+            # can be allowed
+            redis.set_context(import_uuid, context_str)
 
-                # mock the method that determines whether Celery code is called synchronously or
-                # asynchronously.  TODO: this is a stopgap for replacing the legacy import task,
-                # after which we can just mock the backend task...ATM we're chaining together other
-                # tasks that complicate the mocking
+            # mock import-specific notifications so we can verify submitted notification
+            # is sent from the REST resource when it schedules the follow-on task
+            with patch("edd_file_importer.tasks.ImportWsBroker") as MockImportWs:
+                ws = MockImportWs.return_value
 
-                # mock the method that executes the final celery chain to performs the import
-                with patch("celery.chain.delay") as submit_import:
-
+                # mock the complete task
+                task_path = "edd_file_importer.tasks.complete_import_task.delay"
+                with patch(task_path) as complete_task:
                     # send the request to actually submit the import
                     self.client.force_login(self.write_user)
                     response = self.client.patch(
@@ -120,17 +123,17 @@ class ImportPatchTests(EddApiTestCaseMixin, APITestCase):
 
                     # test that the task was called
                     import_uuid = uuid.UUID("f464cca6-7370-4526-9718-be3ea55fea42")
-                    submit_import.assert_called_once()
+                    complete_task.assert_called_once()
 
-                    notify_msg = (
-                        'Your import for file "FBA-OD-generic.xlsx" is submitted'
-                    )
-                    notify.notify.assert_called_once_with(
-                        notify_msg,
+                    msg = 'Your import for file "FBA-OD-generic.xlsx" is submitted'
+                    ws.notify.assert_called_once_with(
+                        msg,
                         tags=["import-status-update"],
                         payload={"status": "Submitted", "pk": 15, "uuid": import_uuid},
                     )
-                broker.add_page.assert_not_called()
+        finally:
+            redis.clear_context(import_uuid)
+            redis.clear_pages(import_uuid)
 
 
 class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
@@ -169,7 +172,7 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
     def setUp(self):
         super().setUp()
 
-    def _upload_import_file(
+    def _verify_upload_workflow(
         self,
         study_pk,
         file_path,
@@ -188,24 +191,24 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
         # mock the celery task so we're testing just the view
         with patch("edd_file_importer.tasks.process_import_file.delay") as mock_task:
 
-            # mock the cache so we can test writes to it
-            with patch("edd_file_importer.tasks.RedisBroker") as MockNotify:
-                notify = MockNotify.return_value
+            # mock the import WS broker to avoid sending WS notifications
+            with patch("edd_file_importer.rest.views.ImportWsBroker"):
                 url = reverse(
                     "edd.rest:study-imports-list", kwargs={"study_pk": study_pk}
                 )
+
+                # make the POST request
                 response = self.client.post(
                     url, data={"file": upload, **form_data}, format="multipart"
                 )
 
-                # test the results of the synchronous upload request
+                # test JSON results of the synchronous upload request
                 self.assertEqual(response.status_code, exp_status)
                 response_json = json.loads(response.content, cls=JSONDecoder)
 
                 # if upload was accepted, test that the file processing task was called as
                 # expected
                 if response.status_code == codes.accepted:
-                    self.assertEqual(response_json["uuid"], form_data["uuid"])
                     import_pk = response_json["pk"]
                     requested_status = form_data.get("status", None)
                     mock_task.assert_called_with(
@@ -214,9 +217,10 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
                         requested_status,
                         initial_upload=initial_upload,
                     )
+
                 else:
                     mock_task.assert_not_called()
-                notify.notify.assert_not_called()
+
         return response_json
 
     def _build_file_upload(self, file_path):
@@ -228,7 +232,7 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
         )
         return upload
 
-    def test_upload_failure(self):
+    def test_upload_failure_workflow(self):
         """
         Tests that disallowed users aren't able to create an import on others' studies
         """
@@ -244,11 +248,28 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
         }
         for user, study_pk in disallowed_users.items():
             exp_status = codes.not_found if user else codes.forbidden
-            self._upload_import_file(
+            self._verify_upload_workflow(
                 study_pk, file_path, _FBA_UPLOAD_PAYLOAD, user, exp_status
             )
 
-    def test_upload_success(self):
+    def test_required_inputs(self):
+        """
+        Tests that API clients get the correct error code and a helpful error message describing
+        which required inputs were missing from their request.
+        """
+        study_pk = self.user_write_study.pk
+        url = reverse("edd.rest:study-imports-list", kwargs={"study_pk": study_pk})
+        self.client.force_login(self.write_user)
+        response = self.client.post(url, format="multipart")
+        self.assertEqual(response.status_code, codes.bad_request)
+        exp_result = {
+            "detail": (
+                "Missing required parameters: 'category', 'file_format', 'protocol'"
+            )
+        }
+        self.assertEqual(json.loads(response.content), exp_result)
+
+    def test_upload_success_workflow(self):
         """
         Tests that allowed users are able to create an import on studies they have access to
         """
@@ -265,7 +286,77 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
             payload = copy.copy(_FBA_UPLOAD_PAYLOAD)
             payload["uuid"] = str(uuid.uuid4())
 
-            self._upload_import_file(study_pk, file_path, payload, user, codes.accepted)
+            self._verify_upload_workflow(
+                study_pk, file_path, payload, user, codes.accepted
+            )
+
+    def test_upload_success_notification(self):
+        file_path = factory.test_file_path("generic_import", "FBA-OD-generic.xlsx")
+
+        self.client.force_login(ImportUploadTests.write_user)
+
+        # mock the celery task so we're testing just the view
+        with patch("edd_file_importer.tasks.process_import_file.delay"):
+
+            # mock the import WS broker so we can test writes to it from the REST view
+            with patch("edd_file_importer.rest.views.ImportWsBroker") as MockNotify:
+                ws = MockNotify.return_value
+                url = reverse(
+                    "edd.rest:study-imports-list",
+                    kwargs={"study_pk": ImportUploadTests.user_write_study.pk},
+                )
+
+                # make the POST request
+                upload = self._build_file_upload(file_path)
+                response = self.client.post(
+                    url,
+                    data={"file": upload, **_FBA_UPLOAD_PAYLOAD},
+                    format="multipart",
+                )
+                response_json = json.loads(response.content, cls=JSONDecoder)
+
+                self.assertTrue(response.status_code, codes.accepted)
+                import_uuid = response_json["uuid"]
+                import_pk = response_json["pk"]
+
+                # assert that REST view sent a WS notification re: import creation
+                exp_msg = 'Your import for file "FBA-OD-generic.xlsx" is created'
+                exp_payload = {
+                    "status": "Created",
+                    "uuid": UUID(import_uuid),
+                    "pk": import_pk,
+                }
+                ws.notify.assert_called_once_with(
+                    exp_msg, tags=["import-status-update"], payload=exp_payload
+                )
+
+    def test_upload_failure_notification(self):
+        file_path = factory.test_file_path("generic_import", "FBA-OD-generic.xlsx")
+
+        upload = self._build_file_upload(file_path)
+
+        self.client.force_login(ImportUploadTests.unprivileged_user)
+
+        # mock the celery task so we're testing just the view
+        with patch("edd_file_importer.tasks.process_import_file.delay"):
+
+            # mock the import WS broker so we can test writes to it from the REST view
+            with patch("edd_file_importer.rest.views.ImportWsBroker") as MockNotify:
+                ws = MockNotify.return_value
+                url = reverse(
+                    "edd.rest:study-imports-list",
+                    kwargs={"study_pk": ImportUploadTests.user_write_study.pk},
+                )
+
+                # make the POST request
+                self.client.post(
+                    url,
+                    data={"file": upload, **_FBA_UPLOAD_PAYLOAD},
+                    format="multipart",
+                )
+
+                # verify no notification for rejected requests (for permissions)
+                ws.notify.assert_not_called()
 
     def test_categories(self):
         """

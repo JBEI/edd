@@ -1,0 +1,10 @@
+{% load i18n %}
+{% blocktrans %}
+Your import failed to add data from file "{{file}}" to study {% endblocktrans %}" {{study}}".
+{% if admins_notified %}
+    {% blocktrans %}
+        <br>An unexpected error occurred, and EDD administrators have been notified of the problem.
+    {% endblocktrans %}
+{% endif %}
+{% include "edd_file_importer/email/message_sequence.txt" with title='Errors' messages=errors %}
+{% include "edd_file_importer/email/message_sequence.txt" with title='Warnings' messages=warnings %}

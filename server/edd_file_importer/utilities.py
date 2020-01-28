@@ -1,18 +1,36 @@
 # coding: utf-8
 import logging
-from collections import defaultdict
+from typing import Any, Dict, List
 
+import django.core.mail as mail
+from django.conf import settings
+from django.template.loader import get_template
+from django.urls import reverse
+from django.utils.translation import ugettext_lazy as _
+
+from edd.notify.backend import RedisBroker as NotificationWsBroker
 from main.models import (
-    Assay,
     GeneIdentifier,
-    Measurement,
     MeasurementType,
     Metabolite,
     Phosphor,
     ProteinIdentifier,
 )
+from main.query import get_absolute_url
 
-from .codes import FileProcessingCodes, get_ui_summary
+from .exceptions import (
+    CompartmentNotFoundError,
+    DuplicationWarning,
+    MissingAssayTimeError,
+    OverwriteWarning,
+    TimeUnresolvableError,
+    UnitsNotProvidedError,
+    add_errors,
+    warnings,
+)
+from .exceptions.core import build_messages_summary, err_type_count, warn_type_count
+from .models import Import
+from .notify.backend import ImportWsBroker
 
 logger = logging.getLogger(__name__)
 
@@ -26,276 +44,211 @@ MTYPE_GROUP_TO_CLASS = {
 }
 
 
-class EDDImportError(Exception):
-    def __init__(self, aggregator):
-        super(EDDImportError, self).__init__()
-        self.aggregator = aggregator
-
-    @property
-    def errors(self):
-        return self.aggregator.errors
-
-    @property
-    def warnings(self):
-        return self.aggregator.warnings
-
-
-class ParseError(EDDImportError):
-    pass
-
-
-class VerificationError(EDDImportError):
-    pass
-
-
-class CommunicationError(EDDImportError):
-    pass
-
-
-class ImportTooLargeError(EDDImportError):
-    pass
-
-
-class ImportErrorSummary(object):
+def build_ui_payload(import_: Import) -> Dict[str, List[Any]]:
     """
-    Defines error/warning information captured during an actual or attempted import attempt.
-    Experiment Description file upload (and eventual combinatorial GUI) will be much easier
-    to use
-    if the back end can aggregate some errors and return some or all of them at the same time.
+    Builds a dict to return to the browser as a JSON Websocket message payload.
     """
 
-    # TODO: either account for subcategory in JSON output, or remove
-    def __init__(self, err):
-        self.err = err
-        self.resolution = None
-        self.doc_url = None
-        self._occurrence_details = defaultdict(list)  # maps subcategory => occurrences
-
-    def add_occurrence(self, occurrence, subcategory=None):
-        detail_str = str(occurrence) if occurrence is not None else None
-        subcategory = subcategory if subcategory else "default"
-        self._occurrence_details[subcategory].append(detail_str)
-
-    @staticmethod
-    def json_of(err_type, occurrence, subcategory=None):
-        err = ImportErrorSummary(err_type)
-        err.add_occurrence(occurrence, subcategory)
-        return err.to_json()
-
-    def to_json(self):
-        # explode error code into UI-centric category + summary
-        ui_summary = get_ui_summary(self.err)
-
-        results = []
-        for subcategory, occurrences in self._occurrence_details.items():
-            summary = {
-                **ui_summary,
-                "resolution": self.resolution,
-                "doc_url": self.doc_url,
-            }
-            if subcategory != "default":
-                summary["subcategory"] = subcategory
-
-            nonempty_occurrences = [detail for detail in occurrences if detail]
-            if nonempty_occurrences:
-                summary["detail"] = ", ".join(nonempty_occurrences)
-            results.append(summary)
-
-        return results
-
-
-class ErrorAggregator(object):
-    def __init__(self):
-        self.warnings = {}  # maps err type -> ImportErrorSummary
-        self.errors = {}  # maps warn type -> ImportErrorSummary
-
-    def add_warning(self, warn_type, subcategory=None, occurrence=None):
-        logger.debug(f"add_warning called! {warn_type}: {occurrence}")
-        self._issue(
-            self.warnings, warn_type, subcategory=subcategory, occurrence=occurrence
-        )
-
-    def add_error(self, err_type, subcategory=None, occurrence=None):
-        logger.debug(f"add_error called! {err_type}: {occurrence}")
-        self._issue(
-            self.errors, err_type, subcategory=subcategory, occurrence=occurrence
-        )
-
-    def raise_error(self, err_type, subcategory=None, occurrence=None):
-        logger.debug(f"raise_error called! {err_type}: {occurrence}")
-        self._issue(
-            self.errors, err_type, subcategory=subcategory, occurrence=occurrence
-        )
-        self.raise_errors()
-
-    @staticmethod
-    def _issue(dest, type_id, subcategory=None, occurrence=None):
-        errs = dest.get(type_id)
-        if not errs:
-            errs = ImportErrorSummary(type_id)
-            dest[type_id] = errs
-        errs.add_occurrence(occurrence=occurrence, subcategory=subcategory)
-
-    @staticmethod
-    def error_factory(err_type, subcategory, occurrence=None):
-        aggregator = ErrorAggregator()
-        aggregator.raise_error(err_type, subcategory, occurrence)
-
-    def add_errors(self, err_type, subcategory=None, occurrences=None):
-        logger.debug(f"add_errors called! {err_type}: {occurrences}")
-        for detail in occurrences:
-            self.add_error(err_type, subcategory=subcategory, occurrence=detail)
-        if not occurrences:
-            self.add_error(err_type, subcategory=subcategory, occurrence=None)
-
-    def add_warnings(self, warn_type, occurrences):
-        for detail in occurrences:
-            self.add_warning(warn_type, occurrence=detail)
-        if not occurrences:
-            self.add_warning(warn_type)
-
-    # TODO: add / enforce a limit so we aren't adding an unbounded list
-    def raise_errors(self, err_type=None, subcategory=None, occurrences=None):
-        if err_type:
-            self.add_errors(err_type, subcategory=subcategory, occurrences=occurrences)
-
-        if self.errors:
-            raise EDDImportError(self)
-
-
-def build_summary_json(
-    import_, required_inputs, import_records, unique_mtypes, x_units_pk
-):
-    """
-    Build some summary JSON to send to the new import front end
-    """
-    logger.debug("Building UI JSON for user inspection")
-
-    assay_id_to_meas_count = {}
-
-    measures = []
-    for index, import_record in enumerate(import_records):
-        import_data = import_record["data"]
-
-        # if this import is creating new assays, assign temporary IDs to them for pre-import
-        # display and possible deactivation in step 4.  If the import is updating existing
-        # assays, use their real pk's.
-        assay_id = import_record["assay_id"]
-        assay_id = assay_id if assay_id not in ("new", "named_or_new") else index
-        assay_id_str = str(assay_id)
-
-        mcount = assay_id_to_meas_count.get(assay_id_str, 0)
-        mcount += 1
-        assay_id_to_meas_count[assay_id_str] = mcount
-
-        # TODO: file format, content, and protocol should all likely be considerations here.
-        # Once supported by the Celery task, consider moving this determination up to the
-        # parsing step  where the information is all available on a per-measurement basis.
-        format = Measurement.Format.SCALAR
-        if len(import_data) > 2:
-            format = Measurement.Format.VECTOR
-
-        measures.append(
-            {
-                # assign temporary measurement ID's.
-                # TODO: revisit when implementing collision detection/merge similar to assays
-                # above. Likely need detection/tracking earlier in the process to do this with
-                # measurements.
-                "id": index,
-                "assay": assay_id,
-                "type": import_record["measurement_id"],
-                "comp": import_record["compartment_id"],
-                "format": format,
-                "x_units": x_units_pk,
-                "y_units": import_record["units_id"],
-                "meta": {},
-            }
-        )
-
-    return {
-        "pk": f"{import_.pk}",
-        "uuid": import_.uuid,
-        "status": import_.status,
-        "total_measures": assay_id_to_meas_count,
-        "required_values": required_inputs,
-        "types": {str(mtype.id): mtype.to_json() for mtype in unique_mtypes},
-        "measures": measures,
-    }
-
-
-def build_err_payload(aggregator, import_):
-    """
-    Builds a JSON error response to return as a WS client notification.
-    """
-    # flatten errors & warnings into a single list to send to the UI. Each ImportErrorSummary
-    # may optionally contain multiple related errors grouped by subcategory
-    errs = []
-    for err_type_summary in aggregator.errors.values():
-        errs.extend(err_type_summary.to_json())
-
-    warns = []
-    for warn_type_summary in aggregator.warnings.values():
-        warns.extend(warn_type_summary.to_json())
-
-    return {
+    payload: Dict[str, List[Any]] = {
         "pk": import_.pk,
         "uuid": import_.uuid,
         "status": import_.status,
-        "errors": errs,
-        "warnings": warns,
     }
+    msg_payload: Dict[str, List[Any]] = build_messages_summary(import_.uuid)
+    payload.update(msg_payload)
+    return payload
 
 
-def verify_assay_times(err_aggregator, assay_pks, parser, assay_time_mtype):
+def test_required_inputs(
+    import_: Import, context: Dict[str, Any], ws: ImportWsBroker, user
+):
     """
-    Checks existing assays ID'd in the import file for time metadata, and verifies that they
-    all either have time metadata (or don't).
-    :return: a dict that maps assay pk => time if assay times were consistently found,
-    None if they were consistently *not* found
-    :raises ImportError if time is inconsistently specified or overspecified
+    Tests required inputs determined during import file processing and sends error / warning
+    websocket and email messages based on context.  Informs the client of missing required inputs
+    that are needed.
+    :returns: True if there are no additional required inputs, False otherwise
     """
 
-    assay_time_key = f"{assay_time_mtype.pk}"
-    has_time_qs = Assay.objects.filter(
-        pk__in=assay_pks, meta_store__has_key=assay_time_key
+    # test provided inputs against the ones required to supplement file content after the resolve
+    # step
+    required_inputs = [
+        item
+        for item in context.get("required_post_resolve", [])
+        if not getattr(import_, item, None)
+    ]
+
+    if not required_inputs:
+        return True
+
+    logger.info(f"Required post resolve: {required_inputs}")
+    logger.info(
+        f"Import config: allow_overwrite={import_.allow_overwrite}, "
+        f"allow_duplication={import_.allow_duplication}, "
+        f"email_when_complete={import_.email_when_complete}"
     )
 
-    times_count = len(has_time_qs)
+    # explode the required inputs into user-facing error / warning messages to deliver to the UI.
+    # any required input that there isn't a workflow for setting is treated as an error.
+    if "compartment" in required_inputs:
+        add_errors(import_.uuid, CompartmentNotFoundError())
+    if "time" in required_inputs:
+        if context["matched_assays"]:
+            # send MissingAssayTimeError since we don't have state available at this point to know
+            # which assays specifically were missing times.  Potentially less precise error msg
+            # here should only occur during REST API use across multiple requests...unlikely at
+            # this point and not fully supported yet
+            add_errors(import_.uuid, MissingAssayTimeError())
+        else:
+            add_errors(import_.uuid, TimeUnresolvableError())
+    else:
+        conflicted_vals = context["conflicted_vals"]
+        if conflicted_vals:
+            if context["matched_assays"] and "allow_overwrite" in required_inputs:
+                msg = _(
+                    "{count} values will be overwritten".format(count=conflicted_vals)
+                )
 
-    if times_count == len(assay_pks):
-        if parser.has_all_times:
-            err_aggregator.add_error(
-                FileProcessingCodes.DUPLICATE_DATA_ENTRY,
-                occurrence="Time is provided both in the file and in assay metadata",
-            )
-            err_aggregator.raise_errors()
+                warnings(import_.uuid, OverwriteWarning(details=[msg]))
+            elif "allow_duplication" in required_inputs:
+                msg = _("{count} values will be duplicated").format(
+                    count=conflicted_vals
+                )
+                warnings(import_.uuid, DuplicationWarning(details=msg))
 
-        return {assay.pk: assay.metadata_get(assay_time_key) for assay in has_time_qs}
+    if "units" in required_inputs:
+        add_errors(import_.uuid, UnitsNotProvidedError())
 
-    elif times_count != 0:
-        missing_pks = Assay.objects.filter(pk__in=assay_pks)
-        missing_pks = missing_pks.exclude(meta_store__has_key=assay_time_mtype.pk)
-        missing_pks = missing_pks.values_list("pk", flat=True)
-        err_aggregator.add_errors(
-            FileProcessingCodes.ASSAYS_MISSING_TIME, occurrences=missing_pks
+    payload = build_ui_payload(import_)
+    payload["required_inputs"] = required_inputs
+    warnings_only = warn_type_count(import_.uuid) and not err_type_count(import_.uuid)
+    ws_notify_required_input(import_, ws, payload, warnings_only, required_inputs)
+
+    # ignore any submit attempts if the user needs to acknowledge warnings first
+    if warnings_only and import_.email_when_complete:
+        _send_import_paused_email(import_, payload, user)
+
+    return False
+
+
+def ws_notify_required_input(
+    import_: Import,
+    ws: ImportWsBroker,
+    payload: Dict[str, Any],
+    warnings_only: bool,
+    required_inputs: List[str],
+):
+
+    file_name = import_.file.filename
+    if warnings_only:
+        msg = _(
+            "Acknowledge warnings before your import can continue for file "
+            '"{file_name}"'
+        ).format(file_name=file_name)
+    else:
+        vals = map(lambda item: '"{item}"'.format(item=item), required_inputs)
+        vals = ", ".join(vals)
+        logger.debug(f"missing_inputs: {vals}")
+        msg = _(
+            "Import may not be submitted without providing required values {vals}"
+        ).format(vals=vals)
+    ws.notify(msg, tags=["import-status-update"], payload=payload)
+
+
+def _send_import_paused_email(import_: Import, payload, user):
+    """
+    Sends an email to notify the user of a paused import.
+    :param payload: the payload dict sent to the UI as JSON
+    """
+
+    study = import_.study
+    subject_prefix = getattr(settings, "EMAIL_SUBJECT_PREFIX", "")
+    subject = _("{prefix}Import Paused".format(prefix=subject_prefix))
+    rel_study_url = reverse("main:detail", kwargs={"slug": study.slug})
+
+    context = {
+        "import_pk": import_.pk,
+        "uuid": import_.uuid,
+        "errors": payload["errors"] if "errors" in payload else {},
+        "warnings": payload["warnings"] if "warnings" in payload else {},
+        "username": user.username,
+        "email": user.email,
+        "file": import_.file.filename,
+        "study": study.name,
+        "study_uri": get_absolute_url(rel_study_url),
+    }
+    user_text_template = get_template("edd_file_importer/email/import_paused_user.txt")
+    user_html_template = get_template("edd_file_importer/email/import_paused_user.html")
+    text = user_text_template.render(context)
+    html = user_html_template.render(context)
+
+    # send user-facing email
+    mail.send_mail(
+        subject,
+        text,
+        settings.SERVER_EMAIL,
+        [user.email],
+        html_message=html,
+        fail_silently=True,
+    )
+
+
+def update_import_status(
+    import_: Import,
+    status: str,
+    user,
+    import_ws: ImportWsBroker,
+    summary: str = "",
+    payload: Dict[str, Any] = None,
+    notify_ws: NotificationWsBroker = None,
+):
+    """
+        Updates an import's status and sends related user notifications.  To avoid extra database
+        queries, import status is only updated if the "status" parameter is different than the
+        status set in the import.  Notifications are always sent.
+    """
+    logger.info(
+        f"Updating import status to {status} for {import_.uuid}, user={user.username}"
+    )
+
+    # update the import status, unless it was already set by surrounding code
+    if status != import_.status:
+        import_.status = status
+        import_.save()
+
+    # build and send an async notification of the status update
+    file_name = truncate_filename(import_) if import_.file else "[undefined]"
+    status_str = (
+        "is {status}".format(status=status.lower())
+        if status != Import.Status.FAILED
+        else str(status.lower())
+    )
+    if not summary:
+        msg = _('Your import for file "{file_name}" {status_str}').format(
+            file_name=file_name, status_str=status_str
         )
-        err_aggregator.raise_errors()
+    else:
+        msg = _('Your import for file "{file_name}" {status_str}. {summary}').format(
+            file_name=file_name, status_str=status_str, summary=summary
+        )
+    payload = {} if not payload else payload
+    payload.update({"status": status, "uuid": import_.uuid, "pk": import_.pk})
 
-    return None
+    # always notify the import page via its socket so we get guaranteed delivery order
+    import_ws.notify(msg, tags=["import-status-update"], payload=payload)
+
+    # duplicate user notifications for final disposition of the import to the notification menu
+    # so they're visible if user has navigated away from the import page.  Import page will silence
+    # them if visible / active
+    final_disposition = (Import.Status.COMPLETED, Import.Status.FAILED)
+    if status in final_disposition:
+        if notify_ws is None:
+            notify_ws = NotificationWsBroker(user)
+        notify_ws.notify(msg, tags=["import-status-update"], payload=payload)
 
 
-def compute_required_context(category, compartment, parser, assay_meta_times):
-    required_inputs = []
-
-    # TODO: verify assumptions here re: auto-selected compartment.
-    # status quo is that its only needed for metabolomics, but should be configured in protocol
-    if category.name == "Metabolomics" and not compartment:
-        required_inputs.append("compartment")
-
-    if not (assay_meta_times or parser.has_all_times):
-        required_inputs.append("time")
-
-    if not parser.has_all_units:
-        required_inputs.append("units")
-
-    return required_inputs
+def truncate_filename(import_):
+    cutoff = 35
+    name = import_.file.filename
+    if len(name) > cutoff:
+        return f"{name[: cutoff - 3]}..."
+    return name

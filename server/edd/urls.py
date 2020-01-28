@@ -42,7 +42,7 @@ if getattr(settings, "EDD_ENABLE_GRAPHQL", False):
         path("graphql/", login_required(GraphQLView.as_view(graphiql=True)))
     ]
 
-if "edd_file_importer" in settings.INSTALLED_APPS:
+if getattr(settings, "EDD_USE_PROTOTYPE_IMPORT", False):
     urlpatterns += [
         path("", include("edd_file_importer.urls", namespace="edd_file_importer"))
     ]

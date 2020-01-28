@@ -1,0 +1,360 @@
+[
+  {
+    "fields": {
+      "date_joined": "2017-06-06T00:13:38.666Z",
+      "email": "",
+      "first_name": "Study writer user",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-06-06T00:13:38.767Z",
+      "last_name": "",
+      "password": "",
+      "user_permissions": [],
+      "username": "study.writer.user"
+    },
+    "model": "auth.user",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "permission_type": "W",
+      "study": 10,
+      "user": 2
+    },
+    "model": "main.userpermission",
+    "pk": 1
+  },
+  {
+    "model": "main.eddobject",
+    "pk": 10,
+    "fields": {
+      "metadata": {},
+      "name": "FBA study",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "de284f6c-f7e8-440f-b7a5-a3254164265f",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "main.study",
+    "pk": 10,
+    "fields": {
+      "contact": 1,
+      "contact_extra": "",
+      "metabolic_map": null,
+      "slug": "fba",
+      "updates": [
+        1
+      ],
+      "protocols": []
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 13,
+    "fields": {
+      "name": "",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "ec2e3a30-3f35-4219-88a8-cf78fb100a98",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 13,
+    "fields": {
+      "meta_store": {},
+      "study": 10,
+      "status": "Created",
+      "category": 4,
+      "file": 14,
+      "file_format": 7,
+      "protocol": 3,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importfile",
+    "pk": 14,
+    "fields": {
+      "file": "FBA-OD-generic.xlsx",
+      "filename": "FBA-OD-generic.xlsx",
+      "created": 1,
+      "description": "",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "file_size": 9082
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 15,
+    "fields": {
+      "name": "",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "81992e06-b2ac-40c7-b1e5-0b7a57f13f70",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 15,
+    "fields": {
+      "meta_store": {},
+      "study": 10,
+      "status": "Created",
+      "category": 4,
+      "file": 16,
+      "file_format": 7,
+      "protocol": 3,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importfile",
+    "pk": 16,
+    "fields": {
+      "file": "FBA-OD-generic.csv",
+      "filename": "FBA-OD-generic.csv",
+      "created": 1,
+      "description": "",
+      "mime_type": "text/csv",
+      "file_size": 9082
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 17,
+    "fields": {
+      "name": "",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "042b0a46-825a-4f96-994f-0fd514f8954e",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 17,
+    "fields": {
+      "meta_store": {},
+      "study": 10,
+      "status": "Created",
+      "category": 4,
+      "file": 18,
+      "file_format": 5,
+      "protocol": 3,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importfile",
+    "pk": 18,
+    "fields": {
+      "file": "FBA-OD-generic.csv",
+      "filename": "FBA-OD-generic.csv",
+      "created": 1,
+      "description": "",
+      "mime_type": "twasbrilligandtheslithytoves",
+      "file_size": 9082
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 19,
+    "fields": {
+      "name": "",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "05e2cd3c-50b7-4390-9ca5-0dec076c9d48",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 19,
+    "fields": {
+      "meta_store": {},
+      "study": 10,
+      "status": "Created",
+      "category": 4,
+      "file": 20,
+      "file_format": 5,
+      "protocol": 3,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importfile",
+    "pk": 20,
+    "fields": {
+      "file": "FBA-OD-generic.xlsx",
+      "filename": "FBA-OD-generic.xlsx",
+      "created": 1,
+      "description": "",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "file_size": 9082
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 21,
+    "fields": {
+      "name": "",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "9aa1d733-0067-4ae2-a9df-bd80b38180b5",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.import",
+    "pk": 21,
+    "fields": {
+      "meta_store": {},
+      "study": 10,
+      "status": "Created",
+      "category": 4,
+      "file": 22,
+      "file_format": 5,
+      "protocol": 3,
+      "x_units": 2,
+      "y_units": 1,
+      "compartment": "0",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importfile",
+    "pk": 22,
+    "fields": {
+      "file": "generic_import_parse_errs.xlsx",
+      "filename": "generic_import_parse_errs.xlsx",
+      "created": 1,
+      "description": "",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "file_size": 9082
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 3,
+    "fields": {
+      "name": "Test category",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "3a070fd5-5905-4488-8b81-a36df409da57",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importcategory",
+    "pk": 3,
+    "fields": {
+      "display_order": 3,
+      "default_mtype_group": "_",
+      "updates": [
+        1
+      ],
+      "protocols": [
+        3
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.baseimportmodel",
+    "pk": 7,
+    "fields": {
+      "name": "Erroneous format",
+      "description": "",
+      "active": true,
+      "created": 1,
+      "updated": 1,
+      "uuid": "261e4afc-63f6-4fed-8ef0-fcf362fb580e",
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importformat",
+    "pk": 7,
+    "fields": {
+      "updates": [
+        1
+      ]
+    }
+  },
+  {
+    "model": "edd_file_importer.importparser",
+    "pk": 19,
+    "fields": {
+      "format": 7,
+      "parser_class": "malformedclassnamehasnopackage",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    }
+  },
+  {
+    "model": "edd_file_importer.importparser",
+    "pk": 20,
+    "fields": {
+      "format": 7,
+      "parser_class": "parser.does.not.ExistXlsx",
+      "mime_type": "text/csv"
+    }
+  }
+]

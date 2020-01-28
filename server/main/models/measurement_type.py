@@ -433,6 +433,13 @@ class GeneIdentifier(MeasurementType):
     @classmethod
     def load_or_create(cls, identifier, user):
         # TODO check for NCBI pattern in identifier
+
+        # if ICE is not connected, skip checking ICE
+        if not hasattr(settings, "ICE_URL"):
+            logger.warning("Skipping ICE checks since ICE is not configured")
+            # fall back to checking for same identifier used by same user
+            return cls._load_fallback(identifier, user)
+
         try:
             # check ICE for identifier
             return cls._load_ice(identifier, user)
@@ -681,6 +688,10 @@ class StrainLinkMixin(object):
 
         try:
             ice = create_ice_connection(user_token)
+            if not ice:
+                logger.warning("Unable to connect to ICE.  ICE is not configured.")
+                return False
+
             part = ice.get_entry(name, suppress_errors=True)
             if part:
                 url = f"{ice.base_url}/entry/{part.id}"
