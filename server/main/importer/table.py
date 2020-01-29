@@ -197,9 +197,16 @@ class TableImport(object):
         :param series_data: list of individual measurement values to import
         :return: a tuple with a summary of measurement counts in the form (added, updated)
         """
-        self.check_series_points(series_data)
-        self.init_lines_and_assays(series_data)
-        return self.create_measurements(series_data)
+        try:
+            self.check_series_points(series_data)
+            self.init_lines_and_assays(series_data)
+            return self.create_measurements(series_data)
+        # TODO uncovered
+        except ImportError:
+            raise
+        except Exception as e:
+            raise ImportError("There was a problem processing import data") from e
+        # END uncovered
 
     def finish_import(self):
         # after importing, force updates of previously-existing lines and assays
@@ -277,8 +284,10 @@ class TableImport(object):
             if protocol is not None and line is not None:
                 if assay_name is None or assay_name.strip() == "":
                     # if we have no name, 'named_or_new' and 'new' are treated the same
+                    # TODO uncovered
                     index = line.new_assay_number(protocol)
                     assay_name = models.Assay.build_name(line, protocol, index)
+                    # END uncovered
                 key = (line.id, assay_name)
                 if key in self._line_assay_lookup:
                     assay = self._line_assay_lookup[key]
@@ -414,8 +423,14 @@ class TableImport(object):
             "x_units": self._hours,
             "y_units_id": mtype.unit,
         }
-        logger.debug(f"Finding measurements for {find}")
-        records = assay.measurement_set.filter(**find)
+        try:
+            records = assay.measurement_set.filter(**find)
+        # TODO uncovered
+        except Exception as e:
+            raise ImportError(
+                f"Failed looking up existing measurements for {find}"
+            ) from e
+        # END uncovered
 
         if records.count() > 0:
             # TODO uncovered
@@ -429,7 +444,6 @@ class TableImport(object):
                 return record
             # END uncovered
         find.update(experimenter=self._user, study_id=assay.study_id)
-        logger.debug("Creating measurement with: %s", find)
         return assay.measurement_set.create(**find)
 
     def _process_measurement_points(self, record, points):
@@ -490,6 +504,7 @@ class TableImport(object):
 
     def _load_name(self, item):
         name = item.get("measurement_name", None)
+        # TODO uncovered branch here, never run with missing measurement_name
         if name:
             # drop any non-ascii characters; copying values from e.g. Google search
             # would include some invisible unicode that screws with pattern matching
@@ -514,13 +529,15 @@ class TableImport(object):
 
     def _mtype(self, item):
         """
-        Attempts to infer the measurement type of the input item from the general import mode
-        specified in the input / in Step 1 of the import GUI.
+        Attempts to infer the measurement type of the input item from the
+        import mode specified in the input / in Step 1 of the import GUI.
 
-        :param item: a dictionary containing the JSON data for a single measurement item sent
-            from the front end
-        :return: the measurement type, or the specified default if no better one is found
+        :param item: a dictionary containing the JSON data for a single
+            measurement item sent from the front end
+        :return: the measurement type
         """
+        compartment = self._load_compartment(item)
+        units_id = self._load_unit(item)
         mtype_fn_lookup = {
             MODE_PROTEOMICS: self._mtype_proteomics,
             MODE_TRANSCRIPTOMICS: self._mtype_transcriptomics,
@@ -528,19 +545,16 @@ class TableImport(object):
             models.MeasurementType.Group.PROTEINID: self._mtype_proteomics,
         }
         mtype_fn = mtype_fn_lookup.get(self._load_hint(item), self._mtype_default)
-        return mtype_fn(item, NO_TYPE)
+        type_id = mtype_fn(item)
+        return MType(compartment, type_id, units_id)
 
-    def _mtype_default(self, item, default=None):
-        compartment = self._load_compartment(item)
+    def _mtype_default(self, item):
         type_id = self._load_type_id(item)
-        units_id = self._load_unit(item)
         # if type_id is not set, assume it's a lookup pattern
         if not type_id:
             for lookup in [self._mtype_metabolomics, self._mtype_proteomics]:
                 try:
-                    found = lookup(item, default=None)
-                    if found is not None:
-                        return found
+                    return lookup(item)
                 except ValidationError:
                     pass
             # TODO uncovered
@@ -552,35 +566,25 @@ class TableImport(object):
                 ).format(name=name)
             )
             # END uncovered
-        return MType(compartment, type_id, units_id)
+        return type_id
 
-    def _mtype_metabolomics(self, item, default=None):
-        found_type = default
-        compartment = self._load_compartment(item)
+    def _mtype_metabolomics(self, item):
         measurement_name = self._load_name(item)
-        units_id = self._load_unit(item)
         metabolite = models.Metabolite.load_or_create(measurement_name)
-        # TODO uncovered
-        found_type = MType(compartment, metabolite.pk, units_id)
-        return found_type
+        # TODO uncovered -- above always raises exceptions in current tests
+        return metabolite.pk
         # END uncovered
 
-    def _mtype_proteomics(self, item, default=None):
-        found_type = default
-        compartment = self._load_compartment(item)
+    def _mtype_proteomics(self, item):
         measurement_name = self._load_name(item)
-        units_id = self._load_unit(item)
         protein = models.ProteinIdentifier.load_or_create(measurement_name, self._user)
-        found_type = MType(compartment, protein.pk, units_id)
-        return found_type
+        return protein.pk
 
-    def _mtype_transcriptomics(self, item, default=None):
+    def _mtype_transcriptomics(self, item):
         # TODO uncovered
-        compartment = self._load_compartment(item)
         measurement_name = self._load_name(item)
-        units_id = self._load_unit(item)
         gene = models.GeneIdentifier.load_or_create(measurement_name, self._user)
-        return MType(compartment, gene.pk, units_id)
+        return gene.pk
         # END uncovered
 
     def _mtype_guess_format(self, points):
