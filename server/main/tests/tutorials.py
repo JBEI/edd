@@ -18,7 +18,7 @@ from requests import codes
 
 from edd import TestCase
 
-from .. import models, tasks
+from .. import export, models, tasks
 from . import factory
 
 _CONTEXT_FILENAME = "%s.post.context.json"
@@ -33,7 +33,7 @@ class ExperimentDescriptionTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        super(ExperimentDescriptionTests, cls).setUpTestData()
+        super().setUpTestData()
         cls.user = factory.UserFactory()
         cls.target_study = factory.StudyFactory()
         cls.target_kwargs = {"slug": cls.target_study.slug}
@@ -132,7 +132,7 @@ class ExperimentDescriptionTests(TestCase):
         )
 
 
-class ImportDataTestsMixin(object):
+class ImportDataTestsMixin:
     """
     Common code for tests of import data. Expects following attributes on self:
         + `target_study` set to a Study model
@@ -504,19 +504,19 @@ class FBAExportDataTests(TestCase):
     fixtures = ["main/tutorial_fba", "main/tutorial_fba_loaded"]
 
     def setUp(self):
-        super(FBAExportDataTests, self).setUp()
+        super().setUp()
         self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=7)
         self.target_kwargs = {"slug": self.target_study.slug}
         self.client.force_login(self.user)
 
-    def test_step1_export(self):
+    def test_step1_sbml_export(self):
         "First step loads the SBML export page, and has some warnings."
         response = self.client.get(reverse("main:sbml"), data={"lineId": 8})
         self.assertEqual(response.status_code, codes.ok)
         self.assertEqual(len(response.context["sbml_warnings"]), 5)
 
-    def test_step2_export(self):
+    def test_step2_sbml_export(self):
         "Second step selects an SBML Template."
         with factory.load_test_file("ExportData_FBA_step2.post") as fp:
             POST = QueryDict(fp.read())
@@ -524,7 +524,7 @@ class FBAExportDataTests(TestCase):
         self.assertEqual(response.status_code, codes.ok)
         self.assertEqual(len(response.context["sbml_warnings"]), 4)
 
-    def test_step3_export(self):
+    def test_step3_sbml_export(self):
         "Third step maps metabolites to species/reactions, and selects an export timepoint."
         with factory.load_test_file("ExportData_FBA_step3.post") as fp:
             POST = QueryDict(fp.read())
@@ -537,5 +537,83 @@ class PCAPExportDataTests(TestCase):
 
     fixtures = ["main/tutorial_pcap"]
 
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        # run imports to have some data to validate exports
+        import_shim = ImportDataTestsMixin()
+        import_shim.target_study = models.Study.objects.get(pk=20)
+        import_shim.user = get_user_model().objects.get(pk=2)
+        import_shim._run_task("ImportData_PCAP_GCMS.csv", "random_key")
+        import_shim._run_task("ImportData_PCAP_OD.xlsx", "random_key")
+        import_shim._run_task("ImportData_PCAP_Proteomics.csv", "random_key")
+
     def setUp(self):
-        super(PCAPExportDataTests, self).setUp()
+        super().setUp()
+        self.target_study = models.Study.objects.get(pk=20)
+        self.target_kwargs = {"slug": self.target_study.slug}
+        self.user = get_user_model().objects.get(pk=2)
+        self.client.force_login(self.user)
+
+    def _buildColumn(self, model, fieldname, lookup=None):
+        # faking the TableOptions functionality selecting columns from forms
+        field = model._meta.get_field(fieldname)
+        return export.table.ColumnChoice(
+            model,
+            field.name,
+            field.verbose_name,
+            field.value_from_object if lookup is None else lookup,
+        )
+
+    def test_table_by_line_export(self):
+        # make selection for the study
+        selection = export.table.ExportSelection(
+            self.user, studyId=[self.target_study.pk]
+        )
+        # make options for a minimal output
+        options = export.table.ExportOption(
+            columns=[
+                self._buildColumn(models.Assay, "name"),
+                self._buildColumn(
+                    models.Measurement,
+                    "measurement_type",
+                    lookup=lambda m: m.measurement_type.export_name(),
+                ),
+            ]
+        )
+        # run the export
+        result = export.table.TableExport(selection, options)
+        # check the results
+        output = result.output()
+        output_lines = output.splitlines()
+        self.assertEqual(output_lines[0], "Name,Type,0.0,24.0")
+        # header + 330 data rows + blank row
+        self.assertEqual(len(output_lines), 332)
+        self.assertEqual(output_lines[330], "2X-Hm,Glycerol,,52.13119")
+
+    def test_table_by_point_export(self):
+        # make selection for the study
+        selection = export.table.ExportSelection(
+            self.user, studyId=[self.target_study.pk]
+        )
+        # make options for a minimal output, with by-point layout
+        options = export.table.ExportOption(
+            layout=export.table.ExportOption.DATA_COLUMN_BY_POINT,
+            columns=[
+                self._buildColumn(models.Assay, "name"),
+                self._buildColumn(
+                    models.Measurement,
+                    "measurement_type",
+                    lookup=lambda m: m.measurement_type.export_name(),
+                ),
+            ],
+        )
+        # run the export
+        result = export.table.TableExport(selection, options)
+        # check the results
+        output = result.output()
+        output_lines = output.splitlines()
+        self.assertEqual(output_lines[0], "Name,Type,X,Y")
+        # header + 330 data rows + blank row
+        self.assertEqual(len(output_lines), 332)
+        self.assertEqual(output_lines[330], "2X-Hm,Glycerol,24.0,52.13119")

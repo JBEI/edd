@@ -371,17 +371,16 @@ class TableExport:
         return self._build_output(tables)
 
     def _build_output(self, tables):
-        layout = self.options.layout
         if self.options.separator == ",":
             dialect = "excel"
         else:
             dialect = "excel-tab"
         out_csv = io.StringIO(newline="")
         writer = csv.writer(out_csv, dialect=dialect)
-        if layout == ExportOption.DATA_COLUMN_BY_POINT:
+        if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
             # data is already in correct orientation, join and return
-            for table in tables:
-                writer.writerows(table)
+            for table in tables.values():
+                writer.writerows(table.values())
                 writer.writerow([])
         # both LINE_COLUMN_BY_DATA and DATA_COLUMN_BY_LINE are constructed similarly
         # each table in LINE_COLUMN_BY_DATA is transposed
@@ -398,7 +397,7 @@ class TableExport:
                     unsquash = self._output_unsquash(all_x, row[-1:][0])
                     rows.append(list(map(str, row[:-1] + unsquash)))
                 # do the transpose here if needed
-                if layout == ExportOption.LINE_COLUMN_BY_DATA:
+                if self.options.layout == ExportOption.LINE_COLUMN_BY_DATA:
                     rows = zip(*rows)
                 writer.writerows(rows)
                 writer.writerow([])
