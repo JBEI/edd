@@ -482,7 +482,7 @@ class TableExport:
     def _output_header(self, models=None):
         row = []
         for column in self.options.columns:
-            if models is None or column._model in models:
+            if models is None or column.model in models:
                 row.append(column.heading)
         if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
             row.append("X")
@@ -504,7 +504,7 @@ class TableExport:
     def _output_row_with_measure(self, measure, models=None):
         row = []
         for column in self.options.columns:
-            if models is None or column._model in models:
+            if models is None or column.model in models:
                 instance = column.convert_instance_from_measure(measure)
                 row.append(column.get_value(instance))
         return row
