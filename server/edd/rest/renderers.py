@@ -25,6 +25,7 @@ class ExportRenderer(csv_renderers.CSVRenderer):
         "measurement.assay.protocol.name",
         "measurement.assay.pk",
         "measurement.assay.name",
+        "type_formal",
         "measurement.type_name",
         "measurement.compartment",
         "measurement.unit_name",
@@ -40,6 +41,7 @@ class ExportRenderer(csv_renderers.CSVRenderer):
         "measurement.assay.protocol.name": "Protocol",
         "measurement.assay.pk": "Assay ID",
         "measurement.assay.name": "Assay Name",
+        "type_formal": "Formal Type",
         "measurement.type_name": "Measurement Type",
         "measurement.compartment": "Compartment",
         "measurement.unit_name": "Units",
@@ -68,6 +70,7 @@ class StreamingExportRenderer(object):
         "measurement__assay__protocol__name",
         "measurement__assay_id",
         "measurement__assay__name",
+        "anno_formal_type",
         "measurement__measurement_type__type_name",
         "measurement__compartment",
         "measurement__y_units__unit_name",
@@ -96,9 +99,9 @@ class StreamingExportRenderer(object):
                 if not rows:
                     break
                 for row in rows:
-                    # items in index 11 and 12 are arrays for Y and X
+                    # items in index 12 and 13 are arrays for Y and X
                     # replace with first values
                     row = list(row)
-                    row[11] = row[11][0] if row[11] else ""
                     row[12] = row[12][0] if row[12] else ""
+                    row[13] = row[13][0] if row[13] else ""
                     yield writer.writerow(row)

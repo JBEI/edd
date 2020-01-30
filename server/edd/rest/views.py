@@ -11,7 +11,8 @@ import logging
 from uuid import UUID
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import CharField, Q, Value
+from django.db.models.functions import Cast, Coalesce, Concat, NullIf
 from django.http import StreamingHttpResponse
 from django_filters import filters as django_filters
 from django_filters import rest_framework as filters
@@ -375,8 +376,34 @@ class ExportFilter(filters.FilterSet):
                 measurement__assay__active=True,
                 measurement__assay__line__active=True,
             )
+            # add in annotations to get formal type IDs
+            self._qs = self._add_formal_type_ids(self._qs)
         # filter with the aggregated filter expression
         return self._qs
+
+    def _add_formal_type_ids(self, qs):
+        # define the integer pubchem_cid field as CharField
+        pubchem_cast = Cast(
+            "measurement__measurement_type__metabolite__pubchem_cid",
+            output_field=CharField(),
+        )
+        pubchem_prefix = "cid:"
+        # instruct database to give PubChem ID in the cid:N format, or None
+        qs = qs.annotate(
+            anno_pubchem=NullIf(
+                Concat(Value(pubchem_prefix), pubchem_cast), Value(pubchem_prefix)
+            )
+        )
+        # grab formal type IDs if able, otherwise empty string
+        qs = qs.annotate(
+            anno_formal_type=Coalesce(
+                "anno_pubchem",
+                "measurement__measurement_type__proteinidentifier__accession_id",
+                Value(""),
+                output_field=CharField(),
+            )
+        )
+        return qs
 
     def _custom_form(self, fields):
         # create a custom form for the filters with special handling

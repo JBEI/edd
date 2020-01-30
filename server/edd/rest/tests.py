@@ -345,6 +345,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
                 "Protocol",
                 "Assay ID",
                 "Assay Name",
+                "Formal Type",
                 "Measurement Type",
                 "Compartment",
                 "Units",
