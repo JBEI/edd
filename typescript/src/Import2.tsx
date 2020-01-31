@@ -148,7 +148,9 @@ class HelpButton extends React.Component<HelpProps> {
                     place="bottom"
                 >
                     <div
-                        dangerouslySetInnerHTML={{ __html: this.props.toolTipContent }}
+                        dangerouslySetInnerHTML={{
+                            "__html": this.props.toolTipContent,
+                        }}
                     />
                 </ReactTooltip>
             </a>
@@ -540,7 +542,7 @@ class ErrCategoryAlert extends React.Component<ErrSequenceProps, any> {
             // set translated / hyperlinked help text from the trusted server.  contains zero
             // user-provided content, so should be safe from XSS
             const docs = err.docs_link ? (
-                <div dangerouslySetInnerHTML={{ __html: err.docs_link }} />
+                <div dangerouslySetInnerHTML={{ "__html": err.docs_link }} />
             ) : (
                 <div />
             );

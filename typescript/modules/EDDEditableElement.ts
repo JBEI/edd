@@ -1,7 +1,7 @@
 import * as tinymce from "tinymce/tinymce";
 
 import "tinymce/plugins/link";
-import "tinymce/themes/modern/theme";
+import "tinymce/themes/silver/theme";
 
 import * as EDDAuto from "./EDDAutocomplete";
 import * as Utl from "./Utl";
