@@ -190,9 +190,9 @@ class ServiceComposer:
             worker.volume(f"{home}/server:/code")
         if settings:
             home = env("EDD_DIR")
-            http.volume(f"{home}/settings:/code/edd/settings:ro")
-            websocket.volume(f"{home}/settings:/code/edd/settings:ro")
-            worker.volume(f"{home}/settings:/code/edd/settings:ro")
+            http.volume(f"{home}/settings:/code/edd/settings/local:ro")
+            websocket.volume(f"{home}/settings:/code/edd/settings/local:ro")
+            worker.volume(f"{home}/settings:/code/edd/settings/local:ro")
         return self
 
     def define(self, name):
