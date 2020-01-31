@@ -10,7 +10,10 @@ from .edd import *  # noqa: F403
 try:
     from .local import *  # noqa: F403
 except ImportError:
-    print("Did not find local settings; did you rename settings/local.py-example?")
+    print(
+        "Did not find local settings module; "
+        "did you rename settings/local.py-example?"
+    )
 
 # After all settings are imported, do any necessary registration of values
 try:
@@ -20,9 +23,7 @@ try:
 except ImportError:
     print("Failed to import REST authenticators; some features may not work.")
 except Exception as e:
-    print(
-        "Failed to register ICE authenticator; connection to ICE may not work: %s" % e
-    )
+    print(f"Failed to register ICE authenticator; connection to ICE may not work: {e}")
 
 
 def validate_settings():

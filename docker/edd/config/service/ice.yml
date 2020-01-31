@@ -1,0 +1,49 @@
+networks:
+  icenet: {}
+services:
+  http:
+    environment:
+      ICE_NAME: edd
+      ICE_URL: http://ice:8080/
+    networks:
+      - icenet
+  ice:
+    environment:
+      VIRTUAL_STATIC: "true"
+    image: jbei/ice:latest
+    links:
+      - ice_db:postgres
+      - smtp
+    networks:
+      - icenet
+    restart: always
+    volumes:
+      - ice_index:/var/lib/ice/lucene
+      - ice_local:/usr/local/tomcat/data
+  ice_db:
+    environment:
+      POSTGRES_DB: ice
+      POSTGRES_PASSWORD: icepass
+      POSTGRES_USER: iceuser
+    image: library/postgres:9.6
+    networks:
+      - icenet
+    restart: always
+    volumes:
+      - ice_pg:/var/lib/postgresql/data
+  websocket:
+    environment:
+      ICE_NAME: edd
+      ICE_URL: http://ice:8080/
+    networks:
+      - icenet
+  worker:
+    environment:
+      ICE_NAME: edd
+      ICE_URL: http://ice:8080/
+    networks:
+      - icenet
+volumes:
+  ice_index: {}
+  ice_local: {}
+  ice_pg: {}

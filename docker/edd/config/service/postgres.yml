@@ -1,0 +1,16 @@
+services:
+  postgres:
+    build: ./docker/postgres/
+    image: jbei/edd-postgres:9.6
+    logging:
+      driver: json-file
+      options:
+        max-file: "5"
+        max-size: 1m
+    networks:
+      - backnet
+    restart: always
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+volumes:
+  postgres_db: {}

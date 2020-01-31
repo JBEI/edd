@@ -1,0 +1,29 @@
+services:
+  http:
+    environment:
+      CACHE_URL: rediscache://redis:6379/1?client_class=django_redis.client.DefaultClient
+  redis:
+    build: ./docker/redis/
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    image: jbei/redis:5
+    logging:
+      driver: json-file
+      options:
+        max-file: "5"
+        max-size: 1m
+    networks:
+      - backnet
+    restart: always
+    volumes:
+      - redis_db:/data
+  websocket:
+    environment:
+      CACHE_URL: rediscache://redis:6379/1?client_class=django_redis.client.DefaultClient
+  worker:
+    environment:
+      CACHE_URL: rediscache://redis:6379/1?client_class=django_redis.client.DefaultClient
+volumes:
+  redis_db: {}

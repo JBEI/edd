@@ -27,34 +27,39 @@ of dependencies. Docker has installers available for several operating systems [
 Docker for Mac installer includes both Docker and Docker Compose; the installers for Linux
 environments currently only include Docker, and Docker Compose must be [installed separately][16].
 EDD does not test with, or support, Docker for Windows at this time. Docker versions should be
-v.1.13.0 or greater, or v.17.03 or greater for Docker Community Edition. Docker Compose should be
-v.1.11.2 or greater.
+v.18.09 or greater. Docker Compose should be v.1.24 or greater.
 
-With [Docker][2] and [Docker Compose][3] installed, launching the entire EDD software stack is as
-simple as copying the `docker_services` directory of the code repository and running the following
+With [Docker][2] and [Docker Compose][3] installed, launching the entire EDD
+software stack is as simple as cloning the repository and running the following
 commands from a terminal in that directory:
 
-    . init-config
-    ./start-edd.sh
+    ./bin/init-config offline --deploy=dev
+    docker-compose up -d
 
-The first time EDD runs, it must complete some setup tasks before the UI is available. You may
-monitor progress with `docker-compose logs -f` and wait for `Starting production appserver` to
-appear (you can quit viewing logs with Ctrl+c), or simply wait a few minutes. You can then access
-the EDD through a browser with [http://edd.lvh.me][13], a domain that maps all requests to the
-localhost IPv4 address of `127.0.0.1`. Using this domain allows for your browser to be directed to
-the correct service, and looks nicer than an IP address.
+The first time EDD runs, it must complete some setup tasks before the UI is
+available. You may monitor progress with `docker-compose logs -f http` and wait
+for `Starting production appserver` to appear (you can quit viewing logs with
+Ctrl+c), or simply wait a few minutes. You can then access the EDD through a
+browser with [http://edd.lvh.me][13], a domain that maps all requests to the
+localhost IPv4 address of `127.0.0.1`. Using this domain allows for your
+browser to be directed to the correct service, and looks nicer than an
+IP address.
 
-Without additional configuration, the launched copy of EDD will be using default options. It will
-only be available on your local computer, and some functions (e.g. TLS support, external
-authentication, referencing an ICE deployment) will not work. See [Deployment][5] for more detailed
-instructions for installing Docker and configuring EDD for your deployment environment.
+Without additional configuration, the launched copy of EDD will be using
+default options. It will only be available on your local computer, and some
+functions (e.g. TLS support, external authentication) will not work. See
+[Deployment][5] for more detailed instructions for installing Docker and
+configuring EDD for your deployment environment.
 
-You may test the edd installation by following the [Public EDD tutorials][14]. If you have not
-deployed ICE with your EDD installation, eliminate the part ID numbers in the example files in
-order to complete the tutorial. Creating an account without configuring EDD will send an email from
-`webmaster@localhost`, which may get caught by spam filters; be sure to check there if the
-confirmation message does not appear within a few minutes. Once the email is confirmed, the user
-name for logging in is the part of your email before the `@` sign.
+Create an account by registering with a valid email. Creating an account
+without configuring EDD may send an email which gets caught by spam filters. Be
+sure to check there if the confirmation message does not appear within a few
+minutes. Once the email is confirmed, the user name for logging in is the
+registered email address.
+
+You may test the edd installation by following the [Public EDD tutorials][14].
+The part ID numbers in the example files point to the Public Registry, and must
+be removed from the example files in order to complete the tutorial.
 
 ---
 

@@ -16,73 +16,35 @@ EDD is structured using these tools.
 
 ## Compose File Structure
 
-Docker Compose uses YAML files to define the networks, volumes, and services to create and/or
-launch. EDD uses a split-file structure, with a base `docker-compose.yml` file, checked in to
-source-control, defining the core structure. There is also `docker-compose.override.yml`, not
-checked in to source-control, and which contains customizations specific to each deployment.
-By default, the `docker-compose` command will read both of these files, then merge the results
-producing the final configuration. More information on customizing configuration is contained
-in comments in the example file, `docker-compose.override.yml-example`. To validate the files and
-view the merged results, run `docker-compose config`.
+Docker Compose uses YAML files to define the networks, volumes, and services to
+create and/or launch. EDD uses a split-file structure, with a base
+`docker-compose.yml` file, checked in to source-control, defining the core
+structure. There is also `docker-compose.override.yml`, not checked in to
+source-control, and which contains customizations specific to each deployment.
+By default, the `docker-compose` command will read both of these files, then
+merge the results producing the final configuration.
 
 ## Configuration Files and Generator Scripts
 
-Configuration files are initialized and generated for a new deployment using the script
-`init-config` in the `bin` directory. Listed here is the help output for the `init-config` script:
-
-    Usage: . init-config [options]
-    Options:
-        -h, --help
-            Print this help message.
-
-        -d domain, --domain domain
-            Sets the domain to use in automated Let's Encrypt service.
-        -m mail, --mail mail
-            Sets the default administrator email for EDD; uses git user.email if omitted.
-        -u user, --user user
-            Sets the default administrator name for EDD; uses git user.name if omitted.
-        --noinput
-            Runs the initialization without any input prompts for omitted information.
-        --nonginx
-            Builds a Docker Compose configuration without the nginx webserver container(s).
-
-        --split-nginx
-            Generates configuration to use a split Compose file for running Nginx. This will
-            create a Docker virtual network to connect containers in both Compose files, and
-            Docker virtual volumes to share data between containers. Implies --nonginx; see
-            also: --split-media, --split-network, --split-static
-        --split-media name
-            Specifies the Docker volume name used for the EDD media directory. If omitted,
-            a generated volume name will be used. Must be used with --split-nginx
-        --split-network name
-            Specifies the Docker network name used to link the EDD containers with an nginx
-            proxy. If omitted, a generated network name will be used. Must be used
-            with --split-nginx
-        --split-static name
-            Specifies the Docker volume name used for the EDD static directory. If omitted,
-            a generated volume name will be used. Must be used with --split-nginx
-
-        --seed secret
-            This script generates some random secret values based on the current time and
-            known text. Set this flag to add some extra entropy to generated values.
-
-A typical development environment would run this script as `. init-config` or `source init-config`.
-Using the defaults will create a `secrets` directory and `docker-compose.override.yml` from the
-example file. The user and email set in `git` will be configured as the EDD Administrator. A
-container running Nginx will be configured to launch and proxy requests to the domain `edd.lvh.me`
+A helper script exists in `./bin/init-config` that will generate configuration
+files automatically. A typical development environment would run
+`./bin/init-config offline --deploy=dev`. Using the defaults will create a
+`secrets` directory and `docker-compose.override.yml`. The user and email set
+in `git` will be configured as the EDD Administrator. A container running Nginx
+will be configured to launch and proxy requests to the domain `edd.lvh.me`
 (maps to `127.0.0.1`) to the EDD application.
 
-Non-development deployments will run using at least some of the options to `init-config`. For
-example, a deployment to https://edd.example.org/ might use:
+Non-development deployments will run using at least some of the options to
+`init-config`. For example, a deployment to https://edd.example.org/ might use:
 
-    . init-config --domain 'edd.example.org' \
-        --mail 'edd-admins@example.org' \
-        --user 'EDD Team' \
-        --noinput
+    export EDD_USER="EDD Team"
+    export EDD_EMAIL="edd-admins@example.org"
+    ./bin/init-config offline --deploy='edd.example.org'
 
-Running the above would set up the Nginx container to handle HTTP requests for edd.example.org and
-auto-request a TLS certificate using the [Let's Encrypt][18] service, and configure an
-administrator named 'EDD Team' with the email 'edd-admins@example.org'.
+Running the above would set up the Nginx container to handle HTTP requests for
+edd.example.org and auto-request a TLS certificate using the [Let's
+Encrypt][18] service, and configure an administrator named 'EDD Team' with the
+email 'edd-admins@example.org'.
 
 ## Docker Abstractions
 
@@ -124,11 +86,11 @@ Containers are designed to be stateless. Any filesystem changes to a container w
 removal and re-launch of that container. Stateful changes are handled via mounting Docker Volumes
 in the container. EDD defines the following Volumes:
 
--   **postgres_db**: the Postgres databases.
--   **solr_cores**: Solr search indices.
 -   **edd_attachments**: uploaded attachments in the EDD application.
 -   **edd_staticfiles**: static assets used in the EDD application (e.g. images, scripts).
+-   **postgres_db**: the Postgres databases.
 -   **redis_db**: the Redis append-only file.
+-   **solr_home**: Solr search indices.
 
 If EDD is running with the Nginx proxy enabled, the following additional volumes are defined:
 
@@ -174,9 +136,9 @@ the service is run. With the exception of the first two services -- `edd`, and `
 is a one-to-one relationship from images to services. The two exceptions both make use of the
 `edd-core` image, and execute different commands to use the same code for different roles.
 
--   **edd**: runs initial startup tasks and prepares the other services, and runs the EDD webapp
+-   **http**: runs the EDD webapp
 -   **worker**: long-running and background tasks are run here with Celery
--   **websocket**: handles processing HTTP and WebSocket messages
+-   **websocket**: handles processing WebSocket messages
 -   **postgres**: provides EDD's database
 -   **redis**: provides the cache back-end for EDD
 -   **solr**: provides a search index for EDD
@@ -186,24 +148,6 @@ is a one-to-one relationship from images to services. The two exceptions both ma
 -   **nginx**: webserver that proxies clients' HTTP requests to other Docker services
 -   **nginx-gen**: listens for container events, generates nginx config to proxy requests
 -   **letsencrypt**: monitors TLS certificates and creates/renews with [Let's Encrypt][18]
-
-## Extending to run local ICE
-
-EDD relies on integration with the Inventory of Composable Elements (ICE) to act as a repository
-for strains referenced in EDD studies. If there is not an existing ICE deployment available, some
-features of EDD will not work. To help with testing and evaluation, there is an option to use the
-same Docker infrastructure as EDD to launch an instance of ICE. The following steps cover the
-basic configuration changes required.
-
-Add the YAML in `ice.yml` to the appropriate places in `docker-compose.override.yml`; either do
-this manually, or generate a new Compose file using commands like the following:
-
-    docker-compose -f docker-compose.yml -f docker-compose.override.yml -f ice.yml \
-        config > combined.yml
-    # run future commands using `-f combined.yml` as below
-    docker-compose -f combined.yml up
-    # or run as a Swarm stack
-    docker stack deploy -c combined.yml [NAME]
 
 ---
 

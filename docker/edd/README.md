@@ -1,85 +1,62 @@
 # edd-core
 
-This Dockerfile constructs the `edd-core` image for use in the [Experiment Data Depot][1]. The
-image is based on [buildpack-deps:stretch][2], and includes the Python dependencies used by EDD
-and clones the current `master` branch into the image. Build with:
+This Dockerfile constructs the `edd-core` image for use in the
+[Experiment Data Depot][1]. The image ultimately tagged as `edd-core` is an
+Alpine Linux environment with Python 3 and the Python dependencies used by EDD
+installed, and a cloned copy of the EDD code. Build from the repository root:
 
-    docker build -t yourorg/edd-core ./core
+    DOCKER_BUILDKIT=1 docker build \
+      -t yourorg/edd-core \
+      -f docker/edd/core/Dockerfile \
+      .
 
-Build from alternate repositories and/or branches with build arguments `GIT_URL` and `GIT_BRANCH`,
-for example:
+Specify a version number for the build with build argument `EDD_VERSION`:
 
-    docker build -t yourorg/edd-core:1.0.0 \
-        --build-arg "GIT_URL=https://git.example.org/repo/edd.git" \
-        --build-arg "GIT_BRANCH=your-branch-name" \
-        ./core
+    DOCKER_BUILDKIT=1 docker build \
+      -t yourorg/edd-core:1.0.0 \
+      -f docker/edd/core/Dockerfile \
+      --build-arg "EDD_VERSION=1.0.0" \
+      .
 
-The default build will include a development layer in the image with `coverage` installed. To
-build an image without this layer, use `--build-arg "TARGET=prod"`. The intention is to eventually
-move more testing-specific installation into this layer, creating a slimmer production image.
+Toggle between testing and production builds with build argument `TARGET`. The
+default is a testing build, with valid values being `dev` or `prod`:
 
-The image uses a custom entrypoint with commands for common tasks. Since EDD depends on multiple
-services, the entrypoint ensures that all dependencies are up before proceeding. A full listing
-of commands is provided below, or can be found by executing `docker run --rm -it edd-core --help`.
+    DOCKER_BUILDKIT=1 docker build \
+      -t yourorg/edd-core:1.0.0 \
+      -f docker/edd/core/Dockerfile \
+      --build-arg "EDD_VERSION=1.0.0" \
+      --build-arg "TARGET=prod" \
+      .
 
-    Usage: entrypoint.sh [options] [--] command [arguments]
-    Options:
-        -h, --help
-            Print this help message.
-        -q, --quiet
-            Silence output from this entrypoint script.
-        -a, --init, --init-all
-            Perform all initialization tasks prior to command start (default).
-        -A, --no-init, --no-init-all
-            Skip all initialization tasks; may override with another --init* flag.
-        -m, --init-migration
-            Run any pending database migrations. Only used to override -A.
-        -M, --no-init-migration
-            Skip database migrations.
-        -i, --init-index
-            Re-index search prior to command. Only used to override -A.
-        -I, --no-init-index
-            Skip search re-indexing.
-        --local file
-            Copy the file specified to the local.py settings prior to launching the
-            command. This option will be ignored if code is mounted to the container
-            at /code.
-        --force-index
-            Force re-indexing; this option does not apply if -I is set.
-        -w host, --wait-host host
-            Wait for a host to begin responding before running commands. This option
-            may be specified multiple times. The waits will occur in the
-            order encountered.
-        -p port, --wait-port port
-            Only applies if -w is used. Specifies port to listen on. Defaults to
-            port 24051. This option may be specified multiple times. The Nth port
-            defined applies to the Nth host.
-        --watch-static
-            Watch for changes to static files, to copy to the static volume.
+The image sets an entrypoint script using [Invoke][2]. This entrypoint ensures
+that a container has all prerequisite configuration and services available for
+the EDD code to work before proceeding. A full listing of commands is provided
+below, or can be found by executing `docker run --rm -it edd-core`.
 
-    Commands:
-        application
-            Start a Django webserver (gunicorn).
-        devmode
-            Start a Django webserver (manage.py runserver).
-        init-only [port]
-            Container will only perform selected init tasks. The service will begin
-            listening on the specified port after init, default to port 24051.
-        init-exit
-            Container will only perform selected init tasks, then exit.
-        test
-            Execute the EDD unit tests.
-        worker
-            Start a Celery worker node.
-        daphne
-            Start a Django Channels webserver (daphne).
-        channel [... [name]]
-            Start a Django Channels worker listening on listed channel names (runworker).
+    Available tasks:
 
-To run a container without going through the entrypoint script, use a command similar to
-`docker run --rm -it --entrypoint /bin/bash edd-core`.
+      celery               Executes EDD as a Celery worker.
+      daphne               Executes EDD as a Channels application with Daphne.
+      gunicorn             Executes EDD as a Django site with Gunicorn.
+      watch-static         Watches for changes to static assets in background.
+      prereq.code          Checks that code is in place for execution.
+      prereq.environment   Checks that expected environment variables are set.
+      prereq.errorpage     Renders a static version of the Django error page.
+      prereq.local         Checks that a local.py settings override file is in place.
+      prereq.migrations    Migrates the database to the current version.
+      prereq.owner         Sets ownership on necessary directories.
+      prereq.postgres      Waits for the Postgres service to begin responding to connections.
+      prereq.rabbitmq      Waits for the RabbitMQ service to begin responding to connections.
+      prereq.redis         Waits for the Redis service to begin responding to connections.
+      prereq.solr          Waits for the Solr service to begin responding to connections.
+      prereq.staticfiles   Initializes static assets.
+
+To run a container without going through the entrypoint script, use a command
+similar to:
+
+    docker run --rm -it --entrypoint /bin/bash edd-core
 
 ---
 
 [1]: ../../README.md
-[2]: https://hub.docker.com/_/buildpack-deps/
+[2]: http://docs.pyinvoke.org/en/stable/

@@ -7,7 +7,7 @@ PROJECT="${1}"
 exec &> >(tee -a "test.log")
 
 # find EDD container
-CONTAINER_ID="$(docker-compose -p "${PROJECT}" -f combined.yml ps -q edd)"
+CONTAINER_ID="$(docker-compose -p "${PROJECT}" ps -q http)"
 
 # run tests
 docker exec "${CONTAINER_ID}" \

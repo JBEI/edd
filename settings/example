@@ -1,30 +1,40 @@
 """
-This is an example of modifications to settings to use for local development. You can use this
-example by renaming the file and removing the -example suffix, and the local version will use
-these modified settings.
+This is an example of a settings module to use for local development. You can
+use this example by renaming the file to `__init__.py`, and EDD will load the
+module and use its attributes as overrides to the default settings. As this
+is a Python module, can create multiple override files, and load them with
+`from . import [...]`.
 """
 
 import environ
 import errno
 import os
 
-# Use everything in the common settings file
-from .base import *  # noqa: F403
+# Try to load everything in the common settings files
+try:
+    from ..auth import *  # noqa: F403
+    from ..base import *  # noqa: F403
+    from ..base import env
+    from ..celery import *  # noqa: F403
+    from ..edd import *  # noqa: F403
+except ImportError:
+    # failed to load existing values
+    # oh well carry on without read-and-update ability
+    pass
 
 root = environ.Path(__file__) - 3  # we get this out of `from .base import *` too
 
 # Override the default MANAGERS and ADMINS; each item is 2-tuple of name and email
 MANAGERS = ADMINS = (
-    (
-        env("EDD_USER", default="Jay Bay"),  # noqa: F405
-        env("EDD_EMAIL", default="admin@example.org"),  # noqa: F405
-    ),
+    # default to using environment values
+    (env("EDD_USER"), env("EDD_EMAIL")),
 )
 
 ALLOWED_HOSTS = ["*"]
-# Set the IPs where the Django debug toolbar will be available; use localhost IPv4 and IPv6
+# Set the IPs where the Django debug toolbar will be available
+# use localhost IPv4 and IPv6
 INTERNAL_IPS = ["127.0.0.1", "::1"]
-# Add login providers
+# Add login providers to enable third-party auth
 # INSTALLED_APPS = INSTALLED_APPS + (
 #     'allauth.socialaccount.providers.github',
 #     'allauth.socialaccount.providers.google',
@@ -32,10 +42,11 @@ INTERNAL_IPS = ["127.0.0.1", "::1"]
 # )
 
 
-# Uncomment this block to work around offsite LDAP authentication problems on development laptops
-# NOTE: this backend ignores passwords, and does immediate login for the provided username
+# Uncomment this block to work around offsite LDAP authentication problems
+# NOTE: this backend ignores passwords,
+# and does immediate login for the provided username
 # AUTHENTICATION_BACKENDS = (
-#     'main.account.adapter.LocalTestBackend', # uncomment to simplify off-site development
+#     'main.account.adapter.LocalTestBackend',
 # )
 
 # Uncomment below to use DEBUG mode and include the debug toolbar
@@ -49,11 +60,14 @@ if DEBUG:  # noqa: F405
     ) + MIDDLEWARE  # noqa: F405
     DEBUG_TOOLBAR_CONFIG = {"JQUERY_URL": ""}
 
-# Default LDAP group mirroring will treat LDAP as the *only* source of groups. If using local
-#   groups, either: set a whitelist of groups to mirror from LDAP with AUTH_LDAP_MIRROR_GROUPS; or
-#   set a blacklist of groups to ignore with AUTH_LDAP_MIRROR_GROUPS_EXCEPT. Using a whitelist
-#   will mirror *only* the listed groups from LDAP, and ignore all others. Using a blacklist must
-#   list *all* local-only groups, otherwise membership will be removed on next login.
+# Default LDAP group mirroring will treat LDAP as the *only* source of groups.
+#   If using local groups, either:
+#    - set a whitelist of groups to mirror with AUTH_LDAP_MIRROR_GROUPS; or
+#    - set a blacklist of groups to ignore with AUTH_LDAP_MIRROR_GROUPS_EXCEPT.
+#   Using a whitelist will mirror *only* the listed groups from LDAP,
+#   and ignore all others.
+#   Using a blacklist must list *all* local-only groups,
+#   otherwise membership will be removed on next login.
 # AUTH_LDAP_MIRROR_GROUPS = ['JBEI']
 
 
@@ -77,9 +91,7 @@ LOGGING = {
             "format": "%(asctime)s Thread %(thread)d %(name)-12s %(levelname)-8s %(message)s"
         }
     },
-    "filters": {
-        "require_debug_true": {"()": "django.utils.log.RequireDebugTrue"},
-    },
+    "filters": {"require_debug_true": {"()": "django.utils.log.RequireDebugTrue"}},
     "handlers": {
         # configure console output only when DEBUG is set
         # prevents noisy output when running tests

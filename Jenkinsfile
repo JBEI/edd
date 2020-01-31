@@ -22,7 +22,6 @@ def test_output = "Tests did not execute."
 def commit_hash = "_"
 def stage_name = "_"
 // Store results from `checkout scm` because ${env.GIT_URL}, etc are not available
-def git_url = ""
 def git_branch = ""
 def image_version = ""
 def project_name = ""
@@ -45,7 +44,6 @@ try {
             // does a clone/checkout based on Jenkins project config
             def checkout_result = checkout scm
             print checkout_result
-            git_url = checkout_result["GIT_URL"]
             git_branch = checkout_result["GIT_BRANCH"]
             commit_hash = checkout_result["GIT_COMMIT"]
             image_version = "${git_branch}-${BUILD_NUMBER}".replaceAll("\\W", "")
@@ -56,14 +54,23 @@ try {
             ).trim()
 
             // run initialization script, as described in EDD project README
+            def create_config = $/#!/bin/bash -xe
+                export DOCKER_BUILDKIT=1
+                sudo -E docker build -t jbei/edd-config:${image_version} .
+            /$
+            // cannot use volume mount tricks in this build
+            // the local paths are within the agent container
+            // NOT in the Docker host
             def init_script = $/#!/bin/bash -xe
-                source bin/init-config \
-                    --user 'Jenkins' \
-                    --mail '${committer_email}' \
-                    --noinput \
-                    --nonginx
+                export EDD_USER="Jenkins"
+                export EDD_EMAIL="${committer_email}"
+                export EDD_VERSION="${image_version}"
+                sudo -E bin/init-config offline --deploy=dev
             /$
             timeout(5) {
+                dir("docker/edd/config") {
+                    sh(create_config)
+                }
                 sh(init_script)
             }
         }
@@ -71,7 +78,8 @@ try {
         stage('Build') {
             stage_name = "Build"
             // build edd-node and edd-core images outside docker-compose to use --build-args!
-            // tag both with build-specific versions, ensure edd-core builds off correct edd-node
+            // tag both with build-specific versions
+            // ensure edd-core builds off correct edd-node
             // NOTE: sudo is required to execute docker commands
             def build_node = $/#!/bin/bash -xe
                 export DOCKER_BUILDKIT=1
@@ -83,12 +91,11 @@ try {
             /$
             def build_script = $/#!/bin/bash -xe
                 export DOCKER_BUILDKIT=1
-                sed -e 's/edd-node:latest/edd-node:${image_version}/' < Dockerfile \
+                sed -e 's/edd-node:latest/edd-node:${image_version}/' \
+                    < ./docker/edd/core/Dockerfile \
                     | sudo -E docker build \
                         -f- \
                         --progress plain \
-                        --build-arg 'GIT_URL=${git_url}' \
-                        --build-arg 'GIT_BRANCH=${git_branch}' \
                         --build-arg 'EDD_VERSION=${image_version}' \
                         -t jbei/edd-core:${image_version} \
                         .
@@ -97,9 +104,7 @@ try {
                 dir("docker/node") {
                     sh(build_node)
                 }
-                dir("docker/edd/core") {
-                    sh(build_script)
-                }
+                sh(build_script)
             }
         }
 
@@ -108,11 +113,8 @@ try {
             stage('Launch') {
                 stage_name = "Launch"
                 // modify configuration files to prepare for launch
-                timeout(5) {
-                    sh("sudo bin/jenkins/prepare.sh '${image_version}'")
-                }
                 timeout(60) {
-                    sh("sudo bin/jenkins/launch.sh '${project_name}'")
+                    sh("sudo bin/jenkins/launch.sh '${image_version}' '${project_name}'")
                 }
             }
 

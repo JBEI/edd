@@ -1,0 +1,19 @@
+services:
+  letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    logging:
+      driver: json-file
+      options:
+        max-file: "5"
+        max-size: 1m
+    networks:
+      - proxynet
+    volumes:
+      - nginx_confd:/etc/nginx/conf.d
+      - nginx_vhost:/etc/nginx/vhost.d
+      - nginx_webroot:/usr/share/nginx/html
+      - nginx_certs:/etc/nginx/certs:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+  nginx-gen:
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.docker_gen=true

@@ -1,0 +1,11 @@
+services:
+  smtp:
+    image: tianon/exim4
+    logging:
+      driver: json-file
+      options:
+        max-file: "5"
+        max-size: 1m
+    networks:
+      - backnet
+    restart: always

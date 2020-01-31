@@ -15,6 +15,8 @@ secrets.env
 # per-machine local settings files; this will override default settings with local changes
 **/local.py
 **/docker-compose.override.yml
+settings/*
+!settings/example
 # also ignore any local media/upload folders
 **/media
 **/upload

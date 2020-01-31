@@ -1,0 +1,57 @@
+networks:
+  proxynet: {}
+services:
+  http:
+    environment:
+      VIRTUAL_PORT: "8000"
+      VIRTUAL_STATIC: "true"
+  nginx:
+    build: ./docker/nginx/nginx/
+    image: jbei/nginx:mainline
+    init: true
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy=true
+    logging:
+      driver: json-file
+      options:
+        max-file: "5"
+        max-size: 1m
+    networks:
+      - proxynet
+    ports:
+      - 80:80
+      - 443:443
+    restart: always
+    volumes:
+      - nginx_confd:/etc/nginx/conf.d
+      - nginx_vhost:/etc/nginx/vhost.d
+      - nginx_webroot:/usr/share/nginx/html
+      - nginx_certs:/etc/nginx/certs:ro
+      - edd_attachments:/usr/share/nginx/html/uploads:ro
+      - edd_staticfiles:/usr/share/nginx/html/static:ro
+  nginx-gen:
+    build: ./docker/nginx/nginx-gen/
+    image: jbei/nginx-gen:latest
+    logging:
+      driver: json-file
+      options:
+        max-file: "5"
+        max-size: 1m
+    networks:
+      - proxynet
+    restart: always
+    volumes:
+      - nginx_confd:/etc/nginx/conf.d
+      - nginx_vhost:/etc/nginx/vhost.d
+      - nginx_webroot:/usr/share/nginx/html
+      - nginx_certs:/etc/nginx/certs:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+  websocket:
+    environment:
+      VIRTUAL_PATH_GROUP: "/ws"
+      VIRTUAL_PORT: "8000"
+volumes:
+  nginx_certs: {}
+  nginx_confd: {}
+  nginx_vhost: {}
+  nginx_webroot: {}

@@ -21,9 +21,9 @@ from .signals import (
     user_removed,
 )
 
-type_index = MeasurementTypeSearch()
-study_index = StudySearch()
-users_index = UserSearch()
+_type_index = None
+_study_index = None
+_users_index = None
 measurement_types = [
     models.MeasurementType,
     models.Metabolite,
@@ -33,6 +33,33 @@ measurement_types = [
 ]
 all_indexed_types = measurement_types + [models.Study, get_user_model()]
 logger = logging.getLogger(__name__)
+
+
+def load_study_index():
+    global _study_index
+    if _study_index is None:
+        _study_index = StudySearch()
+    return _study_index
+
+
+def load_type_index():
+    global _type_index
+    if _type_index is None:
+        _type_index = MeasurementTypeSearch()
+    return _type_index
+
+
+def load_users_index():
+    global _users_index
+    if _users_index is None:
+        _users_index = UserSearch()
+    return _users_index
+
+
+def _schedule(callback, item):
+    # schedule the work for after the commit
+    # or immediately if there's no transaction
+    connection.on_commit(functools.partial(callback, [item]))
 
 
 class PrimaryKeyCache(namedtuple("PrimaryKeyCache", ["id"])):
@@ -86,45 +113,45 @@ def type_saved(sender, instance, created, raw, using, **kwargs):
 def index_study(sender, study, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
-        # schedule the work for after the commit (or immediately if there's no transaction)
-        connection.on_commit(functools.partial(study_index.update, [study]))
+        study_index = load_study_index()
+        _schedule(study_index.update, study)
 
 
 @receiver(type_modified)
 def index_type(sender, measurement_type, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
-        # schedule the work for after the commit (or immediately if there's no transaction)
-        connection.on_commit(functools.partial(type_index.update, [measurement_type]))
+        type_index = load_type_index()
+        _schedule(type_index.update, measurement_type)
 
 
 @receiver(user_modified)
 def index_user(sender, user, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
-        # schedule the work for after the commit (or immediately if there's no transaction)
-        connection.on_commit(functools.partial(users_index.update, [user]))
+        users_index = load_users_index()
+        _schedule(users_index.update, user)
 
 
 @receiver(study_removed)
 def remove_study(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
-        # schedule the work for after the commit (or immediately if there's no transaction)
-        connection.on_commit(functools.partial(study_index.remove, [doc]))
+        study_index = load_study_index()
+        _schedule(study_index.remove, doc)
 
 
 @receiver(type_removed)
 def remove_type(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
-        # schedule the work for after the commit (or immediately if there's no transaction)
-        connection.on_commit(functools.partial(type_index.remove, [doc]))
+        type_index = load_type_index()
+        _schedule(type_index.remove, doc)
 
 
 @receiver(user_removed)
 def remove_user(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
-        # schedule the work for after the commit (or immediately if there's no transaction)
-        connection.on_commit(functools.partial(users_index.remove, [doc]))
+        users_index = load_users_index()
+        _schedule(users_index.remove, doc)

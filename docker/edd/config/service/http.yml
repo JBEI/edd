@@ -1,0 +1,5 @@
+services:
+  http:
+    environment:
+      EDD_CONTAINER: http
+version: "3.7"

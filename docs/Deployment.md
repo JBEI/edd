@@ -21,20 +21,19 @@ script handles creating additional options based on included example files:
 More information and example configuration options can be found in the example files, and copied
 into the files created automatically by the `init-config` script.
 
-## Building EDD
+## Starting EDD
 
 Before starting a deployment, the Docker images used by the various EDD services must be present
 on the host computer. This is accomplished either by pulling already-built images from a Docker
 Registry, or building the images from the Dockerfiles included in the project. To pull the images,
-use `docker-compose pull`. To build the images _with default parameters_, run
-`docker-compose build`. Customizing builds is beyond the scope of this document, consult the
+use `docker-compose pull`. Customizing builds is beyond the scope of this document, consult the
 individual README files included with each Dockerfile if a custom build is required.
 
 ## TLS and domain configuration
 
 EDD includes a set of Docker containers to auto-configure an [Nginx][3] webserver with TLS
 encryption via certificates generated with the [Let's Encrypt][4] service. By setting some
-environment in the `edd` service container, EDD will generate a configuration file for Nginx to
+environment in the `http` service container, EDD will generate a configuration file for Nginx to
 proxy HTTP requests and secure connections with TLS.
 
 To proxy requests to a container, set the environment variables `VIRTUAL_HOST` and `VIRTUAL_PORT`
@@ -69,7 +68,7 @@ load in HMAC keys using the value of the `ICE_HMAC_SECRETS` environment.
 Several parts of EDD's configuration is contained within the running application's database,
 instead of loaded from files at startup. A login account to the EDD application, with access to
 the administration interface, is the easiest way to edit this configuration. To create an
-administrator account, run this command inside the `edd` service, after EDD has
+administrator account, run this command inside the `http` service, after EDD has
 finished startup:
 
     python manage.py createsuperuser
@@ -141,7 +140,7 @@ The following configuration options are specific to EDD and may be overridden in
     support integration with third-party apps. For example, some EDD deployments use this
     configuration to integrate with JIRA issue collectors, helping to automate user requests for
     additional data. Each string in the list should include the surrounding
-    "<script></script>" tags. When a non-empty list is defined, the "request a protocol" button
+    `<script></script>` tags. When a non-empty list is defined, the "request a protocol" button
     will be visible in the relevant help section, with id "request-format"
 -   `EDD_IMPORT_REQUEST_MTYPE_SCRIPTS` -- a list of strings with JavaScript code to
     insert into the page header for the prototype import help. This setting
@@ -208,83 +207,6 @@ new import app, add the following line to your `local.py`:
 To configure performance for the prototype import, see settings that start with `EDD_IMPORT`. Those that affect the prototype are marked as such, and be aware that a few impact both the
 legacy and the prototype.
 
-## Entrypoint options
-
-The entrypoint script for the `edd-core` image uses this approximate workflow:
-
-1. Load custom `local.py`
-2. Wait on custom service dependencies (if any, none by default)
-3. Wait on redis
-4. Initialize static files (Javascript, stylesheets, and images included in EDD image)
-5. Wait on postgres
-6. Wait on solr
-7. Run pending database migrations (if any)
-8. Re-index solr (if any changes made to database)
-9. Wait on rabbitmq
-10. Execute entrypoint command
-
-The entrypoint workflow can be modified with the flags defined below. Set these flags in the
-`command` entry of the service using the `jbei/edd-core` image in `docker-compose.override.yml`.
-This output can be recreated with `docker-compose exec edd entrypoint.sh --help`.
-
-    Usage: entrypoint.sh [options] [--] command [arguments]
-    Options:
-        -h, --help
-            Print this help message.
-        -q, --quiet
-            Silence output from this entrypoint script.
-        -a, --init, --init-all
-            Perform all initialization tasks prior to command start (default).
-        -A, --no-init, --no-init-all
-            Skip all initialization tasks; may override with another --init* flag.
-        -s, --init-static
-            Copy static files to the static volume. Only used to override -A.
-        -S, --no-init-static
-            Skip initialization of static files.
-        -m, --init-migration
-            Run any pending database migrations. Only used to override -A.
-        -M, --no-init-migration
-            Skip database migrations.
-        -i, --init-index
-            Re-index search prior to command. Only used to override -A.
-        -I, --no-init-index
-            Skip search re-indexing.
-        --local file
-            Copy the file specified to the local.py settings prior to launching the
-            command. This option will be ignored if code is mounted to the container
-            at /code.
-        --force-index
-            Force re-indexing; this option does not apply if -I is set.
-        -w host, --wait-host host
-            Wait for a host to begin responding before running commands. This option
-            may be specified multiple times. The waits will occur in the
-            order encountered.
-        -p port, --wait-port port
-            Only applies if -w is used. Specifies port to listen on. Defaults to
-            port 24051. This option may be specified multiple times. The Nth port
-            defined applies to the Nth host.
-        --watch-static
-            Watch for changes to static files, to copy to the static volume.
-
-    Commands:
-        application
-            Start a Django webserver (gunicorn).
-        devmode
-            Start a Django webserver (manage.py runserver).
-        init-only [port]
-            Container will only perform selected init tasks. The service will begin
-            listening on the specified port after init, default to port 24051.
-        init-exit
-            Container will only perform selected init tasks, then exit.
-        test
-            Execute the EDD unit tests.
-        worker
-            Start a Celery worker node.
-        daphne
-            Start a Django Channels webserver (daphne).
-        channel [... [name]]
-            Start a Django Channels worker listening on listed channel names (runworker).
-
 ## Starting EDD
 
 Once configured, EDD is launched with either `docker-compose` for a single-node deployment, or
@@ -318,4 +240,3 @@ To shut down EDD:
 [5]: http://django-allauth.readthedocs.org/en/latest/index.html
 [6]: https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
 [7]: http://ice.jbei.org/
-[8]: http://virtualenvwrapper.readthedocs.io/en/latest/index.html

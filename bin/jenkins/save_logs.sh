@@ -7,6 +7,6 @@ PROJECT="${1}"
 exec &> >(tee -a "container.log")
 
 # find EDD container and dump log files
-CONTAINER_ID="$(docker-compose -p "${PROJECT}" -f combined.yml ps -q edd)"
+CONTAINER_ID="$(docker-compose -p "${PROJECT}" ps -q http)"
 docker logs "${CONTAINER_ID}"
 docker exec "${CONTAINER_ID}" cat /var/log/edd/edd.log

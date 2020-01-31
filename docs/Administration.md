@@ -6,36 +6,57 @@ Some of these sample commands will only work as written at JBEI, but should serv
 examples for common development tasks. Directions assume that Docker containers are already
 running in the development environment.
 
--   **Run automated tests**
+### Run automated tests
 
-    -   Python tests: `docker-compose exec edd python manage.py test`
+Tests _must_ run with an `edd-core` image that is built with `TARGET=dev`.
+This is the default when manually building, but is _not_ the default for
+images pushed to Docker Hub. Run tests with:
 
--   **Test EDD/ICE communication**:
-    `docker-compose exec edd /code/manage.py test_ice_communication`
+    docker-compose exec http pytest
 
--   **Test email configuration**:
-    `docker-compose exec edd /code/manage.py sendtestemail you@example.com`
+### Test email configuration
 
--   **Create an unprivileged test account**
-    `docker-compose exec edd /code/manage.py edd_create_user`
+Use the Django management command `sendtestemail` ([docs][1]).
 
--   **Dump the production database to file and load into a local test deployment**
+    docker-compose exec http /code/manage.py sendtestemail you@example.com
 
-    -   Create the dump file:
+### Create an unprivileged test account
 
-            pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U {your_username}
+Use the Django management command `edd_create_user`, which is based on the
+`createsuperuser` ([docs][2]) command. Instead of making a superuser, it creates
+an unprivledged user, and auto-verifies that user's email address.
 
-    -   Load the dump file:
-        -   Backup and remove the existing `postgres_db` volume
-        -   Add the dump file to a volume mount in `/docker-entrypoint-initdb.d/` in the
-            `postgres` service
-        -   Re-launch postgres with the new volumes
+    docker-compose exec http /code/manage.py edd_create_user
 
--   **Rebuild Solr indexes:**
-    `docker-compose exec edd /code/manage.py edd_index`
+### Dump and Restore database contents
+
+Create a database dump and save it to a file using `pg_dump`. The command below
+connects to the postgres server at `postgres.example.org` (`-h`), and the
+database `edd` (`-d`), with the user/role `jane` (`-U`), and saves output
+to the file `dump.sql` (`-f`).
+
+    pg_dump -h postgres.example.org -d edd -U jane -f dump.sql
+
+To restore this dump in a testing database, use the `edd-postgres` Docker
+image. Configure the container with a new, empty volume loaded at
+`/var/lib/postgresql/data`, and mount the `dump.sql` file to one at
+`/docker-entrypoint-initdb.d/200-data.sql`. When the container launches, it
+will initialize a new, empty database for EDD, and restore data from the
+dump file before making the database available for use.
+
+### Rebuild Solr indices
+
+Use the Django management command `edd_index`. Pass in the `--force` flag to
+run a full re-index even if it appears each index contains the correct data.
+
+    docker-compose exec http /code/manage.py edd_index
 
 ## Upgrading EDD
 
-The simplest way to update EDD is to pull the newest image, then run `docker service update [NAME]`
-on the EDD service name, when deploying with `docker stack deploy`. If using `docker-compose`
-instead, a similar effect can be done with `docker-compose up -d`.
+The simplest way to update EDD is to pull the newest image, then run
+`docker-compose up -d`. This will re-create containers using the new image.
+
+---
+
+[1]: https://docs.djangoproject.com/en/2.2/ref/django-admin/#sendtestemail
+[2]: https://docs.djangoproject.com/en/2.2/ref/django-admin/#createsuperuser
