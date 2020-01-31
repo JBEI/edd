@@ -5,6 +5,9 @@
 TAG="${1}"
 PROJECT="${2}"
 
+# Copy default example settings
+cp settings/example settings/__init__.py
+
 # Running on temp3 needs *much* longer timeouts once VM hits high load
 export DOCKER_CLIENT_TIMEOUT=300
 export COMPOSE_HTTP_TIMEOUT=300
@@ -107,9 +110,6 @@ docker-compose build --pull postgres
 docker-compose build --pull rabbitmq
 docker-compose build --pull redis
 docker-compose build --pull solr
-
-# Copy default example settings
-cp settings/example settings/__init__.py
 
 ## launch the stack with up -d
 docker-compose -p "${PROJECT}" up -d
