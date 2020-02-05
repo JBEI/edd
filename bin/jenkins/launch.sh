@@ -8,10 +8,6 @@ PROJECT="${2}"
 # Copy default example settings
 cp settings/example settings/__init__.py
 
-# Running on temp3 needs *much* longer timeouts once VM hits high load
-export DOCKER_CLIENT_TIMEOUT=300
-export COMPOSE_HTTP_TIMEOUT=300
-
 function create_volume() {
     # $1 = volume name
     # $2 = original path

@@ -63,14 +63,12 @@ def get_version_hash(context):
 
 
 def is_postgres_available():
-    connection = get_postgres()
     try:
-        with connection:
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT 1;")
-                return cursor.fetchone() == (1,)
-    finally:
-        connection.close()
+        with get_postgres() as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT 1;")
+            return cursor.fetchone() == (1,)
+    except Exception as e:
+        print(f"Connection to postgres failed with {e}")
     return False
 
 

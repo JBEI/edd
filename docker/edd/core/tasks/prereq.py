@@ -24,17 +24,29 @@ def code(context):
     """
     Checks that code is in place for execution.
 
-    Checks that either code to execute is mounted to a volume at /code
+    Checks that either code to execute is mounted to a volume
     or copies the Docker image code there.
     """
+    mounted_code = util.env("EDD_CODE", default="/code")
+    mounted_settings = util.env("EDD_SETTINGS", default="/etc/edd")
+    container_code = "/usr/local/edd"
+    runtime_code = "/code"
     # Django manage.py is a proxy for the rest of the code being present
-    result = context.run("test -x /code/manage.py", warn=True)
-    if result.ok:
+    if context.run(f"test -x {runtime_code}/manage.py", warn=True).ok:
         print("Running with mounted copy of code …")
+    elif context.run(f"test -x {mounted_code}/manage.py", warn=True).ok:
+        print(f"Running with code mounted at {mounted_code} …")
+        with context.cd(runtime_code):
+            context.run(f"cp -R {mounted_code}/. .")
     else:
         print("Running with container copy of code …")
-        with context.cd("/code"):
-            context.run("cp -R /usr/local/edd/. .")
+        with context.cd(runtime_code):
+            context.run(f"cp -R {container_code}/. .")
+    if context.run(f"test -r {mounted_settings}").ok:
+        print(f"Loading settings from {mounted_settings} …")
+        with context.cd(f"{runtime_code}/edd/settings"):
+            context.run(f"mkdir -p local")
+            context.run(f"cp -R {mounted_settings}/. ./local")
 
 
 @invoke.task(pre=[environment])
@@ -81,7 +93,7 @@ def solr(context, limit=10):
 
 
 # migrations: Run migrations
-@invoke.task(pre=[redis, postgres, solr])
+@invoke.task(pre=[redis, postgres, solr, code])
 def migrations(context):
     """
     Migrates the database to the current version.
@@ -154,7 +166,7 @@ def rabbitmq(context, limit=10):
 
 
 # owner: Set container directory ownership to edduser
-@invoke.task(pre=[staticfiles])
+@invoke.task(pre=[code, staticfiles])
 def owner(context):
     """
     Sets ownership on necessary directories.

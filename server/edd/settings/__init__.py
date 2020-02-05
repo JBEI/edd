@@ -10,10 +10,7 @@ from .edd import *  # noqa: F403
 try:
     from .local import *  # noqa: F403
 except ImportError:
-    print(
-        "Did not find local settings module; "
-        "did you rename settings/local.py-example?"
-    )
+    print("Did not find local settings module")
 
 # After all settings are imported, do any necessary registration of values
 try:

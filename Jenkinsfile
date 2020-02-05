@@ -46,8 +46,15 @@ try {
             print checkout_result
             git_branch = checkout_result["GIT_BRANCH"]
             commit_hash = checkout_result["GIT_COMMIT"]
-            image_version = "${git_branch}-${BUILD_NUMBER}".replaceAll("\\W", "")
-            project_name = "jpipe_${git_branch}_${BUILD_NUMBER}".replaceAll("\\W", "")
+            // normalize image_version and project_name
+            // remove all non-word characters
+            // convert to all lowercase
+            image_version = "${git_branch}-${BUILD_NUMBER}"
+            image_version = image_version.replaceAll("\\W", "")
+            image_version = image_version.toLowerCase()
+            project_name = "jpipe_${git_branch}_${BUILD_NUMBER}"
+            project_name = project_name.replaceAll("\\W", "")
+            project_name = project_name.toLowerCase()
             committer_email = sh(
                 script: 'git --no-pager show -s --format=\'%ae\'',
                 returnStdout: true
@@ -65,7 +72,12 @@ try {
                 export EDD_USER="Jenkins"
                 export EDD_EMAIL="${committer_email}"
                 export EDD_VERSION="${image_version}"
-                sudo -E bin/init-config offline --deploy=dev
+                mkdir -p log
+                sudo -E bash -x bin/init-config offline --deploy=dev
+                sudo -E chown -R jenkins:jenkins .
+                ls -halt
+                cat log/config.log
+                cat docker-compose.override.yml
             /$
             timeout(5) {
                 dir("docker/edd/config") {
@@ -100,7 +112,7 @@ try {
                         -t jbei/edd-core:${image_version} \
                         .
             /$
-            timeout(60) {
+            timeout(15) {
                 dir("docker/node") {
                     sh(build_node)
                 }
@@ -113,7 +125,7 @@ try {
             stage('Launch') {
                 stage_name = "Launch"
                 // modify configuration files to prepare for launch
-                timeout(60) {
+                timeout(15) {
                     sh("sudo bin/jenkins/launch.sh '${image_version}' '${project_name}'")
                 }
             }
@@ -121,8 +133,8 @@ try {
             stage('Test') {
                 stage_name = "Test"
                 // previous stage does not finish until EDD up and reporting healthy
-                // only try to test for 30 minutes before bugout
-                timeout(30) {
+                // only try to test for 15 minutes before bugout
+                timeout(15) {
                     def test_result = sh(
                         script: "sudo bin/jenkins/run_tests.sh '${project_name}'",
                         returnStatus: true
