@@ -383,23 +383,19 @@ class ExportFilter(filters.FilterSet):
 
     def _add_formal_type_ids(self, qs):
         # define the integer pubchem_cid field as CharField
-        pubchem_cast = Cast(
+        cast = Cast(
             "measurement__measurement_type__metabolite__pubchem_cid",
             output_field=CharField(),
         )
-        pubchem_prefix = "cid:"
+        prefix = Value("cid:", output_field=CharField())
         # instruct database to give PubChem ID in the cid:N format, or None
-        qs = qs.annotate(
-            anno_pubchem=NullIf(
-                Concat(Value(pubchem_prefix), pubchem_cast), Value(pubchem_prefix)
-            )
-        )
+        qs = qs.annotate(anno_pubchem=NullIf(Concat(prefix, cast), prefix))
         # grab formal type IDs if able, otherwise empty string
         qs = qs.annotate(
             anno_formal_type=Coalesce(
                 "anno_pubchem",
                 "measurement__measurement_type__proteinidentifier__accession_id",
-                Value(""),
+                Value("", output_field=CharField()),
                 output_field=CharField(),
             )
         )
