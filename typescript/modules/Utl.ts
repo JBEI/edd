@@ -438,7 +438,6 @@ export class JS {
 export class FileDropZone {
     csrftoken: any;
     dropzone: any;
-    fileInitFn: any;
     options: any;
 
     constructor(options: any) {
@@ -447,7 +446,6 @@ export class FileDropZone {
         if (element) {
             $(element).addClass("dropzone");
             this.csrftoken = EDD.findCSRFToken();
-            this.fileInitFn = options.fileInitFn;
             this.options = options;
             this.dropzone = new Dropzone(element, {
                 "url": options.url,
