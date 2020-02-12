@@ -11,60 +11,76 @@ from . import models
 
 
 class BrandingTagTests(TestCase):
-    def test_environment_label(self):
+    def build_environment_sample_template(self):
+        # boilerplate for following self.test_environment_label_* tests
         template = Template(
             r"{% load branding %}{% env_label %}{% env_background_color %}"
         )
         context = Context()
+        return template.render(context)
+
+    def test_environment_label_empty(self):
         # verify that an empty deployment env renders as production
         with self.settings(EDD_DEPLOYMENT_ENVIRONMENT=""):
-            result = template.render(context)
-            # no label, color set to transparent
-            self.assertEqual(result, "transparent")
+            result = self.build_environment_sample_template()
+            # no label, color set to white
+            self.assertEqual(result, "white")
+
+    def test_environment_label_nonsense(self):
         # verify nonsense environment renders as production
         with self.settings(EDD_DEPLOYMENT_ENVIRONMENT="SILLY"):
-            result = template.render(context)
-            # no label, color set to transparent
-            self.assertEqual(result, "transparent")
+            result = self.build_environment_sample_template()
+            # no label, color set to white
+            self.assertEqual(result, "white")
+
+    def test_environment_label_test(self):
         # verify test environment renders as test
         with self.settings(EDD_DEPLOYMENT_ENVIRONMENT="TEST"):
-            result = template.render(context)
+            result = self.build_environment_sample_template()
             # html class
             self.assertIn('class="test"', result)
             # label included
             self.assertIn("TEST", result)
             # color is reddish
             self.assertEqual(result[-7:], "#fff0f2")
+
+    def test_environment_label_integration(self):
         # verify integration environment renders as integration
         with self.settings(EDD_DEPLOYMENT_ENVIRONMENT="INTEGRATION"):
-            result = template.render(context)
+            result = self.build_environment_sample_template()
             # html class
             self.assertIn('class="int"', result)
             # label included
             self.assertIn("INTEGRATION", result)
             # color is yellowish
             self.assertEqual(result[-7:], "#fff6e5")
+
+    def test_environment_label_dev(self):
         # verify development environment renders as development
         with self.settings(EDD_DEPLOYMENT_ENVIRONMENT="DEVELOPMENT"):
-            result = template.render(context)
+            result = self.build_environment_sample_template()
             # html class
             self.assertIn('class="dev"', result)
             # label included
             self.assertIn("DEVELOPMENT", result)
             # color is greenish
             self.assertEqual(result[-7:], "#f4fef4")
+
+    def test_environment_label_test_extras(self):
         # verify extra parts are added to tag
         with self.settings(EDD_DEPLOYMENT_ENVIRONMENT="TESTWITHEXTRAS"):
-            result = template.render(context)
+            result = self.build_environment_sample_template()
             # html class
             self.assertIn('class="test"', result)
             # label included
             self.assertIn("TESTWITHEXTRAS", result)
             # color is reddish
             self.assertEqual(result[-7:], "#fff0f2")
+
+    def test_environment_label_test_special(self):
         # verify extra parts handle problematic characters
         with self.settings(EDD_DEPLOYMENT_ENVIRONMENT='TEST<&"'):
-            result = template.render(context)
+            result = self.build_environment_sample_template()
             # html class
             self.assertIn('class="test"', result)
             # label included, properly escaped

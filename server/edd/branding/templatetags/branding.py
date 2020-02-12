@@ -80,12 +80,15 @@ def edd_version_number():
 def env_background_color():
     env = getattr(settings, "EDD_DEPLOYMENT_ENVIRONMENT", "")
     if env[:11] == "DEVELOPMENT":
+        # a light green-ish color
         return "#f4fef4"
     elif env[:4] == "TEST":
+        # a light red-ish color
         return "#fff0f2"
     elif env[:11] == "INTEGRATION":
+        # a light yellow-ish color
         return "#fff6e5"
-    return "transparent"
+    return "white"
 
 
 @register.tag
