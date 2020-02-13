@@ -13,6 +13,7 @@ secrets.env
 /secrets
 
 # per-machine local settings files; this will override default settings with local changes
+server/edd/settings/local/*
 **/local.py
 **/docker-compose.override.yml
 settings/*
