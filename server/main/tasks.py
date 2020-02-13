@@ -83,7 +83,7 @@ def export_table_task(self, user_id, param_path):
             url = f'{reverse("main:export")}?download={export_id}'
             message = _(
                 'Your export for "{name}" is ready. '
-                '<a href="{url}" class="download">Download the file here</a>.'
+                '<a href="{url}" class="download" download="">Download the file here</a>.'
             ).format(name=export_name, url=url)
             notifications.notify(message, tags=("download",), payload={"url": url})
         except Exception as e:

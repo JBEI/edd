@@ -193,6 +193,11 @@ class ServiceComposer:
             http.volume(f"{home}/settings:/etc/edd:ro")
             websocket.volume(f"{home}/settings:/etc/edd:ro")
             worker.volume(f"{home}/settings:/etc/edd:ro")
+        if tls:
+            # just assume production if giving a real domain w/ TLS
+            http.write_env("EDD_DEPLOYMENT_ENVIRONMENT", "PRODUCTION")
+            websocket.write_env("EDD_DEPLOYMENT_ENVIRONMENT", "PRODUCTION")
+            worker.write_env("EDD_DEPLOYMENT_ENVIRONMENT", "PRODUCTION")
         return self
 
     def define(self, name):
@@ -242,7 +247,8 @@ class ServiceComposer:
             for service_name in ("http", "websocket", "worker"):
                 service = self.services[service_name]
                 service.write_secret("DATABASE_URL", url)
-                service.write_secret("CELERY_RESULT_BACKEND", url)
+                service.write_secret("CELERY_RESULT_BACKEND", f"db+{url}")
+            self.urls.update(postgres=url)
         else:
             postgres = self.define("postgres")
             # create edduser password to postgres
@@ -263,6 +269,7 @@ class ServiceComposer:
             for service_name in ("http", "websocket", "worker"):
                 service = self.services[service_name]
                 service.write_secret("BROKER_URL", url)
+            self.urls.update(rabbitmq=url)
         else:
             rabbitmq = self.define("rabbitmq")
             # create edduser password to rabbitmq
@@ -280,13 +287,17 @@ class ServiceComposer:
                 service = self.services[service_name]
                 # might be credentials in passed URL
                 service.write_secret("CACHE_URL", url)
+            self.urls.update(redis=url)
         else:
             self.define("redis")
         return self
 
     def setup_smtp(self, url=None):
-        # TODO EDD backend does not currently support using alternate SMTP
-        if not url:
+        if url:
+            print("NOTE: EDD does not currently support simple SMTP config via URL.")
+            print("Must manually overwrite Django mail settings in settings directory.")
+            self.urls.update(smtp=url)
+        else:
             self.define("smtp")
         return self
 
@@ -298,6 +309,7 @@ class ServiceComposer:
                     raise ValueError(f"Core service {service_name} not configured")
                 # might be credentials in passed URL
                 service.write_secret("SEARCH_URL", url)
+            self.urls.update(solr=url)
         else:
             self.define("solr")
         return self
@@ -313,13 +325,15 @@ class ServiceComposer:
                 raise ValueError(f"Core service {name} not configured")
             configured.append(service)
         for name in support_names:
-            url = self.urls.get(name, None)
             service = self.services.get(name, None)
-            if url:
-                print("handle writing external service configs")
+            if name in self.urls:
+                # defined external service, do nothing
+                pass
             elif service:
+                # defined bundled service, add to list
                 configured.append(service)
             else:
+                # oops, missed support service, raise error
                 raise ValueError(f"Support service {name} not configured")
         for name in optional_names:
             service = self.services[name]

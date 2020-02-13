@@ -52,13 +52,15 @@ else
         "jbei/edd-config:${EDD_VERSION:-latest}" \
         "$@")"
     # run it and wait for completion
-    "${DOCKER}" start "${container_id}" > "${OUT_LOG}"
-    "${DOCKER}" wait "${container_id}" > "${OUT_LOG}"
+    "${DOCKER}" start "${container_id}" >> "${OUT_LOG}" 2>&1
+    "${DOCKER}" wait "${container_id}" >> "${OUT_LOG}" 2>&1
     # pull out the config tarball
-    if "${DOCKER}" cp "${container_id}:/tmp/edd-config.tgz" . 2>"${OUT_LOG}"; then
+    if "${DOCKER}" cp "${container_id}:/tmp/edd-config.tgz" . >> "${OUT_LOG}" 2>&1; then
         "${TAR}" -xzvf edd-config.tgz
         rm edd-config.tgz
     else
+        # see what went wrong when copy fails
+        cat "${OUT_LOG}"
         "${DOCKER}" logs "${container_id}"
     fi
     "${DOCKER}" rm "${container_id}" > "${OUT_LOG}"

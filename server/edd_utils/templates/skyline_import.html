@@ -21,7 +21,6 @@ Skyline conversion
 {% block content %}
 <div class="dropzone-wrapper dz-default" style="padding: 20px;">
 <form action="{% url 'edd_utils:parse_skyline' %}"
-    class="dropzone"
     enctype="multipart/form-data"
     id="skylineDropzone"
     style="width: 100%; height: 100%;">
@@ -47,7 +46,7 @@ Skyline conversion
       </div>
     </center>
     <div class="rawtext">
-      <textarea class="rawtext" id="formatted" style="width: 100%;"></textarea>
+      <textarea class="rawtext" id="formatted" style="width: 100%;" rows="20"></textarea>
     </div>
   </div>
 </div>
