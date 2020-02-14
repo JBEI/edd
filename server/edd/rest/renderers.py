@@ -2,9 +2,8 @@
 
 import csv
 import logging
-from uuid import uuid4
 
-from django.db import connection, transaction
+from django.db import transaction
 from rest_framework_csv import renderers as csv_renderers
 
 logger = logging.getLogger(__name__)
@@ -80,28 +79,18 @@ class StreamingExportRenderer(object):
 
     def stream_csv(self, queryset):
         # limit columns to only those needed to render CSV
-        queryset = queryset.values(*self.columns)
+        queryset = queryset.values_list(*self.columns)
         # create csv writer
         writer = csv.writer(Echo())
         # yield header using same labels as renderer.ExportRenderer
         er_header = ExportRenderer.header
         er_labels = ExportRenderer.labels
         yield writer.writerow([er_labels.get(x, x) for x in er_header])
-        # prepare to declare cursor
-        raw = str(queryset.query)
-        name = uuid4().hex
-        # create cursor and iterate results to yield csv rows
-        with transaction.atomic(), connection.cursor() as cursor:
-            cursor.execute(f"DECLARE temp_{name} CURSOR FOR {raw}")
-            while True:
-                cursor.execute(f"FETCH 100 FROM temp_{name}")
-                rows = cursor.fetchall()
-                if not rows:
-                    break
-                for row in rows:
-                    # items in index 12 and 13 are arrays for Y and X
-                    # replace with first values
-                    row = list(row)
-                    row[12] = row[12][0] if row[12] else ""
-                    row[13] = row[13][0] if row[13] else ""
-                    yield writer.writerow(row)
+        with transaction.atomic():
+            for row in queryset.iterator(chunk_size=100):
+                row = list(row)
+                # items in index 12 and 13 are arrays for Y and X
+                # replace with first values
+                row[12] = row[12][0] if row[12] else ""
+                row[13] = row[13][0] if row[13] else ""
+                yield writer.writerow(row)
