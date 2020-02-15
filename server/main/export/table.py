@@ -306,20 +306,11 @@ class ExportOption:
         COMMA_SEPARATED_TOKEN: COMMA_SEPARATED,
         TAB_SEPARATED_TOKEN: TAB_SEPARATED,
     }
-    ALL_DATA = "all"
-    SUMMARY_DATA = "summary"
-    NONE_DATA = "none"
-    FORMAT_CHOICE = (
-        (ALL_DATA, _("All")),
-        (SUMMARY_DATA, _("Summarize")),
-        (NONE_DATA, _("None")),
-    )
 
     def __init__(
         self,
         layout=DATA_COLUMN_BY_LINE,
         separator=COMMA_SEPARATED,
-        data_format=ALL_DATA,
         line_section=False,
         protocol_section=False,
         columns=None,
@@ -328,7 +319,6 @@ class ExportOption:
     ):
         self.layout = layout
         self.separator = separator
-        self.data_format = data_format
         self.line_section = line_section
         self.protocol_section = protocol_section
         self.columns = columns if columns is not None else []

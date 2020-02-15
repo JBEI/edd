@@ -147,7 +147,6 @@ class WorklistForm(forms.Form):
         self._options = table.ExportOption(
             layout=table.ExportOption.DATA_COLUMN_BY_LINE,
             separator=table.ExportOption.COMMA_SEPARATED_TOKEN,
-            data_format=table.ExportOption.ALL_DATA,
             line_section=False,
             protocol_section=False,
             columns=columns,
@@ -266,11 +265,6 @@ class ExportOptionForm(forms.Form):
         label=_("Field separators"),
         required=False,
     )
-    data_format = forms.ChoiceField(
-        choices=table.ExportOption.FORMAT_CHOICE,
-        label=_("Include measurement data"),
-        required=False,
-    )
     line_section = forms.BooleanField(
         label=_("Include Lines in own section"), required=False
     )
@@ -335,9 +329,6 @@ class ExportOptionForm(forms.Form):
             "separator": prefs.get(
                 "export.csv.separator", table.ExportOption.COMMA_SEPARATED
             ),
-            "data_format": prefs.get(
-                "export.csv.data_format", table.ExportOption.ALL_DATA
-            ),
             "study_meta": prefs.get("export.csv.study_meta", "__all__"),
             "line_meta": prefs.get("export.csv.line_meta", "__all__"),
             "protocol_meta": prefs.get("export.csv.protocol_meta", "__all__"),
@@ -359,7 +350,6 @@ class ExportOptionForm(forms.Form):
         self._options = table.ExportOption(
             layout=data.get("layout", table.ExportOption.DATA_COLUMN_BY_LINE),
             separator=self.cell_separator,
-            data_format=data.get("data_format", table.ExportOption.ALL_DATA),
             line_section=data.get("line_section", False),
             protocol_section=data.get("protocol_section", False),
             columns=columns,

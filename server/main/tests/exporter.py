@@ -75,7 +75,6 @@ class WorklistExportTests(TestCase):
         return export.table.ExportOption(
             layout=export.table.ExportOption.DATA_COLUMN_BY_LINE,
             separator=export.table.ExportOption.COMMA_SEPARATED_TOKEN,
-            data_format=export.table.ExportOption.ALL_DATA,
             line_section=False,
             protocol_section=False,
             columns=[export.table.ColumnChoice.from_model(c) for c in columns],
