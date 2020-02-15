@@ -94,8 +94,22 @@ def monkey_patch_mail_admins():
     mail.mail_admins = mail_admins
 
 
+def monkey_patch_postgres_wrapper():
+    # monkey-patch django.db.backends.postgresql.base.DatabaseWrapper
+    from django.db.backends.postgresql.base import DatabaseWrapper
+
+    # remove requirement for length on varchar fields
+    DatabaseWrapper.data_types.update(
+        CharField="varchar",
+        FileField="varchar",
+        FilePathField="varchar",
+        SlugField="varchar",
+    )
+
+
 monkey_patch_cleanse_setting()
 monkey_patch_mail_admins()
+monkey_patch_postgres_wrapper()
 
 
 __all__ = ("celery_app", "TestCase")

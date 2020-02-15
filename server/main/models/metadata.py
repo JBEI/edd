@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Models for handling metadata.
 """
@@ -11,6 +10,8 @@ from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models import F, Func
 from django.utils.translation import ugettext_lazy as _
+
+from edd.fields import VarCharField
 
 from .common import EDDSerialize
 
@@ -43,9 +44,8 @@ class MetadataGroup(models.Model):
     class Meta:
         db_table = "metadata_group"
 
-    group_name = models.CharField(
+    group_name = VarCharField(
         help_text=_("Name of the group/class of metadata."),
-        max_length=255,
         unique=True,
         verbose_name=_("Group Name"),
     )
@@ -78,65 +78,58 @@ class MetadataType(models.Model, EDDSerialize):
         verbose_name=_("Group"),
     )
     # a default label for the type; should normally use i18n lookup for display
-    type_name = models.CharField(
-        help_text=_("Name for Metadata Type"), max_length=255, verbose_name=_("Name")
+    type_name = VarCharField(
+        help_text=_("Name for Metadata Type"), verbose_name=_("Name")
     )
     # an i18n lookup for type label
     # NOTE: migration 0005_SYNBIO-1120_linked_metadata adds a partial unique index to this field
     # i.e. CREATE UNIQUE INDEX … ON metadata_type(type_i18n) WHERE type_i18n IS NOT NULL
-    type_i18n = models.CharField(
+    type_i18n = VarCharField(
         blank=True,
         help_text=_("i18n key used for naming this Metadata Type."),
-        max_length=255,
         null=True,
         verbose_name=_("i18n Key"),
     )
     # field to store metadata, or None if stored in metadata
-    type_field = models.CharField(
+    type_field = VarCharField(
         blank=True,
         default=None,
         help_text=_(
             "Model field where metadata is stored; blank stores in metadata dictionary."
         ),
-        max_length=255,
         null=True,
         verbose_name=_("Field Name"),
     )
     # type of the input on front-end; support checkboxes, autocompletes, etc
     # blank/null falls back to plain text input field
-    input_type = models.CharField(
+    input_type = VarCharField(
         blank=True,
         help_text=_("Type of input fields for values of this Metadata Type."),
-        max_length=255,
         null=True,
         verbose_name=_("Input Type"),
     )
     # a default value to use if the field is left blank
-    default_value = models.CharField(
+    default_value = VarCharField(
         blank=True,
         help_text=_("Default value for this Metadata Type."),
-        max_length=255,
         verbose_name=_("Default Value"),
     )
     # label used to prefix values
-    prefix = models.CharField(
+    prefix = VarCharField(
         blank=True,
         help_text=_("Prefix text appearing before values of this Metadata Type."),
-        max_length=255,
         verbose_name=_("Prefix"),
     )
     # label used to postfix values (e.g. unit specifier)
-    postfix = models.CharField(
+    postfix = VarCharField(
         blank=True,
         help_text=_("Postfix text appearing after values of this Metadata Type."),
-        max_length=255,
         verbose_name=_("Postfix"),
     )
     # target object for metadata
-    for_context = models.CharField(
+    for_context = VarCharField(
         choices=CONTEXT_SET,
         help_text=_("Type of EDD Object this Metadata Type may be added to."),
-        max_length=8,
         verbose_name=_("Context"),
     )
     # linking together EDD instances will be easier later if we define UUIDs now
@@ -190,7 +183,7 @@ class MetadataType(models.Model, EDDSerialize):
     def save(self, *args, **kwargs):
         if self.uuid is None:
             self.uuid = uuid4()
-        super(MetadataType, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def to_json(self, depth=0):
         return {

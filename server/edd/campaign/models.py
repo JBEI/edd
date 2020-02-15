@@ -1,13 +1,11 @@
-# coding: utf-8
-
 from itertools import chain
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
-from six import string_types
 
+from edd.fields import VarCharField
 from main import models as edd_models
 
 # assign names to base classes used in this module to avoid repeating namespaces
@@ -43,18 +41,16 @@ class CampaignPermission(BasePermission, models.Model):
         on_delete=models.CASCADE,
         verbose_name=_("Campaign"),
     )
-    study_permission = models.CharField(
+    study_permission = VarCharField(
         choices=BasePermission.TYPE_CHOICE,
         default=BasePermission.NONE,
         help_text=_("Type of permission applied to Studies linked to Campaign."),
-        max_length=8,
         verbose_name=_("Study Permission"),
     )
-    campaign_permission = models.CharField(
+    campaign_permission = VarCharField(
         choices=BasePermission.TYPE_CHOICE,
         default=BasePermission.NONE,
         help_text=_("Permission for read/write on the Campaign itself."),
-        max_length=8,
         verbose_name=_("Campaign Permission"),
     )
     link_permissions = ArrayField(
@@ -165,9 +161,7 @@ class Campaign(edd_models.core.SlugMixin, models.Model):
         unique=True,
         verbose_name=_("UUID"),
     )
-    name = edd_models.fields.VarCharField(
-        help_text=_("Name of this Campaign."), max_length=255, verbose_name=_("Name")
-    )
+    name = VarCharField(help_text=_("Name of this Campaign."), verbose_name=_("Name"))
     description = models.TextField(
         blank=True,
         help_text=_("Description of this Campaign."),
@@ -222,7 +216,7 @@ class Campaign(edd_models.core.SlugMixin, models.Model):
         otherwise, if a user has multiple permission paths to a Campaign, multiple
         results may be returned.
         """
-        if isinstance(access, string_types):
+        if isinstance(access, str):
             access = (access,)
         q = Q(everyonepermission__campaign_permission__in=access)
         if is_real_user(user):
@@ -270,7 +264,7 @@ class Campaign(edd_models.core.SlugMixin, models.Model):
 class CampaignMembership(models.Model):
     """A link between a Campaign and Study."""
 
-    class Status(object):
+    class Status:
         ACTIVE = "a"
         COMPLETE = "c"
         ABANDONED = "z"
@@ -282,11 +276,10 @@ class CampaignMembership(models.Model):
 
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
     study = models.ForeignKey(edd_models.Study, on_delete=models.CASCADE)
-    status = models.CharField(
+    status = VarCharField(
         choices=Status.CHOICE,
         default=Status.ACTIVE,
         help_text=_("Status of a Study in the linked Campaign."),
-        max_length=8,
     )
 
 

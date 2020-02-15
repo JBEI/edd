@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Models related to setting permissions to view/edit objects in EDD.
 """
@@ -7,8 +6,10 @@ from django.conf import settings
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
+from edd.fields import VarCharField
 
-class Permission(object):
+
+class Permission:
     """Mixin class of constants used for permissions."""
 
     NONE = "N"
@@ -51,11 +52,10 @@ class StudyPermission(Permission, models.Model):
         on_delete=models.CASCADE,
         verbose_name=_("Study"),
     )
-    permission_type = models.CharField(
+    permission_type = VarCharField(
         choices=Permission.TYPE_CHOICE,
         default=Permission.NONE,
         help_text=_("Type of permission."),
-        max_length=8,
         verbose_name=_("Permission"),
     )
 
@@ -149,7 +149,7 @@ class GroupPermission(GroupMixin, StudyPermission):
         db_table = "study_group_permission"
 
 
-class EveryoneMixin(object):
+class EveryoneMixin:
     """Mixin class for permissions applying to all logged-in users."""
 
     def applies_to_user(self, user):

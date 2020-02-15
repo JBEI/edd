@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Models describing measurement types.
 """
@@ -19,9 +18,9 @@ from rdflib import Graph
 from rdflib.term import URIRef
 
 from edd.celery import app
+from edd.fields import VarCharField
 
 from .common import EDDSerialize
-from .fields import VarCharField
 from .update import Datasource
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ class MeasurementType(EDDSerialize, models.Model):
     class Meta:
         db_table = "measurement_type"
 
-    class Group(object):
+    class Group:
         """
         Note that when a new group type is added here, code will need to be
         updated elsewhere, including the Javascript/Typescript front end.
@@ -57,23 +56,20 @@ class MeasurementType(EDDSerialize, models.Model):
             (PHOSPHOR, _("Phosphor")),
         )
 
-    type_name = models.CharField(
+    type_name = VarCharField(
         help_text=_("Name of this Measurement Type."),
-        max_length=255,
         verbose_name=_("Measurement Type"),
     )
-    short_name = models.CharField(
+    short_name = VarCharField(
         blank=True,
         help_text=_("(DEPRECATED) Short name used in SBML output."),
-        max_length=255,
         null=True,
         verbose_name=_("Short Name"),
     )
-    type_group = models.CharField(
+    type_group = VarCharField(
         choices=Group.GROUP_CHOICE,
         default=Group.GENERIC,
         help_text=_("Class of data for this Measurement Type."),
-        max_length=8,
         verbose_name=_("Type Group"),
     )
     type_source = models.ForeignKey(
@@ -386,7 +382,7 @@ class GeneIdentifier(MeasurementType):
     def save(self, *args, **kwargs):
         # force GENEID group
         self.type_group = MeasurementType.Group.GENEID
-        super(GeneIdentifier, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     @classmethod
     def _load_ice(cls, identifier, user):
@@ -679,7 +675,7 @@ class ProteinIdentifier(MeasurementType):
         super().save(*args, **kwargs)
 
 
-class StrainLinkMixin(object):
+class StrainLinkMixin:
     """Common code for objects linked to Strains."""
 
     def check_ice(self, user_token, name):
@@ -794,9 +790,8 @@ class MeasurementUnit(models.Model):
     class Meta:
         db_table = "measurement_unit"
 
-    unit_name = models.CharField(
+    unit_name = VarCharField(
         help_text=_("Name for unit of measurement."),
-        max_length=255,
         unique=True,
         verbose_name=_("Name"),
     )
@@ -805,18 +800,16 @@ class MeasurementUnit(models.Model):
         help_text=_("Flag indicating the units should be displayed along with values."),
         verbose_name=_("Display"),
     )
-    alternate_names = models.CharField(
+    alternate_names = VarCharField(
         blank=True,
         help_text=_("Alternative names for the unit."),
-        max_length=255,
         null=True,
         verbose_name=_("Alternate Names"),
     )
-    type_group = models.CharField(
+    type_group = VarCharField(
         choices=MeasurementType.Group.GROUP_CHOICE,
         default=MeasurementType.Group.GENERIC,
         help_text=_("Type of measurement for which this unit is used."),
-        max_length=8,
         verbose_name=_("Group"),
     )
 

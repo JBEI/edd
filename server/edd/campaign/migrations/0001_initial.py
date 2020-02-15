@@ -5,8 +5,8 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
+import edd.fields
 import main.models.core
-import main.models.fields
 import main.models.permission
 
 
@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "name",
-                    main.models.fields.VarCharField(
+                    edd.fields.VarCharField(
                         help_text="Name of this Campaign.",
                         max_length=255,
                         verbose_name="Name",

@@ -6,6 +6,7 @@ import arrow
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
+from edd.fields import VarCharField
 from main.utilities import flatten_json
 
 from . import core, metadata
@@ -57,16 +58,14 @@ class WorklistColumn(models.Model):
         verbose_name=_("Metadata Type"),
     )
     # if None, default to meta_type.type_name or ''
-    heading = models.CharField(
-        max_length=255,
+    heading = VarCharField(
         blank=True,
         help_text=_("Column header text."),
         null=True,
         verbose_name=_("Heading"),
     )
     # potentially override the default value in templates?
-    default_value = models.CharField(
-        max_length=255,
+    default_value = VarCharField(
         blank=True,
         help_text=_("Default value for this column."),
         null=True,
