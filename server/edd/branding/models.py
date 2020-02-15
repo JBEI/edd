@@ -1,9 +1,9 @@
-# coding: utf-8
-
 from django.contrib.sites.models import clear_site_cache
 from django.db import models
 from django.db.models.signals import pre_delete, pre_save
 from django.utils.translation import ugettext_lazy as _
+
+from edd.fields import FileField
 
 
 class Branding(models.Model):
@@ -20,7 +20,7 @@ class Branding(models.Model):
     favicon_file = models.ImageField(
         help_text=_("Image file returned for site favicon"), null=True
     )
-    style_sheet = models.FileField(
+    style_sheet = FileField(
         blank=True,
         help_text=_("Custom CSS rules to include for site branding"),
         null=True,

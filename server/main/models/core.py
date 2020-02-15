@@ -11,6 +11,8 @@ from django.db.models import Q
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
 
+from edd.fields import FileField, VarCharField
+
 from .common import EDDSerialize, qfilter
 from .measurement_type import MeasurementType, MeasurementUnit, Metabolite
 from .metadata import EDDMetadata, MetadataType
@@ -59,16 +61,14 @@ class Attachment(models.Model):
     object_ref = models.ForeignKey(
         "EDDObject", on_delete=models.CASCADE, related_name="files"
     )
-    file = models.FileField(
+    file = FileField(
         help_text=_("Path to file data."),
-        max_length=255,
+        max_length=None,
         upload_to="%Y/%m/%d",
         verbose_name=_("File Path"),
     )
-    filename = models.CharField(
-        help_text=_("Name of attachment file."),
-        max_length=255,
-        verbose_name=_("File Name"),
+    filename = VarCharField(
+        help_text=_("Name of attachment file."), verbose_name=_("File Name")
     )
     created = models.ForeignKey(
         Update,
@@ -82,10 +82,9 @@ class Attachment(models.Model):
         null=False,
         verbose_name=_("Description"),
     )
-    mime_type = models.CharField(
+    mime_type = VarCharField(
         blank=True,
         help_text=_("MIME ContentType of the attachment."),
-        max_length=255,
         null=True,
         verbose_name=_("MIME"),
     )
@@ -165,9 +164,7 @@ class EDDObject(EDDMetadata, EDDSerialize):
     class Meta:
         db_table = "edd_object"
 
-    name = models.CharField(
-        help_text=_("Name of this object."), max_length=255, verbose_name=_("Name")
-    )
+    name = VarCharField(help_text=_("Name of this object."), verbose_name=_("Name"))
     description = models.TextField(
         blank=True,
         help_text=_("Description of this object."),
@@ -682,12 +679,11 @@ class Protocol(EDDObject):
         related_name="protocol_set",
         verbose_name=_("Default Units"),
     )
-    categorization = models.CharField(
+    categorization = VarCharField(
         choices=CATEGORY_CHOICE,
         default=CATEGORY_NONE,
         help_text=_("SBML category for this Protocol."),
         verbose_name=_("SBML Category"),
-        max_length=8,
     )
 
     def creator(self):
@@ -1135,18 +1131,16 @@ class Measurement(EDDMetadata, EDDSerialize):
         ),
         verbose_name=_("Active"),
     )
-    compartment = models.CharField(
+    compartment = VarCharField(
         choices=Compartment.CHOICE,
         default=Compartment.UNKNOWN,
         help_text=_("Compartment of the cell for this Measurement."),
-        max_length=1,
         verbose_name=_("Compartment"),
     )
-    measurement_format = models.CharField(
+    measurement_format = VarCharField(
         choices=Format.CHOICE,
         default=Format.SCALAR,
         help_text=_("Enumeration of value formats for this Measurement."),
-        max_length=2,
         verbose_name=_("Format"),
     )
 

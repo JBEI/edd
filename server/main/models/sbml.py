@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Models for SBML mapping.
 """
@@ -6,17 +5,16 @@ Models for SBML mapping.
 import logging
 
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
+from edd.fields import VarCharField
+
 from .core import Attachment, EDDObject
-from .fields import VarCharField
 from .measurement_type import MeasurementType
 
 logger = logging.getLogger(__name__)
 
 
-@python_2_unicode_compatible
 class SBMLTemplate(EDDObject):
     """Container for information used in SBML export."""
 
@@ -83,7 +81,7 @@ class SBMLTemplate(EDDObject):
 
     def save(self, *args, **kwargs):
         # may need to do a post-save signal; get sbml attachment and save in sbml_file
-        super(SBMLTemplate, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def to_json(self, depth=0):
         return {
@@ -93,7 +91,6 @@ class SBMLTemplate(EDDObject):
         }
 
 
-@python_2_unicode_compatible
 class MetaboliteExchange(models.Model):
     """Mapping for a metabolite to an exchange defined by a SBML template."""
 
@@ -137,7 +134,6 @@ class MetaboliteExchange(models.Model):
         return self.exchange_name
 
 
-@python_2_unicode_compatible
 class MetaboliteSpecies(models.Model):
     """ Mapping for a metabolite to an species defined by a SBML template. """
 
@@ -170,11 +166,10 @@ class MetaboliteSpecies(models.Model):
         help_text=_("Species name used in the model for this metabolite."),
         verbose_name=_("Species"),
     )
-    short_code = models.CharField(
+    short_code = VarCharField(
         blank=True,
         default="",
         help_text=_("Short code used for a species in the model."),
-        max_length=255,
         null=True,
         verbose_name=_("Short Code"),
     )

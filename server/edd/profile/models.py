@@ -1,9 +1,10 @@
-# coding: utf-8
 # flake8: noqa
 
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import models
+
+from edd.fields import VarCharField
 
 
 class Institution(models.Model):
@@ -12,7 +13,7 @@ class Institution(models.Model):
     class Meta:
         db_table = "profile_institution"
 
-    institution_name = models.CharField(max_length=255)
+    institution_name = VarCharField()
     description = models.TextField(blank=True, null=True)
 
     def __str__(self):
@@ -26,7 +27,7 @@ class UserProfile(models.Model):
         db_table = "profile_user"
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    initials = models.CharField(max_length=10, blank=True, null=True)
+    initials = VarCharField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     institutions = models.ManyToManyField(Institution, through="InstitutionID")
     preferences = JSONField(blank=True, default=dict)
@@ -45,4 +46,4 @@ class InstitutionID(models.Model):
 
     institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
     profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
-    identifier = models.CharField(max_length=255, blank=True, null=True)
+    identifier = VarCharField(blank=True, null=True)

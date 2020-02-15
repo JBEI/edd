@@ -4,6 +4,8 @@ import django.contrib.postgres.fields.jsonb
 import django.db.models.deletion
 from django.db import migrations, models
 
+import edd.fields
+
 
 class Migration(migrations.Migration):
 
@@ -145,7 +147,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "file",
-                    models.FileField(
+                    edd.fields.FileField(
                         help_text="Path to file data.",
                         max_length=255,
                         upload_to="%Y/%m/%d",

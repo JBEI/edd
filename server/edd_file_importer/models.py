@@ -1,11 +1,10 @@
-# coding: utf-8
-
 import os
 
 import django.contrib.postgres.fields as postgres_fields
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
+from edd.fields import FileField, VarCharField
 from main import models as edd_models
 
 
@@ -15,9 +14,7 @@ class BaseImportModel(models.Model):
     similar to EDDObject.  Note that metadata is dropped relative to EDDObject.
     """
 
-    name = models.CharField(
-        help_text=_("Name of this object."), max_length=255, verbose_name=_("Name")
-    )
+    name = VarCharField(help_text=_("Name of this object."), verbose_name=_("Name"))
 
     description = models.TextField(
         blank=True,
@@ -106,13 +103,9 @@ class ImportParser(models.Model):
         "ImportFormat", on_delete=models.CASCADE, related_name="parsers"
     )
 
-    parser_class = models.CharField(
-        help_text=_("Parser class"), max_length=255, verbose_name=_("Parser")
-    )
+    parser_class = VarCharField(help_text=_("Parser class"), verbose_name=_("Parser"))
 
-    mime_type = models.CharField(
-        help_text=_("Mime type"), max_length=255, verbose_name=_("Mime type")
-    )
+    mime_type = VarCharField(help_text=_("Mime type"), verbose_name=_("Mime type"))
 
 
 class ImportCategory(BaseImportModel):
@@ -133,14 +126,13 @@ class ImportCategory(BaseImportModel):
         related_name="import_category",
     )
 
-    default_mtype_group = models.CharField(
+    default_mtype_group = VarCharField(
         default=edd_models.MeasurementType.Group.GENERIC,
         blank=False,
         help_text=_(
             "The default class of measurement types implied by selection of this "
             "category during import"
         ),
-        max_length=15,
         null=False,
         verbose_name=_("Default type group"),
     )
@@ -247,7 +239,7 @@ class Import(BaseImportModel):
         null=False,
     )
 
-    status = models.CharField(max_length=10, default=Status.CREATED, null=False)
+    status = VarCharField(default=Status.CREATED, null=False)
 
     category = models.ForeignKey(
         ImportCategory,
@@ -293,11 +285,10 @@ class Import(BaseImportModel):
         related_name="+",
     )
 
-    compartment = models.CharField(
+    compartment = VarCharField(
         choices=edd_models.Measurement.Compartment.CHOICE,
         default=edd_models.Measurement.Compartment.UNKNOWN,
         help_text=_("Compartment of the cell for this Measurement."),
-        max_length=1,
         verbose_name=_("Compartment"),
     )
 
@@ -358,17 +349,13 @@ class ImportFile(models.Model):
     Import reference instead of an EDDObject reference.
     """
 
-    file = models.FileField(
+    file = FileField(
         help_text=_("Path to file data."),
-        max_length=255,
         upload_to="%Y/%m/%d",
         verbose_name=_("File Path"),
     )
-    filename = models.CharField(
-        help_text=_("Name of the file."),
-        max_length=255,
-        verbose_name=_("File Name"),
-        editable=False,
+    filename = VarCharField(
+        help_text=_("Name of the file."), verbose_name=_("File Name"), editable=False
     )
     created = models.ForeignKey(
         edd_models.Update,
@@ -383,10 +370,9 @@ class ImportFile(models.Model):
         null=False,
         verbose_name=_("Description"),
     )
-    mime_type = models.CharField(
+    mime_type = VarCharField(
         blank=True,
         help_text=_("MIME ContentType of the file."),
-        max_length=255,
         null=True,
         verbose_name=_("MIME"),
     )

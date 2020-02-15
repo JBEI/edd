@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Module contains the database models for the core EDD functionality.
 """

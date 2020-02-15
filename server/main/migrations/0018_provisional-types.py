@@ -3,7 +3,7 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
-import main.models.fields
+import edd.fields
 
 
 class Migration(migrations.Migration):
@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="proteinidentifier",
             name="accession_code",
-            field=main.models.fields.VarCharField(
+            field=edd.fields.VarCharField(
                 blank=True,
                 help_text="Required portion of Accession ID for easier lookup.",
                 null=True,

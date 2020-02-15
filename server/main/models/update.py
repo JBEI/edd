@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Models and related classes for dealing with Update objects.
 """
@@ -7,19 +6,19 @@ import arrow
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from threadlocals.threadlocals import get_current_request
+
+from edd.fields import VarCharField
 
 from .common import EDDSerialize
 
 
 class UpdateManager(models.Manager):
     def get_queryset(self):
-        return super(UpdateManager, self).get_queryset().select_related("mod_by")
+        return super().get_queryset().select_related("mod_by")
 
 
-@python_2_unicode_compatible
 class Update(models.Model, EDDSerialize):
     """ A user update; referenced from other models that track creation and/or modification.
         Views get an Update object by calling main.models.Update.load_request_update(request) to
@@ -64,7 +63,7 @@ class Update(models.Model, EDDSerialize):
             time = arrow.get(self.mod_time).humanize()
         except Exception:
             time = self.mod_time
-        return "%s by %s" % (time, self.mod_by)
+        return f"{time} by {self.mod_by}"
 
     @classmethod
     def load_update(cls, user=None, path=None):
@@ -141,22 +140,19 @@ class Update(models.Model, EDDSerialize):
         return arrow.get(self.mod_time).to("local").strftime(format_string)
 
 
-@python_2_unicode_compatible
 class Datasource(models.Model):
-    """ Defines an outside source for bits of data in the system. Initially developed to track
-        where basic metabolite information originated (e.g. BIGG, KEGG, manual input). """
+    """
+    Defines an outside source for bits of data in the system. Initially
+    developed to track where basic metabolite information originated
+    (e.g. BIGG, KEGG, manual input).
+    """
 
-    name = models.CharField(
+    name = VarCharField(
         help_text=_("The source used for information on a measurement type."),
-        max_length=255,
         verbose_name=_("Datasource"),
     )
-    url = models.CharField(
-        blank=True,
-        default="",
-        help_text=_("URL of the source."),
-        max_length=255,
-        verbose_name=_("URL"),
+    url = VarCharField(
+        blank=True, default="", help_text=_("URL of the source."), verbose_name=_("URL")
     )
     download_date = models.DateField(
         auto_now=True,
@@ -173,7 +169,7 @@ class Datasource(models.Model):
     )
 
     def __str__(self):
-        return "%s <%s>" % (self.name, self.url)
+        return f"{self.name} <{self.url}>"
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
@@ -181,4 +177,4 @@ class Datasource(models.Model):
             if update is None:
                 update = Update.load_update()
             self.created = update
-        super(Datasource, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
