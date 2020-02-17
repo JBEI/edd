@@ -367,6 +367,15 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url, data={"ordering": "display_order"})
         self.assertEqual(response.status_code, codes.ok)
         actual = json.loads(response.content)
-        with factory.load_test_file("import_categories.json") as file:
-            expected = json.loads(file.read())
-        self.assertEqual(expected, actual)
+        # check the count in bootstrap is correct
+        self.assertEqual(actual["count"], 4)
+        # check the names/uuids match up
+        self.assertEqual(
+            [(record["name"], record["uuid"]) for record in actual["results"]],
+            [
+                ("Proteomics", "d281089f-9949-4da8-bffd-b3dfa4f16ac1"),
+                ("Metabolomics", "8f550f5c-e8d0-48a6-a433-95ded52189d5"),
+                ("Transcriptomics", "559f7d6e-3c49-4c7d-918d-85b56c0c8402"),
+                ("OD", "d23ec26a-e068-43a3-958d-59e7f1b6a780"),
+            ],
+        )
