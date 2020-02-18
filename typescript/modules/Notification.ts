@@ -5,12 +5,21 @@ import * as $ from "jquery";
 import * as ReconnectingWebSocket from "reconnecting-websocket";
 import * as Utl from "./Utl";
 
+export interface Options {
+    path?: string;
+    stub?: boolean;
+}
+
 export interface Message {
     message: string;
     tags: string[];
     payload: any;
     time: Date;
     uuid: string;
+}
+
+function contains(object: any, key: string): boolean {
+    return Object.prototype.hasOwnProperty.call(object, key);
 }
 
 type DisplayCallback = (msgs: Message[], count: number) => void;
@@ -23,7 +32,7 @@ export class NotificationSocket {
     private subscribers: DisplayCallback[];
     private tagActions: { [tag: string]: TagAction[] };
 
-    constructor(options?: any) {
+    constructor(options?: Options) {
         options = options || {};
         const path: string = options.path || "ws/notify/";
         const notify_url: URL = this.buildWebsocketURL(path);
@@ -33,10 +42,14 @@ export class NotificationSocket {
         this.subscribers = [];
         this.tagActions = {};
 
-        this.socket = new ReconnectingWebSocket(notify_url.toString());
-        this.socket.onopen = this.opened.bind(this);
-        this.socket.onclose = this.closed.bind(this);
-        this.socket.onmessage = this.receive.bind(this);
+        if (options.stub) {
+            this.socket = null;
+        } else {
+            this.socket = new ReconnectingWebSocket(notify_url.toString());
+            this.socket.onopen = this.opened.bind(this);
+            this.socket.onclose = this.closed.bind(this);
+            this.socket.onmessage = this.receive.bind(this);
+        }
     }
 
     markAllRead() {
@@ -47,7 +60,7 @@ export class NotificationSocket {
 
     markRead(uuid: string) {
         // keep UUID in messages map, but with null value
-        if (this.messages.hasOwnProperty(uuid)) {
+        if (contains(this.messages, uuid)) {
             this.messages[uuid] = null;
             --this.count;
         }
@@ -65,7 +78,7 @@ export class NotificationSocket {
      */
     addTagAction(tag: string, callback: TagAction): void {
         let actions: TagAction[] = [];
-        if (this.tagActions.hasOwnProperty(tag)) {
+        if (contains(this.tagActions, tag)) {
             actions = this.tagActions[tag];
         } else {
             this.tagActions[tag] = actions;
@@ -90,11 +103,11 @@ export class NotificationSocket {
 
     private receive(event) {
         const payload = JSON.parse(event.data);
-        if (payload.hasOwnProperty("messages")) {
+        if (contains(payload, "messages")) {
             this.processMessages(payload);
-        } else if (payload.hasOwnProperty("reset")) {
+        } else if (contains(payload, "reset")) {
             this.resetMessages();
-        } else if (payload.hasOwnProperty("dismiss")) {
+        } else if (contains(payload, "dismiss")) {
             this.dismissMessage(payload);
         }
         this.updateSubscribers();
@@ -120,7 +133,7 @@ export class NotificationSocket {
             const message = this.loadMessage(msg);
             // only add if not seen already; a message could arrive after it was
             // dismissed *in this window* but it will already have a key with null value
-            if (!this.messages.hasOwnProperty(message.uuid)) {
+            if (!contains(this.messages, message.uuid)) {
                 this.messages[message.uuid] = message;
             }
 
@@ -141,7 +154,9 @@ export class NotificationSocket {
     }
 
     private send(payload): void {
-        this.socket.send(JSON.stringify(payload));
+        if (this.socket !== null) {
+            this.socket.send(JSON.stringify(payload));
+        }
     }
 
     private sortMessages(): Message[] {

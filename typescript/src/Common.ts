@@ -11,7 +11,7 @@ import * as Notification from "../modules/Notification";
 
 import "../modules/Styles";
 
-export const notificationSocket = new Notification.NotificationSocket();
+export let notificationSocket = new Notification.NotificationSocket({ "stub": true });
 
 // called when the page loads
 export function prepareIt() {
@@ -34,22 +34,23 @@ export function prepareIt() {
 
     // adding handlers for notifications in menubar
     const menuElement = document.getElementById("notification-dropdown");
-    const menu = new Notification.NotificationMenu(menuElement, notificationSocket);
+    if (menuElement instanceof HTMLElement) {
+        notificationSocket = new Notification.NotificationSocket();
+        const menu = new Notification.NotificationMenu(menuElement, notificationSocket);
 
-    // Add a handler to auto-download messages with the "download" tag
-    // This handler is somewhat special in that it uses the browser to parse the HTML message
-    // content to extract the download link
-    notificationSocket.addTagAction("download", (message) => {
-        // only acting if the current document is active and focused
-        if (document.hasFocus()) {
-            const downloadLink = message.payload.url;
-            // and only act if a link is found
-            if (downloadLink) {
-                notificationSocket.markRead(message.uuid);
-                window.location.replace(downloadLink);
+        // Add a handler to auto-download messages with the "download" tag
+        notificationSocket.addTagAction("download", (message) => {
+            // only acting if the current document is active and focused
+            if (document.hasFocus()) {
+                const downloadLink = message.payload.url;
+                // and only act if a link is found
+                if (downloadLink) {
+                    notificationSocket.markRead(message.uuid);
+                    window.location.replace(downloadLink);
+                }
             }
-        }
-    });
+        });
+    }
 }
 
 // use JQuery ready event shortcut to call prepareIt when page is ready
