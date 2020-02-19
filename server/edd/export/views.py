@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Views for running exports of data from EDD.
 """
@@ -11,17 +10,16 @@ from django.views import generic
 
 from edd.notify.backend import RedisBroker
 
-from .. import tasks
-from ..export import forms as export_forms
-from ..export.broker import ExportBroker
-from ..export.sbml import SbmlExport
-from ..export.table import ExportSelection
+from . import forms, tasks
+from .broker import ExportBroker
+from .sbml import SbmlExport
+from .table import ExportSelection
 
 logger = logging.getLogger(__name__)
 
 
 class EDDExportView(generic.TemplateView):
-    """ Base view for exporting EDD information. """
+    """Base view for exporting EDD information."""
 
     study = None
     _export_ok = False
@@ -42,12 +40,12 @@ class EDDExportView(generic.TemplateView):
     selection = property(get_selection)
 
     def get_template_names(self):
-        """ Override in child classes to specify alternate templates. """
-        return ["main/export.html"]
+        # Override in child classes to specify alternate templates.
+        return ["edd/export/export.html"]
 
     def init_forms(self, request, payload):
         fallback = {"studyId": [self.study.pk]} if self.study else None
-        select_form = export_forms.ExportSelectionForm(
+        select_form = forms.ExportSelectionForm(
             data=payload, user=request.user, fallback=fallback
         )
         try:
@@ -99,16 +97,14 @@ class EDDExportView(generic.TemplateView):
 
 
 class ExportView(EDDExportView):
-    """ View to export EDD information in a table/CSV format. """
+    """View to export EDD information in a table/CSV format."""
 
     def init_forms(self, request, payload):
         context = super().init_forms(request, payload)
         context.update(option_form=None)
         try:
-            initial = export_forms.ExportOptionForm.initial_from_user_settings(
-                request.user
-            )
-            option_form = export_forms.ExportOptionForm(
+            initial = forms.ExportOptionForm.initial_from_user_settings(request.user)
+            option_form = forms.ExportOptionForm(
                 data=payload, initial=initial, selection=self.selection
             )
             context.update(option_form=option_form)
@@ -140,22 +136,21 @@ class ExportView(EDDExportView):
 
 
 class WorklistView(EDDExportView):
-    """ View to export lines in a worklist template. """
+    """View to export lines in a worklist template."""
 
     def get_template_names(self):
-        """ Override in child classes to specify alternate templates. """
-        return ["main/worklist.html"]
+        return ["edd/export/worklist.html"]
 
     def init_forms(self, request, payload):
         context = super().init_forms(request, payload)
-        worklist_form = export_forms.WorklistForm()
+        worklist_form = forms.WorklistForm()
         context.update(
             defaults_form=worklist_form.defaults_form,
             flush_form=worklist_form.flush_form,
             worklist_form=worklist_form,
         )
         try:
-            worklist_form = export_forms.WorklistForm(data=payload)
+            worklist_form = forms.WorklistForm(data=payload)
             context.update(
                 defaults_form=worklist_form.defaults_form,
                 flush_form=worklist_form.flush_form,
@@ -193,8 +188,7 @@ class SbmlView(EDDExportView):
         self.sbml_export = None
 
     def get_template_names(self):
-        """ Override in child classes to specify alternate templates. """
-        return ["main/sbml_export.html"]
+        return ["edd/export/sbml_export.html"]
 
     def init_forms(self, request, payload):
         context = super().init_forms(request, payload)

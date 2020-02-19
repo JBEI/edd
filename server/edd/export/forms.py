@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import logging
 from collections import OrderedDict
 
@@ -8,14 +6,15 @@ from django.db.models import Prefetch
 from django.http import QueryDict
 from django.utils.translation import ugettext_lazy as _
 
-from .. import models
+from main import models
+
 from . import table
 
 logger = logging.getLogger(__name__)
 
 
 class ExportSelectionForm(forms.Form):
-    """ Form used for selecting objects to export. """
+    """Form used for selecting objects to export."""
 
     studyId = forms.ModelMultipleChoiceField(
         queryset=models.Study.objects.all(),
@@ -108,7 +107,7 @@ class ExportSelectionForm(forms.Form):
 
 
 class WorklistForm(forms.Form):
-    """ Form used for selecting worklist export options. """
+    """Form used for selecting worklist export options."""
 
     template = forms.ModelChoiceField(
         empty_label=None,
@@ -186,7 +185,9 @@ class WorklistForm(forms.Form):
 
 
 class WorklistDefaultsForm(forms.Form):
-    """ Sub-form used to select the default values used in columns of a worklist export. """
+    """
+    Sub-form used to select the default values used in columns of a worklist export.
+    """
 
     def __init__(self, *args, **kwargs):
         self._template = kwargs.pop("template", None)
@@ -209,10 +210,13 @@ class WorklistDefaultsForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        # this is SUPER GROSS, but apparently the only way to change the form output from here is
-        #   to muck with the source data, by poking the undocumented _mutable property of QueryDict
+        # this is SUPER GROSS,
+        #   but apparently the only way to change the form output from here
+        #   is to muck with the source data,
+        #   by poking the undocumented _mutable property of QueryDict
         self.data._mutable = True
-        # if no incoming data for field, fall back to default (initial) instead of empty string
+        # if no incoming data for field,
+        # fall back to default (initial) instead of empty string
         for name, field in self._created_fields.items():
             key = self.add_prefix(name)
             value = field.widget.value_from_datadict(self.data, self.files, key)
@@ -232,8 +236,12 @@ class WorklistDefaultsForm(forms.Form):
 
 
 class WorklistFlushForm(WorklistDefaultsForm):
-    """ Adds a field to take a number of rows to output before inserting a flush row with selected
-        defaults. Entering 0 means no flush rows. """
+    """
+    Sub-form used to describe how to insert flush rows in worklist.
+
+    Adds a field to take a number of rows to output before inserting a flush row
+    with selected defaults. Entering 0 means no flush rows.
+    """
 
     row_count = forms.IntegerField(
         initial=0,
@@ -252,7 +260,9 @@ measure_option = table.TableOptions(models.Measurement)
 
 
 class ExportOptionForm(forms.Form):
-    """ Form used for changing options on exports. """
+    """
+    Form used for changing options on exports.
+    """
 
     layout = forms.ChoiceField(
         choices=table.ExportOption.LAYOUT_CHOICE,
@@ -317,8 +327,10 @@ class ExportOptionForm(forms.Form):
 
     @classmethod
     def initial_from_user_settings(cls, user):
-        """ Looks for preferences in user profile to set form choices; if found, apply, otherwise
-            sets all options. """
+        """
+        Looks for preferences in user profile to set form choices;
+        if found, apply, otherwise sets all options.
+        """
         prefs = {}
         if hasattr(user, "userprofile"):
             prefs = user.userprofile.preferences

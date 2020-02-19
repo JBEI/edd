@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Backend for exporting SBML files."""
 # FIXME need to track intracellular and extracellular measurements separately
 # (and assign to SBML species differently)
@@ -23,16 +22,15 @@ from django.template.defaulttags import register
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
-from six import string_types
 from threadlocals.threadlocals import get_current_request
 
-from .. import models
-from ..forms import (
+from main import models
+from main.forms import (
     MetadataTypeAutocompleteWidget,
     SbmlExchangeAutocompleteWidget,
     SbmlSpeciesAutocompleteWidget,
 )
-from ..utilities import interpolate_at
+from main.utilities import interpolate_at
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +42,7 @@ Point = namedtuple("Point", ["x", "y"])
 class SbmlForm(forms.Form):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("label_suffix", "")
-        super(SbmlForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._sbml_warnings = []
 
     @property
@@ -54,10 +52,11 @@ class SbmlForm(forms.Form):
         return self._sbml_warnings
 
 
-class SbmlExport(object):
+class SbmlExport:
     """
-    Controller class handling the data coming from SbmlForm objects, creating further SbmlForm
-    objects based on previous input, and exporting an SBML file based on the inputs.
+    Controller class handling the data coming from SbmlForm objects,
+    creating further SbmlForm objects based on previous input,
+    and exporting an SBML file based on the inputs.
     """
 
     def __init__(self, selection, *args, **kwargs):
@@ -516,7 +515,7 @@ class SbmlExport(object):
                         name = m.measurement_type.short_name
                         value = "\t".join(combined)
                         # TODO: find a better way to store/update this magic string
-                        notes["LCMSLabelData"].append(" %s\tM-0\t%s" % (name, value))
+                        notes["LCMSLabelData"].append(f" {name}\tM-0\t{value}")
                     else:
                         logger.warning(
                             "No vector data found for %(measurement)s at %(time)s",
@@ -780,7 +779,7 @@ class SbmlExportMeasurementsForm(SbmlForm):
                 main.export.table.ExportSelection
         """
         qfilter = kwargs.pop("qfilter", None)
-        super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._line = line
         self._init_fields(qfilter)
 
@@ -948,7 +947,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
     field_order = ["gcdw_default", "gcdw_conversion", "interpolate"]
 
     def clean(self):
-        data = super(SbmlExportOdForm, self).clean()
+        data = super().clean()
         gcdw_default = data.get("gcdw_default", self.DEFAULT_GCDW_FACTOR)
         conversion_meta = data.get("gcdw_conversion", None)
         if conversion_meta is None:
@@ -1039,7 +1038,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
 
     def update_bound_data_with_defaults(self):
         """Forces data bound to the form to update to default values."""
-        super(SbmlExportOdForm, self).update_bound_data_with_defaults()
+        super().update_bound_data_with_defaults()
         if self.is_bound:
             # create mutable copy of QueryDict
             replace_data = QueryDict(mutable=True)
@@ -1049,7 +1048,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             if cfield.initial:
                 name = self.add_prefix("gcdw_conversion")
                 for i, part in enumerate(cfield.widget.decompress(cfield.initial)):
-                    replace_data["%s_%s" % (name, i)] = part
+                    replace_data[f"{name}_{i}"] = part
             # set initial gcdw_default value
             dfield = self.fields["gcdw_default"]
             replace_data[self.add_prefix("gcdw_default")] = "%s" % dfield.initial
@@ -1067,7 +1066,7 @@ class SbmlMatchReactionWidget(forms.widgets.MultiWidget):
             SbmlSpeciesAutocompleteWidget(template),
             SbmlExchangeAutocompleteWidget(template),
         )
-        super(SbmlMatchReactionWidget, self).__init__(widgets, attrs)
+        super().__init__(widgets, attrs)
 
     def decompress(self, value):
         if value is None:
@@ -1086,7 +1085,7 @@ class SbmlMatchReactionField(forms.MultiValueField):
         # these are only placeholders
         fields = (forms.CharField(), forms.CharField())
         self.widget = SbmlMatchReactionWidget(template)
-        super(SbmlMatchReactionField, self).__init__(fields, *args, **kwargs)
+        super().__init__(fields, *args, **kwargs)
 
     def compress(self, data_list):
         if data_list:
@@ -1102,13 +1101,13 @@ class SbmlMatchReactions(SbmlForm):
     """
 
     def __init__(self, sbml_template, match_fields, *args, **kwargs):
-        super(SbmlMatchReactions, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._sbml_template = sbml_template
         self.fields.update(match_fields)
 
     def clean(self):
         # TODO validate the choices
-        return super(SbmlMatchReactions, self).clean()
+        return super().clean()
 
 
 class SbmlExportSelectionForm(SbmlForm):
@@ -1127,7 +1126,7 @@ class SbmlExportSelectionForm(SbmlForm):
     )
 
     def __init__(self, t_range, points=None, line=None, *args, **kwargs):
-        super(SbmlExportSelectionForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         time_field = self.fields["time_select"]
         if points is not None:
             initial = points[0] if points else None
@@ -1159,7 +1158,7 @@ class SbmlExportSelectionForm(SbmlForm):
         self.data = replace_data
 
 
-class SbmlBuilder(object):
+class SbmlBuilder:
     """
     A little facade class to provide better interface to libsbml and some higher-level
     utilities to work with SBML files.
@@ -1243,16 +1242,16 @@ class SbmlBuilder(object):
         notes.update(**kwargs)
         body.removeChildren()
         for key, value in notes.items():
-            if isinstance(value, string_types):
-                self._add_p_tag(body, "%s: %s" % (key, value))
+            if isinstance(value, str):
+                self._add_p_tag(body, f"{key}: {value}")
             else:
                 try:
                     # add a p-tag for every element in list
                     for line in value:
-                        self._add_p_tag(body, "%s:%s" % (key, line))
+                        self._add_p_tag(body, f"{key}:{line}")
                 except TypeError:
                     # add p-tag and append any XML contained in value
-                    p_node = self._add_p_tag(body, "%s: " % (key,))
+                    p_node = self._add_p_tag(body, f"{key}: ")
                     if isinstance(value, libsbml.XMLNode):
                         p_node.addChild(value)
         return _note_node

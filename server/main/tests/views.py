@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Tests used to validate the tutorial screencast functionality.
 """
@@ -508,31 +507,39 @@ class StudyViewTests(TestCase):
             )
             self.assertContains(response, "fake error", status_code=codes.bad_request)
 
-    def test_lines_export(self):
+    def test_lines_export_csv(self):
         target_url = reverse("main:lines", kwargs=self.target_kwargs)
         line = factory.LineFactory(study=self.target_study)
-        # csv
         response = self.client.post(
             target_url,
             data={"action": "export", "export": "csv", "lineId": line.pk},
             follow=True,
         )
-        self.assertTemplateUsed(response, "main/export.html")
-        # sbml
+        self.assertTemplateUsed(response, "edd/export/export.html")
+
+    def test_lines_export_sbml(self):
+        target_url = reverse("main:lines", kwargs=self.target_kwargs)
+        line = factory.LineFactory(study=self.target_study)
         response = self.client.post(
             target_url,
             data={"action": "export", "export": "sbml", "lineId": line.pk},
             follow=True,
         )
-        self.assertTemplateUsed(response, "main/sbml_export.html")
-        # worklist
+        self.assertTemplateUsed(response, "edd/export/sbml_export.html")
+
+    def test_lines_export_worklist(self):
+        target_url = reverse("main:lines", kwargs=self.target_kwargs)
+        line = factory.LineFactory(study=self.target_study)
         response = self.client.post(
             target_url,
             data={"action": "export", "export": "worklist", "lineId": line.pk},
             follow=True,
         )
-        self.assertTemplateUsed(response, "main/worklist.html")
-        # new study
+        self.assertTemplateUsed(response, "edd/export/worklist.html")
+
+    def test_lines_export_new_study(self):
+        target_url = reverse("main:lines", kwargs=self.target_kwargs)
+        line = factory.LineFactory(study=self.target_study)
         response = self.client.post(
             target_url,
             data={"action": "export", "export": "study", "lineId": line.pk},
@@ -662,7 +669,7 @@ class StudyViewTests(TestCase):
             data={"action": "export", "assayId": [assay.pk]},
             follow=True,
         )
-        self.assertTemplateUsed(response, "main/export.html")
+        self.assertTemplateUsed(response, "edd/export/export.html")
         self.assertContains(response, self.target_study.name)
         # TODO: replace with a proper parser to eliminate brittle exact match
         self.assertContains(response, f'name="assayId" value="{assay.pk}"')
@@ -673,7 +680,7 @@ class StudyViewTests(TestCase):
             data={"action": "export"},
             follow=True,
         )
-        self.assertTemplateUsed(response, "main/export.html")
+        self.assertTemplateUsed(response, "edd/export/export.html")
         self.assertContains(response, self.target_study.name)
         # TODO: replace with a proper parser to eliminate brittle exact match
         self.assertContains(response, f'name="studyId" value="{self.target_study.pk}"')

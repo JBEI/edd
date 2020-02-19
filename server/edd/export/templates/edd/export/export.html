@@ -30,10 +30,10 @@
 
 {% block content %}
 <!-- Line info section -->
-{% include "main/include/export/linetable.html" %}
+{% include "edd/export/linetable.html" %}
 
 <!-- start of main form -->
-<form method="post" id="exportForm" action="{% url 'main:export' %}">
+<form method="post" id="exportForm" action="{% url 'export:export' %}">
   {% csrf_token %}
   <div class="pageSection">
     <div class="sectionHead">{% trans 'Choose the export layout.' %}</div>

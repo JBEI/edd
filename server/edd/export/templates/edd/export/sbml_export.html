@@ -44,9 +44,9 @@
 
 {% block content %}
   <!-- Line info section -->
-  {% include "main/include/export/linetable.html" %}
+  {% include "edd/export/linetable.html" %}
 
-  <form method="post" id="exportForm" action="{% url 'main:sbml' %}">
+  <form method="post" id="exportForm" action="{% url 'export:sbml' %}">
     {% csrf_token %}
     <!-- carry over selection -->
     {{ select_form.as_p }}
@@ -75,7 +75,7 @@
               {% trans "Step 1: Select the SBML template file to use for export" %}
             </a>
           </span>
-          {% include 'main/include/export/warningnotice.html' %}
+          {% include 'edd/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep0main">
           {% for message in warnings_list %}
@@ -97,7 +97,7 @@
               {% trans "Step 2: Find OD Data" %}
             </a>
           </span>
-          {% include 'main/include/export/warningnotice.html' %}
+          {% include 'edd/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep1main">
           {% for message in warnings_list %}
@@ -105,7 +105,7 @@
           {% endfor %}
           <!-- measurement selection here -->
           {% with section_form=od_select_form %}
-          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
       </div>
@@ -123,14 +123,14 @@
               {% trans "Step 3: Select HPLC-like Measurements, and inputs" %}
             </a>
           </span>
-          {% include 'main/include/export/warningnotice.html' %}
+          {% include 'edd/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep2main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
           {% with section_form=hplc_select_form %}
-          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
       </div>
@@ -147,14 +147,14 @@
               {% trans "Step 4: Select LCMS-like Measurements, and inputs" %}
             </a>
           </span>
-          {% include 'main/include/export/warningnotice.html' %}
+          {% include 'edd/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep3main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
           {% with section_form=ms_select_form %}
-          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
       </div>
@@ -170,14 +170,14 @@
               {% trans "Step 5: Select RAMOS O2/CO2 Measurements" %}
             </a>
           </span>
-          {% include 'main/include/export/warningnotice.html' %}
+          {% include 'edd/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep4main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
           {% with section_form=ramos_select_form %}
-          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
       </div>
@@ -193,14 +193,14 @@
               {% trans "Step 6: Select Transcriptomics/Proteomics Measurements" %}
             </a>
           </span>
-          {% include 'main/include/export/warningnotice.html' %}
+          {% include 'edd/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep5main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
           {% with section_form=omics_select_form %}
-          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
       </div>
@@ -216,7 +216,7 @@
               {% trans "Step 7: Pre-parse SBML model and match exchanges and species to measurements" %}
             </a>
           </span>
-          {% include 'main/include/export/warningnotice.html' %}
+          {% include 'edd/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep6main">
           {% for message in warnings_list %}
@@ -266,7 +266,7 @@
     <div class="pageSection" style="margin:10px;" id="timeselectmain">
       <div class="sectionHead">
         <span>{% trans "Export SBML at timepoint" %}</span>
-        {% include 'main/include/export/warningnotice.html' %}
+        {% include 'edd/export/warningnotice.html' %}
       </div>
       <div class="sectionContent">
         {% for message in warnings_list %}

@@ -33,10 +33,10 @@
 <h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
 {% endif %}
 <!-- Line info section -->
-{% include "main/include/export/linetable.html" %}
+{% include "edd/export/linetable.html" %}
 
 <!-- start of main form -->
-<form method="post" id="worklistForm" action="{% url 'main:worklist' %}">
+<form method="post" id="worklistForm" action="{% url 'export:worklist' %}">
   {% csrf_token %}
   <div class="pageSection">
     <div class="sectionHead">{% trans 'Choose a worklist template and options.' %}</div>

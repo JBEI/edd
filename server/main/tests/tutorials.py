@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Tests used to validate the tutorial screencast functionality.
 """
@@ -17,8 +16,9 @@ from django.urls import reverse
 from requests import codes
 
 from edd import TestCase
+from edd.export import table
 
-from .. import export, models, tasks
+from .. import models, tasks
 from . import factory
 
 _CONTEXT_FILENAME = "%s.post.context.json"
@@ -42,7 +42,7 @@ class ExperimentDescriptionTests(TestCase):
         )
 
     def setUp(self):
-        super(ExperimentDescriptionTests, self).setUp()
+        super().setUp()
         self.client.force_login(self.user)
 
     def _run_upload(self, name):
@@ -323,7 +323,7 @@ class FBAImportDataTests(ImportDataTestsMixin, TestCase):
     fixtures = ["main/tutorial_fba"]
 
     def setUp(self):
-        super(FBAImportDataTests, self).setUp()
+        super().setUp()
         self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=7)
         self.client.force_login(self.user)
@@ -367,7 +367,7 @@ class PagedImportTests(ImportDataTestsMixin, TestCase):
     fixtures = ["main/tutorial_pcap"]
 
     def setUp(self):
-        super(PagedImportTests, self).setUp()
+        super().setUp()
         self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=20)
         self.client.force_login(self.user)
@@ -447,7 +447,7 @@ class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
     fixtures = ["main/tutorial_pcap"]
 
     def setUp(self):
-        super(PCAPImportDataTests, self).setUp()
+        super().setUp()
         self.user = get_user_model().objects.get(pk=2)
         self.target_study = models.Study.objects.get(pk=20)
         self.client.force_login(self.user)
@@ -512,7 +512,7 @@ class FBAExportDataTests(TestCase):
 
     def test_step1_sbml_export(self):
         "First step loads the SBML export page, and has some warnings."
-        response = self.client.get(reverse("main:sbml"), data={"lineId": 8})
+        response = self.client.get(reverse("export:sbml"), data={"lineId": 8})
         self.assertEqual(response.status_code, codes.ok)
         self.assertEqual(len(response.context["sbml_warnings"]), 5)
 
@@ -520,7 +520,7 @@ class FBAExportDataTests(TestCase):
         "Second step selects an SBML Template."
         with factory.load_test_file("ExportData_FBA_step2.post") as fp:
             POST = QueryDict(fp.read())
-        response = self.client.post(reverse("main:sbml"), data=POST)
+        response = self.client.post(reverse("export:sbml"), data=POST)
         self.assertEqual(response.status_code, codes.ok)
         self.assertEqual(len(response.context["sbml_warnings"]), 4)
 
@@ -528,7 +528,7 @@ class FBAExportDataTests(TestCase):
         "Third step maps metabolites to species/reactions, and selects an export timepoint."
         with factory.load_test_file("ExportData_FBA_step3.post") as fp:
             POST = QueryDict(fp.read())
-        response = self.client.post(reverse("main:sbml"), data=POST)
+        response = self.client.post(reverse("export:sbml"), data=POST)
         self.assertEqual(response.status_code, codes.ok)
         # TODO figure out how to test content of chunked responses
 
@@ -558,7 +558,7 @@ class PCAPExportDataTests(TestCase):
     def _buildColumn(self, model, fieldname, lookup=None):
         # faking the TableOptions functionality selecting columns from forms
         field = model._meta.get_field(fieldname)
-        return export.table.ColumnChoice(
+        return table.ColumnChoice(
             model,
             field.name,
             field.verbose_name,
@@ -567,11 +567,9 @@ class PCAPExportDataTests(TestCase):
 
     def test_table_by_line_export(self):
         # make selection for the study
-        selection = export.table.ExportSelection(
-            self.user, studyId=[self.target_study.pk]
-        )
+        selection = table.ExportSelection(self.user, studyId=[self.target_study.pk])
         # make options for a minimal output
-        options = export.table.ExportOption(
+        options = table.ExportOption(
             columns=[
                 self._buildColumn(models.Assay, "name"),
                 self._buildColumn(
@@ -582,7 +580,7 @@ class PCAPExportDataTests(TestCase):
             ]
         )
         # run the export
-        result = export.table.TableExport(selection, options)
+        result = table.TableExport(selection, options)
         # check the results
         output = result.output()
         output_lines = output.splitlines()
@@ -593,12 +591,10 @@ class PCAPExportDataTests(TestCase):
 
     def test_table_by_point_export(self):
         # make selection for the study
-        selection = export.table.ExportSelection(
-            self.user, studyId=[self.target_study.pk]
-        )
+        selection = table.ExportSelection(self.user, studyId=[self.target_study.pk])
         # make options for a minimal output, with by-point layout
-        options = export.table.ExportOption(
-            layout=export.table.ExportOption.DATA_COLUMN_BY_POINT,
+        options = table.ExportOption(
+            layout=table.ExportOption.DATA_COLUMN_BY_POINT,
             columns=[
                 self._buildColumn(models.Assay, "name"),
                 self._buildColumn(
@@ -609,7 +605,7 @@ class PCAPExportDataTests(TestCase):
             ],
         )
         # run the export
-        result = export.table.TableExport(selection, options)
+        result = table.TableExport(selection, options)
         # check the results
         output = result.output()
         output_lines = output.splitlines()

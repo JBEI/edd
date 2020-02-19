@@ -157,11 +157,6 @@ class MeasurementType(EDDSerialize, models.Model):
         return self.type_group == MeasurementType.Group.PHOSPHOR
 
     def export_name(self):
-        # TODO: remove if-block once django-model-utils updates for Django 1.11
-        # https://github.com/jazzband/django-model-utils/pull/279
-        # see: main/export/table.py:130
-        if self.type_group == MeasurementType.Group.PROTEINID:
-            return self.proteinidentifier.export_name()
         return self.type_name
 
 

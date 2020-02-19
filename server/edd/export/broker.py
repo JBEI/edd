@@ -1,6 +1,3 @@
-# coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 import logging
 
 from django.http import QueryDict
@@ -15,7 +12,7 @@ Utility code to handle negotiations and persistence of data in EDD exports.
 logger = logging.getLogger(__name__)
 
 
-class ExportBroker(object):
+class ExportBroker:
     def __init__(self, user_id):
         self.user = user_id
         key_prefix = f"{__name__}.{self.__class__.__name__}:"

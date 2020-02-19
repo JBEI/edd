@@ -22,6 +22,7 @@ urlpatterns = [
     path("health/", lambda request: HttpResponse(), name="healthcheck"),
     path("admin/", admin.site.urls),
     path("", include("main.urls", namespace="main")),
+    path("export/", include("edd.export.urls", namespace="export")),
     # allauth does not support namespacing
     path("accounts/", include("allauth.urls")),
     path("utilities/", include("tools.urls", namespace="tools")),

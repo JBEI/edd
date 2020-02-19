@@ -1,7 +1,8 @@
 from edd import TestCase
-from main import export, models
+from main import models
+from main.tests import factory
 
-from . import factory
+from . import sbml, table
 
 
 def bad_function(*args, **kwargs):
@@ -17,26 +18,26 @@ def load_metadata(name):
 def test_columnchoice_from_model_default_value():
     default = factory.fake.word()
     column = models.WorklistColumn(default_value=default)
-    choice = export.table.ColumnChoice.from_model(column)
+    choice = table.ColumnChoice.from_model(column)
     assert choice.get_value(None) == default
 
 
 def test_columnchoice_convert_none_instance_assay():
-    choice = export.table.EmptyChoice()
+    choice = table.EmptyChoice()
     sentinel = object()
     result = choice.convert_instance_from_assay(None, default=sentinel)
     assert result is sentinel
 
 
 def test_columnchoice_convert_none_instance_measurement():
-    choice = export.table.ColumnChoice(models.Assay, "", "", lambda: "")
+    choice = table.ColumnChoice(models.Assay, "", "", lambda: "")
     sentinel = object()
     result = choice.convert_instance_from_measure(None, default=sentinel)
     assert result is sentinel
 
 
 def test_columnchoice_lookup_exception_gives_empty_string():
-    choice = export.table.ColumnChoice(None, None, None, bad_function)
+    choice = table.ColumnChoice(None, None, None, bad_function)
     result = choice.get_value(None)
     assert result == ""
 
@@ -72,17 +73,17 @@ class WorklistExportTests(TestCase):
         ]
 
     def _make_options(self, columns):
-        return export.table.ExportOption(
-            layout=export.table.ExportOption.DATA_COLUMN_BY_LINE,
-            separator=export.table.ExportOption.COMMA_SEPARATED_TOKEN,
+        return table.ExportOption(
+            layout=table.ExportOption.DATA_COLUMN_BY_LINE,
+            separator=table.ExportOption.COMMA_SEPARATED_TOKEN,
             line_section=False,
             protocol_section=False,
-            columns=[export.table.ColumnChoice.from_model(c) for c in columns],
+            columns=[table.ColumnChoice.from_model(c) for c in columns],
         )
 
     def _make_selection(self, user=None):
         user = self.user if user is None else user
-        return export.table.ExportSelection(user=user, studyId=[self.study.pk])
+        return table.ExportSelection(user=user, studyId=[self.study.pk])
 
     def test_build_list(self):
         # create template
@@ -90,7 +91,7 @@ class WorklistExportTests(TestCase):
             name="test_only_line_metadata", protocol=self.protocol
         )
         # build a worklist
-        worklist = export.table.WorklistExport(None, None, template)
+        worklist = table.WorklistExport(None, None, template)
         # validate it creates correct assay sequence
         results = list(worklist._build_list(self.lines, self.assays))
         # 20 lines - 5 lines-with-assays + (5*3) assays-from-lines = 30
@@ -120,7 +121,7 @@ class WorklistExportTests(TestCase):
         options = self._make_options(columns)
 
         # run export
-        result = export.table.WorklistExport(selection, options, template)
+        result = table.WorklistExport(selection, options, template)
         output = result.output()
 
         # validate results
@@ -184,7 +185,7 @@ class WorklistExportTests(TestCase):
         options = self._make_options(columns)
 
         # run export
-        result = export.table.WorklistExport(selection, options, template)
+        result = table.WorklistExport(selection, options, template)
         output = result.output()
 
         # validate results
@@ -226,7 +227,7 @@ class WorklistExportTests(TestCase):
         options = self._make_options(columns)
 
         # run export
-        result = export.table.WorklistExport(selection, options, template)
+        result = table.WorklistExport(selection, options, template)
         output = result.output()
 
         # validate results
@@ -272,7 +273,7 @@ class WorklistExportTests(TestCase):
         options.blank_columns = options.columns
 
         # run export
-        result = export.table.WorklistExport(selection, options, template)
+        result = table.WorklistExport(selection, options, template)
         output = result.output()
 
         # validate results
@@ -283,3 +284,28 @@ class WorklistExportTests(TestCase):
         self.assertEqual(lines[11], ",,")
         self.assertEqual(lines[22], ",,")
         self.assertEqual(lines[33], ",,")
+
+
+class SBMLUtilTests(TestCase):
+    """Unit tests for various utilities used in SBML export."""
+
+    def test_sbml_notes(self):
+        builder = sbml.SbmlBuilder()
+        notes = builder.create_note_body()
+        notes = builder.update_note_body(
+            notes,
+            **{
+                "CONCENTRATION_CURRENT": [0.5],
+                "CONCENTRATION_HIGHEST": [1.0],
+                "CONCENTRATION_LOWEST": [0.01],
+            },
+        )
+        notes_dict = builder.parse_note_body(notes)
+        self.assertEqual(
+            dict(notes_dict),
+            {
+                "CONCENTRATION_CURRENT": "0.5",
+                "CONCENTRATION_LOWEST": "0.01",
+                "CONCENTRATION_HIGHEST": "1.0",
+            },
+        )

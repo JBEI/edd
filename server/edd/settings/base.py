@@ -98,6 +98,7 @@ INSTALLED_APPS = (
     "graphene_django",  # graphene-django in pip
     # EDD apps
     "main.apps.EDDConfig",
+    "edd.export.apps.ExportConfig",
     "edd_file_importer",
     "tools.apps.UtilsConfig",
     "edd.profile.apps.ProfileConfig",

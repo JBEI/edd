@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from django.contrib.auth.decorators import login_required
 from django.urls import include, path
 
@@ -91,10 +89,6 @@ urlpatterns = [
     # Individual study-specific pages loaded by slug
     # reverse('main:overview', kwargs={'slug': slug})
     path("s/<slug:slug>/", include(study_url_patterns)),
-    # "export" URLs
-    path("export/", login_required(views.ExportView.as_view()), name="export"),
-    path("worklist/", login_required(views.WorklistView.as_view()), name="worklist"),
-    path("sbml/", login_required(views.SbmlView.as_view()), name="sbml"),
     # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
     path(
         "utilities/parsefile/",

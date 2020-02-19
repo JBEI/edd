@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import logging
 
 from django import forms
@@ -18,11 +16,11 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
+from edd.export.sbml import validate_sbml_attachment
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi, IceApiException
 
 from . import models
-from .export.sbml import validate_sbml_attachment
 from .forms import (
     MeasurementTypeAutocompleteWidget,
     MetadataTypeAutocompleteWidget,
@@ -55,7 +53,7 @@ class AssayAdmin(admin.ModelAdmin):
     search_fields = ("name", "line__name", "protocol__name", "line__study__name")
 
     def get_queryset(self, request):
-        q = super(AssayAdmin, self).get_queryset(request)
+        q = super().get_queryset(request)
         return q.select_related("line__study", "protocol")
 
     def line_name(self, instance):
@@ -107,7 +105,7 @@ class MetadataTypeAdmin(admin.ModelAdmin):
     search_fields = ("type_name",)
 
     def get_queryset(self, request):
-        q = super(MetadataTypeAdmin, self).get_queryset(request)
+        q = super().get_queryset(request)
         self._num_lines = models.Line.metadata_type_frequencies()
         self._num_assay = models.Assay.metadata_type_frequencies()
         # q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
@@ -164,7 +162,7 @@ class ProtocolAdminForm(forms.ModelForm):
         widgets = {"owned_by": UserAutocompleteWidget()}
 
     def clean(self):
-        super(ProtocolAdminForm, self).clean()
+        super().clean()
         c_user = self.cleaned_data.get("owned_by", None)
         if c_user is not None:
             self.instance.owner = c_user
@@ -187,7 +185,7 @@ class ProtocolAdmin(EDDObjectAdmin):
     def save_model(self, request, obj, form, change):
         if not change:
             obj.owned_by = request.user
-        super(ProtocolAdmin, self).save_model(request, obj, form, change)
+        super().save_model(request, obj, form, change)
 
 
 class StrainAdmin(EDDObjectAdmin):
@@ -204,7 +202,7 @@ class StrainAdmin(EDDObjectAdmin):
     )
 
     def __init__(self, *args, **kwargs):
-        super(StrainAdmin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.ice_validator = RegistryValidator()
 
     def has_add_permission(self, request):
@@ -221,7 +219,7 @@ class StrainAdmin(EDDObjectAdmin):
         if db_field.name == "registry_id":
             kwargs["widget"] = RegistryAutocompleteWidget()
             kwargs["validators"] = [self.ice_validator.validate]
-        return super(StrainAdmin, self).formfield_for_dbfield(db_field, **kwargs)
+        return super().formfield_for_dbfield(db_field, **kwargs)
 
     def get_readonly_fields(self, request, obj=None):
         if obj and not obj.registry_id:
@@ -230,7 +228,7 @@ class StrainAdmin(EDDObjectAdmin):
         return ["name", "description", "registry_url", "study_list"]
 
     def get_queryset(self, request):
-        q = super(StrainAdmin, self).get_queryset(request)
+        q = super().get_queryset(request)
         q = q.annotate(
             num_lines=Count("line"), num_studies=Count("line__study", distinct=True)
         )
@@ -313,7 +311,7 @@ class StrainAdmin(EDDObjectAdmin):
             return
         if self.ice_validator.entry:
             obj.registry_url = self.ice_validator.entry.url
-        super(StrainAdmin, self).save_model(request, obj, form, change)
+        super().save_model(request, obj, form, change)
 
     def study_list(self, instance):
         qs = models.Study.objects.filter(line__strains=instance).distinct()
@@ -330,7 +328,7 @@ class StrainAdmin(EDDObjectAdmin):
                 ]
             )
             if count > 10:
-                html += ", and %s more." % (count - 10,)
+                html += ", and {} more.".format(count - 10)
             return mark_safe(html)
         return None
 
@@ -371,7 +369,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         return MergeForm
 
     def get_queryset(self, request):
-        qs = super(MeasurementTypeAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         if self.model == models.MeasurementType:
             qs = qs.filter(type_group=models.MeasurementType.Group.GENERIC)
         qs = qs.annotate(
@@ -418,7 +416,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         source = models.Datasource(name=request.user.username)
         source.save()
         obj.type_source = source
-        super(MeasurementTypeAdmin, self).save_model(request, obj, form, change)
+        super().save_model(request, obj, form, change)
 
     def study_list(self, instance):
         relevant_study = Q(line__assay__measurement__measurement_type=instance)
@@ -436,7 +434,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
                 ]
             )
             if count > 10:
-                html += ", and %s more." % (count - 10,)
+                html += ", and {} more.".format(count - 10)
             return mark_safe(html)
         return None
 
@@ -471,7 +469,7 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
     list_filter = [TagListFilter]
 
     def get_fields(self, request, obj=None):
-        return super(MetaboliteAdmin, self).get_fields(request, obj) + [
+        return super().get_fields(request, obj) + [
             "pubchem_cid",
             # grouping in tuple puts in a row
             ("molecular_formula", "molar_mass", "charge"),
@@ -499,12 +497,12 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
         return MeasurementTypeAutocompleteWidget(opt=opt)
 
     def get_queryset(self, request):
-        qs = super(MetaboliteAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         qs = qs.select_related("type_source")
         return qs
 
     def get_readonly_fields(self, request, obj=None):
-        readonly = super(MetaboliteAdmin, self).get_readonly_fields(request, obj)
+        readonly = super().get_readonly_fields(request, obj)
         # TODO: need to make a custom ModelForm to properly handle id_map and tags
         readonly = readonly + ["id_map", "tags"]
         if obj and obj.pubchem_cid is None:
@@ -534,7 +532,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
             labels["type_name"] = _("Protein Name")
             labels["accession_id"] = _("UniProt Accession ID")
 
-        generated_form = super(ProteinAdmin, self).get_form(request, obj, **kwargs)
+        generated_form = super().get_form(request, obj, **kwargs)
 
         # require that newly-created ProteinIdentifiers have an accession ID matching the
         # expected pattern. existing ID's that don't conform should still be editable
@@ -549,10 +547,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
         return generated_form
 
     def get_fields(self, request, obj=None):
-        return super(ProteinAdmin, self).get_fields(request, obj) + [
-            "accession_id",
-            ("length", "mass"),
-        ]
+        return super().get_fields(request, obj) + ["accession_id", ("length", "mass")]
 
     def get_list_display(self, request):
         # complete override
@@ -571,7 +566,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
         return MeasurementTypeAutocompleteWidget(opt=opt)
 
     def get_queryset(self, request):
-        qs = super(ProteinAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         qs = qs.select_related("type_source")
         return qs
 
@@ -583,9 +578,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
 
     def get_search_results(self, request, queryset, search_term):
         search_term = models.ProteinIdentifier.match_accession_id(search_term)
-        return super(ProteinAdmin, self).get_search_results(
-            request, queryset, search_term
-        )
+        return super().get_search_results(request, queryset, search_term)
 
     def refresh_uniprot_action(self, request, queryset):
         for entry in queryset:
@@ -596,7 +589,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
 
 class GeneAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
-        return super(GeneAdmin, self).get_fields(request, obj) + [
+        return super().get_fields(request, obj) + [
             # join these on the same row
             ("gene_length",)
         ]
@@ -612,7 +605,7 @@ class GeneAdmin(MeasurementTypeAdmin):
 
 class PhosphorAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
-        return super(PhosphorAdmin, self).get_fields(request, obj) + [
+        return super().get_fields(request, obj) + [
             ("excitation_wavelength", "emission_wavelength"),
             "reference_type",
             "study_list",
@@ -673,7 +666,7 @@ class StudyAdmin(EDDObjectAdmin):
     list_display = ["name", "description", "created", "updated"]
 
     def get_queryset(self, request):
-        q = super(StudyAdmin, self).get_queryset(request)
+        q = super().get_queryset(request)
         q = q.select_related("created__mod_by", "updated__mod_by")
         return q
 
@@ -710,9 +703,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "sbml_file":
             kwargs["queryset"] = models.Attachment.objects.filter(object_ref=self._obj)
-        return super(SBMLTemplateAdmin, self).formfield_for_foreignkey(
-            db_field, request, **kwargs
-        )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_fields(self, request, obj=None):
         if obj:
@@ -723,7 +714,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
     def get_form(self, request, obj=None, **kwargs):
         # save model for later
         self._obj = obj
-        return super(SBMLTemplateAdmin, self).get_form(request, obj, **kwargs)
+        return super().get_form(request, obj, **kwargs)
 
     def get_formsets_with_inlines(self, request, obj=None):
         for inline in self.get_inline_instances(request, obj):
@@ -733,7 +724,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
             yield inline.get_formset(request, obj), inline
 
     def get_queryset(self, request):
-        q = super(SBMLTemplateAdmin, self).get_queryset(request)
+        q = super().get_queryset(request)
         q = q.select_related("sbml_file")
         return q
 
@@ -753,10 +744,10 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
             obj.name = obj.biomass_exchange_name
             # stash the object so save_related can set obj.sbml_file
             self._obj = obj
-        super(SBMLTemplateAdmin, self).save_model(request, obj, form, change)
+        super().save_model(request, obj, form, change)
 
     def save_related(self, request, form, formsets, change):
-        super(SBMLTemplateAdmin, self).save_related(request, form, formsets, change)
+        super().save_related(request, form, formsets, change)
         if not change and len(form.files) == 1:
             # there will only be one file at this point
             self._obj.sbml_file = self._obj.files.all()[0]

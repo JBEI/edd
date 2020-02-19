@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Views dealing with displaying and manipulating Study records.
 """
@@ -19,12 +18,13 @@ from django.views import generic
 from requests import codes
 from rest_framework.reverse import reverse as rest_reverse
 
+from edd.export import forms as export_forms
+from edd.export import table
+from edd.export import views as export_views
+
 from .. import forms as edd_forms
 from .. import models as edd_models
 from .. import redis
-from ..export import forms as export_forms
-from ..export.table import ExportSelection
-from .export import ExportView, SbmlView, WorklistView
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +180,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         self.check_write_permission(request)
         instance = self.get_object()
         # re-using export selection to check if Study has data or not
-        selection = ExportSelection(request.user, studyId=[instance.pk])
+        selection = table.ExportSelection(request.user, studyId=[instance.pk])
         lvs = redis.LatestViewedStudies(self.request.user)
         lvs.remove_study(instance)
         if selection.measurements.count() == 0:
@@ -504,11 +504,18 @@ class StudyLinesView(StudyDetailBaseView):
         return False
 
     def handle_line_export(self, request, context, *args, **kwargs):
+        # use "csv" as default if no parameter provided
         export_type = request.POST.get("export", "csv")
         study = self.get_object()
-        return self._get_export_types().get(
-            export_type, ExportView.as_view(study=study)
-        )
+        # TODO: remove direct dependency on edd.export.views
+        types = {
+            "csv": export_views.ExportView.as_view(study=study),
+            "sbml": export_views.SbmlView.as_view(study=study),
+            "study": StudyCreateView.as_view(),
+            "worklist": export_views.WorklistView.as_view(study=study),
+        }
+        # use "csv" as default if parameter does not match list
+        return types.get(export_type, types["csv"])
 
     def handle_line_edit(self, request, context, lines):
         study = self.get_object()
@@ -544,15 +551,6 @@ class StudyLinesView(StudyDetailBaseView):
             return True
         context.update(new_line=form)
         return False
-
-    def _get_export_types(self):
-        study = self.get_object()
-        return {
-            "csv": ExportView.as_view(study=study),
-            "sbml": SbmlView.as_view(study=study),
-            "study": StudyCreateView.as_view(),
-            "worklist": WorklistView.as_view(study=study),
-        }
 
 
 class StudyDetailView(StudyDetailBaseView):
@@ -649,7 +647,8 @@ class StudyDetailView(StudyDetailBaseView):
         return saved > 0
 
     def handle_export(self, request, context, *args, **kwargs):
-        return ExportView.as_view(study=self.get_object())
+        # TODO: remove direct dependency on edd.export.views
+        return export_views.ExportView.as_view(study=self.get_object())
 
     def handle_measurement_add(self, request, context, *args, **kwargs):
         self.check_write_permission(request)

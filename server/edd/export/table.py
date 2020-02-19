@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import csv
 import io
 import logging
@@ -12,7 +10,7 @@ from django.contrib.postgres.aggregates import ArrayAgg, JSONBAgg
 from django.db.models import Prefetch, Q
 from django.utils.translation import ugettext_lazy as _
 
-from .. import models
+from main import models
 
 logger = logging.getLogger(__name__)
 

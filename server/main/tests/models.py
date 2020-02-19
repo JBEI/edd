@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
 import math
-import warnings
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -13,7 +10,6 @@ from threadlocals.threadlocals import set_thread_variable
 from edd import TestCase
 
 from .. import models as edd_models
-from ..export import sbml as sbml_export
 from ..forms import LineForm
 from ..models import (
     SYSTEM_META_TYPES,
@@ -115,7 +111,7 @@ class UserTests(TestCase):
 
 class StudyTests(TestCase):
     def setUp(self):
-        super(StudyTests, self).setUp()
+        super().setUp()
         email = "wcmorrell@lbl.gov"
         user1 = User.objects.create_user(
             username="test1", email=email, password="password"
@@ -265,7 +261,7 @@ class LineTests(TestCase):  # XXX also Strain, CarbonSource
         cls.line3.strains.add(cls.strain2)
 
     def setUp(self):
-        super(LineTests, self).setUp()
+        super().setUp()
         # fake a request so all calls to Update.load_update resolve to a singluar Update
         request = RequestFactory().get("/")
         request.user = self.user1
@@ -408,62 +404,6 @@ class AssayDataTests(TestCase):
         # interpolation with no data raises exception
         with self.assertRaises(ValueError):
             self.meas2.interpolate_at(20)
-
-
-class SBMLUtilTests(TestCase):
-    """ Unit tests for various utilities used in SBML export """
-
-    def test_sbml_notes(self):
-        try:
-            import libsbml
-        except ImportError as e:
-            warnings.warn("%s" % e)
-        else:
-            # check to make sure it loaded
-            libsbml.SBML_DOCUMENT
-            builder = sbml_export.SbmlBuilder()
-            notes = builder.create_note_body()
-            notes = builder.update_note_body(
-                notes,
-                **{
-                    "CONCENTRATION_CURRENT": [0.5],
-                    "CONCENTRATION_HIGHEST": [1.0],
-                    "CONCENTRATION_LOWEST": [0.01],
-                },
-            )
-            notes_dict = builder.parse_note_body(notes)
-            self.assertEqual(
-                dict(notes_dict),
-                {
-                    "CONCENTRATION_CURRENT": "0.5",
-                    "CONCENTRATION_LOWEST": "0.01",
-                    "CONCENTRATION_HIGHEST": "1.0",
-                },
-            )
-
-
-class ExportTests(TestCase):
-    """ Test export of assay measurement data, either as simple tables or SBML. """
-
-    # fixtures = ['export_data_1', ]
-
-    def test_data_export(self):
-        # TODO tests using main.forms.ExportSelectionForm, main.forms.ExportOptionForm, and
-        #   main.views.ExportView
-        pass
-
-    def test_user_permission(self):
-        # TODO tests using main.forms.ExportSelectionForm, main.forms.ExportOptionForm, and
-        #   main.views.ExportView
-        pass
-
-    def test_sbml_export(self):
-        # TODO tests using main.export.sbml.SbmlExport
-        pass
-
-    def test_data_export_errors(self):
-        # TODO tests using main.export.sbml.SbmlExport
-        pass
 
 
 class MetaboliteTests(TestCase):

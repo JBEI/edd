@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Module contains HTTP views for the main EDD functionality.
 """
@@ -19,7 +18,6 @@ from .describe import (  # noqa: F401
     ICEFolderView,
     study_describe_experiment,
 )
-from .export import ExportView, SbmlView, WorklistView  # noqa: F401
 from .importer import ImportTableView, utilities_parse_import_file  # noqa: F401
 from .search import model_search, search, study_search  # noqa: F401
 from .study import (  # noqa: F401
