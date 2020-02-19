@@ -1,5 +1,10 @@
 ---
 repos:
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v1.26.2
+    hooks:
+      - id: pyupgrade
+        args: ["--py36-plus"]
   - repo: https://github.com/asottile/seed-isort-config
     rev: v1.9.1
     hooks:
