@@ -1,7 +1,7 @@
 import * as tinymce from "tinymce/tinymce";
 
 import "tinymce/plugins/link";
-import "tinymce/themes/silver/theme";
+import "tinymce/themes/silver";
 
 import * as EDDAuto from "./EDDAutocomplete";
 import * as Utl from "./Utl";
@@ -285,8 +285,10 @@ export class EditableElement {
         $(this.inputElement).show();
         if (typeof tinymce !== "undefined" && this.inputElement.type === "textarea") {
             tinymce.init({
-                "selector": ".active textarea",
+                "content_css": false,
                 "plugins": "link",
+                "selector": ".active textarea",
+                "skin": false,
             });
         }
 
