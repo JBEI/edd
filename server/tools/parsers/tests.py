@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Tests to validate utilities pages.
 """
@@ -14,7 +13,7 @@ from edd import TestCase
 
 class SkylineConversionTests(TestCase):
     def test_conversion_tool(self):
-        response = self.client.get(reverse("edd_utils:proteomics_home"))
+        response = self.client.get(reverse("tools:proteomics_home"))
         self.assertEqual(response.status_code, codes.ok)
         fixture = (environ.Path(__file__) - 2)("fixtures", "misc_data", "skyline.csv")
         with open(fixture, "rb") as fp:
@@ -22,7 +21,7 @@ class SkylineConversionTests(TestCase):
         upload.name = "skyline.csv"
         upload.content_type = "text/csv"
         response = self.client.post(
-            reverse("edd_utils:parse_skyline"), data={"file": upload}
+            reverse("tools:parse_skyline"), data={"file": upload}
         )
         self.assertEqual(response.status_code, codes.ok)
         message = response.json()

@@ -1,6 +1,3 @@
-#!/usr/bin/python
-# coding: utf-8
-
 """
 Processing of GC-MS report from Agilent's MSDChemStation software, including
 identification of consensus retention times for major species and extraction of
@@ -14,9 +11,8 @@ from optparse import OptionParser
 
 import jsonpickle
 from openpyxl import load_workbook
-from six import string_types
 
-import edd_utils.math
+from .. import math
 
 re_signal_new = re.compile(r"\s*Signal[\s]{1,}:\s{1,}(EIC|TIC).*:")
 re_area_sum = re.compile(r"Sum\ of\ corrected\ areas:")
@@ -24,7 +20,7 @@ re_table_rule = re.compile(r"([\-]{1,}[\s]{1,}){8,}")
 re_acq_time = re.compile(r"(Acq\ On\s*:)(.*)")
 
 
-class Peak(object):
+class Peak:
     """
     An individual peak from a sample run. Corresponds to a single line in
     the raw logfile.
@@ -52,7 +48,7 @@ class Peak(object):
         return "%d @ %.3fm" % (self.peak_area, self.retention_time)
 
 
-class Sample(object):
+class Sample:
     """
     Information about a sample run, with any number of peaks.
     """
@@ -64,9 +60,8 @@ class Sample(object):
             self.peaks.append(Peak(line))
 
     def __str__(self):
-        return "Sample ID: %s\n%s" % (
-            self.sample_id,
-            "\n".join(["  " + str(p) for p in self.peaks]),
+        return "Sample ID: {}\n{}".format(
+            self.sample_id, "\n".join(["  " + str(p) for p in self.peaks])
         )
 
     def retention_times(self):
@@ -132,7 +127,7 @@ class Sample(object):
         return peaks
 
 
-class SampleCollection(object):
+class SampleCollection:
     """
     Container for multiple samples to be analyzed collectively.
     """
@@ -264,7 +259,7 @@ class SampleCollection(object):
         times and identify consensus values for major species.
         """
         x = self.extract_all_retention_times()
-        return edd_utils.math.find_consensus_values(x, **kwds)
+        return math.find_consensus_values(x, **kwds)
 
     def find_peaks_automatically_and_export(
         self, n_expected=None, include_headers=False
@@ -298,7 +293,7 @@ class SampleCollection(object):
                 "if molecule_names is provided."
             )
         table, errors = self.extract_peak_areas_by_range(rt_ranges)
-        peak_ranges = ["%.4f - %.4fm" % (x, y) for (x, y) in rt_ranges]
+        peak_ranges = [f"{x:.4f} - {y:.4f}m" for (x, y) in rt_ranges]
         if molecule_names is not None:
             table.insert(0, ["Sample ID"] + list(molecule_names))
             table.insert(1, [None] + peak_ranges)
@@ -379,7 +374,7 @@ def import_xlsx_metadata(file, header_key="ID"):
         row = rows[i_row]
         i_row += 1
         for cell in row:
-            if isinstance(cell.value, string_types) and header_key in cell.value:
+            if isinstance(cell.value, str) and header_key in cell.value:
                 headers = [c.value for c in row]
                 while i_row < n_rows:
                     row = rows[i_row]
@@ -429,7 +424,3 @@ def run(args, out=sys.stdout, err=sys.stderr):
     else:
         result.show_peak_areas(n_expected=options.n_peaks, out=out, err=err)
     return result
-
-
-if __name__ == "__main__":
-    run(sys.argv[1:])

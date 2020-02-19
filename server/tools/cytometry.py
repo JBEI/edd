@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import json
 import logging
 from collections import defaultdict
@@ -30,7 +28,7 @@ def cytometry_constants():
     return cytometry_constants.const
 
 
-class CytometerImport(object):
+class CytometerImport:
     """ Object to handle processing of data POSTed to /utilities/cytometry/import view and add
         measurements to the database. """
 
@@ -57,7 +55,7 @@ class CytometerImport(object):
                 line = Line.objects.get(pk=line_id)
             if line:
                 assay = line.assay_set.create(
-                    name="%s-%s" % (line.name, sample_name),
+                    name=f"{line.name}-{sample_name}",
                     protocol=self._protocol,
                     experimenter=self._request.user,
                 )
@@ -106,7 +104,7 @@ class CytometerImport(object):
             self._rows[i] = obj
 
 
-class CytometerRow(object):
+class CytometerRow:
     """ Object to handle an individual row of data in an import. """
 
     def __init__(self, assay):

@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# coding: utf-8
 """
 Interpret a Biolector XML file, creating a series of measurement sets suitable for passing to
 Step 2 of the EDD Data Table Import page.
@@ -25,7 +24,7 @@ def getRawImportRecordsAsJSON(stream_or_string, thin=0):
     return [item.to_json() for item in BiolectorXMLReader(stream_or_string, thin=thin)]
 
 
-class BiolectorState(object):
+class BiolectorState:
     # If the buffer is empty, we add a new chunk of RawImportRecord objects to it, by rolling
     # through this ugly finite state machine until we hit the closing of a Fermentation element
     # (RawImportRecords are most easy to create in quantity, since a Fermentation node contains
@@ -156,7 +155,7 @@ class BiolectorState(object):
         self.ready = True
 
 
-class BiolectorXMLReader(six.Iterator):
+class BiolectorXMLReader:
     """
     Given a Biolector XML document as a stream or string, translate it into a series of
     RawImportRecord objects.
@@ -166,7 +165,7 @@ class BiolectorXMLReader(six.Iterator):
 
         self.rawImportRecordBuffer = []
         self.options = options
-        if isinstance(stream_or_string, six.string_types):
+        if isinstance(stream_or_string, str):
             self.stream = six.StringIO(stream_or_string)
         else:
             self.stream = stream_or_string
@@ -309,7 +308,7 @@ class DTDForbidden(DefusedXmlException):
     """Document type definition is forbidden."""
 
     def __init__(self, name, sysid, pubid):
-        super(DTDForbidden, self).__init__()
+        super().__init__()
         self.name = name
         self.sysid = sysid
         self.pubid = pubid
@@ -323,7 +322,7 @@ class EntitiesForbidden(DefusedXmlException):
     """Entity definition is forbidden."""
 
     def __init__(self, name, value, base, sysid, pubid, notation_name):
-        super(EntitiesForbidden, self).__init__()
+        super().__init__()
         self.name = name
         self.value = value
         self.base = base
@@ -340,7 +339,7 @@ class ExternalReferenceForbidden(DefusedXmlException):
     """Resolving an external reference is forbidden."""
 
     def __init__(self, context, base, sysid, pubid):
-        super(ExternalReferenceForbidden, self).__init__()
+        super().__init__()
         self.context = context
         self.base = base
         self.sysid = sysid

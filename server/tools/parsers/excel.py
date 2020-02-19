@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Convenience methods wrapping openpyxl module for handling .xlsx file I/O.
 (Despite the module name, this doesn't actually do any parsing of the file
@@ -11,7 +10,6 @@ import sys
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.writer.excel import save_virtual_workbook
-from six import string_types
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +192,7 @@ def _find_table_known_labels(rows, column_labels):
         column_indices = []
         headers = []
         for i_cell, value in enumerate(row):
-            if isinstance(value, string_types) and value.lower() in column_labels:
+            if isinstance(value, str) and value.lower() in column_labels:
                 column_indices.append(i_cell)
                 headers.append(value)
         if len(headers) >= 2:
@@ -224,10 +222,7 @@ def _find_table_matched_labels(rows, column_search_text):
         start_column = 0
         # looking for a specific column header in the row
         for i_cell, value in enumerate(row):
-            if (
-                isinstance(value, string_types)
-                and column_search_text.lower() in value.lower()
-            ):
+            if isinstance(value, str) and column_search_text.lower() in value.lower():
                 headers = row[i_cell:]
                 start_column = i_cell
                 break
@@ -385,7 +380,7 @@ def assert_is_two_dimensional_list(table, allow_tuple_values=False):
                 f"but instead got {type(row)}"
             )
         for cell in row:
-            valid_cell = isinstance(cell, string_types) or not hasattr(cell, "__iter__")
+            valid_cell = isinstance(cell, str) or not hasattr(cell, "__iter__")
             if allow_tuple_values:
                 valid_cell = valid_cell or isinstance(cell, tuple)
             if not valid_cell:
@@ -395,10 +390,8 @@ def assert_is_two_dimensional_list(table, allow_tuple_values=False):
 def has_numerical_cells(rows):
     """Count cells with int or float types."""
     return any(
-        (
-            any((isinstance(cell, int) or isinstance(cell, float) for cell in row))
-            for row in rows
-        )
+        any(isinstance(cell, int) or isinstance(cell, float) for cell in row)
+        for row in rows
     )
 
 

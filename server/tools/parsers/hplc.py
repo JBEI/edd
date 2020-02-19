@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This is for parsing the output of HPLC machines.
 """
@@ -38,8 +37,7 @@ def getRawImportRecordsAsJSON(request):
 # Returns an iterator of the given stream.
 # There's probably a utility function in the python standard library for this...
 def iterate_as_lines(stream):
-    for line in stream.split("\n"):
-        yield line
+    yield from stream.split("\n")
 
 
 class HplcError(Exception):
@@ -60,7 +58,7 @@ CompoundRecord = namedtuple(
 CompoundEntry = namedtuple("CompoundEntry", ["compound", "amount"])
 
 
-class HPLC_Parser(object):
+class HPLC_Parser:
 
     # The maximum number of lines to read before giving up on finding the header
     max_header_line_count = 20

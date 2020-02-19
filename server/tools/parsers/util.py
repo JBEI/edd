@@ -1,9 +1,7 @@
-# coding: utf-8
-
 import copy
 
 
-class RawImportRecord(object):
+class RawImportRecord:
     """
     A "raw" record for measurement import, suitable for passing to Step 2 of the EDD Data Table
     Import page. Think of it as a crude form of an Assay (only one measurement type allowed, and
@@ -25,22 +23,25 @@ class RawImportRecord(object):
         name="NoName",
         line_name=None,
         assay_name=None,
-        data=[],
-        metadataName={},
+        data=None,
+        metadataName=None,
     ):
         self.kind = kind
         self.assay_name = assay_name
         self.line_name = line_name
         self.measurement_name = name
-        self.metadata_by_name = copy.deepcopy(metadataName)
-        self.data = copy.deepcopy(data)
+        if metadataName is None:
+            self.metadata_by_name = {}
+        else:
+            self.metadata_by_name = copy.deepcopy(metadataName)
+        if data is None:
+            self.data = []
+        else:
+            self.data = copy.deepcopy(data)
 
     def __repr__(self):
-        return "<%s RawImportRecord '%s', A:'%s', %s data points>" % (
-            self.kind,
-            self.measurement_name,
-            self.assay_name,
-            len(self.data),
+        return "<{} RawImportRecord '{}', A:'{}', {} data points>".format(
+            self.kind, self.measurement_name, self.assay_name, len(self.data)
         )
 
     def to_json(self, depth=0):

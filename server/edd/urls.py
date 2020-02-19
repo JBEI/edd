@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
@@ -26,7 +24,7 @@ urlpatterns = [
     path("", include("main.urls", namespace="main")),
     # allauth does not support namespacing
     path("accounts/", include("allauth.urls")),
-    path("utilities/", include("edd_utils.urls", namespace="edd_utils")),
+    path("utilities/", include("tools.urls", namespace="tools")),
     path("profile/", include("edd.profile.urls", namespace="profile")),
     path("campaign/", include("edd.campaign.urls", namespace="campaign")),
     path("rest/", include(rest_urlpatterns)),

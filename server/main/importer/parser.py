@@ -1,11 +1,9 @@
-# coding: utf-8
-
 import codecs
 import csv
 import mimetypes
 from collections import namedtuple
 
-from edd_utils.parsers import biolector, excel, hplc, skyline
+from tools.parsers import biolector, excel, hplc, skyline
 
 ParsedInput = namedtuple("ParsedInput", ["file_type", "parsed_data"])
 

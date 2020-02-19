@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Reformat CSV output from the program Skyline to consolidate MS peak areas for
 individual peptides or proteins.

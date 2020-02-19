@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
-
 from django.contrib.auth.decorators import login_required
 from django.urls import path
 
 from . import views
 
-app_name = "edd_utils"
+app_name = "tools"
 
 urlpatterns = [
     path("", views.utilities_index, name="index"),

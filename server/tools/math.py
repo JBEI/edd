@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Additional utility functions for processing GC-MS data.  Probably unnecessary.
 """

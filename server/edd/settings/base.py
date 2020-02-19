@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Django settings for the EDD project, as well as some custom EDD-defined configuration.
 
@@ -100,7 +99,7 @@ INSTALLED_APPS = (
     # EDD apps
     "main.apps.EDDConfig",
     "edd_file_importer",
-    "edd_utils.apps.UtilsConfig",
+    "tools.apps.UtilsConfig",
     "edd.profile.apps.ProfileConfig",
     "edd.branding.apps.BrandingConfig",
     "edd.campaign.apps.CampaignConfig",

@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Tools for data manipulation via web interfaces, in particular the processing
 of GC-MS results (using separate parser module).
@@ -7,8 +6,8 @@ of GC-MS results (using separate parser module).
 import re
 import warnings
 
-from edd_utils import form_utils
-from edd_utils.parsers import gc_ms
+from . import form_utils
+from .parsers import gc_ms
 
 
 def finalize_gc_ms_spreadsheet(data):

@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import csv
 import logging
 import os.path
@@ -109,7 +107,7 @@ def test_skyline_parsing():
 
 
 def test_simple_biolector_file():
-    filename = "/code/edd_utils/parsers/biolector/biolector_test_file.xml"
+    filename = "/code/tools/parsers/biolector/biolector_test_file.xml"
 
     with open(filename, "r") as file:
         results = biolector.getRawImportRecordsAsJSON(file, 0)

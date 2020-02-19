@@ -1,4 +1,3 @@
-# coding: utf-8
 """ Miscellaneous data-processing utilities. """
 
 import csv
@@ -137,7 +136,7 @@ def cytometry_parse(request):
 
 def cytometry_import(request):
     if request.method != "POST":
-        return redirect(reverse("edd_utils:cytometry_home"))
+        return redirect(reverse("tools:cytometry_home"))
     if request.POST.get("create_study", None):
         study_form = CreateStudyForm(request.POST, prefix="study")
         if study_form.is_valid():
