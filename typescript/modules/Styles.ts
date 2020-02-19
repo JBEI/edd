@@ -7,3 +7,5 @@ import "jquery-ui/themes/base/all.css";
 
 import "dropzone/dist/dropzone.css";
 import "handsontable.css";
+import "tinymce/skins/ui/oxide/content.css";
+import "tinymce/skins/ui/oxide/skin.css";
