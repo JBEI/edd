@@ -737,7 +737,7 @@ export class FileDropZoneHelpers {
         const obj = {};
         for (const response of responses) {
             const message = response.summary + ": " + response.details;
-            if (obj.hasOwnProperty(response.category)) {
+            if (Object.prototype.hasOwnProperty.call(obj, response.category)) {
                 obj[response.category].push(message);
             } else {
                 obj[response.category] = [message];

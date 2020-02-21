@@ -159,7 +159,6 @@ declare let EDDData;
             .attr("label", "Existing Assays")
             .appendTo(assaySel);
         $.each(EDDData.Assays || {}, function(id, assay) {
-            const line = EDDData.Lines[assay.lid];
             const protocol = EDDData.Protocols[assay.pid];
             if (protocol.name === "Flow Cytometry Characterization") {
                 $("<option>")

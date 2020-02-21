@@ -387,7 +387,7 @@ export class GraphView {
                 // nest values using the same units by the value fullName (line name + measurement)
                 // TODO: this should nest by Measurement ID for existing data OR
                 //   by Line/Assay ID + measurement label for importing data
-                const curves: Array<Nested<GraphValue>> = d3
+                const curves: Nested<GraphValue>[] = d3
                     .nest<GraphValue>()
                     .key((d: GraphValue): string => d.fullName)
                     .entries(grouping.values);
@@ -440,7 +440,7 @@ export class GraphView {
                 this.buildUnitAxis(params, index, y_scale, nest.key);
             });
         // nest the values again based on BarGraphMode groupings
-        const subnest: Array<Nested<Nested<ScaledValue>>> = d3
+        const subnest: Nested<Nested<ScaledValue>>[] = d3
             .nest<ScaledValue>()
             .key(grouping.primary)
             .key(grouping.secondary)

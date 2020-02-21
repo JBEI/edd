@@ -207,10 +207,8 @@ function firstRowRenderer(instance, td, row, col, prop, value, cellProperties) {
 function initialize_table(data, errors, plot) {
     // the width calculation and automatic column resizing feature is broken
     // beyond belief, so I'm setting table and column widths manually
-    const colwidths = [];
-    for (let i = 0; i < data[0].length; i++) {
-        colwidths.push(1280 / data[0].length);
-    }
+    const colwidth = 1280 / data[0].length;
+    const colwidths = Array(data[0].length).fill(colwidth);
     const settings = {
         "width": 1280,
         "colWidths": colwidths,
@@ -259,18 +257,18 @@ function initialize_table(data, errors, plot) {
 
 function load_data(table, data, errors) {
     const error_list = [];
-    for (let i = 0; i < errors.length; i++) {
-        if (errors[i][1] == null) {
+    for (const error of errors) {
+        if (error[1] == null) {
             error_list.push({
-                "row": errors[i][0] + 2, // first two rows are headers
+                "row": error[0] + 2, // first two rows are headers
                 "col": 0,
-                "comment": errors[i][2],
+                "comment": error[2],
             });
         } else {
             error_list.push({
-                "row": errors[i][0] + 2,
-                "col": errors[i][1] + 1,
-                "comment": errors[i][2],
+                "row": error[0] + 2,
+                "col": error[1] + 1,
+                "comment": error[2],
             });
         }
     }
@@ -315,10 +313,12 @@ function onFinalize(table) {
     const processed = extract_final_data(table);
     const xlsx = $(document).data("excel_key");
     if (xlsx === undefined) {
-        throw "You must load the Excel spreadsheet containing sample metadata " +
-            "before the results can be processed.";
+        throw Error(
+            "You must load the Excel spreadsheet containing sample metadata " +
+                "before the results can be processed.",
+        );
     } else if (xlsx.data_type !== "xls") {
-        throw "Excel key is not a parsed worksheet!";
+        throw Error("Excel key is not a parsed worksheet!");
     }
     jQuery
         .ajax({
@@ -370,11 +370,9 @@ function download_xlsx(headers, table, prefix) {
 function extract_final_data(table) {
     const data = table.getData();
     const molecules = [];
-    let j_std = null;
     const ignore_columns = [false];
     for (let j = 1; j < data[0].length; j++) {
         if (data[0][j] === "standard") {
-            j_std = j;
             if ($("#tableview").data("relative_areas")) {
                 ignore_columns.push(true);
             } else {
@@ -383,9 +381,11 @@ function extract_final_data(table) {
         } else if (data[0][j] === "ignore" || data[0][j] === "unknown") {
             ignore_columns.push(true);
         } else if (data[0][j] === "Peak " + j) {
-            throw "You must specify the identities of all metabolites before " +
-                "finalizing the data import.  If you want to ignore a specific " +
-                "peak, change the column label to 'ignore' or 'unknown'.";
+            throw Error(
+                "You must specify the identities of all metabolites before " +
+                    "finalizing the data import.  If you want to ignore a specific " +
+                    "peak, change the column label to 'ignore' or 'unknown'.",
+            );
         } else {
             molecules.push(data[0][j]);
             ignore_columns.push(false);
@@ -410,7 +410,7 @@ function extract_final_data(table) {
 function convertToRelativeAreas(table) {
     const have_relative_areas = $("#tableview").data("relative_areas");
     if (have_relative_areas) {
-        throw "Peak areas have already been converted to be relative.";
+        throw Error("Peak areas have already been converted to be relative.");
     }
     const data = table.getData();
     let j_std = null;
@@ -421,8 +421,10 @@ function convertToRelativeAreas(table) {
         }
     }
     if (j_std == null) {
-        throw "You must specify which peak is the standard before peak areas " +
-            "can be converted to relative.";
+        throw Error(
+            "You must specify which peak is the standard before peak areas " +
+                "can be converted to relative.",
+        );
     }
     for (let i = 2; i < data.length; i++) {
         const std = data[i][j_std];
@@ -490,13 +492,11 @@ function RTPlot(samples) {
     let k = 0;
     const data = []; // list of peaks
     const keys = [];
-    for (let i_sample = 0; i_sample < samples.length; i_sample++) {
-        const s = samples[i_sample];
+    for (const s of samples) {
         const sample_peak_indices = [];
-        for (let i_peak = 0; i_peak < s.peaks.length; i_peak++) {
-            const peak = s.peaks[i_peak];
+        for (const peak of s.peaks) {
             peak.sample_id = s.sample_id;
-            data.push(s.peaks[i_peak]);
+            data.push(peak);
             sample_peak_indices.push(k++);
         }
         keys[s.sample_id] = sample_peak_indices;

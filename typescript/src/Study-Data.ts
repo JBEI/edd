@@ -33,11 +33,9 @@ let barGraphMode: BarGraphMode;
 let barGraphTypeButtonsJQ: JQuery;
 
 let progressiveFilteringWidget: ProgressiveFilteringWidget;
-let postFilteringAssays: any[];
 let postFilteringMeasurements: any[];
 let eddGraphing: EDDGraphingTools;
 let actionPanelRefreshTimer: any;
-let actionPanelIsInBottomBar: boolean;
 let refresDataDisplayIfStaleTimer: any;
 
 // Table spec and table objects, one each per Protocol, for Assays.
@@ -1444,14 +1442,12 @@ function _displayTable(): void {
 export function prepareIt() {
     eddGraphing = new EDDGraphingTools(EDDData);
     progressiveFilteringWidget = new ProgressiveFilteringWidget();
-    postFilteringAssays = [];
     postFilteringMeasurements = [];
 
     // By default, we always show the graph
     viewingMode = "linegraph";
     barGraphMode = "measurement";
     barGraphTypeButtonsJQ = $("#barGraphTypeButtons");
-    actionPanelIsInBottomBar = false;
     // Start out with every display mode needing a refresh
     viewingModeIsStale = {
         "linegraph": true,
@@ -1873,7 +1869,6 @@ function refreshDataDisplayIfStale(force?: boolean) {
         // Pull out a fresh set of filtered measurements and assays
         const filterResults = progressiveFilteringWidget.buildFilteredMeasurements();
         postFilteringMeasurements = filterResults.filteredMeasurements;
-        postFilteringAssays = filterResults.filteredAssays;
         // If the filtering widget has not changed and the current mode does not claim to be
         // stale, we are done.
     } else if (viewingMode === "bargraph") {
@@ -1959,9 +1954,8 @@ function actionPanelRefresh() {
 }
 
 function remakeMainGraphArea() {
-    let dataPointsDisplayed = 0,
-        dataPointsTotal = 0,
-        dataSets: GraphValue[][] = [];
+    let dataPointsDisplayed = 0;
+    let dataSets: GraphValue[][] = [];
 
     $("#tooManyPoints").hide();
     $("#lineGraph").addClass("off");
@@ -1981,7 +1975,6 @@ function remakeMainGraphArea() {
     dataSets = postFilteringMeasurements.map((mId: number, i: number): GraphValue[] => {
         const measure: AssayMeasurementRecord = EDDData.AssayMeasurements[mId];
         const points: number = measure ? measure.values.length : 0;
-        dataPointsTotal += points;
         // Skip the rest if we've hit our limit
         if (dataPointsDisplayed > 15000) {
             return;

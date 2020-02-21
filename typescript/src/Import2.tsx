@@ -4,7 +4,7 @@ import * as $ from "jquery";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import ReactTooltip from "react-tooltip";
-import * as ReconnectingWebsocket from "reconnecting-websocket";
+import ReconnectingWebSocket from "reconnecting-websocket";
 
 import classNames from "classnames";
 import DropZone from "react-dropzone";
@@ -35,7 +35,7 @@ export interface SocketOptions {
  * A thin layer on top of ReconnectingWebSocket that forwards messages to subscribers.
  */
 class ImportSocket {
-    private socket: ReconnectingWebsocket;
+    private socket: ReconnectingWebSocket;
     private subscribers: MessageListener[];
     private tagActions: { [tag: string]: MessageListener[] };
 
@@ -46,7 +46,7 @@ class ImportSocket {
         this.subscribers = [];
         this.tagActions = {};
 
-        this.socket = new ReconnectingWebsocket(url.toString());
+        this.socket = new ReconnectingWebSocket(url.toString());
         this.socket.onopen = this.opened.bind(this);
         this.socket.onclose = this.closed.bind(this);
         this.socket.onmessage = this.receive.bind(this);
@@ -62,7 +62,7 @@ class ImportSocket {
 
     private receive(event) {
         const payload = JSON.parse(event.data);
-        if (payload.hasOwnProperty("message")) {
+        if (Object.prototype.hasOwnProperty.call(payload, "message")) {
             this.processMessage(payload);
         }
     }
@@ -92,7 +92,7 @@ class ImportSocket {
     // and will be invoked multiple times for the same message if it has multiple registered tags.
     addTagAction(tag: string, callback: MessageListener): void {
         let actions: MessageListener[] = [];
-        if (this.tagActions.hasOwnProperty(tag)) {
+        if (Object.prototype.hasOwnProperty.call(this.tagActions, tag)) {
             actions = this.tagActions[tag];
         } else {
             this.tagActions[tag] = actions;
@@ -1144,7 +1144,7 @@ class Import extends React.Component<any, ImportState> {
 
     reset() {
         const params = this.buildResetDict();
-        params["categories"] = this.state.categories;
+        params.categories = this.state.categories;
         this.autoSelectCategory(params);
         this.setState(params);
         this.state.jumpToStep(0);
@@ -1286,11 +1286,9 @@ class Import extends React.Component<any, ImportState> {
     }
 
     autoSelectCategory(state: any) {
-        const categories = state["categories"];
-        if (categories.length === 1) {
-            const category = categories[0];
-            state.category = category;
-            this.autoSelectProtocolAndFormat(category, state);
+        if (state.categories.length === 1) {
+            state.category = state.categories[0];
+            this.autoSelectProtocolAndFormat(state.category, state);
         }
     }
 
@@ -1734,7 +1732,7 @@ class Import extends React.Component<any, ImportState> {
     importMsgReceived(msg: Message) {
         // processes incoming WS messages from the import.  Note that messages will include all
         // imports for this user ID, which could potentially be many in parallel.
-        if (!msg.hasOwnProperty("payload")) {
+        if (!Object.prototype.hasOwnProperty.call(msg, "payload")) {
             return;
         }
         const json = msg.payload;
@@ -1759,21 +1757,21 @@ class Import extends React.Component<any, ImportState> {
                 // for the upload
                 break;
             case "Resolved":
-                const errors = json.errors || [];
-                const warnings = json.warnings || [];
                 this.setState({
                     "importStatus": msg.payload.status,
                     "postUploadStep": 2,
                     "uploadWait": false,
                     "uploadProcessingWait": false,
-                    "uploadErrors": errors, // note this can happen! e.g. missing inputs
+                    // note this can happen! e.g. missing inputs
+                    "uploadErrors": json.errors || [],
                     "uploadWarnings": json.warnings || [],
                     "nextButtonText": "Next", // StepZilla bug?
                     "requiredValues": json.required_inputs || [],
                     "submitProcessingWait": false,
                 });
-                this.state.jumpToStep(1); // TODO: doesn't hold after resolve step is implemented
-                if (errors.length > 0) {
+                // TODO: doesn't hold after resolve step is implemented
+                this.state.jumpToStep(1);
+                if (json.errors && json.errors.length > 0) {
                     this.markCurrentWizardStepFailed();
                 } else {
                     this.markCurrentWizardStepWarned();

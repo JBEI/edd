@@ -542,13 +542,6 @@ export class LinePropertyInput extends MultiValueInput {
             combosButton.prop("disabled", true);
         }
 
-        // TODO: make use of this to enable user to toggle "apply all/make combos" radio
-        // buttons! With a manageable amt of additional UI, that should enable multivalued
-        // combinations...e.g. strain groups.
-        const jsonId = this.lineProperty.jsonId as number;
-        const supportsMultivalue =
-            creationManager.multivaluedMetaTypePks.indexOf(jsonId) >= 0;
-
         // update the state of the radio buttons to reflect whether valid inputs will result
         // in combinatorial line creation...inputs may not be provided yet, but best to give
         // feedback right away re: intention when a new row is added
@@ -646,9 +639,7 @@ export class LinePropertyInput extends MultiValueInput {
         if (firstRow) {
             const noComboButton = this.buildNoComboButton().appendTo(applyAllCell);
             if (firstRow && this.supportsCombinations) {
-                const yesComboButton = this.buildYesComboButton().appendTo(
-                    makeComboCell,
-                );
+                this.buildYesComboButton().appendTo(makeComboCell);
                 noComboButton.prop("checked", true);
             }
         }
@@ -745,8 +736,6 @@ export class CustomElementInput extends MultiValueInput {
                 null,
                 { "rowIndex": rowIndex, "elementInput": this },
                 (ev: JQueryMouseEventObject) => {
-                    const elementInput: CustomElementInput = ev.data.elementInput;
-                    const target: number = ev.data.rowIndex;
                     // update internal state to reflect user input
                     this.element.nameEltLabel = this.rows[0]
                         .find(".custom-name-input")
@@ -1221,9 +1210,7 @@ export class IceFolderInput extends LinePropertyInput {
         // that the controller will create the same GUI id for strain name,
         // regardless of whether it origiated w/ an ICE folder
         // or direct strain entry
-        const namingElt = $("#" + this.lineProperty.nameEltGuiId).toggleClass(
-            "required-name-elt",
-        );
+        $("#" + this.lineProperty.nameEltGuiId).toggleClass("required-name-elt");
         // Set static state associated with this input.
         // Though other inputs may eventually allow users to choose
         // whether to treat inputs as multivalued or combinatorial,
@@ -1990,7 +1977,7 @@ export class CreationManager {
     updateStep3Summary(responseJson): void {
         let lines: any;
         const count = responseJson.count;
-        if (responseJson.hasOwnProperty("lines")) {
+        if (Object.prototype.hasOwnProperty.call(responseJson, "lines")) {
             lines = responseJson.lines;
         }
         this.plannedLineCount = count;
@@ -2012,7 +1999,7 @@ export class CreationManager {
         const table = $("#line-preview-table");
         i = 0;
         for (const lineName in lines) {
-            if (lines.hasOwnProperty(lineName)) {
+            if (Object.prototype.hasOwnProperty.call(lines, lineName)) {
                 if (i === 0 || i % LINES_PER_ROW === 0) {
                     row = $("<div>")
                         .addClass("table-row line-names-preview-row")
@@ -2185,8 +2172,7 @@ export class CreationManager {
                         "text": "Add Selected",
                         "class": "btn btn-primary",
                         "click": () => {
-                            const propsList = $("#line-properties-list");
-                            const selectedItems = propsList
+                            $("#line-properties-list")
                                 .children(".ui-selected")
                                 .removeClass("ui-selected")
                                 .addClass("hide")

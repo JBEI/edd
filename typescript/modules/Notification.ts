@@ -2,7 +2,7 @@
 
 import * as $ from "jquery";
 
-import * as ReconnectingWebSocket from "reconnecting-websocket";
+import ReconnectingWebSocket from "reconnecting-websocket";
 import * as Utl from "./Utl";
 
 export interface Options {

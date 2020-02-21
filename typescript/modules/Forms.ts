@@ -202,7 +202,7 @@ export class Field implements IFormField {
         return this.field.val();
     }
     fill(record: any): Field {
-        const hasValue = record.hasOwnProperty(this.name);
+        const hasValue = Object.prototype.hasOwnProperty.call(record, this.name);
         this.enabled(hasValue);
         return this.set(this.render()(record));
     }
@@ -472,8 +472,6 @@ export class FormMetadataManager {
         initialValue?: any,
     ): void {
         const metaKey = metaType.id.toString(10);
-        const id = "meta-" + metaKey;
-        const input = row.find("input");
         // set disabled when explicit null is passed as initial value
         if (initialValue === null) {
             row.addClass("disabled");

@@ -46,6 +46,10 @@ export class EditableStudyName extends EditableStudyElement {
         );
     }
 
+    static createFromElement(element: HTMLElement): EditableStudyName {
+        return new EditableStudyName(element);
+    }
+
     canCommit(value): boolean {
         return "" !== value.trim();
     }
@@ -69,7 +73,7 @@ function patchedFocusTabbable() {
 
 // Called when the page loads.
 export function prepareIt() {
-    const editable = new EditableStudyName(
+    EditableStudyName.createFromElement(
         $("#editable-study-name").get()[0] as HTMLElement,
     );
     // put the click handler at the document level, then filter to any link inside a .disclose
@@ -97,7 +101,7 @@ export function overlayContent(original: JQuery) {
         // set copied flag
         original.data("overlay_copied", true);
         // add to bottom of page
-        copy.appendTo("#bottomBar")
+        copy.appendTo(bottomBar)
             // hide initially
             .hide()
             // forward click events to originals
@@ -142,6 +146,10 @@ export function dialogDefaults(options: any): any {
     return defaults;
 }
 
+function hasOwnProperty(obj: any, name: string): boolean {
+    return Object.prototype.hasOwnProperty.call(obj, name);
+}
+
 /**
  * Tests if a property on two objects are equal.
  */
@@ -149,7 +157,7 @@ function propertyEqual(a: object, b: object, name: string): boolean {
     // guard against undefined/null inputs
     a = a || {};
     b = b || {};
-    return a.hasOwnProperty(name) && b.hasOwnProperty(name) && a[name] === b[name];
+    return hasOwnProperty(a, name) && hasOwnProperty(b, name) && a[name] === b[name];
 }
 
 /**
@@ -206,10 +214,10 @@ export class EDDContact {
     }
     private is_basiccontact(): boolean {
         const self = this.self || {};
-        return self.hasOwnProperty("user_id") || self.hasOwnProperty("extra");
+        return hasOwnProperty(self, "user_id") || hasOwnProperty(self, "extra");
     }
     private is_userrecord(): boolean {
-        return (this.self || {}).hasOwnProperty("id");
+        return hasOwnProperty(this.self || {}, "id");
     }
 }
 
@@ -224,7 +232,7 @@ function mergeMeta(a: object, b: object): object {
         }
     });
     $.each(b || {}, (key, value) => {
-        if (!meta.hasOwnProperty(key)) {
+        if (!hasOwnProperty(meta, key)) {
             (meta[key] as any) = null;
         }
     });

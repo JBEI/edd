@@ -38,7 +38,7 @@ JSNumber.isNaN =
     };
 
 // Type name for the grid of values pasted in
-interface RawInput extends Array<string[]> {}
+type RawInput = string[][];
 // type for the stats generated from parsing input text
 interface RawInputStat {
     input: RawInput;
@@ -171,7 +171,7 @@ export function onWindowLoad(): void {
         },
         // pass along extra parameter "active"
         "data": { "active": true },
-    }).fail((x, s, e) => alert(s));
+    }).fail((x, s) => alert(s));
 }
 
 // As soon as we've got and parsed the reference data, we can set up all the callbacks for the
@@ -942,7 +942,8 @@ export class RawInputStep {
                 .reverse()
                 .forEach((value: string): void => {
                     if (!value) {
-                        notNull ? ++extra : ++intra;
+                        if (notNull) ++extra;
+                        else ++intra;
                     } else {
                         notNull = true;
                     }
@@ -1279,7 +1280,7 @@ export class IdentifyStructuresStep implements ImportStep {
     }
 
     figureOutThisRowsDataType(mode: string, label: string, row: string[]): number {
-        let blank: number, strings: number;
+        let strings: number;
         if (mode === "tr") {
             if (label.match(/gene/i)) {
                 return TypeEnum.Gene_Names;
@@ -1296,10 +1297,9 @@ export class IdentifyStructuresStep implements ImportStep {
             return TypeEnum.Line_Names;
         }
         // Things we'll be counting to hazard a guess at the row contents
-        blank = strings = 0;
+        strings = 0;
         // A condensed version of the row, with no nulls or blank values
         const condensed = row.filter((v: string): boolean => !!v);
-        blank = row.length - condensed.length;
         condensed.forEach((v: string): void => {
             v = v.replace(/,/g, "");
             if (isNaN(parseFloat(v))) {
@@ -1423,10 +1423,8 @@ export class IdentifyStructuresStep implements ImportStep {
         // (These will not be tracked in Table.colObjects.)
 
         // add col elements for each data column
-        let nColumns = 0;
         (grid[0] || []).forEach((): void => {
             this.colObjects.push($("<col>").appendTo(colgroup)[0]);
-            nColumns++;
         });
 
         ///////////////////////////////////////////////////////////////////////////////////////
@@ -1441,7 +1439,7 @@ export class IdentifyStructuresStep implements ImportStep {
             const cell = $(firstRow.insertCell())
                 .attr({ "id": "colCBCell" + i, "x": 1 + i, "y": 0 })
                 .addClass("checkBoxCell");
-            const box = $('<input type="checkbox"/>')
+            $('<input type="checkbox"/>')
                 .appendTo(cell)
                 .val(i.toString())
                 .attr({ "id": "enableColumn" + i, "name": "enableColumn" })
@@ -1649,8 +1647,6 @@ export class IdentifyStructuresStep implements ImportStep {
 
     changedRowDataTypePulldown(index: number, value: number): void {
         const grid = this.rawInputStep.getGrid();
-        // The value does not necessarily match the selectedIndex.
-        const selected = this.pulldownObjects[index].selectedIndex;
         this.pulldownSettings[index] = value;
         this.pulldownUserChangedFlags[index] = true;
         if (
@@ -1846,7 +1842,6 @@ export class IdentifyStructuresStep implements ImportStep {
 
                     const uniqueTimes: number[] = [];
                     const times = {};
-                    let foundMeta = false;
 
                     // The procedure for Assays, Measurements, etc is the same:
                     // If the value is blank, we can't build a valid set, so skip to the next set.
@@ -1875,7 +1870,7 @@ export class IdentifyStructuresStep implements ImportStep {
                         this.uniqueMeasurementNames.push(mn);
                     }
 
-                    const reassembledData: Array<[number, number]> = [];
+                    const reassembledData: [number, number][] = [];
 
                     // Slightly different procedure for metadata, but same idea:
                     Object.keys(rawSet.metadata_by_name).forEach((key): void => {
@@ -1883,7 +1878,6 @@ export class IdentifyStructuresStep implements ImportStep {
                             seenMetadataNames[key] = true;
                             this.uniqueMetadataNames.push(key);
                         }
-                        foundMeta = true;
                     });
 
                     // Validate the provided set of time/value points
@@ -2544,7 +2538,6 @@ export class TypeDisambiguationStep {
     // where the user can fill out additional information for the pasted table.
     reconfigure(): void {
         const mode = this.selectMajorKindStep.interpretationMode;
-        const seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
         const hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
 
         // Hide all the subsections by default
@@ -2715,11 +2708,8 @@ export class TypeDisambiguationStep {
     // that need resolving, reveal the pulldowns for selecting a master Line/Assay, leaving
     // the table empty, and return.
     remakeAssaySection(): void {
-        let nRows: number;
-
         // gather up inputs from this and previous steps
         const uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
-        const masterProtocol = this.selectMajorKindStep.masterProtocol;
 
         // remove stale data from previous run of this step
         this.currentlyVisibleAssayObjSets.forEach(
@@ -2791,14 +2781,11 @@ export class TypeDisambiguationStep {
         // Create a table row for each unique assay name
         ///////////////////////////////////////////////////////////////////////////////////////
 
-        nRows = 0;
-
         uniqueAssayNames.forEach((assayName: string, i: number): void => {
             let disam: AssayDisambiguationRow;
             disam = this.assayObjSets[assayName];
             if (!disam) {
                 disam = new AssayDisambiguationRow(tableBodyMatched, assayName, i);
-                nRows++;
                 this.assayObjSets[assayName] = disam;
             }
             if (disam.selectAssayJQElement) {
@@ -3779,18 +3766,10 @@ export class ReviewStep {
         createCheckboxes: boolean,
     ): void {
         let header;
-        let headerCell;
         contentDivSelector.empty();
         const hasRequiredInitialInputs = this.arePrevStepRequiredInputsProvided();
         const toggleOff = messageCount === 0 || !hasRequiredInitialInputs;
         wrapperDivSelector.toggleClass("off", toggleOff);
-
-        // clear all the subarrays containing input controls for prior steps
-        // TODO: as a future enhancement, we could keep track of which are already
-        // acknowledged and keep them checked
-        for (let stepMsgInputs of inputs) {
-            stepMsgInputs = [];
-        }
 
         // remove all the inputs from the DOM
         contentDivSelector.empty();
@@ -3810,10 +3789,10 @@ export class ReviewStep {
         // they are for
         if (createCheckboxes) {
             header = $("<thead>").appendTo(table);
-            headerCell = $("<th>")
+            $("<th>")
                 .text("Warning")
                 .appendTo(header);
-            headerCell = $("<th>")
+            $("<th>")
                 .text("Acknowledge")
                 .appendTo(header);
         }
@@ -3829,10 +3808,10 @@ export class ReviewStep {
                     const div = $("<div>")
                         .attr("class", messageCssClass)
                         .appendTo(cell);
-                    const span = $('<span class="warningStepLabel">')
+                    $('<span class="warningStepLabel">')
                         .text("Step " + (stepIndex + 1))
                         .appendTo(div);
-                    const msgSpan = $("<span>")
+                    $("<span>")
                         .text(": " + message.message)
                         .appendTo(div);
 
@@ -3919,7 +3898,7 @@ export class ReviewStep {
         const pageCount: number = Math.ceil(resolvedSets.length / pageSizeLimit);
         let begin = 0;
         let currentPage = 0;
-        const requests: Array<JQueryPromise<any>> = [];
+        const requests: JQueryPromise<any>[] = [];
         progressbar.progressbar({ "max": resolvedSets.length, "value": 0 });
         while (begin < resolvedSets.length) {
             const series = resolvedSets.slice(begin, (begin += pageSizeLimit));

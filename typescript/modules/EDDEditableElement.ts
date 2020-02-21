@@ -428,12 +428,13 @@ export class EditableElement {
             "success": (response) => {
                 this.setValue(response[this.fieldName()]);
             },
-            "error": (jqXHR, status, error) => {
-                // TODO: better UI response for errors
-                /* tslint:disable:no-console */
-                console.log(status + " " + error);
-                console.log(jqXHR.responseText);
-                /* tslint:enable */
+            "error": (jqXHR) => {
+                throw Error(
+                    "Failed to update EditableElement " +
+                        this.fieldName() +
+                        "\n" +
+                        jqXHR.responseText,
+                );
             },
             "complete": () => {
                 this.cancelEditing();

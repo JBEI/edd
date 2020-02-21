@@ -13,6 +13,10 @@ import "../modules/Styles";
 
 export let notificationSocket = new Notification.NotificationSocket({ "stub": true });
 
+function buildMenu(menuElement: HTMLElement): Notification.NotificationMenu {
+    return new Notification.NotificationMenu(menuElement, notificationSocket);
+}
+
 // called when the page loads
 export function prepareIt() {
     // adding click handlers to close buttons on status messages
@@ -36,7 +40,7 @@ export function prepareIt() {
     const menuElement = document.getElementById("notification-dropdown");
     if (menuElement instanceof HTMLElement) {
         notificationSocket = new Notification.NotificationSocket();
-        const menu = new Notification.NotificationMenu(menuElement, notificationSocket);
+        buildMenu(menuElement);
 
         // Add a handler to auto-download messages with the "download" tag
         notificationSocket.addTagAction("download", (message) => {

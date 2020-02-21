@@ -22,12 +22,6 @@ import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
 
 let linesActionPanelRefreshTimer: number;
-let attachmentIDs: any;
-let attachmentsByID: any;
-let prevDescriptionEditElement: any;
-
-let cSourceEntries: any;
-let mTypeEntries: any;
 
 // The table spec object and table object for the Lines table.
 let linesDataGridSpec;
@@ -43,13 +37,6 @@ const $window = $(window);
 // Called when the page loads.
 export function prepareIt() {
     setupHelp();
-
-    attachmentIDs = null;
-    attachmentsByID = null;
-    prevDescriptionEditElement = null;
-
-    cSourceEntries = [];
-    mTypeEntries = [];
 
     linesDataGridSpec = null;
     linesDataGrid = null;
@@ -156,8 +143,6 @@ export function prepareAfterLinesTable() {
     const parent: JQuery = $("#studyLinesTable").parent();
     const helpBadge: JQuery = $(".move");
     const input: JQuery = $(".tableControl").last();
-    const position = StudyBase.buildModalPosition();
-    const navbar = $("nav.navbar");
     // Enable add new Line button
     parent
         .find(".addNewLineButton")
@@ -197,11 +182,12 @@ export function prepareAfterLinesTable() {
         }),
     );
 
-    parent.find(".addAssayButton").click(function() {
+    parent.find(".addAssayButton").click(() => {
         // copy inputs to the modal form
         const inputs = $("#studyLinesTable")
             .find("input[name=lineId]:checked")
             .clone();
+        assayMetadataManager.reset();
         assayModalForm
             .find(".hidden-line-inputs")
             .empty()

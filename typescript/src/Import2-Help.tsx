@@ -1,5 +1,4 @@
 "use strict";
-import * as $ from "jquery";
 import * as EddRest from "../modules/EDDRest";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
@@ -14,7 +13,7 @@ export interface SimpleTableState<T> {
     values: T[];
 }
 
-//TODO: simple stopgap...replace with much more full-featured BootstrapTable from
+// TODO: simple stopgap...replace with much more full-featured BootstrapTable from
 // react-bootstrap-table-next after react-stepzilla's react version dependency gets (imminently)
 // updated. See https://github.com/newbreedofgeek/react-stepzilla/issues/105.
 // Alternatively, replace react-stepzilla if this upgrade takes too much longer.

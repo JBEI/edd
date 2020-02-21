@@ -107,7 +107,7 @@ export class BaseAuto {
         const visibleInput = $('<input type="text"/>')
             .addClass("autocomp")
             .appendTo(container);
-        const hiddenInput = $('<input type="hidden"/>').appendTo(container);
+        $('<input type="hidden"/>').appendTo(container);
         return visibleInput;
     }
 
