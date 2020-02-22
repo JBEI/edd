@@ -12,12 +12,6 @@ from .ajax import (  # noqa: F401
     study_edddata,
     study_measurements,
 )
-from .describe import (  # noqa: F401
-    AddLineCombos,
-    ExperimentDescriptionHelp,
-    ICEFolderView,
-    study_describe_experiment,
-)
 from .importer import ImportTableView, utilities_parse_import_file  # noqa: F401
 from .search import model_search, search, study_search  # noqa: F401
 from .study import (  # noqa: F401

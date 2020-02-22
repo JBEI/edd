@@ -547,20 +547,6 @@ class StudyViewTests(TestCase):
         )
         self.assertTemplateUsed(response, "main/create_study.html")
 
-    def test_line_combo(self):
-        readonly_user = factory.UserFactory()
-        self.target_study.userpermission_set.update_or_create(
-            permission_type=models.StudyPermission.READ, user=readonly_user
-        )
-        url = reverse("main:combos", kwargs=self.target_kwargs)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.ok)
-        self.assertTemplateUsed(response, "main/study-lines-add-combos.html")
-        self.client.force_login(readonly_user)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.forbidden)
-        self.assertTemplateNotUsed(response, "main/study-lines-add-combos.html")
-
     def test_detail_get(self):
         # when study has no lines, get a redirect to the overview page
         response = self.client.get(reverse("main:detail", kwargs=self.target_kwargs))

@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Integration tests for ICE.
 """
@@ -40,7 +39,7 @@ def ice_url(path):
     return f"http://ice:8080/rest/{path}"
 
 
-class IceUserCheck(object):
+class IceUserCheck:
     user_url = ice_url("/users")
 
     def __init__(self, ice):
@@ -83,7 +82,7 @@ class IceIntegrationTests(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(IceIntegrationTests, cls).setUpClass()
+        super().setUpClass()
         auth = HmacAuth("edd", "Administrator")
         ice = IceApi(auth)
         try:
@@ -99,7 +98,7 @@ class IceIntegrationTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        super(IceIntegrationTests, cls).setUpTestData()
+        super().setUpTestData()
         cls.admin_ice_user = factory.UserFactory(email="admin@example.org")
         cls.read_ice_user = factory.UserFactory(email="reader@example.org")
         cls.none_ice_user = factory.UserFactory(email="none@example.org")
@@ -375,6 +374,7 @@ class IceIntegrationTests(TestCase):
         upload = self._create_workbook(parts)
         self.client.force_login(user)
         response = self.client.post(
-            reverse("main:describe", kwargs={"slug": study.slug}), data={"file": upload}
+            reverse("main:describe:describe", kwargs={"slug": study.slug}),
+            data={"file": upload},
         )
         return response

@@ -1,15 +1,10 @@
 from django.contrib.auth.decorators import login_required
 from django.urls import include, path
 
-from main import views
+from . import views
 
 app_name = "main"
 
-
-ed_patterns = [
-    path("", login_required(views.StudyLinesView.as_view()), name="lines"),
-    path("combos/", login_required(views.AddLineCombos.as_view()), name="combos"),
-]
 
 # These are the URL endpoints nested under a link to a specific Study, for use with include() in
 #   the two URL paths for study below. Because this list is included twice, there should be no
@@ -19,7 +14,10 @@ study_url_patterns = [
     path(
         "overview/", login_required(views.StudyOverviewView.as_view()), name="overview"
     ),
-    path("experiment-description/", include(ed_patterns)),
+    path("description/", login_required(views.StudyLinesView.as_view()), name="lines"),
+    path("describe/", include("edd.describe.urls", namespace="describe")),
+    # kept verbose name of description for link backward-compatibility
+    path("experiment-description/", login_required(views.StudyLinesView.as_view())),
     path("assaydata/", login_required(views.study_assay_table_data), name="assaydata"),
     path("edddata/", login_required(views.study_edddata), name="edddata"),
     path(
@@ -59,7 +57,6 @@ study_url_patterns = [
             ]
         ),
     ),
-    path("describe/", login_required(views.study_describe_experiment), name="describe"),
     path(
         "import/",
         include(
@@ -89,16 +86,14 @@ urlpatterns = [
     # Individual study-specific pages loaded by slug
     # reverse('main:overview', kwargs={'slug': slug})
     path("s/<slug:slug>/", include(study_url_patterns)),
+    # edd.describe URLs that can work without a study reference
+    # these pages should migrate outside of applicaiton, see EDD-1244
+    path("describe/", include("edd.describe.flat_urls", namespace="describe_flat")),
     # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
     path(
         "utilities/parsefile/",
         login_required(views.utilities_parse_import_file),
         name="import_parse",
-    ),
-    path(
-        "help/experiment_description/",
-        login_required(views.ExperimentDescriptionHelp.as_view()),
-        name="experiment_description_help",
     ),
     path(
         "search/",
@@ -109,5 +104,4 @@ urlpatterns = [
             ]
         ),
     ),
-    path("ice_folder/", login_required(views.ICEFolderView.as_view()), name="folder"),
 ]

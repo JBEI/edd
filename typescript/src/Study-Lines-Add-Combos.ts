@@ -1697,7 +1697,6 @@ export class CreationManager {
 
     buildRequestUrl(dryRun: boolean): string {
         const params: any = {};
-        const url = "../../describe/";
         // aggregate GET parameters to include with the request.
         // Though these could be included in the JSON,
         // they're purposefully separate
@@ -1719,7 +1718,7 @@ export class CreationManager {
         if (isIgnoreIceErrors) {
             params.IGNORE_ICE_ACCESS_ERRORS = "True";
         }
-        return url + "?" + $.param(params);
+        return "?" + $.param(params);
     }
 
     createLines(): void {
@@ -2238,6 +2237,7 @@ export class CreationManager {
                             const url = $("#ice-folder-url-input").val();
                             // submit a query to the back end to compute line / assay names
                             // and detect errors before actually making any changes
+                            // TODO: replace hard-coded URL (EDD-1261)
                             $.ajax("/ice_folder/", {
                                 "headers": { "Content-Type": "application/json" },
                                 "method": "GET",
@@ -2421,6 +2421,7 @@ export class CreationManager {
                         "text": "Return to Study",
                         "id": "return-to-study-btn",
                         "click": () => {
+                            // TODO: replace hard-coded URL (EDD-1261)
                             window.location.href = "../";
                         },
                     },

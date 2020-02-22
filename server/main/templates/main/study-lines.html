@@ -53,7 +53,7 @@
           {% trans 'Example File' %}
           <span class="glyphicon glyphicon-download-alt"></span>
         </a>
-        <a href="{% url 'main:experiment_description_help' %}" target="_blank">
+        <a href="{% url 'main:describe:help' slug=study.slug %}" target="_blank">
           <div id="ed-help-btn" class="helpBadgeDiv helpBadgeLines"
               title="{% trans 'Click to open help in a new tab' %}">
             {% trans 'Help' %}
@@ -135,7 +135,7 @@
               <span class="glyphicon glyphicon-plus"></span>
               {% trans 'Add Line' %}
             </button>
-            <a href="{% url 'main:combos' slug=study.slug %}">
+            <a href="{% url 'main:describe:describe' slug=study.slug %}">
               <button id="combosButton"
                   class="combosButton actionButton primary"
                   type="button"

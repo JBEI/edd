@@ -17,7 +17,6 @@ from django.utils.translation import ugettext as _
 from requests import codes
 
 from main.forms import RegistryValidator
-from main.importer.parser import ImportFileTypeFlags
 from main.models import Assay, Line, Strain
 from main.tasks import create_ice_connection
 
@@ -918,7 +917,7 @@ class CombinatorialCreationImporter:
         return result
 
     def parse_input(
-        self, stream, filename: str, file_extension: ImportFileTypeFlags, encoding: str
+        self, stream, filename: str, file_extension: str, encoding: str
     ) -> List[CombinatorialDescriptionInput]:
         """
         Parses the input and returns a list of combinatorial line/assay creations that need to
@@ -934,7 +933,7 @@ class CombinatorialCreationImporter:
         """
         if filename:
             parser = ExperimentDescFileParser(self.cache, self)
-            if file_extension == ImportFileTypeFlags.CSV:
+            if file_extension == "csv":
                 reader = codecs.getreader(encoding)
                 line_def_inputs = parser.parse_csv(reader(stream).readlines())
             else:

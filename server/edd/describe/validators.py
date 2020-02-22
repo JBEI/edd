@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 A JSON schema for the for the combinatorial line creation GUI. Validating the (potentially
 complex) input should help to simplify custom parsing code and related error diagnosis while

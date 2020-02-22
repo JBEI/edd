@@ -1,20 +1,14 @@
-# coding: utf-8
-
 import csv
 import json
 import logging
 import re
 from collections import Sequence, defaultdict
-from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from jsonschema import Draft4Validator
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter
-from six import string_types
 
-from main.importer.experiment_desc.validators import SCHEMA as JSON_SCHEMA
-
-from ...models import MetadataType, Protocol
 from .constants import (
     ABBREVIATIONS_SECTION,
     BAD_FILE_CATEGORY,
@@ -62,6 +56,7 @@ from .utilities import (
     CombinatorialDescriptionInput,
     NamingStrategy,
 )
+from .validators import SCHEMA as JSON_SCHEMA
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +107,7 @@ _PLURALIZED_REGEX = r"^%(type_name)s(?:S|\(S\))" + _OPT_UNIT_SUFFIX + "$"
 _WHITESPACE_PATTERN = re.compile(r"\s+")
 
 
-class _AssayMetadataValueParser(object):
+class _AssayMetadataValueParser:
     def parse(self, raw_value_str):
         """
         Parses the raw string input for a single assay metadata value
@@ -199,7 +194,7 @@ class ColumnLayout:
         self.strain_ids_col: Optional[int] = None
         self.col_index_to_line_meta_pk: Dict[int, int] = {}
         # maps col index -> (Protocol, MetadataType)
-        self.col_index_to_assay_data: Dict[int, Tuple[Protocol, MetadataType]] = {}
+        self.col_index_to_assay_data: Dict[int, Tuple[Any, Any]] = {}
 
         # indices of all *any* columns for combinatorial creation (both metadata AND strains!)
         self.combinatorial_col_indices = []
@@ -348,7 +343,7 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
     """
 
     def __init__(self, col_layout, cache, importer):
-        super(_ExperimentDescNamingStrategy, self).__init__(cache, importer)
+        super().__init__(cache, importer)
         self.col_layout = col_layout
         self.base_line_name = None
 
@@ -518,7 +513,7 @@ class _ExperimentDescriptionFileRow(CombinatorialDescriptionInput):
     """
 
     def __init__(self, column_layout, cache, row_number, importer):
-        super(_ExperimentDescriptionFileRow, self).__init__(
+        super().__init__(
             _ExperimentDescNamingStrategy(column_layout, cache, importer), importer
         )
         self.row_number = row_number
@@ -532,7 +527,7 @@ class _ExperimentDescriptionFileRow(CombinatorialDescriptionInput):
         self.naming_strategy.base_line_name = name
 
 
-class CombinatorialInputParser(object):
+class CombinatorialInputParser:
     def __init__(self, cache, aggregator=None):
         self.cache = cache
         self.aggregator = aggregator
@@ -547,7 +542,7 @@ def _standardize_label(label):
     :return: the input text, capitalized, trimmed, and with consecutive whitespace characters
         collapsed to a single space.
     """
-    if isinstance(label, string_types):
+    if isinstance(label, str):
         return _WHITESPACE_PATTERN.sub(" ", label).strip().upper()
     return None
 
@@ -559,7 +554,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
     """
 
     def __init__(self, cache, aggregator=None):
-        super(ExperimentDescFileParser, self).__init__(cache)
+        super().__init__(cache)
 
         self._time_parser = _DecimalTimeParser(self)
 
@@ -971,9 +966,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     )
                     return True
 
-    def _detect_assay_meta_type(
-        self, suffix, upper_type_name, assay_meta_type
-    ) -> Tuple[Optional[MetadataType], bool]:
+    def _detect_assay_meta_type(self, suffix, upper_type_name, assay_meta_type):
         """
         Tests whether the supplied column header suffix matches the accepted patterns for being
         treated as a match with the provided assay metadata type.
@@ -1445,7 +1438,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         if cell_content is None:
             return None
 
-        if isinstance(cell_content, string_types):
+        if isinstance(cell_content, str):
             return cell_content.strip()
 
         else:
@@ -1506,7 +1499,7 @@ class JsonInputParser(CombinatorialInputParser):
     """
 
     def __init__(self, cache, importer=None):
-        super(JsonInputParser, self).__init__(cache, importer)
+        super().__init__(cache, importer)
         self.max_fractional_time_digits = 0
         self.parsed_json = None
 

@@ -1,0 +1,329 @@
+{% extends "main/study.html" %}
+{% load i18n %}
+{% load static %}
+
+
+{% block js_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'edd/describe/combos.css' %}" />
+    <script type="text/javascript" src="{% static 'dist/StudyLinesAddCombos.js' %}"></script>
+    {{ block.super }}
+{% endblock js_css %}
+
+
+{% block body_title %}
+    {% url 'main:detail' slug=study.slug as study_url %}
+    Add Line Combinations for <a href="{{ study_url }}">{{ study.name }}</a>
+{% endblock body_title %}
+
+
+{% block content %}
+<div id="add-prop-dialog" title="{% trans 'Add Line Properties' %}" class="hide">
+    <ul id="line-properties-list"></ul>
+    <div id="no-properties-div" class="hide">{% trans "No more items available" %}</div>
+</div>
+<div id="add-abbrev-dialog" title="{% trans 'Add Abbreviation' %}" class="hide">
+    <p>{% trans "Include abbreviations for line name elements:"}</p>
+    <ul id="line-name-abbrev-list"></ul>
+    <div id="no-abbrev-options-div" class="hide">{% trans "No more items available"%}</div>
+</div>
+<div id="add-ice-folder-dialog" title="{% trans 'Add ICE Folder' %}" class="hide">
+    <form id="ice-folder-form" class="needs-validation" novalidate="novalidate">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="ice-folder-url-input">{% trans "Folder:" %}</label>
+            <input
+                type="url"
+                id="ice-folder-url-input"
+                placeholder="{% trans 'Folder url' %}"
+                size="40"
+                required="required"
+            />
+            <!--div class="invalid-feedback"> Please enter a folder</div-->
+        </div>
+        <div class="form-group">
+            <label>{% trans "Entry Type:" %}</label>
+            <div id="entry-types-div" class="btn-group-toggle" data-toggle="buttons">
+                <label class="btn btn-secondary active" for="type-strain">
+                    <input
+                        type="radio"
+                        name="type"
+                        value="STRAIN"
+                        id="type-strain"
+                        class="form-control"
+                        checked="checked"
+                    />
+                    {% trans "Strain" %}
+                </label>
+                <label class="btn btn-secondary" for="type-protein">
+                    <input
+                        type="radio"
+                        name="type"
+                        value="PROTEIN"
+                        id="type-protein"
+                        class="form-control"
+                    />
+                    {% trans "Protein" %}
+                </label>
+                <label class="btn btn-secondary" for="type-plasmid">
+                    <input
+                        type="radio"
+                        name="type"
+                        value="PLASMID"
+                        id="type-plasmid"
+                        class="form-control"
+                    />
+                    {% trans "Plasmid" %}
+                </label>
+                <label class="btn btn-secondary" for="type-part">
+                    <input
+                        type="radio"
+                        name="type"
+                        value="PART"
+                        id="type-part"
+                        class="form-control"
+                    />
+                    {% trans "Part" %}
+                </label>
+                <label class="btn btn-secondary" for="type-seed">
+                    <input
+                        type="radio"
+                        name="type"
+                        value="ARABIDOPSIS SEED"
+                        id="type-seed"
+                        class="form-control"
+                    />
+                    {% trans "Arabidopsis Seed" %}
+                </label>
+            </div>
+        </div>
+    </form>
+    <div id="querying-folder-div" class="hide">
+        <span class="waitbadge wait-larger hide">{% trans "EDD is querying ICE..." %}</span>
+    </div>
+    <div id="folder-lookup-status-div"></div>
+</div>
+<div id="creating-lines-dialog" class="hide">
+    <p>{% trans "Please wait a moment while your lines are created..." %}
+        <span id="creation-wait-spinner" class="wait waitbadge">&nbsp;</span>
+    </p>
+    <div id="creation-status-div"></div>
+</div>
+    <!-- Step 1; -->
+    <div id="step1" class="pageSection stepBorder">
+        <div class="sectionHead">
+            {% trans "Step 1: Choose line properties that describe your experiment" %}
+        </div>
+        <div class="sectionContent">
+            <div class="bulk-line-table" id="line-properties-table">
+                <div class="step2_table_heading">
+                    <div class="bulk_lines_table_cell" id="addCell">
+                        <!-- empty for add button-->
+                    </div>
+                    <div class="bulk_lines_table_cell">
+                        <label for="addPropertyButton">{% trans "Property" %}</label>
+                        <button id="addPropertyButton" class="addButton">
+                            <span class="ui-icon ui-icon-plusthick"></span>
+                        </button>
+                    </div>
+                    <div class="bulk_lines_table_cell">
+                        <!--empty for value input-->
+                    </div>
+                    <div class="bulk_lines_table_cell">
+                        <label>{% trans "Apply to All Lines" %}</label>
+                    </div>
+                    <div class="bulk_lines_table_cell">
+                        <label>{% trans "Make Combinations" %}</label>
+                    </div>
+                </div>
+            </div>
+            <div class="table-row">
+                <div id="step1_loading_metadata_status_div"></div>
+            </div>
+            <button
+                id="step1-next-btn"
+                class="next-btn actionButton primary"
+                disabled="disabled"
+            >
+                {% trans "Next" %}
+            </button>
+        </div>
+    </div>
+    <!-- Step 2 -->
+    <div id="step2" class="pageSection stepBorder hide">
+        <div class="sectionHead">
+            {% trans "Step 2: Choose the order of identifying data in line names" %}
+        </div>
+        <div class="sectionContent" id="custom-elts-wrapper">
+            <div>
+                <div class="add-combos-subsection">
+                    <label>{% trans "Custom Name Elements:" %}</label>
+                    <button id="add-custom-elt-btn" class="addButton">
+                        <span class="ui-icon ui-icon-plusthick"></span>
+                    </button>
+                </div>
+                <div id="no-custom-elts-div">{% trans "None (optional)" %}</div>
+                <div id="custom-elements-table" class="bulk-line-table hide">
+                    <div class="step2_table_heading">
+                        <div class="bulk_lines_table_cell">
+                            <label>{% trans "Label" %}</label>
+                        </div>
+                        <div class="bulk_lines_table_cell">
+                            <label>{% trans "Value" %}</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="sectionContent stepSeparator">
+            <div class="add-combos-subsection">
+                <label for="name_ordering_table">{% trans "Name Element Order:" %}</label>
+                <div id="name-elements-status-div" class="hide"></div>
+            </div>
+            <div class="bulk-line-table" id="name_ordering_table">
+                <div class="step2_table_heading">
+                    <div class="bulk_lines_table_cell">
+                        <label>{% trans "Order:" %}</label>
+                    </div>
+                    <div class="bulk_lines_table_cell">
+                        <label>{% trans "Unused Elements:" %}</label>
+                    </div>
+                </div>
+                <div class="table-row">
+                    <!-- Line Name Elements List -->
+                    <div class="bulk_lines_table_cell name_elt_cell">
+                        <div>
+                            <ul id="line_name_elts" class="connectedSortable"></ul>
+                        </div>
+                    </div>
+                    <!-- Unused Elements List -->
+                    <div class="bulk_lines_table_cell name_elt_cell">
+                        <div>
+                            <ul id="unused_line_name_elts" class="connectedSortable"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button
+                id="step2-next-btn"
+                class="next-btn actionButton primary"
+                disabled="disabled"
+            >
+                {% trans "Next" %}
+            </button>
+        </div>
+    </div>
+    <!-- Step 3 -->
+    <div id="step3" class="pageSection stepBorder hide">
+        <div id="step3Label" class="sectionHead">
+            <span class="sectionTitle">{% trans "Step 3: Review Summary" %}</span>
+            <span id="refresh-summary-div" class="glyphicon glyphicon-refresh"></span>
+        </div>
+        <div class="sectionContent">
+            <div id="step3-status-div"></div>
+        </div>
+        <div class="sectionContent">
+            <div id="step3-waiting-div">
+                <h3>{% trans "Updating preview... please wait." %}</h3>
+                <div class="wait-larger preview-wait-lg">&nbsp;</div>
+            </div>
+            <div id="step3-errors-div"></div>
+            <div class="add-combos-subsection">
+                <label>{% trans "Abbreviations:" %}</label>
+                <button id="addAbbreviationButton" class="addButton">
+                    <span class="ui-icon ui-icon-plusthick"></span>
+                </button>
+            </div>
+            <div id="no-abbrevs-div">{% trans "None (optional)" %}</div>
+            <div id="abbreviations-table" class="bulk-line-table hide">
+                <div class="step2_table_heading">
+                    <div class="bulk_lines_table_cell">
+                        <!-- empty for add button-->
+                    </div>
+                    <div class="bulk_lines_table_cell">
+                        <label>{% trans "Name Element" %}</label>
+                    </div>
+                    <div class="bulk_lines_table_cell">
+                        <label>{% trans "Value" %}</label>
+                    </div>
+                    <div class="bulk_lines_table_cell">
+                        <label>{% trans "Abbreviation" %}</label>
+                    </div>
+                </div>
+            </div>
+            <div id="line-preview-div" class="hide">
+                <div class="add-combos-subsection">
+                    <label>{% trans "Preview:" %}</label>
+                </div>
+                <div class="bulk-line-table">
+                    <div class="table-row">
+                        <div class="bulk_lines_table_cell">
+                            <label>{% trans "Lines to create:" %}</label>
+                        </div>
+                        <div id="line-count-div" class="bulk_lines_table_cell"></div>
+                    </div>
+                    <div class="table-row">
+                        <div class="bulk_lines_table_cell">
+                            <label>{% trans "Sample line names:" %}</label>
+                        </div>
+                        <div id="line-preview-table" class="bulk_lines_table_cell"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="options-div">
+                <div class="table-row">
+                    <div class="add-combos-subsection">
+                        <label>Options:</label>
+                    </div>
+                </div>
+                <div id="non-strains-opts-div" class="table-row hide">
+                    <div class="bulk_lines_table_cell">
+                        <input
+                            type="checkbox"
+                            id="non-strains-opts-chkbx"
+                            class="non-strains-chkbx"
+                        >
+                        <label for="non-strains-opts-chkbx">
+                            {% trans "Lines contain extracted cell parts" %}
+                        </label>
+                    </div>
+                </div>
+                <div id="ignore-ice-errors-opts-div" class="table-row hide">
+                    <div class="bulk_lines_table_cell">
+                        <input
+                            type="checkbox"
+                            id="ignore-ice-access-errors-opts-chkbx"
+                            class="ignore-ice-errors-chkbx"
+                        >
+                        <label for="ignore-ice-access-errors-opts-chkbx">
+                            {% trans "Ignore ICE access errors" %}
+                        </label>
+                        <span id="strains-omitted-span" class="hide">
+                            {% trans "Inaccessible ICE entries will be dropped" %}
+                        </span>
+                    </div>
+                </div>
+                <div class="table-row">
+                    <div class="bulk_lines_table_cell">
+                        <input
+                            type="checkbox"
+                            id="completion-email-opt-chkbx"
+                            class="completion-email-chkbx"
+                        >
+                        <label for="completion-email-opt-chkbx">
+                            {% trans "Email me when finished" %}
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <button
+                id="add-lines-btn"
+                class="actionButton primary larger"
+                disabled="disabled"
+            >
+                <span class="glyphicon glyphicon-random"></span>
+                <span>{% trans "Add Lines" %}</span>
+            </button>
+        </div>
+    </div>
+{% endblock content %}

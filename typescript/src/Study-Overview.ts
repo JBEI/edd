@@ -9,6 +9,7 @@ import * as EDDEditable from "../modules/EDDEditableElement";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
 
+// TODO: fix hard-coded URL
 const studyBaseUrl: URL = Utl.relativeURL("../");
 
 function preparePermissions() {
@@ -49,6 +50,7 @@ function preparePermissions() {
                     .val(),
             };
             $.ajax({
+                // TODO: fix hard-coded URL
                 "url": Utl.relativeURL("permissions/", studyBaseUrl).toString(),
                 "type": "POST",
                 "data": {
@@ -185,11 +187,13 @@ export function prepareIt() {
     });
 
     const helper = new Utl.FileDropZoneHelpers({
-        "pageRedirect": "experiment-description",
+        // TODO: fix hard-coded URL
+        "pageRedirect": "description/",
     });
 
     Utl.FileDropZone.create({
         "elementId": "experimentDescDropZone",
+        // TODO: fix hard-coded URL
         "url": Utl.relativeURL("describe/", studyBaseUrl),
         // must bind these functions; otherwise the function this will be the options object
         // here, instead of the helper object

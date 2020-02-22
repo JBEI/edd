@@ -1,9 +1,9 @@
-# coding: utf-8
 """
 General utility code for EDD, not tied to Django or Celery.
 """
 
 import json
+import mimetypes
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -18,6 +18,16 @@ from kombu.serialization import register
 DATETIME = "__datetime__"
 TYPE = "__type__"
 VALUE = "value"
+
+
+def guess_extension(mime_type):
+    """Given a MIME type string, return a suggested file extension."""
+    if not mimetypes.inited:
+        mimetypes.init()
+    extension = mimetypes.guess_extension(mime_type)
+    if extension and extension[0] == ".":
+        extension = extension[1:]
+    return extension
 
 
 class JSONEncoder(json.JSONEncoder):
@@ -37,7 +47,7 @@ class JSONEncoder(json.JSONEncoder):
             return {TYPE: DATETIME, VALUE: o.isoformat()}
         elif isinstance(o, Promise):
             return force_text(o)
-        return super(JSONEncoder, self).default(o)
+        return super().default(o)
 
     @staticmethod
     def dumps(obj):
@@ -50,7 +60,7 @@ class JSONDecoder(json.JSONDecoder):
     """
 
     def __init__(self, *args, **kwargs):
-        super(JSONDecoder, self).__init__(object_hook=self.object_hook, *args, **kwargs)
+        super().__init__(object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, o):
         if TYPE not in o:

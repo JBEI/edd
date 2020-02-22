@@ -16,5 +16,4 @@ from .models import *  # noqa: F401, F403
 from .solr import *  # noqa: F401, F403
 from .tasks import *  # noqa: F401, F403
 from .tutorials import *  # noqa: F401, F403
-from .utilities import *  # noqa: F401, F403
 from .views import *  # noqa: F401, F403

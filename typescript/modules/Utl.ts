@@ -510,6 +510,7 @@ export class FileDropZoneHelpers {
     // fileRead(), is passed a processed result from the server as a second argument,
     // rather than the raw contents of the file.
     fileReturnedFromServer(fileContainer, result): void {
+        // TODO: fix hard-coded URL redirect
         const base = relativeURL("../");
         const redirect = relativeURL(this.pageRedirect, base);
         const message = JSON.parse(result.xhr.response);
@@ -522,6 +523,7 @@ export class FileDropZoneHelpers {
     }
 
     fileWarningReturnedFromServer(fileContainer, result): void {
+        // TODO: fix hard-coded URL redirect
         const base = relativeURL("../");
         const redirect = relativeURL(this.pageRedirect, base);
         this.copyActionButtons();
@@ -590,6 +592,7 @@ export class FileDropZoneHelpers {
         this.copyActionButtons();
         const parent: JQuery = $("#alert_placeholder");
         const dismissAll: JQuery = $("#dismissAll");
+        // TODO: fix hard-coded URL redirect
         const baseUrl: URL = relativeURL("../");
         // reset the drop zone here
         // parse xhr.response
@@ -690,7 +693,8 @@ export class FileDropZoneHelpers {
         $("#acceptWarnings")
             .find(".acceptWarnings")
             .on("click", (ev): boolean => {
-                const redirect = relativeURL("experiment-description/", baseUrl);
+                // TODO: fix hard-coded URL redirect
+                const redirect = relativeURL("description/", baseUrl);
                 ev.preventDefault();
                 ev.stopPropagation();
                 this.successfulRedirect(redirect.pathname);

@@ -10,7 +10,7 @@ class ImportView(StudyObjectMixin, generic.DetailView):
     template_name = "edd_file_importer/import2.html"
 
     def get_context_data(self, **kwargs):
-        context = super(ImportView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
 
         # send server-side settings needed by the front end: the upload limit (1 MB by default
         # for nginx) so we can provide a good user-facing error message re: files that are too
@@ -27,14 +27,14 @@ class ImportView(StudyObjectMixin, generic.DetailView):
         load_study(request, pk=pk, slug=slug, permission_type=StudyPermission.CAN_EDIT)
 
         # render the template
-        return super(ImportView, self).get(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
 
 class ImportHelpView(generic.TemplateView):
     template_name = "edd_file_importer/import_help.html"
 
     def get_context_data(self, **kwargs):
-        context = super(ImportHelpView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
 
         # create a UUID for the import about to be performed.  Avoids potential for race conditions
         # in initial DB record creation & file processing that happen in separate containers
@@ -44,7 +44,7 @@ class ImportHelpView(generic.TemplateView):
         unit_scripts = getattr(settings, "EDD_IMPORT_REQUEST_UNITS_SCRIPTS", "")
 
         context["ice_url"] = getattr(settings, "ICE_URL", None)
-        context["ed_help"] = reverse("main:experiment_description_help")
+        context["ed_help"] = reverse("main:describe_flat:help")
         context["prot_scripts"] = prot_scripts
         context["format_scripts"] = format_scripts
         context["mtype_scripts"] = mtype_scripts

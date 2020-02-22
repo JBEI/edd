@@ -1,8 +1,7 @@
-# coding: utf-8
 from rest_framework import serializers
 
 from edd.rest.serializers import ProtocolSerializer, UpdateSerializer
-from main.importer.parser import guess_extension
+from edd.utilities import guess_extension
 
 from .. import models
 

@@ -94,7 +94,7 @@
   <div class="fd-zone excel" id="experimentDescDropZone">
     <div id="dz-title">
       <span>{% trans 'Upload an Experiment Description file' %}</span>
-      <a href="{% url 'main:experiment_description_help' %}" target="_blank">
+      <a href="{% url 'main:describe:help' slug=study.slug %}" target="_blank">
         <div id="helpExperimentDescription" class="helpBadgeDiv">{% trans 'Help' %}
           <div class="helpContent">
             <p>
@@ -118,7 +118,7 @@
       {% trans 'Example File' %} <span class="glyphicon glyphicon-download-alt"></span>
     </a>
   </div>
-  <a class="dropLink" href="{% url 'main:combos' slug=study.slug %}">
+  <a class="dropLink" href="{% url 'main:describe:describe' slug=study.slug %}">
     <button id="combosButton"
         class="combosButton actionButton primary"
         type="button"
