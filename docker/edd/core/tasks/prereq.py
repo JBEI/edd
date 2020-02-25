@@ -67,15 +67,27 @@ def staticfiles(context):
     # this is touching things that are shared between containers
     # must grab a lock before proceeding
     cache = util.get_redis()
+    # assume copy succeeds unless proven otherwise below
+    copied = True
     with cache.lock(b"edd.startup.staticfiles"):
-        version_hash = util.get_version_hash(context)
-        manifest = f"/var/www/static/staticfiles.{version_hash}.json"
-        result = context.run(f"test -f '{manifest}'", warn=True)
-        if not result.ok:
-            print(f"Copying staticfiles for manifest {version_hash}")
-            context.run("cp -R /usr/local/edd-static/. /var/www/static/")
-        else:
-            print("Found staticfiles OK")
+        try:
+            version_hash = util.get_version_hash(context)
+            manifest = f"/var/www/static/staticfiles.{version_hash}.json"
+            result = context.run(f"test -f '{manifest}'", warn=True)
+            if not result.ok:
+                print(f"Copying staticfiles for manifest {version_hash}")
+                copied = context.run(
+                    "cp -R /usr/local/edd-static/. /var/www/static/", warn=True
+                ).ok
+            else:
+                print("Found staticfiles OK")
+        except BaseException:
+            # NOTE: dangerous using BaseException;
+            # do not copy this pattern elsewhere
+            # unless you know EXACTLY what this is doing
+            copied = False
+    if not copied:
+        raise invoke.exceptions.Exit("Staticfiles check failed")
 
 
 # postgres: Wait for postgres service to begin responding to connections;
@@ -92,8 +104,27 @@ def solr(context, limit=10):
     util.retry(util.is_solr_available, limit=limit)
 
 
+# solr_ready: verifies that search index collections are ready
+@invoke.task(pre=[code, redis, solr])
+def solr_ready(context):
+    # this is touching things that are shared between containers
+    # must grab a lock before proceeding
+    cache = util.get_redis()
+    ready = True
+    with cache.lock(b"edd.startup.indexcheck"):
+        try:
+            ready = context.run("/code/manage.py edd_index --check", warn=True).ok
+        except BaseException:
+            # NOTE: dangerous using BaseException;
+            # do not copy this pattern elsewhere
+            # unless you know EXACTLY what this is doing
+            ready = False
+    if not ready:
+        raise invoke.exceptions.Exit("Index check failed")
+
+
 # migrations: Run migrations
-@invoke.task(pre=[redis, postgres, solr, code])
+@invoke.task(pre=[code, redis, postgres, solr_ready])
 def migrations(context):
     """
     Migrates the database to the current version.
@@ -107,29 +138,37 @@ def migrations(context):
     # must grab a lock before proceeding
     cache = util.get_redis()
     prefix = "edd.startup.migrations"
+    version_key = f"{prefix}.{version_hash}".encode("utf-8")
+    # assume things current unless explicitly shown otherwise below
+    current = True
     with cache.lock(prefix.encode("utf-8")):
-        # check if another image recently ran check for this version
-        version_key = f"{prefix}.{version_hash}".encode("utf-8")
-        if not cache.get(version_key):
-            # checks that Solr collections are ready for updates
-            context.run("/code/manage.py edd_index --check")
-            # checks for any pending migrations
-            if util.get_pending_migrations(context):
-                # run pending migrations
-                context.run("/code/manage.py migrate")
-                # clean Solr indices
-                context.run("/code/manage.py edd_index --clean")
-                # force re-index in the background
-                context.run("/code/manage.py edd_index --force &")
-            else:
-                # re-index in the background
-                context.run("/code/manage.py edd_index &")
-        # mark this version as recently checked
-        # expire in a week
-        # avoids cost of checking every time
-        # avoids keeping list of every hash run forever
-        expires = 60 * 60 * 24 * 7
-        cache.set(version_key, version_hash.encode("utf-8"), ex=expires)
+        try:
+            # check if another image recently ran check for this version
+            if not cache.get(version_key):
+                # checks for any pending migrations
+                if util.get_pending_migrations(context):
+                    # run pending migrations, set current to success value
+                    current = context.run("/code/manage.py migrate", warn=True).ok
+                    # clean Solr indices
+                    context.run("/code/manage.py edd_index --clean", warn=True)
+                    # force re-index in the background
+                    context.run("/code/manage.py edd_index --force &", disown=True)
+                else:
+                    # re-index in the background
+                    context.run("/code/manage.py edd_index &", disown=True)
+            # mark this version as recently checked
+            # expire in a week
+            # avoids cost of checking every time
+            # avoids keeping list of every hash run forever
+            expires = 60 * 60 * 24 * 7
+            cache.set(version_key, version_hash.encode("utf-8"), ex=expires)
+        except BaseException:
+            # NOTE: dangerous using BaseException;
+            # do not copy this pattern elsewhere
+            # unless you know EXACTLY what this is doing
+            current = False
+    if not current:
+        raise invoke.exceptions.Exit("Migration check failed")
 
 
 # errorpage: Render static 500.html error page
