@@ -12,17 +12,18 @@ from .ajax import (  # noqa: F401
     study_edddata,
     study_measurements,
 )
-from .importer import ImportTableView, utilities_parse_import_file  # noqa: F401
 from .search import model_search, search, study_search  # noqa: F401
-from .study import (  # noqa: F401
+
+from .study import (  # noqa: F401; noqa: F401
     StudyAttachmentView,
     StudyCreateView,
     StudyDeleteView,
     StudyDetailView,
     StudyIndexView,
     StudyLinesView,
+    # TODO: StudyObjectMixin should be internal-only
+    StudyObjectMixin,
     StudyOverviewView,
+    # TODO: load_study should be internal-only
     load_study,
 )
-
-from .study import StudyObjectMixin  # noqa: F401; TODO: should be internal

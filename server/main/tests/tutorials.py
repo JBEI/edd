@@ -18,9 +18,10 @@ from requests import codes
 
 from edd import TestCase, utilities
 from edd.export import table as export_table
+from edd.load import tasks
+from edd.load.broker import ImportBroker
 
-from .. import models, tasks
-from ..importer import table as import_table
+from .. import models
 from . import factory
 
 
@@ -57,7 +58,7 @@ class ImportDataTestsMixin:
         ).count()
 
     def _import_url(self):
-        return reverse("main:table-import", kwargs={"slug": self.target_study.slug})
+        return reverse("main:load:table", kwargs={"slug": self.target_study.slug})
 
     def _view_url(self):
         return reverse("main:detail", kwargs={"slug": self.target_study.slug})
@@ -103,10 +104,11 @@ class ImportDataTestsMixin:
         pages = self._build_import_pages(base)
         try:
             # mocking celery task, to only test the view itself
-            with patch("main.tasks.import_table_task.delay") as mock_task:
+            with patch("edd.load.tasks.import_table_task.delay") as mock_task:
                 # generate a fake task ID so the view has something for notifications
                 mock_task.return_value.id = uuid.uuid4()
                 self._post_import_pages(context, pages, import_id, page_count)
+
                 # assert calls to celery
                 mock_task.assert_called_once_with(
                     self.target_study.pk, self.user.pk, import_id
@@ -124,7 +126,7 @@ class ImportDataTestsMixin:
             upload = BytesIO(fp.read())
         upload.name = filename
         response = self.client.post(
-            reverse("main:import_parse"),
+            reverse("main:load_flat:parse"),
             data={
                 "file": upload,
                 "X_EDD_FILE_TYPE": filetype,
@@ -145,7 +147,7 @@ class ImportDataTestsMixin:
     def _run_task(self, base, import_id, context):
         # make sure import_id is a string
         import_id = str(import_id)
-        broker = import_table.ImportBroker()
+        broker = ImportBroker()
         pages = self._build_import_pages(base)
         for _i, page in enumerate(pages, start=1):
             # need to serialize list/dict to JSON string for broker

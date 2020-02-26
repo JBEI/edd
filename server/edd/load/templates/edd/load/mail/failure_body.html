@@ -1,0 +1,13 @@
+{% extends "edd/load/mail/base.html" %}
+{% load i18n %}
+{% block body %}
+  <h2>{% trans "Import Failed!" %}</h2>
+  <p class="alert alert-danger">
+    {% blocktrans %}
+    Your import to <a href="{{ study_uri }}">{{ study }}</a>
+    was unsuccessful after {{ duration }}
+    with message '{{ message }}'.
+    EDD administrators have received notice of the issue for further investigation.
+    {% endblocktrans %}
+  </p>
+{% endblock body %}

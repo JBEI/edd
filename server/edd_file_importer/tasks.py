@@ -16,7 +16,7 @@ from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
 from threadlocals.threadlocals import set_thread_variable
 
-from main.importer.table import ImportBroker
+from edd.load.broker import ImportBroker
 from main.query import build_study_url
 
 from .exceptions import (
@@ -415,8 +415,8 @@ def send_import_failure_emails(import_, err_payload, user, start, email_admins=T
         return
 
     study = import_.study
-    subject_prefix = getattr(settings, "EMAIL_SUBJECT_PREFIX", "")
-    subject = _("{prefix}Import Failed").format(prefix=subject_prefix)
+    prefix = getattr(settings, "EMAIL_SUBJECT_PREFIX", "")
+    subject = _("{prefix}Import Failed").format(prefix=prefix)
     study_uri = build_study_url(study.slug)
     file_name = import_.file.filename
 

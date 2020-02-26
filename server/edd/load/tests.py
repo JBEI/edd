@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
-
 from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory
 
 from edd import TestCase
 from main import models
-from main.importer import TableImport
+from main.tests import factory
 
-from . import factory
+from .table import TableImport
 
 
 class TableImportTests(TestCase):

@@ -617,7 +617,8 @@ export class RawInputStep {
         Utl.FileDropZone.create({
             "elementId": "importDropZone",
             "fileInitFn": this.fileDropped.bind(this),
-            "url": "/utilities/parsefile/",
+            // TODO: fix hard-coded URL
+            "url": "/load/parse/",
             "processResponseFn": this.fileReturnedFromServer.bind(this),
             "processErrorFn": this.fileUploadError.bind(this),
             "clickable": false,

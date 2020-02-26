@@ -11,8 +11,8 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 
 from edd import TestCase
+from edd.load.broker import ImportBroker
 from main import models as edd_models
-from main.importer.table import ImportBroker
 
 from ...exceptions import (
     MetaboliteNotFoundError,

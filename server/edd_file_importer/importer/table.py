@@ -21,8 +21,8 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.utils.translation import ugettext_lazy as _
 
+from edd.load.broker import ImportBroker
 from edd.utilities import JSONEncoder
-from main.importer.table import ImportBroker
 from main.models import (
     SYSTEM_META_TYPES,
     Assay,

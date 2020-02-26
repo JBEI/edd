@@ -16,6 +16,7 @@ study_url_patterns = [
     ),
     path("description/", login_required(views.StudyLinesView.as_view()), name="lines"),
     path("describe/", include("edd.describe.urls", namespace="describe")),
+    path("load/", include("edd.load.urls", namespace="load")),
     # kept verbose name of description for link backward-compatibility
     path("experiment-description/", login_required(views.StudyLinesView.as_view())),
     path("assaydata/", login_required(views.study_assay_table_data), name="assaydata"),
@@ -57,18 +58,6 @@ study_url_patterns = [
             ]
         ),
     ),
-    path(
-        "import/",
-        include(
-            [
-                path(
-                    "",
-                    login_required(views.ImportTableView.as_view()),
-                    name="table-import",
-                )
-            ]
-        ),
-    ),
 ]
 
 urlpatterns = [
@@ -90,11 +79,7 @@ urlpatterns = [
     # these pages should migrate outside of applicaiton, see EDD-1244
     path("describe/", include("edd.describe.flat_urls", namespace="describe_flat")),
     # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
-    path(
-        "utilities/parsefile/",
-        login_required(views.utilities_parse_import_file),
-        name="import_parse",
-    ),
+    path("load/", include("edd.load.flat_urls", namespace="load_flat")),
     path(
         "search/",
         include(

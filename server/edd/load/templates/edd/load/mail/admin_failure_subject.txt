@@ -1,0 +1,4 @@
+{% load i18n %}
+{% blocktrans %}
+{{ instance_tag }} Import Failed
+{% endblocktrans %}

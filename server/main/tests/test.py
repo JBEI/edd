@@ -11,7 +11,6 @@ from .admin import *  # noqa: F401, F403
 from .forms import *  # noqa: F401, F403
 from .handlers import *  # noqa: F401, F403
 from .ice import *  # noqa: F401, F403
-from .importer import *  # noqa: F401, F403
 from .models import *  # noqa: F401, F403
 from .solr import *  # noqa: F401, F403
 from .tasks import *  # noqa: F401, F403

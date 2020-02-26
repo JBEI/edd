@@ -1,0 +1,6 @@
+{% load i18n %}
+{% blocktrans %}
+An import to {{ study }} started by {{ user }} was unsuccessful after {{ duration }} with message '{{ message }}'.
+
+View the study at <{{ study_uri }}>.
+{% endblocktrans %}

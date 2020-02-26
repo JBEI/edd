@@ -43,7 +43,7 @@
   {% if writable and not showingimport %}
     <a style="color:white;"
         class="{% if not lines %}off{% endif %}"
-        href="{% url 'main:table-import' slug=study.slug %}">
+        href="{% url 'main:load:table' slug=study.slug %}">
       <button type="button"
           style="float:right;"
           class="actionButton primary larger">

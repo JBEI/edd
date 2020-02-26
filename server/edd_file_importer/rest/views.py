@@ -1,4 +1,3 @@
-# coding: utf-8
 import json
 import logging
 
@@ -16,15 +15,17 @@ from rest_framework.exceptions import ParseError as RequestParseError
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
+from edd.load.broker import ImportBroker
 from edd.rest.views import StudyInternalsFilterMixin
 from edd.utilities import JSONEncoder
-from edd_file_importer import models
-from edd_file_importer.notify.backend import ImportWsBroker
-from main.importer.table import ImportBroker
 from main.models import Measurement, MeasurementUnit, Study, StudyPermission
 
+# TODO: models already imported as module,
+# use module instead of individual class imports below
+from .. import models
 from ..exceptions import EDDImportError
 from ..models import Import, ImportCategory, ImportFile, ImportFormat, ImportParser
+from ..notify.backend import ImportWsBroker
 from ..tasks import attempt_status_transition, process_import_file
 from ..utilities import build_ui_payload, update_import_status
 from .serializers import ImportCategorySerializer, ImportSerializer

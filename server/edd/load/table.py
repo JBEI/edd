@@ -3,95 +3,20 @@ import re
 import warnings
 from collections import namedtuple
 
-from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils.translation import ugettext as _
 
-from .. import models, redis
+from main import models
 
 logger = logging.getLogger(__name__)
 MType = namedtuple("MType", ["compartment", "type", "unit"])
 NO_TYPE = MType(models.Measurement.Compartment.UNKNOWN, None, None)
 
 
-MODE_PROTEOMICS = "pr"
-MODE_SKYLINE = "skyline"
-MODE_TRANSCRIPTOMICS = "tr"
-
-
-class ImportException(Exception):
-    pass
-
-
-class ImportTooLargeException(ImportException):
-    pass
-
-
-class ImportBoundsException(ImportException):
-    pass
-
-
-class ImportBroker:
-    def __init__(self):
-        self.storage = redis.ScratchStorage(
-            key_prefix=f"{__name__}.{self.__class__.__name__}"
-        )
-
-    def _import_name(self, import_id):
-        return f"{import_id}"
-
-    def set_context(self, import_id, context):
-        name = self._import_name(import_id)
-        expires = getattr(settings, "EDD_IMPORT_CACHE_LENGTH", None)
-        self.storage.save(context, name=name, expires=expires)
-
-    def add_page(self, import_id, page):
-        name = f"{self._import_name(import_id)}:pages"
-        expires = getattr(settings, "EDD_IMPORT_CACHE_LENGTH", None)
-        _, count = self.storage.append(page, name=name, expires=expires)
-        return count
-
-    def check_bounds(self, import_id, page, expected_count):
-        size = getattr(settings, "EDD_IMPORT_PAGE_SIZE", 1000)
-        limit = getattr(settings, "EDD_IMPORT_PAGE_LIMIT", 1000)
-        if len(page) > size:
-            # TODO uncovered
-            raise ImportTooLargeException(f"Page size is greater than maximum {size}")
-            # END uncovered
-        if expected_count > limit:
-            # TODO uncovered
-            raise ImportTooLargeException(
-                f"Total number of pages is greater than allowed maximum {limit}"
-            )
-            # END uncovered
-        name = f"{self._import_name(import_id)}:pages"
-        if self.storage.page_count(name) >= expected_count:
-            # TODO uncovered
-            raise ImportBoundsException("Data is already cached for import")
-            # END uncovered
-
-    def clear_context(self, import_id):
-        self.storage.delete(self._import_name(import_id))
-
-    def clear_pages(self, import_id):
-        """
-        Clears all pages associated with this import ID
-        """
-        self.storage.delete(f"{self._import_name(import_id)}:pages")
-
-    def load_context(self, import_id):
-        """
-        Loads context associated with this import ID
-        :return: the context, or None if none has been set
-        """
-        return self.storage.load(self._import_name(import_id))
-
-    def load_pages(self, import_id):
-        """
-        Fetches the pages of series data for the specified import
-        :returns: a generator of the stored values (binary strings)
-        """
-        return self.storage.load_pages(f"{self._import_name(import_id)}:pages")
+class TableMode:
+    PROTEOMICS = "pr"
+    SKYLINE = "skyline"
+    TRANSCRIPTOMICS = "tr"
 
 
 class TableImport:
@@ -536,8 +461,8 @@ class TableImport:
         compartment = self._load_compartment(item)
         units_id = self._load_unit(item)
         mtype_fn_lookup = {
-            MODE_PROTEOMICS: self._mtype_proteomics,
-            MODE_TRANSCRIPTOMICS: self._mtype_transcriptomics,
+            TableMode.PROTEOMICS: self._mtype_proteomics,
+            TableMode.TRANSCRIPTOMICS: self._mtype_transcriptomics,
             models.MeasurementType.Group.GENEID: self._mtype_transcriptomics,
             models.MeasurementType.Group.PROTEINID: self._mtype_proteomics,
         }
@@ -590,7 +515,7 @@ class TableImport:
             # carbon ratios are vectors
             return models.Measurement.Format.VECTOR
             # END uncovered
-        elif self.mode in (MODE_TRANSCRIPTOMICS, MODE_PROTEOMICS):
+        elif self.mode in (TableMode.TRANSCRIPTOMICS, TableMode.PROTEOMICS):
             # TODO uncovered
             # always single values
             return models.Measurement.Format.SCALAR

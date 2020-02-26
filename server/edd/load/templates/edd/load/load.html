@@ -628,7 +628,7 @@
     <input type="hidden" id="importId" value="{{ import_id }}"/>
     <input type="hidden" id="pageSizeLimit" value="{{ page_size_limit }}"/>
     <input type="hidden" id="pageCountLimit" value="{{page_count_limit}}"/>
-    <form method="POST" id="assayTableForm" action="{% url 'main:table-import' slug=study.slug %}">
+    <form method="POST" id="assayTableForm" action="{% url 'main:load:table' slug=study.slug %}">
       {% csrf_token %}
       <div>
         <input type="checkbox" id="emailChkbx">

@@ -1,6 +1,5 @@
-# coding: utf-8
 """
-Views handling the legacy import to EDD.
+Views handling loading measurements into EDD.
 """
 
 import json
@@ -16,16 +15,16 @@ from django.views import generic
 from requests import codes
 
 from edd.notify.backend import RedisBroker
+from main import models as edd_models
+from main.views.study import StudyObjectMixin
 
-from .. import models as edd_models
-from .. import tasks
-from ..importer import parser, table
-from .study import StudyObjectMixin
+from . import exceptions, parser, tasks
+from .broker import ImportBroker
 
 logger = logging.getLogger(__name__)
 
 
-# /study/<study_id>/import/
+# /<study_path>/load/
 class ImportTableView(StudyObjectMixin, generic.DetailView):
     def delete(self, request, *args, **kwargs):
         study = self.object = self.get_object()
@@ -34,11 +33,6 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
             return HttpResponse(status=codes.forbidden)
             # END uncovered code
 
-        # Note: we validate the input UUID to avoid exposing the capability to delete any
-        # arbitrary cache entry from redis. As a stopgap, we'll allow any authenticated user to
-        # delete the temporary cache for the import.  we should revisit this when re-casting
-        # imports as REST resources. Low risk ATM for a user to delete someone else's WIP import,
-        # since they'd have to both catch it before it's processed AND have its UUID.
         import_id = request.body.decode("utf-8")
         try:
             uuid.UUID(import_id)
@@ -48,16 +42,14 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
             )
 
         try:
-            broker = table.ImportBroker()
+            broker = ImportBroker()
             broker.clear_pages(import_id)
             return HttpResponse(status=codes.ok)
         # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Import delete failed: {e}")
-
-            # return error synchronously so it can be displayed right away in context.
-            # no need for a separate notification here
             messages.error(request, str(e))
+            return HttpResponse(f"Import delete failed: {e}", status=codes.server_error)
         # END uncovered code
 
     def get(self, request, *args, **kwargs):
@@ -68,7 +60,7 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
         protocols = edd_models.Protocol.objects.order_by("name")
         return render(
             request,
-            "main/import.html",
+            "edd/load/load.html",
             context={
                 "study": study,
                 "protocols": protocols,
@@ -82,7 +74,7 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
 
     def _parse_payload(self, request):
         # init storage for task and parse request body
-        broker = table.ImportBroker()
+        broker = ImportBroker()
         payload = json.loads(request.body)
         # check requested import parameters are acceptable
         import_id = payload["importId"]
@@ -119,18 +111,16 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
                 )
             return JsonResponse(data={}, status=codes.accepted)
         # TODO: uncovered code
-        except table.ImportTooLargeException as e:
+        except exceptions.ImportTooLargeError as e:
             return HttpResponse(str(e), status=codes.request_entity_too_large)
-        except table.ImportBoundsException as e:
+        except exceptions.ImportBoundsError as e:
             return HttpResponse(str(e), status=codes.bad_request)
-        except table.ImportException as e:
+        except exceptions.ImportError as e:
             return HttpResponse(str(e), status=codes.server_error)
-        except RuntimeError as e:
-            logger.exception(f"Data import failed: {e}")
-
-            # return error synchronously so it can be displayed right away in context.
-            # no need for a separate notification here
+        except Exception as e:
+            logger.exception(f"Table import failed: {e}")
             messages.error(request, e)
+            return HttpResponse(f"Table import failed: {e}", status=codes.server_error)
         # END uncovered
 
 
@@ -155,7 +145,6 @@ def utilities_parse_import_file(request):
         except Exception as e:
             logger.exception(f"Import file parse failed: {e}")
             return JsonResponse({"python_error": str(e)}, status=codes.server_error)
-        # END uncovered
     return JsonResponse(
         {
             "python_error": _(
@@ -166,3 +155,4 @@ def utilities_parse_import_file(request):
         },
         status=codes.server_error,
     )
+    # END uncovered

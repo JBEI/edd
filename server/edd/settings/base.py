@@ -99,6 +99,7 @@ INSTALLED_APPS = (
     # EDD apps
     "main.apps.EDDConfig",
     "edd.describe.apps.DescribeConfig",
+    "edd.load.apps.LoadConfig",
     "edd.export.apps.ExportConfig",
     "edd_file_importer",
     "tools.apps.UtilsConfig",

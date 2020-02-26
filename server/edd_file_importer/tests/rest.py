@@ -15,10 +15,10 @@ from django.urls import reverse
 from requests import codes
 from rest_framework.test import APITestCase
 
+from edd.load.broker import ImportBroker
 from edd.rest.tests import EddApiTestCaseMixin
 from edd.utilities import JSONDecoder
 from main import models as edd_models
-from main.importer.table import ImportBroker
 from main.tests import factory as main_factory
 
 from . import factory

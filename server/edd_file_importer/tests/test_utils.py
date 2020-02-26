@@ -1,7 +1,7 @@
 import os
 from uuid import UUID
 
-from main.importer.table import ImportBroker
+from edd.load.broker import ImportBroker
 
 from ..parsers import MeasurementParseRecord
 from . import factory
