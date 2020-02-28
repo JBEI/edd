@@ -200,7 +200,7 @@ export function onReferenceRecordsLoad(): void {
     // Wire up the function that submits the page
     // on a timeout to allow autocomplete events to finish
     $("#submit-btn").on("click", () => {
-        window.setTimeout(() => this.startImport(), 10);
+        window.setTimeout(() => reviewStep.startImport(), 10);
     });
 
     // We need to manually trigger this, after all our steps are constructed.
