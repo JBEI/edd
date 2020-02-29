@@ -66,9 +66,6 @@ urlpatterns = [
     path(
         "study/", login_required(views.StudyCreateView.as_view()), name="create_study"
     ),
-    path(
-        "study/study-search/", login_required(views.study_search), name="study_search"
-    ),
     # Individual study-specific pages loaded by primary key
     # reverse('main:edd-pk:overview', kwargs={'pk': pk})
     path("study/<int:pk>/", include((study_url_patterns, "edd-pk"))),
@@ -78,15 +75,7 @@ urlpatterns = [
     # edd.describe URLs that can work without a study reference
     # these pages should migrate outside of applicaiton, see EDD-1244
     path("describe/", include("edd.describe.flat_urls", namespace="describe_flat")),
+    path("search/", include("edd.search.urls", namespace="search")),
     # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
     path("load/", include("edd.load.flat_urls", namespace="load_flat")),
-    path(
-        "search/",
-        include(
-            [
-                path("", login_required(views.search)),
-                path("<slug:model>/", login_required(views.model_search)),
-            ]
-        ),
-    ),
 ]

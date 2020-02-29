@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
-
 import logging
 
 from django.db.models.signals import post_save
 
+from edd import receiver
+
 from .. import models, tasks
-from .dispatcher import receiver
 
 logger = logging.getLogger(__name__)
 

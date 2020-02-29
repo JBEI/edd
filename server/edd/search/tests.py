@@ -1,18 +1,19 @@
 """Tests for Solr API"""
 import collections
 import time
+from unittest.mock import patch
 
 import pytest
 from django.test import override_settings
 from faker import Faker
 
 from edd import TestCase
+from main import models
+from main.tests import factory
 
-from .. import solr
-from . import factory
+from . import signals, solr
 
 fake = Faker()
-
 fake_solr = fake.url()
 fake_django_setting = {"default": {"URL": fake_solr}, "BAD": {}}
 
@@ -187,3 +188,56 @@ class SolrTests(TestCase):
         self.assertIn("OR", write)
         # restore the usual user
         self.collection.ident = self.admin
+
+
+def test_solr_removed_study_without_key():
+    study = factory.StudyFactory.build()
+    with patch("main.signals.study_removed") as signal:
+        # no forward if cache_deleting_key is not called first
+        signals.removed_study(models.Study, study, using="default")
+        assert signal.send.call_count == 0
+
+
+def test_solr_removed_study_forwards():
+    study = factory.StudyFactory.build()
+    with patch("main.signals.study_removed") as signal:
+        # forward happens when cache_deleting_key is called
+        signals.cache_deleting_key(models.Study, study)
+        signals.removed_study(models.Study, study, using="default")
+        signal.send.assert_called_once()
+
+
+def test_solr_removed_type_without_key():
+    metabolite = factory.MetaboliteFactory.build()
+    with patch("main.signals.type_removed") as signal:
+        # no forward if cache_deleting_key is not called first
+        signals.removed_type(models.Metabolite, metabolite, using="default")
+        assert signal.send.call_count == 0
+
+
+def test_solr_removed_type_forwards():
+    metabolite = factory.MetaboliteFactory.build()
+    with patch("main.signals.type_removed") as signal:
+        # forward happens when cache_deleting_key is called
+        signals.cache_deleting_key(models.Metabolite, metabolite)
+        signals.removed_type(models.Metabolite, metabolite, using="default")
+        signal.send.assert_called_once()
+
+
+def test_solr_removed_user_without_key():
+    User = factory.get_user_model()
+    user = factory.UserFactory.build()
+    with patch("main.signals.user_removed") as signal:
+        # no forward if cache_deleting_key is not called first
+        signals.removed_type(User, user, using="default")
+        assert signal.send.call_count == 0
+
+
+def test_solr_removed_user_forwards():
+    User = factory.get_user_model()
+    user = factory.UserFactory.build()
+    with patch("main.signals.user_removed") as signal:
+        # forward happens when cache_deleting_key is called
+        signals.cache_deleting_key(User, user)
+        signals.removed_user(User, user, using="default")
+        signal.send.assert_called_once()

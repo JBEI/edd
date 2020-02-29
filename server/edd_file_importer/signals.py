@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Adds signal handlers for custom models defined in the "edd_file_importer" app, leveraging existing
 signal handler code from "main".
@@ -11,9 +10,9 @@ import django
 from django.db import connection
 from django.db.models.signals import post_delete, post_save, pre_save
 
-import main.models as edd_models
+from edd import receiver
+from main import models as edd_models
 from main.signals.core import ensure_updates, ensure_uuid, log_update, set_file_info
-from main.signals.dispatcher import receiver
 
 from . import models
 

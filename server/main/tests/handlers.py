@@ -6,7 +6,7 @@ from django.test import override_settings
 from faker import Faker
 
 from .. import models
-from ..signals import core, sbml, solr
+from ..signals import core, sbml
 from . import factory
 
 fake = Faker()
@@ -227,40 +227,3 @@ def test_sbml_template_saved():
             update_fields=None,
         )
         assert task.delay.call_count == 1
-
-
-def test_solr_removed_study_forwards():
-    study = factory.StudyFactory.build()
-    with patch("main.signals.solr.study_removed") as signal:
-        # no forward if cache_deleting_key is not called first
-        solr.removed_study(models.Study, study, using="default")
-        assert signal.send.call_count == 0
-        # forward happens when cache_deleting_key is called
-        solr.cache_deleting_key(models.Study, study)
-        solr.removed_study(models.Study, study, using="default")
-        signal.send.assert_called_once()
-
-
-def test_solr_removed_type_forwards():
-    metabolite = factory.MetaboliteFactory.build()
-    with patch("main.signals.solr.type_removed") as signal:
-        # no forward if cache_deleting_key is not called first
-        solr.removed_type(models.Metabolite, metabolite, using="default")
-        assert signal.send.call_count == 0
-        # forward happens when cache_deleting_key is called
-        solr.cache_deleting_key(models.Metabolite, metabolite)
-        solr.removed_type(models.Metabolite, metabolite, using="default")
-        signal.send.assert_called_once()
-
-
-def test_solr_removed_user_forwards():
-    User = factory.get_user_model()
-    user = factory.UserFactory.build()
-    with patch("main.signals.solr.user_removed") as signal:
-        # no forward if cache_deleting_key is not called first
-        solr.removed_type(User, user, using="default")
-        assert signal.send.call_count == 0
-        # forward happens when cache_deleting_key is called
-        solr.cache_deleting_key(User, user)
-        solr.removed_user(User, user, using="default")
-        signal.send.assert_called_once()

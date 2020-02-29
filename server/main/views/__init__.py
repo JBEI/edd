@@ -12,7 +12,6 @@ from .ajax import (  # noqa: F401
     study_edddata,
     study_measurements,
 )
-from .search import model_search, search, study_search  # noqa: F401
 
 from .study import (  # noqa: F401; noqa: F401
     StudyAttachmentView,

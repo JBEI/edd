@@ -1,9 +1,21 @@
-# The F401 error code is "imported but unused" warning; we ignore it here
-#   because this __init__ module exists only to map the individual files in
-#   this directory to the signals module.
+# The F401 error code is "imported but unused"
+# ignoring it here because this module is imported to register handlers in submodules
+from . import core, permission, sbml, user  # noqa: F401
+from .signals import (
+    study_modified,
+    study_removed,
+    type_modified,
+    type_removed,
+    user_modified,
+    user_removed,
+)
 
-from .core import *  # noqa: F401, F403
-from .permission import *  # noqa: F401, F403
-from .sbml import *  # noqa: F401, F403
-from .solr import *  # noqa: F401, F403
-from .user import *  # noqa: F401, F403
+# doing `from main.signals import *` will import these names
+__all__ = [
+    "study_modified",
+    "study_removed",
+    "type_modified",
+    "type_removed",
+    "user_modified",
+    "user_removed",
+]

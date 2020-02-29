@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import collections
 import functools
 import logging
@@ -16,8 +14,9 @@ from django.db.models.signals import (
     pre_save,
 )
 
+from edd import receiver
+
 from .. import models, tasks
-from .dispatcher import receiver
 from .signals import study_modified
 
 logger = logging.getLogger(__name__)

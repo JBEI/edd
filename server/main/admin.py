@@ -17,6 +17,7 @@ from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
 from edd.export.sbml import validate_sbml_attachment
+from edd.search.solr import StudySearch, UserSearch
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi, IceApiException
 
@@ -28,7 +29,6 @@ from .forms import (
     RegistryValidator,
     UserAutocompleteWidget,
 )
-from .solr import StudySearch, UserSearch
 
 logger = logging.getLogger(__name__)
 

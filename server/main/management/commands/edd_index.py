@@ -6,7 +6,7 @@ import time
 
 from django.core.management.base import BaseCommand, CommandError
 
-from main import solr
+from edd.search import solr
 
 retry_limit = 10
 retry_duration = 15

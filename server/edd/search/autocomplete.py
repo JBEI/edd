@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import logging
 import operator
 import re
@@ -13,8 +11,8 @@ from rest_framework.exceptions import ValidationError
 
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
+from main import models as edd_models
 
-from . import models as edd_models
 from . import solr
 
 DEFAULT_RESULT_COUNT = 20
@@ -23,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def search_compartment(request):
-    """ Autocomplete for measurement compartments; e.g. intracellular """
+    """Autocomplete for measurement compartments; e.g. intracellular"""
     # this list is short, always just return the entire thing instead of searching
     return JsonResponse(
         {
@@ -36,9 +34,11 @@ def search_compartment(request):
 
 
 def search_generic(request, model_name, module=edd_models):
-    """ A generic model search function; runs a regex search on all text-like fields on a model,
-        limited to 20 items. Defaults to loading model from the EDD model module, pass in a
-        module kwarg to specify a different module. """
+    """
+    A generic model search function; runs a regex search on all text-like
+    fields on a model, limited to 20 items. Defaults to loading model from the
+    EDD model module, pass in a module kwarg to specify a different module.
+    """
     try:
         Model = getattr(module, model_name)
         ifields = [
@@ -61,7 +61,7 @@ def search_generic(request, model_name, module=edd_models):
 
 
 def search_group(request):
-    """ Autocomplete for Groups of users. """
+    """Autocomplete for Groups of users."""
     term = request.GET.get("term", "")
     re_term = re.escape(term)
     found = (
@@ -73,7 +73,7 @@ def search_group(request):
 
 
 def search_metaboliteish(request):
-    """ Autocomplete for "metaboliteish" values; metabolites and general measurements. """
+    """Autocomplete for "metaboliteish" values; metabolites and general measurements."""
     core = solr.MeasurementTypeSearch()
     term = request.GET.get("term", "")
     found = core.query(query=term)
@@ -93,9 +93,11 @@ AUTOCOMPLETE_METADATA_LOOKUP = {
 
 
 def search_metadata(request, context):
-    """ Autocomplete search on metadata in a context; supported contexts are: 'Assay', 'AssayLine',
-        'Line', and 'Study'. If none of these contexts are provided, then all metadata types
-        are searched. """
+    """
+    Autocomplete search on metadata in a context; supported contexts are:
+    'Assay', 'AssayLine', 'Line', and 'Study'. If none of these contexts are
+    provided, then all metadata types are searched.
+    """
     term = request.GET.get("term", "")
     re_term = re.escape(term)
 
@@ -122,7 +124,7 @@ def optional_sort(request, queryset):
 
 
 def search_study_lines(request):
-    """ Autocomplete search on lines in a study."""
+    """Autocomplete search on lines in a study."""
     study_pk = request.GET.get("study", "")
     name_regex = re.escape(request.GET.get("term", ""))
     active_param = request.GET.get("active", None)
@@ -134,8 +136,8 @@ def search_study_lines(request):
         raise ValidationError("study parameter is required and must be a valid integer")
 
     permission_check = edd_models.Study.access_filter(user)
-    # if the user's admin / staff role gives read access to all Studies, don't bother querying
-    # the database for specific permissions defined on this study
+    # if the user's admin / staff role gives read access to all Studies,
+    # don't bother querying the database for specific permissions defined on this study
     if edd_models.Study.user_role_can_read(user):
         permission_check = Q()
     try:
@@ -148,8 +150,8 @@ def search_study_lines(request):
         )
         query = study.line_set.filter(active)
 
-    # if study doesn't exist or requesting user doesn't have read access, return an empty
-    # set of lines
+    # if study doesn't exist or requesting user doesn't have read access,
+    # return an empty set of lines
     except edd_models.Study.DoesNotExist:
         query = edd_models.Line.objects.none()
 
@@ -162,7 +164,7 @@ def search_study_lines(request):
 
 
 def search_sbml_exchange(request):
-    """ Autocomplete search within an SBMLTemplate's Reactions/Exchanges """
+    """Autocomplete search within an SBMLTemplate's Reactions/Exchanges"""
     term = request.GET.get("term", "")
     re_term = re.escape(term)
     template = request.GET.get("template", None)
@@ -185,7 +187,7 @@ def search_sbml_exchange(request):
 
 
 def search_sbml_species(request):
-    """ Autocomplete search within an SBMLTemplate's Species """
+    """Autocomplete search within an SBMLTemplate's Species"""
     term = request.GET.get("term", "")
     re_term = re.escape(term)
     template = request.GET.get("template", None)
@@ -198,7 +200,7 @@ def search_sbml_species(request):
 
 
 def search_strain(request):
-    """ Autocomplete delegates to ICE search API. """
+    """Autocomplete delegates to ICE search API."""
     auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=request.user.email)
     ice = IceApi(auth=auth, verify_ssl_cert=settings.ICE_VERIFY_CERT)
     ice.timeout = settings.ICE_REQUEST_TIMEOUT
@@ -208,7 +210,7 @@ def search_strain(request):
 
 
 def search_study_writable(request):
-    """ Autocomplete searches for any Studies writable by the currently logged in user. """
+    """Autocomplete searches for any Studies writable by the currently logged in user."""
     term = request.GET.get("term", "")
     re_term = re.escape(term)
     found = edd_models.Study.objects.distinct().filter(
@@ -221,7 +223,7 @@ def search_study_writable(request):
 
 
 def search_user(request):
-    """ Autocomplete delegates searches to the Solr index of users. """
+    """Autocomplete delegates searches to the Solr index of users."""
     core = solr.UserSearch()
     term = request.GET.get("term", "")
     options = {"edismax": True}

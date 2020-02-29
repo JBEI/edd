@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Views that handle search operations in EDD.
 """
@@ -13,8 +12,8 @@ from requests import codes
 
 from edd import utilities
 
-from .. import autocomplete
-from ..solr import StudySearch
+from . import autocomplete
+from .solr import StudySearch
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import functools
 import logging
 from collections import namedtuple
@@ -9,17 +7,10 @@ from django.contrib.auth import get_user_model
 from django.db import connection
 from django.db.models.signals import post_delete, post_save, pre_delete
 
-from .. import models
-from ..solr import MeasurementTypeSearch, StudySearch, UserSearch
-from .dispatcher import receiver
-from .signals import (
-    study_modified,
-    study_removed,
-    type_modified,
-    type_removed,
-    user_modified,
-    user_removed,
-)
+from edd import receiver
+from main import models, signals
+
+from .solr import MeasurementTypeSearch, StudySearch, UserSearch
 
 _type_index = None
 _study_index = None
@@ -84,19 +75,19 @@ def cache_deleting_key(sender, instance, **kwargs):
 @receiver(post_delete, sender=models.Study)
 def removed_study(sender, instance, using, **kwargs):
     if hasattr(instance, "_pk_cached"):
-        study_removed.send(sender=sender, doc=instance._pk_cached, using=using)
+        signals.study_removed.send(sender=sender, doc=instance._pk_cached, using=using)
 
 
 @receiver(post_delete, sender=measurement_types)
 def removed_type(sender, instance, using, **kwargs):
     if hasattr(instance, "_pk_cached"):
-        type_removed.send(sender=sender, doc=instance._pk_cached, using=using)
+        signals.type_removed.send(sender=sender, doc=instance._pk_cached, using=using)
 
 
 @receiver(post_delete, sender=get_user_model())
 def removed_user(sender, instance, using, **kwargs):
     if hasattr(instance, "_pk_cached"):
-        user_removed.send(sender=sender, doc=instance._pk_cached, using=using)
+        signals.user_removed.send(sender=sender, doc=instance._pk_cached, using=using)
 
 
 @receiver(post_save, sender=measurement_types)
@@ -106,10 +97,12 @@ def type_saved(sender, instance, created, raw, using, **kwargs):
     """
     # raw save == database may be inconsistent; do not forward next signal
     if not raw:
-        type_modified.send(sender=sender, measurement_type=instance, using=using)
+        signals.type_modified.send(
+            sender=sender, measurement_type=instance, using=using
+        )
 
 
-@receiver(study_modified)
+@receiver(signals.study_modified)
 def index_study(sender, study, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
@@ -117,7 +110,7 @@ def index_study(sender, study, using, **kwargs):
         _schedule(study_index.update, study)
 
 
-@receiver(type_modified)
+@receiver(signals.type_modified)
 def index_type(sender, measurement_type, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
@@ -125,7 +118,7 @@ def index_type(sender, measurement_type, using, **kwargs):
         _schedule(type_index.update, measurement_type)
 
 
-@receiver(user_modified)
+@receiver(signals.user_modified)
 def index_user(sender, user, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
@@ -133,7 +126,7 @@ def index_user(sender, user, using, **kwargs):
         _schedule(users_index.update, user)
 
 
-@receiver(study_removed)
+@receiver(signals.study_removed)
 def remove_study(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
@@ -141,7 +134,7 @@ def remove_study(sender, doc, using, **kwargs):
         _schedule(study_index.remove, doc)
 
 
-@receiver(type_removed)
+@receiver(signals.type_removed)
 def remove_type(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
@@ -149,9 +142,12 @@ def remove_type(sender, doc, using, **kwargs):
         _schedule(type_index.remove, doc)
 
 
-@receiver(user_removed)
+@receiver(signals.user_removed)
 def remove_user(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
         users_index = load_users_index()
         _schedule(users_index.remove, doc)
+
+
+__all__ = []

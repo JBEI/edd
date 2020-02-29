@@ -7,11 +7,9 @@ from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db.models import Count, F, Prefetch
 from django_auth_ldap.backend import _LDAPUser
-from six import string_types
 
 from edd import utilities
-
-from . import models
+from main import models
 
 logger = logging.getLogger(__name__)
 # tuple for request connection and read timeouts, respectively, in seconds
@@ -579,7 +577,7 @@ class UserSearch(SolrSearch):
 
 
 class MeasurementTypeSearch(SolrSearch):
-    """ API to manage searching for measurement types via Solr index """
+    """API to manage searching for measurement types via Solr index"""
 
     def __init__(self, core="measurement", *args, **kwargs):
         super().__init__(core=core, *args, **kwargs)
@@ -609,7 +607,7 @@ class MeasurementTypeSearch(SolrSearch):
         queryopt["q.alt"] = "*:*"
         if kwargs.get("family", None):
             family = kwargs["family"]
-            if isinstance(family, string_types):
+            if isinstance(family, str):
                 queryopt["fq"] = f"family:{family}"
             else:
                 queryopt["fq"] = [f"family:{f}" for f in family].join(" OR ")

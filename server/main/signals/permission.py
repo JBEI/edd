@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
-
 from django.db.models.signals import post_delete, post_save
 
+from edd import receiver
+
 from .. import models
-from .dispatcher import receiver
 from .signals import study_modified
 
 permissions = (models.UserPermission, models.GroupPermission, models.EveryonePermission)
