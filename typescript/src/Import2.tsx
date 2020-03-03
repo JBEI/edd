@@ -1513,13 +1513,8 @@ class Import extends React.Component<any, ImportState> {
                 const limitMB = this.getUploadLimit();
                 errs.push({
                     "category": "File too large",
-                    "summary":
-                        'File "' +
-                        rejectedFiles[0].name +
-                        '" is larger than the upload' +
-                        " limit of " +
-                        limitMB +
-                        " MB.",
+                    "summary": `File "${rejectedFiles[0].name}" is larger than the upload limit of
+                        ${limitMB} MB.`,
                     "resolution": "Please break up your file for upload",
                 });
             }
@@ -1536,18 +1531,17 @@ class Import extends React.Component<any, ImportState> {
                     .sort();
                 errs.push({
                     "category": "Unsupported file format",
-                    "summary":
-                        'File "' +
-                        rejectedFiles[0].name +
-                        '" does not match format "' +
-                        format.name +
-                        "\", or the file's format was not detected " +
-                        'correctly. Files in the "' +
-                        format.name +
-                        '" format should ' +
-                        "have one of the following extensions: " +
-                        uniqueExtensions.join(", ") +
-                        ".",
+                    "summary": `File "${rejectedFiles[0].name}" does not match format
+                        "${format.name}", or the file's format was not detected correctly`,
+                    "detail": [
+                        `Files in the ${
+                            format.name
+                        } format should have one of the following
+                         extensions ${uniqueExtensions.join(
+                             ", ",
+                         )}. The root cause is that your  +
+                         browser reported unsupported MIME type "${file.type}"`,
+                    ],
                     "resolution":
                         "Go back to Step 1 and select the correct format for this" +
                         " file, or reformat your data in a supported format.",
@@ -1557,8 +1551,7 @@ class Import extends React.Component<any, ImportState> {
             if (!errs.length) {
                 errs.push({
                     "category": "Unexpected error",
-                    "summary":
-                        'Your file "' + rejectedFiles[0].name + '" was rejected.',
+                    "summary": `Your file "${rejectedFiles[0].name}" was rejected.`,
                     "resolution":
                         "Please contact administrators for help resolving this" +
                         " problem",
