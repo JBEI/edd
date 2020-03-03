@@ -93,30 +93,9 @@ try {
             // tag both with build-specific versions
             // ensure edd-core builds off correct edd-node
             // NOTE: sudo is required to execute docker commands
-            def build_node = $/#!/bin/bash -xe
-                export DOCKER_BUILDKIT=1
-                sudo -E docker build \
-                    --pull \
-                    --progress plain \
-                    -t jbei/edd-node:${image_version} \
-                    .
-            /$
-            def build_script = $/#!/bin/bash -xe
-                export DOCKER_BUILDKIT=1
-                sed -e 's/edd-node:latest/edd-node:${image_version}/' \
-                    < ./docker/edd/core/Dockerfile \
-                    | sudo -E docker build \
-                        -f- \
-                        --progress plain \
-                        --build-arg 'EDD_VERSION=${image_version}' \
-                        -t jbei/edd-core:${image_version} \
-                        .
-            /$
             timeout(15) {
-                dir("docker/node") {
-                    sh(build_node)
-                }
-                sh(build_script)
+                sh("sudo bin/jenkins/build_node.sh '${image_version}'")
+                sh("sudo bin/jenkins/build_core.sh '${image_version}'")
             }
         }
 

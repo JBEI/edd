@@ -1,5 +1,6 @@
 # arguments and defaults used with docker build command
 ARG EDD_VERSION="manual-build"
+ARG NODE_VERSION="latest"
 ARG TARGET="dev"
 
 # ---
@@ -76,7 +77,7 @@ RUN echo "Development pre-install" \
 
 # ---
 
-FROM jbei/edd-node:latest as node
+FROM jbei/edd-node:${NODE_VERSION} as node
 
 # set environment in this build phase with the version passed as argument
 ARG EDD_VERSION
