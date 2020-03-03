@@ -30,62 +30,70 @@
 
 Do:
 
-    def my_function(value_a, value_b, value_c=None):
-        """
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
-        tempor incididunt ut labore et dolore magna aliqua. Dolor sed viverra
-        ipsum nunc aliquet bibendum enim.
+```python
+def my_function(value_a, value_b, value_c=None):
+    """
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+    tempor incididunt ut labore et dolore magna aliqua. Dolor sed viverra
+    ipsum nunc aliquet bibendum enim.
 
-        In massa tempor nec feugiat. Nunc aliquet bibendum enim
-        facilisis gravida.
+    In massa tempor nec feugiat. Nunc aliquet bibendum enim
+    facilisis gravida.
 
-        :param value_a: Fusce ut placerat orci nulla.
-        :param value_b: Pharetra vel turpis nunc eget lorem dolor. Tristique
-            senectus et netus et malesuada.
-        :param value_c: Neque egestas congue quisque egestas.
-        """
-        # pass value_c thru the flux capacitor when value_b is over 88
-        if value_b > 88:
-            flux_capacitor(value_c)
+    :param value_a: Fusce ut placerat orci nulla.
+    :param value_b: Pharetra vel turpis nunc eget lorem dolor. Tristique
+        senectus et netus et malesuada.
+    :param value_c: Neque egestas congue quisque egestas.
+    """
+    # pass value_c thru the flux capacitor when value_b is over 88
+    if value_b > 88:
+        flux_capacitor(value_c)
+```
 
 Don't:
 
-    def my_function(value_a, value_b, value_c=None):
-        """
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
-        incididunt ut labore et dolore magna aliqua. Dolor sed viverra ipsum nunc aliquet
-        enim.
-        In massa tempor nec feugiat. Nunc aliquet bibendum enim facilisis gravida.
-        :param value_a: Fusce ut placerat orci nulla.
-        :param value_b: Pharetra vel turpis nunc eget lorem dolor. Tristique
-        senectus et netus et malesuada.
-        :param value_c: Neque egestas congue quisque egestas.
-        """
-        if value_b > 88:  # pass value_c thru the flux capacitor when value_b is over 88
-            flux_capacitor(value_c)
+```python
+def my_function(value_a, value_b, value_c=None):
+    """
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+    incididunt ut labore et dolore magna aliqua. Dolor sed viverra ipsum nunc aliquet
+    enim.
+    In massa tempor nec feugiat. Nunc aliquet bibendum enim facilisis gravida.
+    :param value_a: Fusce ut placerat orci nulla.
+    :param value_b: Pharetra vel turpis nunc eget lorem dolor. Tristique
+    senectus et netus et malesuada.
+    :param value_c: Neque egestas congue quisque egestas.
+    """
+    if value_b > 88:  # pass value_c thru the flux capacitor when value_b is over 88
+        flux_capacitor(value_c)
+```
 
 # Guidelines for JBEI and ABF Developers
 
-These guidelines apply specifically to developers at JBEI, ABF, or ESE; whom at least in theory
-could directly commit to the repo at [https://github.com/JBEI/edd/][1] via GitHub or the local
-mirror in Bitbucket.
+These guidelines apply specifically to developers at JBEI, ABF, or ESE; whom at
+least in theory could directly commit to the repo at
+[https://github.com/JBEI/edd/][1] via GitHub or the local mirror in Bitbucket.
 
 1. All work shall occur in branches created from a JIRA ticket or GitHub Issue.
-    - Submit a ticket or discuss new work with core contributors to get feedback on planned work.
-    - Major changes should be discussed with core contributors first.
-2. Changes to `master` and `release/*` branches must come through a pull request.
+   Submit a ticket or discuss new work with core contributors to get feedback
+   on planned work. Major changes should be discussed with core
+   contributors first.
+2. Changes to `master` and `release/*` branches must come through a
+   pull request.
 3. Changes to all other branches are encouraged to go through a pull request.
-4. Prefer deleting source branch on merging a pull request, to keep the branch list manageable.
+4. Prefer deleting source branch on merging a pull request, to keep the branch
+   list manageable.
 5. Prefer rebasing to keep branches up-to-date with changes to parent branch.
-    - Merges will make the developer performing the merge the author of incoming changes.
-    - Change in authorship makes it harder to find commits where lines changed.
-    - Any non-fast-forward rebase can fall back to merge-and-resolve workflow.
-6. Branches under `bugfix/*` or `feature/*` should never branch from a `release/*` branch.
-    - Almost always should branch instead from `master`.
-    - Sometimes may branch from another `bugfix/*` or `feature/*` branch.
+   Merges will make the developer performing the merge the author of incoming
+   changes. Change in authorship makes it harder to find commits where lines
+   changed. Any non-fast-forward rebase can fall back to
+   merge-and-resolve workflow.
+6. Branches under `bugfix/*` or `feature/*` should never branch from a
+   `release/*` branch. Almost always should branch instead from `master`.
+   Sometimes may branch from another `bugfix/*` or `feature/*` branch.
 7. Branches under `hotfix/*` should always branch from a `release/*` branch.
-    - Merges should go back to the `release/*` _and_ `master`.
-    - If/when EDD supports multiple versions, should merge into all supported releases.
+   Merges should go back to the `release/*` _and_ `master`. If/when EDD
+   supports multiple versions, should merge into all supported releases.
 
 [1]: https://github.com/JBEI/edd/
 [2]: https://www.python.org/dev/peps/pep-0257/

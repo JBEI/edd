@@ -30,6 +30,9 @@ settings/*
 typescript/modules/*.d.ts
 typescript/src/*.d.ts
 
+# ignore mkdocs generated files
+site
+
 # these no longer should get generated, but older clones may have these files still
 secrets.cfg
 bower_components

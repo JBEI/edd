@@ -1,0 +1,31 @@
+site_name: Experiment Data Depot
+repo_url: https://github.com/jbei/edd
+nav:
+  - Home: index.md
+  - "User Guide":
+      - Administration: Administration.md
+      - Configuration: Configuration.md
+      - Deployment: Deployment.md
+      - "Migration 2.5 to 2.6": Migration_2.5_to_2.6.md
+      - Releasing: Releasing.md
+  - Development:
+      - "Developer Setup":
+          - "Developer Setup": Developer_Setup.md
+          - "macOS Setup": Developer_Setup_Mac.md
+          - "Linux Setup": Developer_Setup_Linux.md
+          - "Running Development": Developer_Setup_Running.md
+      - Contributing: Contributing.md
+      - Troubleshooting: Troubleshooting.md
+      - "Use Cases": Use_Cases.md
+      - "User Stories": User_Stories.md
+  - About:
+      - License: License.md
+      - Legal: Legal.md
+      - Contributing: Contributing.md
+theme: readthedocs
+markdown_extensions:
+  - codehilite:
+  - sane_lists:
+  - smarty:
+  - toc:
+      permalink: True

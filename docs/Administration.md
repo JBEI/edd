@@ -12,13 +12,17 @@ Tests _must_ run with an `edd-core` image that is built with `TARGET=dev`.
 This is the default when manually building, but is _not_ the default for
 images pushed to Docker Hub. Run tests with:
 
-    docker-compose exec http pytest
+```bash
+docker-compose exec http pytest
+```
 
 ### Test email configuration
 
 Use the Django management command `sendtestemail` ([docs][1]).
 
-    docker-compose exec http /code/manage.py sendtestemail you@example.com
+```bash
+docker-compose exec http /code/manage.py sendtestemail you@example.com
+```
 
 ### Create an unprivileged test account
 
@@ -26,7 +30,9 @@ Use the Django management command `edd_create_user`, which is based on the
 `createsuperuser` ([docs][2]) command. Instead of making a superuser, it creates
 an unprivledged user, and auto-verifies that user's email address.
 
-    docker-compose exec http /code/manage.py edd_create_user
+```bash
+docker-compose exec http /code/manage.py edd_create_user
+```
 
 ### Dump and Restore database contents
 
@@ -35,7 +41,9 @@ connects to the postgres server at `postgres.example.org` (`-h`), and the
 database `edd` (`-d`), with the user/role `jane` (`-U`), and saves output
 to the file `dump.sql` (`-f`).
 
-    pg_dump -h postgres.example.org -d edd -U jane -f dump.sql
+```bash
+pg_dump -h postgres.example.org -d edd -U jane -f dump.sql
+```
 
 To restore this dump in a testing database, use the `edd-postgres` Docker
 image. Configure the container with a new, empty volume loaded at
@@ -49,7 +57,9 @@ dump file before making the database available for use.
 Use the Django management command `edd_index`. Pass in the `--force` flag to
 run a full re-index even if it appears each index contains the correct data.
 
-    docker-compose exec http /code/manage.py edd_index
+```bash
+docker-compose exec http /code/manage.py edd_index
+```
 
 ## Upgrading EDD
 
