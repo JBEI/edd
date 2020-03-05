@@ -31,7 +31,7 @@ def gunicorn(context):
     with context.cd("/code"):
         context.run(
             # run gunicorn as edduser
-            "su-exec edduser:edduser gunicorn "
+            "gosu edduser gunicorn "
             # with four worker processes
             "-w 4 "
             # listening on all IPv4 interfaces port 8000
@@ -39,6 +39,9 @@ def gunicorn(context):
             # using gthread worker class
             # this functioned OK with streaming responses, while gevent failed
             "-k gthread "
+            # use /dev/shm for worker heartbeat files
+            # https://pythonspeed.com/articles/gunicorn-in-docker/
+            "--worker-tmp-dir /dev/shm "
             # disable use of sendfile()
             # suggested in documentation for gunicorn
             "--no-sendfile "
@@ -58,7 +61,7 @@ def daphne(context):
     with context.cd("/code"):
         context.run(
             # run daphne as edduser
-            "su-exec edduser:edduser daphne "
+            "gosu edduser daphne "
             # listening on all IPv4 interfaces
             "-b 0.0.0.0 "
             # listening on port 8000
@@ -81,7 +84,7 @@ def celery(context):
     with context.cd("/code"):
         context.run(
             # run celery as edduser
-            "su-exec edduser:edduser celery worker "
+            "gosu edduser celery worker "
             # using the edd project
             "-A edd "
             # using INFO logging level

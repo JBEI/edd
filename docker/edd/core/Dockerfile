@@ -1,79 +1,58 @@
 # arguments and defaults used with docker build command
 ARG EDD_VERSION="manual-build"
 ARG NODE_VERSION="latest"
+ARG SKLEARN_BASE_VERSION="20.03"
 ARG TARGET="dev"
 
 # ---
 
-FROM jbei/scikit-learn:latest as base
+FROM jbei/scikit-learn:${SKLEARN_BASE_VERSION} as prod-preinstall
 
-LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
-
-WORKDIR /code
+WORKDIR /install
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
+
+COPY ./docker/edd/core/Pipfile* /install/
 
 RUN set -ex \
     # update package index from base file
-    && apk update \
-    # need build tools to compile gevent and greenlet
-    # (just copying build-deps from python Dockerfile)
-    && apk add --virtual .build-deps \
-        bzip2-dev \
-        coreutils \
-        dpkg-dev dpkg \
-        expat-dev \
-        g++ \
-        gcc \
-        gdbm-dev \
-        jpeg-dev \
-        libc-dev \
-        libffi-dev \
-        libldap \
-        libnsl-dev \
-        libsasl \
-        libtirpc-dev \
-        linux-headers \
-        make \
-        ncurses-dev \
-        libressl \
-        libressl-dev \
-        openldap-dev \
-        pax-utils \
-        postgresql-dev \
-        readline-dev \
-        sqlite-dev \
-        xz-dev \
-        zlib-dev \
-    && apk add --no-cache \
-        # need libjpeg for Pillow to work
-        libjpeg \
-        # need mailcap to install /etc/mime.types database
-        mailcap \
-        # use su-exec to step down from root
-        su-exec \
-    && pipenv --version
-
-COPY ./docker/edd/core/Pipfile* /code/
-
-# ---
-
-FROM base as prod-preinstall
-
-# nothing special for prod
-RUN echo "Production pre-install" \
+    && apt-get update \
+    # need build tools to compile some python packages
+    && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+        build-essential \
+        libldap2-dev \
+        libsasl2-dev \
     && pipenv install --system --deploy --verbose \
-    && apk del .build-deps \
-    && rm -f Pipfile Pipfile.lock
+    && DEBIAN_FRONTEND=noninteractive apt-get -y purge \
+        build-essential \
+        libldap2-dev \
+        libsasl2-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # ---
 
-FROM base as dev-preinstall
+FROM jbei/scikit-learn:${SKLEARN_BASE_VERSION} as dev-preinstall
 
-# install coverage-py
-RUN echo "Development pre-install" \
+WORKDIR /install
+ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
+
+COPY ./docker/edd/core/Pipfile* /install/
+
+RUN set -ex \
+    # update package index from base file
+    && apt-get update \
+    # need build tools to compile some python packages
+    && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+        build-essential \
+        libldap2-dev \
+        libsasl2-dev \
     && pipenv install --dev --system --deploy --verbose \
-    && apk del .build-deps \
-    && rm -f Pipfile Pipfile.lock
+    && DEBIAN_FRONTEND=noninteractive apt-get -y purge \
+        build-essential \
+        libldap2-dev \
+        libsasl2-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # ---
 
@@ -118,8 +97,8 @@ COPY --from=node /run/edd/server /usr/local/edd/
 COPY --from=node /run/edd.hash /edd.hash
 
 # Create user/group to run code
-RUN addgroup -g 1000 -S edduser \
-    && adduser -u 1000 -S edduser -G edduser \
+RUN addgroup --gid 1000 --system edduser \
+    && adduser --uid 1000 --system edduser --gid 1000 \
     # create log directory
     && mkdir -p /var/log/edd \
     # run collectstatic to set static assets in build
@@ -128,5 +107,5 @@ RUN addgroup -g 1000 -S edduser \
         --noinput \
         --settings "edd.settings.build_collectstatic"
 
-ENTRYPOINT ["/sbin/tini", "--", "invoke"]
+ENTRYPOINT ["/usr/bin/tini", "--", "invoke"]
 CMD ["--list"]
