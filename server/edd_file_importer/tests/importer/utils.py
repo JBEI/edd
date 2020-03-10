@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import json
 import math
 import os
@@ -9,9 +7,9 @@ from uuid import UUID
 from django.conf import settings
 
 import main.models as edd_models
-from edd_file_importer.parsers import FileParseResult
 from main.importer.table import ImportBroker
 
+from ...parsers import FileParseResult
 from .. import factory
 from ..test_utils import load_parse_record
 

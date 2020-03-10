@@ -156,7 +156,6 @@ def bootstrap(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("main", "0001_edd-schema-init"),
         ("main", "0002_edd-data-bootstrap"),
         ("edd_file_importer", "0001_initial"),
     ]

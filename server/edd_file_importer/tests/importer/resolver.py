@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import json
 import os
 
@@ -22,6 +20,7 @@ from edd_file_importer.exceptions import (
     track_msgs,
 )
 from main import models as edd_models
+from main.tests import factory as main_factory
 
 from ...models import Import
 from ...parsers import FileParseResult
@@ -322,19 +321,20 @@ class SkylineTests(TestCase):
     Tests ImportResolver features specific to the Skyline workflow
     """
 
-    fixtures = ["edd_file_importer/skyline_imports", "edd_file_importer/test_proteins"]
+    fixtures = ["edd_file_importer/skyline_imports"]
 
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-
-        cls.write_user = User.objects.get(username="study.writer.user")
-
         # get assay time metadata type, whose pk will vary between deployments
-        assay_context = edd_models.MetadataType.ASSAY
         cls.assay_time_metatype = edd_models.MetadataType.objects.get(
-            type_name="Time", for_context=assay_context
+            type_name="Time", for_context=edd_models.MetadataType.ASSAY
         )
+        # create test proteins
+        main_factory.ProteinFactory(type_name="Test protein A", accession_code="A")
+        main_factory.ProteinFactory(type_name="Test protein B", accession_code="B")
+        main_factory.ProteinFactory(type_name="Test protein C", accession_code="C")
+        main_factory.ProteinFactory(type_name="Test protein D", accession_code="D")
 
     @staticmethod
     def load_skyline_parse_result() -> FileParseResult:

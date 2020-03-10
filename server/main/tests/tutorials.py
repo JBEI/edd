@@ -3,27 +3,37 @@ Tests used to validate the tutorial screencast functionality.
 """
 
 import codecs
+import itertools
 import json
 import math
+import uuid
 from io import BytesIO
 from unittest.mock import patch
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.http import QueryDict
 from django.test import override_settings
 from django.urls import reverse
 from requests import codes
 
-from edd import TestCase
-from edd.export import table
+from edd import TestCase, utilities
+from edd.export import table as export_table
 
 from .. import models, tasks
+from ..importer import table as import_table
 from . import factory
 
-_CONTEXT_FILENAME = "%s.post.context.json"
-_PAGED_CONTEXT_FILENAME = "%s.post.paged.context.json"
-_SERIES_FILENAME = "%s.post.series.json"
+
+def CREATE_PCAP_LINES(study):
+    # generate line objects for PCAP tutorial
+    first = ("A", "B", "2X")
+    second = ("H", "L", "M")
+    third = ("h", "l", "m")
+    combos = itertools.product(first, second, third)
+    for i, (a, b, c) in enumerate(combos, start=1000):
+        factory.LineFactory(study=study, id=i, name=f"{a}-{b}{c}")
+    for i, d in enumerate(third, start=i + 1):
+        factory.LineFactory(study=study, id=i, name=f"BL-M{d}")
 
 
 class ImportDataTestsMixin:
@@ -52,68 +62,62 @@ class ImportDataTestsMixin:
     def _view_url(self):
         return reverse("main:detail", kwargs={"slug": self.target_study.slug})
 
-    # future proof the test against local changes to settings that control its behavior
-    @override_settings(
-        EDD_IMPORT_CACHE_LENGTH=1, EDD_IMPORT_PAGE_LIMIT=1000, EDD_IMPORT_PAGE_SIZE=1000
-    )
-    def _run_import_view(self, file, import_id):
-        return self._run_paged_import_view(file, import_id, page_count=1)
-
-    def _run_paged_import_view(self, file, import_id, page_count=1):
+    def _build_import_context(self, base, import_id):
         # load post data broken up across multiple files
-        context_file_name = _CONTEXT_FILENAME % file
-        if page_count > 1:
-            context_file_name = _PAGED_CONTEXT_FILENAME % file
-        with factory.load_test_file(context_file_name, "rt") as context_file:
-            context_str = context_file.read()
+        filename = f"{base}.post.context.json"
+        with factory.load_test_file(filename, "rt") as context_file:
+            context = json.load(context_file)
+        # make sure import_id is a string if a raw UUID is passed
+        context.update(importId=str(import_id))
+        return context
 
+    def _build_import_pages(self, base):
         # load series data, slicing it up into pages if requested
-        with factory.load_test_file(_SERIES_FILENAME % file, "rt") as series_file:
-            series_pages = self._slice_series_pages(series_file, page_count)
+        filename = f"{base}.post.series.json"
+        with factory.load_test_file(filename, "rt") as series_file:
+            yield from self._slice_series_pages(series_file)
 
-        # mocking redis and celery task, to only test the view itself
-        with patch("main.redis.ScratchStorage") as MockStorage:
+    def _post_import_pages(self, context, pages, import_id, page_count):
+        # pages after first only have "importId", "totalPages", "page", and "series"
+        # fake the request(s)
+        for i, page in enumerate(pages, start=1):
+            payload = {
+                "importId": import_id,
+                "page": i,
+                "series": page,
+                "totalPages": page_count,
+            }
+            # The first request has both context and series data.
+            # Subsequent requests will only contain series data.
+            if i == 1:
+                payload.update(context)
+            response = self.client.post(
+                self._import_url(), data=payload, content_type="application/json"
+            )
+            self.assertEqual(response.status_code, codes.accepted)
+
+    def _run_import_view(self, base, import_id, page_count=1):
+        # make sure import_id is a string
+        import_id = str(import_id)
+        context = self._build_import_context(base, import_id)
+        pages = self._build_import_pages(base)
+        try:
+            # mocking celery task, to only test the view itself
             with patch("main.tasks.import_table_task.delay") as mock_task:
-                storage = MockStorage.return_value
-                storage.page_count.return_value = 0
-                storage.save.return_value = import_id
-                storage.append.side_effect = (
-                    (import_id, i + 1) for i in range(0, page_count)
+                # generate a fake task ID so the view has something for notifications
+                mock_task.return_value.id = uuid.uuid4()
+                self._post_import_pages(context, pages, import_id, page_count)
+                # assert calls to celery
+                mock_task.assert_called_once_with(
+                    self.target_study.pk, self.user.pk, import_id
                 )
-
-                with patch("celery.result.AsyncResult") as MockResult:
-                    mock_result = MockResult.return_value
-                    mock_result.id = "00000000-0000-0000-0000-000000000001"
-                    mock_task.return_value = mock_result
-
-                    # fake the request(s)
-                    for i, page in enumerate(series_pages):
-                        # stitch POST data together for simulating a client request. The first
-                        # request has both context and series data. Subsequent requests will
-                        # only contain series data.
-                        if i == 0:
-                            post_data = context_str.strip()[
-                                0:-1
-                            ]  # strip off the closing bracket
-                            post_data = f'{post_data}, "series": {series_pages[0]} }}'
-                        else:
-                            post_data = (
-                                f'{{ "importId": "{import_id}", "page": {i+1}, '
-                                f'"totalPages": {page_count}, "series": {page}}}'
-                            )
-                        response = self.client.post(
-                            self._import_url(),
-                            data=post_data,
-                            content_type="application/json",
-                        )
-                        self.assertEqual(response.status_code, codes.accepted)
-
-                    # assert calls to celery
-                    mock_task.assert_called_once_with(
-                        self.target_study.pk, self.user.pk, import_id
-                    )
-        self.assertEqual(self._assay_count(), 0, msg="View changed assay count")
-        return response
+            # verify assays are unchanged
+            self.assertEqual(self._assay_count(), 0, msg="View changed assay count")
+        finally:
+            # cleanup
+            self.client.delete(
+                self._import_url(), data=bytes(import_id, encoding="UTF-8")
+            )
 
     def _run_parse_view(self, filename, filetype, mode):
         with factory.load_test_file(filename) as fp:
@@ -138,57 +142,36 @@ class ImportDataTestsMixin:
         )
         return response
 
-    def _run_task(self, base_filename, import_id, page_count=1):
-        # load post data broken up across multiple files
-        filename = (
-            _CONTEXT_FILENAME if page_count == 1 else _PAGED_CONTEXT_FILENAME
-        ) % base_filename
-        with factory.load_test_file(filename, "rt") as context_file:
-            context_str = context_file.read()
+    def _run_task(self, base, import_id, context):
+        # make sure import_id is a string
+        import_id = str(import_id)
+        broker = import_table.ImportBroker()
+        pages = self._build_import_pages(base)
+        for _i, page in enumerate(pages, start=1):
+            # need to serialize list/dict to JSON string for broker
+            encoded = utilities.JSONEncoder.dumps(page)
+            broker.add_page(import_id, encoded)
+        context.update(totalPages=_i)
+        broker.set_context(import_id, utilities.JSONEncoder.dumps(context))
+        # running task directly instead of normal call to task.delay()
+        tasks.import_table_task(self.target_study.pk, self.user.pk, import_id)
 
-        with factory.load_test_file(_SERIES_FILENAME % base_filename) as series_file:
-            series_pages = self._slice_series_pages(series_file, page_count)
-
-        # mocking redis, so test provides the data instead of real redis
-        with patch("main.redis.ScratchStorage") as MockStorage:
-            storage = MockStorage.return_value
-            storage.load.return_value = context_str
-            storage.load_pages.return_value = series_pages
-            tasks.import_table_task(self.target_study.pk, self.user.pk, import_id)
-
-            storage.load.assert_called_once()
-            storage.load_pages.assert_called_once()
-
-    def _slice_series_pages(self, series_file, page_count):
+    def _slice_series_pages(self, series_file):
         """
         Read the aggregated series data from file and if configured to test multiple pages,
         break it up into chunks for insertion into the simulated cache. Clients of this
         method must override EDD_IMPORT_PAGE_SIZE to get predictable results.
         """
-
-        # if import can be completed in a single page, just return the series
-        # data directly from file
-        series_str = series_file.read()
-        if page_count == 1:
-            return [series_str]
-
-        # since we have to page the data, parse the json and break it up into
-        # pages of the requested size
-        series = json.loads(series_str)
+        series = json.load(series_file)
         item_count = len(series)
+        replace = getattr(self, "_replace_series_item_values", None)
+        if callable(replace):
+            series = map(replace, series)
         page_size = settings.EDD_IMPORT_PAGE_SIZE
-
-        pages = []
         for i in range(0, int(math.ceil(item_count / page_size))):
-            end_index = min((i + 1) * page_size, item_count)
-            page_series = series[i * page_size : end_index]
-            pages.append(json.dumps(page_series))
-            self.assertTrue(page_series)
-
-        # verify that data file content matches
-        self.assertEqual(len(pages), page_count, msg="Page counts differ")
-
-        return pages
+            start = i * page_size
+            end = min(start + page_size, item_count)
+            yield list(itertools.islice(series, start, end))
 
 
 def derive_cache_values(post_str):
@@ -214,12 +197,23 @@ class FBAImportDataTests(ImportDataTestsMixin, TestCase):
     Sets of tests to exercise Import Data views used in Tutorial #4 (Flux Balance Analysis).
     """
 
-    fixtures = ["main/tutorial_fba"]
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = factory.UserFactory()
+        cls.target_study = factory.StudyFactory()
+        cls.target_study.userpermission_set.create(
+            user=cls.user, permission_type=models.StudyPermission.WRITE
+        )
+        # TODO: IDs are hard-coded in the *.post.*.json files
+        # measurement ID of Optical Density is set to 1 in bootstrap
+        factory.LineFactory(id=998, study=cls.target_study, name="BW1")
+        factory.LineFactory(id=999, study=cls.target_study, name="arcA")
+        factory.MetaboliteFactory(id=898, type_name="D-Glucose")
+        factory.MetaboliteFactory(id=899, type_name="Acetate")
 
     def setUp(self):
         super().setUp()
-        self.user = get_user_model().objects.get(pk=2)
-        self.target_study = models.Study.objects.get(pk=7)
         self.client.force_login(self.user)
 
     def test_hplc_import_parse(self):
@@ -227,14 +221,23 @@ class FBAImportDataTests(ImportDataTestsMixin, TestCase):
         self.assertEqual(response.status_code, codes.ok)
 
     def test_hplc_import_task(self):
-        self._run_task("ImportData_FBA_HPLC.xlsx", "random_key")
+        task_uuid = uuid.uuid4()
+        base = "ImportData_FBA_HPLC.xlsx"
+        context = self._build_import_context(base, task_uuid)
+        self._run_task(base, task_uuid, context)
         self.assertEqual(self._assay_count(), 2)
         self.assertEqual(self._measurement_count(), 4)
         self.assertEqual(self._value_count(), 28)
 
+    # future proof the test against local changes to settings that control its behavior
+    @override_settings(
+        # expire the cache entries after one minute
+        EDD_IMPORT_CACHE_LENGTH=60,
+        EDD_IMPORT_PAGE_LIMIT=1000,
+        EDD_IMPORT_PAGE_SIZE=1000,
+    )
     def test_hplc_import_view(self):
-        response = self._run_import_view("ImportData_FBA_HPLC.xlsx", "random_key")
-        self.assertEqual(response.status_code, codes.accepted)
+        self._run_import_view("ImportData_FBA_HPLC.xlsx", uuid.uuid4())
 
     def test_od_import_parse(self):
         name = "ImportData_FBA_OD.xlsx"
@@ -242,94 +245,23 @@ class FBAImportDataTests(ImportDataTestsMixin, TestCase):
         self.assertEqual(response.status_code, codes.ok)
 
     def test_od_import_task(self):
-        self._run_task("ImportData_FBA_OD.xlsx", "random_key")
+        task_uuid = uuid.uuid4()
+        base = "ImportData_FBA_OD.xlsx"
+        context = self._build_import_context(base, task_uuid)
+        self._run_task(base, task_uuid, context)
         self.assertEqual(self._assay_count(), 2)
         self.assertEqual(self._measurement_count(), 2)
         self.assertEqual(self._value_count(), 14)
 
-    def test_od_import_view(self):
-        response = self._run_import_view("ImportData_FBA_OD.xlsx", "randomkey")
-        self.assertEqual(response.status_code, codes.accepted)
-
-
-class PagedImportTests(ImportDataTestsMixin, TestCase):
-    """
-    Executes a set of tests that verify multi-page import using a subset of data from Tutorial
-    #5 (Principal Component Analysis of Proteomics).
-    """
-
-    fixtures = ["main/tutorial_pcap"]
-
-    def setUp(self):
-        super().setUp()
-        self.user = get_user_model().objects.get(pk=2)
-        self.target_study = models.Study.objects.get(pk=20)
-        self.client.force_login(self.user)
-        # same as the paged context file
-        self.import_id = "3f775231-e380-42eb-a693-cf0d88e133ba"
-
-    # override settings to force the import to be multi-paged, and also to future proof the
-    # test against local settings changes. Otherwise, exactly the same test here as in
-    # PCAPImportDataTests
+    # future proof the test against local changes to settings that control its behavior
     @override_settings(
-        EDD_IMPORT_PAGE_SIZE=3, EDD_IMPORT_PAGE_LIMIT=1000, EDD_IMPORT_CACHE_LENGTH=1
+        # expire the cache entries after one minute
+        EDD_IMPORT_CACHE_LENGTH=60,
+        EDD_IMPORT_PAGE_LIMIT=1000,
+        EDD_IMPORT_PAGE_SIZE=1000,
     )
     def test_od_import_view(self):
-        response = self._run_paged_import_view(
-            "ImportData_PCAP_OD.xlsx", self.import_id, page_count=10
-        )
-        self.assertEqual(response.status_code, codes.accepted)
-
-    # override settings to force the import to be multi-paged, and also to future proof the
-    # test against local settings changes. Otherwise, exactly the same test here as in
-    # PCAPImportDataTests
-    @override_settings(
-        EDD_IMPORT_PAGE_SIZE=3, EDD_IMPORT_PAGE_LIMIT=1000, EDD_IMPORT_CACHE_LENGTH=1
-    )
-    def test_od_import_task(self):
-        self._run_task("ImportData_PCAP_OD.xlsx", self.import_id, page_count=10)
-        self.assertEqual(self._assay_count(), 30)
-        self.assertEqual(self._measurement_count(), 30)
-        self.assertEqual(self._value_count(), 30)
-
-    # override settings to force the import to be multi-paged, and also to future proof the
-    # test against local settings changes. Otherwise, exactly the same test here as in
-    # PCAPImportDataTests
-    @override_settings(
-        EDD_IMPORT_PAGE_SIZE=3, EDD_IMPORT_PAGE_LIMIT=1000, EDD_IMPORT_CACHE_LENGTH=1
-    )
-    def test_import_retry_view(self):
-        """
-        Tests the HTTP DELETE functionality that enables the import retry feature.
-        """
-        # mocking redis and celery task, to only test the view itself
-        with patch("main.redis.ScratchStorage") as MockStorage:
-            # get a mock redis cache...ordinarily it'd have data in it to delete, but no need
-            # for it here
-            storage = MockStorage.return_value
-
-            # test attempted cache deletion with a non-uuid import key. this must always fail,
-            # or else we've exposed the capability for users to delete arbitrary pages from
-            # our redis cache
-            response = self.client.delete(
-                self._import_url(),
-                data=bytes("non-uuid-import-id", encoding="UTF-8"),
-                content_type="application/json",
-            )
-            self.assertEqual(response.status_code, codes.bad_request)
-            storage.delete.assert_not_called()
-
-            # fake a valid DELETE request
-            response = self.client.delete(
-                self._import_url(),
-                data=bytes(self.import_id, encoding="UTF-8"),
-                content_type="application/json",
-            )
-            self.assertEqual(response.status_code, codes.ok)
-            storage.delete.assert_called_once()
-
-        self.assertEqual(self._assay_count(), 0, msg="View changed assay count")
-        return response
+        self._run_import_view("ImportData_FBA_OD.xlsx", uuid.uuid4())
 
 
 class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
@@ -338,12 +270,31 @@ class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
     of Proteomics).
     """
 
-    fixtures = ["main/tutorial_pcap"]
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = factory.UserFactory()
+        cls.target_study = factory.StudyFactory()
+        cls.target_study.userpermission_set.create(
+            user=cls.user, permission_type=models.StudyPermission.WRITE
+        )
+        # define expected lines for PCAP files
+        CREATE_PCAP_LINES(cls.target_study)
+
+    @classmethod
+    def _create_gcms_replace_function(cls, protocol):
+        # *.series.json files need some hard-coded IDs
+        # this makes a function to insert them
+        measurement_type = factory.MeasurementTypeFactory(type_name="Limonene")
+
+        def replace(item):
+            item.update(protocol_id=protocol.id, measurement_id=measurement_type.id)
+            return item
+
+        return replace
 
     def setUp(self):
         super().setUp()
-        self.user = get_user_model().objects.get(pk=2)
-        self.target_study = models.Study.objects.get(pk=20)
         self.client.force_login(self.user)
 
     def test_gcms_import_parse(self):
@@ -351,42 +302,130 @@ class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
         self.assertEqual(response.status_code, codes.ok)
 
     def test_gcms_import_task(self):
-        self._run_task("ImportData_PCAP_GCMS.csv", "random_key")
+        task_uuid = uuid.uuid4()
+        base = "ImportData_PCAP_GCMS.csv"
+        context = self._build_import_context(base, task_uuid)
+        # not using one of the default bootstrap protocols!
+        protocol = factory.ProtocolFactory()
+        context.update(masterProtocol=protocol.id)
+        # not using default bootstrap measurements either
+        self._replace_series_item_values = self._create_gcms_replace_function(protocol)
+        # now run the task
+        self._run_task(base, task_uuid, context)
+        # cleanup
+        del self._replace_series_item_values
         self.assertEqual(self._assay_count(), 30)
         self.assertEqual(self._measurement_count(), 30)
         self.assertEqual(self._value_count(), 30)
 
+    # future proof the test against local changes to settings that control its behavior
+    @override_settings(
+        # expire the cache entries after one minute
+        EDD_IMPORT_CACHE_LENGTH=60,
+        EDD_IMPORT_PAGE_LIMIT=1000,
+        EDD_IMPORT_PAGE_SIZE=1000,
+    )
     def test_gcms_import_view(self):
-        response = self._run_import_view("ImportData_PCAP_GCMS.csv", "randomkey")
-        self.assertEqual(response.status_code, codes.accepted)
+        self._run_import_view("ImportData_PCAP_GCMS.csv", uuid.uuid4())
 
     def test_od_import_parse(self):
         response = self._run_parse_view("ImportData_PCAP_OD.xlsx", "xlsx", "std")
         self.assertEqual(response.status_code, codes.ok)
 
     def test_od_import_task(self):
-        self._run_task("ImportData_PCAP_OD.xlsx", "random_key")
+        task_uuid = uuid.uuid4()
+        base = "ImportData_PCAP_OD.xlsx"
+        context = self._build_import_context(base, task_uuid)
+        self._run_task(base, task_uuid, context)
         self.assertEqual(self._assay_count(), 30)
         self.assertEqual(self._measurement_count(), 30)
         self.assertEqual(self._value_count(), 30)
 
+    # future proof the test against local changes to settings that control its behavior
+    @override_settings(
+        # expire the cache entries after one minute
+        EDD_IMPORT_CACHE_LENGTH=60,
+        EDD_IMPORT_PAGE_LIMIT=1000,
+        EDD_IMPORT_PAGE_SIZE=1000,
+    )
     def test_od_import_view(self):
-        response = self._run_import_view("ImportData_PCAP_OD.xlsx", "randomkey")
-        self.assertEqual(response.status_code, codes.accepted)
+        self._run_import_view("ImportData_PCAP_OD.xlsx", uuid.uuid4())
+
+    # future proof the test against local changes to settings that control its behavior
+    @override_settings(
+        # expire the cache entries after one minute
+        EDD_IMPORT_CACHE_LENGTH=60,
+        EDD_IMPORT_PAGE_LIMIT=1000,
+        EDD_IMPORT_PAGE_SIZE=3,
+    )
+    def test_paged_od_import_view(self):
+        self._run_import_view("ImportData_PCAP_OD.xlsx", uuid.uuid4(), page_count=10)
+
+    # future proof the test against local changes to settings that control its behavior
+    @override_settings(
+        # expire the cache entries after one minute
+        EDD_IMPORT_CACHE_LENGTH=60,
+        EDD_IMPORT_PAGE_LIMIT=1000,
+        EDD_IMPORT_PAGE_SIZE=3,
+    )
+    def test_paged_od_import_task(self):
+        task_uuid = uuid.uuid4()
+        base = "ImportData_PCAP_OD.xlsx"
+        context = self._build_import_context(base, task_uuid)
+        self._run_task(base, task_uuid, context)
+        self.assertEqual(self._assay_count(), 30)
+        self.assertEqual(self._measurement_count(), 30)
+        self.assertEqual(self._value_count(), 30)
 
     def test_proteomics_import_parse(self):
         response = self._run_parse_view("ImportData_PCAP_Proteomics.csv", "csv", "std")
         self.assertEqual(response.status_code, codes.ok)
 
     def test_proteomics_import_task(self):
-        self._run_task("ImportData_PCAP_Proteomics.csv", "random_key")
+        task_uuid = uuid.uuid4()
+        base = "ImportData_PCAP_Proteomics.csv"
+        context = self._build_import_context(base, task_uuid)
+        self._run_task(base, task_uuid, context)
         self.assertEqual(self._assay_count(), 30)
         self.assertEqual(self._measurement_count(), 270)
         self.assertEqual(self._value_count(), 270)
 
+    # future proof the test against local changes to settings that control its behavior
+    @override_settings(
+        # expire the cache entries after one minute
+        EDD_IMPORT_CACHE_LENGTH=60,
+        EDD_IMPORT_PAGE_LIMIT=1000,
+        EDD_IMPORT_PAGE_SIZE=1000,
+    )
     def test_proteomics_import_view(self):
-        response = self._run_import_view("ImportData_PCAP_Proteomics.csv", "randomkey")
-        self.assertEqual(response.status_code, codes.accepted)
+        self._run_import_view("ImportData_PCAP_Proteomics.csv", uuid.uuid4())
+
+    def test_import_delete_view_invalid(self):
+        # mocking redis, to only test the view itself
+        with patch("main.redis.ScratchStorage") as MockStorage:
+            storage = MockStorage.return_value
+            # test attempted cache deletion with a non-uuid import key.
+            # this must always fail
+            response = self.client.delete(
+                self._import_url(),
+                data=bytes("non-uuid-import-id", encoding="UTF-8"),
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, codes.bad_request)
+            storage.delete.assert_not_called()
+        self.assertEqual(self._assay_count(), 0, msg="View changed assay count")
+
+    def test_import_delete_view_valid(self):
+        # mocking redis, to only test the view itself
+        with patch("main.redis.ScratchStorage") as MockStorage:
+            storage = MockStorage.return_value
+            # fake a valid DELETE request
+            response = self.client.delete(
+                self._import_url(), data=bytes(str(uuid.uuid4()), encoding="UTF-8")
+            )
+            self.assertEqual(response.status_code, codes.ok)
+            storage.delete.assert_called_once()
+        self.assertEqual(self._assay_count(), 0, msg="View changed assay count")
 
 
 class FBAExportDataTests(TestCase):
@@ -395,20 +434,59 @@ class FBAExportDataTests(TestCase):
     Balance Analysis).
     """
 
-    fixtures = ["main/tutorial_fba", "main/tutorial_fba_loaded"]
+    TIMES = [0, 7.5, 9.5, 11, 13, 15, 17]
+    OD_VALUES = [0.1, 1.49, 2.72, 3.95, 5.69, 6.41, 6.51]
+    ACETATE_VALUES = [0, 0.33, 0.59, 0.68, 0.92, 0.89, 0.56]
+    GLUCOSE_VALUES = [22.22, 15.48, 10.44, 7.98, 2.84, 0.3, 0]
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = factory.UserFactory()
+        cls.target_study = factory.StudyFactory()
+        cls.target_study.userpermission_set.create(
+            user=cls.user, permission_type=models.StudyPermission.WRITE
+        )
+        # IDs are hard-coded in FBA files in main/tests/files
+        line1 = factory.LineFactory(id=998, study=cls.target_study, name="BW1")
+        met1 = factory.MetaboliteFactory(id=898, type_name="D-Glucose")
+        met2 = factory.MetaboliteFactory(id=899, type_name="Acetate")
+        # optical density already defined in bootstrap
+        od = models.MeasurementType.objects.get(
+            uuid="d7510207-5beb-4d56-a54d-76afedcf14d0"
+        )
+        values = zip(cls.TIMES, cls.GLUCOSE_VALUES)
+        cls._build_measurements(
+            1000, models.Protocol.CATEGORY_HPLC, line1, met1, values
+        )
+        values = zip(cls.TIMES, cls.ACETATE_VALUES)
+        cls._build_measurements(
+            1001, models.Protocol.CATEGORY_HPLC, line1, met2, values
+        )
+        values = zip(cls.TIMES, cls.OD_VALUES)
+        cls._build_measurements(1002, models.Protocol.CATEGORY_OD, line1, od, values)
+        factory.SBMLTemplateFactory(id=666, uuid=uuid.uuid4())
+
+    @classmethod
+    def _build_measurements(cls, measurement_id, category, line, metabolite, values):
+        protocol = factory.ProtocolFactory(categorization=category)
+        assay = factory.AssayFactory(line=line, protocol=protocol)
+        measurement = factory.MeasurementFactory(
+            id=measurement_id, assay=assay, measurement_type=metabolite
+        )
+        for x, y in values:
+            factory.ValueFactory(measurement=measurement, x=[x], y=[y])
 
     def setUp(self):
         super().setUp()
-        self.user = get_user_model().objects.get(pk=2)
-        self.target_study = models.Study.objects.get(pk=7)
         self.target_kwargs = {"slug": self.target_study.slug}
         self.client.force_login(self.user)
 
     def test_step1_sbml_export(self):
         "First step loads the SBML export page, and has some warnings."
-        response = self.client.get(reverse("export:sbml"), data={"lineId": 8})
+        response = self.client.get(reverse("export:sbml"), data={"lineId": 998})
         self.assertEqual(response.status_code, codes.ok)
-        self.assertEqual(len(response.context["sbml_warnings"]), 5)
+        self.assertEqual(len(response.context["sbml_warnings"]), 6)
 
     def test_step2_sbml_export(self):
         "Second step selects an SBML Template."
@@ -416,7 +494,7 @@ class FBAExportDataTests(TestCase):
             POST = QueryDict(fp.read())
         response = self.client.post(reverse("export:sbml"), data=POST)
         self.assertEqual(response.status_code, codes.ok)
-        self.assertEqual(len(response.context["sbml_warnings"]), 4)
+        self.assertEqual(len(response.context["sbml_warnings"]), 5)
 
     def test_step3_sbml_export(self):
         "Third step maps metabolites to species/reactions, and selects an export timepoint."
@@ -428,31 +506,54 @@ class FBAExportDataTests(TestCase):
 
 
 class PCAPExportDataTests(TestCase):
-
-    fixtures = ["main/tutorial_pcap"]
-
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
         # run imports to have some data to validate exports
         import_shim = ImportDataTestsMixin()
-        import_shim.target_study = models.Study.objects.get(pk=20)
-        import_shim.user = get_user_model().objects.get(pk=2)
-        import_shim._run_task("ImportData_PCAP_GCMS.csv", "random_key")
-        import_shim._run_task("ImportData_PCAP_OD.xlsx", "random_key")
-        import_shim._run_task("ImportData_PCAP_Proteomics.csv", "random_key")
+        cls.target_study = factory.StudyFactory()
+        cls.user = factory.UserFactory()
+        cls.target_study.userpermission_set.create(
+            user=cls.user, permission_type=models.StudyPermission.WRITE
+        )
+        import_shim.target_study = cls.target_study
+        import_shim.user = cls.user
+        # define expected lines for PCAP files
+        CREATE_PCAP_LINES(cls.target_study)
+        # run the imports, so we have data to export
+        # import the first
+        task1 = uuid.uuid4()
+        base1 = "ImportData_PCAP_GCMS.csv"
+        context = import_shim._build_import_context(base1, task1)
+        # not using one of the default bootstrap protocols!
+        protocol = factory.ProtocolFactory()
+        context.update(masterProtocol=protocol.id)
+        # not using default bootstrap measurements either
+        replace = PCAPImportDataTests._create_gcms_replace_function(protocol)
+        import_shim._replace_series_item_values = replace
+        # then run task
+        import_shim._run_task(base1, task1, context)
+        del import_shim._replace_series_item_values
+        # import the second
+        task2 = uuid.uuid4()
+        base2 = "ImportData_PCAP_OD.xlsx"
+        context = import_shim._build_import_context(base2, task2)
+        import_shim._run_task(base2, task2, context)
+        # import the third
+        task3 = uuid.uuid4()
+        base3 = "ImportData_PCAP_Proteomics.csv"
+        context = import_shim._build_import_context(base3, task3)
+        import_shim._run_task(base3, task3, context)
 
     def setUp(self):
         super().setUp()
-        self.target_study = models.Study.objects.get(pk=20)
         self.target_kwargs = {"slug": self.target_study.slug}
-        self.user = get_user_model().objects.get(pk=2)
         self.client.force_login(self.user)
 
     def _buildColumn(self, model, fieldname, lookup=None):
         # faking the TableOptions functionality selecting columns from forms
         field = model._meta.get_field(fieldname)
-        return table.ColumnChoice(
+        return export_table.ColumnChoice(
             model,
             field.name,
             field.verbose_name,
@@ -461,9 +562,11 @@ class PCAPExportDataTests(TestCase):
 
     def test_table_by_line_export(self):
         # make selection for the study
-        selection = table.ExportSelection(self.user, studyId=[self.target_study.pk])
+        selection = export_table.ExportSelection(
+            self.user, studyId=[self.target_study.pk]
+        )
         # make options for a minimal output
-        options = table.ExportOption(
+        options = export_table.ExportOption(
             columns=[
                 self._buildColumn(models.Assay, "name"),
                 self._buildColumn(
@@ -474,21 +577,23 @@ class PCAPExportDataTests(TestCase):
             ]
         )
         # run the export
-        result = table.TableExport(selection, options)
+        result = export_table.TableExport(selection, options)
         # check the results
         output = result.output()
         output_lines = output.splitlines()
         self.assertEqual(output_lines[0], "Name,Type,0.0,24.0")
         # header + 330 data rows + blank row
         self.assertEqual(len(output_lines), 332)
-        self.assertEqual(output_lines[330], "2X-Hm,Glycerol,,52.13119")
+        self.assertEqual(output_lines[330], "BL-Mm,Limonene,,119.81367")
 
     def test_table_by_point_export(self):
         # make selection for the study
-        selection = table.ExportSelection(self.user, studyId=[self.target_study.pk])
+        selection = export_table.ExportSelection(
+            self.user, studyId=[self.target_study.pk]
+        )
         # make options for a minimal output, with by-point layout
-        options = table.ExportOption(
-            layout=table.ExportOption.DATA_COLUMN_BY_POINT,
+        options = export_table.ExportOption(
+            layout=export_table.ExportOption.DATA_COLUMN_BY_POINT,
             columns=[
                 self._buildColumn(models.Assay, "name"),
                 self._buildColumn(
@@ -499,11 +604,11 @@ class PCAPExportDataTests(TestCase):
             ],
         )
         # run the export
-        result = table.TableExport(selection, options)
+        result = export_table.TableExport(selection, options)
         # check the results
         output = result.output()
         output_lines = output.splitlines()
         self.assertEqual(output_lines[0], "Name,Type,X,Y")
         # header + 330 data rows + blank row
         self.assertEqual(len(output_lines), 332)
-        self.assertEqual(output_lines[330], "2X-Hm,Glycerol,24.0,52.13119")
+        self.assertEqual(output_lines[330], "BL-Mm,Limonene,24.0,119.81367")

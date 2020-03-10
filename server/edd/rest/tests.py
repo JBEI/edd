@@ -25,6 +25,7 @@ from rest_framework.test import APITestCase
 from threadlocals.threadlocals import set_thread_variable
 
 from main import models
+from main.tests import factory
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def load_permissions(model, *codenames):
     return list(Permission.objects.filter(content_type=ct, codename__in=codenames))
 
 
-class EddApiTestCaseMixin(object):
+class EddApiTestCaseMixin:
     """
     Provides helper methods that improve test error messages and simplify repetitive test code.
     Helper methods also enforce consistency in return codes across EDD's REST API.
@@ -86,7 +87,6 @@ class EddApiTestCaseMixin(object):
         return response
 
 
-# TODO: consider merging with / leveraging newer StudyInternalsTestMixin
 class StudiesTests(EddApiTestCaseMixin, APITestCase):
     """
     Tests access controls and HTTP return codes for queries to the base /rest/studies REST API
@@ -94,221 +94,246 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
 
     Studies should only be accessible by:
     1) Superusers
-    2) Users who have explicit class-level mutator permissions on Studies via a django.contrib.auth
-       permission. Any user with a class-level mutator permission has implied read permission on
-       the basic study name/description, though not necessarily on the contained lines/assays
-       or data.
-    3) Users who have explicit StudyPermission granted via their individual account or via user
-    group membership.
-
-    Note that these permissions are enforced by a combination of EDD's custom
-    ImpliedPermissions class and StudyViewSet's get_queryset() method,
-    whose non-empty result implies that the requesting user has access to the returned strains.
+    2) Users who have explicit class-level mutator permissions on Studies via a
+       django.contrib.auth permission. Any user with a class-level mutator
+       permission has implied read permission on the study.
+    3) Users who have explicit StudyPermission granted via their individual
+       account or via user group membership.
     """
-
-    fixtures = ["edd/rest/study_permissions"]
 
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        User = get_user_model()
-        cls.study = models.Study.objects.get(pk=23)  # "Group read study"
-        cls.superuser = User.objects.get(username="superuser")
-        cls.staffuser = User.objects.get(username="staff.user")
-        # not doing this in fixture because it requires knowing the IDs, which can vary per deploy
-        cls.staffuser.user_permissions.add(
+        cls.read_only_group = factory.GroupFactory()
+        cls.write_only_group = factory.GroupFactory()
+        cls.superuser = factory.UserFactory(is_superuser=True)
+        cls.unprivileged_user = factory.UserFactory()
+        cls.readonly_user = factory.UserFactory()
+        cls.write_user = factory.UserFactory()
+        cls.group_readonly_user = factory.UserFactory()
+        cls.group_readonly_user.groups.add(cls.read_only_group)
+        cls.group_write_user = factory.UserFactory()
+        cls.group_write_user.groups.add(cls.write_only_group)
+        cls.staff_user = factory.UserFactory(is_staff=True)
+        cls.staff_user.user_permissions.add(
             *load_permissions(models.Study, "add_study", "change_study", "delete_study")
         )
-        cls.unprivileged_user = User.objects.get(username="unprivileged_user")
-        cls.readonly_user = User.objects.get(username="study.reader.user")
-        cls.write_user = User.objects.get(username="study.writer.user")
-        cls.write_group_user = User.objects.get(username="study.writer.group.user")
+        cls.study = factory.StudyFactory()
+        cls.study.userpermission_set.create(
+            user=cls.readonly_user, permission_type=models.StudyPermission.READ
+        )
+        cls.study.userpermission_set.create(
+            user=cls.write_user, permission_type=models.StudyPermission.WRITE
+        )
+        cls.study.grouppermission_set.create(
+            group=cls.read_only_group, permission_type=models.StudyPermission.READ
+        )
+        cls.study.grouppermission_set.create(
+            group=cls.write_only_group, permission_type=models.StudyPermission.WRITE
+        )
 
-    def test_study_delete(self):
-        """
-        Check that study deletion is not allowed via the API.
-        """
+    def test_study_delete_with_anonymous(self):
         url = reverse("rest:studies-detail", args=[self.study.pk])
-
-        # No user
         self.client.logout()
         self._check_status(self.client.delete(url), status.HTTP_403_FORBIDDEN)
 
-        # Unprivileged user
+    def test_study_delete_with_unprivleged(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.unprivileged_user)
         self._check_status(self.client.delete(url), status.HTTP_405_METHOD_NOT_ALLOWED)
 
-        # Staff user
-        self.client.force_login(self.staffuser)
+    def test_study_delete_with_staff(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
+        self.client.force_login(self.staff_user)
         self._check_status(self.client.delete(url), status.HTTP_405_METHOD_NOT_ALLOWED)
 
-        # Superuser
+    def test_study_delete_with_superuser(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.superuser)
         self._check_status(self.client.delete(url), status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    def test_study_add(self):
-        """
-        Check that study creation follows the setting of EDD_ONLY_SUPERUSER_CREATE.
-        """
-        url = reverse("rest:studies-list")
-        post_data = {
+    def _post_payload_new_study(self):
+        return {
             "name": "new study 1",
             "description": "description goes here",
             "contact_id": self.write_user.pk,
         }
 
-        # verify that an un-authenticated request gets a 403
+    def test_study_add_with_anonymous(self):
+        url = reverse("rest:studies-list")
         self.client.logout()
-        self._check_status(self.client.post(url, post_data), status.HTTP_403_FORBIDDEN)
+        self._check_status(
+            self.client.post(url, self._post_payload_new_study()),
+            status.HTTP_403_FORBIDDEN,
+        )
 
+    def test_study_add_only_superuser_setting_off(self):
+        url = reverse("rest:studies-list")
         with self.settings(EDD_ONLY_SUPERUSER_CREATE=False):
-            # with normal settings, verify all users can create studies, regardless of privileges
+            # with normal settings, verify all users can create studies,
+            # regardless of privileges
             self.client.force_login(self.unprivileged_user)
             self._check_status(
-                self.client.post(url, post_data), status.HTTP_201_CREATED
+                self.client.post(url, self._post_payload_new_study()),
+                status.HTTP_201_CREATED,
             )
 
+    def test_study_add_with_unprivledged_only_superuser_setting_on(self):
+        url = reverse("rest:studies-list")
         with self.settings(EDD_ONLY_SUPERUSER_CREATE=True):
             self.client.force_login(self.unprivileged_user)
             self._check_status(
-                self.client.post(url, post_data), status.HTTP_403_FORBIDDEN
+                self.client.post(url, self._post_payload_new_study()),
+                status.HTTP_403_FORBIDDEN,
             )
 
+    def test_study_add_with_staff_only_superuser_setting_on(self):
+        url = reverse("rest:studies-list")
+        with self.settings(EDD_ONLY_SUPERUSER_CREATE=True):
             # staff with main.add_study cannot create with this setting
-            self.client.force_login(self.staffuser)
+            self.client.force_login(self.staff_user)
             self._check_status(
-                self.client.post(url, post_data), status.HTTP_403_FORBIDDEN
+                self.client.post(url, self._post_payload_new_study()),
+                status.HTTP_403_FORBIDDEN,
             )
 
+    def test_study_add_with_superuser_only_superuser_setting_on(self):
+        url = reverse("rest:studies-list")
+        with self.settings(EDD_ONLY_SUPERUSER_CREATE=True):
             # verify that an administrator can create a study
             self.client.force_login(self.superuser)
             self._check_status(
-                self.client.post(url, post_data), status.HTTP_201_CREATED
+                self.client.post(url, self._post_payload_new_study()),
+                status.HTTP_201_CREATED,
             )
 
+    def test_study_add_with_unprivledged_only_superuser_setting_permission(self):
+        url = reverse("rest:studies-list")
         with self.settings(EDD_ONLY_SUPERUSER_CREATE="permission"):
             self.client.force_login(self.unprivileged_user)
             self._check_status(
-                self.client.post(url, post_data), status.HTTP_403_FORBIDDEN
+                self.client.post(url, self._post_payload_new_study()),
+                status.HTTP_403_FORBIDDEN,
             )
 
+    def test_study_add_with_staff_only_superuser_setting_permission(self):
+        url = reverse("rest:studies-list")
+        with self.settings(EDD_ONLY_SUPERUSER_CREATE="permission"):
             # staff with main.add_study can create with this setting
-            self.client.force_login(self.staffuser)
+            self.client.force_login(self.staff_user)
             self._check_status(
-                self.client.post(url, post_data), status.HTTP_201_CREATED
+                self.client.post(url, self._post_payload_new_study()),
+                status.HTTP_201_CREATED,
             )
 
+    def test_study_add_with_superuser_only_superuser_setting_permission(self):
+        url = reverse("rest:studies-list")
+        with self.settings(EDD_ONLY_SUPERUSER_CREATE="permission"):
             # verify that an administrator can create a study
             self.client.force_login(self.superuser)
             self._check_status(
-                self.client.post(url, post_data), status.HTTP_201_CREATED
+                self.client.post(url, self._post_payload_new_study()),
+                status.HTTP_201_CREATED,
             )
 
-    def test_study_change(self):
-        url = reverse("rest:studies-detail", args=[self.study.pk])
-        # define placeholder put data that shouldn't get applied
-        put_data = {"name": "Test study", "description": "Description goes here"}
+    def _put_payload_change_study(self):
+        return {"name": "Test study", "description": "Description goes here"}
 
-        # verify that an un-authenticated request gets a 404
-        self.client.logout()
-        self._check_status(self.client.put(url, put_data), status.HTTP_403_FORBIDDEN)
-        # verify that unprivileged user can't update someone else's study
-        self.client.force_login(self.unprivileged_user)
-        self._check_status(self.client.put(url, put_data), status.HTTP_404_NOT_FOUND)
-        # test that a user with read privileges can't change the study
-        self.client.force_login(self.readonly_user)
-        self._check_status(self.client.put(url, put_data), status.HTTP_404_NOT_FOUND)
-
-        put_data = {
+    def _put_payload_change_study_contact(self):
+        return {
             "name": "Updated study name",
             "description": "Updated study description",
             "contact_id": self.write_user.pk,
         }
-        url = reverse("rest:studies-detail", args=[22])  # group write study
-        self.client.force_login(self.write_group_user)
-        self._check_status(self.client.put(url, put_data), status.HTTP_200_OK)
-        # verify that staff permission alone isn't enough to update a study
-        self.client.force_login(self.staffuser)
-        self._check_status(self.client.put(url, put_data), status.HTTP_404_NOT_FOUND)
+
+    def test_study_change_with_anonymous(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
+        self.client.logout()
+        self._check_status(
+            self.client.put(url, self._put_payload_change_study()),
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_study_change_with_unprivledged(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
+        self.client.force_login(self.unprivileged_user)
+        self._check_status(
+            self.client.put(url, self._put_payload_change_study()),
+            status.HTTP_404_NOT_FOUND,
+        )
+
+    def test_study_change_with_readonly(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
+        self.client.force_login(self.readonly_user)
+        self._check_status(
+            self.client.put(url, self._put_payload_change_study()),
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_study_change_with_write(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
+        self.client.force_login(self.write_user)
+        self._check_status(
+            self.client.put(url, self._put_payload_change_study_contact()),
+            status.HTTP_200_OK,
+        )
+
+    def test_study_change_with_readonly_group(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
+        self.client.force_login(self.group_readonly_user)
+        self._check_status(
+            self.client.put(url, self._put_payload_change_study()),
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_study_change_with_write_group(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
+        self.client.force_login(self.group_write_user)
+        self._check_status(
+            self.client.put(url, self._put_payload_change_study_contact()),
+            status.HTTP_200_OK,
+        )
+
+    def test_study_change_with_staff(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
+        self.client.force_login(self.staff_user)
+        self._check_status(
+            self.client.put(url, self._put_payload_change_study_contact()),
+            status.HTTP_404_NOT_FOUND,
+        )
+
+    def test_study_change_with_superuser(self):
+        url = reverse("rest:studies-detail", args=[self.study.pk])
         # verify that an administrator can update
         self.client.force_login(self.superuser)
-        self._check_status(self.client.put(url, put_data), status.HTTP_200_OK)
+        self._check_status(
+            self.client.put(url, self._put_payload_change_study_contact()),
+            status.HTTP_200_OK,
+        )
 
-    def test_study_list_read_access(self):
-        """
-        Tests GET /rest/studies/
-        """
+    def test_study_list_read_access_anonymous(self):
         url = reverse("rest:studies-list")
         self.client.logout()
         self._check_status(self.client.get(url), status.HTTP_403_FORBIDDEN)
+
+    def test_study_list_read_access_unprivledged(self):
+        url = reverse("rest:studies-list")
         self.client.force_login(self.unprivileged_user)
         self._check_status(self.client.get(url), status.HTTP_200_OK)
-
-
-class LinesTests(EddApiTestCaseMixin, APITestCase):
-    """
-    Tests access controls and HTTP return codes for GET requests to
-    /rest/studies/{X}/lines/ (list)
-    /rest/lines/{X} (list + detail view)
-    """
-
-    fixtures = ["edd/rest/study_permissions"]
-
-    @classmethod
-    def setUpTestData(cls):
-        """
-        Creates strains, users, and study/line combinations to test the REST resource's application
-        of user permissions.
-        """
-        super().setUpTestData()
-
-
-class AssaysTests(EddApiTestCaseMixin, APITestCase):
-    """
-    Tests access controls, HTTP return codes, and content for GET requests to
-    /rest/studies/{X}/assays/ (list) and
-    /rest/assays/{X}/ (list + detail view)
-    """
-
-    fixtures = ["edd/rest/study_permissions"]
-
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-
-
-class MeasurementsTests(EddApiTestCaseMixin, APITestCase):
-    """
-    Tests access controls, HTTP return codes, and content for GET requests to
-    /rest/studies/{X}/measurements/ (list) and
-    /rest/measurements/{X}/ (list + detail view)
-    """
-
-    fixtures = ["edd/rest/study_permissions"]
-
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-
-
-class MeasurementValuesTests(EddApiTestCaseMixin, APITestCase):
-    """
-    Tests access controls, HTTP return codes, and content for GET requests to
-    /rest/studies/{X}/values/ (list) and
-    /rest/values/{X}/ (list + detail view)
-    """
-
-    fixtures = ["edd/rest/study_permissions"]
-
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
 
 
 class ExportTests(EddApiTestCaseMixin, APITestCase):
     """Tests for expected outputs from /rest/export/"""
 
-    fixtures = ["main/tutorial_fba", "main/tutorial_fba_loaded"]
+    def _setup_study_with_data_for_export(self):
+        # create study and line with 30 assays
+        # each assay with one measurement having one value
+        self.study = factory.StudyFactory()
+        self.line = factory.LineFactory(study=self.study)
+        for _i in range(30):
+            assay = factory.AssayFactory(line=self.line)
+            measurement = factory.MeasurementFactory(assay=assay)
+            factory.ValueFactory(measurement=measurement)
 
     def test_export_login_required(self):
         url = reverse("rest:export-list")
@@ -320,8 +345,12 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         User = get_user_model()
         admin = User.objects.get(username="system")
         self.client.force_authenticate(user=admin)
+        self._setup_study_with_data_for_export()
         # force request with small page_size to see paging of results
-        response = self.client.get(url, {"line_id": 8, "page_size": 5})
+        response = self.client.get(url, {"line_id": self.line.pk, "page_size": 5})
+        # read the CSV output
+        reader = csv.reader(codecs.iterdecode(response.content.split(b"\n"), "utf8"))
+        table = list(reader)
         # response has OK status
         self.assertEqual(response.status_code, codes.ok)
         # response has headers with link to following page
@@ -330,9 +359,6 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         )
         # response has correct Content-Type
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
-        # check the CSV output
-        reader = csv.reader(codecs.iterdecode(response.content.split(b"\n"), "utf8"))
-        table = list(reader)
         # TODO update based on output config?
         self.assertListEqual(
             table[0],
@@ -358,55 +384,9 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
 
 
 class EddObjectSearchTest(EddApiTestCaseMixin, APITestCase):
-    """
-    Tests search options for EDDObjects using /rest/lines/.  This test is an initial
-    proof-of-concept/risk mitigation for related search options, and included tests should
-    eventually be run individually on each EddObject API endpoint.
-    """
+    """Tests search options for EDDObjects using /rest/lines/."""
 
-    fixtures = ["edd/rest/study_permissions"]
-
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        User = get_user_model()
-        cls.superuser = User.objects.get(username="superuser")
-
-    def test_edd_object_attr_search(self):
-        """
-        Tests GET /rest/search/ for metadata-based searching. Note that these searches
-        are implemented nearly identically for every EddObject, so we can use
-        this test as a verification that metadata searches work for all EddObject-based
-        rest resources.  Ideally we'd test each separately, but having one test for
-        starters is much more time efficient and eliminates most of the risk.
-        """
+    def test_line_list_with_superuser(self):
         url = reverse("rest:lines-list")
-
-        # test that the default search filter returns only active lines.
-        # Note: we'll use the superuser account for all of these tests since it needs fewer
-        # queries.  There's a separate method to test permissions enforcement.
-        self.client.force_login(self.superuser)
+        self.client.force_login(factory.UserFactory(is_superuser=True))
         self._check_status(self.client.get(url), status.HTTP_200_OK)
-
-    def test_edd_object_metadata_search(self):
-        """
-        Test metadata lookups supported in Django 1.11's HStoreField.  Note that examples
-        here correspond to and are ordered according to examples in the Django HStoreField
-        documentation.
-        https://docs.djangoproject.com/en/1.11/ref/contrib/postgres/fields/#querying-hstorefield
-        """
-        pass
-
-
-class EddObjectTimestampSearchTest(EddApiTestCaseMixin, APITestCase):
-    """
-    A test class class that using a fixture instead of code to build test data for searching
-    EDDObject timestamps.
-    """
-
-    # Note: use a fixture to set explicit line timestamps assumed in this test.
-    fixtures = ["edd/rest/rest_timestamp_search"]
-
-    def test_eddobject_timestamp_search(self):
-        # url = reverse('rest:lines-list')
-        pass

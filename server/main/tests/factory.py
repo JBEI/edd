@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Factory classes used to generate objects under test.
 """
@@ -172,3 +171,6 @@ class UpdateFactory(factory.django.DjangoModelFactory):
 class SBMLTemplateFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.SBMLTemplate
+
+    created = factory.SubFactory("main.tests.factory.UpdateFactory")
+    updated = factory.SelfAttribute("created")

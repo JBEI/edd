@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Defines views for EDD's REST API.
 
@@ -69,7 +68,7 @@ class StudyFilter(EDDObjectFilter):
         fields = ["slug", "contact", "metabolic_map"]
 
 
-class StudyInternalsFilterMixin(object):
+class StudyInternalsFilterMixin:
     """
     Mixin class handling the filtering of a queryset to only return objects
     linked to a visible study.

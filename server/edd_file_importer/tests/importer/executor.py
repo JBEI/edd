@@ -1,5 +1,3 @@
-# coding: utf-8
-
 """
 Unit tests for the ImportExecutor class that does the heavy lifting to complete an import
 """
@@ -11,16 +9,17 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.test import override_settings
 
-import edd_file_importer.importer.table as table
-from edd.tests import TestCase
-from edd_file_importer.exceptions import (
+from edd import TestCase
+from main import models as edd_models
+from main.importer.table import ImportBroker
+from main.tests import factory as main_factory
+
+from ...exceptions import (
     IllegalTransitionError,
     MissingAssayTimeError,
     UnplannedOverwriteError,
 )
-from main import models as edd_models
-from main.importer.table import ImportBroker
-
+from ...importer import table
 from ...models import Import
 from .. import factory
 from ..test_utils import GENERIC_XLS_REDIS_SERIES_PATH
@@ -283,17 +282,21 @@ class SkylineTests(TestCase):
     used to supplement content read from the import file.
     """
 
-    fixtures = ["edd_file_importer/skyline_imports", "edd_file_importer/test_proteins"]
+    fixtures = ["edd_file_importer/skyline_imports"]
 
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
         cls.write_user = User.objects.get(username="study.writer.user")
         # get assay time metadata type, whose pk will vary between deployments
-        assay_context = edd_models.MetadataType.ASSAY
         cls.assay_time_metatype = edd_models.MetadataType.objects.get(
-            type_name="Time", for_context=assay_context
+            type_name="Time", for_context=edd_models.MetadataType.ASSAY
         )
+        # create test proteins
+        main_factory.ProteinFactory(type_name="Test protein A", accession_code="A")
+        main_factory.ProteinFactory(type_name="Test protein B", accession_code="B")
+        main_factory.ProteinFactory(type_name="Test protein C", accession_code="C")
+        main_factory.ProteinFactory(type_name="Test protein D", accession_code="D")
 
     def test_missing_assay_time(self):
         import_ = Import.objects.get(pk=23)

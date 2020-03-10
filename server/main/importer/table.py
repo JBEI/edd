@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import logging
 import re
 import warnings
@@ -8,7 +6,6 @@ from collections import namedtuple
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils.translation import ugettext as _
-from six import string_types
 
 from .. import models, redis
 
@@ -97,7 +94,7 @@ class ImportBroker:
         return self.storage.load_pages(f"{self._import_name(import_id)}:pages")
 
 
-class TableImport(object):
+class TableImport:
     """
     Object to handle processing of data POSTed to /study/{id}/import view and add
     measurements to the database.
@@ -329,7 +326,7 @@ class TableImport(object):
                     name=line_name, contact=self._user, experimenter=self._user
                 )
                 self._line_lookup[line_name] = line
-                logger.info("Created new Line %s:%s" % (line.id, line.name))
+                logger.info(f"Created new Line {line.id}:{line.name}")
             # END uncovered
         elif line_id in self._line_by_id:
             line = self._line_by_id.get(line_id)
@@ -606,7 +603,7 @@ class TableImport(object):
                 # TODO uncovered
                 return models.Measurement.Format.VECTOR
                 # END uncovered
-            elif isinstance(y, string_types) and ("/" in y or ":" in y or "|" in y):
+            elif isinstance(y, str) and ("/" in y or ":" in y or "|" in y):
                 # TODO uncovered
                 return models.Measurement.Format.VECTOR
                 # END uncovered

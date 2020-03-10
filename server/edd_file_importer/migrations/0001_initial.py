@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [("main", "0018_provisional-types")]
+    dependencies = [("main", "0001_edd-schema-init")]
 
     operations = [
         migrations.CreateModel(

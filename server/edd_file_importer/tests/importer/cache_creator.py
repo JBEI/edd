@@ -1,5 +1,3 @@
-# coding: utf-8
-
 """
 Unit tests for the ImportCacheCreator class
 """
@@ -12,13 +10,17 @@ from typing import Tuple
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
-import edd_file_importer.importer.table as table
-from edd.tests import TestCase
-from edd_file_importer.exceptions import MetaboliteNotFoundError, MissingAssayTimeError
+from edd import TestCase
 from main import models as edd_models
 from main.importer.table import ImportBroker
 
-from ...exceptions import add_errors, track_msgs
+from ...exceptions import (
+    MetaboliteNotFoundError,
+    MissingAssayTimeError,
+    add_errors,
+    track_msgs,
+)
+from ...importer import table
 from ...models import Import
 from .. import factory
 from ..test_utils import (
@@ -254,7 +256,7 @@ class ImportCacheCreatorTests(TestCase):
             self.assertEqual(context, None)
             actual_pages = redis.load_pages(import_.uuid)
 
-            for page in actual_pages:
+            for _page in actual_pages:
                 self.fail("Expected zero pages of cache data")
         finally:
             # clear state and disable stateful tracking to preserve test isolation

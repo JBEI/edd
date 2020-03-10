@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import logging
 
 from django.db import migrations
@@ -15,11 +14,13 @@ def migrate_carbon_src(apps, schema_editor):
     MetadataType = apps.get_model("main", "MetadataType")
     Line = apps.get_model("main", "Line")
 
-    workaround_mtype = MetadataType.objects.create(
-        type_name="Carbon Sources (Workaround)",
-        type_i18n="main.models.Line.carbon_src_workaround",
-        uuid="814ab824-3cda-49cb-b838-904236720041",
+    carbon_source_defaults = dict(
         for_context="L",
+        type_i18n="main.models.Line.carbon_src_workaround",
+        type_name="Carbon Sources (Workaround)",
+    )
+    workaround_mtype, _created = MetadataType.objects.get_or_create(
+        uuid="814ab824-3cda-49cb-b838-904236720041", defaults=carbon_source_defaults
     )
 
     # get the existing MetadataType that's been used as a workaround
