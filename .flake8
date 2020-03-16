@@ -1,4 +1,10 @@
 [flake8]
 max-complexity = 10
 max-line-length = 99
-ignore = E203,W503,W504
+ignore =
+    # whitespace before ‘:’
+    E203,
+    # line break before binary operator
+    W503,
+    # line break after binary operator
+    W504,
