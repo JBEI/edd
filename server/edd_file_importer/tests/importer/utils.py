@@ -39,12 +39,12 @@ def add_assay_time_metadata(
     """
     if omit != "arcA":
         arcA = edd_models.Assay.objects.get(study_id=1000, name="arcA")
-        arcA.metadata_add(assay_time_metatype, [4])
+        arcA.metadata_add(assay_time_metatype, 4)
         arcA.save()
 
     if omit != "BW1":
         bw1 = edd_models.Assay.objects.get(study_id=1000, name="BW1")
-        bw1.metadata_add(assay_time_metatype, [5])
+        bw1.metadata_add(assay_time_metatype, 5)
         bw1.save()
 
 

@@ -6,8 +6,7 @@ import json
 import logging
 import math
 from collections import namedtuple
-from decimal import Decimal
-from typing import Any, Dict, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 from uuid import UUID
 
 import arrow
@@ -335,10 +334,10 @@ class ImportResolver:
         self._assay_name_to_line_pk: Dict[str, int] = {}
 
         # maps assay pk -> time read from assay metadata (Skyline workflow). Only used when
-        # matched_assays is True
-        self._assay_pk_to_time: [Dict, Decimal] = {}
+        # matched_assays is True.  Using vector time to match MeasurementValue.x.
+        self._assay_pk_to_time: Dict[int, List[float]] = {}
 
-        self._unit_name_to_unit: [Dict, MeasurementUnit] = {}
+        self._unit_name_to_unit: Dict[str, MeasurementUnit] = {}
 
     def resolve(
         self, initial_upload: bool, requested_status: str
@@ -425,7 +424,7 @@ class ImportResolver:
 
         return import_, context
 
-    def _verify_assay_times(self) -> Dict[int, Decimal]:
+    def _verify_assay_times(self) -> Dict[int, List[float]]:
         """
         Checks existing Assays identified in the import file for time metadata, and verifies that
         they all either have time metadata, or that none do. Also compares the presence /
@@ -454,7 +453,7 @@ class ImportResolver:
 
         # query in batches for the number of assays consistent with the file in terms of having
         # time metadata (or not)
-        assay_times = {}
+        assay_times: Dict[int, List[float]] = {}
         first_inconsistent_batch = None
         for batch_index, batch in enumerate(assay_pk_batches):
             consistent_time_qs = Assay.objects.filter(
@@ -463,8 +462,10 @@ class ImportResolver:
 
             if consistent_time_qs.count() == len(batch):
                 if expect_assay_times:
+                    # convert scalar assay time metadata to a vector to match
+                    # MeasurementValue.x for the import
                     for assay in consistent_time_qs:
-                        assay_times[assay.pk] = assay.metadata_get(assay_time_mtype)
+                        assay_times[assay.pk] = [assay.metadata_get(assay_time_mtype)]
             else:
                 first_inconsistent_batch = batch_index
                 break
@@ -810,7 +811,7 @@ class ImportCacheCreator:
         self.matched_assays: bool = None
         self.matched_assays: bool = None
         self.loa_name_to_pk: Dict[str, int] = None
-        self.assay_pk_to_time: Dict[int, float] = None
+        self.assay_pk_to_time: Dict[int, List[float]] = None
         self.mtype_name_to_type: Dict[str, MeasurementType] = None
         self.unit_name_to_unit: Dict[str, MeasurementUnit] = None
         self.assay_name_to_line_pk = None
@@ -944,6 +945,8 @@ class ImportCacheCreator:
             )
 
             # build up a list of unique x-values (each of which may be an array)
+            x: List[float]
+            y: List[float]
             for x, y in values:
                 # never runs for line name input since it won't get this far if a line name-based
                 # file doesn't contain times
@@ -1488,12 +1491,14 @@ class ImportExecutor:
         update = Update.load_update()
 
         for value in values_list:
-            # if configured, use assay time metadata
+            # if configured, use assay time metadata, casting as List[Decimal] to match
+            # MeasurementValue.x
+            x: List[float]
             if self._use_assay_time_meta:
-                x = assay.metadata_get(self.assay_time_mtype)
+                x = [assay.metadata_get(self.assay_time_mtype)]
             else:
                 x = value[0]
-            y = value[1]
+            y: List[float] = value[1]
 
             logger.debug(f"Updating MeasurementValue at x={x}...")
             updated = measurement.measurementvalue_set.filter(x=x).update(y=y)

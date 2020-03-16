@@ -1,13 +1,10 @@
-# coding: utf-8
-
 import collections
 import copy
 import logging
 from collections import Sequence, defaultdict
-from typing import Dict, Iterable, List, Tuple, Union
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
 from arrow import utcnow
-from six import string_types
 
 from main.models import (
     SYSTEM_META_TYPES,
@@ -41,7 +38,7 @@ class ExperimentDescriptionContext:
     pass
 
 
-class NamingStrategy(object):
+class NamingStrategy:
     """
     The abstract base class for different line/assay naming strategies. Provides a generic
     framework for use in different naming strategies used in template file upload and the eventual
@@ -162,7 +159,7 @@ class NamingStrategy(object):
             return self._get_abbrev(field_source_detail, raw_value)
 
 
-class NewLineAndAssayVisitor(object):
+class NewLineAndAssayVisitor:
     """
     A simple abstract Visitor class for use during actual or simulated Line and Assay creation.
     """
@@ -202,7 +199,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         omit_all_strains=False,
         omit_missing_strains=False,
     ):
-        super(LineAndAssayCreationVisitor, self).__init__(
+        super().__init__(
             study_pk,
             replicate_count,
             omit_missing_strains=omit_missing_strains,
@@ -319,7 +316,7 @@ class LineAndAssayNamingVisitor(NewLineAndAssayVisitor):
         omit_all_strains=False,
         omit_missing_strains=False,
     ):
-        super(LineAndAssayNamingVisitor, self).__init__(
+        super().__init__(
             study_pk, replicate_count, omit_missing_strains, omit_all_strains
         )
         # same names as in self.line_to_protocols_to_assays_list, but having this allows us to
@@ -452,10 +449,7 @@ class ExperimentDescriptionContext:
         return related_object_mtypes, many_related_mtypes
 
     def get_related_objects(
-        self,
-        mtype_pk,
-        value_pks: Union[Union[int, str], Iterable[Union[int, str]]],
-        subset=False,
+        self, mtype_pk, value_pks: Union[Union[int, str], Iterable[int]], subset=False
     ):
         """
         Gets Line-related model objects from the in-memory cache
@@ -472,12 +466,15 @@ class ExperimentDescriptionContext:
         """
 
         # regardless of its input format, extract a flattened set of primary keys from value_pks.
-        # this is essentially unrolling the JSON output from the combinatorial GUI, or analagous
+        # this is essentially unrolling the JSON output from the combinatorial GUI, or analogous
         # in-memory storage of combinatorial (+\- group) strain/carbon source pks used by ED files
-        if isinstance(value_pks, Sequence) and not isinstance(value_pks, string_types):
+        if isinstance(value_pks, str):
+            pks_set = {int(value_pks)}
+        elif isinstance(value_pks, Sequence):
             pks_set = set(value_pks)
         else:
-            pks_set = {[value_pks]}
+            logger.debug(f"value_pks = {value_pks} ({type(value_pks)})")
+            pks_set = {value_pks}
 
         # common use is to expect all values to be cached and fail if they aren't
         # TODO: this is essentially a 3-LOC stopgap for getting integration tests up and running
@@ -528,7 +525,7 @@ class AutomatedNamingStrategy(NamingStrategy):
         custom_name_elts=None,
         abbreviations=None,
     ):
-        super(AutomatedNamingStrategy, self).__init__(cache, importer)
+        super().__init__(cache, importer)
         self.elements = naming_elts
         self.abbreviations = abbreviations
         self.custom_name_elts = {} if custom_name_elts is None else custom_name_elts
@@ -540,7 +537,7 @@ class AutomatedNamingStrategy(NamingStrategy):
 
         related_obj_meta_pks = set()
         for element in self.elements:
-            if not isinstance(element, string_types):
+            if not isinstance(element, str):
                 continue
             tokens = element.split(_RELATED_OBJ_SEPARATOR)
             if len(tokens) == 2:
@@ -688,7 +685,7 @@ class AutomatedNamingStrategy(NamingStrategy):
         return self.section_separator.join((line.name, "%sh" % str(assay_time)))
 
 
-class CombinatorialDescriptionInput(object):
+class CombinatorialDescriptionInput:
     """
     Defines the set of inputs required to combinatorially create Lines and Assays for a Study.
     """
@@ -707,20 +704,20 @@ class CombinatorialDescriptionInput(object):
         # common input that can apply equally to Lines and the related Assays
         ###########################################################################################
         naming_strategy.combinatorial_input = self
-        self.naming_strategy = naming_strategy
+        self.naming_strategy: NamingStrategy = naming_strategy
 
         ###########################################################################################
         # line-specific metadata
         ###########################################################################################
         # only a single value is supported -- doesn't make sense to do this combinatorially
-        self.description = kwargs.pop("description", None)
+        self.description: str = kwargs.pop("description", None)
 
         # sequences of ICE part ID's readable by users
-        self.replicate_count = kwargs.pop("replicate_count", 1)
+        self.replicate_count: int = kwargs.pop("replicate_count", 1)
         self.common_line_metadata = kwargs.pop("common_line_metadata", {})
 
         # maps MetadataType pk -> []
-        self.combinatorial_line_metadata = defaultdict(list)
+        self.combinatorial_line_metadata: Dict[int, List[Any]] = defaultdict(list)
         self.combinatorial_line_metadata.update(
             kwargs.pop("combinatorial_line_metadata", {})
         )
@@ -732,7 +729,7 @@ class CombinatorialDescriptionInput(object):
         self.unique_protocols = set(protocol_to_assay_meta)
 
         # optional. maps protocol pk -> { MetadataType.pk -> [values] }
-        self.protocol_to_assay_metadata: Dict[int, Dict[int, List]] = defaultdict(
+        self.protocol_to_assay_metadata: Dict[int, Dict[int, Any]] = defaultdict(
             lambda: defaultdict(list)
         )
 
@@ -741,11 +738,11 @@ class CombinatorialDescriptionInput(object):
 
         # maps protocol_pk -> assay metadata pk -> list of values
         p_to_combo = kwargs.pop("protocol_to_combinatorial_metadata", {})
-        self.protocol_to_combinatorial_metadata_dict = defaultdict(
-            lambda: defaultdict(list)
-        )
+        self.protocol_to_combinatorial_meta_dict: Dict[
+            int, Dict[int, List]
+        ] = defaultdict(lambda: defaultdict(list))
         if p_to_combo:
-            self.protocol_to_combinatorial_metadata_dict.update(p_to_combo)
+            self.protocol_to_combinatorial_meta_dict.update(p_to_combo)
 
         self.ice_folder_to_filters = kwargs.pop("ice_folder_to_filters", {})
 
@@ -775,9 +772,7 @@ class CombinatorialDescriptionInput(object):
         # common metadata will at most be a list of identifiers
         values = self.common_line_metadata.get(line_meta_pk)
         if values:
-            if isinstance(values, collections.Iterable) and not isinstance(
-                values, string_types
-            ):
+            if isinstance(values, collections.Iterable) and not isinstance(values, str):
                 result.update(values)
             else:
                 result.add(values)
@@ -788,13 +783,9 @@ class CombinatorialDescriptionInput(object):
         if not values:
             return result
 
-        if isinstance(values, collections.Iterable) and not isinstance(
-            values, string_types
-        ):
+        if isinstance(values, collections.Iterable) and not isinstance(values, str):
             for elt in values:
-                if isinstance(elt, collections.Iterable) and not isinstance(
-                    elt, string_types
-                ):
+                if isinstance(elt, collections.Iterable) and not isinstance(elt, str):
                     for val in elt:
                         # can't do result.update(list)
                         result.add(val)
@@ -864,7 +855,7 @@ class CombinatorialDescriptionInput(object):
 
         # if strain metadata only contains a single item, wrap it in a list for consistency
         if (not isinstance(strain_id_groups, collections.Sequence)) or isinstance(
-            strain_id_groups, string_types
+            strain_id_groups, str
         ):
             strain_id_groups = [strain_id_groups]
             line_metadata_src[strains_mtype_pk] = strain_id_groups
@@ -880,7 +871,7 @@ class CombinatorialDescriptionInput(object):
         # multiple strains
         for group_index, ice_id_list in enumerate(strain_id_groups):
             if (not isinstance(ice_id_list, collections.Sequence)) or isinstance(
-                ice_id_list, string_types
+                ice_id_list, str
             ):
                 ice_id_list = [ice_id_list]
                 strain_id_groups[group_index] = ice_id_list
@@ -909,43 +900,23 @@ class CombinatorialDescriptionInput(object):
                     INTERNAL_EDD_ERROR_CATEGORY, UNMATCHED_PART_NUMBER, ice_id
                 )
 
-    def add_common_line_metadata(self, line_metadata_pk, value):
+    def set_common_line_metadata(self, line_metadata_pk, value):
         self.common_line_metadata[line_metadata_pk] = value
 
     def add_combinatorial_line_metadata(self, line_metadata_pk, value):
-        values_list = self.combinatorial_line_metadata[line_metadata_pk]
-        values_list.append(value)
+        values: List = self.combinatorial_line_metadata[line_metadata_pk]
+        values.append(value)
 
-    def add_common_assay_metadata(self, protocol_pk, assay_metadata_pk, value):
-        values_list = self.get_common_assay_metadata_list(
-            protocol_pk, assay_metadata_pk
-        )
-        values_list.append(value)
+    def set_common_assay_metadata(self, protocol_pk, assay_metadata_pk, value):
+        self.protocol_to_assay_metadata[protocol_pk][assay_metadata_pk] = value
         self.unique_protocols.add(protocol_pk)
 
     def add_combinatorial_assay_metadata(self, protocol_pk, assay_metadata_pk, value):
-        values_list = self.get_combinatorial_assay_metadata_list(
-            protocol_pk, assay_metadata_pk
-        )
-        values_list.append(value)
-        self.unique_protocols.add(protocol_pk)
-
-    def get_combinatorial_assay_metadata_list(self, protocol_pk, assay_metadata_pk):
-        """
-        Gets the list of combinatorial assay metadata values for the specified protocol /
-        MetadataType, or creates and returns an empty one if none exists.
-
-        :param protocol_pk:
-        :param assay_metadata_pk:
-        :return: the list of combinatorial metadata values. Note that changes to this list from
-            client code will be persistent / visible to other users of this instance
-        """
-        return self.protocol_to_combinatorial_metadata_dict[protocol_pk][
+        values: List = self.protocol_to_combinatorial_meta_dict[protocol_pk][
             assay_metadata_pk
         ]
-
-    def get_common_assay_metadata_list(self, protocol_pk, assay_metadata_pk):
-        return self.protocol_to_assay_metadata[protocol_pk][assay_metadata_pk]
+        values.append(value)
+        self.unique_protocols.add(protocol_pk)
 
     def has_assay_metadata_type(self, protocol_pk, metadata_type_pk):
         return metadata_type_pk in self.protocol_to_assay_metadata.get(protocol_pk, [])
@@ -1007,13 +978,13 @@ class CombinatorialDescriptionInput(object):
         # combinatorial assay metadata
         #################################
         self._verify_pk_keys(
-            self.protocol_to_combinatorial_metadata_dict,
+            self.protocol_to_combinatorial_meta_dict,
             protocols_by_pk,
             importer,
             INVALID_PROTOCOL_META_PK,
         )
 
-        for metadata_dict in self.protocol_to_combinatorial_metadata_dict.values():
+        for metadata_dict in self.protocol_to_combinatorial_meta_dict.values():
             self._verify_pk_keys(
                 metadata_dict,
                 assay_metadata_types_by_pk,
@@ -1129,7 +1100,7 @@ class CombinatorialDescriptionInput(object):
         # loop over combinatorial assay creation metadata
         ###############################################################################
         # (most likely time as in experiment description files)
-        combo = self.protocol_to_combinatorial_metadata_dict[protocol_pk]
+        combo = self.protocol_to_combinatorial_meta_dict[protocol_pk]
         visited_pks = set()
         # outer loop for combinatorial
         for metadata_pk, values in combo.items():
@@ -1163,7 +1134,7 @@ class CombinatorialDescriptionInput(object):
             visitor.visit_assay(protocol_pk, line, assay_name, assay_metadata)
 
 
-class CombinatorialCreationPerformance(object):
+class CombinatorialCreationPerformance:
     def __init__(self):
         self.start_time = utcnow()
         zero_time_delta = self.start_time - self.start_time

@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import codecs
 import copy
 import json
@@ -8,6 +6,7 @@ import traceback
 from collections import OrderedDict, defaultdict
 from io import BytesIO
 from pprint import pformat
+from typing import Any, Dict, List, Tuple
 
 import requests
 from django.conf import settings
@@ -68,6 +67,7 @@ from .parsers import (
 from .utilities import (
     ALLOWED_RELATED_OBJECT_FIELDS,
     CombinatorialCreationPerformance,
+    CombinatorialDescriptionInput,
     ExperimentDescriptionContext,
 )
 
@@ -173,7 +173,7 @@ def _build_prioritized_issue_list(src_dict, priority_reference):
 
 # TODO: after we have some unit tests for this code and can refactor, replace with the newer
 # variant in Import 2 (ErrorAggregator & related classes)
-class ImportErrorSummary(object):
+class ImportErrorSummary:
     """
     Defines error/warning information captured during an actual or attempted import attempt.
     Experiment Description file upload (and eventual combinatorial GUI) will be much easier to use
@@ -203,7 +203,7 @@ class ImportErrorSummary(object):
         self._occurrence_details.append(detail_str)
 
 
-class ExperimentDescriptionOptions(object):
+class ExperimentDescriptionOptions:
     def __init__(self, **kwargs):
         self.allow_duplicate_names = kwargs.pop("allow_duplicate_names", False)
         self.allow_non_strains = kwargs.pop("allow_non_strains", False)
@@ -236,7 +236,7 @@ class ExperimentDescriptionOptions(object):
         )
 
 
-class IcePartResolver(object):
+class IcePartResolver:
     """
     Strain identifier resolution strategy used to resolve ICE part numbers from
     user input in Experiment Description files to existing/new Strain entries
@@ -406,7 +406,7 @@ class IcePartResolver(object):
         try:
             self._query_ice_folder_contents(ice)
             self._query_ice_entries(ice)
-        except IOError:
+        except OSError:
             self._systemic_ice_access_error(self.unique_part_ids, "strain")
 
         if self._validate_strain_search_abort():
@@ -784,7 +784,7 @@ class IcePartResolver(object):
         mail_admins(subject=subject, message=message, fail_silently=True)
 
 
-class CombinatorialCreationImporter(object):
+class CombinatorialCreationImporter:
     def __init__(self, study, user, cache=None):
 
         self.performance = CombinatorialCreationPerformance()
@@ -843,13 +843,30 @@ class CombinatorialCreationImporter(object):
             summary.add_occurrence(occurrence)
 
     def do_import(
-        self, stream, options, filename=None, file_extension=None, encoding="utf8"
+        self,
+        stream,
+        options: ExperimentDescriptionOptions,
+        filename: str = None,
+        file_extension=None,
+        encoding="utf8",
     ):
         """
         Performs the import or raises an Exception if an unexpected / unhandled error occurred
 
+        :param stream: the stream (a.k.a. file-like object) to read input from
+        :param options: options for configuring the import
+        :param filename: the file name of the data file for this import, or None if there was
+            no file.
+        :param file_extension: the extension of the data file for this import, or None if there
+            was no file.
+        :param encoding: encoding of the data file, if it's a CSV.  Ignored otherwise.
+
         :return: a json dict with a summary of import results (for success or failure)
         """
+        logger.info(
+            f"Processing experiment description inputs for study "
+            f"{self.study.slug}, filename={filename}"
+        )
 
         ###########################################################################################
         # Clear out state from previous import attempts using this importer
@@ -900,18 +917,32 @@ class CombinatorialCreationImporter(object):
 
         return result
 
-    def parse_input(self, file, filename, file_extension, encoding):
+    def parse_input(
+        self, stream, filename: str, file_extension: ImportFileTypeFlags, encoding: str
+    ) -> List[CombinatorialDescriptionInput]:
+        """
+        Parses the input and returns a list of combinatorial line/assay creations that need to
+        be performed
+
+        :param stream: the stream (a.k.a. file-like object) to read input from
+            open())
+        :param filename: the filename, IFF this input came from file
+        :param file_extension: the file extension
+        :param encoding: the encoding for the input
+
+        :return: the parsed content
+        """
         if filename:
             parser = ExperimentDescFileParser(self.cache, self)
             if file_extension == ImportFileTypeFlags.CSV:
                 reader = codecs.getreader(encoding)
-                line_def_inputs = parser.parse_csv(reader(file).readlines())
+                line_def_inputs = parser.parse_csv(reader(stream).readlines())
             else:
-                with BytesIO(file.read()) as stream:
+                with BytesIO(stream.read()) as stream:
                     line_def_inputs = parser.parse_excel(stream)
         else:
             parser = JsonInputParser(self.cache, self)
-            line_def_inputs = parser.parse(file.read())
+            line_def_inputs = parser.parse(stream.read())
 
         # cache a human-readable summary of input for possible use in error emails
         if filename:
@@ -1037,13 +1068,16 @@ class CombinatorialCreationImporter(object):
                 f"{line_meta_type.type_name}: {pk_str}",
             )
 
-    def _define_study(self, line_def_inputs, options, strains_required_for_naming):
+    def _define_study(
+        self, line_def_inputs, options, strains_required_for_naming
+    ) -> Tuple[int, Dict[str, Any]]:
         """
         Queries EDD and ICE to verify that the required ICE strains have an entry in EDD's
         database. If not, creates them.  Once strains are created, combinatorially creates lines
         and assays within the study as specified by combinatorial_inputs.
-        :return: A JSON summary string that summarizes results of the attempted line/assay/strain
-            creation
+
+        :return: A tuple of HTTP return code and JSON summary dict that summarizes results of
+            the attempted line/assay/strain creation
         :raise Exception: if an unexpected error occurs.
         """
 
@@ -1346,7 +1380,7 @@ class CombinatorialCreationImporter(object):
         send_mail(subject, message, settings.SERVER_EMAIL, [self.user.email])
 
 
-class NameCollector(object):
+class NameCollector:
     def __init__(self):
         self.unique_input_line_names = set()
         self.duplicated_new_line_names = set()

@@ -5,6 +5,7 @@ import json
 import logging
 import re
 from collections import Sequence, defaultdict
+from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from jsonschema import Draft4Validator
 from openpyxl import load_workbook
@@ -13,6 +14,7 @@ from six import string_types
 
 from main.importer.experiment_desc.validators import SCHEMA as JSON_SCHEMA
 
+from ...models import MetadataType, Protocol
 from .constants import (
     ABBREVIATIONS_SECTION,
     BAD_FILE_CATEGORY,
@@ -190,14 +192,14 @@ class ColumnLayout:
     """
 
     def __init__(self, importer):
-        self.line_name_col = None
-        self.line_description_col = None
-        self.line_control_col = None
-        self.replicate_count_col = None
-        self.strain_ids_col = None
-        self.col_index_to_line_meta_pk = {}
+        self.line_name_col: Optional[int] = None
+        self.line_description_col: Optional[int] = None
+        self.line_control_col: Optional[int] = None
+        self.replicate_count_col: Optional[int] = None
+        self.strain_ids_col: Optional[int] = None
+        self.col_index_to_line_meta_pk: Dict[int, int] = {}
         # maps col index -> (Protocol, MetadataType)
-        self.col_index_to_assay_data = {}
+        self.col_index_to_assay_data: Dict[int, Tuple[Protocol, MetadataType]] = {}
 
         # indices of all *any* columns for combinatorial creation (both metadata AND strains!)
         self.combinatorial_col_indices = []
@@ -205,7 +207,7 @@ class ColumnLayout:
         self.importer = importer
 
         # primary keys of line metadata types whose cols have already been detected in the file
-        self.obs_line_meta_pks = set()
+        self.obs_line_meta_pks: Set[int] = set()
 
     def register_protocol(self, protocol):
         self.unique_assay_protocols[protocol.pk] = True
@@ -238,35 +240,17 @@ class ColumnLayout:
             lambda x: x in self.col_index_to_assay_data, self.combinatorial_col_indices
         )
 
-    def register_assay_meta_column(
-        self,
-        col_header,
-        col_index,
-        upper_protocol_name,
-        protocol,
-        assay_mtype,
-        is_combinatorial,
-    ):
-
-        # test for duplicate use of the same (Protocol, MetadataType) combination.
-        # if we see it, log an error -- no clear/automated way for us to resolve which column
-        #  has the correct values!
-        if self.has_assay_metadata(upper_protocol_name, assay_mtype.pk):
-            self.importer.add_error(
-                BAD_FILE_CATEGORY,
-                DUPLICATE_ASSAY_METADATA,
-                header_desc(col_header, col_index),
-            )
+    def register_assay_meta_col(self, col_index, protocol, metatype, is_combinatorial):
 
         self.register_protocol(protocol)
-        self.col_index_to_assay_data[col_index] = (protocol, assay_mtype)
+        self.col_index_to_assay_data[col_index] = (protocol, metatype)
         if is_combinatorial:
             self.combinatorial_col_indices.append(col_index)
 
         col_letter = get_column_letter(col_index + 1)
         logger.debug(
             f'Column {col_letter} matches protocol "{protocol.name}", assay metadata type'
-            f' "{assay_mtype.type_name}"'
+            f' "{metatype.type_name}"'
         )
 
     def get_assay_metadata_type(self, col_index):
@@ -646,20 +630,24 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         self.max_fractional_time_digits = 0
 
+        # first empty line encountered in a sequence
+        self.first_empty_row: Optional[int] = None
+
     # TODO: revisit to unify IO use & exception API across excel / csv methods.  At this point at
     # least, we have both working, if not as abstract/consistent as possible
-    def parse_excel(self, file):
-        # TODO: verify or remove docstring referencing ParseError
+    def parse_excel(self, stream) -> List[CombinatorialDescriptionInput]:
         """
-        :param file: a path-like object identifying the file location
-        :param options:
-        :return:
+        Parses an XLSX-format Excel file.
+
+        :param stream: the stream (a.k.a. file-like-object) open in binary mode to load the
+            workbook from, or a string
+        :return: the list of combinatorial line/assay creations to perform, one per row in the file
         :raise OSError if the file can't be opened or ParseError if the file format or content
-        is malformed.
+            is malformed.
         """
         self._is_excel = True
 
-        wb = load_workbook(file, read_only=True, data_only=True)
+        wb = load_workbook(stream, read_only=True, data_only=True)
 
         if len(wb.worksheets) == 0:
             self.importer.add_error(BAD_FILE_CATEGORY, subtitle=EMPTY_WORKBOOK)
@@ -675,17 +663,19 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         worksheet = wb.worksheets[0]
         return self._parse(worksheet.iter_rows())
 
-    def parse_csv(self, lines_iter):
+    def parse_csv(self, lines: Iterable[str]) -> List[CombinatorialDescriptionInput]:
         self._is_excel = False
-        reader = csv.reader(lines_iter)
+        reader = csv.reader(lines)
         return self._parse(reader)
 
-    def _preparse(self, rows_iter):
-        parsed_row_inputs = []
-        # loop over rows
-        for row_index, cols_list in enumerate(rows_iter):
-            logger.debug(f"Parsing row {row_index+1}")
+    def _preparse(
+        self, rows_iter: Iterable[str]
+    ) -> List[CombinatorialDescriptionInput]:
+        parsed_row_inputs: List[_ExperimentDescriptionFileRow] = []
 
+        # loop over rows
+        row_index = -1
+        for row_index, cols_list in enumerate(rows_iter):
             # identify columns of interest first by looking for required labels
             if not self.column_layout:
                 self.column_layout = self._parse_column_layout(cols_list)
@@ -695,11 +685,25 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 row_inputs = self._parse_row(cols_list, row_index)
                 if row_inputs:  # skip empty rows
                     parsed_row_inputs.append(row_inputs)
+
+        # flush log message for any trailing empty rows
+        self._non_empty_row(row_index)
+
         return parsed_row_inputs
 
     def _prepopulate_fractional_time(self, parsed_row_inputs):
         for row_input in parsed_row_inputs:
             row_input.fractional_time_digits = self.max_fractional_time_digits
+
+    def _non_empty_row(self, row_index):
+        # log the end of each range of empty rows as its end is reached
+        if self.first_empty_row is not None:
+            if row_index > self.first_empty_row + 1:
+                suffix = "rows {self.first_empty_row + 1}-{row_index + 1}"
+            else:
+                suffix = f"row {self.first_empty_row}"
+            logger.info(f"Ignored empty {suffix}")
+            self.first_empty_row = None
 
     def _remove_non_multiple_combo_columns(self, parsed_row_inputs):
         # after reading all rows in the file, loop over combinatorially-defined columns (as
@@ -785,14 +789,13 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                                 f"row {combo.row_number}",
                             )
 
-    def _parse(self, rows_iter):
+    def _parse(self, rows_iter) -> List[_ExperimentDescriptionFileRow]:
         # Clear out state from any previous use of this parser instance
         self.column_layout = None
         parsed_row_inputs = self._preparse(rows_iter)
         importer = self.importer
 
-        column_layout = self.column_layout
-        if not column_layout:
+        if not self.column_layout:
             importer.add_error(
                 BAD_FILE_CATEGORY,
                 subtitle="No column header was found matching the single required "
@@ -927,72 +930,29 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 ################################################################################
                 assay_items = self.assay_metadata_types_by_name.items()
                 for upper_type_name, assay_metadata_type in assay_items:
-
-                    # if this type has units, check whether column header matches the type name
-                    # with an optional unit suffix
-                    if assay_metadata_type.postfix:
-                        singular_regex = _TYPE_NAME_REGEX % {
-                            "type_name": upper_type_name,
-                            "units": assay_metadata_type.postfix,
-                        }
-                        suffix_meta_type = (
-                            assay_metadata_type
-                            if re.match(
-                                singular_regex, assay_meta_suffix, re.IGNORECASE
-                            )
-                            else None
-                        )
-                    # otherwise, check whether the column header exactly matches the type name
-                    # (case-insensitive)
-                    else:
-                        # look for an exact match
-                        suffix_meta_type = (
-                            assay_metadata_type
-                            if assay_meta_suffix == upper_type_name
-                            else None
-                        )
-
-                    # if we've found the assay metadata type for this column, stop looking
-                    if suffix_meta_type is not None:
-                        break
-
-                    # if the column header didn't match the assay metadata type in its
-                    # raw form, look for a pluralized version of the metadata
-                    # type name. Pluralization indicates the contents should be treated as a
-                    # comma-delimited list of combinatorial metadata values
-                    meta_regex = _PLURALIZED_REGEX % {
-                        "type_name": re.escape(assay_metadata_type.type_name),
-                        "units": re.escape(assay_metadata_type.postfix),
-                    }
-                    pluralized_match = re.match(
-                        meta_regex, assay_meta_suffix, re.IGNORECASE
+                    suffix_meta_type, is_combinatorial = self._detect_assay_meta_type(
+                        assay_meta_suffix, upper_type_name, assay_metadata_type
                     )
-
-                    if pluralized_match:
-                        is_combinatorial = True
-                        logger.debug(
-                            f"Column header suffix {assay_meta_suffix} matched "
-                            f"pluralized regex {meta_regex}"
-                        )
-                        suffix_meta_type = assay_metadata_type
+                    if suffix_meta_type:
                         break
-                    else:
-                        logger.debug(
-                            f"Column header suffix {assay_meta_suffix} did not match "
-                            f"pluralized regex {meta_regex}"
-                        )
 
                 # if the column started with the name of a protocol and ended with an
                 # assay metadata type name, store the association of this column with the
                 # (Protocol, MetadataType) combination
                 if suffix_meta_type:
-                    layout.register_assay_meta_column(
-                        original_content,
-                        col_index,
-                        upper_protocol_name,
-                        protocol,
-                        suffix_meta_type,
-                        is_combinatorial,
+                    # test for duplicate use of the same (Protocol, MetadataType) combination.
+                    # if we see it, log an error -- no clear/automated way for us to resolve
+                    #  which column has the correct values!
+                    if layout.has_assay_metadata(
+                        upper_protocol_name, suffix_meta_type.pk
+                    ):
+                        self.importer.add_error(
+                            BAD_FILE_CATEGORY,
+                            DUPLICATE_ASSAY_METADATA,
+                            header_desc(original_content, col_index),
+                        )
+                    layout.register_assay_meta_col(
+                        col_index, protocol, suffix_meta_type, is_combinatorial
                     )
                     return suffix_meta_type
 
@@ -1010,6 +970,52 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         BAD_FILE_CATEGORY, UNMATCHED_ASSAY_COL_HEADERS_KEY, value
                     )
                     return True
+
+    def _detect_assay_meta_type(
+        self, suffix, upper_type_name, assay_meta_type
+    ) -> Tuple[Optional[MetadataType], bool]:
+        """
+        Tests whether the supplied column header suffix matches the accepted patterns for being
+        treated as a match with the provided assay metadata type.
+
+        :param suffix: the column header suffix to test
+        :param upper_type_name: upper-case name of the assay metadata type to test
+        :param assay_meta_type: the assay metadata type
+        :return: a tuple of (MetadataType, bool), where the first element is the matching
+            MetadataType (if any), and the second is True if the column header indicates the
+            column is combinatorial
+        """
+        # if this type has units, check whether column header matches the type name
+        # with an optional unit suffix
+        if assay_meta_type.postfix:
+            singular_regex = _TYPE_NAME_REGEX % {
+                "type_name": upper_type_name,
+                "units": assay_meta_type.postfix,
+            }
+            if re.match(singular_regex, suffix, re.IGNORECASE):
+                return assay_meta_type, False
+
+        # otherwise, check whether the column header exactly matches the type name
+        # (case-insensitive)
+        elif suffix == upper_type_name:
+            return assay_meta_type, False
+
+        # if the column header didn't match the assay metadata type in its raw form, look for a
+        # pluralized version of the metadata type name. Pluralization indicates the contents
+        # should be treated as a comma-delimited list of combinatorial metadata values
+        meta_regex = _PLURALIZED_REGEX % {
+            "type_name": re.escape(assay_meta_type.type_name),
+            "units": re.escape(assay_meta_type.postfix),
+        }
+        pluralized_match = re.match(meta_regex, suffix, re.IGNORECASE)
+
+        if pluralized_match:
+            logger.debug(
+                f"Column header suffix {suffix} matched pluralized regex {meta_regex}"
+            )
+            return assay_meta_type, True
+
+        return None, False
 
     def _parse_line_metadata_header(self, column_layout, std_cell_content, col_index):
         """
@@ -1063,7 +1069,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         return None
 
-    def _parse_row(self, row, row_index):
+    def _parse_row(self, row, row_index) -> Optional[_ExperimentDescriptionFileRow]:
         """
         Reads a single spreadsheet row to find line creation inputs. The row is read even if errors
         occur, logging errors in the 'errors' parameter so that multiple user input errors can be
@@ -1101,6 +1107,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         if str_cell_content:
             row_inputs.base_line_name = str_cell_content
+            self._non_empty_row(row_index)
             return True
 
         # detect whether the row is completely empty...if not, raise an error. Note that a
@@ -1121,7 +1128,9 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 )
                 return False
 
-        logger.info(f"Ignored empty row {row_index + 1}.")
+        # track consecutive empty rows so we can just log one message for a range
+        if self.first_empty_row is None:
+            self.first_empty_row = row_index
         return False
 
     def _parse_description(self, row_inputs, row, row_index):
@@ -1221,7 +1230,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                     UNPARSEABLE_COMBINATORIAL_VALUE,
                 )
             else:
-                row_inputs.add_common_line_metadata(mtype_pk, str_cell_content)
+                row_inputs.set_common_line_metadata(mtype_pk, str_cell_content)
 
     def _interpret_strains_content(self, content, row_index, row_inputs):
         strains_is_combo = (
@@ -1392,7 +1401,8 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                 cell_content = str_cell_content
 
                 # do some additional processing of time values to detect bad user entries for time.
-                # best to catch errors here since time's currently stored in hstore as a string.
+                # best to catch errors here since time's currently stored in jsonbfield,
+                # potentially as a string if incorrectly formatted.
                 # We should eventually extend similar support to other metadata types defined as
                 # numeric.
                 if is_time:
@@ -1403,7 +1413,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                         logger.exception(f"ValueError parsing {bad_value}")
                         self.importer.add_error(err_category, error_key, bad_value)
 
-                row_inputs.add_common_assay_metadata(
+                row_inputs.set_common_assay_metadata(
                     protocol.pk, assay_mtype.pk, cell_content
                 )
                 continue
@@ -1500,12 +1510,14 @@ class JsonInputParser(CombinatorialInputParser):
         self.max_fractional_time_digits = 0
         self.parsed_json = None
 
-    def parse(self, stream):
+    def parse(
+        self, raw_json: Union[str, bytes, bytearray]
+    ) -> List[CombinatorialDescriptionInput]:
 
         combinatorial_inputs = []
         max_decimal_digits = 0
 
-        parsed_json = self._validate_parsed_json(stream)
+        parsed_json = self._validate_parsed_json(raw_json)
         if parsed_json is None:
             return
         elif not isinstance(parsed_json, Sequence):
@@ -1553,7 +1565,9 @@ class JsonInputParser(CombinatorialInputParser):
                 naming_strategy.combinatorial_input = combo_input
                 combinatorial_inputs.append(combo_input)
             except RuntimeError as rte:
-                logger.exception("Unexpected parse error")
+                logger.exception(
+                    f"Unexpected parse error {rte}. Raw JSON is {raw_json}"
+                )
                 self.aggregator.add_error(
                     INTERNAL_EDD_ERROR_CATEGORY, PARSE_ERROR, str(rte)
                 )
@@ -1575,11 +1589,11 @@ class JsonInputParser(CombinatorialInputParser):
 
         return combinatorial_inputs
 
-    def _validate_parsed_json(self, stream):
+    def _validate_parsed_json(self, raw_json: Union[str, bytes, bytearray]):
         if self.aggregator.errors:
             return None
 
-        parsed_json = json.loads(stream)
+        parsed_json = json.loads(raw_json)
         self.parsed_json = parsed_json
 
         if not parsed_json:
