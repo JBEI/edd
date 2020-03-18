@@ -91,6 +91,8 @@ WORKDIR /code
 COPY ./docker/edd/core/invoke.yaml /etc/invoke.yaml
 # Copy in invoke scripts
 COPY ./docker/edd/core/tasks /usr/local/edd-invoke/tasks
+# Copy in entrypoint
+COPY ./docker/edd/core/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Copy in code from node image
 COPY --from=node /run/edd/server /usr/local/edd/
@@ -107,5 +109,5 @@ RUN addgroup --gid 1000 --system edduser \
         --noinput \
         --settings "edd.settings.build_collectstatic"
 
-ENTRYPOINT ["/usr/bin/tini", "--", "invoke"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["--list"]

@@ -2,7 +2,8 @@ import invoke
 
 from . import prereq, util
 
-stars = "*" * 80
+STARS = "*" * 80
+STARTUP_SCRIPT = "/usr/local/bin/start_edd_process.sh"
 
 
 # watch_static: Watch for changes in static resources
@@ -25,12 +26,13 @@ def watch_static(context):
 @invoke.task(pre=[prereq.errorpage, prereq.rabbitmq, prereq.owner])
 def gunicorn(context):
     """Executes EDD as a Django site with Gunicorn."""
-    print(stars)
-    print("Starting production appserver …")
-    print(stars)
-    with context.cd("/code"):
-        context.run(
-            # run gunicorn as edduser
+    with open(STARTUP_SCRIPT, "w") as script:
+        print("#!/bin/bash", file=script)
+        print("set -euxo pipefail", file=script)
+        print(
+            # use exec so that the command here becomes PID 1
+            "exec "
+            # run gunicorn as edduser, using gosu
             "gosu edduser gunicorn "
             # with four worker processes
             "-w 4 "
@@ -48,27 +50,38 @@ def gunicorn(context):
             # disable checking front-end IPs as we won't know nginx IP
             "--forwarded-allow-ips '*' "
             # give the module and name of the WSGI application
-            "edd.wsgi:application "
+            "edd.wsgi:application ",
+            file=script,
         )
+    context.run(f'chmod +x "{STARTUP_SCRIPT}"')
+    print(STARS)
+    print("Starting production appserver …")
+    print(STARS)
 
 
 @invoke.task(pre=[prereq.errorpage, prereq.owner])
 def daphne(context):
     """Executes EDD as a Channels application with Daphne."""
-    print(stars)
-    print("Starting daphne …")
-    print(stars)
-    with context.cd("/code"):
-        context.run(
-            # run daphne as edduser
+    with open(STARTUP_SCRIPT, "w") as script:
+        print("#!/bin/bash", file=script)
+        print("set -euxo pipefail", file=script)
+        print(
+            # use exec so that the command here becomes PID 1
+            "exec "
+            # run daphne as edduser, using gosu
             "gosu edduser daphne "
             # listening on all IPv4 interfaces
             "-b 0.0.0.0 "
             # listening on port 8000
             "-p 8000 "
             # give the module and name of the ASGI application
-            "edd.asgi:application "
+            "edd.asgi:application ",
+            file=script,
         )
+    context.run(f'chmod +x "{STARTUP_SCRIPT}"')
+    print(STARS)
+    print("Starting daphne …")
+    print(STARS)
 
 
 @invoke.task(pre=[prereq.migrations, prereq.rabbitmq, prereq.owner])
@@ -78,18 +91,24 @@ def celery(context):
     # some celery code attempted to write to /usr/local/edd/log in the past
     util.ensure_dir_owner(context, "/usr/local/edd/log")
 
-    print(stars)
-    print("Starting Celery worker …")
-    print(stars)
-    with context.cd("/code"):
-        context.run(
-            # run celery as edduser
+    with open(STARTUP_SCRIPT, "w") as script:
+        print("#!/bin/bash", file=script)
+        print("set -euxo pipefail", file=script)
+        print(
+            # use exec so that the command here becomes PID 1
+            "exec "
+            # run celery as edduser, using gosu
             "gosu edduser celery worker "
             # using the edd project
             "-A edd "
             # using INFO logging level
-            "-l info "
+            "-l info ",
+            file=script,
         )
+    context.run(f'chmod +x "{STARTUP_SCRIPT}"')
+    print(STARS)
+    print("Starting Celery worker …")
+    print(STARS)
 
 
 namespace = invoke.Collection(prereq, watch_static, gunicorn, daphne, celery)
