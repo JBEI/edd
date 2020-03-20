@@ -226,7 +226,9 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
         """
         Tests that disallowed users aren't able to create an import on others' studies
         """
-        file_path = factory.test_file_path("generic_import", "FBA-OD-generic.xlsx")
+        file_path = factory.build_test_file_path(
+            "generic_import", "FBA-OD-generic.xlsx"
+        )
         # use an unprivileged account to upload a file (should fail)
         disallowed_users = {
             None: self.user_write_study.pk,
@@ -261,7 +263,9 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
         """
         Tests that allowed users are able to create an import on studies they have access to
         """
-        file_path = factory.test_file_path("generic_import", "FBA-OD-generic.xlsx")
+        file_path = factory.build_test_file_path(
+            "generic_import", "FBA-OD-generic.xlsx"
+        )
         group_write_study = main_factory.StudyFactory()
         group_write_study.grouppermission_set.create(
             group=self.write_group, permission_type=edd_models.StudyPermission.WRITE
@@ -287,7 +291,9 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
             )
 
     def test_upload_success_notification(self):
-        file_path = factory.test_file_path("generic_import", "FBA-OD-generic.xlsx")
+        file_path = factory.build_test_file_path(
+            "generic_import", "FBA-OD-generic.xlsx"
+        )
 
         self.client.force_login(self.write_user)
 
@@ -327,7 +333,9 @@ class ImportUploadTests(EddApiTestCaseMixin, APITestCase):
                 )
 
     def test_upload_failure_notification(self):
-        file_path = factory.test_file_path("generic_import", "FBA-OD-generic.xlsx")
+        file_path = factory.build_test_file_path(
+            "generic_import", "FBA-OD-generic.xlsx"
+        )
 
         upload = self._build_file_upload(file_path)
 

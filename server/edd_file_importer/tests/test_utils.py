@@ -84,7 +84,7 @@ class MsgContent:
         :param rel_file_path: relative file path from the edd_file_importer/test/files directory
         :return: the payload dict
         """
-        abs_file = factory.test_file_path(rel_file_path)
+        abs_file = factory.build_test_file_path(rel_file_path)
         payload_json = factory.load_test_json(abs_file)
         if "uuid" in payload_json:
             payload_json["uuid"] = UUID(payload_json["uuid"])

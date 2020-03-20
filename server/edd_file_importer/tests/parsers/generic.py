@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import json
 import os
 from typing import List, Union
@@ -23,7 +21,7 @@ def test_multi_err_workflow_excel():
     avoid test bloat.
     """
 
-    file_path = factory.test_file_path(
+    file_path = factory.build_test_file_path(
         "generic_import", "generic_import_parse_errs.xlsx"
     )
 
@@ -52,7 +50,7 @@ def test_multi_err_workflow_csv():
     verification that errors are being aggregated and reported from the parser.
     """
 
-    file_path = factory.test_file_path(
+    file_path = factory.build_test_file_path(
         "generic_import", "generic_import_parse_errs.csv"
     )
 
@@ -63,7 +61,7 @@ def test_multi_err_workflow_csv():
 
     try:
         parser = parsers.GenericCsvParser(uuid)
-        with open(file_path, "rt") as file:
+        with open(file_path) as file:
             with pytest.raises(exc.InvalidValueError) as exc_info:
                 parser.parse(file)
 
@@ -95,7 +93,7 @@ def test_wrong_format():
     Checks that missing required columns are correctly detected and that a helpful error
     message is created
     """
-    file_path = factory.test_file_path(
+    file_path = factory.build_test_file_path(
         "generic_import", "generic_import_wrong_format.xlsx"
     )
 
@@ -175,7 +173,7 @@ def test_parse_success_xlsx():
     # normally be an import UUID
     uuid = uuid4()
 
-    file_path = factory.test_file_path("generic_import", "generic_import.xlsx")
+    file_path = factory.build_test_file_path("generic_import", "generic_import.xlsx")
 
     parser = parsers.GenericExcelParser(uuid)
     with open(file_path, "rb") as file:
@@ -220,10 +218,10 @@ def test_parse_success_csv():
     # an import UUID
     uuid = uuid4()
 
-    file_path = factory.test_file_path("generic_import", "generic_import.csv")
+    file_path = factory.build_test_file_path("generic_import", "generic_import.csv")
 
     parser = parsers.GenericCsvParser(uuid)
-    with open(file_path, "rt") as file:
+    with open(file_path) as file:
         parsed = parser.parse(file)
 
     verify_parse_result(parsed)
@@ -236,7 +234,7 @@ def test_warnings_xlsx():
     # invent a UUID for tracking messages in this workflow.  in context, this would normally be
     # an import UUID
     uuid = uuid4()
-    file_path = factory.test_file_path("generic_import", "generic_import.xlsx")
+    file_path = factory.build_test_file_path("generic_import", "generic_import.xlsx")
 
     # set up a callback to track which warnings were reported via the "warnings_reported"
     # signal

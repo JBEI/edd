@@ -1,5 +1,3 @@
-# coding: utf-8
-
 """
 Unit tests for Skyline file parsing.  These tests are all implemented using PyTest since there's no
 need for database access.
@@ -99,7 +97,7 @@ def test_success_xlsx():
     # an import UUID
     uuid = uuid4()
 
-    file_path = factory.test_file_path("skyline", "skyline.xlsx")
+    file_path = factory.build_test_file_path("skyline", "skyline.xlsx")
 
     # parse the file
     parser = parsers.SkylineExcelParser(uuid)
@@ -118,11 +116,11 @@ def test_success_csv():
     # an import UUID
     uuid = uuid4()
 
-    file_path = factory.test_file_path("skyline", "skyline.csv")
+    file_path = factory.build_test_file_path("skyline", "skyline.csv")
 
     # parse the file
     parser = parsers.SkylineCsvParser(uuid)
-    with open(file_path, "rt") as file:
+    with open(file_path) as file:
         parsed = parser.parse(file)
 
     verify_parse_results(parsed)
@@ -173,7 +171,7 @@ def test_warnings_xlsx():
 
     warnings_reported.connect(warning_listener, sender=uuid, weak=False)
 
-    file_path = factory.test_file_path("skyline", "skyline.xlsx")
+    file_path = factory.build_test_file_path("skyline", "skyline.xlsx")
 
     try:
         # parse the file
