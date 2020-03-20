@@ -1,12 +1,10 @@
-# coding: utf-8
-
 import os
 from unittest.mock import call, patch
 
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
-from edd.tests import TestCase
+from edd import TestCase
 from main import models as edd_models
 
 from .. import tasks

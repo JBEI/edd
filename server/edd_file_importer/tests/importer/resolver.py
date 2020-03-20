@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 
 import edd_file_importer.importer.table as table
-from edd.tests import TestCase
+from edd import TestCase
 from edd_file_importer.exceptions import (
     DuplicateAssayError,
     DuplicateLineError,
@@ -47,7 +47,7 @@ class GenericFBAResolveMixin:
         # Gather inputs for the test
         import_pk = 13
         import_ = Import.objects.get(pk=import_pk)
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # load simulated parse input from JSON
         parse_result: FileParseResult = load_fba_od_parse_result()
@@ -122,7 +122,7 @@ class SimpleImportTests(GenericFBAResolveMixin, TestCase):
         import_pk = 13
         import_ = Import.objects.get(pk=import_pk)
         parse_result: FileParseResult = load_fba_od_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # create a line that duplicates an existing one in the FBA tutorial study fixture...
         # the overloaded line name should cause the import to fail
@@ -149,7 +149,7 @@ class SimpleImportTests(GenericFBAResolveMixin, TestCase):
         import_ = Import.objects.get(pk=13)
         parse_result: FileParseResult = load_fba_od_parse_result()
         # create and run the resolver
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # create an assay with the same name as one of the lines in the study. to support
         # re-uploads, the resolver matches against assay names first.  It should detect that the
@@ -181,7 +181,7 @@ class SimpleImportTests(GenericFBAResolveMixin, TestCase):
         parse_result: FileParseResult = load_fba_od_parse_result()
 
         # create and run the resolver
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # create assays with the same names as lines in the study, simulating what would happen
         # if this same import has already been processed
@@ -219,7 +219,7 @@ class SimpleImportTests(GenericFBAResolveMixin, TestCase):
         # (more than one simultaneous measurement of the same MeasurementType)
         import_ = Import.objects.get(pk=18)
         parse_result: FileParseResult = self.load_collision_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # verify that exception is thrown
         with self.assertRaises(MeasurementCollisionError) as cm:
@@ -264,7 +264,7 @@ class SimpleImportTests(GenericFBAResolveMixin, TestCase):
         import_ = Import.objects.get(pk=13)
         parse_result: FileParseResult = load_fba_od_parse_result()
         # create and run the resolver
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         with self.assertRaises(UnmatchedLineError) as cm:
             resolver = table.ImportResolver(import_, parse_result, user)
@@ -283,7 +283,7 @@ class SimpleImportTests(GenericFBAResolveMixin, TestCase):
         # just re-purpose existing fixture data that isn't really used in this test
         import_ = Import.objects.get(pk=13)
         parse_result: FileParseResult = load_mtype_resolve_err_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # create and run the resolver
         with self.assertRaises(UnmatchedMtypeError) as cm:
@@ -302,7 +302,7 @@ class SimpleImportTests(GenericFBAResolveMixin, TestCase):
         # just re-purpose existing fixture data that isn't really used in this test
         import_ = Import.objects.get(pk=13)
         parse_result: FileParseResult = load_unit_resolve_err_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # create and run the resolver
         with self.assertRaises(UnsupportedUnitsError) as cm:
@@ -366,7 +366,7 @@ class SkylineTests(TestCase):
         import_pk = 20
         import_ = Import.objects.get(pk=import_pk)
         parse_result: FileParseResult = self.load_skyline_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # verify that exception is thrown indicating no time values at all were provided.
         # note that unlike some other tests in this class, this error should be raised regardless
@@ -390,7 +390,7 @@ class SkylineTests(TestCase):
         # gather inputs for the test
         import_ = Import.objects.get(pk=20)
         parse_result: FileParseResult = self.load_skyline_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # verify that exception is thrown indicating no time values at all were provided
         with self.assertRaises(TimeNotProvidedError):
@@ -412,7 +412,7 @@ class SkylineTests(TestCase):
         # gather inputs for the test
         import_ = Import.objects.get(pk=20)
         parse_result: FileParseResult = self.load_skyline_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # populate 1/2 assays with time metadata to cause the error
         add_assay_time_metadata(self.assay_time_metatype, omit="BW1")
@@ -448,7 +448,7 @@ class SkylineTests(TestCase):
         # gather inputs for the test
         import_ = Import.objects.get(pk=20)
         parse_result: FileParseResult = self.load_skyline_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # similar to the production pipeline, configure message tracking for this test to allow
         # deferral of assay time errors
@@ -495,7 +495,7 @@ class SkylineTests(TestCase):
         # gather inputs for the test
         import_ = Import.objects.get(pk=20)
         parse_result: FileParseResult = self.load_skyline_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # add assay time metadata so the file can be successfully resolved against the study
         add_assay_time_metadata(self.assay_time_metatype)
@@ -544,7 +544,7 @@ class OverwriteTests(TestCase):
         # Gather inputs for the test
         import_pk = 13
         import_ = Import.objects.get(pk=import_pk)
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
         parse_result: FileParseResult = load_fba_od_parse_result()
 
         # create and run the resolver
@@ -575,7 +575,7 @@ class OverwriteTests(TestCase):
         # Gather inputs for the test
         import_pk = 13
         import_ = Import.objects.get(pk=import_pk)
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
         parse_result: FileParseResult = load_fba_od_parse_result()
 
         # set the flag for skipping the overwrite test
@@ -675,7 +675,7 @@ class DuplicationTests(TestCase):
         # gather inputs for the test
         import_ = Import.objects.get(pk=13)
         parse_result: FileParseResult = load_fba_od_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
         exp_summary_path = self._file_path(
             "FBA-OD-generic.xslx.cache-duplicate.context.json"
         )
@@ -719,7 +719,7 @@ class DuplicationTests(TestCase):
         # gather inputs for the test
         import_ = Import.objects.get(pk=13)
         parse_result: FileParseResult = load_fba_od_parse_result()
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # set the flag the user uses to aknowledge that duplication is intended (or known not to
         # exist, so we want to skip the expensive check)

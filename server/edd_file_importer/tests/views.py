@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Tests used to validate the tutorial screencast functionality.
 """
@@ -11,15 +10,13 @@ import main.models as edd_models
 from edd import TestCase
 from main.tests.factory import StudyFactory, UserFactory
 
-from . import factory
-
 
 @override_settings(EDD_USE_PROTOTYPE_IMPORT=True)
 class ImportViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.unprivileged_user = factory.UserFactory()
+        cls.unprivileged_user = UserFactory()
         cls.write_user = UserFactory()
         cls.read_user = UserFactory()
         cls.target_study = StudyFactory()
@@ -55,7 +52,7 @@ class ImportViewTests(TestCase):
         self.assertTemplateUsed(response, "edd_file_importer/import2.html")
 
         # admin user has access
-        admin_user = factory.UserFactory()
+        admin_user = UserFactory()
         admin_user.is_superuser = True
         admin_user.save()
         self.client.force_login(admin_user)
@@ -67,7 +64,7 @@ class ImportViewTests(TestCase):
         target_url = reverse("edd_file_importer:import_help")
 
         # unprivileged user has access
-        unprivileged_user = factory.UserFactory()
+        unprivileged_user = UserFactory()
         self.client.force_login(unprivileged_user)
         response = self.client.get(target_url)
         self.assertEqual(response.status_code, codes.ok)

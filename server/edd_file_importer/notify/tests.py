@@ -1,11 +1,9 @@
-# coding: utf-8
-
 import pytest
 from channels.testing import WebsocketCommunicator
 
 from edd import asgi
+from main.tests import factory
 
-from ..tests import factory
 from . import backend
 
 

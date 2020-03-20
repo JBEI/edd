@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 
 import edd_file_importer.importer.table as table
-from edd.tests import TestCase
+from edd import TestCase
 from edd_file_importer.exceptions import (
     BadParserError,
     ParseError,

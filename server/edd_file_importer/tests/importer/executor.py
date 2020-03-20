@@ -21,7 +21,6 @@ from ...exceptions import (
 )
 from ...importer import table
 from ...models import Import
-from .. import factory
 from ..test_utils import GENERIC_XLS_REDIS_SERIES_PATH
 from .utils import CacheEntries, add_assay_time_metadata
 
@@ -127,7 +126,7 @@ class ImportExecutorTests(TestCase):
         # grab an arbitrary import
         import_ = Import.objects.get(pk=15)
 
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # cycle through all the import states except SUBMITTED, verifying that no other can be
         # used as a starting point to execute the import
@@ -158,7 +157,7 @@ class ImportExecutorTests(TestCase):
         import_.save()
 
         # invent a user who doesn't have write permission
-        user = factory.UserFactory.build()
+        user = main_factory.UserFactory.build()
 
         # verify no permission
         with self.assertRaises(PermissionDenied):
