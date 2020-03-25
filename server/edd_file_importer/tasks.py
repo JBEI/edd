@@ -1,6 +1,8 @@
-# coding: utf-8
 import json
 import traceback
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict
 
 import arrow
 from celery import shared_task
@@ -159,15 +161,15 @@ def complete_import_task(import_pk, user_pk, ws=None):
             total_added, total_updated = executor.finish_import()
 
         warnings_payload = build_ui_payload(import_)
-        _send_success_notifications(
-            ws,
-            import_,
-            user,
-            start,
-            total_added,
-            total_updated,
+        summary = ImportSuccessSummary(
+            exec_start=start,
+            exec_duration=start.humanize(only_distance=True),
+            added=total_added,
+            updated=total_updated,
             payload=warnings_payload,
         )
+
+        _send_success_notifications(ws, import_, user, summary)
     except Exception as e:
         handle_task_exception(import_, e, user, start, ws, False)
     finally:
@@ -177,34 +179,48 @@ def complete_import_task(import_pk, user_pk, ws=None):
             track_msgs(import_.uuid, False)
 
 
-def _send_success_notifications(
-    ws, import_, user, start, total_added, total_updated, payload
-):
-    if total_added and total_updated:
-        summary = _("Added {total_added} values and updated {total_updated}.").format(
-            total_added=total_added, total_updated=total_updated
+@dataclass
+class ImportSuccessSummary:
+    # human-readable summary of execution duration
+    exec_duration: str
+
+    # start time of the execution phase
+    exec_start: datetime
+
+    # UI payload, e.g. warnings that didn't prevent completion
+    payload: Dict[str, Any]
+
+    # number of new MeasurmentValues added to the study
+    added: int
+
+    # number of existing MeasurementValues updated by the import
+    updated: int
+
+
+def _send_success_notifications(ws, import_, user, summary: ImportSuccessSummary):
+    added = summary.added
+    updated = summary.updated
+    if added and updated:
+        msg = _("Added {added} values and updated {updated}.").format(
+            added=added, updated=updated
         )
-    elif total_updated:
-        summary = _("Updated {total_updated} values").format(
-            total_updated=total_updated
-        )
+    elif updated:
+        msg = _("Updated {updated} values").format(updated=updated)
     else:
-        summary = _("Added {total_added} values").format(total_added=total_added)
+        msg = _("Added {added} values").format(added=added)
 
     study = import_.study
-    duration = start.humanize(only_distance=True)
     logger.info(
         f'Completed import to study {study.pk}, "{build_study_url(study.slug)}" '
-        f"{duration}"
+        f"{summary.exec_duration}"
     )
 
     update_import_status(
-        import_, Import.Status.COMPLETED, user, ws, summary=summary, payload=payload
+        import_, Import.Status.COMPLETED, user, ws, summary=msg, payload=summary.payload
     )
 
     # if requested, notify user of completion (e.g. for a large import)
-    # TODO: include warning content
-    send_import_success_email(import_, user, start, total_added, total_updated, payload)
+    send_import_success_email(import_, user, summary)
 
 
 def handle_task_exception(import_, exception, user, start, import_ws, processing_step):
@@ -346,7 +362,7 @@ def _verify_status_transition(import_, context, requested_status, ws, user):
     return test_required_inputs(import_, context, ws, user)
 
 
-def send_import_success_email(import_, user, start, added, updated, payload):
+def send_import_success_email(import_, user, summary: ImportSuccessSummary):
     """
     Sends an import completion email to notify the user of a successful (large) import
     """
@@ -358,16 +374,14 @@ def send_import_success_email(import_, user, start, added, updated, payload):
     study = import_.study
     subject_prefix = getattr(settings, "EMAIL_SUBJECT_PREFIX", "")
 
-    # build plaintext message
-    duration = start.humanize(only_distance=True)
     context = {
-        "added": added,
+        "added": summary.added,
         "file": import_.file.filename,
-        "updated": updated,
-        "duration": duration,
+        "updated": summary.updated,
+        "duration": summary.exec_duration,
         "study": study.name,
         "study_uri": build_study_url(study.slug),
-        "warnings": payload["warnings"] if "warnings" in payload else [],
+        "warnings": summary.payload.get("warnings", []),
     }
 
     text_template = get_template("edd_file_importer/email/import_success.txt")
@@ -402,7 +416,7 @@ def send_import_failure_emails(import_, err_payload, user, start, email_admins=T
 
     study = import_.study
     subject_prefix = getattr(settings, "EMAIL_SUBJECT_PREFIX", "")
-    subject = _("{prefix}Import Failed".format(prefix=subject_prefix))
+    subject = _("{prefix}Import Failed").format(prefix=subject_prefix)
     study_uri = build_study_url(study.slug)
     file_name = import_.file.filename
 

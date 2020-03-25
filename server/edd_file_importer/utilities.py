@@ -1,4 +1,3 @@
-# coding: utf-8
 import logging
 from typing import Any, Dict, List
 
@@ -20,7 +19,10 @@ from main.query import get_absolute_url
 
 from .exceptions import (
     CompartmentNotFoundError,
+    DuplicateMergeWarning,
     DuplicationWarning,
+    ImportConflictWarning,
+    MergeWarning,
     MissingAssayTimeError,
     OverwriteWarning,
     TimeUnresolvableError,
@@ -61,7 +63,7 @@ def build_ui_payload(import_: Import) -> Dict[str, List[Any]]:
 
 def test_required_inputs(
     import_: Import, context: Dict[str, Any], ws: ImportWsBroker, user
-):
+) -> bool:
     """
     Tests required inputs determined during import file processing and sends error / warning
     websocket and email messages based on context.  Informs the client of missing required inputs
@@ -101,19 +103,7 @@ def test_required_inputs(
         else:
             add_errors(import_.uuid, TimeUnresolvableError())
     else:
-        conflicted_vals = context["conflicted_vals"]
-        if conflicted_vals:
-            if context["matched_assays"] and "allow_overwrite" in required_inputs:
-                msg = _(
-                    "{count} values will be overwritten".format(count=conflicted_vals)
-                )
-
-                warnings(import_.uuid, OverwriteWarning(details=[msg]))
-            elif "allow_duplication" in required_inputs:
-                msg = _("{count} values will be duplicated").format(
-                    count=conflicted_vals
-                )
-                warnings(import_.uuid, DuplicationWarning(details=msg))
+        _add_conflict_warnings(import_, context, required_inputs)
 
     if "units" in required_inputs:
         add_errors(import_.uuid, UnitsNotProvidedError())
@@ -128,6 +118,25 @@ def test_required_inputs(
         _send_import_paused_email(import_, payload, user)
 
     return False
+
+
+def _add_conflict_warnings(import_, context, required_inputs):
+    conflicts = ImportConflictWarning.ConflictSummary(
+        from_study=context["conflicted_from_study"],
+        from_import=context["conflicted_from_import"],
+    )
+    if conflicts.from_import:
+        total_vals = context["total_vals"]
+        if context["matched_assays"] and "allow_overwrite" in required_inputs:
+            if total_vals == conflicts.from_import:
+                warnings(import_.uuid, OverwriteWarning(total_vals, conflicts))
+            else:
+                warnings(import_.uuid, MergeWarning(total_vals, conflicts))
+        elif "allow_duplication" in required_inputs:
+            if total_vals == conflicts.from_import:
+                warnings(import_.uuid, DuplicationWarning(total_vals, conflicts))
+            else:
+                warnings(import_.uuid, DuplicateMergeWarning(total_vals, conflicts))
 
 
 def ws_notify_required_input(
@@ -145,7 +154,7 @@ def ws_notify_required_input(
             '"{file_name}"'
         ).format(file_name=file_name)
     else:
-        vals = map(lambda item: '"{item}"'.format(item=item), required_inputs)
+        vals = (f'"{item}"' for item in required_inputs)
         vals = ", ".join(vals)
         logger.debug(f"missing_inputs: {vals}")
         msg = _(
@@ -162,7 +171,7 @@ def _send_import_paused_email(import_: Import, payload, user):
 
     study = import_.study
     subject_prefix = getattr(settings, "EMAIL_SUBJECT_PREFIX", "")
-    subject = _("{prefix}Import Paused".format(prefix=subject_prefix))
+    subject = _("{prefix}Import Paused").format(prefix=subject_prefix)
     rel_study_url = reverse("main:detail", kwargs={"slug": study.slug})
 
     context = {

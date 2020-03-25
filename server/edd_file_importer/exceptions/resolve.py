@@ -1,4 +1,4 @@
-# coding: utf-8
+from collections import namedtuple
 
 from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
@@ -119,7 +119,7 @@ _IDS_LINK = 'For help, see <a href="{url}" target="_blank">Standard Identifiers<
 
 # TODO:
 # communication errors... current model load_or_create methods don't support differentiating
-#  between different communication errors with external databasaes, but we should eventually
+#  between different communication errors with external databases, but we should eventually
 #  add additional detail to improve user feedback & simplify debugging
 # PARTNER_INTERNAL_ERROR = auto()
 # COMMUNICATION_ERROR = auto()
@@ -290,40 +290,139 @@ class MeasurementCollisionError(ResolveError):
         )
 
 
-class OverwriteWarning(ResolveWarning):
-    def __init__(self, **kwargs):
+class ImportConflictWarning(ResolveWarning):
+    ConflictSummary = namedtuple("ConflictSummary", ["from_study", "from_import"])
+    _normal_resolution = _(
+        "Data points with the same protocol and time as the file will be replaced."
+    )
+    _multi_overwrite_resolution = _(
+        "Data points with the same protocol and time as the file will be replaced. This "
+        "study already contains duplicates for some values that will be overwritten."
+    )
+    _duplicate_resolution = _(
+        "This happens when your import matches line names in the study, but similar "
+        "values exist under an assay with a different name. You can 1) make identifiers in "
+        "your file match study assay names, 2) remove study measurements with the same "
+        "protocol, time, and measurement type as the file, or 3) continue with creating "
+        "duplicates."
+    )
+
+
+class OverwriteWarning(ImportConflictWarning):
+    def __init__(self, total: int, conflicts: ImportConflictWarning.ConflictSummary):
+        """
+        Initializes the Overwrite warning
+
+        :param total: the total number of MeasurementValues in the import
+            (== #MeasurementParseRecords)
+        :param conflicts: a summary of conflicts detected between the import and the study
+        """
+        self.total = total
+        self.conflicts = conflicts
+
         super().__init__(
             category=_("Overwrite warning"),
-            summary=_("Submitting this import will overwrite data"),
-            resolution=kwargs.get(
-                "resolution",
-                _(
-                    "Data points with the same protocol and time as the file "
-                    "will be replaced"
-                ),
-            ),
+            summary=_(
+                "Submitting this import will overwrite data.  {overwrite} values will "
+                "be updated."
+            ).format(overwrite=conflicts.from_study),
+            resolution=self._normal_resolution,
             id="overwrite_warning",
             workaround_text=_("Overwrite"),
-            **kwargs,
         )
+        if conflicts.from_study > conflicts.from_import:
+            self.category = _("Overwrite warning (multiple overwrites)")
+            self.resolution = self._multi_overwrite_resolution
+
+    def __copy__(self):
+        return OverwriteWarning(self.total, self.conflicts)
 
 
-class DuplicationWarning(ResolveWarning):
-    def __init__(self, **kwargs):
+class MergeWarning(ImportConflictWarning):
+    def __init__(self, total: int, conflicts: ImportConflictWarning.ConflictSummary):
+        """
+        Initializes the Merge warning
+
+        :param total: the total number of MeasurementValues in the import
+            (== #MeasurementParseRecords)
+        :param conflicts: a summary of conflicts detected between the import and the study
+        """
+        self.total = total
+        self.conflicts = conflicts
+
+        add = total - conflicts.from_import
+        super().__init__(
+            category=_("Merge warning (overwrite)"),
+            summary=_(
+                "Submitting this import will both add AND overwrite data. {add} new "
+                "values will be added and {overwrite} existing values will be updated."
+            ).format(add=add, overwrite=conflicts.from_study),
+            resolution=self._normal_resolution,
+            id="overwrite_warning",
+            workaround_text=_("Merge"),
+        )
+        if conflicts.from_study > conflicts.from_import:
+            self.category = _("Merge warning (multiple overwrites)")
+            self.resolution = self._multi_overwrite_resolution
+
+    def __copy__(self):
+        return MergeWarning(self.total, self.conflicts)
+
+
+class DuplicationWarning(ImportConflictWarning):
+    def __init__(self, total: int, conflicts: ImportConflictWarning.ConflictSummary):
+        """
+        Initializes the DuplicationWarning
+
+        :param total: the total number of MeasurementValues read from file
+            (== #MeasurementParseRecords)
+        :param conflicts: a summary of conflicts detected between the import and the study
+        """
+        self.total: int = total
+        self.conflicts: ImportConflictWarning.ConflictSummary = conflicts
+
         super().__init__(
             category=_("Duplication warning"),
-            summary=_("Submitting this import will duplicate data"),
-            resolution=kwargs.get(
-                "resolution",
-                _(
-                    "Either remove measurements with the same protocol & time as the file,"
-                    " or continue with creating duplicates."
-                ),
-            ),
+            summary=_(
+                "Submitting this import will duplicate data. All {total} values "
+                "measure the same quantity at the same time as an existing value in the "
+                "study."
+            ).format(total=total, dupes=conflicts.from_import),
+            resolution=self._duplicate_resolution,
             id="duplication_warning",
             workaround_text=_("Duplicate"),
-            **kwargs,
         )
+
+    def __copy__(self):
+        return DuplicationWarning(self.total, self.conflicts)
+
+
+class DuplicateMergeWarning(ImportConflictWarning):
+    def __init__(self, total: int, conflicts: ImportConflictWarning.ConflictSummary):
+        """
+        Initializes the DuplicateMergeWarning
+
+        :param total: the total number of MeasurementValues read from file
+            (== #MeasurementParseRecords)
+        :param conflicts: a summary of conflicts detected between the import and the study
+        """
+        self.total: int = total
+        self.conflicts: ImportConflictWarning.ConflictSummary = conflicts
+
+        super().__init__(
+            category=_("Duplication warning"),
+            summary=_(
+                "Submitting this import will both add AND duplicate data. {total} values "
+                "will be added, {dupes} of which measure the same quantity at the same time "
+                "as an existing value in the study."
+            ).format(dupes=conflicts.from_import, total=total),
+            resolution=self._duplicate_resolution,
+            id="duplication_warning",
+            workaround_text=_("Duplicate"),
+        )
+
+    def __copy__(self):
+        return DuplicateMergeWarning(self.total, self.conflicts)
 
 
 class UnexpectedError(ResolveError):

@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import collections
 import copy
 import logging
@@ -8,7 +6,6 @@ from uuid import UUID
 
 from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
-from six import string_types
 
 from ..signals import errs_reported, warnings_reported
 
@@ -61,7 +58,7 @@ class EDDImportException(Exception):
 
         self.details: List[str] = []
         if details:
-            if isinstance(details, string_types):
+            if isinstance(details, str):
                 self.details = [details]
             elif isinstance(details, collections.Iterable):
                 # account for sets, frozensets, etc that may be more convenient for client code
@@ -104,11 +101,18 @@ class EDDImportException(Exception):
         if self.subcategory:
             cols.append(f'subcategory="{self.subcategory}"')
         if self.details:
-            # force translation proxies, if any, to string
-            details = ", ".join([str(item) for item in self.details])
-            cols.append(f'details="{details}"')
+            # force translation proxies, if any, to string,
+            # and truncate details that may have originated from user (e.g. import file content)
+            deets = ", ".join(str(item) for item in self.details)
+            cols.append(f'details="{self._truncate(deets)}"')
         cols_str = ", ".join(cols)
         return f"{self.__class__.__name__}({cols_str})"
+
+    @staticmethod
+    def _truncate(s: str):
+        if len(s) <= 30:
+            return s
+        return s[:30] + "…"
 
     def to_json(self):
         result = {"category": self.category}
@@ -200,7 +204,7 @@ class MessageAggregator:
         if existing:
             self._merge_msg_details(key, existing, msg)
         else:
-            target[key] = copy.deepcopy(msg)
+            target[key] = copy.copy(msg)
 
     def _merge_msg_details(
         self, key, existing: EDDImportException, msg: EDDImportException
@@ -321,7 +325,7 @@ class MessageAggregator:
         self, src: Dict[Tuple[str, str, str], EDDImportException]
     ) -> List[Any]:
         summary = []
-        for key, msg in src.items():
+        for _key, msg in src.items():
             summary.append(msg.to_json())
         return summary
 
@@ -339,9 +343,14 @@ def _log_reported_errors(sender, **kwargs):
     errs: EDDImportError = kwargs["errs"]
     logger.exception(f"{errs}")
 
-    tracked: MessageAggregator = _tracked_msgs.get(key, None)
-    if tracked:
-        tracked.add_errors(errs)
+    try:
+        tracked: MessageAggregator = _tracked_msgs.get(key, None)
+        if tracked:
+            tracked.add_errors(errs)
+    # log any exceptions that occur in our error tracking code so they're visible during
+    # development
+    except Exception as e:
+        logger.exception(e)
 
 
 # register a default signal handler to log all reported warnings, and track them if configured
@@ -352,7 +361,12 @@ def _log_reported_warnings(sender, **kwargs):
 
     tracked: MessageAggregator = _tracked_msgs.get(key, None)
     if tracked:
-        tracked.add_warnings(warns)
+        try:
+            tracked.add_warnings(warns)
+        except Exception as e:
+            # log any exceptions that occur in our error tracking code so they're visible during
+            # development
+            logger.exception(e)
 
 
 errs_reported.connect(
@@ -376,7 +390,7 @@ def errors(key: Union[UUID, str], errs: EDDImportError):
     track_msgs() to turn on stateful tracking for this key so that messages reported here can
     be deferred and accessed later when the end of the workflow is reached.
 
-    Each call to this function will result in a notifications to listeners on the
+    Each call to this function will result in a notification to listeners on the
     edd_file_importer.signals.errs_reported signal.
 
     :param key: the unique key for this workflow (e.g. the UUID for a single import)
@@ -407,8 +421,6 @@ def add_errors(key: Union[UUID, str], errs: EDDImportError):
         # if tracking isn't enabled, fail immediately so code written to accumulate errors
         # will still fail in a logical way (just on the first error instead of after many)
         raise errs
-    # else:
-    #     tracked.add_errors(errs)
 
 
 def warnings(key: Union[UUID, str], warns: EDDImportWarning):
@@ -425,9 +437,7 @@ def warnings(key: Union[UUID, str], warns: EDDImportWarning):
     :param key: the unique key that identifies this workflow (e.g. the UUID for a single import)
     :param warns: EDDImportWarning instance representing one or more warning occurrences
     """
-    logger.debug(
-        f"warnings(): {warns}"
-    )  # TODO: remove  -- already handled in signal handler
+    logger.debug(f"warnings(): {warns}")
     warnings_reported.send_robust(sender=str(key), warns=warns)
 
 

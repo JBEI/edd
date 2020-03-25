@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Module contains exceptions and exception reporting API's for edd_file_importer
 """
@@ -42,12 +41,15 @@ from .resolve import (  # noqa: F401
     CompartmentNotFoundError,
     DuplicateAssayError,
     DuplicateLineError,
+    DuplicateMergeWarning,
     DuplicationWarning,
     GeneNotFoundError,
     IllegalTransitionError,
+    ImportConflictWarning,
     ImportTooLargeError,
     InvalidIdError,
     MeasurementCollisionError,
+    MergeWarning,
     MetaboliteNotFoundError,
     MissingAssayTimeError,
     OverdeterminedTimeError,

@@ -1,4 +1,3 @@
-# coding: utf-8
 import collections
 import copy
 import importlib
@@ -43,6 +42,7 @@ from ..exceptions import (
     DuplicateLineError,
     GeneNotFoundError,
     IllegalTransitionError,
+    ImportConflictWarning,
     ImportTooLargeError,
     MeasurementCollisionError,
     MetaboliteNotFoundError,
@@ -71,6 +71,8 @@ from ..utilities import MTYPE_GROUP_TO_CLASS
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
+
+_ConflictSummary = ImportConflictWarning.ConflictSummary
 
 # maps mtype group to error identifiers for failed lookup
 MTYPE_GROUP_TO_ERR_CLASS = {
@@ -797,7 +799,7 @@ class ImportResolver:
 
 class ImportCacheCreator:
     """
-    Takes ImportParseRecords and resolved database state and generates + saves import records
+    Takes a FileParseResult and resolved database state and generates + saves import records
     more conducive to final processing by complete_import_task().  Also performs some final error
     checking that isn't possible until this point in the process -- verifies that no colliding
     records are being added.
@@ -861,58 +863,58 @@ class ImportCacheCreator:
         for page in self.paged_series:
             redis.add_page(import_id, json.dumps(page, cls=JSONEncoder))
 
-        required_inputs, conflicted_vals = self._compute_required_inputs(
-            import_records_list
-        )
+        required_inputs: List[str]
+        conflicts: _ConflictSummary
+        required_inputs, conflicts = self._compute_required_inputs(import_records_list)
 
         logger.debug(f"required_inputs {required_inputs}")
         context = {
-            "totalPages": page_count,
-            "importId": str(import_id),
-            "matched_assays": self.matched_assays,
+            "conflicted_from_study": conflicts.from_study,
+            "conflicted_from_import": conflicts.from_import,
             "file_has_times": self.parsed.has_all_times,
             "file_has_units": self.parsed.has_all_units,
+            "importId": str(import_id),
             "loa_pks": [pk for pk in self.loa_name_to_pk.values()],
-            "use_assay_times": self.matched_assays and bool(self.assay_pk_to_time),
+            "matched_assays": self.matched_assays,
             "required_post_resolve": required_inputs,
-            "conflicted_vals": conflicted_vals,
+            "total_vals": len(self.parsed.series_data),
+            "totalPages": page_count,
+            "use_assay_times": self.matched_assays and bool(self.assay_pk_to_time),
         }
         redis.set_context(import_id, json.dumps(context))
         return context
 
-    def _compute_required_inputs(self, import_records_list):
+    def _compute_required_inputs(
+        self, import_records_list
+    ) -> Tuple[List[str], _ConflictSummary]:
         compartment = self._import.compartment
         category = self._import.category
-        required_inputs = []
+        required_inputs: List[str] = []
 
         # TODO: verify assumptions here re: auto-selected compartment.
         # status quo is that its only needed for metabolomics, but should be configured in protocol
         if category.name == "Metabolomics" and not compartment:
             required_inputs.append("compartment")
-        conflicted_val_count = 0
         if not (self.assay_pk_to_time or self.parsed.has_all_times):
             required_inputs.append("time")
+            conflicts = _ConflictSummary(from_import=0, from_study=0)
         else:
-            conflicted_val_count, new_val_count = self._detect_conflicts(
-                import_records_list
-            )
-            if conflicted_val_count:
+            conflicts = self._detect_conflicts(import_records_list)
+            if conflicts.from_import:
                 key = "allow_overwrite" if self.matched_assays else "allow_duplication"
                 required_inputs.append(key)
 
         if not self.parsed.has_all_units:
             required_inputs.append("units")
 
-        return required_inputs, conflicted_val_count
+        return required_inputs, conflicts
 
-    def _detect_conflicts(self, import_records_list):
+    def _detect_conflicts(self, import_records_list) -> _ConflictSummary:
         """
-        Inspects all the import records for this import and queries the database to detect any
-        existing MeasurementValues that will be duplicated or overwritten by importing this data.
+        Inspects all the records for this import and queries the database to detect any existing
+        MeasurementValues that will be duplicated or overwritten by importing this data.
         This is important to give the user up-front feedback on the import, or the user can also
         choose to skip this check if an overwrite/duplication is planned.
-
-        :return a tuple of (# conflicted vals, new vals)
         """
         matched_assays = self.matched_assays
         import_ = self._import
@@ -921,20 +923,18 @@ class ImportCacheCreator:
         if (matched_assays and import_.allow_overwrite) or (
             (not matched_assays) and import_.allow_duplication
         ):
-            return 0, 0
+            return _ConflictSummary(from_import=0, from_study=0)
 
         check = "overwrites" if matched_assays else "duplication"
         logger.info(f"Checking for {check}...")
 
-        conflicted_vals = 0
-        new_vals = 0
+        conflicted_from_study = 0
+        conflicted_from_import = 0
         for import_record in import_records_list:
             values = import_record["data"]
 
             if not values:
                 continue
-
-            new_vals += len(values)
 
             # use the same Measurement lookup fields that the final import code does
             measurement_filter = _measurement_search_fields(
@@ -947,15 +947,17 @@ class ImportCacheCreator:
             # build up a list of unique x-values (each of which may be an array)
             x: List[float]
             y: List[float]
-            for x, y in values:
-                # never runs for line name input since it won't get this far if a line name-based
-                # file doesn't contain times
+            for x, _y in values:
+                # never runs for line name input
+                # since it won't get this far
+                # if a line name-based file doesn't contain times
                 if not self.parsed.has_all_times:
                     assay_pk = import_record["assay_id"]
                     x = self.assay_pk_to_time[assay_pk]
 
                 # Note: x__in doesn't work as of Django 2.0.9...even explicitly casting each
-                # element of x to Decimal before filtering for x__in caused a Postgres type error.
+                # element of x to Decimal before filtering for x__in caused a Postgres type
+                # error.
                 # So unfortunately we have to do this query inside the loop
                 qs = MeasurementValue.objects.filter(
                     study_id=import_.study_id,
@@ -970,21 +972,26 @@ class ImportCacheCreator:
                     qs = qs.filter(measurement__assay__line_id=line_pk)
 
                 qs = qs.filter(**measurement_filter)
-                conflicted_vals += qs.count()
+                count = qs.count()
+                conflicted_from_study += count
+                if count:
+                    conflicted_from_import += 1
                 logger.debug(
-                    f"Found {qs.count()} existing values at time {x}, "
+                    f"Found {count} existing values at time {x}, "
                     f"for {measurement_filter}"
                 )
 
-        return conflicted_vals, new_vals
+        return _ConflictSummary(
+            from_study=conflicted_from_study, from_import=conflicted_from_import
+        )
 
-    def _build_import_records(self):
+    def _build_import_records(self) -> List[Dict]:
         """
         Builds records for the final import from MeasurementParseRecords read by the parser.
         Merges import parse records, which often result from separate lines of a file, to store
-        values for the same (assay/line + measurement type + units) combination in a single record
-        for final import. Merging avoids bloat in the JSON and also reduces repetitive
-        Measurement lookups in downstream processing.
+        values for the same Measurement (assay/line + measurement type + units) combination in a
+        single record for final import. Merging avoids bloat in the JSON and also reduces
+        repetitive Measurement lookups in downstream processing.
 
         This merge should always be O(n), and in the best case (e.g. OD measurements over time
         on a single line/assay), would eliminate n-1 downstream Measurement queries.
@@ -1256,7 +1263,7 @@ class ImportExecutor:
         ]
         count = Count("assay", filter=Q(assay__protocol_id=self.import_.protocol_id))
 
-        # query in batches for line names and associated assay counts
+        # query in batches for lines and associated assay counts
         for batch in line_pk_batches:
             qs = Line.objects.filter(pk__in=batch)
             qs = qs.annotate(assay_count=count).values_list(

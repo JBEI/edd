@@ -50,7 +50,7 @@ class ImportCacheCreatorTests(TestCase):
     @override_settings(EDD_IMPORT_PAGE_SIZE=14, EDD_IMPORT_CACHE_LENGTH=5)
     def test_record_merge(self):
         """
-        Tests that ImportCacheCreator correctly merges ImportParseRecords for the same
+        Tests that ImportCacheCreator correctly merges MeasurementParseRecords for the same
         (MeasurementType + line/assay) combination into a single record.  Since this impacts
         the amount of information stored in a single page of the import cache, we should
         eventually impose some additional limit on the number of records that can be merged.

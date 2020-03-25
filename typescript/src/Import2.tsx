@@ -339,6 +339,7 @@ class BgTaskFeedback extends React.Component<BgProcessingProps, any> {
                     errs={categoryErrors}
                     workaroundCallbacks={{}}
                     alertClass="alert alert-danger"
+                    dismissAllFn={this.props.clearFeedbackFn}
                 />
             );
         });
@@ -355,6 +356,7 @@ class BgTaskFeedback extends React.Component<BgProcessingProps, any> {
                         errs={categoryWarnings}
                         workaroundCallbacks={this.props.warningWorkarounds}
                         alertClass="alert alert-warning"
+                        dismissAllFn={this.props.clearFeedbackFn}
                     />
                 );
             },
@@ -367,7 +369,7 @@ class BgTaskFeedback extends React.Component<BgProcessingProps, any> {
                 <div className="dismissAll">
                     <button
                         className="btn btn-info"
-                        onClick={() => this.props.clearFeedbackFn(false)}
+                        onClick={this.props.clearFeedbackFn}
                     >
                         Dismiss
                     </button>
@@ -396,6 +398,7 @@ export interface ErrSequenceProps {
     alertClass: string;
     workaroundCallbacks: any;
     allowHide: boolean;
+    dismissAllFn?: any;
 }
 
 // essentially a workaround for the fact that bootstrap's dismissable alerts don't play well with
@@ -546,9 +549,6 @@ class ErrCategoryAlert extends React.Component<ErrSequenceProps, any> {
             ) : (
                 <div />
             );
-            const hideBtn = this.props.allowHide && (
-                <button onClick={this.hide.bind(this)}>Cancel</button>
-            );
 
             const subcategorySpan = err.subcategory && (
                 <span>
@@ -557,11 +557,16 @@ class ErrCategoryAlert extends React.Component<ErrSequenceProps, any> {
                 </span>
             );
 
+            // if this error provides a workaround, add buttons to execute it or cancel the import
+            // entirely
             let workaround = <span />;
             if (err.id && this.props.workaroundCallbacks[err.id]) {
+                const cancelBtn = this.props.allowHide && this.props.dismissAllFn && (
+                    <button onClick={this.props.dismissAllFn}>Cancel</button>
+                );
                 workaround = (
                     <div>
-                        {hideBtn}
+                        {cancelBtn}
                         <button
                             onClick={this.props.workaroundCallbacks[err.id]}
                             className="bg-task-callback-btn"
@@ -1209,7 +1214,7 @@ class Import extends React.Component<any, ImportState> {
                         uploadWarnings={this.state.uploadWarnings}
                         errorCallback={this.setState.bind(this)}
                         onDropCallback={this.onFileDrop.bind(this)}
-                        clearFeedbackFn={this.clearUploadErrors.bind(this)}
+                        clearFeedbackFn={this.clearUploadErrors.bind(this, true)}
                         overwrite={this.state.allowOverwrite}
                         requiredValues={this.state.requiredValues}
                         submitPending={this.state.submitPending}
@@ -1439,7 +1444,7 @@ class Import extends React.Component<any, ImportState> {
         }
     }
 
-    clearUploadErrors(removeFile: boolean) {
+    clearUploadErrors(removeFile = false) {
         const vals = {
             "uploadErrors": [],
             "uploadWarnings": [],
