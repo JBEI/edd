@@ -38,23 +38,23 @@ AUTHENTICATION_BACKENDS = (
 if AUTH_LDAP_BIND_PASSWORD:
     # See https://pythonhosted.org/django-auth-ldap/install.html
     AUTHENTICATION_BACKENDS = (
-        "main.account.adapter.AllauthLDAPBackend",  # 'django_auth_ldap.backend.LDAPBackend',
+        "edd.auth_backends.AllauthLDAPBackend",  # 'django_auth_ldap.backend.LDAPBackend',
     ) + AUTHENTICATION_BACKENDS
 
 ###################################################################################################
 # Django Allauth Settings
 # NOTE: this section applies IFF base.py includes allauth apps in INSTALLED_APPS
-ACCOUNT_ADAPTER = "main.account.adapter.EDDAccountAdapter"
+ACCOUNT_ADAPTER = "edd.account.EDDAccountAdapter"
 # NOTE: override ACCOUNT_DEFAULT_HTTP_PROTOCOL in local.py with 'http' when in dev environment
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_FORMS = {
     # use our override of password reset form behavior
-    "reset_password": "main.account.forms.ResetPasswordForm"
+    "reset_password": "edd.account.ResetPasswordForm"
 }
 ACCOUNT_USERNAME_REQUIRED = False
-SOCIALACCOUNT_ADAPTER = "main.account.adapter.EDDSocialAccountAdapter"
+SOCIALACCOUNT_ADAPTER = "edd.account.EDDSocialAccountAdapter"
 SOCIALACCOUNT_PROVIDERS = {
     "github": {"SCOPE": ["user"]},
     "google": {"SCOPE": ["email", "profile"]},

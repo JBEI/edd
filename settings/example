@@ -46,7 +46,7 @@ INTERNAL_IPS = ["127.0.0.1", "::1"]
 # NOTE: this backend ignores passwords,
 # and does immediate login for the provided username
 # AUTHENTICATION_BACKENDS = (
-#     'main.account.adapter.LocalTestBackend',
+#     'edd.account.LocalTestBackend',
 # )
 
 # Uncomment below to use DEBUG mode and include the debug toolbar
