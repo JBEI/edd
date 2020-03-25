@@ -47,9 +47,9 @@ class ImportSocket {
         this.tagActions = {};
 
         this.socket = new ReconnectingWebSocket(url.toString());
-        this.socket.onopen = this.opened.bind(this);
-        this.socket.onclose = this.closed.bind(this);
-        this.socket.onmessage = this.receive.bind(this);
+        this.socket.onopen = (evt) => this.opened(evt);
+        this.socket.onclose = (evt) => this.closed(evt);
+        this.socket.onmessage = (evt) => this.receive(evt);
     }
 
     private opened(event) {
@@ -232,12 +232,17 @@ export interface Step2State extends ImportContextProps {
 }
 
 export interface Step2Props extends Step2State {
-    onDropCallback: any;
-    errorCallback: any;
-    clearFeedbackFn: any;
+    onDropCallback: <T extends File>(
+        acceptedFiles: T[],
+        rejectedFiles: T[],
+        event,
+    ) => void;
+    errorCallback: (state: any) => void;
+    clearFeedbackFn: () => void;
     overwrite: boolean;
-    jumpToStep: any; // injected by StepZilla
-    stepChangeFnCallback: any; // hacky way of giving the Import component access to change steps
+    jumpToStep: (step: number) => void; // injected by StepZilla
+    // hacky way of giving the Import component access to change steps via StepZilla API
+    stepChangeFnCallback: (stepChgFn: (number) => void) => void;
     warningWorkarounds: any;
     format: Format;
 }
@@ -522,7 +527,11 @@ class ErrCategoryAlert extends React.Component<ErrSequenceProps, any> {
             this.props.errs.length && (
                 <div className={this.props.alertClass}>
                     {this.props.allowHide && (
-                        <a href="#" className="close" onClick={this.hide.bind(this)}>
+                        <a
+                            href="#"
+                            className="close"
+                            onClick={(...args) => this.hide(...args)}
+                        >
                             &times;
                         </a>
                     )}
@@ -799,14 +808,14 @@ export interface Step1State {
 }
 
 export interface Step1Props extends Step1State {
-    categorySelectedCallback: any;
-    protocolSelectedCallback: any;
-    formatSelectedCallback: any;
-    emailSelectedCallback: any;
+    categorySelectedCallback: (category: Category) => void;
+    protocolSelectedCallback: (protocol: Selectable) => void;
+    formatSelectedCallback: (format: Format) => void;
+    emailSelectedCallback: (event: React.MouseEvent) => void;
     importUUID: string;
-    overwriteSelectedCallback: any;
-    duplicateSelectedCallback: any;
-    createNewImportCallback: any;
+    overwriteSelectedCallback: (event: React.MouseEvent) => void;
+    duplicateSelectedCallback: (event: React.MouseEvent) => void;
+    createNewImportCallback: (event) => void;
     allowOverwrite: boolean;
     allowDuplication: boolean;
     helpUrl: string;
@@ -834,8 +843,8 @@ class Step1 extends React.Component<Step1Props, Step1InternalState> {
         );
     }
 
-    toggleAdvancedOpts(evt) {
-        evt.preventDefault();
+    toggleAdvancedOpts(event) {
+        event.preventDefault();
         this.setState({
             "showAdvancedOpts": !this.state.showAdvancedOpts,
         });
@@ -955,7 +964,9 @@ class Step1 extends React.Component<Step1Props, Step1InternalState> {
                                     href="#"
                                     id="advancedLink"
                                     className="discloseLink"
-                                    onClick={this.toggleAdvancedOpts.bind(this)}
+                                    onClick={(...args) =>
+                                        this.toggleAdvancedOpts(...args)
+                                    }
                                 >
                                     Advanced
                                 </a>
@@ -1092,8 +1103,8 @@ class Import extends React.Component<any, ImportState> {
             }),
             "dataType": "json",
             "processData": false,
-            "success": this.createSuccess.bind(this),
-            "error": this.createErr.bind(this),
+            "success": (...args) => this.createSuccess(...args),
+            "error": (...args) => this.createErr(...args),
         });
     }
 
@@ -1162,13 +1173,13 @@ class Import extends React.Component<any, ImportState> {
 
     render() {
         const step2Workarounds = {
-            "overwrite_warning": this.submitWithOverwrite.bind(this),
-            "duplication_warning": this.submitWithDuplication.bind(this),
+            "overwrite_warning": () => this.submitWithOverwrite(),
+            "duplication_warning": () => this.submitWithDuplication(),
         };
 
         const successActions = {
-            "Import Another File": this.reset.bind(this),
-            "Back to Study": this.backToStudy.bind(this),
+            "Import Another File": () => this.reset(),
+            "Back to Study": () => this.backToStudy(),
         } as SuccessActions;
         const steps = [
             {
@@ -1184,15 +1195,27 @@ class Import extends React.Component<any, ImportState> {
                         formatHelpContent={this.state.formatHelpContent}
                         helpUrl={this.state.helpUrl}
                         importUUID={this.state.importUUID}
-                        categorySelectedCallback={this.categorySelected.bind(this)}
+                        categorySelectedCallback={(...args) =>
+                            this.categorySelected(...args)
+                        }
                         protocolHelpContent={this.state.protocolHelpContent}
-                        protocolSelectedCallback={this.protocolSelected.bind(this)}
-                        formatSelectedCallback={this.formatSelected.bind(this)}
-                        emailSelectedCallback={this.setEmailWhenComplete.bind(this)}
+                        protocolSelectedCallback={(...args) =>
+                            this.protocolSelected(...args)
+                        }
+                        formatSelectedCallback={(...args) =>
+                            this.formatSelected(...args)
+                        }
+                        emailSelectedCallback={(...args) =>
+                            this.setEmailWhenComplete(...args)
+                        }
                         emailWhenComplete={this.state.emailWhenComplete}
-                        overwriteSelectedCallback={this.overwriteChecked.bind(this)}
-                        createNewImportCallback={this.createNewImport.bind(this)}
-                        duplicateSelectedCallback={this.duplicateChecked.bind(this)}
+                        overwriteSelectedCallback={(...args) =>
+                            this.overwriteChecked(...args)
+                        }
+                        createNewImportCallback={() => this.createNewImport()}
+                        duplicateSelectedCallback={(...args) =>
+                            this.duplicateChecked(...args)
+                        }
                         allowOverwrite={this.state.allowOverwrite}
                         allowDuplication={this.state.allowDuplication}
                     />
@@ -1212,16 +1235,16 @@ class Import extends React.Component<any, ImportState> {
                         postUploadStep={this.state.postUploadStep}
                         uploadErrors={this.state.uploadErrors}
                         uploadWarnings={this.state.uploadWarnings}
-                        errorCallback={this.setState.bind(this)}
-                        onDropCallback={this.onFileDrop.bind(this)}
-                        clearFeedbackFn={this.clearUploadErrors.bind(this, true)}
+                        errorCallback={(...args) => this.setState(...args)}
+                        onDropCallback={(...args) => this.onFileDrop(...args)}
+                        clearFeedbackFn={() => this.clearUploadErrors(true)}
                         overwrite={this.state.allowOverwrite}
                         requiredValues={this.state.requiredValues}
                         submitPending={this.state.submitPending}
                         submitSuccess={this.state.submitSuccess}
                         submitWait={this.state.submitWait}
                         jumpToStep={null}
-                        stepChangeFnCallback={this.setJumpToStep.bind(this)}
+                        stepChangeFnCallback={(...args) => this.setJumpToStep(...args)}
                         warningWorkarounds={step2Workarounds}
                     />
                 ),
@@ -1247,14 +1270,14 @@ class Import extends React.Component<any, ImportState> {
                         protocol={this.state.protocol}
                         format={this.state.format}
                         uploadedFileName={this.state.uploadedFileName}
-                        submitCallback={this.enqueueSubmit.bind(this)}
+                        submitCallback={() => this.enqueueSubmit()}
                         submitWait={this.state.submitWait}
                         submitProcessingWait={this.state.submitProcessingWait}
                         submitSuccess={this.state.submitSuccess}
                         successMsg={this.state.submitSuccessMsg}
                         submitErrors={this.state.submitErrors}
                         submitWarnings={this.state.submitWarnings}
-                        clearFeedbackFn={this.clearSubmitErrors.bind(this)}
+                        clearFeedbackFn={() => this.clearSubmitErrors()}
                         successActions={successActions}
                     />
                 ),
@@ -1266,7 +1289,7 @@ class Import extends React.Component<any, ImportState> {
                 stepsNavigation={false}
                 // Note: only applied @ step transition...too late for initial prototype
                 nextButtonText={this.state.nextButtonText}
-                onStepChange={this.onStepChange.bind(this)}
+                onStepChange={(step) => this.onStepChange(step)}
             />
         );
     }
@@ -1297,7 +1320,7 @@ class Import extends React.Component<any, ImportState> {
         }
     }
 
-    setJumpToStep(jumpToStepFn: any) {
+    setJumpToStep(jumpToStepFn: (step: number) => void) {
         // hacky function to get a reference to StepZilla's injected jumpToStep() function
         this.setState({ "jumpToStep": jumpToStepFn });
     }
@@ -1327,7 +1350,7 @@ class Import extends React.Component<any, ImportState> {
         this.setState({ "categories": [] });
     }
 
-    categorySelected(category) {
+    categorySelected(category: Category) {
         if (category === this.state.category) {
             return;
         }
@@ -1351,7 +1374,7 @@ class Import extends React.Component<any, ImportState> {
         this.clearUploadErrors(true);
     }
 
-    formatSelected(format) {
+    formatSelected(format: Format) {
         if (format === this.state.format) {
             return;
         }
@@ -1465,7 +1488,7 @@ class Import extends React.Component<any, ImportState> {
         });
     }
 
-    onFileDrop(acceptedFiles, rejectedFiles) {
+    onFileDrop(acceptedFiles: File[], rejectedFiles: File[], evt) {
         this.clearUploadErrors(true);
 
         if (acceptedFiles.length) {
@@ -1508,8 +1531,8 @@ class Import extends React.Component<any, ImportState> {
                 "data": data,
                 "dataType": "json",
                 "processData": false,
-                "success": this.uploadSuccess.bind(this),
-                "error": this.uploadErr.bind(this),
+                "success": (...args) => this.uploadSuccess(...args),
+                "error": (...args) => this.uploadErr(...args),
             });
         } else {
             const file = rejectedFiles[0];
@@ -1676,8 +1699,8 @@ class Import extends React.Component<any, ImportState> {
                 }),
                 "dataType": "json",
                 "processData": false,
-                "success": this.submitSuccess.bind(this),
-                "error": this.submitErr.bind(this),
+                "success": (...args) => this.submitSuccess(...args),
+                "error": (...args) => this.submitErr(...args),
             },
         );
     }
@@ -1862,8 +1885,8 @@ class Import extends React.Component<any, ImportState> {
             "headers": { "Content-Type": "application/json" },
             "method": "GET",
             "dataType": "json",
-            "success": this.categoriesLookupSuccess.bind(this),
-            "error": this.categoriesLookupErr.bind(this),
+            "success": (...args) => this.categoriesLookupSuccess(...args),
+            "error": (...args) => this.categoriesLookupErr(...args),
         });
 
         // get server-side configuration passed via hidden form inputs
@@ -1873,7 +1896,7 @@ class Import extends React.Component<any, ImportState> {
         // open a websocket for page-specific intermediate status notifications, as well as
         // final disposition so we're guaranteed delivery order over a single channel
         const importSocket = new ImportSocket();
-        importSocket.subscribe(this.importMsgReceived.bind(this));
+        importSocket.subscribe((...args) => this.importMsgReceived(...args));
 
         // subscribe to import-related pass/fail notifications from the main notification menu
         notificationSocket.addTagAction("import-status-update", (msg) => {
