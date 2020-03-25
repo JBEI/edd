@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib import auth, messages, sites
 from django.db.models import Q
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.utils.module_loading import import_string
 from django.utils.translation import ugettext_lazy as _
 
@@ -16,6 +17,25 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
     """
     Adapter overrides default behavior for username selection and email verification.
     """
+
+    def confirm_email(self, request, email_address):
+        super().confirm_email(request, email_address)
+        contact = getattr(settings, "EDD_APPROVAL_CONTACT", None)
+        if contact and request:
+            current_site = sites.shortcuts.get_current_site(request)
+            user = email_address.user
+            path = reverse(
+                "admin:profile_userprofile_change",
+                kwargs={"object_id": user.profile.pk},
+            )
+            context = {
+                "activate_url": request.build_absolute_uri(path),
+                "current_site": current_site,
+                "user": user,
+            }
+            account.adapter.get_adapter(request).send_mail(
+                "account/email/approval_requested", contact, context
+            )
 
     def get_email_confirmation_url(self, request, emailconfirmation):
         # This is super hacky but whatevs
