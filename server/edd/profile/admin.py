@@ -1,6 +1,5 @@
-# coding: utf-8
-
 from django.contrib import admin
+from django.utils.translation import ugettext_lazy as _
 
 from .models import Institution, InstitutionID, UserProfile
 
@@ -11,9 +10,20 @@ class InstitutionInline(admin.TabularInline):
 
 
 class UserProfileAdmin(admin.ModelAdmin):
-    fields = ("user", "initials", "description", "preferences")
+    actions = ["disable_account_action", "enable_account_action"]
+    fields = ("user", "approved", "initials", "description", "preferences")
     inlines = (InstitutionInline,)
-    list_display = ("user", "initials")
+    list_display = ("user", "approved", "initials")
+
+    def disable_account_action(self, request, queryset):
+        queryset.update(approved=False)
+
+    disable_account_action.short_description = _("Disable selected accounts")
+
+    def enable_account_action(self, request, queryset):
+        queryset.update(approved=True)
+
+    enable_account_action.short_description = _("Enable selected accounts")
 
     def get_readonly_fields(self, request, obj=None):
         if obj:

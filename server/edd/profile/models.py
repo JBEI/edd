@@ -3,6 +3,7 @@
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import models
+from django.utils.translation import ugettext_lazy as _
 
 from edd.fields import VarCharField
 
@@ -31,6 +32,11 @@ class UserProfile(models.Model):
     description = models.TextField(blank=True, null=True)
     institutions = models.ManyToManyField(Institution, through="InstitutionID")
     preferences = JSONField(blank=True, default=dict)
+    approved = models.BooleanField(
+        default=False,
+        help_text=_("Flag showing if this account has been approved for login."),
+        verbose_name=_("Approved"),
+    )
 
     def __str__(self):
         return str(self.user)

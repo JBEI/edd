@@ -1,7 +1,11 @@
 import logging
 
 from allauth.account import models
+from allauth.account.auth_backends import AuthenticationBackend as AllauthBackend
+from django.conf import settings
 from django.contrib.auth import backends, get_user_model
+from django.forms import ValidationError
+from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
 logger = logging.getLogger(__name__)
@@ -60,3 +64,37 @@ class LocalTestBackend(backends.ModelBackend):
         User = get_user_model()
         queryset = User.objects.filter(username=username)
         return queryset.first()
+
+
+class ManualVerificationMixin:
+    """
+    Authentication backend mixin for use in manual verification of accounts.
+
+    When used, an account must have manual verification, in addition to
+    any validation required by the Account Adapter.
+    """
+
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        user = super().authenticate(request, username, password, **kwargs)
+        if user is not None and not user.profile.approved:
+            # default contact, if nothing else set
+            contact = settings.SERVER_EMAIL
+            # prefer our own setting
+            contact = getattr(settings, "EDD_APPROVAL_CONTACT", contact)
+            # default message, if nothing else set
+            message = _(
+                "Your account is currently disabled. Please contact {contact} "
+                "to complete the account creation process."
+            ).format(contact=contact)
+            # prefer our own, again
+            message = getattr(settings, "EDD_APPROVAL_MESSAGE", message)
+            raise ValidationError(message)
+        return user
+
+
+class ManualVerificationModelBackend(ManualVerificationMixin, backends.ModelBackend):
+    pass
+
+
+class ManualVerificationAllauthBackend(ManualVerificationMixin, AllauthBackend):
+    pass

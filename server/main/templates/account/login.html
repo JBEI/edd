@@ -15,9 +15,9 @@
 
 {% block status %}
   {{ block.super }}
-  {% if form.errors %}
-  <p class="bad">{% trans 'Login failed. Please try again.' %}</p>
-  {% endif %}
+  {% for error in form.non_field_errors %}
+  <p class="bad">{{ error }}</p>
+  {% endfor %}
 {% endblock status %}
 
 {% block content %}

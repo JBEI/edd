@@ -100,3 +100,77 @@ class UserProfileTest(TestCase):
         inst = models.Institution(institution_name="JBEI")
         self.assertEqual(self.user1.username, str(self.user1.profile))
         self.assertEqual(str(inst), "JBEI")
+
+
+class UserProfileAdminTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = UserFactory(is_superuser=True, is_staff=True)
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def test_admin_create(self):
+        response = self.client.get(reverse("admin:profile_userprofile_add"))
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertTemplateUsed("admin/change_form.html")
+
+    def test_admin_detail(self):
+        new_user = UserFactory()
+        new_user.profile.approved = False
+        new_user.profile.save()
+        qs = models.UserProfile.objects.filter(user=new_user)
+        response = self.client.get(
+            reverse(
+                "admin:profile_userprofile_change", kwargs={"object_id": qs.get().pk},
+            )
+        )
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertTemplateUsed("admin/change_form.html")
+
+    def test_admin_listing(self):
+        response = self.client.get(reverse("admin:profile_userprofile_changelist"))
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertTemplateUsed("admin/change_list.html")
+
+    def test_admin_approval(self):
+        new_user = UserFactory()
+        new_user.profile.approved = False
+        new_user.profile.save()
+        qs = models.UserProfile.objects.filter(user=new_user)
+        payload = {
+            "action": "enable_account_action",
+            "_selected_action": qs.values_list("pk", flat=True),
+        }
+
+        # include follow for POST-REDIRECT-GET
+        response = self.client.post(
+            reverse("admin:profile_userprofile_changelist"), data=payload, follow=True,
+        )
+
+        new_user.refresh_from_db()
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertTemplateUsed("admin/change_list.html")
+        self.assertTrue(new_user.profile.approved)
+
+    def test_admin_unapprove(self):
+        new_user = UserFactory()
+        new_user.profile.approved = True
+        new_user.profile.save()
+        qs = models.UserProfile.objects.filter(user=new_user)
+        payload = {
+            "action": "disable_account_action",
+            "_selected_action": qs.values_list("pk", flat=True),
+        }
+
+        # include follow for POST-REDIRECT-GET
+        response = self.client.post(
+            reverse("admin:profile_userprofile_changelist"), data=payload, follow=True,
+        )
+
+        new_user.refresh_from_db()
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertTemplateUsed("admin/change_list.html")
+        self.assertFalse(new_user.profile.approved)
