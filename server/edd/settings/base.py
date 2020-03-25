@@ -141,6 +141,8 @@ TEMPLATES = [
         },
     }
 ]
+ROOT_URLCONF = "edd.urls"
+WSGI_APPLICATION = "edd.wsgi.application"
 
 
 # Database configuration

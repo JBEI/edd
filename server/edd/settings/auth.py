@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """ Authentication-specific settings saved here. """
 
 import ldap
@@ -6,8 +5,6 @@ from django_auth_ldap.config import GroupOfUniqueNamesType, LDAPSearch
 
 from .base import env
 
-ROOT_URLCONF = "edd.urls"
-WSGI_APPLICATION = "edd.wsgi.application"
 # LDAP Configuration
 # https://pythonhosted.org/django-auth-ldap/example.html
 AUTH_LDAP_SERVER_URI = "ldaps://identity.lbl.gov:636"
