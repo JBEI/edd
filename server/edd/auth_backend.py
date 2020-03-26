@@ -74,8 +74,8 @@ class ManualVerificationMixin:
     any validation required by the Account Adapter.
     """
 
-    def authenticate(self, request, username=None, password=None, **kwargs):
-        user = super().authenticate(request, username, password, **kwargs)
+    def authenticate(self, request, **kwargs):
+        user = super().authenticate(request, **kwargs)
         if user is not None and not user.profile.approved:
             # default contact, if nothing else set
             contact = settings.SERVER_EMAIL

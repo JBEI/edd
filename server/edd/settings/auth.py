@@ -38,7 +38,7 @@ AUTHENTICATION_BACKENDS = (
 if AUTH_LDAP_BIND_PASSWORD:
     # See https://pythonhosted.org/django-auth-ldap/install.html
     AUTHENTICATION_BACKENDS = (
-        "edd.auth_backends.AllauthLDAPBackend",  # 'django_auth_ldap.backend.LDAPBackend',
+        "edd.auth_backend.AllauthLDAPBackend",  # 'django_auth_ldap.backend.LDAPBackend',
     ) + AUTHENTICATION_BACKENDS
 
 ###################################################################################################
