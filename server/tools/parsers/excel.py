@@ -276,7 +276,7 @@ def _find_possible_tables(
         ) = _compute_contiguous_stats(contiguous_rows)
 
         # It would be extremely odd if we got this.
-        if (first_non_empty_column is math.inf) or (last_non_empty_column is -1):
+        if (first_non_empty_column == math.inf) or (last_non_empty_column == -1):
             continue  # Outer while loop
 
         # Enforcing non-blank-ness means we want a rectangular table, with no holes.
