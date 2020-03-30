@@ -104,6 +104,20 @@ class StudyViewTests(TestCase):
         response = self.client.get(reverse("main:overview", kwargs=self.target_kwargs))
         self.assertEqual(response.status_code, codes.ok)
 
+    def test_overview_get_inactive(self):
+        self.target_study.active = False
+        self.target_study.save()
+        response = self.client.get(reverse("main:overview", kwargs=self.target_kwargs))
+        self.assertEqual(response.status_code, codes.not_found)
+
+    def test_overview_get_inactive_as_admin(self):
+        self.target_study.active = False
+        self.target_study.save()
+        self.user.is_superuser = True
+        self.user.save()
+        response = self.client.get(reverse("main:overview", kwargs=self.target_kwargs))
+        self.assertEqual(response.status_code, codes.ok)
+
     def test_overview_get_without_permissions(self):
         # create study with no permissions
         hidden_study = factory.StudyFactory()

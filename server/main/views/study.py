@@ -78,7 +78,8 @@ class StudyObjectMixin(generic.detail.SingleObjectMixin):
         qs = super().get_queryset()
         if self.request.user.is_superuser:
             return qs
-        return qs.filter(edd_models.Study.access_filter(self.request.user)).distinct()
+        access = edd_models.Study.access_filter(self.request.user)
+        return qs.filter(access, active=True).distinct()
 
     def check_write_permission(self, request):
         if not self.get_object().user_can_write(request.user):
