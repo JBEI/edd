@@ -64,12 +64,13 @@ class StudyViewTests(TestCase):
         with self.assertRaises(Http404):
             views.load_study(request)
 
-    def test_create_study(self):
-        """Test verifying that the create study views work."""
+    def test_create_study_get(self):
         # Verify response from the dedicated creation page
         response = self.client.get(reverse("main:create_study"))
         self.assertEqual(response.status_code, codes.ok)
         self.assertTemplateUsed(response, "main/create_study.html")
+
+    def test_create_study_post(self):
         # Verify creation after POST to dedicated creation page
         response = self.client.post(
             reverse("main:create_study"), data={"name": "Testing123"}, follow=True
@@ -81,13 +82,15 @@ class StudyViewTests(TestCase):
             response, reverse("main:overview", kwargs={"slug": created.get().slug})
         )
 
-    def test_index_view(self):
-        """Test verifying the index page loads properly."""
+    def test_index_view_get(self):
         index_url = reverse("main:index")
         # GET loads the index view
         response = self.client.get(index_url)
         self.assertEqual(response.status_code, codes.ok)
         self.assertTemplateUsed(response, "main/index.html")
+
+    def test_index_view_post(self):
+        index_url = reverse("main:index")
         # POST uses the create view methods
         response = self.client.post(index_url, data={"name": "Testing123"}, follow=True)
         self.assertEqual(response.status_code, codes.ok)
@@ -97,30 +100,32 @@ class StudyViewTests(TestCase):
             response, reverse("main:overview", kwargs={"slug": created.get().slug})
         )
 
-    def test_overview(self):
-        """Test basics of overview page."""
+    def test_overview_get(self):
         response = self.client.get(reverse("main:overview", kwargs=self.target_kwargs))
         self.assertEqual(response.status_code, codes.ok)
+
+    def test_overview_get_without_permissions(self):
+        # create study with no permissions
+        hidden_study = factory.StudyFactory()
+        # Not Found for a study without permissions
+        hidden_study_url = reverse("main:overview", kwargs={"slug": hidden_study.slug})
+        response = self.client.get(hidden_study_url)
+        self.assertEqual(response.status_code, codes.not_found)
+
+    def test_overview_get_admin_sees_all(self):
         # create study with no permissions and an admin user
         hidden_study = factory.StudyFactory()
         admin_user = factory.UserFactory()
         admin_user.is_superuser = True
         admin_user.save()
-        # Not Found for a study without permissions
-        hidden_study_url = reverse("main:overview", kwargs={"slug": hidden_study.slug})
-        response = self.client.get(hidden_study_url)
-        self.assertEqual(response.status_code, codes.not_found)
-        # admin user can see the same study
+        # admin user can see the study
         self.client.force_login(admin_user)
+        hidden_study_url = reverse("main:overview", kwargs={"slug": hidden_study.slug})
         response = self.client.get(hidden_study_url)
         self.assertEqual(response.status_code, codes.ok)
 
     def test_overview_update(self):
-        """Test actions on overview page."""
         new_user = factory.UserFactory()
-        self.target_study.userpermission_set.update_or_create(
-            permission_type=models.StudyPermission.READ, user=new_user
-        )
         # edit study info as default test user
         target_url = reverse("main:overview", kwargs=self.target_kwargs)
         response = self.client.post(
@@ -135,11 +140,18 @@ class StudyViewTests(TestCase):
             follow=True,
         )
         self.assertEqual(response.status_code, codes.ok)
-        target_study = models.Study.objects.get(slug=self.target_study.slug)
-        self.assertEqual(target_study.name, "foo")
-        self.assertEqual(target_study.description, "bar")
-        self.assertEqual(target_study.contact, new_user)
+        reloaded = models.Study.objects.get(slug=self.target_study.slug)
+        self.assertEqual(reloaded.name, "foo")
+        self.assertEqual(reloaded.description, "bar")
+        self.assertEqual(reloaded.contact, new_user)
+
+    def test_overview_update_without_permissions(self):
         # verify that new_user without permissions cannot modify study
+        new_user = factory.UserFactory()
+        target_url = reverse("main:overview", kwargs=self.target_kwargs)
+        self.target_study.userpermission_set.update_or_create(
+            permission_type=models.StudyPermission.READ, user=new_user
+        )
         self.client.force_login(new_user)
         response = self.client.post(
             target_url,
@@ -155,10 +167,10 @@ class StudyViewTests(TestCase):
         self.assertContains(
             response, "You do not have permission", status_code=codes.forbidden
         )
-        target_study = models.Study.objects.get(slug=self.target_study.slug)
-        self.assertEqual(target_study.name, "foo")
-        self.assertEqual(target_study.description, "bar")
-        self.assertEqual(target_study.contact, new_user)
+        reloaded = models.Study.objects.get(slug=self.target_study.slug)
+        self.assertEqual(reloaded.name, self.target_study.name)
+        self.assertEqual(reloaded.description, self.target_study.description)
+        self.assertEqual(reloaded.contact, self.target_study.contact)
 
     def _attachment_upload(self, filename):
         with factory.load_test_file(filename) as fp:
@@ -174,7 +186,7 @@ class StudyViewTests(TestCase):
         )
         return response
 
-    def test_overview_attach(self):
+    def test_overview_attach_post(self):
         # adding an attachment
         filename = "ImportData_FBA_HPLC.xlsx"
         response = self._attachment_upload(filename)
@@ -183,8 +195,11 @@ class StudyViewTests(TestCase):
             response, reverse("main:overview", kwargs=self.target_kwargs)
         )
         self.assertEqual(self.target_study.attachments.count(), 1)
+
+    def test_overview_attach_post_invalid_form(self):
         # handle validation errors adding attachment
         # views.py does `from .forms import CreateAttachmentForm`, so must mock that name
+        filename = "ImportData_FBA_HPLC.xlsx"
         with patch("main.views.study.edd_forms.CreateAttachmentForm") as MockForm:
             form = MockForm.return_value
             form.is_valid.return_value = False
@@ -192,8 +207,12 @@ class StudyViewTests(TestCase):
             # invalid form means request status is bad
             self.assertEqual(response.status_code, codes.bad_request)
             # unchanged number of attachments
-            self.assertEqual(self.target_study.attachments.count(), 1)
+            self.assertEqual(self.target_study.attachments.count(), 0)
+
+    def test_overview_attach_get(self):
         # viewing an attachment
+        filename = "ImportData_FBA_HPLC.xlsx"
+        self._attachment_upload(filename)
         attachment = self.target_study.attachments.all()[0]
         attachment_kwargs = {
             "slug": self.target_study.slug,
@@ -203,7 +222,18 @@ class StudyViewTests(TestCase):
         attachment_url = reverse("main:attachment", kwargs=attachment_kwargs)
         response = self.client.get(attachment_url)
         self.assertEqual(response.status_code, codes.ok)
+
+    def test_overview_attach_post_to_delete(self):
         # delete an attachment confirmation page
+        filename = "ImportData_FBA_HPLC.xlsx"
+        self._attachment_upload(filename)
+        attachment = self.target_study.attachments.all()[0]
+        attachment_kwargs = {
+            "slug": self.target_study.slug,
+            "file_id": attachment.id,
+            "file_name": attachment.filename,
+        }
+        attachment_url = reverse("main:attachment", kwargs=attachment_kwargs)
         response = self.client.post(attachment_url)
         self.assertTemplateUsed(response, "main/confirm_delete.html")
         self.assertContains(response, attachment.filename)
@@ -212,7 +242,7 @@ class StudyViewTests(TestCase):
         response = self.client.post(attachment_url, data={"action": "delete"})
         self.assertEqual(self.target_study.attachments.count(), 0)
 
-    def test_overview_comment(self):
+    def test_overview_comment_post(self):
         target_url = reverse("main:overview", kwargs=self.target_kwargs)
         # adding a comment
         body = faker.sentence()
@@ -221,6 +251,9 @@ class StudyViewTests(TestCase):
         )
         self.assertContains(response, body)
         self.assertEqual(self.target_study.comments.count(), 1)
+
+    def test_overview_comment_post_invalid_form(self):
+        target_url = reverse("main:overview", kwargs=self.target_kwargs)
         # handle validation errors adding comment
         # views.py does `from .forms import CreateCommentForm`, so must mock that name
         with patch("main.views.study.edd_forms.CreateCommentForm") as MockForm:
@@ -233,7 +266,7 @@ class StudyViewTests(TestCase):
             # response does not have invalid comment, response indicates bad request
             self.assertNotContains(response, body, status_code=codes.bad_request)
             # unchanged count of comments
-            self.assertEqual(self.target_study.comments.count(), 1)
+            self.assertEqual(self.target_study.comments.count(), 0)
 
     def test_overview_delete(self):
         target_url = reverse("main:overview", kwargs=self.target_kwargs)
@@ -271,7 +304,7 @@ class StudyViewTests(TestCase):
             response, "You do not have permission", status_code=codes.forbidden
         )
 
-    def test_overview_restore(self):
+    def test_overview_delete_confirmation(self):
         target_url = reverse("main:overview", kwargs=self.target_kwargs)
         # add line/assay/measurement to study
         line = factory.LineFactory(study=self.target_study)
@@ -288,7 +321,16 @@ class StudyViewTests(TestCase):
             ).count(),
             1,
         )
-        # send restore
+
+    def test_overview_restore(self):
+        target_url = reverse("main:overview", kwargs=self.target_kwargs)
+        self.target_study.active = False
+        self.target_study.save()
+        # send restore as admin
+        admin_user = factory.UserFactory()
+        admin_user.is_superuser = True
+        admin_user.save()
+        self.client.force_login(admin_user)
         response = self.client.post(
             target_url, data={"action": "study_restore"}, follow=True
         )
@@ -298,6 +340,22 @@ class StudyViewTests(TestCase):
                 slug=self.target_study.slug, active=True
             ).count(),
             1,
+        )
+
+    def test_overview_restore_without_admin(self):
+        target_url = reverse("main:overview", kwargs=self.target_kwargs)
+        self.target_study.active = False
+        self.target_study.save()
+        # send restore
+        response = self.client.post(
+            target_url, data={"action": "study_restore"}, follow=True
+        )
+        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(
+            models.Study.objects.filter(
+                slug=self.target_study.slug, active=True
+            ).count(),
+            0,
         )
 
     def test_overview_update_failed(self):
