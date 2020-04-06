@@ -1,4 +1,5 @@
 import collections
+import itertools
 import typing
 
 from django.conf import settings
@@ -22,6 +23,10 @@ class LoadWarning(Warning):
     Contains no boilerplate meant for reading by end-users.
     """
 
+    pass
+
+
+class ReportingLimitWarning(LoadWarning):
     pass
 
 
@@ -78,18 +83,14 @@ class MessagingMixin:
             elif isinstance(details, collections.Iterable):
                 # account for sets, frozensets, etc that may be more convenient for client code
                 self.details = list(details)
-
                 # if needed, truncate detail reports to the configured limit
-                err_limit = getattr(
-                    settings, "EDD_IMPORT_ERR_REPORTING_LIMIT", len(details)
-                )
-                if err_limit < len(details):
-                    end = min(len(details), err_limit)
-                    self.details = self.details[0:end]
+                limit = getattr(settings, "EDD_IMPORT_ERR_REPORTING_LIMIT", 0)
+                if limit:
+                    self.details = self.details[:limit]
             elif isinstance(details, int) or isinstance(details, float):
                 self.details = [str(details)]
             else:
-                raise Exception(f"Unsupported type {type(details)}")
+                raise TypeError(f"Unsupported type {type(details)}")
 
     def __key(self):
         return (
@@ -129,6 +130,41 @@ class MessagingMixin:
             return s
         return s[:30] + "…"
 
+    def merge(self, other: "MessagingMixin") -> None:
+        """
+        Merges details from other exception into self.
+
+        :param other: another MessagingMixin exception
+        :raises ReportingLimitWarning: if merging would go beyond configured
+            limits on unique detail counts, but only the first time
+        """
+        limit = getattr(settings, "EDD_IMPORT_ERR_REPORTING_LIMIT", 0)
+        # extend detail attribute in order,
+        # while filtering duplicates,
+        # and only going up to limit amount
+        unique = set(other.details) - set(self.details)
+
+        def items_to_merge():
+            for item in other.details:
+                if item in unique:
+                    yield item
+
+        # copy abort limit, if present
+        if other.aborted:
+            self.aborted = other.aborted
+        if limit:
+            items = items_to_merge()
+            # only extend up to the limit
+            self.details.extend(itertools.islice(items, limit - len(self.details)))
+            # count the remainder of items that would be added
+            truncated = len(list(items))
+            self.truncated += truncated
+            if self.truncated == truncated:
+                # first time going over, raise warning
+                raise ReportingLimitWarning()
+        else:
+            self.details.extend(items_to_merge())
+
     def to_json(self):
         result = {"category": self.category}
         if self.docs_link:
@@ -160,8 +196,14 @@ class MessagingMixin:
 
 
 class EDDImportError(MessagingMixin, LoadError):
-    pass
+    def __init__(self, **kwargs):
+        if "category" not in kwargs:
+            kwargs.update(category=_("Uncategorized Error"))
+        super().__init__(**kwargs)
 
 
 class EDDImportWarning(MessagingMixin, LoadWarning):
-    pass
+    def __init__(self, **kwargs):
+        if "category" not in kwargs:
+            kwargs.update(category=_("Uncategorized Warning"))
+        super().__init__(**kwargs)

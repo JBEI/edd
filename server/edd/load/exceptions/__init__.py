@@ -1,6 +1,6 @@
 """Module contains exceptions for edd.load."""
 
-from .core import EDDImportError, EDDImportWarning, LoadError
+from .core import EDDImportError, EDDImportWarning, LoadError, ReportingLimitWarning
 from .execute import (
     ExecutionError,
     ExecutionWarning,
@@ -95,6 +95,7 @@ __all__ = [
     "ParseError",
     "PhosphorNotFoundError",
     "ProteinNotFoundError",
+    "ReportingLimitWarning",
     "RequiredColumnError",
     "RequiredValueError",
     "ResolveError",
