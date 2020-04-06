@@ -8,6 +8,8 @@ from django.utils.translation import ugettext as _
 
 from main import models
 
+from . import exceptions
+
 logger = logging.getLogger(__name__)
 MType = namedtuple("MType", ["compartment", "type", "unit"])
 NO_TYPE = MType(models.Measurement.Compartment.UNKNOWN, None, None)
@@ -124,10 +126,12 @@ class TableImport:
             self.init_lines_and_assays(series_data)
             return self.create_measurements(series_data)
         # TODO uncovered
-        except ImportError:
+        except exceptions.LoadError:
             raise
         except Exception as e:
-            raise ImportError("There was a problem processing import data") from e
+            raise exceptions.LoadError(
+                "There was a problem processing import data"
+            ) from e
         # END uncovered
 
     def finish_import(self):
@@ -349,7 +353,7 @@ class TableImport:
             records = assay.measurement_set.filter(**find)
         # TODO uncovered
         except Exception as e:
-            raise ImportError(
+            raise exceptions.LoadError(
                 f"Failed looking up existing measurements for {find}"
             ) from e
         # END uncovered
