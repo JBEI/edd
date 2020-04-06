@@ -5,7 +5,7 @@ from edd import TestCase
 from main import models
 from main.tests import factory
 
-from .table import TableImport
+from ..table import TableImport
 
 
 class TableImportTests(TestCase):
