@@ -1,14 +1,21 @@
+import json
 import logging
 import re
+import traceback
 import warnings
 from collections import namedtuple
 
+import arrow
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
+from django.http.request import HttpRequest
 from django.utils.translation import ugettext as _
+from threadlocals.threadlocals import set_thread_variable
 
 from main import models
 
 from . import exceptions
+from .broker import ImportBroker
 
 logger = logging.getLogger(__name__)
 MType = namedtuple("MType", ["compartment", "type", "unit"])
@@ -537,3 +544,95 @@ class TableImport:
                 return models.Measurement.Format.VECTOR
                 # END uncovered
         return models.Measurement.Format.SCALAR
+
+
+class TableProcessor:
+    """Handles the processing of a tabular import."""
+
+    def __init__(self, study, user, import_id):
+        self.study = study
+        self.user = user
+        self.import_id = import_id
+        self.added = 0
+        self.updated = 0
+
+    def run(self):
+        broker = ImportBroker()
+        # load global context for the import
+        self.params = json.loads(broker.load_context(self.import_id))
+        # load paged series data
+        pages = broker.load_pages(self.import_id)
+        # make sure created objects have a consistent Update object
+        self._initialize_update()
+        try:
+            self.start = arrow.utcnow()
+            # do the import
+            importer = TableImport(self.study, self.user)
+            importer.parse_context(self.params)
+
+            with transaction.atomic(savepoint=False):
+                for page in pages:
+                    parsed_page = json.loads(page)
+                    added, updated = importer.import_series_data(parsed_page)
+                    self.added += added
+                    self.updated += updated
+                importer.finish_import()
+        finally:
+            self._cleanup_update()
+
+    def send_errors(self, notifications, error):
+        # tasks module depends on this module, so cannot import at top level
+        from .tasks import send_import_failure_email, send_import_failure_email_admins
+
+        duration = self.start.humanize(only_distance=True)
+        trace = "\n\t".join(traceback.format_exc().splitlines())
+        send_import_failure_email_admins.delay(
+            self.study.pk, self.user.pk, self.import_id, duration, str(error), trace,
+        )
+        if self.params.get("emailWhenComplete", False):
+            send_import_failure_email.delay(
+                self.study.pk, self.user.pk, duration, str(error),
+            )
+        message = _(
+            "Failed import to {study}, EDD encountered this problem: {e}"
+        ).format(study=self.study.name, e=error)
+        notifications.notify(message, tags=("legacy-import-message",))
+        notifications.mark_read(self.import_id)
+
+    def send_notifications(self, notifications):
+        # tasks module depends on this module, so cannot import at top level
+        from .tasks import send_import_completion_email
+
+        # if requested, notify user of completion (e.g. for a large import)
+        if self.params.get("emailWhenComplete", False):
+            send_import_completion_email.delay(
+                self.study.pk,
+                self.user.pk,
+                self.added,
+                self.updated,
+                self.start.humanize(only_distance=True),
+            )
+        # send notifications via websocket
+        message = _(
+            "Finished import to {study}: {total_added} added and {total_updated} "
+            "updated measurements.".format(
+                study=self.study.name,
+                total_added=self.added,
+                total_updated=self.updated,
+            )
+        )
+        notifications.notify(message, tags=("legacy-import-message",))
+        notifications.mark_read(self.import_id)
+
+    def _cleanup_update(self):
+        set_thread_variable("request", None)
+
+    def _initialize_update(self):
+        # set a fake request object with update info
+        fake_request = HttpRequest()
+        if "update_id" in self.params:
+            update_id = self.params.get("update_id")
+            fake_request.update_obj = models.Update.objects.get(pk=update_id)
+        else:
+            fake_request.update_obj = models.Update.load_update(user=self.user)
+        set_thread_variable("request", fake_request)
