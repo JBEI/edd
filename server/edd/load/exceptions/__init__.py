@@ -1,6 +1,12 @@
 """Module contains exceptions for edd.load."""
 
-from .core import EDDImportError, EDDImportWarning, LoadError, ReportingLimitWarning
+from .core import (
+    EDDImportError,
+    EDDImportWarning,
+    InvalidLoadRequestError,
+    LoadError,
+    ReportingLimitWarning,
+)
 from .execute import (
     ExecutionError,
     ExecutionWarning,
@@ -81,6 +87,7 @@ __all__ = [
     "ImportTaskError",
     "ImportTooLargeError",
     "InvalidIdError",
+    "InvalidLoadRequestError",
     "InvalidValueError",
     "LoadError",
     "MeasurementCollisionError",

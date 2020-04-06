@@ -207,3 +207,12 @@ class EDDImportWarning(MessagingMixin, LoadWarning):
         if "category" not in kwargs:
             kwargs.update(category=_("Uncategorized Warning"))
         super().__init__(**kwargs)
+
+
+class InvalidLoadRequestError(EDDImportError):
+    def __init__(self, **kwargs):
+        super().__init__(
+            category=_("Invalid ID"),
+            summary=_("Data loading request was not found"),
+            **kwargs,
+        )
