@@ -1,6 +1,4 @@
-"""
-Tests used to validate the tutorial screencast functionality.
-"""
+"""Tests used to validate the tutorial screencast functionality."""
 
 import codecs
 import itertools
@@ -20,9 +18,8 @@ from edd import TestCase, utilities
 from edd.export import table as export_table
 from edd.load import tasks
 from edd.load.broker import ImportBroker
-
-from .. import models
-from . import factory
+from main import models
+from main.tests import factory
 
 
 def CREATE_PCAP_LINES(study):
