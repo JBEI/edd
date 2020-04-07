@@ -27,6 +27,9 @@ import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
 
+declare let window: StudyBase.EDDWindow;
+const EDDData = window.EDDData || ({} as EDDData);
+
 let viewingMode: ViewingMode;
 let viewingModeIsStale: { [id: string]: boolean };
 let barGraphMode: BarGraphMode;
@@ -1634,7 +1637,7 @@ export function prepareIt() {
             }
         });
 
-    fetchEDDData(onSuccessEDDData);
+    onSuccessEDDData();
 
     // set up the "add" (edit) assay dialog
     const assayModalForm = $("#assayMain");
@@ -1690,17 +1693,6 @@ function updateGraphViewFlag(type) {
     });
 }
 
-export function fetchEDDData(success) {
-    $.ajax({
-        "url": "edddata/",
-        "type": "GET",
-        "error": (xhr, status, e) => {
-            $("#content").prepend("<div class='noData'>Error. Please reload</div>");
-        },
-        "success": success,
-    });
-}
-
 export function fetchSettings(
     propKey: string,
     callback: (value: any) => void,
@@ -1722,8 +1714,7 @@ export function fetchSettings(
     });
 }
 
-function onSuccessEDDData(data) {
-    EDDData = $.extend(EDDData || {}, data);
+function onSuccessEDDData() {
     eddGraphing.renderColor(EDDData.Lines);
     progressiveFilteringWidget.prepareFilteringSection();
     $("#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox").change(() => {
@@ -1745,10 +1736,10 @@ function onSuccessEDDData(data) {
         },
         [],
     );
-    fetchMeasurements(EDDData);
+    fetchMeasurements();
 }
 
-function fetchMeasurements(EDDData) {
+function fetchMeasurements() {
     // pulling in protocol measurements AssayMeasurements
     $.each(EDDData.Protocols, (id, protocol) => {
         $.ajax({
@@ -3045,5 +3036,5 @@ class DGEmptyAssaysWidget extends DataGridOptionWidget {
     }
 }
 
-// use JQuery ready event shortcut to call prepareIt when page is ready
-$(prepareIt);
+// wait for edddata event to begin processing page
+$(document).on("edddata", prepareIt);

@@ -1,7 +1,5 @@
 "use strict";
 
-declare let EDDData: EDDData; // sticking this here as IDE isn't following references
-
 import * as $ from "jquery";
 
 import {
@@ -20,6 +18,9 @@ import {
 import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
+
+declare let window: StudyBase.EDDWindow;
+const EDDData = window.EDDData || ({} as EDDData);
 
 let linesActionPanelRefreshTimer: number;
 
@@ -78,30 +79,17 @@ export function prepareIt() {
     const nameEdit = new StudyBase.EditableStudyName(title);
     nameEdit.getValue();
 
-    $.ajax({
-        "url": "../edddata/",
-        "type": "GET",
-        "error": (xhr, status, e) => {
-            $("#overviewSection").prepend(
-                "<div class='noData'>Error. Please reload</div>",
-            );
-            $("#loadingLinesDiv").addClass("hide");
-        },
-        "success": (data) => {
-            EDDData = $.extend(EDDData || {}, data);
-            // Instantiate a table specification for the Lines table
-            linesDataGridSpec = new DataGridSpecLines();
-            linesDataGridSpec.init();
-            // Instantiate the table itself with the spec
-            linesDataGrid = new LineResults(linesDataGridSpec);
-            // Show controls that depend on having some lines present to be useful
-            const hasLines = Object.keys(EDDData.Lines).length !== 0;
-            $("#loadingLinesDiv").addClass("hide");
-            $("#edUploadDirectionsDiv").removeClass("hide");
-            $(".linesRequiredControls").toggleClass("hide", !hasLines);
-            $("#noLinesDiv").toggleClass("hide", hasLines);
-        },
-    });
+    // Instantiate a table specification for the Lines table
+    linesDataGridSpec = new DataGridSpecLines();
+    linesDataGridSpec.init();
+    // Instantiate the table itself with the spec
+    linesDataGrid = new LineResults(linesDataGridSpec);
+    // Show controls that depend on having some lines present to be useful
+    const hasLines = Object.keys(EDDData.Lines).length !== 0;
+    $("#loadingLinesDiv").addClass("hide");
+    $("#edUploadDirectionsDiv").removeClass("hide");
+    $(".linesRequiredControls").toggleClass("hide", !hasLines);
+    $("#noLinesDiv").toggleClass("hide", hasLines);
 
     // if dialog had errors, open on page reload
     const lineModalForm = $("#editLineModal");
@@ -996,5 +984,5 @@ class DGLinesSearchWidget extends DGSearchWidget {
     }
 }
 
-// use JQuery ready event shortcut to call prepareIt when page is ready
-$(prepareIt);
+// wait for edddata event to begin processing page
+$(document).on("edddata", prepareIt);

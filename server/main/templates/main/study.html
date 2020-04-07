@@ -14,6 +14,7 @@
 
 
 {% block content %}
+<a id="datalink" href="{% url 'main:edddata' slug=study.slug %}" class="off"></a>
 <div class="studyNav">
   <ui class="nav nav-pills">
     <li class="{% if showingoverview %}active{% endif %}">

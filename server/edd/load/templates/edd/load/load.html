@@ -22,7 +22,8 @@
 {% endblock body_title %}
 
 {% block content %}
-
+<a id="datalink" href="{% url 'main:edddata' slug=study.slug %}" class="off"></a>
+<a id="assaylink" href="{% url 'main:assaydata' slug=study.slug %}" class="off"></a>
 <!-- Step 1 -->
 <div class="pageSection stepBorder" id="selectMajorKindStep">
   <div class="sectionHead">

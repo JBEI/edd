@@ -1,6 +1,3 @@
-/// <reference types="jquery" />
-/// <reference types="jqueryui" />
-
 declare namespace MultiColumnAuto {
     interface ColumnDef {
         name: string;
@@ -16,19 +13,13 @@ declare namespace MultiColumnAuto {
 }
 
 interface JQuery {
-    mcautocomplete(): JQuery;
-    mcautocomplete(methodName: "close"): void;
-    mcautocomplete(methodName: "destroy"): void;
-    mcautocomplete(methodName: "disable"): void;
-    mcautocomplete(methodName: "enable"): void;
+    mcautocomplete(methodName?: "widget" | string): JQuery;
+    mcautocomplete(methodName: "close" | "destroy" | "disable" | "enable"): void;
     mcautocomplete(methodName: "search", value?: string): void;
-    mcautocomplete(methodName: "widget"): JQuery;
-    mcautocomplete(methodName: string): JQuery;
     mcautocomplete(options: MultiColumnAuto.AutocompleteOptions): JQuery;
-    mcautocomplete(optionLiteral: string, optionName: string): any;
     mcautocomplete(
         optionLiteral: string,
-        options: MultiColumnAuto.AutocompleteOptions,
+        options: string | MultiColumnAuto.AutocompleteOptions,
     ): any;
     mcautocomplete(optionLiteral: string, optionName: string, optionValue: any): JQuery;
 
@@ -37,6 +28,13 @@ interface JQuery {
     _trigger(
         eventType: string,
         eventSubType: string,
-        extraParameters?: any[] | Object,
+        extraParameters?: any[] | Record<string, any>,
     ): JQuery;
+}
+
+// TODO: find out why this isn't in DefinitelyTyped definitions
+declare namespace JQuery {
+    interface EventExtensions {
+        trigger(name: string, data?: any[]): void;
+    }
 }

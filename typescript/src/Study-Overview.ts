@@ -1,13 +1,14 @@
 "use strict";
 
-declare let EDDData: EDDData;
-
 import * as $ from "jquery";
 
 import * as EDDAuto from "../modules/EDDAutocomplete";
 import * as EDDEditable from "../modules/EDDEditableElement";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
+
+declare let window: StudyBase.EDDWindow;
+const EDDData = window.EDDData || ({} as EDDData);
 
 // TODO: fix hard-coded URL
 const studyBaseUrl: URL = Utl.relativeURL("../");
@@ -207,5 +208,5 @@ export function prepareIt() {
     $(window).on("load", preparePermissions);
 }
 
-// use JQuery ready event shortcut to call prepareIt when page is ready
-$(prepareIt);
+// wait for edddata event to begin processing page
+$(document).on("edddata", prepareIt);

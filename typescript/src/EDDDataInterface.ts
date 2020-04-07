@@ -97,11 +97,11 @@ interface MetaboliteTypeRecord extends MeasurementTypeRecord {
 }
 
 // This is what we expect in EDDData.ProteinTypes
-// tslint:disable-next-line:no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ProteinTypeRecord extends MeasurementTypeRecord {}
 
 // This is what we expect in EDDData.GeneTypes
-// tslint:disable-next-line:no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface GeneTypeRecord extends MeasurementTypeRecord {}
 
 interface UnitType {
@@ -121,7 +121,7 @@ interface MetadataTypeRecord {
     context: string; // maybe switch to an enum
 }
 
-// tslint:disable-next-line:no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ProtocolRecord extends EDDRecord {}
 
 interface StrainRecord extends EDDRecord {
@@ -173,6 +173,4 @@ interface EDDData {
     MediaTypes: { [shortform: string]: string };
 }
 
-/* tslint:disable:no-unused-variable */
 declare let EDDData: EDDData;
-/* tslint:enable:no-unused-variable */

@@ -16,6 +16,7 @@
 
 {% block content %}
 
+<a id="datalink" href="{% url 'main:edddata' slug=study.slug %}" class="off"></a>
 <form>
     <input id="importUUID" type="hidden" name="uuid" value="{{ uuid }}"/>
     <input id="helpURL" type="hidden" name="helpURL"

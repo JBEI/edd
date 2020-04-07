@@ -45,8 +45,14 @@ interface RawInputStat {
     columns: number;
 }
 
-// make sure this is initialized at least to an empty object.
-const ATData: any = {};
+interface EDDWindow extends Window {
+    ATData: any;
+    EDDData: EDDData;
+}
+
+declare let window: EDDWindow;
+window.ATData = window.ATData || {};
+window.EDDData = window.EDDData || ({} as EDDData);
 
 // During initialization we will allocate one instance of each of the classes
 // that handle the major steps of the import process.
@@ -145,11 +151,15 @@ function setupHelp(helpId: string): void {
 // As soon as the window load signal is sent, call back to the server for the set of reference
 // records that will be used to disambiguate labels in imported data.
 export function onWindowLoad(): void {
-    const atdata_url: string = "/study/" + EDDData.currentStudyID + "/assaydata/";
-
     // turn on dialogs for the help buttons in each section
     ["1", "2", "3", "4", "5"].forEach(setupHelp);
-
+    // send CSRF header on each AJAX request from this page
+    $.ajaxSetup({
+        "beforeSend": function(xhr) {
+            const csrfToken = Utl.EDD.findCSRFToken();
+            xhr.setRequestHeader("X-CSRFToken", csrfToken);
+        },
+    });
     EDDAuto.BaseAuto.initPreexisting();
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus
@@ -162,16 +172,27 @@ export function onWindowLoad(): void {
     $(".disclose")
         .find("a.discloseLink")
         .on("click", disclose);
+
     // Populate ATData and EDDData objects via AJAX calls
-    $.ajax(atdata_url, {
-        "success": (data) => {
-            $.extend(ATData, data.ATData);
-            $.extend(EDDData, data.EDDData);
-            onReferenceRecordsLoad();
-        },
-        // pass along extra parameter "active"
-        "data": { "active": true },
-    }).fail((x, s) => alert(s));
+    const datalink = $("#datalink");
+    const assaylink = $("#assaylink");
+    $.when(
+        $.ajax({
+            "url": datalink.attr("href"),
+            "type": "GET",
+            "success": (data) => {
+                $.extend(window.EDDData, data);
+            },
+        }),
+        $.ajax({
+            "url": assaylink.attr("href"),
+            "type": "GET",
+            "success": (data) => {
+                $.extend(window.ATData, data.ATData);
+                $.extend(window.EDDData, data.EDDData);
+            },
+        }),
+    ).then(onReferenceRecordsLoad, (x, s) => alert(s));
 }
 
 // As soon as we've got and parsed the reference data, we can set up all the callbacks for the
@@ -2272,7 +2293,7 @@ export class IdentifyStructuresStep implements ImportStep {
 
     remakeGraphArea(): void {
         $("body").addClass("waitCursor");
-        const eddGraphing = new EDDGraphingTools(EDDData);
+        const eddGraphing = new EDDGraphingTools(window.EDDData);
         const mode = this.selectMajorKindStep.interpretationMode;
         const sets = this.graphSets;
         const graph = $("#graphDiv");
@@ -2485,9 +2506,9 @@ export class TypeDisambiguationStep {
                 .appendTo(assayIn)
                 .val("named_or_new")
                 .prop("selected", true);
-            const currentAssays: number[] = ATData.existingAssays[masterP] || [];
+            const currentAssays: number[] = window.ATData.existingAssays[masterP] || [];
             currentAssays.forEach((id: number): void => {
-                const assay = EDDData.Assays[id];
+                const assay = window.EDDData.Assays[id];
                 $("<option>")
                     .appendTo(assayIn)
                     .val("" + id)
@@ -3508,7 +3529,7 @@ export class LineDisambiguationRow extends DisambiguationRow {
         // passes extra "active" parameter to line search
         this.lineAuto = new EDDAuto.StudyLine(autoOptions, {
             "active": "true",
-            "study": "" + EDDData.currentStudyID,
+            "study": "" + window.EDDData.currentStudyID,
         });
         this.lineAuto.init();
 
@@ -3537,9 +3558,9 @@ export class LineDisambiguationRow extends DisambiguationRow {
         };
         // ATData.existingAssays is type {[index: string]: number[]}
         const protocol: number = selectMajorKindStep.masterProtocol;
-        const assays: number[] = ATData.existingAssays[protocol] || [];
+        const assays: number[] = window.ATData.existingAssays[protocol] || [];
         assays.every((id: number): boolean => {
-            const assay: AssayRecord = EDDData.Assays[id];
+            const assay: AssayRecord = window.EDDData.Assays[id];
             if (assayOrLine.toLowerCase() === assay.name.toLowerCase()) {
                 // The full Assay name, even case-insensitive, is the best match
                 selections.assayID = id;
@@ -3549,7 +3570,7 @@ export class LineDisambiguationRow extends DisambiguationRow {
         });
         // Now we repeat the practice, separately, for the Line pulldown.
         // ATData.existingLines is type {id: number; name: string;}[]
-        (ATData.existingLines || []).every((line: any): boolean => {
+        (window.ATData.existingLines || []).every((line: any): boolean => {
             if (assayOrLine.toLowerCase() === line.name.toLowerCase()) {
                 // The Line name, case-insensitive, is the best match
                 selections.lineID = line.id;
@@ -3612,8 +3633,8 @@ export class AssayDisambiguationRow extends LineDisambiguationRow {
 
             // add options to the assay combo box
             const protocol: number = selectMajorKindStep.masterProtocol;
-            (ATData.existingAssays[protocol] || []).forEach((id: any): void => {
-                const assay: AssayRecord = EDDData.Assays[id];
+            (window.ATData.existingAssays[protocol] || []).forEach((id: any): void => {
+                const assay: AssayRecord = window.EDDData.Assays[id];
                 if (assay.id === defaultSel.assayID && defaultSel.lineID !== "new") {
                     $("<option>")
                         .text(assay.name)
@@ -3968,12 +3989,4 @@ export class ReviewStep {
     }
 }
 
-$(window).on("load", onWindowLoad);
-
-// send CSRF header on each AJAX request from this page
-$.ajaxSetup({
-    "beforeSend": function(xhr) {
-        const csrfToken = Utl.EDD.findCSRFToken();
-        xhr.setRequestHeader("X-CSRFToken", csrfToken);
-    },
-});
+$(onWindowLoad);

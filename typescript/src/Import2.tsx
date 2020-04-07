@@ -1880,6 +1880,18 @@ class Import extends React.Component<any, ImportState> {
             },
         });
 
+        // fetch EDDData structure so EDDData.currentStudyID works
+        const datalink = $("#datalink");
+        if (datalink.length) {
+            $.ajax({
+                "url": datalink.attr("href"),
+                "type": "GET",
+                "success": (data) => {
+                    EDDData = $.extend(EDDData || {}, data);
+                },
+            });
+        }
+
         // get categories and associated protocols & file formats
         $.ajax("/rest/import_categories/?ordering=display_order", {
             "headers": { "Content-Type": "application/json" },
