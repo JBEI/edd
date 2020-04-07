@@ -1,6 +1,9 @@
 import json
 
 import environ
+import factory
+
+from .. import models
 
 
 def build_test_file_path(*args):
@@ -25,3 +28,12 @@ def load_test_json(*args, mode="rb"):
     filepath = build_test_file_path(*args)
     with open(filepath, mode) as fp:
         return json.loads(fp.read())
+
+
+class CategoryFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.Category
+
+    name = factory.Faker("catch_phrase")
+    # adding 99 to avoid clashes with future built-in Category objects
+    sort_key = factory.Sequence(lambda n: n + 99)
