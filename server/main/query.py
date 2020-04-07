@@ -94,6 +94,7 @@ def get_edddata_study(study):
         .prefetch_related("carbon_source", "strains")
     )
     return {
+        "currentStudyID": study.id,
         # measurement types
         "MetaboliteTypes": {mt.id: mt.to_json() for mt in metab_types},
         "GeneTypes": {gt.id: gt.to_json() for gt in gene_types},

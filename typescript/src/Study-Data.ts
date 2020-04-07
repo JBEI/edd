@@ -1491,7 +1491,7 @@ export function prepareIt() {
     // Note: this will be removed when we implement left side filtering
 
     // when all ajax requests are finished, determine if there are AssayMeasurements.
-    $(document).ajaxStop(function() {
+    $(document).ajaxStop(() => {
         // show assay table by default if there are assays but no assay measurements
         if (
             !$.isEmptyObject(EDDData.Assays) &&
@@ -1505,13 +1505,15 @@ export function prepareIt() {
         }
     });
 
-    $("#dataTableButton").click(function() {
-        _displayTable();
-        updateGraphViewFlag({
-            "buttonElem": "#dataTableButton",
-            "type": "table",
-            "study_id": EDDData.currentStudyID,
-        });
+    $("#dataTableButton").click(() => {
+        if (EDDData.currentStudyID) {
+            _displayTable();
+            updateGraphViewFlag({
+                "buttonElem": "#dataTableButton",
+                "type": "table",
+                "study_id": EDDData.currentStudyID,
+            });
+        }
     });
 
     $("#editAssayButton").click((ev) => {
@@ -1520,13 +1522,15 @@ export function prepareIt() {
     });
 
     // This one is active by default
-    $("#lineGraphButton").click(function() {
-        _displayLineGraph();
-        updateGraphViewFlag({
-            "buttonElem": "#lineGraphButton",
-            "type": viewingMode,
-            "study_id": EDDData.currentStudyID,
-        });
+    $("#lineGraphButton").click(() => {
+        if (EDDData.currentStudyID) {
+            _displayLineGraph();
+            updateGraphViewFlag({
+                "buttonElem": "#lineGraphButton",
+                "type": viewingMode,
+                "study_id": EDDData.currentStudyID,
+            });
+        }
     });
 
     // one time click event handler for loading spinner
@@ -1542,37 +1546,45 @@ export function prepareIt() {
     $("#measurementBarGraphButton").one("click", function() {
         $("#graphLoading").removeClass("off");
     });
-    $("#barGraphButton").click(function() {
-        _displayBarGraph(barGraphMode);
-        updateGraphViewFlag({
-            "buttonElem": "#measurementBarGraphButton",
-            "type": barGraphMode,
-            "study_id": EDDData.currentStudyID,
-        });
+    $("#barGraphButton").click(() => {
+        if (EDDData.currentStudyID) {
+            _displayBarGraph(barGraphMode);
+            updateGraphViewFlag({
+                "buttonElem": "#measurementBarGraphButton",
+                "type": barGraphMode,
+                "study_id": EDDData.currentStudyID,
+            });
+        }
     });
-    $("#timeBarGraphButton").click(function() {
-        _displayBarGraph((barGraphMode = "time"));
-        updateGraphViewFlag({
-            "buttonElem": "#timeBarGraphButton",
-            "type": barGraphMode,
-            "study_id": EDDData.currentStudyID,
-        });
+    $("#timeBarGraphButton").click(() => {
+        if (EDDData.currentStudyID) {
+            _displayBarGraph((barGraphMode = "time"));
+            updateGraphViewFlag({
+                "buttonElem": "#timeBarGraphButton",
+                "type": barGraphMode,
+                "study_id": EDDData.currentStudyID,
+            });
+        }
     });
-    $("#lineBarGraphButton").click(function() {
-        _displayBarGraph((barGraphMode = "line"));
-        updateGraphViewFlag({
-            "buttonElem": "#lineBarGraphButton",
-            "type": barGraphMode,
-            "study_id": EDDData.currentStudyID,
-        });
+    $("#lineBarGraphButton").click(() => {
+        if (EDDData.currentStudyID) {
+            _displayBarGraph((barGraphMode = "line"));
+            updateGraphViewFlag({
+                "buttonElem": "#lineBarGraphButton",
+                "type": barGraphMode,
+                "study_id": EDDData.currentStudyID,
+            });
+        }
     });
-    $("#measurementBarGraphButton").click(function() {
-        _displayBarGraph((barGraphMode = "measurement"));
-        updateGraphViewFlag({
-            "buttonElem": "#measurementBarGraphButton",
-            "type": barGraphMode,
-            "study_id": EDDData.currentStudyID,
-        });
+    $("#measurementBarGraphButton").click(() => {
+        if (EDDData.currentStudyID) {
+            _displayBarGraph((barGraphMode = "measurement"));
+            updateGraphViewFlag({
+                "buttonElem": "#measurementBarGraphButton",
+                "type": barGraphMode,
+                "study_id": EDDData.currentStudyID,
+            });
+        }
     });
 
     // hides/shows filter section.
@@ -1622,24 +1634,7 @@ export function prepareIt() {
             }
         });
 
-    fetchEDDData(onSuccess);
-
-    fetchSettings(
-        "measurement-" + EDDData.currentStudyID,
-        (data) => {
-            if (typeof data !== "object" || typeof data.type === "undefined") {
-                // do nothing if the parameter is not an object
-                return;
-            } else if (data.type === "linegraph") {
-                _displayLineGraph();
-            } else if (data.type === "table") {
-                _displayTable();
-            } else {
-                _displayBarGraph(data.type);
-            }
-        },
-        [],
-    );
+    fetchEDDData(onSuccessEDDData);
 
     // set up the "add" (edit) assay dialog
     const assayModalForm = $("#assayMain");
@@ -1727,13 +1722,29 @@ export function fetchSettings(
     });
 }
 
-function onSuccess(data) {
+function onSuccessEDDData(data) {
     EDDData = $.extend(EDDData || {}, data);
     eddGraphing.renderColor(EDDData.Lines);
     progressiveFilteringWidget.prepareFilteringSection();
     $("#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox").change(() => {
         queueRefreshDataDisplayIfStale();
     });
+    fetchSettings(
+        "measurement-" + EDDData.currentStudyID,
+        (payload) => {
+            if (typeof payload !== "object" || typeof payload.type === "undefined") {
+                // do nothing if the parameter is not an object
+                return;
+            } else if (payload.type === "linegraph") {
+                _displayLineGraph();
+            } else if (payload.type === "table") {
+                _displayTable();
+            } else {
+                _displayBarGraph(payload.type);
+            }
+        },
+        [],
+    );
     fetchMeasurements(EDDData);
 }
 

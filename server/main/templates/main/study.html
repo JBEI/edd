@@ -3,16 +3,6 @@
 {% load static %}
 
 
-{% block js_css %}
-  {{ block.super }}
-  <script type="text/javascript">
-    // TODO: should not need this script block
-    var EDDData = EDDData || {};
-    EDDData.currentStudyID = {{ study.id }};
-  </script>
-{% endblock js_css %}
-
-
 {% block head_title %}
   {{ study.name }} &ndash; {{ block.super }}
 {% endblock head_title %}
