@@ -38,11 +38,7 @@ class ParserFunction:
 
     def __call__(self, fn, *args, **kwargs):
         parser_registry[self.signature] = fn
-
-        def wrapper(*args, **kwargs):
-            return fn(*args, **kwargs)
-
-        return wrapper
+        return fn
 
 
 @ParserFunction(ImportModeFlags.BIOLECTOR, ImportFileTypeFlags.XML)

@@ -1,6 +1,4 @@
-"""
-Views handling loading measurements into EDD.
-"""
+"""Views handling loading measurements into EDD."""
 
 import json
 import logging
@@ -9,7 +7,7 @@ import uuid
 from django.conf import settings
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.urls import reverse
 from django.utils.translation import ugettext as _
 from django.views import generic
 from requests import codes
@@ -24,14 +22,28 @@ from .broker import ImportBroker
 logger = logging.getLogger(__name__)
 
 
-# /<study_path>/load/
+# reverse("main:load:table", kwargs={}) => /<study_path>/load/
 class ImportTableView(StudyObjectMixin, generic.DetailView):
+    template_name = "edd/load/load.html"
+
+    def get_context_data(self, **kwargs):
+        study = self.object = self.get_object()
+        # FIXME protocol display on import page should be an autocomplete
+        protocols = edd_models.Protocol.objects.order_by("name")
+        user_can_write = study.user_can_write(self.request.user)
+        return super().get_context_data(
+            study=study,
+            protocols=protocols,
+            writable=user_can_write,
+            import_id=uuid.uuid4(),
+            page_size_limit=settings.EDD_IMPORT_PAGE_SIZE,
+            page_count_limit=settings.EDD_IMPORT_PAGE_LIMIT,
+        )
+
     def delete(self, request, *args, **kwargs):
         study = self.object = self.get_object()
         if not study.user_can_write(request.user):
-            # TODO: uncovered code
             return HttpResponse(status=codes.forbidden)
-            # END uncovered code
 
         import_id = request.body.decode("utf-8")
         try:
@@ -45,32 +57,10 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
             broker = ImportBroker()
             broker.clear_pages(import_id)
             return HttpResponse(status=codes.ok)
-        # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Import delete failed: {e}")
             messages.error(request, str(e))
             return HttpResponse(f"Import delete failed: {e}", status=codes.server_error)
-        # END uncovered code
-
-    def get(self, request, *args, **kwargs):
-        # TODO: uncovered code
-        study = self.object = self.get_object()
-        user_can_write = study.user_can_write(request.user)
-        # FIXME protocol display on import page should be an autocomplete
-        protocols = edd_models.Protocol.objects.order_by("name")
-        return render(
-            request,
-            "edd/load/load.html",
-            context={
-                "study": study,
-                "protocols": protocols,
-                "writable": user_can_write,
-                "import_id": uuid.uuid4(),
-                "page_size_limit": settings.EDD_IMPORT_PAGE_SIZE,
-                "page_count_limit": settings.EDD_IMPORT_PAGE_LIMIT,
-            },
-        )
-        # END uncovered code
 
     def _parse_payload(self, request):
         # init storage for task and parse request body
@@ -94,6 +84,8 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
 
     def post(self, request, *args, **kwargs):
         study = self.object = self.get_object()
+        if not study.user_can_write(request.user):
+            return HttpResponse(status=codes.forbidden)
         try:
             import_id, done = self._parse_payload(request)
             if done:
@@ -110,21 +102,17 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
                     uuid=result.id,
                 )
             return JsonResponse(data={}, status=codes.accepted)
-        # TODO: uncovered code
-        except exceptions.ImportTooLargeError as e:
-            return HttpResponse(str(e), status=codes.request_entity_too_large)
         except exceptions.ImportBoundsError as e:
             return HttpResponse(str(e), status=codes.bad_request)
-        except exceptions.ImportError as e:
+        except exceptions.LoadError as e:
             return HttpResponse(str(e), status=codes.server_error)
         except Exception as e:
             logger.exception(f"Table import failed: {e}")
             messages.error(request, e)
             return HttpResponse(f"Table import failed: {e}", status=codes.server_error)
-        # END uncovered
 
 
-# /utilities/parsefile/
+# reverse("main:load_flat:parse") => /load/parse/
 # To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
 def utilities_parse_import_file(request):
     """
@@ -141,7 +129,6 @@ def utilities_parse_import_file(request):
             return JsonResponse(
                 {"file_type": result.file_type, "file_data": result.parsed_data}
             )
-        # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Import file parse failed: {e}")
             return JsonResponse({"python_error": str(e)}, status=codes.server_error)
@@ -153,6 +140,55 @@ def utilities_parse_import_file(request):
                 "formatted correctly. (Word documents are not allowed!)"
             )
         },
-        status=codes.server_error,
+        status=codes.bad_request,
     )
-    # END uncovered
+
+
+class ImportView(StudyObjectMixin, generic.DetailView):
+    template_name = "edd/load/wizard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # send server-side settings needed by the front end: the upload limit (1 MB by default
+        # for nginx) so we can provide a good user-facing error message re: files that are too
+        # large
+        context["upload_limit"] = getattr(settings, "EDD_IMPORT_UPLOAD_LIMIT", 1048576)
+        return context
+
+    def get(self, request, *args, **kwargs):
+        # enforce permissions check...
+        self.check_write_permission(request)
+        # render the template
+        return super().get(request, *args, **kwargs)
+
+
+class ImportHelpView(generic.TemplateView):
+    template_name = "edd/load/wizard_help.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # create a UUID for the import about to be performed.  Avoids potential for race conditions
+        # in initial DB record creation & file processing that happen in separate containers
+        prot_scripts = getattr(settings, "EDD_IMPORT_REQUEST_PROTOCOL_SCRIPTS", "")
+        format_scripts = getattr(settings, "EDD_IMPORT_REQUEST_FORMAT_SCRIPTS", "")
+        mtype_scripts = getattr(settings, "EDD_IMPORT_REQUEST_MTYPE_SCRIPTS", "")
+        unit_scripts = getattr(settings, "EDD_IMPORT_REQUEST_UNITS_SCRIPTS", "")
+
+        context["ice_url"] = getattr(settings, "ICE_URL", None)
+        context["ed_help"] = reverse("main:describe_flat:help")
+        context["prot_scripts"] = prot_scripts
+        context["format_scripts"] = format_scripts
+        context["mtype_scripts"] = mtype_scripts
+        context["units_scripts"] = unit_scripts
+        context["include_scripts"] = (
+            prot_scripts + format_scripts + mtype_scripts + unit_scripts
+        )
+        limit_bytes = getattr(settings, "EDD_IMPORT_UPLOAD_LIMIT", 10485760)
+        context["upload_limit_mb"] = round(limit_bytes / 1048576, 2)
+        return context
+
+
+# edd/load/views.py                   114     51     14      0    51%
+# 29-51, 56-60, 76-92, 95-122
