@@ -1220,7 +1220,7 @@ class Measurement(EDDMetadata, EDDSerialize):
 
     # TODO also handle vectors
     def extract_data_xvalues(self, defined_only=False):
-        qs = self.measurementvalue_set.all()
+        qs = self.measurementvalue_set.order_by("x")
         if defined_only:
             qs = qs.exclude(Q(y=None) | Q(y__len=0))
         # first index unpacks single value from tuple
