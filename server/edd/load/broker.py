@@ -161,6 +161,7 @@ class LoadRequest:
 
     @classmethod
     def fetch(cls, request_uuid):
+        """Fetches the request info from storage."""
         try:
             db = cls._connect()
             values = db.hgetall(cls._key(request_uuid))
@@ -176,6 +177,31 @@ class LoadRequest:
             raise
         except Exception as e:
             raise exceptions.CommunicationError() from e
+
+    @classmethod
+    def from_rest(cls, study, post):
+        """
+        Creates the request info from a POST payload.
+
+        :param study: the Study model targetted for data loading
+        :param post: a POST request dictionary payload
+        :returns: an new (un-stored) LoadRequest object
+        """
+        options = LoadRequest.Options.empty
+        # flip option flag for every option in post
+        for o in ("email_when_complete", "allow_overwrite", "allow_duplication"):
+            if o in post:
+                options |= getattr(LoadRequest.Options, o)
+        load = LoadRequest(
+            study_uuid=study.uuid,
+            protocol_uuid=post["protocol"],
+            x_units_name=post.get("x_units", None),
+            y_units_name=post.get("y_units", None),
+            compartment=post.get("compartment", None),
+            options=options,
+        )
+        load._write_file(post)
+        return load
 
     # properties
 
@@ -365,7 +391,6 @@ class LoadRequest:
         operation. To change those attributes, create a new LoadRequest.
 
         :param patch: a PATCH request dictionary payload
-        :returns: True if update should result in running parse and resolve
         """
         self._write_file(patch)
         if "protocol" in patch:
@@ -376,8 +401,8 @@ class LoadRequest:
             self.y_units_name = patch["y_units"]
         if "compartment" in patch:
             self.compartment = patch["compartment"]
+        # unconditional .store() refreshes expiry
         self.store()
-        return False
 
     def _create_path(self):
         # path is first namespaced to load,

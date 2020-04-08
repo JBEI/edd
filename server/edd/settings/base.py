@@ -98,6 +98,7 @@ INSTALLED_APPS = (
     "graphene_django",  # graphene-django in pip
     # EDD apps
     "main.apps.EDDConfig",
+    "edd.rest.apps.RESTConfig",
     "edd.describe.apps.DescribeConfig",
     "edd.load.apps.LoadConfig",
     "edd.export.apps.ExportConfig",
@@ -106,7 +107,6 @@ INSTALLED_APPS = (
     "edd.profile.apps.ProfileConfig",
     "edd.branding.apps.BrandingConfig",
     "edd.campaign.apps.CampaignConfig",
-    "edd.rest.apps.RESTConfig",
 )
 MIDDLEWARE = (
     "django.contrib.sessions.middleware.SessionMiddleware",
