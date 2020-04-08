@@ -1,0 +1,12 @@
+{% extends "edd/load/mail/base.html" %}
+{% load i18n %}
+{% block body %}
+  <h2>{% trans "Loading data completed!" %}</h2>
+  <p class="alert alert-danger">
+    {% blocktrans %}
+    The EDD has finished loading data into <a href="{{ study_uri }}">{{ study }}</a>.
+    The loading process added {{ added }} and updated {{ updated }} values in the Study.
+    {% endblocktrans %}
+  </p>
+  {% include "edd/load/mail/_wizard_warnings.html" %}
+{% endblock body %}

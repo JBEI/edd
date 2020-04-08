@@ -560,11 +560,9 @@ class TableParser:
         :param col_name: the canonical name of the column whose value should be read
         :return: the value, or None if the col with col_name isn't in the file
         """
-        col_index = self.column_layout.get(col_name, None) if col_name else None
-
-        if col_index is None:
+        col_index = self.column_layout.get(col_name, None)
+        if col_index is None or col_index >= len(row):
             return None
-
         cell = row[col_index]
         return self._raw_cell_value(cell)
 

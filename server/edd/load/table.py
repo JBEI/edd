@@ -565,7 +565,7 @@ class TableProcessor:
         # make sure created objects have a consistent Update object
         self._initialize_update()
         try:
-            self.start = arrow.utcnow()
+            self._stopwatch_start()
             # do the import
             importer = TableImport(self.study, self.user)
             importer.parse_context(self.params)
@@ -584,12 +584,12 @@ class TableProcessor:
         # tasks module depends on this module, so cannot import at top level
         from .tasks import send_import_failure_email, send_import_failure_email_admins
 
-        duration = self.start.humanize(only_distance=True)
+        duration = self._stopwatch_duration()
         trace = "\n\t".join(traceback.format_exc().splitlines())
         send_import_failure_email_admins.delay(
             self.study.pk, self.user.pk, self.import_id, duration, str(error), trace,
         )
-        if self.params.get("emailWhenComplete", False):
+        if hasattr(self, "params") and self.params.get("emailWhenComplete", False):
             send_import_failure_email.delay(
                 self.study.pk, self.user.pk, duration, str(error),
             )
@@ -610,7 +610,7 @@ class TableProcessor:
                 self.user.pk,
                 self.added,
                 self.updated,
-                self.start.humanize(only_distance=True),
+                self._stopwatch_duration(),
             )
         # send notifications via websocket
         message = _(
@@ -636,3 +636,11 @@ class TableProcessor:
         else:
             fake_request.update_obj = models.Update.load_update(user=self.user)
         set_thread_variable("request", fake_request)
+
+    def _stopwatch_duration(self):
+        if getattr(self, "start", None):
+            return self.start.humanize(only_distance=True)
+        return _("a reasonable amount of time")
+
+    def _stopwatch_start(self):
+        self.start = arrow.utcnow()

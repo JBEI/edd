@@ -1,0 +1,18 @@
+{% extends "edd/load/mail/base.html" %}
+{% load i18n %}
+{% block body %}
+  <h2>{% trans "Loading data failed!" %}</h2>
+  <p class="alert alert-danger">
+    {% blocktrans %}
+    Your upload to <a href="{{ study_uri }}">{{ study }}</a> failed to
+    complete. Try again after fixing the reported errors below.
+    {% endblocktrans %}
+  </p>
+  {% include "edd/load/mail/_wizard_errors.html" %}
+  {% include "edd/load/mail/_wizard_warnings.html" %}
+  <p>
+    {% blocktrans %}
+    EDD administrators have received notice of these issues for further investigation.
+    {% endblocktrans %}
+  </p>
+{% endblock body %}

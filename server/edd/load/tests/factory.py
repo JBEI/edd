@@ -37,3 +37,18 @@ class CategoryFactory(factory.django.DjangoModelFactory):
     name = factory.Faker("catch_phrase")
     # adding 99 to avoid clashes with future built-in Category objects
     sort_key = factory.Sequence(lambda n: n + 99)
+
+
+class LayoutFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.Layout
+
+    name = factory.Faker("catch_phrase")
+
+
+class ParserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.ParserMapping
+
+    layout = factory.SubFactory(LayoutFactory)
+    mime_type = factory.Faker("mime_type")

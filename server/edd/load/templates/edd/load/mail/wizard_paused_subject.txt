@@ -1,0 +1,4 @@
+{% load i18n %}
+{% blocktrans %}
+{{ instance_tag }} Attention: Data loading paused
+{% endblocktrans %}

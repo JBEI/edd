@@ -1,0 +1,14 @@
+{% extends "edd/load/mail/base.html" %}
+{% load i18n %}
+{% block body %}
+  <h2>{% trans "Attention: Data loading paused" %}</h2>
+  <p>
+    {% blocktrans %}
+    Your upload to <a href="{{ study_uri }}">{{ study }}</a> requires more
+    information to successfully complete. Correct the below issues, then
+    re-submit the request to complete loading data into the EDD.
+    {% endblocktrans %}
+  </p>
+  {% include "edd/load/mail/_wizard_errors.html" %}
+  {% include "edd/load/mail/_wizard_warnings.html" %}
+{% endblock body %}

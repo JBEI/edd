@@ -1,16 +1,19 @@
 import dataclasses
 import enum
+import json
 import logging
 from datetime import timedelta
 from uuid import uuid4
 
 from django.conf import settings
 from django.core.files.storage import default_storage
+from django.utils.translation import ugettext as _
 from django_redis import get_redis_connection
 
 from main import models, redis
 
-from . import exceptions
+from . import exceptions, reporting
+from .models import ParserMapping
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +30,15 @@ class ImportBroker:
     def set_context(self, import_id, context):
         name = self._import_name(import_id)
         expires = getattr(settings, "EDD_IMPORT_CACHE_LENGTH", None)
+        if not isinstance(context, (str, bytes)):
+            context = json.dumps(context)
         self.storage.save(context, name=name, expires=expires)
 
     def add_page(self, import_id, page):
         name = f"{self._import_name(import_id)}:pages"
         expires = getattr(settings, "EDD_IMPORT_CACHE_LENGTH", None)
+        if not isinstance(page, (str, bytes)):
+            page = json.dumps(page)
         _, count = self.storage.append(page, name=name, expires=expires)
         return count
 
@@ -60,6 +67,15 @@ class ImportBroker:
     def clear_pages(self, import_id):
         """Clears all pages associated with this import ID."""
         self.storage.delete(f"{self._import_name(import_id)}:pages")
+
+    def json_context(self, import_id):
+        """Loads context associated with this import ID, already JSON parsed."""
+        return json.loads(self.load_context(import_id))
+
+    def json_pages(self, import_id):
+        """Fetches the pages of series data for the specified import, already JSON parsed."""
+        for raw in self.load_pages(import_id):
+            yield json.loads(raw)
 
     def load_context(self, import_id):
         """Loads context associated with this import ID."""
@@ -202,6 +218,18 @@ class LoadRequest:
 
     # actions
 
+    def clear_stash(self):
+        """Clears any persisted errors and warnings for the LoadRequest."""
+        try:
+            db = self._connect()
+            key = self._key(self.request)
+            errors_key = f"{key}:errors"
+            warnings_key = f"{key}:warnings"
+            db.delete(errors_key)
+            db.delete(warnings_key)
+        except Exception as e:
+            logger.warning(f"Could not clear errors: {e!r}")
+
     def fetch_study_for(self, user):
         """Queries the Study model object, and checks permission for user."""
         access = models.Study.access_filter(user, models.StudyPermission.WRITE)
@@ -215,14 +243,61 @@ class LoadRequest:
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
+    def parse_with_layout(self, layout_id):
+        try:
+            mapping = ParserMapping.objects.get(
+                layout_id=layout_id, mime_type=self.mime_type
+            )
+            parser = mapping.create_parser(self.request_uuid)
+            with self.open() as file:
+                return parser.parse(file)
+        except ParserMapping.DoesNotExist:
+            qs = ParserMapping.objects.filter(layout_id=layout_id)
+            supported = [*qs.values_list("mime_type", flat=True)]
+            reporting.raise_errors(
+                self.request_uuid,
+                exceptions.UnsupportedMimeTypeError(
+                    details=_(
+                        "The upload you provided was sent with MIME type {mime}. "
+                        "However, EDD expected one of the following supported "
+                        "MIME types: {supported}."
+                    ).format(mime=self.mime_type, supported=supported),
+                    resolution=_(
+                        "Go back to Step 1 to select a layout supporting {mime}, "
+                        "or convert your upload to one of the supported types."
+                    ).format(mime=self.mime_type),
+                ),
+            )
+
     def retire(self):
         """Retires the request info, removing from storage."""
         try:
             self._delete_file()
+            self.clear_stash()
             db = self._connect()
             db.delete(self._key(self.request))
         except Exception as e:
             raise exceptions.CommunicationError() from e
+
+    def stash_errors(self):
+        """Finds reported errors and warnings, then stores them."""
+        try:
+            db = self._connect()
+            key = self._key(self.request)
+            errors_key = f"{key}:errors"
+            warnings_key = f"{key}:warnings"
+            summary = reporting.build_messages_summary(self.request)
+            with db.pipeline() as pipe:
+                pipe.multi()
+                if "errors" in summary:
+                    pipe.rpush(errors_key, *summary["errors"])
+                    pipe.expire(errors_key, timedelta(weeks=1))
+                if "warnings" in summary:
+                    pipe.rpush(warnings_key, *summary["warnings"])
+                    pipe.expire(warnings_key, timedelta(weeks=1))
+                pipe.execute()
+        except Exception as e:
+            logger.warning(f"Could not stash LoadRequest errors: {e!r}")
 
     def store(self):
         """Stores the request info by its ID for one week."""
@@ -237,7 +312,7 @@ class LoadRequest:
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
-    def transition(self, new_status: "LoadRequest.Status"):
+    def transition(self, new_status: "LoadRequest.Status", raise_errors=False):
         """
         Transitions the LoadRequest to the new_status provided.
 
@@ -264,11 +339,71 @@ class LoadRequest:
                 pipe.unwatch()
         except Exception as e:
             logger.info(f"Transition failed: {e!r}")
+            if raise_errors:
+                raise exceptions.IllegalTransitionError() from e
         return False
 
-    def store_values(self):
+    def unstash_errors(self):
+        """Returns any errors and warnings stashed by .stash_errors()."""
+        summary = {}
+        try:
+            db = self._connect()
+            key = self._key(self.request)
+            errors_key = f"{key}:errors"
+            warnings_key = f"{key}:warnings"
+            summary["errors"] = db.lrange(errors_key, 0, -1)
+            summary["warnings"] = db.lrange(warnings_key, 0, -1)
+        except Exception as e:
+            logger.warning(f"Could not unstash LoadRequest errors: {e!r}")
+        return summary
+
+    def update(self, patch):
+        """
+        Updates the request info from a PATCH payload.
+
+        Note: this does not support changing study, nor options for the load
+        operation. To change those attributes, create a new LoadRequest.
+
+        :param patch: a PATCH request dictionary payload
+        :returns: True if update should result in running parse and resolve
+        """
+        self._write_file(patch)
+        if "protocol" in patch:
+            self.protocol_uuid = patch["protocol"]
+        if "x_units" in patch:
+            self.x_units_name = patch["x_units"]
+        if "y_units" in patch:
+            self.y_units_name = patch["y_units"]
+        if "compartment" in patch:
+            self.compartment = patch["compartment"]
+        self.store()
+        return False
+
+    def _create_path(self):
+        # path is first namespaced to load,
+        # then further namespace with first two UUID characters (a la git)
+        # fill out with remainder of UUID
+        return f"load/{self.request_uuid[:2]}/{self.request_uuid[2:]}"
+
+    def _delete_file(self):
+        if self.path:
+            default_storage.delete(self.path)
+            self.path = None
+            self.mime_type = None
+
+    def _store_values(self):
         # get only the original field names,
         # minus request, which is in the key
         fields = {f.name for f in dataclasses.fields(self.__class__)} - {"request"}
         # filter out anything else that may have been set
         return {k: str(v) for k, v in self.__dict__.items() if k in fields and v}
+
+    def _write_file(self, payload):
+        # payload is data from either a PUT or POST request
+        if "file" in payload:
+            file = payload["file"]
+            # clean up any existing file(s)
+            self._delete_file()
+            # write to storage
+            self.path = default_storage.save(self._create_path(), file)
+            self.mime_type = getattr(file, "content_type", "application/octet-stream")

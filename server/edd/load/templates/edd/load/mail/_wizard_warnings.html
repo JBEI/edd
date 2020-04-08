@@ -1,0 +1,19 @@
+{% load i18n %}
+{% if warnings %}
+  <h3>{% trans "Warnings" %}</h3>
+  {% regroup warnings by category as messages %}
+  {% for category in messages %}
+    <div class="alert alert-warning">
+      <h4>{{ category.grouper }}</h4>
+      {% for message in category.list %}
+      <div>
+        <span class="emphasizeErrorSubject">{{ message.summary }}</span>
+        {% if message.subcategory %}<span> - {{ message.subcategory }}</span>{% endif %}
+        {% if message.detail %}<span> : {{ message.detail }}</span>{% endif %}
+        {% if message.resolution %}<div>{{ message.resolution }}</div>{% endif %}
+        {% if message.docs_link %}<div>{{ message.docs_link|safe }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  {% endfor %}
+{% endif %}
