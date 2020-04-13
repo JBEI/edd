@@ -52,6 +52,8 @@ INTERNAL_IPS = ["127.0.0.1", "::1"]
 # Uncomment below to use DEBUG mode and include the debug toolbar
 # DEBUG = True
 
+EDD_ENABLE_GRAPHQL = True
+
 # Add the Django Debug Toolbar to local instance
 if DEBUG:  # noqa: F405
     INSTALLED_APPS = INSTALLED_APPS + ("debug_toolbar",)  # noqa: F405

@@ -27,7 +27,7 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("utilities/", include("tools.urls", namespace="tools")),
     path("profile/", include("edd.profile.urls", namespace="profile")),
-    path("campaign/", include("edd.campaign.urls", namespace="campaign")),
+    path("", include("edd.campaign.urls", namespace="campaign")),
     path("rest/", include(rest_urlpatterns)),
     # flatpages.urls does not include app_name; cannot include it with namespace
     # path('pages/', include('django.contrib.flatpages.urls', namespace='flatpage'))
@@ -38,7 +38,12 @@ if getattr(settings, "EDD_ENABLE_GRAPHQL", False):
     from graphene_django.views import GraphQLView
 
     urlpatterns += [
-        path("graphql/", login_required(GraphQLView.as_view(graphiql=True)))
+        path(
+            "explore/",
+            login_required(GraphQLView.as_view(graphiql=True)),
+            name="graphiql",
+        ),
+        path("graphql/", login_required(GraphQLView.as_view()), name="graphql",),
     ]
 
 if getattr(settings, "EDD_USE_PROTOTYPE_IMPORT", False):

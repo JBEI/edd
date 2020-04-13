@@ -255,23 +255,6 @@ export class BaseAuto {
                 "focus": (event, ui) => {
                     event.preventDefault();
                 },
-                /* Always append to the body instead of searching for a ui-front class.
-               This way a click on the results list does not bubble up into a jQuery modal
-             and compel it to steal focus.
-               Losing focus on the click is bad, because directly afterwards the
-             autocomplete's own click handler is called, which sets the value of the input,
-             forcing the focus back to the input, triggering a focus event since it was not
-             already in focus. That event in turn triggers our handler attached to
-             'input.autocomp' (see the bottom of this file), which attempts to do an initial
-             search and show a set of results on focus. That event recreates the results
-             menu, causing an endless loop where it appears that the results menu never
-             goes away.
-               We cannot just change the 'input.autocomp' on-focus event to an on-click
-             event, because that would make it unresponsive to users tabbing over.
-               We also cannot add some check into the handler that tries to determine if the
-             results panel is already open (and do nothing if so), because by the time the
-             input gets focus again (triggering that event), the results panel has already
-             been destroyed. */
                 "appendTo": "body",
                 // The rest of the options are for configuring the ajax webservice call.
                 "minLength": 0,

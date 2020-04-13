@@ -1441,7 +1441,9 @@ div.errorMessage {
 }
 
 a.close {
-    cursor: pointer;
+    font-size: inherit;
+    text-align: center;
+    width: 1em;
 }
 
 div.errorMessage > a.close {

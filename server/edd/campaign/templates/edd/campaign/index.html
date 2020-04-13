@@ -33,34 +33,8 @@
       </form>
     </div>
   {% endif %}
-  {% if is_paginated %}
-    <div class="paging_controls">
-      {% if page_obj.has_previous %}
-        <a href="{% url 'campaign:index-paged' page=1 %}">{% trans 'First' %}</a>
-        {% if page_obj.previous_page_number != 1 %}
-          <a href="{% url 'campaign:index-paged' page=page_obj.previous_page_number %}">
-            {% trans 'Previous' %}
-          </a>
-        {% endif %}
-      {% endif %}
-      <span>
-        {% blocktrans with page_num=page_obj.number total=paginator.num_pages %}
-        Page {{ page_num }} of {{ total }}
-        {% endblocktrans %}
-      </span>
-      {% if page_obj.has_next %}
-        {% if page_obj.next_page_number != paginator.num_pages %}
-          <a href="{% url 'campaign:index-paged' page=page_obj.next_page_number %}">
-            {% trans 'Next' %}
-          </a>
-        {% endif %}
-        <a href="{% url 'campaign:index-paged' page=paginator.num_pages %}">
-          {% trans 'Last' %}
-        </a>
-      {% endif %}
-    </div>
-  {% endif %}
-  <table class="dataTable table-bordered table-striped">
+  {% include "edd/campaign/page_controls.html" %}
+  <table class="dataTable table-striped">
     <thead>
       <tr>
         <td>{% trans 'Name' context 'campaign table heading' %}</td>
@@ -75,36 +49,14 @@
               {{ campaign.name }}
             </a>
           </td>
-          <td>{{ campaign.description|truncatechars_html:280 }}</td>
+          <td>
+            <span title="{{ campaign.description }}">
+              {{ campaign.description|truncatechars_html:280 }}
+            </span>
+          </td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% if is_paginated %}
-    <div class="paging_controls">
-      {% if page_obj.has_previous %}
-        <a href="{% url 'campaign:index-paged' page=1 %}">{% trans 'First' %}</a>
-        {% if page_obj.previous_page_number != 1 %}
-          <a href="{% url 'campaign:index-paged' page=page_obj.previous_page_number %}">
-            {% trans 'Previous' %}
-          </a>
-        {% endif %}
-      {% endif %}
-      <span>
-        {% blocktrans with page_num=page_obj.number total=paginator.num_pages %}
-        Page {{ page_num }} of {{ total }}
-        {% endblocktrans %}
-      </span>
-      {% if page_obj.has_next %}
-        {% if page_obj.next_page_number != paginator.num_pages %}
-          <a href="{% url 'campaign:index-paged' page=page_obj.next_page_number %}">
-            {% trans 'Next' %}
-          </a>
-        {% endif %}
-        <a href="{% url 'campaign:index-paged' page=paginator.num_pages %}">
-          {% trans 'Last' %}
-        </a>
-      {% endif %}
-    </div>
-  {% endif %}
+  {% include "edd/campaign/page_controls.html" %}
 {% endblock content %}

@@ -1,5 +1,3 @@
-# coding: utf-8
-
 from django.contrib.auth.decorators import login_required
 from django.urls import path
 
@@ -9,9 +7,9 @@ app_name = "edd.campaign"
 
 
 urlpatterns = [
-    path("", login_required(views.CampaignIndexView.as_view()), name="index"),
+    path("campaign/", login_required(views.CampaignIndexView.as_view()), name="index"),
     path(
-        "<int:page>/",
+        "campaign/<int:page>/",
         login_required(views.CampaignIndexView.as_view()),
         name="index-paged",
     ),
@@ -21,13 +19,13 @@ urlpatterns = [
         name="detail",
     ),
     path(
-        "c/<str:slug>/list/",
-        login_required(views.CampaignStudyListView.as_view()),
-        name="study",
+        "c/<str:slug>/permissions/",
+        login_required(views.CampaignPermissionView.as_view()),
+        name="permission",
     ),
     path(
-        "c/<str:slug>/list/<int:page>/",
-        login_required(views.CampaignStudyListView.as_view()),
-        name="study-paged",
+        "c/<str:slug>/page/<int:page>/",
+        login_required(views.CampaignDetailView.as_view()),
+        name="detail-paged",
     ),
 ]

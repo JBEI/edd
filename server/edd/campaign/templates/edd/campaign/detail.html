@@ -42,14 +42,52 @@
   {% endif %}
   <h1>{{ campaign.name }}</h1>
   <p>{{ campaign.description }}</p>
+  {% if is_paginated %}
+    <hr/>
+    {% include "edd/campaign/page_controls.html" %}
+  {% endif %}
   <hr/>
-  <p>
-    <a href="{% url 'campaign:study' slug=campaign.slug %}">
-      {% blocktrans with count=campaign.studies.count %}
-      Go to Study List ({{ count }})
-      {% endblocktrans %}
-    </a>
-  </p>
+  <table class="dataTable table-bordered table-striped">
+    <colgroup>
+      {% if can_remove_study %}
+        <col id="study-select-column"/>
+      {% else %}
+        <col id="study-select-column" class="off"/>
+      {% endif %}
+      <col id="study-name-column"/>
+      <col id="study-desc-column"/>
+    </colgroup>
+    <thead>
+      <tr>
+        <td><input type="checkbox" id="study-select-all"/></td>
+        <td>{% trans 'Name' context 'campaign table heading' %}</td>
+        <td>{% trans 'Description' context 'campaign table heading' %}</td>
+      </tr>
+    </thead>
+    <tbody>
+      {% for study in object_list %}
+        <tr>
+          <td><input type="checkbox" name="id" value="{{ study.id }}"/></td>
+          <td>
+            <a href="{% url 'main:detail' slug=study.slug %}">
+              {{ study.name }}
+            </a>
+          </td>
+          <td>{{ study.description|truncatechars_html:280 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <hr/>
+  {% if can_remove_study %}
+    <button id="removeStudyButton"
+        class="btn btn-danger"
+        style="float: right;"
+        title="{% trans 'Remove Selected Studies' %}">
+      {% trans "Remove Studies" %}
+    </button>
+  {% endif %}
+  {% include "edd/campaign/page_controls.html" %}
   {% if can_write %}
     <div class="disclose discloseHide">
       <div class="pageDivider">
@@ -58,7 +96,7 @@
       <div class="discloseBody">
         <div class="sectionContent indent">
           {% with all_perm=campaign.get_all_permissions %}
-          <table class="dataTable table-bordered table-striped">
+          <table class="dataTable table-striped">
             <thead>
               <tr class="columnLabels">
                 <th class="sortheader smaller">{% trans "Who" context "permission list" %}</th>
@@ -68,7 +106,7 @@
               </tr>
             </thead>
             <tbody>
-              {% with studyadd=permission_keys.study_add studyrem=permissionkeys.study_remove %}
+              {% with studyadd=permission_keys.study_add studyrem=permission_keys.study_remove %}
               {% for p in all_perm %}
                 <tr>
                   <td>{{ p.get_who_label }}</td>
@@ -101,6 +139,45 @@
             {% trans "Configure Permissions" context "button" %}
           </button>
         </div>
+      </div>
+    </div>
+    {# add permissions modal #}
+    <div class="indent off" title="{% trans 'Configure Permissions' %}" id="permissionsSection">
+      <div class="sectionActions">
+        <form action="{% url 'campaign:permission' slug=campaign.slug %}"
+            method="POST"
+            class="edd-form"
+            id="permissions"
+            enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="permission">NOTE: this dialog is not functional yet!</div>
+          <div class="permission">
+            <label for="usergroup_permission">
+              <span>{% trans 'User or Group' %}</span>
+            </label>
+          </div>
+          <div class="permission">
+            <label for="campaign_permission">
+              <span>{% trans 'Campaign Access' %}</span>
+            </label>
+            <select id="campaign_permission" name="campaign_type">
+              <option value="{{ permission_none }}">{% trans 'None' %}</option>
+              <option value="{{ permission_read }}">{% trans 'Read' %}</option>
+              <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+            </select>
+          </div>
+          <div class="permission">
+            <label for="study_permission">
+              <span>{% trans 'Study Access' %}</span>
+            </label>
+            <select id="study_permission" name="study_type">
+              <option value="{{ permission_none }}">{% trans 'None' %}</option>
+              <option value="{{ permission_read }}">{% trans 'Read' %}</option>
+              <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+            </select>
+          </div>
+          <button id="set_permission">{% trans 'Set Access' %}</button>
+        </form>
       </div>
     </div>
   {% endif %}

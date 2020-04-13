@@ -1,8 +1,8 @@
-# coding: utf-8
-
+from unittest import mock
 from uuid import UUID
 
 from django.contrib.auth.models import AnonymousUser
+from django.core.paginator import Paginator
 from django.urls import reverse
 from faker import Faker
 from requests import codes
@@ -11,7 +11,7 @@ from edd import TestCase
 from main import models as edd_models
 from main.tests import factory as edd_factory
 
-from . import factory, models
+from . import factory, models, views
 
 faker = Faker()
 
@@ -62,10 +62,21 @@ class CampaignPermissionTests(TestCase):
         self.assertTrue(self.campaign.user_can_read(anon))
         self.assertFalse(self.campaign.user_can_write(anon))
 
-    def test_campaign_helpers(self):
+    def test_campaign_helpers_normal_user(self):
         user = edd_factory.UserFactory()
         self.assertTrue(self.campaign.user_can_read(user))
         self.assertFalse(self.campaign.user_can_write(user))
+
+    def test_campaign_helpers_normal_user_empty_permissions(self):
+        campaign = factory.CampaignFactory()
+        user = edd_factory.UserFactory()
+        self.assertFalse(campaign.user_can_read(user))
+        self.assertFalse(campaign.user_can_write(user))
+
+    def test_campaign_helpers_admin_user(self):
+        user = edd_factory.UserFactory(is_superuser=True)
+        self.assertTrue(self.campaign.user_can_read(user))
+        self.assertTrue(self.campaign.user_can_write(user))
 
     def test_permission_invalid_operation(self):
         # testing an invalid operation will not be allowed
@@ -227,6 +238,9 @@ class CampaignDetailViewTests(TestCase):
         cls.user1 = edd_factory.UserFactory()
         cls.campaign = factory.CampaignFactory()
         cls.detail_url = reverse("campaign:detail", kwargs={"slug": cls.campaign.slug})
+        membership = factory.CampaignMembershipFactory(campaign=cls.campaign)
+        cls.study = membership.study
+        cls.study_url = reverse("main:detail", kwargs={"slug": cls.study.slug})
 
     def setUp(self):
         super().setUp()
@@ -343,28 +357,17 @@ class CampaignDetailViewTests(TestCase):
         self.assertContains(response, 'id="addStudyButton"')
         self.assertContains(response, 'id="addPermission"')
 
-
-class CampaignStudyListViewTests(CampaignDetailViewTests):
-    @classmethod
-    def setUpTestData(cls):
-        # parent class creates user1, campaign, detail_url
-        super().setUpTestData()
-        membership = factory.CampaignMembershipFactory(campaign=cls.campaign)
-        cls.study = membership.study
-        cls.list_url = reverse("campaign:study", kwargs={"slug": cls.campaign.slug})
-        cls.study_url = reverse("main:detail", kwargs={"slug": cls.study.slug})
-
     def test_without_campaign_read_permission(self):
         # absent permissions, page is not found
-        response = self.client.get(self.list_url)
+        response = self.client.get(self.detail_url)
         self.assertEqual(response.status_code, codes.not_found)
 
     def test_without_study_read_permission(self):
         # create permission on only campaign
         self._add_campaign_permission()
         # can view campaign, but no study permission, should not see link to study
-        response = self.client.get(self.list_url)
-        self.assertTemplateUsed(response, "edd/campaign/study_list.html")
+        response = self.client.get(self.detail_url)
+        self.assertTemplateUsed(response, "edd/campaign/detail.html")
         self.assertNotContains(response, self.study_url)
         self.assertNotContains(response, 'id="removeStudyButton"')
 
@@ -373,8 +376,8 @@ class CampaignStudyListViewTests(CampaignDetailViewTests):
         permission = self._add_campaign_permission()
         permission.apply_to_study(self.study)
         # can view campaign, and see study
-        response = self.client.get(self.list_url)
-        self.assertTemplateUsed(response, "edd/campaign/study_list.html")
+        response = self.client.get(self.detail_url)
+        self.assertTemplateUsed(response, "edd/campaign/detail.html")
         self.assertContains(response, self.study_url)
         self.assertNotContains(response, 'id="removeStudyButton"')
 
@@ -383,8 +386,8 @@ class CampaignStudyListViewTests(CampaignDetailViewTests):
         permission = self._add_campaign_permission(remove_study=True)
         permission.apply_to_study(self.study)
         # can view campaign, and see study
-        response = self.client.get(self.list_url)
-        self.assertTemplateUsed(response, "edd/campaign/study_list.html")
+        response = self.client.get(self.detail_url)
+        self.assertTemplateUsed(response, "edd/campaign/detail.html")
         self.assertContains(response, self.study_url)
         self.assertContains(response, 'id="removeStudyButton"')
 
@@ -393,10 +396,32 @@ class CampaignStudyListViewTests(CampaignDetailViewTests):
         self.user1.is_superuser = True
         self.user1.save(update_fields=("is_superuser",))
         # can view campaign, and see study
-        response = self.client.get(self.list_url)
-        self.assertTemplateUsed(response, "edd/campaign/study_list.html")
+        response = self.client.get(self.detail_url)
+        self.assertTemplateUsed(response, "edd/campaign/detail.html")
         self.assertContains(response, self.study_url)
         self.assertContains(response, 'id="removeStudyButton"')
+
+    def test_none_campaign_has_empty_study_list(self):
+        # normally the code would never get here
+        # but should test anyway that non-existent campaign has empty study list
+        response = self.client.get(self.detail_url)
+        view = views.CampaignStudyListView()
+        view.setup(response.wsgi_request, [], {})
+        self.assertEqual(view.get_queryset().count(), 0)
+
+    def test_campaign_studylist_paging(self):
+        # simulate a request going to a campaign detail page
+        response = self.client.get(self.detail_url)
+        # build the subview explicitly
+        view = views.CampaignStudyListView(campaign=self.campaign)
+        view.setup(response.wsgi_request, [], {})
+        with mock.patch.object(view, "get_queryset") as qs:
+            # fake returning a hundred studies instead of creating them
+            # only trying to test that paging works
+            qs.return_value = list(range(100))
+            context = view.get_context_data()
+        self.assertTrue("page_next" in context)
+        self.assertTrue("page_last" in context)
 
 
 class CampaignSignalTests(TestCase):
@@ -415,12 +440,15 @@ class CampaignSignalTests(TestCase):
         campaign = factory.CampaignFactory(slug=known_slug)
         self.assertEqual(known_slug, campaign.slug)
 
-    def test_generate_default_fields(self):
+    def test_default_fields_before_save(self):
         campaign = factory.CampaignFactory.build()
         self.assertIsNone(campaign.uuid)
         self.assertIsNone(campaign.created_id)
         self.assertIsNone(campaign.updated_id)
         self.assertIsNone(campaign.slug)
+
+    def test_default_fields_after_save(self):
+        campaign = factory.CampaignFactory.build()
         campaign.save()
         campaign.refresh_from_db()
         self.assertIsNotNone(campaign.uuid)
@@ -438,3 +466,114 @@ class CampaignSignalFixtureTests(TestCase):
         # verifies that the fixture uuid value of null gets a valid uuid
         loaded = models.Campaign.objects.get(id=999999)
         self.assertIsNotNone(loaded.uuid)
+
+
+def test_paging_omits_links_when_no_pages():
+    objects = list(range(5))
+    paginator = Paginator(objects, 10)
+    page = paginator.get_page(1)
+    helper = views.PagingHelperMixin()
+    helper.page_pattern_name = "campaign:index-paged"
+
+    preceding = helper._build_preceding_links(page)
+    following = helper._build_following_links(page)
+
+    assert len(preceding) == 0
+    assert len(following) == 0
+
+
+def test_paging_omits_first_prev_on_first_page():
+    objects = list(range(50))
+    paginator = Paginator(objects, 10)
+    page = paginator.get_page(1)
+    helper = views.PagingHelperMixin()
+    helper.page_pattern_name = "campaign:index-paged"
+
+    preceding = helper._build_preceding_links(page)
+    following = helper._build_following_links(page)
+
+    assert len(preceding) == 0
+    assert len(following) == 2
+    assert "page_next" in following
+    assert "page_last" in following
+
+
+def test_paging_omits_next_last_on_last_page():
+    objects = list(range(50))
+    paginator = Paginator(objects, 10)
+    page = paginator.get_page(-1)
+    helper = views.PagingHelperMixin()
+    helper.page_pattern_name = "campaign:index-paged"
+
+    preceding = helper._build_preceding_links(page)
+    following = helper._build_following_links(page)
+
+    assert len(preceding) == 2
+    assert len(following) == 0
+    assert "page_first" in preceding
+    assert "page_previous" in preceding
+
+
+def test_paging_omits_prev_on_second_page():
+    objects = list(range(50))
+    paginator = Paginator(objects, 10)
+    page = paginator.get_page(2)
+    helper = views.PagingHelperMixin()
+    helper.page_pattern_name = "campaign:index-paged"
+
+    preceding = helper._build_preceding_links(page)
+
+    assert len(preceding) == 1
+    assert "page_first" in preceding
+    assert "page_previous" not in preceding
+
+
+def test_paging_omits_next_on_penultimate_page():
+    objects = list(range(50))
+    paginator = Paginator(objects, 10)
+    page = paginator.get_page(4)
+    helper = views.PagingHelperMixin()
+    helper.page_pattern_name = "campaign:index-paged"
+
+    following = helper._build_following_links(page)
+
+    assert len(following) == 1
+    assert "page_last" in following
+    assert "page_next" not in following
+
+
+def test_paging_with_all_links():
+    objects = list(range(50))
+    paginator = Paginator(objects, 10)
+    page = paginator.get_page(3)
+    helper = views.PagingHelperMixin()
+    helper.page_pattern_name = "campaign:index-paged"
+
+    preceding = helper._build_preceding_links(page)
+    following = helper._build_following_links(page)
+
+    assert len(preceding) == 2
+    assert len(following) == 2
+    assert "page_first" in preceding
+    assert "page_previous" in preceding
+    assert "page_last" in following
+    assert "page_next" in following
+
+
+def test_paging_using_kwargs():
+    objects = list(range(50))
+    paginator = Paginator(objects, 10)
+    page = paginator.get_page(3)
+    helper = views.PagingHelperMixin()
+    helper.page_pattern_name = "campaign:detail-paged"
+    helper.page_pattern_kwargs = {"slug": "testing"}
+
+    preceding = helper._build_preceding_links(page)
+    following = helper._build_following_links(page)
+
+    assert len(preceding) == 2
+    assert len(following) == 2
+    assert "page_first" in preceding
+    assert "page_previous" in preceding
+    assert "page_last" in following
+    assert "page_next" in following

@@ -251,14 +251,14 @@ class Campaign(edd_models.core.SlugMixin, models.Model):
         return self.everyonepermission_set.all()
 
     def user_can_read(self, user):
-        return (is_real_user(user) and user.is_superuser) or any(
-            p.is_read() for p in self.get_permissions(user)
-        )
+        is_super = is_real_user(user) and user.is_superuser
+        has_permission = any(p.is_read() for p in self.get_permissions(user))
+        return is_super or has_permission
 
     def user_can_write(self, user):
-        return (is_real_user(user) and user.is_superuser) or any(
-            p.is_write() for p in self.get_permissions(user)
-        )
+        is_super = is_real_user(user) and user.is_superuser
+        has_permission = any(p.is_write() for p in self.get_permissions(user))
+        return is_super or has_permission
 
 
 class CampaignMembership(models.Model):
