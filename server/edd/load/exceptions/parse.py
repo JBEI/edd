@@ -11,13 +11,6 @@ class ParseWarning(EDDImportWarning):
     pass
 
 
-class MissingParameterError(ParseError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("Bad request"), summary=_("Missing required parameter"), **kwargs
-        )
-
-
 class BadParserError(ParseError):
     def __init__(self, **kwargs):
         super().__init__(

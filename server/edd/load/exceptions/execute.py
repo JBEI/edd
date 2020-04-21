@@ -11,30 +11,6 @@ class ExecutionWarning(EDDImportWarning):
     pass
 
 
-class MissingAssayError(ExecutionError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("Study altered"),
-            summary=_(
-                "One or more assays found during initial file processing are no longer "
-                "available"
-            ),
-            **kwargs
-        )
-
-
-class MissingLineError(ExecutionError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("Study altered"),
-            summary=_(
-                "One or more lines found during initial file processing are no longer "
-                "available"
-            ),
-            **kwargs
-        )
-
-
 class UnplannedOverwriteError(ExecutionError):
     def __init__(self, **kwargs):
         super().__init__(

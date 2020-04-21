@@ -75,17 +75,11 @@ class MessageAggregator:
 
         existing = target.get(key, None)
         if existing:
-            try:
-                existing.merge(message)
-            except exceptions.ReportingLimitWarning:
-                logger.warning(
-                    f"Reached reporting limit for {key}. Further occurrences "
-                    f"of this issue type will not be tracked."
-                )
+            existing.merge(message)
         else:
             target[key] = message
 
-    def raise_errors(self, errs: MaybeError = None):
+    def raise_errors(self):
         """
         Raises an exception if there are any known errors reported in this or preceding method
         calls.
@@ -98,19 +92,8 @@ class MessageAggregator:
         :param errs: an optional Exception representing one ore more error occurrences
         :raises EDDImportError if any errors have been reported
         """
-        if errs:
-            # add the error to our store of error reports
-            self._add_msg(self._errors, errs)
-
-            key = self._key(errs)
-            self._latest_error = self._errors.get(key)
-
         if self._latest_error:
             raise self._latest_error
-
-    @property
-    def first_err_category(self) -> str:
-        return next(iter(self._errors.keys()))[0]
 
     def error_count(self, err_class: MaybeErrorType = None) -> int:
         return self._msg_count(self._errors, err_class)
@@ -211,18 +194,16 @@ def raise_errors(key: TrackingId, errors: MaybeError = None):
         # report errors parameter so signal will get sent and errors will get merged with others
         # if tracking is enabled for this key
         add_errors(key, errors)
-        if not tracked:
-            return
-    elif not tracked:
+    if not tracked:
         logger.warning(
-            f'Key "{key}" is not configured for error tracking.  raise_errors() '
+            f'Key "{key}" is not configured for error tracking. raise_errors() '
             f"will never raise an exception when called with zero arguments"
         )
         return
-
-    # if aggregating messages for this key, merge with any previously-reported errors of the same
-    # type, then raise an Exception (maybe the merged result)
-    tracked.raise_errors(errors)
+    # if aggregating messages for this key,
+    # merge with any previously-reported errors of the same type,
+    # then raise an Exception (maybe the merged result)
+    tracked.raise_errors()
 
 
 @contextmanager
@@ -249,20 +230,6 @@ def tracker(key: TrackingId):
 # (e.g. before replying to the current HTTP request or ending the current Celery task).
 # Using the tracker() context manager handles this automagically
 _tracked_msgs: typing.Dict[str, MessageAggregator] = {}
-
-
-def first_err_category(key: TrackingId) -> str:
-    """
-    Gets a reference to the first reported EDDImportError instance.
-
-    This FUNCTION IS INTERNAL API, AND MAY CHANGE IN FUTURE RELEASES.
-
-    :param key: the unique key that identifies this workflow
-        (e.g. the UUID for a single import)
-    :return: the first EDDImportError instance reported for this workflow
-    """
-    messages: MessageAggregator = _tracked_msgs.get(str(key), None)
-    return messages.first_err_category if messages else None
 
 
 def error_count(key: TrackingId, err_class: MaybeErrorType = None) -> int:

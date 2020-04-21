@@ -16,13 +16,6 @@ class ResolveWarning(EDDImportWarning):
     pass
 
 
-class InvalidIdError(ResolveError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("Invalid file"), summary=_("Invalid identifier format"), **kwargs
-        )
-
-
 class ImportTooLargeError(ResolveError):
     def __init__(self, **kwargs):
         super().__init__(
@@ -83,18 +76,6 @@ class DuplicateLineError(ResolveError):
         )
 
 
-class UnmatchedNamesError(ResolveError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("File doesn't match study"),
-            summary=_(
-                "Identifiers in your file must match either line or assay names in the "
-                "study"
-            ),
-            **kwargs,
-        )
-
-
 class UnmatchedMtypeError(ResolveError):
     def __init__(self, **kwargs):
         # use absolute URLs so they also function from user emails
@@ -110,89 +91,6 @@ class UnmatchedMtypeError(ResolveError):
             category=_("Measurement types not found"),
             summary=_("Measurement types do not exist in EDD"),
             docs_link=docs_link,
-            **kwargs,
-        )
-
-
-_IDS_LINK = 'For help, see <a href="{url}" target="_blank">Standard Identifiers</a>'
-
-
-# TODO:
-# communication errors... current model load_or_create methods don't support differentiating
-#  between different communication errors with external databases, but we should eventually
-#  add additional detail to improve user feedback & simplify debugging
-# PARTNER_INTERNAL_ERROR = auto()
-# COMMUNICATION_ERROR = auto()
-# PERMISSION_DENIED = auto()
-class ProteinNotFoundError(ResolveError):
-    def __init__(self, **kwargs):
-        # use absolute URLs so they also function from user emails
-        url = reverse("main:load_flat:wizard_help")
-        url = get_absolute_url(f"{url}#ids")
-        super().__init__(
-            category=_("Proteins not found"),
-            summary=_("Not found in UniProt or ICE"),
-            docs_link=_(_IDS_LINK).format(url=url),
-            **kwargs,
-        )
-
-
-class GeneNotFoundError(ResolveError):
-    def __init__(self, **kwargs):
-        # use absolute URLs so they also function from user emails
-        url = reverse("main:load_flat:wizard_help")
-        url = get_absolute_url(f"{url}#ids")
-        super().__init__(
-            category=_("Genes not found"),
-            summary=_("Not found"),
-            docs_link=_(_IDS_LINK).format(url=url),
-            **kwargs,
-        )
-
-
-class PhosphorNotFoundError(ResolveError):
-    def __init__(self, **kwargs):
-        # use absolute URLs so they also function from user emails
-        url = reverse("main:load_flat:wizard_help")
-        url = get_absolute_url(f"{url}#ids")
-        super().__init__(
-            category=_("Fluorophores not found"),
-            summary=_("Not found in EDD"),
-            docs_link=_(_IDS_LINK).format(url=url),
-            **kwargs,
-        )
-
-
-class MetaboliteNotFoundError(ResolveError):
-    def __init__(self, **kwargs):
-        # use absolute URLs so they also function from user emails
-        url = reverse("main:load_flat:wizard_help")
-        url = get_absolute_url(f"{url}#ids")
-        super().__init__(
-            category=_("Metabolites not found"),
-            summary=_("Not found in PubChem"),
-            resolution=_(
-                'Use a valid PubChem CID in the form "CID:0000", or "CID:0000:Label"'
-            ),
-            docs_link=_(_IDS_LINK).format(url=url),
-            **kwargs,
-        )
-
-
-class CompartmentNotFoundError(ResolveError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("Missing required input"),
-            summary=_("Measurement compartment"),
-            **kwargs,
-        )
-
-
-class UnitsNotProvidedError(ResolveError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("Missing required input"),
-            summary=_("Measurement units"),
             **kwargs,
         )
 
@@ -334,9 +232,6 @@ class OverwriteWarning(ImportConflictWarning):
             self.category = _("Overwrite warning (multiple overwrites)")
             self.resolution = self._multi_overwrite_resolution
 
-    def __copy__(self):
-        return OverwriteWarning(self.total, self.conflicts)
-
 
 class MergeWarning(ImportConflictWarning):
     def __init__(self, total: int, conflicts: ImportConflictWarning.ConflictSummary):
@@ -365,9 +260,6 @@ class MergeWarning(ImportConflictWarning):
             self.category = _("Merge warning (multiple overwrites)")
             self.resolution = self._multi_overwrite_resolution
 
-    def __copy__(self):
-        return MergeWarning(self.total, self.conflicts)
-
 
 class DuplicationWarning(ImportConflictWarning):
     def __init__(self, total: int, conflicts: ImportConflictWarning.ConflictSummary):
@@ -393,9 +285,6 @@ class DuplicationWarning(ImportConflictWarning):
             workaround_text=_("Duplicate"),
         )
 
-    def __copy__(self):
-        return DuplicationWarning(self.total, self.conflicts)
-
 
 class DuplicateMergeWarning(ImportConflictWarning):
     def __init__(self, total: int, conflicts: ImportConflictWarning.ConflictSummary):
@@ -419,14 +308,4 @@ class DuplicateMergeWarning(ImportConflictWarning):
             resolution=self._duplicate_resolution,
             id="duplication_warning",
             workaround_text=_("Duplicate"),
-        )
-
-    def __copy__(self):
-        return DuplicateMergeWarning(self.total, self.conflicts)
-
-
-class UnexpectedError(ResolveError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("Error"), summary=_("An unexpected error occurred"), **kwargs
         )

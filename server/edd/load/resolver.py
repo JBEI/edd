@@ -390,17 +390,20 @@ class ImportResolver:
                 self._mtype_name_to_type[mtype_id] = found
             except ValidationError:
                 logger.exception(f"Exception verifying MeasurementType id {mtype_id}")
-
                 # track errors and progress
                 error_count += 1
+                reporting.add_errors(
+                    self.load.request, exceptions.UnmatchedMtypeError(details=mtype_id),
+                )
                 # to stay responsive, stop lookups after a threshold is reached
                 if error_count == error_limit:
-                    error = exceptions.UnmatchedMtypeError(
-                        details=mtype_id, aborted=error_count
+                    message = _("Aborted after {count} failed lookups.")
+                    reporting.raise_errors(
+                        self.load.request,
+                        exceptions.UnmatchedMtypeError(
+                            details=message.format(count=error_count)
+                        ),
                     )
-                else:
-                    error = exceptions.UnmatchedMtypeError(details=mtype_id)
-                reporting.add_errors(self.load.request, error)
 
     def _verify_units(self):
         # Verifies unit names found in the import against units in the EDD database.
