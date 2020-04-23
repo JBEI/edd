@@ -372,6 +372,75 @@ class ImportResolverTests(TestCase):
             "use_assay_times": False,
         }
 
+    def test_resolve_with_overdetermined_time(self):
+        # setup
+        time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        assay_A = main_factory.AssayFactory(
+            line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
+        )
+        assay_B = main_factory.AssayFactory(
+            line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
+        )
+        # including time in points
+        mpr = list(
+            self._generate_measurement_product(
+                names=[assay_A.name, assay_B.name], points=[[[12], [10]]],
+            )
+        )
+        parsed = ParseResult(
+            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+        )
+        resolver, type_resolver = self._make_resolvers(parsed)
+        # exec
+        context = resolver.resolve(type_resolver)
+        # asserts
+        assert context == {
+            "conflicted_from_import": 0,
+            "conflicted_from_study": 0,
+            "file_has_times": True,
+            "file_has_units": True,
+            "importId": self.load.request,
+            "loa_pks": [assay_A.pk, assay_B.pk],
+            "matched_assays": True,
+            "totalPages": 1,
+            "total_vals": 2,
+            "use_assay_times": False,
+        }
+
+    def test_resolve_with_partial_overdetermined_time(self):
+        # setup
+        time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        assay_A = main_factory.AssayFactory(
+            line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
+        )
+        # missing time on this one!
+        assay_B = main_factory.AssayFactory(line=self.BW1, protocol=self.protocol,)
+        # including time in points
+        mpr = list(
+            self._generate_measurement_product(
+                names=[assay_A.name, assay_B.name], points=[[[12], [10]]],
+            )
+        )
+        parsed = ParseResult(
+            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+        )
+        resolver, type_resolver = self._make_resolvers(parsed)
+        # exec
+        context = resolver.resolve(type_resolver)
+        # asserts
+        assert context == {
+            "conflicted_from_import": 0,
+            "conflicted_from_study": 0,
+            "file_has_times": True,
+            "file_has_units": True,
+            "importId": self.load.request,
+            "loa_pks": [assay_A.pk, assay_B.pk],
+            "matched_assays": True,
+            "totalPages": 1,
+            "total_vals": 2,
+            "use_assay_times": False,
+        }
+
     def test_resolve_with_duplicate_lines(self):
         # setup
         main_factory.LineFactory(study=self.target_study, name="BW1")

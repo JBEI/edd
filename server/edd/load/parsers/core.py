@@ -6,7 +6,6 @@ import logging
 import numbers
 import re
 from dataclasses import dataclass, field
-from io import BytesIO
 from typing import Dict, List, Sequence, Set, Tuple
 from uuid import UUID
 
@@ -41,24 +40,20 @@ class ColLayoutDetectionState:
     """
 
     # maps canonical column name -> col index where it was detected
-    layout: Dict[str, int] = None
+    layout: Dict[str, int] = field(init=False)
     # non-column-header values read from file before any valid column header was found
-    non_header_vals: List[str] = None
+    non_header_vals: List[str] = field(init=False)
     # maps canonical names of any required columns observed in this row to the list of indexes of
     # columns where they were detected
-    obs_req_cols: Dict[str, List[int]] = None
+    obs_req_cols: Dict[str, List[int]] = field(init=False)
     # canonical names of optional columns observed in this row
-    obs_opt_cols: Dict[str, List[int]] = None
+    obs_opt_cols: Dict[str, List[int]] = field(init=False)
 
     def __post_init__(self):
-        if self.layout is None:
-            self.layout = {}
-        if self.non_header_vals is None:
-            self.non_header_vals = []
-        if self.obs_req_cols is None:
-            self.obs_req_cols = collections.defaultdict(list)
-        if self.obs_opt_cols is None:
-            self.obs_opt_cols = collections.defaultdict(list)
+        self.layout = {}
+        self.non_header_vals = []
+        self.obs_req_cols = collections.defaultdict(list)
+        self.obs_opt_cols = collections.defaultdict(list)
 
 
 class TableParser:
@@ -79,13 +74,7 @@ class TableParser:
     """
 
     def __init__(
-        self,
-        req_cols: List[str],
-        import_uuid: UUID,
-        opt_cols=None,
-        value_opt_cols=None,
-        numeric_cols=None,
-        supported_units=None,
+        self, req_cols: List[str], import_uuid: UUID, opt_cols=None, numeric_cols=None,
     ):
         """
         Initializes the parser using client-provided lists of required and optional column headers.
@@ -95,10 +84,6 @@ class TableParser:
             trailing, and internal whitespace.
         :param opt_cols: an iterable of human-readable strings with canonical names for optional
             column headers. Subject to the same processing as req_cols.
-        :param value_opt_cols: an optional iterable of column headers from either or both of
-            req_cols & opt_cols. Any col header in value_opt_cols will have missing
-            values tolerated in any row.  Any column headers not listed here are by default
-            required to have a value in every row, assuming the column is present.
         :param numeric_cols: an  optional list of column names for columns that will be verified
             during parsing to have numeric content.
         """
@@ -110,9 +95,7 @@ class TableParser:
         # keep inputs to use as keys and as human-readable for use in err messages
         self.req_cols: List[str] = req_cols
         self.opt_cols = opt_cols if opt_cols is not None else set()
-        self.value_opt_cols = value_opt_cols if value_opt_cols is not None else set()
         self.numeric_cols = numeric_cols if numeric_cols is not None else set()
-        self.supported_units = supported_units if supported_units is not None else {}
 
         # maps canonical col name -> observed text (e.g. maybe including whitespace, mixed case,
         # alias)
@@ -131,8 +114,6 @@ class TableParser:
         else:
             self.opt_col_patterns = []
 
-        self._build_unit_patterns()
-
         self._ignored_preamble_vals = []
 
     def _verify_layout(self, header_row_index):
@@ -147,7 +128,8 @@ class TableParser:
         :param cols_list: columns in the row
         :param row_index: index of the row into the file
         """
-        raise NotImplementedError()  # children must implement
+        # children must override
+        raise NotImplementedError()
 
     def _raw_cell_value(self, cell):
         """
@@ -186,15 +168,6 @@ class TableParser:
             )
             for col_header in col_headers
         ]
-
-    def _build_unit_patterns(self):
-        self._unit_patterns = {}
-        for col, units in self.supported_units.items():
-            logger.debug(f'Building unit patterns for column "{col}": {units}')
-            # note : maintaining case-sensitivity is important! SI units use case!
-            vals = "|".join([TableParser._process_label(unit) for unit in units])
-            pat = re.compile(fr"^\s*({vals})\s*$")
-            self._unit_patterns[col] = pat
 
     @staticmethod
     def _process_label(s):
@@ -295,11 +268,8 @@ class TableParser:
 
             # ignore non-string cells since they can't be the column headers we're looking for
             if not isinstance(cell_content, str):
-                if cell_content is not None:
-                    col_desc = self.cell_content_desc(
-                        cell_content, row_index, col_index
-                    )
-                    state.non_header_vals.append(col_desc)
+                col_desc = self.cell_content_desc(cell_content, row_index, col_index)
+                state.non_header_vals.append(col_desc)
                 continue
 
             # check whether column label matches one of the canonical column names
@@ -373,27 +343,20 @@ class TableParser:
         """
         col_index = self.column_layout.get(col_name, None)
 
-        # if parser is asking for a column not found in the file, end early.
-        # if it's required, an error will already have been recorded
-        if col_index is None:
-            logger.warning(f'Column "{col_name}" not found in file')
-            return None
-
         # if value is missing, but required, log an error
         if val is None:
-            if col_name not in self.value_opt_cols:
-                reporting.add_errors(
-                    self.import_uuid,
-                    exceptions.RequiredValueError(
-                        subcategory=self.obs_col_name(col_name),
-                        details=self.cell_coords(row_index, col_index),
-                    ),
-                )
+            reporting.add_errors(
+                self.import_uuid,
+                exceptions.RequiredValueError(
+                    subcategory=self.obs_col_name(col_name),
+                    details=self.cell_coords(row_index, col_index),
+                ),
+            )
             return val
 
         # if observed value is a string,
         if isinstance(val, str):
-            if (not val) and col_name not in self.value_opt_cols:
+            if not val:
                 reporting.add_errors(
                     self.import_uuid,
                     exceptions.RequiredValueError(
@@ -409,17 +372,6 @@ class TableParser:
                 return self._parse_num(val, col_name, row_index, col_index)
 
             return val
-
-        # assumption (for now) is that value is numeric. should work for both vector (
-        # 1-dimensional) and numeric inputs
-        if not isinstance(val, numbers.Number):
-            reporting.add_errors(
-                self.import_uuid,
-                exceptions.InvalidValueError(
-                    subcategory=self.obs_col_name(col_name),
-                    details=self.cell_coords(row_index, col_index),
-                ),
-            )
 
         return val
 
@@ -457,16 +409,6 @@ class TableParser:
                 return col_name
 
         return None
-
-    def _verify_required_val(self, value, row_index, col_index, col_title):
-        if value is None or (isinstance(value, str) and not value.strip()):
-            reporting.add_errors(
-                self.import_uuid,
-                exceptions.RequiredValueError(
-                    subcategory=col_title,
-                    details=self.cell_coords(row_index, col_index),
-                ),
-            )
 
     def _process_col_name(
         self,
@@ -531,12 +473,11 @@ class TableParser:
             cols: List[int] = obs_cols_dict[canonical_name]
             subcategory = f'"{canonical_name}"'
 
-            details = []
-            if len(cols) == 1:
-                # since this is the first duplication, log an error for the initial occurrence
-                # of this column name
-                details.append(self.cell_coords(row_index, cols[0]))
-            details.append(self.cell_coords(row_index, col_index))
+            # add entries for both the first and current instance
+            details = [
+                self.cell_coords(row_index, cols[0]),
+                self.cell_coords(row_index, col_index),
+            ]
             reporting.add_errors(
                 self.import_uuid,
                 exceptions.DuplicateColumnError(
@@ -608,20 +549,6 @@ class MeasurementParseRecord:
     # error messages
     src_ids: [Tuple[str, ...]]
 
-    def time(self):
-        return self.data[0][0]
-
-    def to_json(self):
-        return {
-            "loa_name": self.loa_name,
-            "measurement_name": self.mtype_name,
-            "y_unit_name": self.y_unit_name,
-            "x_unit_name": self.x_unit_name,
-            "value_format": self.value_format,
-            "data": self.data,
-            "src_ids": self.src_ids,
-        }
-
 
 @dataclass(eq=False)
 class ParseResult:
@@ -685,27 +612,17 @@ class ExcelParserMixin:
         :raises OSError: if the file can't be opened
         :raises EDDImportError: if the file format or content is bad
         """
-        wb = load_workbook(BytesIO(file.read()), read_only=True, data_only=True)
+        wb = load_workbook(file, read_only=True, data_only=True)
         logger.debug("In parse(). workbook has %d sheets" % len(wb.worksheets))
-        if not wb.worksheets:
-            reporting.raise_errors(self.import_uuid, exceptions.EmptyFileError())
-        elif len(wb.worksheets) > 1:
+        if len(wb.worksheets) > 1:
             sheet_name = wb.sheetnames[0]
             count = len(wb.worksheets) - 1
-            intro = _(
+            message = _(
                 'Only the first sheet in your workbook, "{sheet}", was processed. '
-            ).format(sheet=sheet_name)
-            if count > 2:
-                postfix = _("All other sheets were ignored ({count}).").format(
-                    count=count
-                )
-            else:
-                postfix = _('The other sheet "{name}" was ignored.').format(
-                    count=count, name=wb.sheetnames[1]
-                )
-            msg = intro + postfix
+                "All other sheets were ignored ({count})."
+            ).format(sheet=sheet_name, count=count)
             reporting.warnings(
-                self.import_uuid, exceptions.IgnoredWorksheetWarning(details=[msg])
+                self.import_uuid, exceptions.IgnoredWorksheetWarning(details=[message])
             )
         worksheet = wb.worksheets[0]
         return self._parse_rows(worksheet.iter_rows())
@@ -738,10 +655,7 @@ class CsvParserMixin:
         return self._parse_rows(reader)
 
     def _raw_cell_value(self, cell):
-        val = cell
-        if isinstance(val, str):
-            return val.strip()
-        return val
+        return cell.strip()
 
 
 def build_src_summary(sources, convert_ints=False):
@@ -751,6 +665,7 @@ def build_src_summary(sources, convert_ints=False):
     For example, [1, 2, 3, 5] => ["1-3", 5]. Non-integers are simply copied to the result,
     so for example [1, 2, 3, "18-36", 42] =>  ["1-3", "18-36", 42].
 
+    :param sources: an iterable of integer values, e.g. line numbers
     :param convert_ints: if True, convert any single integers in the result to strings
     :return: a list of source ranges, where ranges are strings and any single sources are
         either ints or strings as determined by convert_ints
@@ -773,14 +688,14 @@ def build_src_summary(sources, convert_ints=False):
         if range_start is None and isinstance(current, int):
             range_start = current
         if not isinstance(current, int):
-            src_ranges.append(str(current) if convert_ints else current)
+            src_ranges.append(current)
         elif next_val != current + 1:
             if range_start != current:
                 src_ranges.append(f"{range_start}-{current}")
             else:
                 src_ranges.append(str(current) if convert_ints else current)
             range_start = None
-    if next_val:
+    else:
         if range_start is not None:
             src_ranges.append(f"{range_start}-{next_val}")
         else:

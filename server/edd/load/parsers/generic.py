@@ -1,4 +1,3 @@
-import collections
 from uuid import UUID
 
 from main.models import Measurement
@@ -57,12 +56,9 @@ class GenericImportParser(TableParser):
         time = self._parse_and_verify_val(time, row_index, "Time")
         units = self._parse_and_verify_val(units, row_index, "Units")
 
-        # store x and y as arrays to match underlying field types in MeasurementValue...easier
-        # comparisons along the way with existing study data
-        if isinstance(val, collections.Iterable):
-            data = [[time], val]
-        else:
-            data = [[time], [val]]
+        # store x and y as arrays to match underlying field types in MeasurementValue...
+        # easier comparisons along the way with existing study data
+        data = [[time], [val]]
 
         # always convert loa_name to a string, since Excel / openpyxl may convert numeric names to
         # numbers, which won't match when compared to the study

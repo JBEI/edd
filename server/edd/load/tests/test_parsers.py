@@ -16,11 +16,10 @@ def test_GenericExcelParser_multiple_error_workflow():
     uuid = uuid4()
     parser = parsers.GenericExcelParser(uuid)
     # enable tracking to catch all errors
-    with reporting.tracker(uuid):
-        with factory.load_test_file(*path) as file:
-            # make sure final error is the one reported
-            with pytest.raises(exceptions.InvalidValueError) as exc_info:
-                parser.parse(file)
+    with reporting.tracker(uuid), factory.load_test_file(*path) as file:
+        # make sure final error is the one reported
+        with pytest.raises(exceptions.InvalidValueError) as exc_info:
+            parser.parse(file)
         assert exc_info.value.details == ['"A" (D3)']
 
 
@@ -30,11 +29,10 @@ def test_GenericCsvParser_multiple_error_workflow():
     uuid = uuid4()
     parser = parsers.GenericCsvParser(uuid)
     # enable tracking to catch all errors
-    with reporting.tracker(uuid):
-        with factory.load_test_file(*path, mode="rt") as file:
-            # make sure final error is the one reported
-            with pytest.raises(exceptions.InvalidValueError) as exc_info:
-                parser.parse(file)
+    with reporting.tracker(uuid), factory.load_test_file(*path, mode="rt") as file:
+        # make sure final error is the one reported
+        with pytest.raises(exceptions.InvalidValueError) as exc_info:
+            parser.parse(file)
         assert exc_info.value.details == ['"A" (D3)']
 
 
@@ -63,19 +61,22 @@ def test_GenericExcelParser_wrong_format():
 
 
 def test_GenericCsvParser_duplicate_column():
-    # "Time" appears twice
-    text = ["Line name,Measurement Type,Value,Time,Time,Units"]
-    parser = parsers.GenericCsvParser(uuid4())
-    with pytest.raises(exceptions.DuplicateColumnError) as exc_info:
+    # "Time" appears thrice
+    text = ["Line name,Measurement Type,Value,Time,Time,Units,Time"]
+    uuid = uuid4()
+    parser = parsers.GenericCsvParser(uuid)
+    with reporting.tracker(uuid), pytest.raises(
+        exceptions.DuplicateColumnError
+    ) as exc_info:
         parser.parse(text)
-    assert exc_info.value.details == ["D1", "E1"]
+    assert exc_info.value.details == ["D1", "E1", "G1"]
 
 
 def test_GenericCsvParser_missing_required_value():
     # "Value" column is blank
     text = [
         "Line name, Measurement Type, Value, Time, Units",
-        "arcA     , Optical Density ,       , 1 ,  n/a",
+        "arcA     , Optical Density ,      , 1   , n/a",
     ]
     parser = parsers.GenericCsvParser(uuid4())
     with pytest.raises(exceptions.RequiredValueError) as exc_info:
@@ -83,11 +84,34 @@ def test_GenericCsvParser_missing_required_value():
     assert exc_info.value.details == ["C2"]
 
 
+def test_GenericCsvParser_missing_required_value_short_row():
+    # "Value" column is blank
+    text = [
+        "Line name, Measurement Type, Value, Time, Units",
+        "arcA     , Optical Density",
+    ]
+    parser = parsers.GenericCsvParser(uuid4())
+    with pytest.raises(exceptions.RequiredValueError) as exc_info:
+        parser.parse(text)
+    assert exc_info.value.details == ["C2"]
+
+
+def test_GenericCsvParser_missing_optional_value_short_row():
+    # "Value" column is blank
+    text = [
+        "Line name, Measurement Type, Value, Time, Units, Media",
+        "arcA     , Optical Density , 1    , 1   , n/a",
+    ]
+    parser = parsers.GenericCsvParser(uuid4())
+    parser.parse(text)
+    # no errors
+
+
 def test_GenericCsvParser_invalid_numeric_value():
     # expect "Time" to be numeric, not alpha
     text = [
         "Line name, Measurement Type, Value, Time, Units",
-        "arcA     , Optical Density ,   1   , A ,  n/a",
+        "arcA     , Optical Density , 1    , A   , n/a",
     ]
     parser = parsers.GenericCsvParser(uuid4())
     with pytest.raises(exceptions.InvalidValueError) as exc_info:
@@ -170,7 +194,7 @@ def test_GenericExcelParser_generates_warnings():
             assert isinstance(received[0], exceptions.IgnoredWorksheetWarning)
             assert received[0].details == [
                 'Only the first sheet in your workbook, "Sheet 1", '
-                'was processed. The other sheet "Sheet 2" was ignored.',
+                "was processed. All other sheets were ignored (1).",
             ]
             assert isinstance(received[1], exceptions.IgnoredColumnWarning)
             assert received[1].details == [
@@ -336,7 +360,7 @@ def test_SkylineExcelParser_generates_warnings():
             assert isinstance(received[0], exceptions.IgnoredWorksheetWarning)
             assert received[0].details == [
                 'Only the first sheet in your workbook, "Sheet 1", '
-                'was processed. The other sheet "Unused" was ignored.',
+                "was processed. All other sheets were ignored (1).",
             ]
             assert isinstance(received[1], exceptions.IgnoredColumnWarning)
             assert received[1].details == [
@@ -379,3 +403,8 @@ def test_build_src_summary_convert():
 def test_build_src_summary_offset():
     summary = parsers.build_src_summary([3, 5, 6, 7])
     assert summary == [3, "5-7"]
+
+
+def test_build_src_summary_with_non_number():
+    summary = parsers.build_src_summary(["foo", 5, 6, 7, "bar"])
+    assert summary == ["foo", "5-7", "bar"]

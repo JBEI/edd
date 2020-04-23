@@ -49,13 +49,12 @@ class BaseSkylineParser(TableParser):
         else:
             total_area = self._parse_and_verify_val(total_area, row_index, "Total Area")
 
-        id = (loa_name, protein_id)
-        if total_area is not None:
-            # prevent subsequent problems adding to decimal summed_areas
-            if not isinstance(total_area, decimal.Decimal):
-                total_area = decimal.Decimal(total_area)
-            self._summed_areas[id] += total_area
-        self._area_sources[id].append(row_index + 1)
+        key = (loa_name, protein_id)
+        # prevent subsequent problems adding to decimal summed_areas
+        if not isinstance(total_area, decimal.Decimal):
+            total_area = decimal.Decimal(total_area)
+        self._summed_areas[key] += total_area
+        self._area_sources[key].append(row_index + 1)
 
     @property
     def _parse_result(self):

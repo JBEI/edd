@@ -25,13 +25,6 @@ class UnsupportedMimeTypeError(ParseError):
         )
 
 
-class EmptyFileError(ParseError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("Invalid file"), summary=_("File is empty"), **kwargs
-        )
-
-
 class IgnoredWorksheetWarning(ParseWarning):
     def __init__(self, **kwargs):
         super().__init__(

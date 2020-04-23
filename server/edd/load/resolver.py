@@ -527,37 +527,20 @@ class ImportCacheCreator:
 
     def _compute_required_inputs(self, import_records_list) -> ConflictSummary:
         if not (self.assay_pk_to_time or self.parsed.has_all_times):
-            if self.matched_assays:
-                reporting.add_errors(
-                    self.load.request, exceptions.MissingAssayTimeError()
-                )
-            else:
-                reporting.add_errors(
-                    self.load.request, exceptions.TimeUnresolvableError()
-                )
+            reporting.add_errors(self.load.request, exceptions.TimeUnresolvableError())
             conflicts = ConflictSummary(from_import=0, from_study=0)
         else:
             conflicts = self._detect_conflicts(import_records_list)
             if conflicts.from_import:
                 total = len(self.parsed.series_data)
-                if self.matched_assays and total == conflicts.from_import:
+                if total == conflicts.from_import:
                     reporting.warnings(
                         self.load.request,
                         exceptions.OverwriteWarning(total, conflicts),
                     )
-                elif self.matched_assays:
-                    reporting.warnings(
-                        self.load.request, exceptions.MergeWarning(total, conflicts),
-                    )
-                elif total == conflicts.from_import:
-                    reporting.warnings(
-                        self.load.request,
-                        exceptions.DuplicationWarning(total, conflicts),
-                    )
                 else:
                     reporting.warnings(
-                        self.load.request,
-                        exceptions.DuplicateMergeWarning(total, conflicts),
+                        self.load.request, exceptions.MergeWarning(total, conflicts),
                     )
         return conflicts
 
