@@ -197,13 +197,6 @@ class ImportConflictWarning(ResolveWarning):
         "Data points with the same protocol and time as the file will be replaced. This "
         "study already contains duplicates for some values that will be overwritten."
     )
-    _duplicate_resolution = _(
-        "This happens when your import matches line names in the study, but similar "
-        "values exist under an assay with a different name. You can 1) make identifiers in "
-        "your file match study assay names, 2) remove study measurements with the same "
-        "protocol, time, and measurement type as the file, or 3) continue with creating "
-        "duplicates."
-    )
 
 
 class OverwriteWarning(ImportConflictWarning):

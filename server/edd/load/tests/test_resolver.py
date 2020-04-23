@@ -590,6 +590,53 @@ class ImportResolverTests(TestCase):
             "use_assay_times": False,
         }
 
+    def test_resolve_with_multiple_existing_values(self):
+        # setup
+        assay_A = main_factory.AssayFactory(line=self.BW1, protocol=self.protocol)
+        assay_B = main_factory.AssayFactory(line=self.BW1, protocol=self.protocol)
+        hours = models.MeasurementUnit.objects.get(unit_name="hours")
+        na = models.MeasurementUnit.objects.get(unit_name="n/a")
+        mtype = main_factory.MeasurementTypeFactory()
+        measurement_A = main_factory.MeasurementFactory(
+            assay=assay_A, measurement_type=mtype, x_units=hours, y_units=na
+        )
+        measurement_B = main_factory.MeasurementFactory(
+            assay=assay_B, measurement_type=mtype, x_units=hours, y_units=na
+        )
+        # making multiple existing points for same type at same time
+        main_factory.ValueFactory(measurement=measurement_A, x=[24])
+        main_factory.ValueFactory(measurement=measurement_A, x=[24])
+        main_factory.ValueFactory(measurement=measurement_A, x=[24])
+        main_factory.ValueFactory(measurement=measurement_B, x=[24])
+        main_factory.ValueFactory(measurement=measurement_B, x=[24])
+        main_factory.ValueFactory(measurement=measurement_B, x=[24])
+        mpr = list(
+            self._generate_measurement_product(
+                names=[assay_A.name, assay_B.name],
+                types=[mtype.type_name],
+                points=[[[24], [1]]],
+            )
+        )
+        parsed = ParseResult(
+            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+        )
+        resolver, type_resolver = self._make_resolvers(parsed)
+        # exec
+        context = resolver.resolve(type_resolver)
+        # asserts
+        assert context == {
+            "conflicted_from_import": 2,
+            "conflicted_from_study": 6,
+            "file_has_times": True,
+            "file_has_units": True,
+            "importId": self.load.request,
+            "loa_pks": [assay_A.pk, assay_B.pk],
+            "matched_assays": True,
+            "totalPages": 1,
+            "total_vals": 2,
+            "use_assay_times": False,
+        }
+
     def test_resolve_with_existing_values_allowing_overwrite(self):
         # setup
         assay_A = main_factory.AssayFactory(line=self.BW1, protocol=self.protocol)

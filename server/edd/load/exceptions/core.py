@@ -150,13 +150,13 @@ class MessagingMixin:
 
     def to_json(self):
         # category and summary are required
-        result = {"category": self.category, "summary": self.summary}
+        result = {"category": str(self.category), "summary": str(self.summary)}
         # the others may be included, if set
         included = ("docs_link", "id", "resolution", "subcategory", "workaround_text")
         for key in included:
             value = getattr(self, key, None)
             if value:
-                result[key] = value
+                result[key] = str(value)
         # special handling for details to account for reporting limit
         if self.details:
             limit = getattr(settings, "EDD_IMPORT_ERR_REPORTING_LIMIT", 0)

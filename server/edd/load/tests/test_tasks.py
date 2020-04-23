@@ -1,9 +1,11 @@
+from tempfile import NamedTemporaryFile
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
+from openpyxl import Workbook
 
 from edd import TestCase
 from main import models
@@ -253,6 +255,19 @@ class WizardParseTaskTests(TestCase):
         updated = LoadRequest.fetch(uuid)
         assert updated.status == LoadRequest.Status.RESOLVED
 
+    def test_parse_success_excel(self):
+        uuid = self._setup_parse_excel()
+        # include Time metadata so resolve step can complete
+        self._setup_parse_add_time()
+        with patch("edd.load.tasks.wizard_execute_loading") as task:
+            # value of target currently doesn't matter as long as not None
+            tasks.wizard_parse_and_resolve(
+                uuid, self.user.pk, self.layout.pk, self.category.pk, target=True
+            )
+        updated = LoadRequest.fetch(uuid)
+        assert updated.status == LoadRequest.Status.READY
+        task.delay.assert_called_once()
+
     def _setup_parse_add_time(self):
         time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
         qs = models.Assay.objects.filter(study=self.study, protocol=self.protocol)
@@ -273,6 +288,26 @@ class WizardParseTaskTests(TestCase):
         """
         file = SimpleUploadedFile("example", content.encode("utf-8"), content_type=mime)
         self.load.update({"file": file})
+        return self.load.request
+
+    def _setup_parse_excel(self):
+        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assay = factory.AssayFactory(study=self.study, protocol=self.protocol)
+        factory.ProteinFactory(accession_code="P12345")
+        ParserFactory(
+            layout=self.layout,
+            mime_type=mime,
+            parser_class="edd.load.parsers.skyline.SkylineExcelParser",
+        )
+        wb = Workbook()
+        wb.active.title = "Simple Upload"
+        wb.active.append(["Replicate Name", "Protein Name", "Total Area"])
+        wb.active.append([assay.name, "sp|P12345", 42])
+        with NamedTemporaryFile() as temp:
+            wb.save(temp)
+            temp.seek(0)
+            file = SimpleUploadedFile("example", temp.read(), content_type=mime)
+            self.load.update({"file": file})
         return self.load.request
 
 

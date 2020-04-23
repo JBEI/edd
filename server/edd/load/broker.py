@@ -256,11 +256,6 @@ class LoadRequest:
         except Exception as e:
             logger.warning(f"Could not clear errors: {e!r}")
 
-    def fetch_study_for(self, user):
-        """Queries the Study model object, and checks permission for user."""
-        access = models.Study.access_filter(user, models.StudyPermission.WRITE)
-        return models.Study.objects.get(access, uuid=self.study_uuid)
-
     def open(self):
         try:
             if self.mime_type and self.mime_type[:5] == "text/":
@@ -316,10 +311,12 @@ class LoadRequest:
             with db.pipeline() as pipe:
                 pipe.multi()
                 if "errors" in summary:
-                    pipe.rpush(errors_key, *summary["errors"])
+                    errors = (json.dumps(item) for item in summary["errors"])
+                    pipe.rpush(errors_key, *errors)
                     pipe.expire(errors_key, timedelta(weeks=1))
                 if "warnings" in summary:
-                    pipe.rpush(warnings_key, *summary["warnings"])
+                    warnings = (json.dumps(item) for item in summary["warnings"])
+                    pipe.rpush(warnings_key, *warnings)
                     pipe.expire(warnings_key, timedelta(weeks=1))
                 pipe.execute()
         except Exception as e:
@@ -377,8 +374,12 @@ class LoadRequest:
             key = self._key(self.request)
             errors_key = f"{key}:errors"
             warnings_key = f"{key}:warnings"
-            summary["errors"] = db.lrange(errors_key, 0, -1)
-            summary["warnings"] = db.lrange(warnings_key, 0, -1)
+            summary["errors"] = [
+                json.loads(item) for item in db.lrange(errors_key, 0, -1)
+            ]
+            summary["warnings"] = [
+                json.loads(item) for item in db.lrange(warnings_key, 0, -1)
+            ]
         except Exception as e:
             logger.warning(f"Could not unstash LoadRequest errors: {e!r}")
         return summary
