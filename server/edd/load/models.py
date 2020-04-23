@@ -27,6 +27,9 @@ class Layout(models.Model):
         verbose_name=_("Description"),
     )
 
+    def __str__(self):
+        return self.name
+
 
 class ParserMapping(models.Model):
     """
@@ -63,6 +66,9 @@ class ParserMapping(models.Model):
                 ),
             )
 
+    def __str__(self):
+        return f"{self.mime_type}::{self.parser_class}"
+
 
 class Category(models.Model):
     """
@@ -74,7 +80,8 @@ class Category(models.Model):
     """
 
     class Meta:
-        verbose_name_plural = "Import categories"
+        ordering = ("sort_key",)
+        verbose_name_plural = "Categories"
 
     layouts = models.ManyToManyField(
         Layout,
@@ -105,6 +112,9 @@ class Category(models.Model):
         verbose_name=_("Display order"),
     )
 
+    def __str__(self):
+        return self.name
+
 
 class CategoryLayout(models.Model):
     """
@@ -115,8 +125,9 @@ class CategoryLayout(models.Model):
     """
 
     class Meta:
-        verbose_name_plural = "Import Category Layouts"
+        ordering = ("layout", "category", "sort_key")
         unique_together = ("layout", "category", "sort_key")
+        verbose_name_plural = "Category Layouts"
 
     layout = models.ForeignKey(
         Layout,

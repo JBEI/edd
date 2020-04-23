@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"verbose_name_plural": "Import categories"},
+            options={"ordering": ("sort_key",), "verbose_name_plural": "Categories"},
         ),
         migrations.CreateModel(
             name="Layout",
@@ -121,8 +121,9 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "verbose_name_plural": "Import Category Layouts",
+                "ordering": ("layout", "category", "sort_key"),
                 "unique_together": {("layout", "category", "sort_key")},
+                "verbose_name_plural": "Category Layouts",
             },
         ),
         migrations.AddField(

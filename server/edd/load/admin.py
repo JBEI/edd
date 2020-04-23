@@ -67,7 +67,7 @@ class CategoryAdmin(admin.ModelAdmin):
     inlines = (ProtocolCategoryInline, CategoryLayoutInline)
 
     def get_readonly_fields(self, request, obj=None):
-        if obj and obj.uuid is not None:
+        if obj and obj.pk is not None:
             return ["name"]
         return []
 

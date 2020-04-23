@@ -492,6 +492,7 @@ class UtilityParseViewTests(TestCase):
         cls.import_mode = "fakemode"
 
     def setUp(self):
+        super().setUp()
         self._filename = faker.file_name()
         # using a known-extension mime that won't overlap with anything real
         self._mime = "audio/basic"
@@ -504,6 +505,7 @@ class UtilityParseViewTests(TestCase):
         key = (self.import_mode, self._ext)
         if key in parser.parser_registry:
             del parser.parser_registry[key]
+        super().tearDown()
 
     def test_parse_anonymous(self):
         response = self.client.post(
@@ -595,3 +597,30 @@ class ImportHelpViewTests(TestCase):
         response = self.client.get(url)
         assert response.status_code == status.HTTP_200_OK
         self.assertTemplateUsed(response, "edd/load/wizard_help.html")
+
+
+class ImportAdminTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = main_factory.UserFactory(is_superuser=True, is_staff=True)
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def test_get_category_add_view(self):
+        url = reverse("admin:load_category_add")
+        response = self.client.get(url)
+        # check that the name field has an input
+        self.assertContains(response, """<textarea name="name" """)
+
+    def test_get_category_change_view(self):
+        category = factory.CategoryFactory()
+        url = reverse("admin:load_category_change", args=(category.pk,))
+        response = self.client.get(url)
+        # check that the name field has NO input
+        self.assertNotContains(response, """<textarea name="name" """)
+        self.assertContains(
+            response, f"""<div class="readonly">{category.name}</div>"""
+        )
