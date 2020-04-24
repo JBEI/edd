@@ -1902,8 +1902,8 @@ class Import extends React.Component<any, ImportState> {
         });
 
         // get server-side configuration passed via hidden form inputs
-        const helpUrl: string = $("#helpURL").val();
-        const uploadLimit: number = $("#uploadSizeLimit").val();
+        const helpUrl: string = $("#helpURL").val() as string;
+        const uploadLimit: string = $("#uploadSizeLimit").val() as string;
 
         // open a websocket for page-specific intermediate status notifications, as well as
         // final disposition so we're guaranteed delivery order over a single channel
@@ -1939,7 +1939,7 @@ class Import extends React.Component<any, ImportState> {
             categoryHelpContent,
             formatHelpContent,
             protocolHelpContent,
-            "fileSizeLimit": uploadLimit,
+            "fileSizeLimit": parseInt(uploadLimit, 10),
             importSocket,
             helpUrl,
         });

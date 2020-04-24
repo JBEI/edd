@@ -277,14 +277,15 @@ function showLineEditDialog(selection: JQuery): void {
         record = selection
             .toArray()
             .map(
-                (elem: Element): LineRecord => Utl.lookup(EDDData.Lines, $(elem).val()),
+                (elem: Element): LineRecord =>
+                    Utl.lookup(EDDData.Lines, $(elem).val() as string),
             )
             .reduce(StudyBase.mergeLines);
         contact = new StudyBase.EDDContact(record.contact);
         experimenter = new StudyBase.EDDContact(record.experimenter);
     } else if (selection.length === 1) {
         titleText = $("#edit_line_title").text();
-        record = Utl.lookup(EDDData.Lines, selection.val());
+        record = Utl.lookup(EDDData.Lines, selection.val() as string);
         contact = new StudyBase.EDDContact(record.contact);
         experimenter = new StudyBase.EDDContact(record.experimenter);
     }

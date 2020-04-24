@@ -641,9 +641,8 @@ export class DataGrid {
                 );
                 // find the lines associated with the replicate group
                 const lines = this.addReplicateRows(replicateIds);
-                $.each(lines, function(line) {
-                    // hide the lines associated with the replicate group
-                    $(line).hide();
+                $.each(lines, (i, line) => {
+                    line.hide();
                 });
             });
             rowGroupSpec.forEach((rowGroup) => {
@@ -655,11 +654,10 @@ export class DataGrid {
         }
         // TODO: This really needs to be moved
         if ($("#GroupStudyReplicatesCB").prop("checked") === false) {
-            const lines = $(frag).children();
-            $.each(lines, function(line) {
-                $(line).removeClass("replicateLineShow");
-                $(line).show();
-            });
+            $(frag)
+                .children()
+                .removeClass("replicateLineShow")
+                .show();
         }
         // Remember that we last sorted by this column
         this._tableBody.appendChild(frag);
@@ -988,13 +986,13 @@ export class DataGrid {
      * @param replicateIds
      * @private
      */
-    private _collapseRowGroup(groupIndex, replicateIds): void {
+    private _collapseRowGroup(groupIndex: number, replicateIds: string[]): void {
         const rowGroup = this._spec.tableRowGroupSpec[groupIndex];
         rowGroup.disclosed = false;
         const lines = this.addReplicateRows(replicateIds);
         $(rowGroup.replicateGroupTitleRow).removeClass("replicate");
-        $.each(lines, function(line) {
-            $(line).hide();
+        $.each(lines, (i, line) => {
+            line.hide();
         });
         this.scheduleTimer("arrangeTableDataRows", () => this.arrangeTableDataRows());
     }
@@ -1006,8 +1004,8 @@ export class DataGrid {
      * @param replicateIds
      * @private
      */
-    private _expandRowGroup(groupIndex, replicateIds): void {
-        const rowGroup: any = this._spec.tableRowGroupSpec[groupIndex];
+    private _expandRowGroup(groupIndex: number, replicateIds: string[]): void {
+        const rowGroup = this._spec.tableRowGroupSpec[groupIndex];
         rowGroup.disclosed = true;
         const lines = this.addReplicateRows(replicateIds);
         $(rowGroup.replicateGroupTitleRow).addClass("replicate");
@@ -1040,7 +1038,7 @@ export class DataGrid {
      * @param idArray
      * @returns {Array}
      */
-    private addReplicateRows(idArray): any {
+    private addReplicateRows(idArray: string[]): JQuery[] {
         return $.map(idArray, (id) =>
             $("[value=" + id + "]", this._table)
                 .parents("tr")

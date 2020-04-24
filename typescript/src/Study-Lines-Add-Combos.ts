@@ -247,11 +247,10 @@ export class MultiValueInput {
 
     hasValidInput(rowIndex: number): boolean {
         return (
-            this.rows[rowIndex]
+            (this.rows[rowIndex]
                 .find("input")
                 .first()
-                .val()
-                .trim() !== ""
+                .val() as string).trim() !== ""
         );
     }
 
@@ -704,9 +703,9 @@ export class CustomElementInput extends MultiValueInput {
         const abbrev = this.rows[rowIndex].find(".custom-val-input").val();
         return (
             match !== undefined &&
-            match.toString().trim() &&
+            match.toString().trim() !== "" &&
             abbrev !== undefined &&
-            abbrev.toString().trim()
+            abbrev.toString().trim() !== ""
         );
     }
 
@@ -739,7 +738,7 @@ export class CustomElementInput extends MultiValueInput {
                     // update internal state to reflect user input
                     this.element.nameEltLabel = this.rows[0]
                         .find(".custom-name-input")
-                        .val();
+                        .val() as string;
                     // update labeling for list item in the 'name element order' subsection
                     $("#name_elt" + this.element.nameEltGuiId).text(
                         this.element.nameEltLabel,
@@ -837,9 +836,9 @@ export class AbbreviationInput extends LinePropertyInput {
         const abbrev = this.rows[rowIndex].find(".abbrev-val-input").val();
         return (
             match !== undefined &&
-            match.toString().trim() &&
+            match.toString().trim() !== "" &&
             abbrev !== undefined &&
-            abbrev.toString().trim()
+            abbrev.toString().trim() !== ""
         );
     }
 
@@ -991,11 +990,11 @@ export class LinePropertyAutoInput extends LinePropertyInput {
         this.buildRemoveBtn(inputCell);
     }
 
-    getInput(rowIndex: number): any {
-        const stringVal = this.rows[rowIndex]
+    getInput(rowIndex: number): string | number {
+        const stringVal: string = this.rows[rowIndex]
             .find("input[type=hidden]")
             .first()
-            .val();
+            .val() as string;
         if (this.lineProperty.metaUUID === EddRest.LINE_STRAINS_META_UUID) {
             // strain autocomplete uses UUID
             return stringVal;
@@ -1565,11 +1564,11 @@ export class CreationManager {
                     if (element.nameEltGuiId === nameElement.nameEltGuiId) {
                         creationManager.lineNameElements.push(nameElement);
                         newElts.splice(newEltIndex, 1);
-                        return true; // continue outer loop
+                        return; // continue outer loop
                     }
                 }
                 child.remove();
-                return true; // continue looping
+                return; // continue looping
             });
         const unusedList = $("#unused_line_name_elts");
         const unusedChildren = unusedList.children();
@@ -1580,11 +1579,11 @@ export class CreationManager {
                     const eltData = $(listElement).data();
                     if (availableElt.nameEltGuiId === eltData.nameEltGuiId) {
                         newElts.splice(newIndex, 1);
-                        return true; // continue outer loop
+                        return; // continue outer loop
                     }
                 }
                 listElement.remove();
-                return true; // continue looping
+                return; // continue looping
             });
         }
         // add newly-inserted elements into the 'unused' section.
@@ -2184,7 +2183,7 @@ export class CreationManager {
                                         // which will control whether the folder
                                         // eventually gets added as an input (once validated)
                                         creationManager.showIceFolderDialog();
-                                        return true; // keep iterating
+                                        return; // keep iterating
                                     }
                                     creationManager.addEmptyInput(descriptor);
                                 });
@@ -2308,11 +2307,11 @@ export class CreationManager {
         // gather all the relevant inputs for displaying user entry in the main form
         const filterTypes = toggleIds
             .filter((selector) => $(selector).is(":checked"))
-            .map((selector) => $(selector).val());
-        const folder = {
+            .map((selector) => $(selector).val() as string);
+        const folder: IceFolder = {
             "id": folder_json.id,
             "name": folder_json.folderName,
-            "url": $("#ice-folder-url-input").val(),
+            "url": $("#ice-folder-url-input").val() as string,
             "entryTypes": filterTypes,
         };
         if (iceInput != null) {

@@ -146,7 +146,7 @@ export class ProgressiveFilteringWidget {
         $("#mainFilterSection").append(this.filterTableJQ);
 
         // First do some basic sanity filtering on the list
-        $.each(EDDData.Assays, (assayId: string, assay: AssayRecord): void => {
+        $.each(EDDData.Assays, (assayId: any, assay: AssayRecord): void => {
             const line = EDDData.Lines[assay.lid];
             if (!line || !line.active) {
                 return;
@@ -2063,13 +2063,13 @@ export function showEditAssayDialog(selection: JQuery): void {
             .toArray()
             .map(
                 (elem: Element): AssayRecord =>
-                    Utl.lookup(EDDData.Assays, $(elem).val()),
+                    Utl.lookup(EDDData.Assays, $(elem).val() as string),
             )
             .reduce(StudyBase.mergeAssays);
         experimenter = new StudyBase.EDDContact(record.experimenter);
     } else if (selection.length === 1) {
         titleText = $("#edit_assay_title").text();
-        record = Utl.lookup(EDDData.Assays, selection.val());
+        record = Utl.lookup(EDDData.Assays, selection.val() as string);
         experimenter = new StudyBase.EDDContact(record.experimenter);
     }
     form.dialog({ "title": titleText });
@@ -2669,7 +2669,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
             });
             // map the counts to array of [[x], [count]] tuples
             const consolidated: number[][][] = $.map(timeCount, (value, key) => [
-                [[parseFloat(key)], [value]],
+                // key should be a number, but sometimes is a string
+                // if parseFloat gets a number, it just returns the number
+                // so force cast to string, so the type info on parseFloat accepts
+                [[parseFloat((key as unknown) as string)], [value]],
             ]);
             // generate SVG string
             let svg = "";

@@ -140,7 +140,7 @@ export class EditableStudyDescription extends StudyBase.EditableStudyElement {
     }
 
     getValue(): string {
-        return $(this.inputElement).val();
+        return $(this.inputElement).val() as string;
     }
 
     blankLabel(): string {
@@ -164,7 +164,7 @@ export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
     }
 
     getValue(): string {
-        return $(this.inputElement).val();
+        return $(this.inputElement).val() as string;
     }
 }
 
