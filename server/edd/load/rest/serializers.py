@@ -44,5 +44,4 @@ class CategorySerializer(serializers.ModelSerializer):
             "name",
             "protocols",
             "layouts",
-            "sort_key",
         )

@@ -3,6 +3,6 @@ from django.conf.urls import url
 
 from . import consumers
 
-urls = [url(r"", consumers.ImportConsumer)]
+urls = [url(r"", consumers.LoadNoticeConsumer)]
 
 application = ProtocolTypeRouter({"websocket": URLRouter(urls)})

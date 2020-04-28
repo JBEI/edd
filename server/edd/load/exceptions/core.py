@@ -160,9 +160,9 @@ class MessagingMixin:
         # special handling for details to account for reporting limit
         if self.details:
             limit = getattr(settings, "EDD_IMPORT_ERR_REPORTING_LIMIT", 0)
-            if limit:
-                count = len(self.details) - limit
-                rest = _("...(+{count} more)").format(count=count)
+            overage = len(self.details) - limit
+            if limit and overage > 0:
+                rest = _("...(+{count} more)").format(count=overage)
                 showing = self.details[:limit] + [rest]
             else:
                 showing = self.details

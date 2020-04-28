@@ -4,12 +4,13 @@ from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.utils.translation import ugettext_lazy as _
 from requests import codes
-from rest_framework import viewsets
+from rest_framework import parsers, viewsets
 from rest_framework.exceptions import ParseError as DRFParseError
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.reverse import reverse
 
 from edd.utilities import JSONEncoder
-from main.models import Study, StudyPermission
+from main.models import Protocol, Study, StudyPermission
 
 from .. import tasks
 from ..broker import LoadRequest
@@ -88,15 +89,19 @@ class CategoriesViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         layouts_sorted = Layout.objects.order_by("categorylayout__sort_key")
         parsers_sorted = ParserMapping.objects.order_by("mime_type")
+        protocol_sorted = Protocol.objects.filter(active=True).order_by("name")
         prefetch_layout = Prefetch("layouts", queryset=layouts_sorted)
         prefetch_mapping = Prefetch("layouts__parsers", queryset=parsers_sorted)
+        prefetch_protocol = Prefetch("protocols", queryset=protocol_sorted)
         # build the main queryset
         return Category.objects.prefetch_related(
-            prefetch_layout, prefetch_mapping, "protocols"
+            prefetch_layout, prefetch_mapping, prefetch_protocol
         ).order_by("sort_key")
 
 
 class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
+    parsers = [parsers.JSONParser, parsers.MultiPartParser]
+
     def create(self, request, study_pk=None):
         forbidden = self._check_study_access(request, study_pk)
         if forbidden is not None:
@@ -106,13 +111,9 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             load = LoadRequest.from_rest(self.study, request.data)
             load.store()
             if load.path:
-                layout = request.data["layout"]
-                category = request.data["category"]
-                target = request.data.get("status", None)
-                tasks.wizard_parse_and_resolve.delay(
-                    load.request, request.user.pk, layout, category, target
-                )
-            return JsonResponse({"uuid": load.request})
+                self._schedule_task(load, request)
+            url = reverse("rest:study_load-detail", args=[study_pk, load.request])
+            return JsonResponse({"uploadUrl": url, "uuid": load.request})
         except EDDImportError as e:
             return self.send_exception_response(e)
         except Exception as e:
@@ -132,12 +133,7 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
                 return bad
             load.update(request.data)
             if load.path:
-                layout = request.data["layout"]
-                category = request.data["category"]
-                target = request.data.get("status", None)
-                tasks.wizard_parse_and_resolve.delay(
-                    load.request, request.user.pk, layout, category, target
-                )
+                self._schedule_task(load, request)
             return JsonResponse({}, status=codes.accepted)
         except InvalidLoadRequestError:
             return self.send_error_response(
@@ -146,8 +142,10 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
                 status=codes.not_found,
             )
         except EDDImportError as e:
+            logger.exception("error in upload", e)
             return self.send_exception_response(e)
         except Exception as e:
+            logger.exception("unexpected error in upload", e)
             return self.send_error_response(
                 _("Error"), _("An unexpected error occurred"), detail=str(e)
             )
@@ -190,6 +188,14 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             raise DRFParseError(
                 f"Missing required parameters: {missing}", code=codes.bad_request
             )
+
+    def _schedule_task(self, load, request):
+        layout = request.data["layout"]
+        category = request.data["category"]
+        target = request.data.get("status", None)
+        tasks.wizard_parse_and_resolve.delay(
+            load.request, request.user.pk, layout, category, target
+        )
 
     def _verify_update_status(self, load):
         if load.study_uuid != str(self.study.uuid):

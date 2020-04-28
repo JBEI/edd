@@ -31,6 +31,6 @@ async def test_notification_incoming(settings):
         response = await communicator.receive_json_from()
 
         # test that content is in there
-        assert "message" in response
+        assert "messages" in response
     finally:
         await communicator.disconnect()

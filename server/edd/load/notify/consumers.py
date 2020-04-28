@@ -14,18 +14,14 @@ class SubscribeError(Exception):
     pass
 
 
-class ImportConsumer(AsyncJsonWebsocketConsumer):
+async def decode_json(text):
+    return utilities.JSONDecoder.loads(text)
+
+
+class LoadNoticeConsumer(AsyncJsonWebsocketConsumer):
     """Forwards notifications directly to the client."""
 
     # Websocket consumer methods
-
-    @classmethod
-    async def decode_json(cls, text):
-        return utilities.JSONDecoder.loads(text)
-
-    @classmethod
-    async def encode_json(cls, content):
-        return utilities.JSONEncoder.dumps(content)
 
     async def connect(self):
         if "user" not in self.scope or self.scope["user"].is_anonymous:
@@ -53,8 +49,8 @@ class ImportConsumer(AsyncJsonWebsocketConsumer):
     async def notification(self, event):
         """Handler for the 'notification' type event for this consumer's Group."""
         await self.ensure_broker()
-        message = await self.decode_json(event["notice"])
-        await self.send_json({"message": message})
+        message = await decode_json(event["notice"])
+        await self.send_json({"messages": [message], "unread": 1})
 
     # helper methods
 

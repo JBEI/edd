@@ -10,60 +10,213 @@
 
 {% block body_title %}
    {% url 'main:detail' slug=study.slug as study_url %}
-   Data Import <span class="prototype">Prototype</span> For <a href="{{ study_url }}">
-    {{study.name }}</a>
+   Load Data to <a href="{{ study_url }}">{{ study.name }}</a>
 {% endblock body_title %}
 
 {% block content %}
-<a id="datalink" href="{% url 'main:edddata' slug=study.slug %}" class="off"></a>
-<form>
-    <input id="importUUID" type="hidden" name="uuid" value="{{ uuid }}"/>
-    <input id="helpURL" type="hidden" name="helpURL"
-           value="{% url 'main:load_flat:wizard_help' %}"/>
-    <input id="uploadSizeLimit" type="hidden" value="{{ upload_limit }}"/>
-    {% csrf_token %}
+<form id="create_load" action="{% url 'rest:study_load-list' study_pk=study.pk %}">
+  {% csrf_token %}
 </form>
 
-<div id="categoryHelpContent" className="hide toolTipContent">
-    <h3>{% trans "Category" %}</h3>
-    {% blocktrans %}
-    <p>
-        The choice of category influences which protocols and file formats are available, and
-        also dictates how chemical identifiers from your file are resolved to known compounds.
+<div id="wizard" class="off">
+  <span class="_category">{% trans "Category" %}</span>
+  <span class="_protocol">{% trans "Protocol" %}</span>
+  <span class="_layout">{% trans "Layout" %}</span>
+  <span class="_file">{% trans "File" %}</span>
+  <div id="_step1">
+    <span class="_title">{% trans "Identify" %}</span>
+    <!-- options in first three fieldsets are dynamic and inter-related;
+        load from following URL -->
+    <a class="_data off" href="{% url 'rest:load_categories-list' %}"></a>
+    <fieldset class="_category">
+      <legend>{% trans "What category of data do you have?" %}</legend>
+      <aside>
+        <p>
+          {% blocktrans %}
+          The choice of category influences which protocols and layouts are
+          available, and also dictates how measurements from your file are
+          resolved to known types.
+          {% endblocktrans %}
+          <a
+            href="{% url 'main:load_flat:wizard_help' %}#category"
+            target="_blank"
+          >{% trans "Click here for more information on categories." %}</a>
+        </p>
+      </aside>
+    </fieldset>
+    <fieldset class="_protocol">
+      <legend>{% trans "What lab protocol did you use?" %}</legend>
+      <aside>
+        <p>
+          {% blocktrans %}
+          Each protocol should uniquely describe both the sample prep you
+          performed, as well as the instrumentation and unique configuration
+          used. Ideally, another researcher should be able to replicate the
+          experiment using your protocol and the information captured in EDD.
+          Minor variations in protocol should be captured in EDD, for example
+          in your study description or in line metadata.
+          {% endblocktrans %}
+          <a
+            href="{% url 'main:load_flat:wizard_help' %}#protocol"
+            target="_blank"
+          >{% trans "Click here for more information on protocols." %}</a>
+        </p>
+      </aside>
+    </fieldset>
+    <fieldset class="_layout">
+      <legend>{% trans "What layout is your data in?" %}</legend>
+      <aside>
+        <p>
+          {% blocktrans %}
+          EDD supports a limited number of pre-defined layouts, and also
+          supports user-defined tabular inputs. The tool on this page supports
+          pre-defined layouts only. Use the legacy import tool to upload
+          custom-formatted data. The capability to interpret custom layouts
+          will also eventually be ported to this loading tool. You can also
+          contact EDD administrators to request support for a new layout.
+          {% endblocktrans %}
+          <a
+            href="{% url 'main:load_flat:wizard_help' %}#layout"
+            target="_blank"
+          >{% trans "Click here for more information on layouts." %}</a>
+          <a
+            href="{% url 'main:load:table' slug=study.slug %}"
+          >{% trans "Click here for the legacy import tool." %}</a>
+        </p>
+      </aside>
+    </fieldset>
+    <fieldset class="_options">
+      <legend>{% trans "Options" %}</legend>
+      <div>
+        <input
+          id="email_when_complete"
+          name="email_when_complete"
+          type="checkbox"
+          value="1"
+        />
+        <label
+          for="email_when_complete"
+        >{% trans "Email me when finished" %}</label>
+      </div>
+      <details>
+        <summary>{% trans "Advanced" %}</summary>
+        <div>
+          <input
+            id="allow_overwrite"
+            name="allow_overwrite"
+            type="checkbox"
+            value="1"
+          />
+          <label
+            for="allow_overwrite"
+          >{% trans "Allow value overwrite (assay ID's only)" %}</label>
+        </div>
+        <div>
+          <input
+            id="allow_duplication"
+            name="allow_duplication"
+            type="checkbox"
+            value="1"
+          />
+          <label
+            for="allow_duplication"
+          >{% trans "Allow duplicate values (line ID's only)" %}</label>
+        </div>
+      </details>
+    </fieldset>
+  </div>
+  <div id="_step2">
+    <span class="_title">{% trans "Upload" %}</span>
+    <span class="_directions">{% trans "Click or drag-and-drop to upload a file." %}</span>
+    <input id="uploadSizeLimit" type="hidden" value="{{ upload_limit }}"/>
+    <div class="_message" data-class="alert-info" id="_step2_wait">
+      <span class="_title">{% trans "Checking file" %}</span>
+      <p class="_message">
+        {% blocktrans %}
+        Please hang tight...
+        {% endblocktrans %}
+        <span className="wait wizard-wait" />
+      </p>
+    </div>
+    <div class="_message" data-class="alert-success" id="_step2_accepted">
+      <span class="_title">{% trans "File accepted" %}</span>
+      <p class="_message">
+        {% blocktrans %}
+        Your file has been accepted for loading. Please wait while the server
+        prepares to parse and save the data.
+        {% endblocktrans %}
+      </p>
+    </div>
+    <div class="_message" data-class="alert-error" id="_step2_timeout">
+      <span class="_title">{% trans "Request timed out" %}</span>
+      <p class="_message">
+        {% blocktrans %}
+        Please retry your request or contact system administrators.
+        {% endblocktrans %}
+      </p>
+    </div>
+    <div class="_message" data-class="alert-error" id="_step2_toobig">
+      <span class="_title">{% trans "File too large" %}</span>
+      <p class="_message">
+        {% blocktrans %}
+        The maximum size for uploaded files is {{ upload_limit >> 20 }} MB. Please
+        break your file into parts or contact system administrators.
+        {% endblocktrans %}
+      </p>
+    </div>
+    <div class="_message" data-class="alert-error" id="_step2_error">
+      <span class="_title">{% trans "Upload error" %}</span>
+      <p class="_message">
+        {% blocktrans %}
+        There was an unexpected error submitting your import. Please try again.
+        If your upload still fails, please contact system administrators to
+        confirm that they're aware of this problem.
+        {% endblocktrans %}
+      </p>
+    </div>
+  </div>
+  <div id="_step3">
+    <span class="_title">{% trans "Interpret" %}</span>
+    <p class="_directions">
+      {% blocktrans %}
+      This step of the data loading process is for setting any additional
+      details needed to interpret the uploaded data. If no additional details
+      are required, the data will begin saving to EDD automatically.
+      {% endblocktrans %}
     </p>
-    <p>Click on this icon to get more information in a separate tab</p>
-    {% endblocktrans %}
+  </div>
+  <div id="_step4">
+    <span class="_title">{% trans "Save" %}</span>
+    <div class="_message" data-class="alert-success" id="_step4_success">
+      <span class="_title">{% trans "Save complete" %}</span>
+    </div>
+    <div class="_message" data-class="alert-info" id="_step4_wait">
+      <span class="_title">{% trans "Processing" %}</span>
+      <p class="_message">
+        {% blocktrans %}
+        You can wait here to monitor progress, or continue using EDD. You'll
+        get a notification at the top right when your data is saved.
+        {% endblocktrans %}
+      </p>
+    </div>
+    <div class="_message" data-class="alert-error" id="_step4_error">
+      <span class="_title">{% trans "Save error" %}</span>
+      <p class="_message">
+        {% blocktrans %}
+        There was an unexpected error saving your data. Please try again. If
+        your upload still fails, please contact system administrators to
+        confirm that they're aware of this problem.
+        {% endblocktrans %}
+      </p>
+    </div>
+  </div>
+  <div id="_actions">
+    <label for="back">{% trans "Back" %}</label>
+    <label for="next">{% trans "Next" %}</label>
+    <label for="save">{% trans "Save" %}</label>
+  </div>
 </div>
-<div id="protocolHelpContent" className="hide toolTipContent">
-    <h3>{% trans "Protocol" %}</h3>
-    {% blocktrans %}
-    <p>
-        Each protocol should uniquely describe both the sample prep you performed, as well as the
-        instrumentation and unique configuration used. Ideally, another researcher should be able
-        to replicate the experiment using your protocol and the information captured in EDD.
-    </p>
-    <p>
-        Minor variations in protocol should be captured in EDD, for example in your study
-        description or in line metadata.
-    </p>
-    <p>Click on this icon to get more information in a separate tab</p>
-    {% endblocktrans %}
-</div>
-<div id="formatHelpContent" className="hide toolTipContent">
-    <h3>{% trans "File Format" %}</h3>
-    {% blocktrans %}
-    <p>
-        EDD supports a limited number of well-defined file formats, and it also supports
-        user-defined tabular input. In this version, use the
-        <a href="../import/" target="_blank">legacy import tool</a> to upload custom-formatted
-        data. This capability will also eventually be ported to the newer import tool.
-    </p>
-    <p>
-        You can also contact EDD administrators to request support for parsing a new file format.
-    </p>
-    <p>Click on this icon to get more information in a separate tab</p>
-    {% endblocktrans %}
-</div>
-<div id="importWizard"></div>
-<script type="text/javascript" src="{% static 'dist/Import2.js' %}"></script>
+
+<script type="text/javascript" src="{% static 'dist/LoadWizard.js' %}"></script>
+<div class="clear"></div>
 {% endblock content %}

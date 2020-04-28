@@ -235,7 +235,3 @@ def wizard_parse_and_resolve(
             dispatch.wizard_problem()
             send_wizard_failed_email.delay(request_uuid, user_id)
             raise
-
-
-# edd/load/tasks.py                   148     25     16      1    80%
-# 187-210, 259->262, 262-263

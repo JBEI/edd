@@ -149,18 +149,10 @@ class ImportView(StudyObjectMixin, generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        # send server-side settings needed by the front end: the upload limit (1 MB by default
-        # for nginx) so we can provide a good user-facing error message re: files that are too
-        # large
+        # enforce permissions check...
+        self.check_write_permission(self.request)
         context["upload_limit"] = getattr(settings, "EDD_IMPORT_UPLOAD_LIMIT", 1048576)
         return context
-
-    def get(self, request, *args, **kwargs):
-        # enforce permissions check...
-        self.check_write_permission(request)
-        # render the template
-        return super().get(request, *args, **kwargs)
 
 
 class ImportHelpView(generic.TemplateView):
@@ -188,7 +180,3 @@ class ImportHelpView(generic.TemplateView):
         limit_bytes = getattr(settings, "EDD_IMPORT_UPLOAD_LIMIT", 10485760)
         context["upload_limit_mb"] = round(limit_bytes / 1048576, 2)
         return context
-
-
-# edd/load/views.py                   114     51     14      0    51%
-# 29-51, 56-60, 76-92, 95-122

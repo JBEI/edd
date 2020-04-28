@@ -27,8 +27,8 @@ settings/*
 
 # ignore typescript generated files in mounted code folders
 **/main/static/dist
-typescript/modules/*.d.ts
-typescript/src/*.d.ts
+typescript/modules/**/*.d.ts
+typescript/src/**/*.d.ts
 
 # ignore mkdocs generated files
 site

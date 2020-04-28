@@ -28,6 +28,16 @@ export function chainArrays<T>(a: T[][]): T[] {
     return [].concat(...a);
 }
 
+export function groupBy<T>(list: T[], key: string): { [key: string]: T[] } {
+    return list.reduce((groups, item) => {
+        const value = item[key];
+        const group: T[] = groups[value] || [];
+        groups[value] = group;
+        group.push(item);
+        return groups;
+    }, {});
+}
+
 export class EDD {
     static resolveMeasurementRecordToName(
         measurementRecord: AssayMeasurementRecord,
