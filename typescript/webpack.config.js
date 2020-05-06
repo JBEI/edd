@@ -29,15 +29,6 @@ module.exports = {
         "Export": path.resolve(__dirname, "./src/Export.ts"),
         "GCMS_Workbench": path.resolve(__dirname, "./src/GCMS_Workbench.ts"),
         "Import": path.resolve(__dirname, "./src/Import.ts"),
-        "Import2": [
-            "react",
-            "react-dom",
-            "react-dropzone",
-            "react-stepzilla",
-            "react-stepzilla.css",
-            path.resolve(__dirname, "./src/Import2.tsx"),
-        ],
-        "Import2Help": path.resolve(__dirname, "./src/Import2-Help.tsx"),
         "index": path.resolve(__dirname, "./src/index.ts"),
         "LoadWizard": [
             "react",
