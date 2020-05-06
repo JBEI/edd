@@ -17,6 +17,12 @@
 <form id="create_load" action="{% url 'rest:study_load-list' study_pk=study.pk %}">
   {% csrf_token %}
 </form>
+<a href="{% url 'main:load:table' slug=study.slug %}">
+  <button type="button" style="float:right;" class="actionButton primary">
+    <span class="glyphicon glyphicon-cloud-upload"></span>
+    {% trans 'Legacy Import' %}
+  </button>
+</a>
 
 <div id="wizard" class="off">
   <span class="_category">{% trans "Category" %}</span>

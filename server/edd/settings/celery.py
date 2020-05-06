@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Defines configuration for EDD's Celery worker(s), and for Celery-specific custom EDD configuration
 options. Note that some of EDD's Celery tasks override defaults configured here to accomodate

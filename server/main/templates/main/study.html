@@ -22,7 +22,7 @@
     </li>
     {% if lines %}
     <li class="{% if showinglines %}active{% endif %}">
-      <a href="{% url 'main:lines' slug=study.slug %}">{% trans 'Experiment Description' %}</a>
+      <a href="{% url 'main:lines' slug=study.slug %}">{% trans 'Description' %}</a>
     </li>
     {% endif %}
     {% if assays %}
@@ -32,9 +32,8 @@
     {% endif %}
   </ui>
   {% if writable and not showingimport %}
-    <a style="color:white;"
-        class="{% if not lines %}off{% endif %}"
-        href="{% url 'main:load:table' slug=study.slug %}">
+    <a class="{% if not lines %}off{% endif %}"
+        href="{% url 'main:load:wizard' slug=study.slug %}">
       <button type="button"
           style="float:right;"
           class="actionButton primary larger">
@@ -42,20 +41,6 @@
         {% trans 'Import Data' %}
       </button>
     </a>
-    {% if showImportPrototype %}
-      <a style="color:white;"
-          class="{% if not lines %}off{% endif %}"
-          href="{% url 'edd_file_importer:import2' slug=study.slug %}">
-        <button type="button"
-                id="importPrototypeBtn"
-            style="float:right;"
-            class="actionButton larger">
-          <span class="glyphicon glyphicon-cloud-upload"></span>
-          {% trans 'Import Prototype' %}
-          <span class="new">{% trans '(new)' %}</span>
-        </button>
-      </a>
-    {% endif %}
   {% endif %}
 </div>
 

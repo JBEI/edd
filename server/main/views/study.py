@@ -1,11 +1,8 @@
-"""
-Views dealing with displaying and manipulating Study records.
-"""
+"""Views dealing with displaying and manipulating Study records."""
 
 import collections
 import logging
 
-from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -165,9 +162,6 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             lines=instance.line_set.filter(active=True).exists(),
             rest=rest_reverse(
                 "rest:studies-detail", kwargs={"pk": instance.pk}, request=self.request
-            ),
-            showImportPrototype=bool(
-                getattr(settings, "EDD_USE_PROTOTYPE_IMPORT", False)
             ),
             writable=instance.user_can_write(self.request.user),
         )

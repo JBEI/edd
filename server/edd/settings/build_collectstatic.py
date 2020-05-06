@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from .base import EDD_VERSION_HASH, INSTALLED_APPS, env  # noqa: F401
 
 # Minimal settings module to use Django's collectstatic command during Dockerfile build

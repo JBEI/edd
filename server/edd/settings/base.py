@@ -102,7 +102,6 @@ INSTALLED_APPS = (
     "edd.describe.apps.DescribeConfig",
     "edd.load.apps.LoadConfig",
     "edd.export.apps.ExportConfig",
-    "edd_file_importer",
     "tools.apps.UtilsConfig",
     "edd.profile.apps.ProfileConfig",
     "edd.branding.apps.BrandingConfig",

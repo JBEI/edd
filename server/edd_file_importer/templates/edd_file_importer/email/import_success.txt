@@ -1,7 +1,0 @@
-{% load i18n %}
-{% trans 'Import Success!' %}
-{% blocktrans %}
-Your data import is complete for file {{file}}.
-The import added {{added}} and updated {{updated}} values in study "{{study}}" in {{duration}}.
-{% endblocktrans %}
-{% include "edd_file_importer/email/message_sequence.txt" with title='Warnings' messages=warnings %}
