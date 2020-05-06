@@ -1,5 +1,5 @@
 {% load i18n %}
-{% trans "Loading data failed!" %}
+{% trans "Failed to load data!" %}
 {% blocktrans %}
 Your upload to {{ study }} failed to complete. View the study at
 <{{ study_uri }}>. Try again after fixing the reported errors below.
@@ -9,5 +9,5 @@ Your upload to {{ study }} failed to complete. View the study at
 {% include "edd/load/mail/_wizard_warnings.txt" %}
 
 {% blocktrans %}
-EDD administrators have received notice of these issues for further investigation.
+EDD Administrators have been notified of this problem.
 {% endblocktrans %}

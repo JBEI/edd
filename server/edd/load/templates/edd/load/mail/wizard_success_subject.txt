@@ -1,4 +1,4 @@
 {% load i18n %}
 {% blocktrans %}
-{{ instance_tag }} Loading data completed
+{{ instance_tag }} Data Saved
 {% endblocktrans %}
