@@ -352,14 +352,12 @@ class DispatchHelper:
         request_uuid = self.load.request
         status = str(self.load.status)
         # this is a fallback if somehow called *without* any warnings or errors
-        message = _("Could not get upload ready to save into {study}.")
+        message = _("Could not load data into {study}.")
         if reporting.warning_count(request_uuid):
-            message = _(
-                "Acknowledge warnings before continuing data loading into {study}."
-            )
+            message = _("Acknowledge warnings before loading data into {study}.")
         # when there are errors, that takes precedence
         if reporting.error_count(request_uuid):
-            message = _("Cannot load data into {study} without resolving errors.")
+            message = _("Resolve errors before loading data into {study}.")
         summary = reporting.build_messages_summary(request_uuid)
         ws.notify(
             message.format(study=study.name),
@@ -386,7 +384,7 @@ class DispatchHelper:
 
     def wizard_ready(self):
         ws = WsBroker(self.user)
-        message = _("Your upload is ready to begin saving data to {study}.")
+        message = _("Your data is ready save to {study}.")
         study = self.load.study
         request_uuid = self.load.request
         status = str(self.load.status)
