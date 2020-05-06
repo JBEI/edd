@@ -14,6 +14,8 @@ export interface Strings extends StepBase.Strings {
 }
 
 interface Props extends Strings, StepBase.Props {
+    // expect status from parent
+    status: string;
     // expect to get props of parent state with our and previous SubState
     step1: Step1.SubState;
     step2: Step2.SubState;
