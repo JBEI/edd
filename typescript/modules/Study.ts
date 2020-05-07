@@ -164,8 +164,8 @@ function propertyEqual(a: object, b: object, name: string): boolean {
  * Tests if arrays both contain the same elements (order-agnostic).
  */
 function arrayEquivalent(a: any[], b: any[]): boolean {
-    const combined: any[] = [].concat(a || [], b || []);
-    return combined.every((v) => a.indexOf(v) !== -1 && b.indexOf(v) !== -1);
+    const combined: Set<any> = new Set<any>([...(a || []), ...(b || [])]);
+    return combined.size === (a || []).length && combined.size === (b || []).length;
 }
 
 /**
