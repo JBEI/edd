@@ -69,23 +69,19 @@ class ExportSelectionForm(forms.Form):
         data = super().clean()
         # names of form fields
         id_fields = ["studyId", "lineId", "assayId", "measurementId"]
-        # values coming from parent clean()
-        incoming_values = [data.get(f, []) for f in id_fields]
-        # using the incoming values if they validate below
-        values = incoming_values
-        if not any(incoming_values):
+        if any(field in data for field in id_fields):
+            values = [data.get(field, []) for field in id_fields]
+        else:
             # default to empty fallback dict when None
             fallback = self._fallback or {}
-            fallback_values = [fallback.get(f, []) for f in id_fields]
-            if not any(fallback_values):
+            if not any(field in fallback for field in id_fields):
                 raise forms.ValidationError("Selection cannot be empty.")
+            values = [fallback.get(field, []) for field in id_fields]
             # have to mess with internal _mutable to persist our fallback
             self.data._mutable = True
-            for f, v in zip(id_fields, fallback_values):
+            for f, v in zip(id_fields, values):
                 self.data.setlist(f, v)
             self.data._mutable = False
-            # incoming values didn't validate, use fallback values
-            values = fallback_values
         # table.ExportSelection uses slightly different kwarg names
         selection_fields = ["studyId", "lineId", "assayId", "measureId"]
         self._selection = table.ExportSelection(

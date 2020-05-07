@@ -991,6 +991,7 @@ class Assay(EDDObject):
     def to_json(self, depth=0):
         json_dict = super().to_json(depth)
         json_dict.update(
+            study=self.get_attr_depth("study", depth),
             lid=self.get_attr_depth("line", depth),
             pid=self.get_attr_depth("protocol", depth),
             experimenter=self.get_attr_depth("experimenter", depth),
