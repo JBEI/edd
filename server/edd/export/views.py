@@ -50,10 +50,8 @@ class EDDExportView(generic.TemplateView):
         )
         try:
             self._selection = select_form.get_selection()
-        # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Failed to validate forms for export: {e}")
-        # END uncovered
         primary = None
         if self.selection.studies[:1]:
             primary = self.selection.studies[0]
@@ -69,15 +67,12 @@ class EDDExportView(generic.TemplateView):
         context = self.get_context_data(**kwargs)
         context.update(self.init_forms(request, request.POST))
         if "download" == request.POST.get("action", None):
-            # TODO: uncovered code
             self.submit_export(request, context)
-            # END uncovered
-        return self.render_to_response(context)
+        return HttpResponse(status=204)
 
     def render_to_response(self, context, **kwargs):
         download = context.get("download", False)
         if download:
-            # TODO: uncovered code
             broker = ExportBroker(context["user_id"])
             name = broker.load_export_name(download)
             response = HttpResponse(
@@ -85,15 +80,12 @@ class EDDExportView(generic.TemplateView):
             )
             response["Content-Disposition"] = f'attachment; filename="{name}.csv"'
             return response
-            # END uncovered
         return super().render_to_response(context, **kwargs)
 
     def submit_export(self, request, context):
-        # TODO: uncovered code
         raise NotImplementedError(
             "Override submit_export in EDDExportView-derived classes"
         )
-        # END uncovered
 
 
 class ExportView(EDDExportView):
@@ -110,14 +102,11 @@ class ExportView(EDDExportView):
             context.update(option_form=option_form)
             if option_form.is_valid():
                 self._export_ok = True
-        # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Failed to validate forms for export: {e}")
-        # END uncovered
         return context
 
     def submit_export(self, request, context):
-        # TODO: uncovered code
         if self._export_ok:
             broker = ExportBroker(request.user.id)
             notifications = RedisBroker(request.user)
@@ -132,7 +121,6 @@ class ExportView(EDDExportView):
                 ),
                 uuid=result.id,
             )
-        # END uncovered
 
 
 class WorklistView(EDDExportView):
@@ -158,14 +146,11 @@ class WorklistView(EDDExportView):
             )
             if worklist_form.is_valid():
                 self._export_ok = True
-        # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Failed to validate forms for export: {e}")
-        # END uncovered
         return context
 
     def submit_export(self, request, context):
-        # TODO: uncovered code
         if self._export_ok:
             broker = ExportBroker(request.user.id)
             notifications = RedisBroker(request.user)
@@ -179,7 +164,6 @@ class WorklistView(EDDExportView):
                 ),
                 uuid=result.id,
             )
-        # END uncovered
 
 
 class SbmlView(EDDExportView):
@@ -198,7 +182,6 @@ class SbmlView(EDDExportView):
     def render_to_response(self, context, **kwargs):
         download = context.get("download", False)
         if download and self.sbml_export:
-            # TODO: uncovered code
             match_form = context.get("match_form", None)
             time_form = context.get("time_form", None)
             if (
@@ -216,5 +199,4 @@ class SbmlView(EDDExportView):
                 filename = time_form.cleaned_data["filename"]
                 response["Content-Disposition"] = f'attachment; filename="{filename}"'
                 return response
-            # END uncovered
         return super().render_to_response(context, **kwargs)

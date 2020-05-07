@@ -106,7 +106,7 @@ class ColumnChoice:
                 models.Line: assay.line,
                 models.Protocol: assay.protocol,
                 models.Study: assay.study,
-                None: assay.line,
+                None: assay,
             }.get(self.model, default)
         except AttributeError:
             return default
