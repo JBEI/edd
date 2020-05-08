@@ -1,10 +1,10 @@
-# coding: utf-8
 """
-Command loads all the Django settings and pre-renders a 500 error page with
-the site branding. This ensures an error page has all the same look and feel
-as the rest of the site, even when there are errors that would otherwise
-prevent rendering (e.g. loss of database connection, leading to inability to
-load custom stylesheets and scripts set in site branding).
+Pre-renders a 500 error page with default site branding.
+
+This ensures an error page has all the same look and feel as the rest of the
+site, even when there are errors that would otherwise prevent rendering (e.g.
+loss of database connection, leading to inability to load custom stylesheets
+and scripts set in site branding).
 """
 
 import os.path
@@ -15,7 +15,7 @@ from django.template import loader
 
 
 class Command(BaseCommand):
-    help = "Like collectstatic, except it will also watch for changes and re-collect."
+    help = "Renders the 500.html error page with the default site branding."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -40,9 +40,7 @@ class Command(BaseCommand):
         self.render_error_page()
 
     def log(self, msg, level=2):
-        """
-        Small log helper
-        """
+        """Small log helper."""
         if self.verbosity >= level:
             self.stdout.write(msg)
 
@@ -55,8 +53,6 @@ class Command(BaseCommand):
         self.log("Rendered static 500.html error page", level=2)
 
     def set_options(self, **options):
-        """
-        Set instance variables based on an options dict
-        """
+        """Set instance variables based on an options dict."""
         self.verbosity = options["verbosity"]
         self.dry_run = options["dry_run"]
