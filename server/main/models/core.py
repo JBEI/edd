@@ -1152,21 +1152,21 @@ class Measurement(EDDMetadata, EDDSerialize):
             lookup=lambda measure: measure.measurement_type.export_name(),
         )
         table_generator.define_field_column(
+            cls._meta.get_field("measurement_type"),
+            heading=_("Formal Type ID"),
+            key="formal_id",
+            lookup=measurement_formal_id,
+        )
+        table_generator.define_field_column(
             cls._meta.get_field("update_ref"),
             heading=_("Measurement Updated"),
             lookup=lambda measure: measure.update_ref.mod_time,
         )
         table_generator.define_field_column(
-            cls._meta.get_field("x_units"),
-            lookup=lambda measure: measure.x_units.unit_name
-            if measure.x_units.display
-            else "",
+            cls._meta.get_field("x_units"), lookup=measurement_x_unit,
         )
         table_generator.define_field_column(
-            cls._meta.get_field("y_units"),
-            lookup=lambda measure: measure.y_units.unit_name
-            if measure.y_units.display
-            else "",
+            cls._meta.get_field("y_units"), lookup=measurement_y_unit,
         )
 
     def to_json(self, depth=0):
@@ -1246,6 +1246,27 @@ class Measurement(EDDMetadata, EDDSerialize):
 
     def is_concentration_measurement(self):
         return self.y_axis_units_name in ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L"]
+
+
+def measurement_formal_id(measurement):
+    mt = measurement.measurement_type
+    if mt.is_metabolite() and mt.metabolite.pubchem_cid:
+        return f"CID:{mt.metabolite.pubchem_cid}"
+    if mt.is_protein() and mt.proteinidentifier.accession_id:
+        return mt.proteinidentifier.accession_id
+    return ""
+
+
+def measurement_x_unit(measurement):
+    if measurement.x_units and measurement.x_units.display:
+        return measurement.x_units.unit_name
+    return ""
+
+
+def measurement_y_unit(measurement):
+    if measurement.y_units and measurement.y_units.display:
+        return measurement.y_units.unit_name
+    return ""
 
 
 class MeasurementValue(models.Model):
