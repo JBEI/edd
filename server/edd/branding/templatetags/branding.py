@@ -1,5 +1,3 @@
-# coding: utf-8
-
 from django import template
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
@@ -36,7 +34,7 @@ class ExternalScriptsNode(Node):
 @register.simple_tag(takes_context=True)
 def logo(context):
     try:
-        request = context["request"]
+        request = context.get("request", None)
         site = get_current_site(request)
         logo_url = site.page.branding.logo_file.url
     except Exception:
@@ -48,7 +46,7 @@ def logo(context):
 @register.simple_tag(takes_context=True)
 def logo_title(context):
     try:
-        request = context["request"]
+        request = context.get("request", None)
         site = get_current_site(request)
         title = site.page.branding.logo_name
     except Exception:
@@ -60,7 +58,7 @@ def logo_title(context):
 @register.simple_tag(takes_context=True)
 def stylesheet(context):
     try:
-        request = context["request"]
+        request = context.get("request", None)
         site = get_current_site(request)
         stylesheet_url = site.page.branding.style_sheet.url
     except Exception:
