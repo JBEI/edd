@@ -30,12 +30,12 @@ class TableOptions:
         lookup = {col.key: col for col in self._columns}
         return lambda key: lookup.get(key, None)
 
-    def define_field_column(self, field, lookup=None, heading=None):
+    def define_field_column(self, field, lookup=None, heading=None, key=None):
         self._columns.append(
             ColumnChoice(
                 self.model,
-                field.name,
-                field.verbose_name,
+                key or field.name,
+                heading or field.verbose_name,
                 field.value_from_object if lookup is None else lookup,
                 heading=heading,
             )
