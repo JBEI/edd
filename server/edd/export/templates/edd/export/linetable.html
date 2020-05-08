@@ -1,14 +1,12 @@
 {% load i18n %}
 
-<div class="disclose" id="existinglines">
-  <div style="margin:10px">
-    <a href="#" class="discloseLink">
-      {% blocktrans with measurements=selection.measurements|length assays=selection.assays|length lines=selection.lines|length %}
-        {{ measurements }} Measurements in {{ assays }} Assays in {{ lines }} Lines Selected
-      {% endblocktrans %}
-    </a>
-  </div>
-  <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">
+<details>
+  <summary>
+    {% blocktrans with measurements=selection.measurements|length assays=selection.assays|length lines=selection.lines|length %}
+      {{ measurements }} Measurements in {{ assays }} Assays in {{ lines }} Lines Selected
+    {% endblocktrans %}
+  </summary>
+  <div id="existingLinesSection" class="pageSection" style="margin:10px;">
     <!--
     Table displaying selected lines; used for table and SBML export pages
     -->
@@ -69,4 +67,4 @@
       {% endfor %}
     </table>
   </div>
-</div>
+</details>

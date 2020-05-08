@@ -1,3 +1,6 @@
+import decimal
+import math
+
 from edd import TestCase
 from main import models
 from main.tests import factory
@@ -309,3 +312,27 @@ class SBMLUtilTests(TestCase):
                 "CONCENTRATION_HIGHEST": "1.0",
             },
         )
+
+
+def test_templatetag_filter_ranged_x_floats():
+    point = sbml.Point(x=[33.3], y=[0.0])
+    x_range = sbml.Range(min=0.0, max=42.0)
+    assert math.isclose(sbml.scaled_x(point, x_range), 366.7857142857143)
+
+
+def test_templatetag_filter_ranged_x_Decimals():
+    point = sbml.Point(x=[decimal.Decimal("33.3")], y=[0.0])
+    x_range = sbml.Range(min=0.0, max=decimal.Decimal("42.0"))
+    assert math.isclose(sbml.scaled_x(point, x_range), 366.7857142857143)
+
+
+def test_templatetag_filter_ranged_x_float_value_Decimal_range():
+    point = sbml.Point(x=[33.3], y=[0.0])
+    x_range = sbml.Range(min=0.0, max=decimal.Decimal("42.0"))
+    assert math.isclose(sbml.scaled_x(point, x_range), 366.7857142857143)
+
+
+def test_templatetag_filter_ranged_x_Decimal_value_float_range():
+    point = sbml.Point(x=[decimal.Decimal("33.3")], y=[0.0])
+    x_range = sbml.Range(min=0.0, max=42.0)
+    assert math.isclose(sbml.scaled_x(point, x_range), 366.7857142857143)

@@ -5,12 +5,6 @@
 
 {% block js_css %}
   {{ block.super }}
-  <script type="text/javascript">
-   $(document).on('click', '.disclose .discloseLink', function(e) {
-            $(e.target).closest('.disclose').toggleClass('discloseHide');
-            return false;
-        });
-  </script>
   {{ od_select_form.media }}
 {% endblock js_css %}
 
@@ -68,38 +62,34 @@
       Step 1: Choose template
       -->
       {% with warnings_list=export_settings_form.sbml_warnings %}
-      <div class="disclose{% if warnings_list|length == 0 and export_settings_form.errors|length == 0 %} discloseHide{% endif %}" id="step0">
-        <div class="sectionChapter">
-          <span>
-            <a href="#" class="discloseLink">
-              {% trans "Step 1: Select the SBML template file to use for export" %}
-            </a>
-          </span>
+      <details
+        {% if export_settings_form.is_open %}open="open"{% endif %}
+      >
+        <summary>
+          {% trans "Step 1: Select the SBML template file to use for export" %}
           {% include 'edd/export/warningnotice.html' %}
-        </div>
-        <div class="sectionContent discloseBody" id="statusstep0main">
+        </summary>
+        <div class="sectionContent" id="statusstep0main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
           <!-- form method of selecting template -->
           {{ export_settings_form.as_p }}
         </div>
-      </div>
+      </details>
       {% endwith %}<!-- #step0 -->
       <!--
       Step 2: Optical Density (OD600)
       -->
       {% with warnings_list=od_select_form.sbml_warnings %}
-      <div class="disclose{% if warnings_list|length == 0 and od_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step1">
-        <div class="sectionChapter">
-          <span>
-            <a href="#" class="discloseLink">
-              {% trans "Step 2: Find OD Data" %}
-            </a>
-          </span>
+      <details
+        {% if od_select_form.is_open %}open="open"{% endif %}
+      >
+        <summary>
+          {% trans "Step 2: Find OD Data" %}
           {% include 'edd/export/warningnotice.html' %}
-        </div>
-        <div class="sectionContent discloseBody" id="statusstep1main">
+        </summary>
+        <div class="sectionContent" id="statusstep1main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
@@ -108,7 +98,7 @@
           {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
-      </div>
+      </details>
       {% endwith %}<!-- #step1 -->
       <!--
       Step 3 (HPLC)
@@ -116,16 +106,14 @@
       protocols, and there is an additional "input" checkbox for each measurement.
       -->
       {% with warnings_list=hplc_select_form.sbml_warnings %}
-      <div class="disclose{% if warnings_list|length == 0 and hplc_select_form.errors|length == 0 %} discloseHide {% endif %}" id="step2">
-        <div class="sectionChapter">
-          <span>
-            <a href="#" class="discloseLink">
-              {% trans "Step 3: Select HPLC-like Measurements, and inputs" %}
-            </a>
-          </span>
+      <details
+        {% if hplc_select_form.is_open %}open="open"{% endif %}
+      >
+        <summary>
+          {% trans "Step 3: Select HPLC-like Measurements, and inputs" %}
           {% include 'edd/export/warningnotice.html' %}
-        </div>
-        <div class="sectionContent discloseBody" id="statusstep2main">
+        </summary>
+        <div class="sectionContent" id="statusstep2main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
@@ -133,23 +121,21 @@
           {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
-      </div>
+      </details>
       {% endwith %}<!-- #step2 -->
       <!--
       Step 4 (LC-MS)
       (This is almost identical to the previous section for HPLC protocols)
       -->
       {% with warnings_list=ms_select_form.sbml_warnings %}
-      <div class="disclose{% if warnings_list|length == 0 and ms_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step3">
-        <div class="sectionChapter">
-          <span>
-            <a href="#" class="discloseLink">
-              {% trans "Step 4: Select LCMS-like Measurements, and inputs" %}
-            </a>
-          </span>
+      <details
+        {% if ms_select_form.is_open %}open="open"{% endif %}
+      >
+        <summary>
+          {% trans "Step 4: Select LCMS-like Measurements, and inputs" %}
           {% include 'edd/export/warningnotice.html' %}
-        </div>
-        <div class="sectionContent discloseBody" id="statusstep3main">
+        </summary>
+        <div class="sectionContent" id="statusstep3main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
@@ -157,22 +143,20 @@
           {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
-      </div>
+      </details>
       {% endwith %}<!-- #step3 -->
       <!--
       Step 5 (RAMOS O2/CO2)
       -->
       {% with warnings_list=ramos_select_form.sbml_warnings %}
-      <div class="disclose{% if warnings_list|length == 0 and ramos_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step4">
-        <div class="sectionChapter">
-          <span>
-            <a href="#" class="discloseLink">
-              {% trans "Step 5: Select RAMOS O2/CO2 Measurements" %}
-            </a>
-          </span>
+      <details
+        {% if ramos_select_form.is_open %}open="open"{% endif %}
+      >
+        <summary>
+          {% trans "Step 5: Select RAMOS O2/CO2 Measurements" %}
           {% include 'edd/export/warningnotice.html' %}
-        </div>
-        <div class="sectionContent discloseBody" id="statusstep4main">
+        </summary>
+        <div class="sectionContent" id="statusstep4main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
@@ -180,22 +164,20 @@
           {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
-      </div>
+      </details>
       {% endwith %}<!-- #step4 -->
       <!--
       Step 6: transcriptomics and proteomics
       -->
       {% with warnings_list=omics_select_form.sbml_warnings %}
-      <div class="disclose{% if warnings_list|length == 0 and omics_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step5">
-        <div class="sectionChapter">
-          <span>
-            <a href="#" class="discloseLink">
-              {% trans "Step 6: Select Transcriptomics/Proteomics Measurements" %}
-            </a>
-          </span>
+      <details
+        {% if omics_select_form.is_open %}open="open"{% endif %}
+      >
+        <summary>
+          {% trans "Step 6: Select Transcriptomics/Proteomics Measurements" %}
           {% include 'edd/export/warningnotice.html' %}
-        </div>
-        <div class="sectionContent discloseBody" id="statusstep5main">
+        </summary>
+        <div class="sectionContent" id="statusstep5main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
@@ -203,22 +185,20 @@
           {% include 'edd/export/measurement_section.html' %}
           {% endwith %}
         </div>
-      </div>
+      </details>
       {% endwith %}<!-- #step5 -->
       <!--
       Step 7
       -->
       {% with warnings_list=match_form.sbml_warnings %}
-      <div class="disclose{% if warnings_list|length == 0 and match_form.errors|length == 0 %} discloseHide{% endif %}" id="step6">
-        <div class="sectionChapter">
-          <span>
-            <a href="#" class="discloseLink">
-              {% trans "Step 7: Pre-parse SBML model and match exchanges and species to measurements" %}
-            </a>
-          </span>
+      <details
+        {% if match_form.is_open %}open="open"{% endif %}
+      >
+        <summary>
+          {% trans "Step 7: Pre-parse SBML model and match exchanges and species to measurements" %}
           {% include 'edd/export/warningnotice.html' %}
-        </div>
-        <div class="sectionContent discloseBody" id="statusstep6main">
+        </summary>
+        <div class="sectionContent" id="statusstep6main">
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
@@ -251,7 +231,7 @@
             </table>
           </div>
         </div><!-- #statusstep6main -->
-      </div>
+      </details>
       {% endwith %}<!-- #step6 -->
       <!--
       END OF EXPORT SETTINGS

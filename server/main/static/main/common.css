@@ -306,10 +306,6 @@ div.statusMessage > .warning {
     background-color: #fffdf6;
     border-color: #ffeaae;
 }
-/* used in sbml export */
-div.statusMessage > .warn2 {
-    color: rgb(200, 130, 0);
-}
 div.statusMessage > .bad {
     background-color: #ffcccc;
     border-color: red;
@@ -1488,6 +1484,14 @@ dl.infolist > dt {
 }
 dl.infolist > dd {
     margin: 0.5em 0;
+}
+details {
+    margin: 1em 0;
+}
+
+/* used in sbml export */
+.warn2 {
+    color: rgb(200, 130, 0);
 }
 
 .rounded-border {

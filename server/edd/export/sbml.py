@@ -51,6 +51,9 @@ class SbmlForm(forms.Form):
         self.is_valid()
         return self._sbml_warnings
 
+    def is_open(self):
+        return len(self.sbml_warnings) > 0 or len(self.errors) > 0
+
 
 class SbmlExport:
     """
@@ -743,7 +746,11 @@ class SbmlExportSettingsForm(SbmlForm):
 @register.filter(name="scaled_x")
 def scaled_x(point, x_range):
     """Template filter calculates the relative X value for SVG sparklines."""
-    return ((point.x[0] / x_range[1]) * 450) + 10
+    # potential for arguments to be either Array<Decimal> or Array<float>
+    # force-cast to float so math always works
+    current_x = float(point.x[0])
+    max_x = float(x_range[1])
+    return ((current_x / max_x) * 450) + 10
 
 
 class MeasurementChoiceField(forms.ModelMultipleChoiceField):
