@@ -68,7 +68,8 @@ class EDDExportView(generic.TemplateView):
         context.update(self.init_forms(request, request.POST))
         if "download" == request.POST.get("action", None):
             self.submit_export(request, context)
-        return HttpResponse(status=204)
+            return HttpResponse(status=204)
+        return self.render_to_response(context)
 
     def render_to_response(self, context, **kwargs):
         download = context.get("download", False)

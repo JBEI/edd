@@ -69,9 +69,8 @@ class ExportSelectionForm(forms.Form):
         data = super().clean()
         # names of form fields
         id_fields = ["studyId", "lineId", "assayId", "measurementId"]
-        if any(field in data for field in id_fields):
-            values = [data.get(field, []) for field in id_fields]
-        else:
+        values = [data.get(field, []) for field in id_fields]
+        if not any(values):
             # default to empty fallback dict when None
             fallback = self._fallback or {}
             if not any(field in fallback for field in id_fields):
