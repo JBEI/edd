@@ -432,6 +432,10 @@ class StudyViewTests(TestCase):
         )
         self.assertContains(response, f"Added Line &#39;{name}&#39;")
         self.assertTrue(self.target_study.line_set.filter(name=name).exists())
+
+    def test_lines_add_line_with_invalid_form(self):
+        target_url = reverse("main:lines", kwargs=self.target_kwargs)
+        name = faker.catch_phrase()
         # if form does not validate, bad request
         with patch("main.views.study.edd_forms.LineForm") as MockForm:
             form = MockForm.return_value
