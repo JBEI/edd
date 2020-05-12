@@ -393,8 +393,10 @@ class TableExport:
 
     def _do_export(self, tables):
         # add data from each exported measurement; already sorted by protocol
-        measures = self.selection.measurements.select_related(
-            # add proteinidentifier so export does not repeatedly query for protein-specific stuff
+        active_measurements = self.selection.measurements.filter(active=True)
+        measures = active_measurements.select_related(
+            # add proteinidentifier so export does not repeatedly query
+            # for protein-specific stuff
             "measurement_type__proteinidentifier",
             "x_units",
             "y_units",
@@ -406,7 +408,8 @@ class TableExport:
             "assay__line__experimenter",
             "assay__line__study__contact",
         ).annotate(
-            # eliminate some subqueries and/or repeated queries by collecting values in arrays
+            # eliminate some subqueries and/or repeated queries
+            # by collecting values in arrays
             strain_names=ArrayAgg("assay__line__strains__name", distinct=True),
             cs_names=ArrayAgg("assay__line__carbon_source__name", distinct=True),
             vids=ArrayAgg("measurementvalue"),
@@ -557,10 +560,10 @@ class WorklistExport(TableExport):
 
     def _do_worklist(self, tables):
         protocol = self.worklist.protocol
-        assays = self.selection.assays.filter(protocol_id=protocol.id).order_by(
-            "line_id"
-        )
-        lines = self.selection.lines.order_by("pk")
+        assays = self.selection.assays.filter(
+            active=True, protocol_id=protocol.id,
+        ).order_by("line_id")
+        lines = self.selection.lines.filter(active=True).order_by("pk")
         table = tables["all"]
 
         # looping over both assays and lines
