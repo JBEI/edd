@@ -39,38 +39,39 @@ export class Step extends React.Component<Props> {
                 this.sendParse(this.props.step1.uploadUrl, this.props.step2.file);
             });
         }
-        // clear out accepted message whenever there are errors
-        else if (prevProps.errors.length === 0 && this.props.errors.length) {
+        // clear out accepted message whenever there are new errors or warnings
+        else if (this.addingErrors(prevProps) || this.addingWarnings(prevProps)) {
             this.setShowMessages([], ["accepted"]);
         }
         // auto-transition to next step when status moves to "Ready"
-        else if (prevProps.status !== "Ready" && this.props.status === "Ready") {
+        else if (this.checkStatusTransition(prevProps, "Ready")) {
             this.setShowMessages([], ["accepted"]);
             this.props.jumpToStep(2);
         }
     }
 
     isValidated() {
-        return this.props.status === "Ready";
+        return this.isStatusSet() && this.isErrorFree();
     }
 
     render() {
         const accept = this.accept();
-        // TODO: find which of these are necessary
         // TODO: set "excel" class based on accept value
         const baseClasses = [
             "dropZone",
-            "overviewDropZone",
-            "fd-zone",
-            "excel",
             "dz-clickable",
+            "excel",
+            "fd-zone",
+            "overviewDropZone",
         ];
         return (
             <div className="stepDiv">
                 <Summary.Status {...this.props.statusProps} />
                 <Summary.Messages
+                    ackButtonLabel={this.props.ackButtonLabel}
                     errors={this.props.errors}
                     messages={this.props.messages}
+                    onAck={(category) => this.props.onAck(category)}
                     show={this.props.step2.show}
                     warnings={this.props.warnings}
                 />
@@ -112,6 +113,22 @@ export class Step extends React.Component<Props> {
         return [];
     }
 
+    private addingErrors(prevProps) {
+        return prevProps.errors.length === 0 && this.props.errors.length;
+    }
+
+    private addingWarnings(prevProps) {
+        return prevProps.warnings.length === 0 && this.props.warnings.length;
+    }
+
+    private checkStatusTransition(prevProps, status) {
+        return prevProps.status !== status && this.props.status === status;
+    }
+
+    private isErrorFree() {
+        return this.props.errors.length === 0 && this.props.warnings.length === 0;
+    }
+
     private isFileReady() {
         return (
             this.isPreviousValidated() &&
@@ -127,6 +144,10 @@ export class Step extends React.Component<Props> {
             this.props.step1.protocol &&
             this.props.step1.layout
         );
+    }
+
+    private isStatusSet() {
+        return this.props.status !== null;
     }
 
     private onDrop(accepted: File[], rejected: File[], event) {
@@ -187,18 +208,6 @@ export class Step extends React.Component<Props> {
     }
 
     private setShowMessages(on: string[], off?: string[]) {
-        this.props.onUpdate("step2", (state, props) => {
-            const original: Set<string> = new Set(state.show);
-            const toAdd: Set<string> = new Set(on);
-            original.forEach((item) => toAdd.delete(item));
-            const toDelete: Set<string> = new Set(off || []);
-            const replacement = [
-                // original ordering, with things in off filtered out
-                ...state.show.filter((item) => !toDelete.has(item)),
-                // append things in on only if not already in original
-                ...on.filter((item) => toAdd.has(item)),
-            ];
-            return { "show": replacement };
-        });
+        this.props.onUpdate("step2", Summary.Messages.curryUpdateFn(on, off));
     }
 }

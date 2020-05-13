@@ -218,8 +218,6 @@ class OverwriteWarning(ImportConflictWarning):
                 "be updated."
             ).format(overwrite=conflicts.from_study),
             resolution=self._normal_resolution,
-            id="overwrite_warning",
-            workaround_text=_("Overwrite"),
         )
         if conflicts.from_study > conflicts.from_import:
             self.category = _("Overwrite warning (multiple overwrites)")
@@ -246,8 +244,6 @@ class MergeWarning(ImportConflictWarning):
                 "values will be added and {overwrite} existing values will be updated."
             ).format(add=add, overwrite=conflicts.from_study),
             resolution=self._normal_resolution,
-            id="overwrite_warning",
-            workaround_text=_("Merge"),
         )
         if conflicts.from_study > conflicts.from_import:
             self.category = _("Merge warning (multiple overwrites)")

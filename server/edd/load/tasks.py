@@ -223,10 +223,11 @@ def wizard_parse_and_resolve(
             parsed = load.parse_with_layout(layout_id)
             resolver = ImportResolver(load, parsed)
             resolver.resolve(type_resolver)
-            if load.status == LoadRequest.Status.READY:
+            if target is not None:
+                reporting.raise_errors(request_uuid)
+                wizard_execute_loading.delay(request_uuid, user_id)
+            elif load.status == LoadRequest.Status.READY:
                 dispatch.wizard_ready()
-                if target is not None:
-                    wizard_execute_loading.delay(request_uuid, user_id)
             else:
                 dispatch.wizard_needs_input()
                 load.stash_errors()

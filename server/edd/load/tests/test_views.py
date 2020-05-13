@@ -169,15 +169,15 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
         self.client.force_login(self.user)
         response = self.client.patch(url, format="multipart")
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_update_load_missing_parameters(self):
+    def test_update_load_no_parameters(self):
         load = LoadRequest(study_uuid=self.study.uuid)
         load.store()
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, load.request])
         self.client.force_login(self.user)
         response = self.client.patch(url, format="multipart")
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_202_ACCEPTED
 
     def test_update_load_wrong_study(self):
         wrong = main_factory.StudyFactory()

@@ -125,7 +125,6 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
         forbidden = self._check_study_access(request, study_pk)
         if forbidden is not None:
             return forbidden
-        self._check_post_params(request)
         try:
             load = LoadRequest.fetch(pk)
             bad = self._verify_update_status(load)
@@ -211,7 +210,7 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             return self.send_error_response(
                 _("Invalid state"),
                 _(
-                    "Changes are not permitted while the data load is processing. "
+                    "Changes are not permitted while loaded is processing. "
                     "Wait until processing is complete."
                 ),
                 status=codes.bad_request,
@@ -220,7 +219,7 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             return self.send_error_response(
                 _("Invalid state"),
                 _(
-                    "Modifications are not allowed once a data load "
+                    "Modifications are not allowed once loaded data "
                     "reaches the {status} state"
                 ).format(status=str(load.status)),
                 status=codes.bad_request,

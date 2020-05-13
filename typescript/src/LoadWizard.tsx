@@ -70,21 +70,18 @@ class Wizard extends React.Component<Props, State> {
     }
 
     render() {
+        const ackFn = (category) => this.onAck(category);
         const updateFn = (stepName, stepState, callback?) =>
             this.onUpdate(stepName, stepState, callback);
+        const props1 = { ...this.props.step1, ...this.state };
+        const props2 = { ...this.props.step2, ...this.state };
+        const props3 = { ...this.props.step3, ...this.state };
+        const props4 = { ...this.props.step4, ...this.state };
         const components = {
-            "step1": (
-                <Step1.Step {...this.props.step1} {...this.state} onUpdate={updateFn} />
-            ),
-            "step2": (
-                <Step2.Step {...this.props.step2} {...this.state} onUpdate={updateFn} />
-            ),
-            "step3": (
-                <Step3.Step {...this.props.step3} {...this.state} onUpdate={updateFn} />
-            ),
-            "step4": (
-                <Step4.Step {...this.props.step4} {...this.state} onUpdate={updateFn} />
-            ),
+            "step1": <Step1.Step {...props1} onAck={ackFn} onUpdate={updateFn} />,
+            "step2": <Step2.Step {...props2} onAck={ackFn} onUpdate={updateFn} />,
+            "step3": <Step3.Step {...props3} onAck={ackFn} onUpdate={updateFn} />,
+            "step4": <Step4.Step {...props4} onAck={ackFn} onUpdate={updateFn} />,
         };
         const stepsDef = [
             { "name": this.props.step1.title, "component": components.step1 },
@@ -104,6 +101,17 @@ class Wizard extends React.Component<Props, State> {
     }
 
     // custom methods
+
+    /**
+     * Callback for (warning) messages acknowledged and dismissed.
+     */
+    private onAck(category: string) {
+        // filter out any warnings matching acknowledged category
+        const toKeep = (item: Summary.ProblemMessage) => item.category !== category;
+        this.setState((state, props) => ({
+            "warnings": state.warnings.filter(toKeep),
+        }));
+    }
 
     /**
      * Callback for messages received over websocket.
@@ -166,6 +174,7 @@ function readStrings(root: JQuery): Props {
     const step2 = root.children("#_step2");
     const step3 = root.children("#_step3");
     const step4 = root.children("#_step4");
+    const ackButtonLabel = root.children("span._ack").text();
     const actions = { "back": "", "next": "", "save": "" };
     const limit_string = step2.children("#uploadSizeLimit").val() as string;
     const limit = parseInt(limit_string, 10);
@@ -184,22 +193,26 @@ function readStrings(root: JQuery): Props {
             "protocolLabel": root.children("span._protocol").text(),
         },
         "step1": {
+            "ackButtonLabel": ackButtonLabel,
             "categoryUrl": step1.children("._data").attr("href"),
             "createUrl": $("form#create_load").attr("action"),
             "fields": step1.children("fieldset").clone(),
             "title": step1.children("._title").text(),
         },
         "step2": {
+            "ackButtonLabel": ackButtonLabel,
             "directions": step2.children("span._directions").text(),
             "limit": limit,
             "messages": readMessageStrings(step2),
             "title": step2.children("span._title").text(),
         },
         "step3": {
+            "ackButtonLabel": ackButtonLabel,
             "directions": step3.children("p._directions").text(),
             "title": step3.children("._title").text(),
         },
         "step4": {
+            "ackButtonLabel": ackButtonLabel,
             "messages": readMessageStrings(step4),
             "title": step4.children("._title").text(),
         },

@@ -122,10 +122,16 @@ export class Status extends React.Component<StatusProps> {
 }
 
 interface MessagesProps {
-    errors?: ProblemMessage[];
+    ackButtonLabel?: string;
+    errors: ProblemMessage[];
     messages?: MessageLookup;
+    onAck?: (key: string) => void;
     show?: string[];
-    warnings?: ProblemMessage[];
+    warnings: ProblemMessage[];
+}
+
+function noop(...args) {
+    // do nothing
 }
 
 /**
@@ -136,6 +142,7 @@ interface MessagesProps {
  */
 export class Messages extends React.Component<MessagesProps> {
     render() {
+        const ack = this.props.onAck || noop;
         const show = this.props.show || [];
         const lookup = this.props.messages || {};
         const messages = show.map((key) => <Message {...lookup[key]} />);
@@ -145,7 +152,13 @@ export class Messages extends React.Component<MessagesProps> {
             <Problem category={key} classNames={"alert-danger"} items={value} />
         ));
         const warnings = Object.entries(groupedWarnings).map(([key, value]) => (
-            <Problem category={key} classNames={"alert-warning"} items={value} />
+            <Problem
+                ackButtonLabel={this.props.ackButtonLabel}
+                category={key}
+                classNames={"alert-warning"}
+                onAck={() => ack(key)}
+                items={value}
+            />
         ));
         return (
             <div>
@@ -154,6 +167,31 @@ export class Messages extends React.Component<MessagesProps> {
                 {...warnings}
             </div>
         );
+    }
+
+    // utility methods
+
+    /**
+     * Creates an update function to handle showing pre-rendered MessageStrings.
+     *
+     * The update function is ultimately passed to `Component.setState()`, and handles
+     * returning a MessagesProps instance with the `show` property updated to turn on
+     * the items in `on` parameter, and off the items in `off` parameter.
+     */
+    static curryUpdateFn(on: string[], off?: string[]) {
+        return (state, props) => {
+            const original: Set<string> = new Set(state.show);
+            const toAdd: Set<string> = new Set(on);
+            original.forEach((item) => toAdd.delete(item));
+            const toDelete: Set<string> = new Set(off || []);
+            const replacement = [
+                // original ordering, with things in off filtered out
+                ...state.show.filter((item) => !toDelete.has(item)),
+                // append things in on only if not already in original
+                ...on.filter((item) => toAdd.has(item)),
+            ];
+            return { "show": replacement };
+        };
     }
 }
 
@@ -169,13 +207,25 @@ class Message extends React.Component<MessageStrings> {
 }
 
 interface ProblemProps {
+    ackButtonLabel?: string;
     category: string;
     classNames: string;
     items: ProblemMessage[];
+    onAck?: () => void;
 }
 
 class Problem extends React.Component<ProblemProps> {
     render() {
+        const hasAck =
+            this.props.onAck !== undefined && this.props.ackButtonLabel !== undefined;
+        const ackButton = hasAck && (
+            <button
+                className="btn btn-default btn-right"
+                onClick={() => this.props.onAck()}
+            >
+                {this.props.ackButtonLabel}
+            </button>
+        );
         let items = this.props.items.map((item) => {
             const subcategory = item.subcategory && (
                 <>
@@ -215,6 +265,7 @@ class Problem extends React.Component<ProblemProps> {
         }
         return (
             <div className={classNames("alert", this.props.classNames)}>
+                {ackButton}
                 <h4>{this.props.category}</h4>
                 {...items}
             </div>

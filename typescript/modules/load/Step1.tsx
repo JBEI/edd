@@ -63,7 +63,9 @@ export class Step extends React.Component<Props> {
         return (
             <div className="stepDiv">
                 <Summary.Messages
+                    ackButtonLabel={this.props.ackButtonLabel}
                     errors={this.props.errors}
+                    onAck={(category) => this.props.onAck(category)}
                     warnings={this.props.warnings}
                 />
                 {...this.convertFieldsets()}

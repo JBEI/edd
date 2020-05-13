@@ -9,11 +9,7 @@
 {% endblock js_css %}
 
 {% block head_title %}
-  {% if selection.studies|length == 1 %}
-    Data Import For {{ selection.studies.0.name }}
-  {% else %}
-    Data Import For {{ selection.studies|length }} Studies
-  {% endif %}
+  Data Import For {{ study.name }}
 {% endblock head_title %}
 
 {% block body_title %}

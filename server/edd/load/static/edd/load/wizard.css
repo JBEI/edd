@@ -29,6 +29,9 @@
 #wizard .summary-display > span {
     margin-right: 20px;
 }
+#wizard .btn-right {
+    float: right;
+}
 
 /*
  * Clean up default styles from StepZilla

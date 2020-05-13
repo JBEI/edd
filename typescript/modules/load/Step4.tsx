@@ -30,7 +30,9 @@ export class SubState {
 
 export class Step extends React.Component<Props> {
     componentDidMount() {
-        this.sendSubmit(this.props.step1.uploadUrl);
+        if (this.props.status !== "Completed") {
+            this.sendSubmit(this.props.step1.uploadUrl);
+        }
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -47,9 +49,11 @@ export class Step extends React.Component<Props> {
             <div className="stepDiv">
                 <Summary.Status {...this.props.statusProps} />
                 <Summary.Messages
+                    ackButtonLabel={this.props.ackButtonLabel}
                     errors={this.props.errors}
                     messages={this.props.messages}
-                    show={this.props.step2.show}
+                    onAck={(category) => this.props.onAck(category)}
+                    show={this.props.step4.show}
                     warnings={this.props.warnings}
                 />
             </div>
@@ -74,19 +78,7 @@ export class Step extends React.Component<Props> {
     }
 
     private setShowMessages(on: string[], off?: string[]) {
-        this.props.onUpdate("step4", (state, props) => {
-            const original: Set<string> = new Set(state.show);
-            const toAdd: Set<string> = new Set(on);
-            original.forEach((item) => toAdd.delete(item));
-            const toDelete: Set<string> = new Set(off || []);
-            const replacement = [
-                // original ordering, with things in off filtered out
-                ...state.show.filter((item) => !toDelete.has(item)),
-                // append things in on only if not already in original
-                ...on.filter((item) => toAdd.has(item)),
-            ];
-            return { "show": replacement };
-        });
+        this.props.onUpdate("step4", Summary.Messages.curryUpdateFn(on, off));
     }
 
     private submitError(jqXHR, status, error) {
@@ -102,13 +94,10 @@ export class Step extends React.Component<Props> {
 
     private submitRequest() {
         const request = new FormData();
-        // TODO: currently required to re-submit these, should fix to make optional
         request.set("category", `${this.props.step1.category.pk}`);
         request.set("layout", `${this.props.step1.layout.pk}`);
-        request.set("protocol", this.props.step1.protocol.uuid);
         // value of status does not matter, only existence
         request.set("status", "");
-        this.props.step1.options.forEach((k) => request.set(k, ""));
         return request;
     }
 }

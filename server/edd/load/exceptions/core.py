@@ -43,8 +43,6 @@ class MessagingMixin:
         details: DetailValue = None,
         resolution: str = "",
         docs_link: str = "",
-        id="",
-        workaround_text="",
     ):
         """
         Initializes the exception.
@@ -60,10 +58,6 @@ class MessagingMixin:
             and may be truncated based for display based on the value of
             EDD_IMPORT_ERR_REPORTING_LIMIT.
         :param resolution: optional user-facing prompt for how to resolve the error
-        :param id: an identifier for this error that gets passed to front-end code for
-            special-case processing
-        :param workaround_text: User-facing text displayed by the front end as the
-            label for a special-case button to work around this error
         """
         super().__init__()
         self.category: str = category
@@ -71,8 +65,6 @@ class MessagingMixin:
         self.subcategory: typing.Optional[str] = subcategory
         self.resolution: typing.Optional[str] = resolution
         self.docs_link: typing.Optional[str] = docs_link
-        self.id: str = id
-        self.workaround_text: str = workaround_text
 
         self.details: typing.List[str] = []
         if details:
@@ -95,8 +87,6 @@ class MessagingMixin:
             tuple(self.details),
             self.resolution,
             self.docs_link,
-            self.id,
-            self.workaround_text,
         )
 
     def __eq__(self, other):
@@ -152,7 +142,7 @@ class MessagingMixin:
         # category and summary are required
         result = {"category": str(self.category), "summary": str(self.summary)}
         # the others may be included, if set
-        included = ("docs_link", "id", "resolution", "subcategory", "workaround_text")
+        included = ("docs_link", "resolution", "subcategory")
         for key in included:
             value = getattr(self, key, None)
             if value:
