@@ -2,8 +2,13 @@
 {% load static %}
 {% load branding %}
 {% load i18n %}
-<html>
+<html
+  dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}"
+  lang="{{ LANGUAGE_CODE }}"
+>
 <head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Language" content="{{ LANGUAGE_CODE }}">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>
     {% block head_title %}
