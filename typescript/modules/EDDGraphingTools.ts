@@ -77,13 +77,11 @@ export class EDDGraphingTools {
         "#7A5230", // brown
     ];
 
-    nextColor: string;
     labels: JQuery[];
     remakeGraphCalls: number;
     globalInfo: EDDData;
 
     constructor(globalInfo: EDDData) {
-        this.nextColor = null;
         this.labels = [];
         this.remakeGraphCalls = 0;
         this.globalInfo = globalInfo;
@@ -201,7 +199,6 @@ export class EDDGraphingTools {
         lineValues.forEach((line, index) => {
             const color =
                 EDDGraphingTools.colors[index % EDDGraphingTools.colors.length];
-            // adding color values to existing interface
             line.color = color;
             lineColors[line.id] = color;
         });
@@ -211,13 +208,13 @@ export class EDDGraphingTools {
     /**
      * this function takes in the selected color and returns the color that comes after.
      */
-    colorQueue(selectedColor: Color): Color {
-        // normalize input
-        selectedColor = selectedColor || "";
-        const foundIndex = EDDGraphingTools.colors.indexOf(selectedColor.toUpperCase());
-        // when not found, start at beginning; loop around at end
-        const nextIndex = (foundIndex + 1) % EDDGraphingTools.colors.length;
-        return (this.nextColor = EDDGraphingTools.colors[nextIndex]);
+    colorQueue(color: Color): Color {
+        // normalize to uppercase for lookups
+        const lookup: Color = (color || "").toUpperCase();
+        // start at beginning if not in the colors array,
+        // otherwise get the next value
+        const index = EDDGraphingTools.colors.indexOf(lookup) + 1;
+        return EDDGraphingTools.colors[index % EDDGraphingTools.colors.length];
     }
 }
 
