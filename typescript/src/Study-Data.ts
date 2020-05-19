@@ -1053,13 +1053,12 @@ export class CarbonLabelingFilterSection extends GenericFilterSection {
 // A filter for the name of each Assay's Line
 export class LineNameFilterSection extends GenericFilterSection {
     lineLookup: { [key: string]: LineRecord };
-    lastColor: string;
+    lastAssignedColor: string = null;
 
     configure(): void {
         super.configure("Line", "ln");
         this.filteringTable.css("font-weight", "bold");
         this.lineLookup = {};
-        this.lastColor = null;
     }
 
     updateUniqueIndexesHash(ids: string[]): void {
@@ -1080,18 +1079,43 @@ export class LineNameFilterSection extends GenericFilterSection {
 
     setLineColors() {
         const boxes = $("input[type=checkbox]", this.filteringTable || $());
-        if (this.countChecked() === 0) {
-            // when nothing is checked, set colors on everything in order
-            let color = null;
-            boxes.each((_, elem) => {
+        const checked = boxes.filter(":checked");
+        // when none selected, assign colors in order from palette
+        if (checked.length === 0) {
+            let color: string = null;
+            boxes.each((index, elem) => {
                 const box = $(elem);
                 const label = box.next("label");
                 const line = this.lineLookup[box.attr("name")];
                 line.color = color = eddGraphing.colorQueue(color);
                 label.css("color", line.color);
             });
+            this.lastAssignedColor = null;
         } else {
-            // when items are checked, keep colors on items that have them, assign if missing
+            type FilterItem = { line: LineRecord; label: JQuery };
+            const palette: Set<string> = new Set(EDDGraphingTools.colors);
+            const needsColor: FilterItem[] = [];
+            // any selection(s) already having a color should keep it
+            checked.each((_, elem) => {
+                const box = $(elem);
+                const label = box.next("label");
+                const line = this.lineLookup[box.attr("name")];
+                if (line.color === null) {
+                    needsColor.push({ "line": line, "label": label });
+                } else {
+                    palette.delete(line.color);
+                }
+            });
+            // assign colors, avoiding repeats
+            const iter = palette.values();
+            needsColor.forEach((item: FilterItem) => {
+                const color =
+                    iter.next().value || eddGraphing.colorQueue(this.lastAssignedColor);
+                item.line.color = color;
+                item.label.css("color", color);
+                this.lastAssignedColor = color;
+            });
+            // reset color to black when unchecked
             boxes.each((_, elem) => {
                 const box = $(elem);
                 const label = box.next("label");
@@ -1099,13 +1123,6 @@ export class LineNameFilterSection extends GenericFilterSection {
                 if (!box.prop("checked")) {
                     line.color = null;
                     label.css("color", "black");
-                } else if (line.color === null) {
-                    line.color = this.lastColor = eddGraphing.colorQueue(
-                        this.lastColor,
-                    );
-                    label.css("color", line.color);
-                } else {
-                    this.lastColor = line.color;
                 }
             });
         }
