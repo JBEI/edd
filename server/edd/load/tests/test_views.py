@@ -54,23 +54,38 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         cls.protocol = main_factory.ProtocolFactory()
 
     def test_create_load_anonymous(self):
+        # anonymous users should not be able to start loading data
         url = rest_reverse("rest:study_load-list", args=[self.study.pk])
         response = self.client.post(url, format="multipart")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_load_no_permission(self):
+        # users without permission should not be able to start loading data
         url = rest_reverse("rest:study_load-list", args=[self.study.pk])
         self.client.force_login(main_factory.UserFactory())
         response = self.client.post(url, format="multipart")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_create_load_multiple_permission(self):
+        # users with multiple group permissions are OK
+        url = rest_reverse("rest:study_load-list", args=[self.study.pk])
+        payload = self._build_common_payload()
+        user = self._add_groups_permission()
+        self.client.force_login(user)
+        with patch("edd.load.tasks.wizard_parse_and_resolve") as task:
+            response = self.client.post(url, payload, format="multipart")
+        assert response.status_code == status.HTTP_200_OK
+        task.delay.assert_not_called()
+
     def test_create_load_missing_parameters(self):
+        # trying to post without any data will give a Bad Request response
         url = rest_reverse("rest:study_load-list", args=[self.study.pk])
         self.client.force_login(self.user)
         response = self.client.post(url, format="multipart")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_load_without_upload(self):
+        # trying to post with all required options but no upload is OK
         url = rest_reverse("rest:study_load-list", args=[self.study.pk])
         payload = self._build_common_payload()
         self.client.force_login(self.user)
@@ -80,6 +95,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         task.delay.assert_not_called()
 
     def test_create_load_with_upload(self):
+        # trying to post with all required options and an upload is OK
         url = rest_reverse("rest:study_load-list", args=[self.study.pk])
         payload = self._build_common_payload()
         payload.update(file=BytesIO(b"some file content"))
@@ -90,6 +106,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         task.delay.assert_called_once()
 
     def test_create_load_simulated_known_error(self):
+        # simulate an error and verify proper response
         url = rest_reverse("rest:study_load-list", args=[self.study.pk])
         payload = self._build_common_payload()
         payload.update(file=BytesIO(b"some file content"))
@@ -100,6 +117,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_create_load_simulated_unknown_error(self):
+        # simulate an unexpected error (AttributeError) and verify proper response
         url = rest_reverse("rest:study_load-list", args=[self.study.pk])
         payload = self._build_common_payload()
         payload.update(file=BytesIO(b"some file content"))
@@ -110,23 +128,27 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_destroy_load_anonymous(self):
+        # anonymous users cannot delete in-process loading data
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
         response = self.client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_destroy_load_no_permission(self):
+        # users without permissions cannot delete in-process loading data
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
         self.client.force_login(main_factory.UserFactory())
         response = self.client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_destroy_load_missing(self):
+        # non-existent loading data cannot be deleted
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
         self.client.force_login(self.user)
         response = self.client.delete(url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_destroy_load(self):
+        # users with permissions can delete in-process loading data
         load = LoadRequest(study_uuid=self.study.uuid)
         load.store()
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, load.request])
@@ -135,6 +157,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_200_OK
 
     def test_destroy_load_simulated_known_error(self):
+        # simulate an error deleting data and verify proper response
         load = LoadRequest(study_uuid=self.study.uuid)
         load.store()
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, load.request])
@@ -145,6 +168,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_destroy_load_simulated_unknown_error(self):
+        # simulate an unexpected error (AttributeError) and verify proper response
         load = LoadRequest(study_uuid=self.study.uuid)
         load.store()
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, load.request])
@@ -155,23 +179,27 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_update_load_anonymous(self):
+        # anonymous users cannot update in-process loading data
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
         response = self.client.patch(url, format="multipart")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_load_no_permission(self):
+        # users without permissions cannot update in-process loading data
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
         self.client.force_login(main_factory.UserFactory())
         response = self.client.patch(url, format="multipart")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_load_does_not_exist(self):
+        # non-existent loading data cannot be updated
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
         self.client.force_login(self.user)
         response = self.client.patch(url, format="multipart")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update_load_no_parameters(self):
+        # updating loading data with no changed parameters is fine
         load = LoadRequest(study_uuid=self.study.uuid)
         load.store()
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, load.request])
@@ -180,6 +208,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_202_ACCEPTED
 
     def test_update_load_wrong_study(self):
+        # updating loading data on the wrong study is not OK
         wrong = main_factory.StudyFactory()
         load = LoadRequest(study_uuid=wrong.uuid)
         load.store()
@@ -189,14 +218,8 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.patch(url, payload, format="multipart")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_update_load_missing(self):
-        url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
-        payload = self._build_common_payload()
-        self.client.force_login(self.user)
-        response = self.client.patch(url, payload, format="multipart")
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-
     def test_update_load_during_processing(self):
+        # updating loading data while task is actively working is not allowed
         load = LoadRequest(
             study_uuid=self.study.uuid, status=LoadRequest.Status.PROCESSING
         )
@@ -208,6 +231,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_update_load_already_complete(self):
+        # updating loading data after completion is not allowed
         load = LoadRequest(
             study_uuid=self.study.uuid, status=LoadRequest.Status.COMPLETED
         )
@@ -219,6 +243,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_update_load_without_upload(self):
+        # updating loading data with new parameters and no upload is fine
         load = LoadRequest(study_uuid=self.study.uuid)
         load.store()
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, load.request])
@@ -230,6 +255,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         task.delay.assert_not_called()
 
     def test_update_load_with_upload(self):
+        # updating loading data with new parameters and new upload is fine
         load = LoadRequest(study_uuid=self.study.uuid)
         load.store()
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, load.request])
@@ -242,6 +268,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         task.delay.assert_called_once()
 
     def test_update_load_simulated_known_error(self):
+        # simulate an error updating data and verify proper response
         load = LoadRequest(study_uuid=self.study.uuid)
         load.store()
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, load.request])
@@ -253,6 +280,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_update_load_simulated_unknown_error(self):
+        # simulate an unexpected error (AttributeError) and verify proper response
         load = LoadRequest(study_uuid=self.study.uuid)
         load.store()
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, load.request])
@@ -262,6 +290,20 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
             update.side_effect = AttributeError
             response = self.client.patch(url, payload, format="multipart")
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    def _add_groups_permission(self):
+        other_user = main_factory.UserFactory()
+        group1 = main_factory.GroupFactory()
+        group2 = main_factory.GroupFactory()
+        other_user.groups.add(group1)
+        other_user.groups.add(group2)
+        self.study.grouppermission_set.create(
+            group=group1, permission_type=models.StudyPermission.WRITE
+        )
+        self.study.grouppermission_set.create(
+            group=group2, permission_type=models.StudyPermission.WRITE
+        )
+        return other_user
 
     def _build_common_payload(self):
         category = factory.CategoryFactory()

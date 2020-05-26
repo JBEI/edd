@@ -172,8 +172,9 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
 
     def _check_study_access(self, request, study_pk):
         access = Study.access_filter(request.user, StudyPermission.WRITE)
+        writeable_studies = Study.objects.filter(access).distinct()
         try:
-            self.study = Study.objects.get(access, pk=study_pk)
+            self.study = writeable_studies.get(pk=study_pk)
         except Study.DoesNotExist:
             return self.send_error_response(
                 _("Not Allowed"),
