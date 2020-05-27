@@ -195,7 +195,9 @@ def test_MessagingMixin_merging():
 
 @override_settings(EDD_IMPORT_ERR_REPORTING_LIMIT=3)
 def test_MessagingMixin_json_report_limit():
-    c = exceptions.core.MessagingMixin("category", details=[*"abcdefghi"])
+    # verify warning emitted when 9 detail items sent, and limit is 3
+    with pytest.warns(exceptions.ReportingLimitWarning):
+        c = exceptions.core.MessagingMixin("category", details=[*"abcdefghi"])
     result = c.to_json()
     assert result["detail"] == "a, b, c, ...(+6 more)"
 
