@@ -95,14 +95,24 @@ class DescribeView(StudyObjectMixin, generic.DetailView):
             )
         return extension
 
-    def _finished_import(self, cc, options, status_code, reply_content):
+    def _finished_import(self, cc, options, reply_content):
         if options.email_when_finished and not options.dry_run:
-            # TODO: uncovered code
-            if status_code == codes.ok:
-                cc.send_user_success_email(reply_content)
-            else:
-                cc.send_user_err_email()
-            # END uncovered code
+            cc.send_user_success_email(reply_content)
+
+    def _handle_exception(self, cc, options, e):
+        cc.add_error(
+            constants.INTERNAL_EDD_ERROR_CATEGORY, constants.UNPREDICTED_ERROR, str(e),
+        )
+        logger.exception(
+            "Unpredicted exception occurred during experiment description processing"
+        )
+        if options.email_when_finished and not options.dry_run:
+            cc.send_user_err_email()
+        cc.send_unexpected_err_email(
+            options.dry_run,
+            options.ignore_ice_access_errors,
+            options.allow_duplicate_names,
+        )
 
     def get(self, request, *args, **kwargs):
         # only render the view if request user has write permission
@@ -125,29 +135,18 @@ class DescribeView(StudyObjectMixin, generic.DetailView):
                     file_extension=upload.extension,
                     encoding=request.encoding or "utf8",
                 )
-            self._finished_import(cc, options, status_code, reply_content)
-            return JsonResponse(reply_content, status=status_code)
-        except DescriptionError as e:
-            return JsonResponse(e.response_dict, status=codes.bad_request)
-        # TODO: uncovered code
+            if status_code == codes.ok:
+                self._finished_import(cc, options, reply_content)
+                return JsonResponse(reply_content)
+        except DescriptionError:
+            return JsonResponse(
+                importer._build_response_content(cc.errors, cc.warnings),
+                status=codes.bad_request,
+            )
         except Exception as e:
-            cc.add_error(
-                constants.INTERNAL_EDD_ERROR_CATEGORY,
-                constants.UNPREDICTED_ERROR,
-                str(e),
-            )
-            logger.exception(
-                "Unpredicted exception occurred during experiment description processing"
-            )
-            if options.email_when_finished and not options.dry_run:
-                cc.send_user_err_email()
-            cc.send_unexpected_err_email(
-                options.dry_run,
-                options.ignore_ice_access_errors,
-                options.allow_duplicate_names,
-            )
+            self._handle_exception(cc, options, e)
             return JsonResponse(
                 importer._build_response_content(cc.errors, cc.warnings),
                 status=codes.internal_server_error,
             )
-        # END uncovered
+        return JsonResponse(reply_content, status=codes.bad_request)
