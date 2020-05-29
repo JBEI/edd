@@ -1,6 +1,4 @@
-"""
-Models describing measurement types.
-"""
+"""Models describing measurement types."""
 
 import logging
 import re
@@ -507,17 +505,23 @@ class ProteinIdentifier(MeasurementType):
                 self.save()
 
     @classmethod
-    def _load_uniprot(cls, uniprot_id, accession_id):
+    def _get_or_create_from_uniprot(cls, uniprot_id, accession_id):
         try:
+            protein = cls.objects.get(accession_code=uniprot_id)
+        except cls.DoesNotExist:
             url = cls._uniprot_url(uniprot_id)
-            values = cls._load_uniprot_values(uniprot_id)
-            values.update(
+            protein = cls.objects.create(
+                accession_code=uniprot_id,
                 accession_id=accession_id,
                 type_source=Datasource.objects.create(name="UniProt", url=url),
             )
-            protein, created = cls.objects.update_or_create(
-                accession_code=uniprot_id, defaults=values
-            )
+        return protein
+
+    @classmethod
+    def _load_uniprot(cls, uniprot_id, accession_id):
+        try:
+            protein = cls._get_or_create_from_uniprot(uniprot_id, accession_id)
+            lookup_protein_in_uniprot.delay(protein.id)
             return protein
         except Exception:
             logger.exception(f"Failed to create from UniProt {uniprot_id}")
@@ -668,6 +672,17 @@ class ProteinIdentifier(MeasurementType):
         # force PROTEINID group
         self.type_group = MeasurementType.Group.PROTEINID
         super().save(*args, **kwargs)
+
+
+@app.task(ignore_result=True, rate_limit="6/m")
+def lookup_protein_in_uniprot(pk):
+    """Background task to fetch UniProt metadata for a ProteinIdentifier."""
+    try:
+        protein = models.ProteinIdentifier.objects.get(pk=pk)
+        protein.update_from_uniprot()
+    except Exception as e:
+        logger.exception(f"Failed task updating protein ID {pk} from Uniprot: {e}")
+        raise Retry()
 
 
 class StrainLinkMixin:
