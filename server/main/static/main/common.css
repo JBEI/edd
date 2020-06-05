@@ -46,8 +46,6 @@ h4,
 h5,
 h6 {
     color: inherit;
-    margin: 0;
-    padding: 0;
 }
 
 table {
@@ -1469,6 +1467,10 @@ p.alertWarning {
 }
 .errorlist > li {
     float: none !important;
+    margin: 0.5em 0;
+}
+.errorlist > li:first-of-type {
+    margin-top: 0;
 }
 
 dl.infolist > dt {
