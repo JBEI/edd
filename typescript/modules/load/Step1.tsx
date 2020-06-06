@@ -73,10 +73,12 @@ export class Step extends React.Component<Props> {
         );
     }
 
-    private categoryInput(original) {
+    private categoryInput(original: JQuery) {
+        const placeholder = original.find("._placeholder").text();
         return (
             <Inputs.MultiButtonSelect
                 options={this.props.step1.selections}
+                placeholder={placeholder}
                 selected={this.props.step1.category}
                 onSelect={(selected) => this.categorySelect(selected)}
             />
@@ -130,17 +132,16 @@ export class Step extends React.Component<Props> {
     }
 
     private layoutInput(original) {
-        if (this.props.step1.category) {
-            const options = this.props.step1.category.layouts || [];
-            return (
-                <Inputs.MultiButtonSelect
-                    options={options}
-                    selected={this.props.step1.layout}
-                    onSelect={(selected) => this.layoutSelect(selected)}
-                />
-            );
-        }
-        return [];
+        const options = this.props.step1.category?.layouts || [];
+        const placeholder = original.find("._placeholder").text();
+        return (
+            <Inputs.MultiButtonSelect
+                options={options}
+                placeholder={placeholder}
+                selected={this.props.step1.layout}
+                onSelect={(selected) => this.layoutSelect(selected)}
+            />
+        );
     }
 
     private layoutSelect(selected) {
@@ -190,17 +191,16 @@ export class Step extends React.Component<Props> {
     }
 
     private protocolInput(original) {
-        if (this.props.step1.category) {
-            const protocols = this.props.step1.category.protocols || [];
-            return (
-                <Inputs.MultiButtonSelect
-                    options={protocols}
-                    selected={this.props.step1.protocol}
-                    onSelect={(selected) => this.protocolSelect(selected)}
-                />
-            );
-        }
-        return [];
+        const protocols = this.props.step1.category?.protocols || [];
+        const placeholder = original.find("._placeholder").text();
+        return (
+            <Inputs.MultiButtonSelect
+                options={protocols}
+                placeholder={placeholder}
+                selected={this.props.step1.protocol}
+                onSelect={(selected) => this.protocolSelect(selected)}
+            />
+        );
     }
 
     private protocolSelect(selected) {

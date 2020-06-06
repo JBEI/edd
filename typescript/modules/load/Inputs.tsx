@@ -9,14 +9,15 @@ import * as Summary from "./Summary.tsx";
 
 interface MBSProps {
     options: Summary.Choice[];
+    placeholder: string;
     selected: Summary.Choice;
     onSelect: (choice) => void;
 }
 
 export class MultiButtonSelect extends React.Component<MBSProps> {
-    componentDidMount() {
+    componentDidUpdate(prevProps, prevState) {
         const options = this.props.options || [];
-        if (options.length === 1) {
+        if (!prevProps.selected && options.length === 1) {
             // auto-select only option
             this.props.onSelect(options[0]);
         }
@@ -33,7 +34,11 @@ export class MultiButtonSelect extends React.Component<MBSProps> {
                 </button>
             );
         });
-        return <div className="multiSelect">{...buttons}</div>;
+        // output either buttons from options, or the placeholder
+        const contents = options.length
+            ? buttons
+            : [<span className="placeholder">{this.props.placeholder}</span>];
+        return <div className="multiSelect">{...contents}</div>;
     }
 }
 
