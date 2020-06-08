@@ -67,27 +67,16 @@ def staticfiles(context):
     # this is touching things that are shared between containers
     # must grab a lock before proceeding
     cache = util.get_redis()
-    # assume copy succeeds unless proven otherwise below
-    copied = True
-    with cache.lock(b"edd.startup.staticfiles"):
-        try:
-            version_hash = util.get_version_hash(context)
-            manifest = f"/var/www/static/staticfiles.{version_hash}.json"
-            result = context.run(f"test -f '{manifest}'", warn=True)
-            if not result.ok:
-                print(f"Copying staticfiles for manifest {version_hash}")
-                copied = context.run(
-                    "cp -R /usr/local/edd-static/. /var/www/static/", warn=True
-                ).ok
-            else:
+    try:
+        with cache.lock(b"edd.startup.staticfiles", timeout=15):
+            missing_manifest = util.check_static_manifest(context)
+            if missing_manifest is None:
                 print("Found staticfiles OK")
-        except BaseException:
-            # NOTE: dangerous using BaseException;
-            # do not copy this pattern elsewhere
-            # unless you know EXACTLY what this is doing
-            copied = False
-    if not copied:
-        raise invoke.exceptions.Exit("Staticfiles check failed")
+            else:
+                print(f"Copying staticfiles for manifest {missing_manifest}")
+                context.run("cp -R /usr/local/edd-static/. /var/www/static/")
+    except Exception as e:
+        raise invoke.exceptions.Exit("Staticfiles check failed") from e
 
 
 # postgres: Wait for postgres service to begin responding to connections;
@@ -110,17 +99,11 @@ def solr_ready(context):
     # this is touching things that are shared between containers
     # must grab a lock before proceeding
     cache = util.get_redis()
-    ready = True
-    with cache.lock(b"edd.startup.indexcheck"):
-        try:
-            ready = context.run("/code/manage.py edd_index --check", warn=True).ok
-        except BaseException:
-            # NOTE: dangerous using BaseException;
-            # do not copy this pattern elsewhere
-            # unless you know EXACTLY what this is doing
-            ready = False
-    if not ready:
-        raise invoke.exceptions.Exit("Index check failed")
+    try:
+        with cache.lock(b"edd.startup.indexcheck", timeout=15):
+            context.run("/code/manage.py edd_index --check")
+    except Exception as e:
+        raise invoke.exceptions.Exit("Index check failed") from e
 
 
 # migrations: Run migrations
@@ -133,22 +116,20 @@ def migrations(context):
     Django migrations and running a re-index task. Protected by a mutex
     so only one image per version will run.
     """
-    version_hash = util.get_version_hash(context)
     # this is touching things that are shared between containers
     # must grab a lock before proceeding
     cache = util.get_redis()
-    prefix = "edd.startup.migrations"
-    version_key = f"{prefix}.{version_hash}".encode("utf-8")
-    # assume things current unless explicitly shown otherwise below
-    current = True
-    with cache.lock(prefix.encode("utf-8")):
-        try:
+    try:
+        version_hash = util.get_version_hash(context)
+        prefix = "edd.startup.migrations"
+        version_key = f"{prefix}.{version_hash}".encode("utf-8")
+        with cache.lock(prefix.encode("utf-8"), timeout=30):
             # check if another image recently ran check for this version
             if not cache.get(version_key):
                 # checks for any pending migrations
                 if util.get_pending_migrations(context):
-                    # run pending migrations, set current to success value
-                    current = context.run("/code/manage.py migrate", warn=True).ok
+                    # run pending migrations
+                    context.run("/code/manage.py migrate")
                     # clean Solr indices
                     context.run("/code/manage.py edd_index --clean", warn=True)
                     # force re-index in the background
@@ -156,19 +137,14 @@ def migrations(context):
                 else:
                     # re-index in the background
                     context.run("/code/manage.py edd_index &", disown=True)
-            # mark this version as recently checked
-            # expire in a week
-            # avoids cost of checking every time
-            # avoids keeping list of every hash run forever
-            expires = 60 * 60 * 24 * 7
-            cache.set(version_key, version_hash.encode("utf-8"), ex=expires)
-        except BaseException:
-            # NOTE: dangerous using BaseException;
-            # do not copy this pattern elsewhere
-            # unless you know EXACTLY what this is doing
-            current = False
-    if not current:
-        raise invoke.exceptions.Exit("Migration check failed")
+        # mark this version as recently checked
+        # expire in a week
+        # avoids cost of checking every time
+        # avoids keeping list of every hash run forever
+        expires = 60 * 60 * 24 * 7
+        cache.set(version_key, version_hash.encode("utf-8"), ex=expires)
+    except Exception as e:
+        raise invoke.exceptions.Exit("Migration check failed") from e
 
 
 # errorpage: Render static 500.html error page
