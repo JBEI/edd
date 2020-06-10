@@ -160,14 +160,10 @@ export class ProgressiveFilteringWidget {
         });
 
         // Create filters on assay tables
-        // TODO media is now a metadata type, strain and carbon source should be too
         const assayFilters = [];
-        assayFilters.push(new ProtocolFilterSection()); // Protocol
-        assayFilters.push(new StrainFilterSection()); // first column in filtering section
-        assayFilters.push(this.lineNameFilter); // LINE
-        assayFilters.push(new CarbonSourceFilterSection());
-        assayFilters.push(new CarbonLabelingFilterSection());
-        assayFilters.push(new AssayFilterSection()); // Assay
+        assayFilters.push(this.lineNameFilter);
+        assayFilters.push(new ProtocolFilterSection());
+        assayFilters.push(new StrainFilterSection());
         // convert seen metadata IDs to FilterSection objects, and push to end of assayFilters
         assayFilters.push.apply(
             assayFilters,
@@ -576,8 +572,6 @@ export class GenericFilterSection {
     tableBodyElement: HTMLTableElement;
 
     // Search box related
-    typingTimeout: number;
-    typingDelay: number;
     currentSearchSelection: string;
     previousSearchSelection: string;
     minCharsToTriggerSearch: number;
@@ -601,8 +595,6 @@ export class GenericFilterSection {
         this.tableRows = {};
         this.checkboxes = {};
 
-        this.typingTimeout = null;
-        this.typingDelay = 330; // TODO: Not implemented
         this.currentSearchSelection = "";
         this.previousSearchSelection = "";
         this.minCharsToTriggerSearch = 1;
@@ -1004,55 +996,6 @@ export class StrainFilterSection extends GenericFilterSection {
     }
 }
 
-// Just as with the Strain filter, an Assay's Line can have more than one
-// Carbon Source assigned to it.
-export class CarbonSourceFilterSection extends GenericFilterSection {
-    configure(): void {
-        super.configure("Carbon Source", "cs");
-    }
-
-    updateUniqueIndexesHash(ids: string[]): void {
-        this.uniqueIndexes = {};
-        this.filterHash = {};
-        ids.forEach((assayId: string) => {
-            const line: any = this._assayIdToLine(assayId) || {};
-            this.filterHash[assayId] = this.filterHash[assayId] || [];
-            // assign unique ID to every encountered carbon source name
-            (line.carbon || []).forEach((carbonId: string) => {
-                const src = EDDData.CSources[carbonId];
-                if (src && src.name) {
-                    const idx = this.assignUniqueIndex(src.name);
-                    this.filterHash[assayId].push(idx);
-                }
-            });
-        });
-    }
-}
-
-// A filter for the 'Carbon Source Labeling' field for each Assay's Line
-export class CarbonLabelingFilterSection extends GenericFilterSection {
-    configure(): void {
-        super.configure("Labeling", "l");
-    }
-
-    updateUniqueIndexesHash(ids: string[]): void {
-        this.uniqueIndexes = {};
-        this.filterHash = {};
-        ids.forEach((assayId: string) => {
-            const line: any = this._assayIdToLine(assayId) || {};
-            this.filterHash[assayId] = this.filterHash[assayId] || [];
-            // assign unique ID to every encountered carbon source labeling description
-            (line.carbon || []).forEach((carbonId: string) => {
-                const src = EDDData.CSources[carbonId];
-                if (src && src.labeling) {
-                    const idx = this.assignUniqueIndex(src.labeling);
-                    this.filterHash[assayId].push(idx);
-                }
-            });
-        });
-    }
-}
-
 // A filter for the name of each Assay's Line
 export class LineNameFilterSection extends GenericFilterSection {
     lineLookup: { [key: string]: LineRecord };
@@ -1062,6 +1005,11 @@ export class LineNameFilterSection extends GenericFilterSection {
         super.configure("Line", "ln");
         this.filteringTable.css("font-weight", "bold");
         this.lineLookup = {};
+    }
+
+    isFilterUseful(): boolean {
+        // always return true because this acts as our color legend
+        return true;
     }
 
     updateUniqueIndexesHash(ids: string[]): void {
@@ -1156,26 +1104,6 @@ export class ProtocolFilterSection extends GenericFilterSection {
             this.filterHash[assayId] = this.filterHash[assayId] || [];
             if (protocol && protocol.name) {
                 const idx = this.assignUniqueIndex(protocol.name);
-                this.filterHash[assayId].push(idx);
-            }
-        });
-    }
-}
-
-// A filter for the name of each Assay
-export class AssayFilterSection extends GenericFilterSection {
-    configure(): void {
-        super.configure("Assay", "a");
-    }
-
-    updateUniqueIndexesHash(ids: string[]): void {
-        this.uniqueIndexes = {};
-        this.filterHash = {};
-        ids.forEach((assayId: string) => {
-            const assay = this._assayIdToAssay(assayId) || {};
-            this.filterHash[assayId] = this.filterHash[assayId] || [];
-            if (assay.name) {
-                const idx = this.assignUniqueIndex(assay.name);
                 this.filterHash[assayId].push(idx);
             }
         });

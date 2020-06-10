@@ -100,7 +100,7 @@ export class EDDGraphingTools {
      */
     private measurementName(measurementId: number, compId?: string): string {
         const name = this.globalInfo.MeasurementTypes[measurementId].name;
-        if (!!compId) {
+        if (compId) {
             const comp = this.globalInfo.MeasurementTypeCompartments[compId];
             return [comp.code, name].join(" ").trim();
         }
