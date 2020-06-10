@@ -1,8 +1,6 @@
-FROM debian:buster-slim as build
+FROM library/python:3.8-slim-buster as build
 
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-        mkdocs
+RUN pip install mkdocs mkdocs-bootswatch
 
 WORKDIR /usr/local/edd
 

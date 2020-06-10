@@ -22,7 +22,7 @@ nav:
       - License: License.md
       - Legal: Legal.md
       - Contributing: Contributing.md
-theme: readthedocs
+theme: spacelab
 markdown_extensions:
   - codehilite:
   - sane_lists:
