@@ -49,7 +49,7 @@ try {
             // normalize image_version and project_name
             // remove all non-word characters
             // convert to all lowercase
-            image_version = "${git_branch}-${BUILD_NUMBER}"
+            image_version = "${git_branch}_${BUILD_NUMBER}"
             image_version = image_version.replaceAll("\\W", "")
             image_version = image_version.toLowerCase()
             project_name = "jpipe_${git_branch}_${BUILD_NUMBER}"
@@ -146,15 +146,9 @@ try {
                     ]) {
                         sh("sudo docker login -u $USERNAME -p $PASSWORD jenkins.jbei.org:5000")
                     }
-                    sh("sudo bin/jenkins/push_internal.sh '${image_version}'")
+                    sh("sudo bin/jenkins/push_internal.sh '${image_version}' '${git_branch}'")
                 }
             }
-
-            // TODO: more stages
-            // stage('Publish') {
-            // }
-            // stage('Deploy') {
-            // }
 
         } catch (exc) {
             currentBuild.result = "FAILURE"
@@ -196,3 +190,22 @@ mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} ${status}",
           to: committer_email,
      replyTo: committer_email,
         from: "jbei-edd-admin@lists.lbl.gov"
+
+if (git_branch == "master") {
+    node("edd-test-swarm") {
+        stage('Deploy Test') {
+            try {
+                def update_script = $/#!/bin/bash -xe
+                    export EDD_IMAGE="jenkins.jbei.org:5000/jbei/edd-core:master"
+                    sudo docker pull "${EDD_IMAGE}"
+                    sudo docker service update --image "${EDD_IMAGE}" edd-test_http
+                    sudo docker service update --image "${EDD_IMAGE}" edd-test_worker
+                    sudo docker service update --image "${EDD_IMAGE}" edd-test_websocket
+                /$
+                sh(update_script)
+            } catch (exc) {
+                echo "Caught ${exc}"
+            }
+        }
+    }
+}
