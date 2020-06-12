@@ -192,6 +192,13 @@ mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} ${status}",
         from: "jbei-edd-admin@lists.lbl.gov"
 
 if (status == "SUCCESS" && git_branch == "master") {
+    def update_test_server = $/#!/bin/bash -xe
+        export EDD_IMAGE="jenkins.jbei.org:5000/jbei/edd-core:master"
+        sudo docker pull '${EDD_IMAGE}'
+        sudo docker service update --with-registry-auth --image '${EDD_IMAGE}' edd-test_http
+        sudo docker service update --with-registry-auth --image '${EDD_IMAGE}' edd-test_worker
+        sudo docker service update --with-registry-auth --image '${EDD_IMAGE}' edd-test_websocket
+    /$
     node("edd-test-swarm") {
         stage('Deploy Test') {
             try {
@@ -204,7 +211,7 @@ if (status == "SUCCESS" && git_branch == "master") {
                 ]) {
                     sh("sudo docker login -u $USERNAME -p $PASSWORD jenkins.jbei.org:5000")
                 }
-                sh("sudo bin/jenkins/update_test_server.sh")
+                sh(update_test_server)
             } catch (exc) {
                 echo "Caught ${exc}"
             }
