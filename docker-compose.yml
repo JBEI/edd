@@ -13,7 +13,7 @@ services:
         - -LSs
         - http://localhost:8000/health/
       interval: 15s
-      start_period: 60s
+      start_period: 120s
       timeout: 5s
       retries: 5
     image: jbei/edd-core:latest
@@ -38,6 +38,10 @@ services:
         - --fail
         - -LSs
         - http://localhost:8000/health/
+      interval: 15s
+      start_period: 120s
+      timeout: 5s
+      retries: 5
     image: jbei/edd-core:latest
     logging:
       driver: "json-file"
@@ -66,6 +70,7 @@ services:
         - --workdir
         - /code
       interval: 1m
+      start_period: 120s
       timeout: 20s
       retries: 3
     image: jbei/edd-core:latest

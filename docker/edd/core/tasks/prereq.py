@@ -68,7 +68,7 @@ def staticfiles(context):
     # must grab a lock before proceeding
     cache = util.get_redis()
     try:
-        with cache.lock(b"edd.startup.staticfiles", timeout=15):
+        with cache.lock(b"edd.startup.staticfiles", timeout=60):
             missing_manifest = util.check_static_manifest(context)
             if missing_manifest is None:
                 print("Found staticfiles OK")
@@ -101,7 +101,7 @@ def solr_ready(context):
     # must grab a lock before proceeding
     cache = util.get_redis()
     try:
-        with cache.lock(b"edd.startup.indexcheck", timeout=15):
+        with cache.lock(b"edd.startup.indexcheck", timeout=60):
             context.run("/code/manage.py edd_index --check")
     except Exception as e:
         print(e)
@@ -125,7 +125,7 @@ def migrations(context):
         version_hash = util.get_version_hash(context)
         prefix = "edd.startup.migrations"
         version_key = f"{prefix}.{version_hash}".encode("utf-8")
-        with cache.lock(prefix.encode("utf-8"), timeout=30):
+        with cache.lock(prefix.encode("utf-8"), timeout=60):
             # check if another image recently ran check for this version
             if not cache.get(version_key):
                 # checks for any pending migrations
