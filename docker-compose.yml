@@ -31,6 +31,13 @@ services:
   websocket:
     command:
       - daphne
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - -LSs
+        - http://localhost:8000/health/
     image: jbei/edd-core:latest
     logging:
       driver: "json-file"

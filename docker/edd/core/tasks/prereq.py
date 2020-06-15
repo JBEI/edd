@@ -76,6 +76,7 @@ def staticfiles(context):
                 print(f"Copying staticfiles for manifest {missing_manifest}")
                 context.run("cp -R /usr/local/edd-static/. /var/www/static/")
     except Exception as e:
+        print(e)
         raise invoke.exceptions.Exit("Staticfiles check failed") from e
 
 
@@ -103,6 +104,7 @@ def solr_ready(context):
         with cache.lock(b"edd.startup.indexcheck", timeout=15):
             context.run("/code/manage.py edd_index --check")
     except Exception as e:
+        print(e)
         raise invoke.exceptions.Exit("Index check failed") from e
 
 
@@ -144,6 +146,7 @@ def migrations(context):
         expires = 60 * 60 * 24 * 7
         cache.set(version_key, version_hash.encode("utf-8"), ex=expires)
     except Exception as e:
+        print(e)
         raise invoke.exceptions.Exit("Migration check failed") from e
 
 
