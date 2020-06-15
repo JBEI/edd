@@ -96,9 +96,15 @@ rm docker-compose.override.yml.bak
 
 # Rewrite docker-compose.override.yml to insert correct image tag
 yq w -s - -i docker-compose.override.yml <<EOF
-services.http.image: jbei/edd-core:${TAG}
-services.websocket.image: jbei/edd-core:${TAG}
-services.worker.image: jbei/edd-core:${TAG}
+- command: update
+  path: services.http.image
+  value: jbei/edd-core:${TAG}
+- command: update
+  path: services.websocket.image
+  value: jbei/edd-core:${TAG}
+- command: update
+  path: services.worker.image
+  value: jbei/edd-core:${TAG}
 EOF
 
 # Pre-build other images
