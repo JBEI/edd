@@ -173,7 +173,7 @@ def test_line_strain_changed_without_ice():
 
 def test_submit_ice_unlink():
     study_id = fake.pyint()
-    to_remove = fake.pylist(10, True, "int")
+    to_remove = fake.pylist(value_types=(int,))
     with patch("main.signals.core.tasks.unlink_ice_entry_from_study") as task:
         core.submit_ice_unlink(study_id, to_remove)
         assert task.delay.call_count == len(to_remove)
@@ -181,7 +181,7 @@ def test_submit_ice_unlink():
 
 def test_submit_ice_link():
     study_id = fake.pyint()
-    to_link = fake.pylist(10, True, "int")
+    to_link = fake.pylist(value_types=(int,))
     with patch("main.signals.core.tasks.link_ice_entry_to_study") as task:
         core.submit_ice_link(study_id, to_link)
         assert task.delay.call_count == len(to_link)
