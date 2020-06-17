@@ -2,7 +2,8 @@ import csv
 import json
 import logging
 import re
-from collections import Sequence, defaultdict
+from collections import defaultdict
+from collections.abc import Sequence
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from jsonschema import Draft4Validator

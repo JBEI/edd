@@ -1,7 +1,8 @@
 import collections
 import copy
 import logging
-from collections import Sequence, defaultdict
+from collections import defaultdict
+from collections.abc import Sequence
 from typing import Any, Dict, Iterable, List, Tuple, Union
 
 from arrow import utcnow
@@ -854,7 +855,7 @@ class CombinatorialDescriptionInput:
             return
 
         # if strain metadata only contains a single item, wrap it in a list for consistency
-        if (not isinstance(strain_id_groups, collections.Sequence)) or isinstance(
+        if (not isinstance(strain_id_groups, Sequence)) or isinstance(
             strain_id_groups, str
         ):
             strain_id_groups = [strain_id_groups]
@@ -870,9 +871,7 @@ class CombinatorialDescriptionInput:
         # combinatorial line metadata should be a list of strain lists, since each line can contain
         # multiple strains
         for group_index, ice_id_list in enumerate(strain_id_groups):
-            if (not isinstance(ice_id_list, collections.Sequence)) or isinstance(
-                ice_id_list, str
-            ):
+            if (not isinstance(ice_id_list, Sequence)) or isinstance(ice_id_list, str):
                 ice_id_list = [ice_id_list]
                 strain_id_groups[group_index] = ice_id_list
 
