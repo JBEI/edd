@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from graphene import ObjectType, Schema, relay
 
 from main import schema as main

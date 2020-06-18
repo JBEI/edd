@@ -8,14 +8,13 @@ from jsonschema import Draft4Validator
 from requests import codes
 
 from edd import TestCase
-
 from main import models
 from main.tests import factory
 
 from . import constants
 from .importer import CombinatorialCreationImporter, ExperimentDescriptionOptions
 from .parsers import ExperimentDescFileParser, JsonInputParser
-from .utilities import ExperimentDescriptionContext, CombinatorialDescriptionInput
+from .utilities import CombinatorialDescriptionInput, ExperimentDescriptionContext
 from .validators import SCHEMA as JSON_SCHEMA
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -288,7 +287,9 @@ class ExperimentDescriptionParseTests(TestCase):
         cls.testuser = factory.UserFactory()
         cls.metabolomics = factory.ProtocolFactory(name="Metabolomics")
         cls.targeted_proteomics = factory.ProtocolFactory(name="Targeted Proteomics")
-        cls.media_mtype = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Media"])
+        cls.media_mtype = models.MetadataType.objects.get(
+            uuid=models.SYSTEM_META_TYPES["Media"]
+        )
 
         # query the database and cache MetadataTypes, Protocols, etc that should be static
         # for the duration of the test
@@ -391,7 +392,9 @@ class ExperimentDescriptionParseTests(TestCase):
         parser = ExperimentDescFileParser(self.cache, importer)
         parsed: List[CombinatorialDescriptionInput] = parser.parse_csv(lines_iter)
 
-        time_meta_type = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        time_meta_type = models.MetadataType.objects.get(
+            uuid=models.SYSTEM_META_TYPES["Time"]
+        )
         self.assertDictEqual(
             parsed[0].protocol_to_assay_metadata,
             {self.targeted_proteomics.pk: {time_meta_type.pk: 2.0}},
@@ -415,7 +418,9 @@ class ExperimentDescriptionParseTests(TestCase):
         parsed: List[CombinatorialDescriptionInput] = parser.parse_excel(ed_file)
         combo_input: CombinatorialDescriptionInput = parsed[0]
 
-        time_meta_type = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        time_meta_type = models.MetadataType.objects.get(
+            uuid=models.SYSTEM_META_TYPES["Time"]
+        )
         self.assertDictEqual(
             combo_input.protocol_to_combinatorial_meta_dict,
             {

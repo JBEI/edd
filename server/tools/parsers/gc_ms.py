@@ -413,7 +413,7 @@ def run(args, out=sys.stdout, err=sys.stderr):
     options, args = parser.parse_args(args)
     if len(args) != 1:
         raise ValueError("Must execute with one and only one filename.")
-    with open(args[0], "r") as file:
+    with open(args[0]) as file:
         result = Report(file.readlines())
     if len(result.samples) == 0:
         raise ValueError(f"No samples found in '{args[0]}'")

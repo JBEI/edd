@@ -99,7 +99,7 @@ def test_skyline_parsing():
     file_name = os.path.join(test_dir, "skyline.csv")
     parser = skyline.SkylineParser()
 
-    with open(file_name, "r") as file:
+    with open(file_name) as file:
         reader = csv.reader(file)
         result = parser.export(reader)
 
@@ -109,7 +109,7 @@ def test_skyline_parsing():
 def test_simple_biolector_file():
     filename = "/code/tools/parsers/biolector/biolector_test_file.xml"
 
-    with open(filename, "r") as file:
+    with open(filename) as file:
         results = biolector.getRawImportRecordsAsJSON(file, 0)
 
     assert len(results) == 48

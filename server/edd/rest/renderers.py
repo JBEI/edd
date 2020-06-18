@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import csv
 import logging
 
@@ -49,14 +47,14 @@ class ExportRenderer(csv_renderers.CSVRenderer):
     }
 
 
-class Echo(object):
+class Echo:
     """Implements write() interface for use by csv.writer()."""
 
     def write(self, value):
         return value
 
 
-class StreamingExportRenderer(object):
+class StreamingExportRenderer:
     """Not actually a DRF renderer, but close enough."""
 
     # these columns are based on the MODEL, not DRF serializers

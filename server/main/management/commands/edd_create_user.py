@@ -14,12 +14,12 @@ class Command(createsuperuser.Command):
     help = "Creates a user account with an auto-validated email address."
 
     def __init__(self, *args, **kwargs):
-        super(Command, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._username = None
 
     def add_arguments(self, parser):
         # Add all parent arguments
-        super(Command, self).add_arguments(parser)
+        super().add_arguments(parser)
         # Add our flag for normal/super users
         parser.add_argument(
             "--%s" % ADMIN,
@@ -62,7 +62,7 @@ class Command(createsuperuser.Command):
     def get_input_data(self, field, message, default=None):
         """ Override delegates to parent method, only captures value of interactive input for the
             username field. """
-        val = super(Command, self).get_input_data(field, message, default)
+        val = super().get_input_data(field, message, default)
         if field.name == "username":
             self._username = val
         return val

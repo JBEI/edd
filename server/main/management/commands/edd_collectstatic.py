@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 An override of the built-in collectstatic command, which adds a --watch parameter. It will re-run
 the collectstatic command when changes are detected in the watch directories.

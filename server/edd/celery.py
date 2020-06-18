@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Defines the client-side Celery "app" (API instance) used by EDD to asynchronously execute tasks on
 the Celery cluster.

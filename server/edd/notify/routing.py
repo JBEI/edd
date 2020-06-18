@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.conf.urls import url
 

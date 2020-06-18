@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import factory
 
 from main.tests import factory as edd_factory
@@ -24,7 +22,7 @@ class CampaignMembershipFactory(factory.django.DjangoModelFactory):
     status = models.CampaignMembership.Status.ACTIVE
 
 
-class CampaignLinkRegistry(object):
+class CampaignLinkRegistry:
     """Add a registered link operation to CampaignPermission in a context manager."""
 
     def __init__(self, link_type, operation):

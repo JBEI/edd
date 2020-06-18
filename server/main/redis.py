@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import logging
 from uuid import uuid4
 
@@ -9,11 +7,11 @@ from django_redis import get_redis_connection
 logger = logging.getLogger(__name__)
 
 
-class LatestViewedStudies(object):
+class LatestViewedStudies:
     """ Interfaces with Redis to keep a list of latest viewed studies """
 
     def __init__(self, user, n=5, *args, **kwargs):
-        super(LatestViewedStudies, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._end = n - 1
         self._redis = get_redis_connection(settings.EDD_LATEST_CACHE)
         self._user = user
@@ -43,7 +41,7 @@ class LatestViewedStudies(object):
             self._redis.ltrim(key, 0, self._end)
 
 
-class ScratchStorage(object):
+class ScratchStorage:
     """ Interfaces with Redis to keep scratch storage """
 
     def __init__(self, key_prefix=None, **kwargs):
@@ -51,7 +49,7 @@ class ScratchStorage(object):
         :param key_prefix: an optional prefix to prepend to all cache entries created by this
             ScratchStorage instance.
         """
-        super(ScratchStorage, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._key_prefix = key_prefix
         if self._key_prefix is None:
             self._key_prefix = f"{__name__}.{self.__class__.__name__}"
@@ -129,8 +127,7 @@ class ScratchStorage(object):
         :param name: name of the value returned from ScratchStorage.append()
         :returns: a generator of the stored values
         """
-        for page in self._redis.lrange(self._key(name), 0, -1):
-            yield page
+        yield from self._redis.lrange(self._key(name), 0, -1)
 
     def append(self, data, name=None, expires=None):
         """

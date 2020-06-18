@@ -1,4 +1,3 @@
-# coding: utf-8
 from rest_framework import routers as rest_routers
 from rest_framework_nested import routers as nested_routers
 

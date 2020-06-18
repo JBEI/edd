@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import logging
 from collections import namedtuple
 from uuid import UUID, uuid4
@@ -56,7 +54,7 @@ class Notification(NotificationBase):
         return prep
 
 
-class BaseBroker(object):
+class BaseBroker:
     """
     Defines the API to use for setting, fetching, and clearing Notification objects.
     """

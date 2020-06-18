@@ -40,7 +40,7 @@ def parse_name(name):
 
 def process_file(filename):
     print("Reading %s …" % filename)
-    with open(filename, "r") as f:
+    with open(filename) as f:
         f.readline()
         f.readline()
         for line in f:

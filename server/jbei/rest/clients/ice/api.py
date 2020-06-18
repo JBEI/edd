@@ -417,8 +417,7 @@ class IceApi(RestApiClient):
         rest_url, params = self._init_folder_entries_params(folder_id, partner_id, sort)
 
         def fetch_entries(initial):
-            for entry in initial:
-                yield entry
+            yield from initial
             offsets = itertools.count(start=self.result_limit, step=self.result_limit)
             for offset in offsets:
                 params["offset"] = offset
@@ -427,8 +426,7 @@ class IceApi(RestApiClient):
                 page = Folder.of(response.json())
                 if len(page.entries) == 0:
                     break
-                for entry in page.entries:
-                    yield entry
+                yield from page.entries
 
         try:
             response = self.session.get(url=rest_url, params=params)
@@ -535,8 +533,7 @@ class IceApi(RestApiClient):
                 f"{self.base_url}/rest/parts/{ice_entry_id}/experiments/"
             )
             response.raise_for_status()
-            for link in response.json():
-                yield link
+            yield from response.json()
         except Exception as e:
             raise IceApiException(
                 f"Failed to load experiment links from {ice_entry_id}"

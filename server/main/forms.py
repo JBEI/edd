@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import collections
 import json
 import logging
@@ -583,7 +581,7 @@ class CreateCommentForm(forms.ModelForm):
         return c
 
 
-class BulkEditMixin(object):
+class BulkEditMixin:
     """Mixin class adds methods to inject bulk-edit checkboxes and filter out before saves."""
 
     @classmethod
@@ -629,7 +627,7 @@ class BulkEditMixin(object):
             )
 
 
-class MetadataEditMixin(object):
+class MetadataEditMixin:
     """Mixin class adds methods to handle processing values for MetadataType."""
 
     def clean_metadata(self):

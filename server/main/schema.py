@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import logging
 
 import graphene
@@ -58,7 +56,7 @@ class MetadataNode(graphene.ObjectType):
     value = graphene.types.json.JSONString()
 
 
-class StudyAccessMixin(object):
+class StudyAccessMixin:
     """
     Override the fetch for EDDObject nodes; filter results to only those attached to a
     readable study.
@@ -122,7 +120,7 @@ class MeasurementValueNode(StudyAccessMixin, DjangoObjectType):
         model = models.MeasurementValue
 
 
-class Query(object):
+class Query:
     study = relay.Node.Field(StudyNode)
     line = relay.Node.Field(LineNode)
     assay = relay.Node.Field(AssayNode)

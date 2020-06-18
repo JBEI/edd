@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Views used as AJAX calls by the front-end Typescript code in EDD.
 """

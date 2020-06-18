@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """ Settings for the Experiment Data Depot. """
 
 from .auth import *  # noqa: F403

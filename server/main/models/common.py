@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Common code; defines serialization mixin.
 """
@@ -6,7 +5,7 @@ Common code; defines serialization mixin.
 from django.db.models import Q
 
 
-class EDDSerialize(object):
+class EDDSerialize:
     """ Mixin class for EDD models supporting JSON serialization. """
 
     def get_attr_depth(self, attr_name, depth, default=None):
