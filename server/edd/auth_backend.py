@@ -24,6 +24,19 @@ class AllauthLDAPBackend(LDAPBackend):
         self._createAndVerifyEmail(user)
         return user
 
+    def get_or_build_user(self, username, ldap_user):
+        try:
+            # first check if there's an EmailAddress for the LDAP email
+            attr_name = self.settings.USER_ATTR_MAP["email"]
+            email = ldap_user.attrs[attr_name][0]
+            found = models.EmailAddress.objects.select_related("user").get(
+                email__iexact=email, verified=True,
+            )
+            return (found.user, False)
+        except Exception:
+            # when EmailAddress not found, fallback to parent behavior
+            return super().get_or_build_user(username, ldap_user)
+
     def _createAndVerifyEmail(self, user):
         # validate user has email in LDAP
         if user and user.email:
