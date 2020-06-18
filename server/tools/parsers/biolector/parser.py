@@ -4,12 +4,11 @@ Interpret a Biolector XML file, creating a series of measurement sets suitable f
 Step 2 of the EDD Data Table Import page.
 """
 
+import io
 import logging
 from xml.dom import pulldom
 from xml.sax import handler
 from xml.sax.expatreader import ExpatParser as _ExpatParser
-
-from django.utils import six
 
 from ..util import RawImportRecord
 
@@ -166,7 +165,7 @@ class BiolectorXMLReader:
         self.rawImportRecordBuffer = []
         self.options = options
         if isinstance(stream_or_string, str):
-            self.stream = six.StringIO(stream_or_string)
+            self.stream = io.StringIO(stream_or_string)
         else:
             self.stream = stream_or_string
 

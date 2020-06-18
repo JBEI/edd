@@ -2,12 +2,12 @@ import logging
 import re
 from itertools import chain, product
 from textwrap import TextWrapper
+from urllib.parse import urlparse, urlunparse
 from uuid import uuid4
 
 from django.core import mail
 from django.test import TestCase as DjangoTestCase
 from django.views import debug
-from six.moves.urllib.parse import urlparse, urlunparse
 from threadlocals.threadlocals import set_thread_variable
 
 from .celery import app as celery_app
