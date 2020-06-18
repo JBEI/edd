@@ -23,8 +23,10 @@ def commit_hash = "_"
 def stage_name = "_"
 // Store results from `checkout scm` because ${env.GIT_URL}, etc are not available
 def git_branch = ""
+def branch_tag = ""
 def image_version = ""
 def project_name = ""
+def version_tag = ""
 
 // set the properties
 properties(projectProperties)
@@ -46,17 +48,19 @@ try {
             print checkout_result
             git_branch = checkout_result["GIT_BRANCH"]
             commit_hash = checkout_result["GIT_COMMIT"]
-            // normalize image_version and project_name
+            // normalize branch_tag
             // remove all non-word characters
             // convert to all lowercase
-            image_version = "${git_branch}_${BUILD_NUMBER}"
-            image_version = image_version.replaceAll("\\W", "")
-            image_version = image_version.toLowerCase()
-            project_name = "jpipe_${git_branch}_${BUILD_NUMBER}"
-            project_name = project_name.replaceAll("\\W", "")
-            project_name = project_name.toLowerCase()
+            branch_tag = git_branch.replaceAll("\\W", "").toLowerCase()
+            // image_version is branch_tag with current build number
+            image_version = "${branch_tag}_${BUILD_NUMBER}"
+            project_name = "jpipe_${image_version}"
             committer_email = sh(
                 script: 'git --no-pager show -s --format=\'%ae\'',
+                returnStdout: true
+            ).trim()
+            version_tag = sh(
+                script: 'git tag --points-at HEAD',
                 returnStdout: true
             ).trim()
 
@@ -146,8 +150,14 @@ try {
                     ]) {
                         sh("sudo docker login -u $USERNAME -p $PASSWORD jenkins.jbei.org:5000")
                     }
-                    sh("sudo bin/jenkins/push_internal.sh '${image_version}' '${git_branch}'")
+                    sh("sudo bin/jenkins/push_internal.sh '${image_version}' '${branch_tag}'")
                 }
+            }
+
+            if (version_tag != "") {
+                // TODO: handle pushing to docker.io here
+                // will tagging commit behind branch HEAD checkout the tagged commit?
+                // how to manage tag latest?
             }
 
         } catch (exc) {
