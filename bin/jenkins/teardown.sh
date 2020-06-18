@@ -1,8 +1,10 @@
 #!/bin/bash -xe
 
-# $1 = project name
+# $1 = stack name given to docker
 
-docker-compose -p "${1}" down
-docker ps -qf "name=${1}_*" | xargs docker rm || true
-docker network ls -qf "name=${1}_*" | xargs docker network rm || true
-docker volume ls -qf "name=${1}_*" | xargs docker volume rm || true
+# remove stack
+docker stack rm "${1}"
+
+# remove configs and secrets created in launch.sh
+docker config ls -qf "name=${1}_" | xargs --no-run-if-empty docker config rm
+docker secret ls -qf "name=${1}_" | xargs --no-run-if-empty docker secret rm

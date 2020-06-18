@@ -5,141 +5,96 @@
 TAG="${1}"
 PROJECT="${2}"
 
-# Copy default example settings
-cp settings/example settings/__init__.py
+# Copy default example settings to a config
+cat settings/example | docker config create "${PROJECT}_settings" -
 
-function create_volume() {
-    # $1 = volume name
-    # $2 = original path
-    # create the volume
-    docker volume create "${1}"
-    if [ -d "${2}" ]; then
-        src_dir="${2}"
-        src_copy="."
-    else
-        # when not a directory, copying individual file
-        src_dir="$(dirname "${2}")"
-        src_copy="$(basename "${2}")"
-    fi
-    # copy original path into the volume
-    tar -czf - -C "${src_dir}" "${src_copy}" \
-        | docker run --rm -i -v "${1}:/tmp/jenkins" alpine:3.9 tar -xzf - -C /tmp/jenkins
-}
+# Copy HMAC key for ICE to a config
+# NOTE: this *should* be a secret instead of config;
+# but, secrets can only appear at /run/secrets/${NAME}
+# doing this as config is *only* because this is a transient test
+cat secrets/edd_ice_key | docker config create "${PROJECT}_ice_key" -
 
-# bind mount volumes from inside container are not accessible to Docker host
-# pull out list of all services first
-SERVICES=( )
-while read SERVICE; do
-    SERVICES+=( "${SERVICE}" )
-done < <(yq r docker-compose.override.yml services | grep -v '  .*' | sed 's/:$//')
-# create volumes, copy in bind mount path, replace bind mount with volume mount
-for SERVICE in "${SERVICES[@]}"; do
-    N=0
-    YAML_PATH="services.${SERVICE}.volumes"
-    while read VOLUME; do
-        # strip off leading hyphen-and-space
-        VOLUME="${VOLUME#*- }"
-        # part before first colon
-        SRC="${VOLUME%%:*}"
-        # part after first colon
-        TARGET="${VOLUME#*:}"
-        # only volume copy readable files/directories
-        # this ignores /var/run/docker.sock
-        if [ -r "${SRC}" ] && [ -f "${SRC}" -o -d "${SRC}" ]; then
-            # define name used in compose file
-            VOL_TAG="${SERVICE}_${N}"
-            # define new volume name
-            VOL_NAME="${PROJECT}_${VOL_TAG}"
-            # copy contents of SRC to volume
-            create_volume "${VOL_NAME}" "${SRC}"
-            if [ -f "${SRC}" ]; then
-                # when doing a single file, mount volume to parent dir
-                # because volume becomes directory with single file
-                PARENT="$(dirname "${TARGET%%:*}")"
-                OPTS="${TARGET#*:}"
-                if [ "${OPTS}" != "" ]; then
-                    TARGET="${PARENT}:${OPTS}"
-                else
-                    TARGET="${PARENT}"
-                fi
-            fi
-            # replace volume entry with one using new volume name
-            yq w -i docker-compose.override.yml \
-                "${YAML_PATH}[${N}]" \
-                "${VOL_TAG}:${TARGET}"
-            # add reference to volume name in volumes section
-            yq w -i docker-compose.override.yml "volumes.${VOL_TAG}.temp" ""
-            yq d -i docker-compose.override.yml "volumes.${VOL_TAG}.temp"
-        fi
-        N=$((N + 1))
-    done < <(yq r docker-compose.override.yml "${YAML_PATH}")
-done
-
-
-# waits until a given container reports healthy
-function wait_healthy() {
-    # $1 = container ID
-    # $2 = container name
-    FORMAT="{{json .State.Health.Status}}"
-    until [ "$(docker inspect --format "${FORMAT}" ${1})" == '"healthy"' ]
-    do
-        echo "Waiting for ${2} to report healthy"
-        sleep 10
-    done
-}
-
-# Rewrite docker-compose.override.yml to point at registry tagged images
-sed -i.bak \
-    -e 's|image: jbei|image: jenkins.jbei.org:5000/jbei|' \
-    docker-compose.override.yml
-rm docker-compose.override.yml.bak
-
-# Rewrite docker-compose.override.yml to insert correct image tag
+# Rewrite docker-compose.override.yml to:
+# 1. insert correct image tag, pointing to registry image
+# 2. remove volume mounts from edd-core containers
+# 3. add reference for settings config to edd-core containers
+# 4. add reference for HMAC config to ice container
 yq w -s - -i docker-compose.override.yml <<EOF
 - command: update
   path: services.http.image
-  value: jbei/edd-core:${TAG}
+  value: "jenkins.jbei.org:5000/jbei/edd-core:${TAG}"
 - command: update
   path: services.websocket.image
-  value: jbei/edd-core:${TAG}
+  value: "jenkins.jbei.org:5000/jbei/edd-core:${TAG}"
 - command: update
   path: services.worker.image
-  value: jbei/edd-core:${TAG}
+  value: "jenkins.jbei.org:5000/jbei/edd-core:${TAG}"
+- command: delete
+  path: services.http.volumes
+- command: delete
+  path: services.websocket.volumes
+- command: delete
+  path: services.worker.volumes
+- command: update
+  path: "configs.${PROJECT}_settings.external"
+  value: true
+- command: update
+  path: services.http.configs
+  value:
+  - source: "${PROJECT}_settings"
+    target: "/etc/edd/__init__.py"
+- command: update
+  path: services.websocket.configs
+  value:
+  - source: "${PROJECT}_settings"
+    target: "/etc/edd/__init__.py"
+- command: update
+  path: services.worker.configs
+  value:
+  - source: "${PROJECT}_settings"
+    target: "/etc/edd/__init__.py"
+- command: update
+  path: "configs.${PROJECT}_ice_key.external"
+  value: true
+- command: update
+  path: services.ice.configs
+  value:
+  - source: "${PROJECT}_ice_key"
+    target: "/usr/local/tomcat/data/rest-auth/edd"
 EOF
 
-# Pre-build other images
-docker-compose build --pull postgres
-docker-compose build --pull rabbitmq
-docker-compose build --pull redis
-docker-compose build --pull solr
-
-## launch the stack with up -d
-docker-compose -p "${PROJECT}" up -d
+## define the stack
+docker-compose config > stack.yml
+## launch the stack with stack deploy
+docker stack deploy --with-registry-auth -c stack.yml "${PROJECT}"
 
 # wait for ice to finish coming up
-# no built-in healthcheck, so just curl directly in container
-url="http://localhost:8080"
-until docker-compose -p "${PROJECT}" exec -T ice curl --fail -ISs "$url"; do
+# name ${PROJECT}_ice matches both ICE and its database
+# but the database doesn't currently run a healthcheck
+until [ -n "$(docker ps -q -f "name=${PROJECT}_ice" -f "health=healthy")" ]; do
     echo "Waiting on ICE"
     sleep 10
 done
 
-# correct the default DATA_DIRECTORY in ICE database
+# correct the default DATA_DIRECTORY
+# correct the default BLAST_INSTALL_DIR
 SQL=$(cat <<'EOM'
 UPDATE configuration
 SET value = '/usr/local/tomcat/data'
 WHERE key = 'DATA_DIRECTORY';
+UPDATE configuration
+SET value = '/usr/bin'
+WHERE key = 'BLAST_INSTALL_DIR';
 EOM
 )
-docker-compose -p "${PROJECT}" \
-    exec -T ice_db \
-    psql -U iceuser \
-    -c "$SQL" \
-    ice
+CONTAINER="$(docker ps -q -f "name=${PROJECT}_ice_db")"
+docker exec "${CONTAINER}" psql -U iceuser -c "${SQL}" ice
 
 # restart ICE so database config change in database applies
-docker-compose -p "${PROJECT}" restart ice
+docker service update --force "${PROJECT}_ice"
 
-# wait for edd to report healthy
-edd="$(docker-compose -p "${PROJECT}" ps -q http | head -1)"
-wait_healthy "$edd" "http"
+# wait for http service to report healthy
+until [ -n "$(docker ps -q -f "name=${PROJECT}_http" -f "health=healthy")" ]; do
+    echo "Waiting for http service to report healthy"
+    sleep 10
+done

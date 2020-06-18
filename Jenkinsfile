@@ -103,6 +103,22 @@ try {
             }
         }
 
+        stage('Publish Internal') {
+            stage_name = "Publish Internal"
+            timeout(5) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
+                        passwordVariable: 'PASSWORD',
+                        usernameVariable: 'USERNAME'
+                    )
+                ]) {
+                    sh("sudo docker login -u $USERNAME -p $PASSWORD jenkins.jbei.org:5000")
+                }
+                sh("sudo bin/jenkins/push_internal.sh '${image_version}' '${branch_tag}'")
+            }
+        }
+
         try {
 
             stage('Launch') {
@@ -138,22 +154,6 @@ try {
                 }
             }
 
-            stage('Publish Internal') {
-                stage_name = "Publish Internal"
-                timeout(5) {
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
-                            passwordVariable: 'PASSWORD',
-                            usernameVariable: 'USERNAME'
-                        )
-                    ]) {
-                        sh("sudo docker login -u $USERNAME -p $PASSWORD jenkins.jbei.org:5000")
-                    }
-                    sh("sudo bin/jenkins/push_internal.sh '${image_version}' '${branch_tag}'")
-                }
-            }
-
             if (version_tag != "") {
                 // TODO: handle pushing to docker.io here
                 // will tagging commit behind branch HEAD checkout the tagged commit?
@@ -173,7 +173,6 @@ try {
 
             stage('Teardown') {
                 stage_name = "Teardown"
-                // try to clean up things to not have a zillion leftover docker resources
                 sh("sudo bin/jenkins/teardown.sh '${project_name}'")
             }
 

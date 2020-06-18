@@ -9,14 +9,24 @@ services:
       - icenet
   ice:
     environment:
+      ICE_DB_URL: jdbc:postgresql://ice_db/ice
+      ICE_DB_USER: iceuser
+      ICE_DB_PASS: icepass
       VIRTUAL_STATIC: "true"
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - -ISs
+        - http://localhost:8080/
+      interval: 15s
+      start_period: 120s
+      timeout: 5s
+      retries: 5
     image: jbei/ice:latest
-    links:
-      - ice_db:postgres
-      - smtp
     networks:
       - icenet
-    restart: always
     volumes:
       - ice_index:/var/lib/ice/lucene
       - ice_local:/usr/local/tomcat/data
@@ -28,7 +38,6 @@ services:
     image: library/postgres:9.6
     networks:
       - icenet
-    restart: always
     volumes:
       - ice_pg:/var/lib/postgresql/data
   websocket:

@@ -3,7 +3,6 @@ services:
     environment:
       SEARCH_URL: solr://solr:8983/solr/
   solr:
-    build: ./docker/solr/
     image: jbei/solr:8
     logging:
       driver: json-file
@@ -12,7 +11,6 @@ services:
         max-size: 1m
     networks:
       - backnet
-    restart: always
     volumes:
       - solr_home:/var/solr/data
   websocket:

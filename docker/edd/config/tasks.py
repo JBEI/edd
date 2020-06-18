@@ -35,7 +35,7 @@ def password(bytelen, urlsafe=True):
 
 
 # create a temporary directory name to hold all output files
-output_dir = f"/tmp/edd-config"
+output_dir = "/tmp/edd-config"
 
 
 class ServiceDefinition:
@@ -209,16 +209,14 @@ class ServiceComposer:
         # bundle ice when no url provided
         if url is None:
             ice = self.define("ice")
+            # TODO: generate password for ICE postgres database
             url = "http://ice:8080/"
             # existing HMAC code depends on canonical base64 encoding
             # cannot use the urlsafe variants
             hmac = password(63, urlsafe=False)
-            # TODO: generate password for ICE postgres database
             hmac_name = "edd_ice_key"
             ice.write_env("ICE_HMAC_SECRETS", f"{hmac_name}:edd")
-            # using a volume to fake docker secrets API
-            hmac_out = ice.write_secret_file(hmac_name, hmac)
-            ice.volume(f"{hmac_out}:/run/secrets/{hmac_name}:ro")
+            ice.write_secret_file(hmac_name, hmac)
             ice.expose_port(8080, 8080)
             ice.proxy("ice.lvh.me", 8080)
         # update http and worker services to use configured ice

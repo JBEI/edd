@@ -3,7 +3,6 @@ services:
     environment:
       CACHE_URL: rediscache://redis:6379/1?client_class=django_redis.client.DefaultClient
   redis:
-    build: ./docker/redis/
     command:
       - redis-server
       - --appendonly
@@ -16,7 +15,6 @@ services:
         max-size: 1m
     networks:
       - backnet
-    restart: always
     volumes:
       - redis_db:/data
   websocket:

@@ -6,7 +6,6 @@ services:
       VIRTUAL_PORT: "8000"
       VIRTUAL_STATIC: "true"
   nginx:
-    build: ./docker/nginx/nginx/
     image: jbei/nginx:mainline
     init: true
     labels:
@@ -21,7 +20,6 @@ services:
     ports:
       - 80:80
       - 443:443
-    restart: always
     volumes:
       - nginx_confd:/etc/nginx/conf.d
       - nginx_vhost:/etc/nginx/vhost.d
@@ -30,7 +28,6 @@ services:
       - edd_attachments:/usr/share/nginx/html/uploads:ro
       - edd_staticfiles:/usr/share/nginx/html/static:ro
   nginx-gen:
-    build: ./docker/nginx/nginx-gen/
     image: jbei/nginx-gen:latest
     logging:
       driver: json-file
@@ -39,7 +36,6 @@ services:
         max-size: 1m
     networks:
       - proxynet
-    restart: always
     volumes:
       - nginx_confd:/etc/nginx/conf.d
       - nginx_vhost:/etc/nginx/vhost.d

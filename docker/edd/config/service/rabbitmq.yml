@@ -1,6 +1,5 @@
 services:
   rabbitmq:
-    build: ./docker/rabbitmq/
     environment:
       HOSTNAME: rabbitmq
       RABBITMQ_DEFAULT_USER: edduser
@@ -15,4 +14,3 @@ services:
         max-size: 1m
     networks:
       - backnet
-    restart: always

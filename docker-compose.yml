@@ -5,6 +5,11 @@ services:
   http:
     command:
       - gunicorn
+    deploy:
+      update_config:
+        failure_action: rollback
+        order: start-first
+        parallelism: 1
     healthcheck:
       test:
         - CMD
@@ -24,13 +29,17 @@ services:
         max-file: "5"
     networks:
       - backnet
-    restart: always
     volumes:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
   websocket:
     command:
       - daphne
+    deploy:
+      update_config:
+        failure_action: rollback
+        order: start-first
+        parallelism: 1
     healthcheck:
       test:
         - CMD
@@ -50,13 +59,17 @@ services:
         max-file: "5"
     networks:
       - backnet
-    restart: always
     volumes:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
   worker:
     command:
       - celery
+    deploy:
+      update_config:
+        failure_action: rollback
+        order: start-first
+        parallelism: 1
     environment:
       C_FORCE_ROOT: "true"
     healthcheck:
@@ -81,7 +94,6 @@ services:
         max-file: "5"
     networks:
       - backnet
-    restart: always
     volumes:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
