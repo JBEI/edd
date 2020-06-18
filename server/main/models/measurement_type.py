@@ -10,8 +10,8 @@ from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.utils.translation import ugettext as _u
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext as _u
+from django.utils.translation import gettext_lazy as _
 from rdflib import Graph
 from rdflib.term import URIRef
 

@@ -9,7 +9,7 @@ from uuid import uuid4
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models import F, Func
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from edd.fields import VarCharField
 

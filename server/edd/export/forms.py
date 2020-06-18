@@ -4,7 +4,7 @@ from collections import OrderedDict
 from django import forms
 from django.db.models import Prefetch
 from django.http import QueryDict
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from main import models
 

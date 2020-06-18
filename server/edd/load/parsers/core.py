@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Sequence, Set, Tuple
 from uuid import UUID
 
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter
 

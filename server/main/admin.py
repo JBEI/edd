@@ -13,7 +13,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
 from edd.export.sbml import validate_sbml_attachment

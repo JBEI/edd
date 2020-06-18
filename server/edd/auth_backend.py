@@ -5,7 +5,7 @@ from allauth.account.auth_backends import AuthenticationBackend as AllauthBacken
 from django.conf import settings
 from django.contrib.auth import backends, get_user_model
 from django.forms import ValidationError
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
 logger = logging.getLogger(__name__)

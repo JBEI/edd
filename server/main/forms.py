@@ -19,7 +19,7 @@ from django.db.models.base import Model
 from django.db.models.functions import Concat
 from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi

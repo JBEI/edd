@@ -8,7 +8,7 @@ from itertools import chain, islice
 
 from django.contrib.postgres.aggregates import ArrayAgg, JSONBAgg
 from django.db.models import Prefetch, Q
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from main import models
 

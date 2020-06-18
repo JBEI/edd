@@ -3,7 +3,7 @@ import typing
 import warnings
 
 from django.conf import settings
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 DetailValue = typing.Union[str, typing.Sequence[str], int, float, None]
 

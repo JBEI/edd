@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Overrides and monkey-patching to the Django User model.
 """
@@ -6,7 +5,7 @@ Overrides and monkey-patching to the Django User model.
 import logging
 
 from django.contrib.auth import get_user_model
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 
 logger = logging.getLogger(__name__)
 

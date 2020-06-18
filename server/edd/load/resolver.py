@@ -7,7 +7,7 @@ import typing
 from django.conf import settings
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
 from django.db.models import Count, Q
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from edd.utilities import JSONEncoder
 from main import models

@@ -13,7 +13,7 @@ from django.conf import settings
 from django.core.mail import mail_admins, send_mail
 from django.db import transaction
 from django.urls import reverse
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from requests import codes
 
 from main.forms import RegistryValidator

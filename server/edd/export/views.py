@@ -5,7 +5,7 @@ Views for running exports of data from EDD.
 import logging
 
 from django.http import HttpResponse
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from django.views import generic
 
 from edd.notify.backend import RedisBroker

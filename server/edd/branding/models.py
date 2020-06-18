@@ -1,7 +1,7 @@
 from django.contrib.sites.models import clear_site_cache
 from django.db import models
 from django.db.models.signals import pre_delete, pre_save
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from edd.fields import FileField
 

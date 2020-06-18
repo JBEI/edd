@@ -4,7 +4,7 @@ import logging
 
 from django import forms
 from django.db import transaction
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from main import models as edd_models
 

@@ -9,7 +9,7 @@ import arrow
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http.request import HttpRequest
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from threadlocals.threadlocals import set_thread_variable
 
 from main import models

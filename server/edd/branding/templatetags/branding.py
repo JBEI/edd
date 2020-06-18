@@ -4,7 +4,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.template import Node
 from django.templatetags.static import static
 from django.utils.html import format_html, format_html_join
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 
 register = template.Library()
 

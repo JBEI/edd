@@ -10,7 +10,7 @@ from django.db.models import Q
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from django.views import generic
 from requests import codes
 from rest_framework.reverse import reverse as rest_reverse
