@@ -21,6 +21,7 @@ RUN set -ex \
         build-essential \
         libldap2-dev \
         libsasl2-dev \
+    # not installing dev packages in prod
     && pipenv install --system --deploy --verbose \
     && DEBIAN_FRONTEND=noninteractive apt-get -y purge \
         build-essential \
@@ -37,6 +38,7 @@ WORKDIR /install
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
 
 COPY ./docker/edd/core/Pipfile* /install/
+COPY ./docker/edd/core/run_tests.sh /usr/local/bin/run_tests.sh
 
 RUN set -ex \
     # update package index from base file
@@ -46,6 +48,7 @@ RUN set -ex \
         build-essential \
         libldap2-dev \
         libsasl2-dev \
+    # including dev packages in dev
     && pipenv install --dev --system --deploy --verbose \
     && DEBIAN_FRONTEND=noninteractive apt-get -y purge \
         build-essential \

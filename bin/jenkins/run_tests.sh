@@ -11,7 +11,4 @@ CONTAINER_ID="$(docker ps -q -f "name=${PROJECT}_http" -f "health=healthy")"
 
 # run tests
 docker exec "${CONTAINER_ID}" \
-    coverage run -m pytest
-
-# report on coverage
-docker exec "${CONTAINER_ID}" coverage report -m --skip-covered
+    /usr/local/bin/run_tests.sh

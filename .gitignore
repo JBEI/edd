@@ -7,6 +7,8 @@ __pycache__
 .idea
 tscommand-*
 .tscache
+.coverage
+coverage.json
 
 # per-machine configuration files; contains secrets, DO NOT CHECK-IN
 secrets.env
