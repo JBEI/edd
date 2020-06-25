@@ -1,4 +1,5 @@
-from main import forms
+from .. import forms
+from . import factory
 
 
 def test_MetadataEditMixin_process_strings():
@@ -36,3 +37,27 @@ def test_MetadataEditMixin_process_removal():
     assert updating["1"] == "some text"
     assert len(removing) == 1
     assert "2" in removing
+
+
+def test_LineForm_boolean_toggle_on(db):
+    line = factory.LineFactory(control=False)
+    # default form to existing data
+    data = forms.LineForm.initial_from_model(line, prefix="line")
+    # flip the checkbox for control
+    data["line-control"] = True
+    form = forms.LineForm(data, instance=line, prefix="line", study=line.study)
+    form.save()
+    # verify the saved line is now a control
+    assert line.control
+
+
+def test_LineForm_boolean_toggle_off(db):
+    line = factory.LineFactory(control=True)
+    # default form to existing data
+    data = forms.LineForm.initial_from_model(line, prefix="line")
+    # remove field for control
+    del data["line-control"]
+    form = forms.LineForm(data, instance=line, prefix="line", study=line.study)
+    form.save()
+    # verify the saved line is now NOT a control
+    assert not line.control

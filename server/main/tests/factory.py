@@ -1,6 +1,4 @@
-"""
-Factory classes used to generate objects under test.
-"""
+"""Factory classes used to generate objects under test."""
 
 from unittest import mock
 
@@ -21,7 +19,7 @@ def test_file_path(name):
 
 
 def load_test_file(name, mode="rb"):
-    "Opens test files saved in the `files` directory."
+    """Opens test files saved in the `files` directory."""
     filepath = test_file_path(name)
     return open(filepath, mode)
 
@@ -174,3 +172,13 @@ class SBMLTemplateFactory(factory.django.DjangoModelFactory):
 
     created = factory.SubFactory("main.tests.factory.UpdateFactory")
     updated = factory.SelfAttribute("created")
+
+
+class MetadataTypeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.MetadataType
+
+    type_name = factory.Faker("catch_phrase")
+    for_context = factory.Iterator(
+        (models.MetadataType.STUDY, models.MetadataType.LINE, models.MetadataType.ASSAY)
+    )
