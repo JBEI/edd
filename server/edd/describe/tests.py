@@ -41,20 +41,13 @@ class CombinatorialCreationTests(TestCase):
         cls.testuser = factory.UserFactory()
         cls.metabolomics = factory.ProtocolFactory(name="Metabolomics")
         cls.targeted_proteomics = factory.ProtocolFactory(name="Targeted Proteomics")
-        cls.media_mtype = models.MetadataType.objects.get(
-            uuid=models.SYSTEM_META_TYPES["Media"]
-        )
 
-        # query the database and cache MetadataTypes, Protocols, etc that should be static
-        # for the duration of the test
-        cls.cache = ExperimentDescriptionContext()
-
-    def _map_input_strains(self, inputs, strains=None):
+    def _map_input_strains(self, inputs, cache, strains=None):
         # TODO: this function should go away
         if strains is None:
             strains = {}
         for item in inputs:
-            item.replace_ice_ids_with_edd_pks(strains, {}, self.cache.strains_mtype.pk)
+            item.replace_ice_ids_with_edd_pks(strains, {}, cache.strains_mtype.pk)
 
     def test_add_line_combos_use_case(self):
         """
@@ -69,9 +62,8 @@ class CombinatorialCreationTests(TestCase):
         """
 
         # Load model objects for use in this test
-        growth_temp_meta = models.MetadataType.objects.get(
-            uuid=models.SYSTEM_META_TYPES["Growth temperature"]
-        )
+        meta1 = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
+        meta2 = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
         cs_glucose, _ = models.CarbonSource.objects.get_or_create(
             name=r"1% Glucose", volume=10.00000
         )
@@ -83,33 +75,36 @@ class CombinatorialCreationTests(TestCase):
         strain1 = models.Strain.objects.create(name="JW1058")
         strain2 = models.Strain.objects.create(name="JW5327")
 
+        # creating *AFTER* setup of testing database records
+        cache = ExperimentDescriptionContext()
+
         # Define JSON test input
         ui_json_output = json.dumps(
             {
                 "name_elements": {
                     "elements": [
-                        f"{self.cache.strains_mtype.pk}__name",
-                        f"{self.media_mtype.pk}",
-                        f"{self.cache.carbon_sources_mtype.pk}__name",
+                        f"{cache.strains_mtype.pk}__name",
+                        f"{meta2.pk}",
+                        f"{cache.carbon_sources_mtype.pk}__name",
                         "replicate_num",
                     ],
                     "abbreviations": {
-                        f"{self.cache.strains_mtype.pk}__name": {
+                        f"{cache.strains_mtype.pk}__name": {
                             "JW1058": 58,
                             "JW5327": 27,
                         },
-                        f"{self.cache.carbon_sources_mtype.pk}__name": {
+                        f"{cache.carbon_sources_mtype.pk}__name": {
                             r"1% Glucose": "GLU",
                             r"1% Galactose": "GAL",
                         },
                     },
                 },
                 "replicate_count": 3,
-                "common_line_metadata": {growth_temp_meta.pk: 30},
+                "common_line_metadata": {meta1.pk: 30},
                 "combinatorial_line_metadata": {
-                    self.cache.strains_mtype.pk: [[strain1.pk], [strain2.pk]],
-                    self.media_mtype.pk: ["EZ", "LB"],  # media
-                    self.cache.carbon_sources_mtype.pk: [
+                    cache.strains_mtype.pk: [[strain1.pk], [strain2.pk]],
+                    meta2.pk: ["EZ", "LB"],  # media
+                    cache.carbon_sources_mtype.pk: [
                         [cs_galactose.pk],
                         [cs_glucose.pk],
                     ],
@@ -118,8 +113,8 @@ class CombinatorialCreationTests(TestCase):
         )
 
         # combinations of metadata
-        ez = {self.media_mtype.pk: "EZ", growth_temp_meta.pk: 30}
-        lb = {self.media_mtype.pk: "LB", growth_temp_meta.pk: 30}
+        ez = {meta2.pk: "EZ", meta1.pk: 30}
+        lb = {meta2.pk: "LB", meta1.pk: 30}
 
         expected_line_info = {
             "58-EZ-GLU-R1": {"meta": ez, "carbon": [cs_glucose.pk]},
@@ -148,15 +143,15 @@ class CombinatorialCreationTests(TestCase):
             "27-LB-GAL-R3": {"meta": lb, "carbon": [cs_galactose.pk]},
         }
 
-        self.cache.strains_by_pk = {strain1.pk: strain1, strain2.pk: strain2}
+        cache.strains_by_pk = {strain1.pk: strain1, strain2.pk: strain2}
 
         study = factory.StudyFactory()
-        importer = CombinatorialCreationImporter(study, self.testuser, self.cache)
-        parser = JsonInputParser(self.cache, importer)
+        importer = CombinatorialCreationImporter(study, self.testuser, cache)
+        parser = JsonInputParser(cache, importer)
         parsed = parser.parse(ui_json_output)
         self.assertEqual(len(parsed), 1, "Expected a single set of parsed input")
         # TODO: following two calls should go away
-        self._map_input_strains(parsed, self.cache.strains_by_pk)
+        self._map_input_strains(parsed, cache, cache.strains_by_pk)
         importer._query_related_object_context(parsed)
         result = parsed[0].populate_study(
             study, importer.cache, ExperimentDescriptionOptions()
@@ -182,12 +177,16 @@ class CombinatorialCreationTests(TestCase):
         support requires having a corresponding ICE deployment to use as part
         of the test, so it's not addressed here.
         """
+        meta = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
         # Create strains for this test
         strain, _ = models.Strain.objects.get_or_create(name="JW0111")
-        self.cache.strains_by_pk = {strain.pk: strain}
         control = models.MetadataType.objects.get(
             uuid=models.SYSTEM_META_TYPES["Control"]
         )
+
+        # creating *AFTER* setup of testing database records
+        cache = ExperimentDescriptionContext()
+        cache.strains_by_pk = {strain.pk: strain}
 
         # define test input
         test_input = {
@@ -196,19 +195,19 @@ class CombinatorialCreationTests(TestCase):
             "replicate_count": 3,
             "combinatorial_line_metadata": {},
             "common_line_metadata": {
-                str(self.media_mtype.pk): "LB",
+                str(meta.pk): "LB",
                 str(control.pk): False,
-                str(self.cache.strains_mtype.pk): [str(strain.uuid)],
+                str(cache.strains_mtype.pk): [str(strain.uuid)],
             },
         }
 
         study = factory.StudyFactory()
-        importer = CombinatorialCreationImporter(study, self.testuser, self.cache)
-        parser = JsonInputParser(self.cache, importer)
+        importer = CombinatorialCreationImporter(study, self.testuser, cache)
+        parser = JsonInputParser(cache, importer)
         parsed = parser.parse(json.dumps(test_input))
         self.assertEqual(len(parsed), 1, "Expected a single set of parsed input")
         # TODO: following two calls should go away
-        self._map_input_strains(parsed, {str(strain.uuid): strain})
+        self._map_input_strains(parsed, cache, {str(strain.uuid): strain})
         importer._query_related_object_context(parsed)
         result = parsed[0].populate_study(
             study, importer.cache, ExperimentDescriptionOptions()
@@ -222,22 +221,24 @@ class CombinatorialCreationTests(TestCase):
             self.assertFalse(line.control)
             strains_list = list(line.strains.values_list("id", flat=True))
             self.assertEqual(strains_list, [strain.pk])
-            self.assertEqual(line.metadata, {self.media_mtype.pk: "LB"})
+            self.assertEqual(line.metadata, {meta.pk: "LB"})
 
     def test_advanced_experiment_description_xlsx(self):
         strain, _ = models.Strain.objects.get_or_create(name="JW0111")
-        self.cache.strains_by_pk = {strain.pk: strain}
+        # creating *AFTER* setup of testing database records
+        cache = ExperimentDescriptionContext()
+        cache.strains_by_pk = {strain.pk: strain}
 
         advanced_experiment_def_xlsx = factory.test_file_path(
             "experiment_description/advanced.xlsx"
         )
         study = factory.StudyFactory()
-        importer = CombinatorialCreationImporter(study, self.testuser, self.cache)
-        parser = ExperimentDescFileParser(self.cache, importer)
+        importer = CombinatorialCreationImporter(study, self.testuser, cache)
+        parser = ExperimentDescFileParser(cache, importer)
         parsed = parser.parse_excel(advanced_experiment_def_xlsx)
         self.assertEqual(len(parsed), 1, "Expected a single set of parsed input")
         # TODO: following two calls should go away
-        self._map_input_strains(parsed, {"JBx_002078": strain})
+        self._map_input_strains(parsed, cache, {"JBx_002078": strain})
         importer._query_related_object_context(parsed)
         result = parsed[0].populate_study(
             study, importer.cache, ExperimentDescriptionOptions()
@@ -258,8 +259,10 @@ class CombinatorialCreationTests(TestCase):
         file = factory.test_file_path(
             "experiment_description/combinatorial_assays.xlsx"
         )
+        # creating *AFTER* setup of testing database records
+        cache = ExperimentDescriptionContext()
 
-        importer = CombinatorialCreationImporter(study, self.testuser, self.cache)
+        importer = CombinatorialCreationImporter(study, self.testuser, cache)
         with open(file, "rb") as fh:
             importer.do_import(
                 fh,
@@ -272,7 +275,7 @@ class CombinatorialCreationTests(TestCase):
         line = models.Line.objects.get(study_id=study.pk)
         self.assertEqual(line.assay_set.count(), 2)
         times = {
-            assay.metadata_get(self.cache.assay_time_mtype)
+            assay.metadata_get(cache.assay_time_mtype)
             for assay in models.Assay.objects.filter(
                 line=line, protocol=self.targeted_proteomics
             )
@@ -287,13 +290,6 @@ class ExperimentDescriptionParseTests(TestCase):
         cls.testuser = factory.UserFactory()
         cls.metabolomics = factory.ProtocolFactory(name="Metabolomics")
         cls.targeted_proteomics = factory.ProtocolFactory(name="Targeted Proteomics")
-        cls.media_mtype = models.MetadataType.objects.get(
-            uuid=models.SYSTEM_META_TYPES["Media"]
-        )
-
-        # query the database and cache MetadataTypes, Protocols, etc that should be static
-        # for the duration of the test
-        cls.cache = ExperimentDescriptionContext()
 
     def test_ed_file_parse_err_detection(self):
         """"
@@ -311,7 +307,9 @@ class ExperimentDescriptionParseTests(TestCase):
         # parameters don't matter for test, but need to be there
         importer = CombinatorialCreationImporter(None, None)
         file_path = factory.test_file_path("experiment_description/parse_errors.xlsx")
-        parser = ExperimentDescFileParser(self.cache, importer)
+        # creating *AFTER* setup of testing database records
+        cache = ExperimentDescriptionContext()
+        parser = ExperimentDescFileParser(cache, importer)
         parser.parse_excel(file_path)
         # expect to find these errors
         exp_errors = [
@@ -387,9 +385,11 @@ class ExperimentDescriptionParseTests(TestCase):
         """
         lines_iter = iter(("Line Name, Targeted Proteomics Time", "A, 2h", "B, 5h"))
         study = factory.StudyFactory()
+        # creating *AFTER* setup of testing database records
+        cache = ExperimentDescriptionContext()
 
-        importer = CombinatorialCreationImporter(study, self.testuser, self.cache)
-        parser = ExperimentDescFileParser(self.cache, importer)
+        importer = CombinatorialCreationImporter(study, self.testuser, cache)
+        parser = ExperimentDescFileParser(cache, importer)
         parsed: List[CombinatorialDescriptionInput] = parser.parse_csv(lines_iter)
 
         time_meta_type = models.MetadataType.objects.get(
@@ -412,9 +412,11 @@ class ExperimentDescriptionParseTests(TestCase):
         """
         ed_file = factory.test_file_path("experiment_description/advanced.xlsx")
         study = factory.StudyFactory()
+        # creating *AFTER* setup of testing database records
+        cache = ExperimentDescriptionContext()
 
-        importer = CombinatorialCreationImporter(study, self.testuser, self.cache)
-        parser = ExperimentDescFileParser(self.cache, importer)
+        importer = CombinatorialCreationImporter(study, self.testuser, cache)
+        parser = ExperimentDescFileParser(cache, importer)
         parsed: List[CombinatorialDescriptionInput] = parser.parse_excel(ed_file)
         combo_input: CombinatorialDescriptionInput = parsed[0]
 

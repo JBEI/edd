@@ -1,7 +1,6 @@
-"""
-Models for handling metadata.
-"""
+"""Models for handling metadata."""
 
+import dataclasses
 import logging
 from functools import reduce
 from uuid import uuid4
@@ -17,25 +16,17 @@ from .common import EDDSerialize
 
 logger = logging.getLogger(__name__)
 
-# built-in metadata that reference Line and Assay attributes
-SYSTEM_META_TYPES = {
-    # assay metadata types
-    "Assay Description": "4929a6ad-370c-48c6-941f-6cd154162315",
-    "Assay Experimenter": "15105bee-e9f1-4290-92b2-d7fdcb3ad68d",
-    "Assay Name": "33125862-66b2-4d22-8966-282eb7142a45",
-    "Original Name": "5ef6500e-0f8b-4eef-a6bd-075bcb655caa",
-    "Time": "6629231d-4ef0-48e3-a21e-df8db6dfbb72",
-    # line metadata types
-    "Carbon Source(s)": "4ddaf92a-1623-4c30-aa61-4f7407acfacc",
-    "Control": "8aa26735-e184-4dcd-8dd1-830ec240f9e1",
-    "Growth temperature": "fe685261-ca5d-45a3-8121-3a3279025ab2",
-    "Line Contact": "13672c8a-2a36-43ed-928f-7d63a1a4bd51",
-    "Line Description": "5fe84549-9a97-47d2-a897-8c18dd8fd34a",
-    "Line Experimenter": "974c3367-f0c5-461d-bd85-37c1a269d49e",
-    "Line Name": "b388bcaa-d14b-4d7f-945e-a6fcb60142f2",
-    "Media": "463546e4-a67e-4471-a278-9464e78dbc9d",
-    "Strain(s)": "292f1ca7-30de-4ba1-89cd-87d2f6291416",
-}
+
+def __getattr__(name):
+    from warnings import warn
+
+    if name == "SYSTEM_META_TYPES":
+        warn(
+            "SYSTEM_META_TYPES is deprecated; use MetadataType.system() instead.",
+            DeprecationWarning,
+        )
+        return globals()["MetadataType"].SYSTEM
+    raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
 class MetadataGroup(models.Model):
@@ -54,6 +45,23 @@ class MetadataGroup(models.Model):
         return self.group_name
 
 
+@dataclasses.dataclass
+class Metadata:
+    """Mirrors fields of MetadataType, to define built-in Metadata."""
+
+    # required
+    for_context: str
+    type_name: str
+    uuid: str
+    # optional
+    default_value: str = None
+    input_type: str = None
+    postfix: str = None
+    prefix: str = None
+    type_field: str = None
+    type_i18n: str = None
+
+
 class MetadataType(models.Model, EDDSerialize):
     """Type information for arbitrary key-value data stored on EDDObject instances."""
 
@@ -61,8 +69,118 @@ class MetadataType(models.Model, EDDSerialize):
     STUDY = "S"
     LINE = "L"
     ASSAY = "A"
-    # TODO: support metadata on other EDDObject types (Protocol, Strain, Carbon Source, etc)
     CONTEXT_SET = ((STUDY, _("Study")), (LINE, _("Line")), (ASSAY, _("Assay")))
+
+    # pre-defined values that should always exist in the system
+    _SYSTEM_TYPES = (
+        # type_field metadata to map to Model object fields
+        Metadata(
+            for_context=ASSAY,
+            input_type="textarea",
+            type_field="description",
+            type_i18n="main.models.Assay.description",
+            type_name="Assay Description",
+            uuid="4929a6ad-370c-48c6-941f-6cd154162315",
+        ),
+        Metadata(
+            for_context=ASSAY,
+            input_type="user",
+            type_field="experimenter",
+            type_i18n="main.models.Assay.experimenter",
+            type_name="Assay Experimenter",
+            uuid="15105bee-e9f1-4290-92b2-d7fdcb3ad68d",
+        ),
+        Metadata(
+            for_context=ASSAY,
+            input_type="string",
+            type_field="name",
+            type_i18n="main.models.Assay.name",
+            type_name="Assay Name",
+            uuid="33125862-66b2-4d22-8966-282eb7142a45",
+        ),
+        Metadata(
+            for_context=LINE,
+            input_type="carbon_source",
+            type_field="carbon_source",
+            type_i18n="main.models.Line.carbon_source",
+            type_name="Carbon Source(s)",
+            uuid="4ddaf92a-1623-4c30-aa61-4f7407acfacc",
+        ),
+        Metadata(
+            for_context=LINE,
+            input_type="checkbox",
+            type_field="control",
+            type_i18n="main.models.Line.control",
+            type_name="Control",
+            uuid="8aa26735-e184-4dcd-8dd1-830ec240f9e1",
+        ),
+        Metadata(
+            for_context=LINE,
+            input_type="user",
+            type_field="contact",
+            type_i18n="main.models.Line.contact",
+            type_name="Line Contact",
+            uuid="13672c8a-2a36-43ed-928f-7d63a1a4bd51",
+        ),
+        Metadata(
+            for_context=LINE,
+            input_type="textarea",
+            type_field="description",
+            type_i18n="main.models.Line.description",
+            type_name="Line Description",
+            uuid="5fe84549-9a97-47d2-a897-8c18dd8fd34a",
+        ),
+        Metadata(
+            for_context=LINE,
+            input_type="user",
+            type_field="experimenter",
+            type_i18n="main.models.Line.experimenter",
+            type_name="Line Experimenter",
+            uuid="974c3367-f0c5-461d-bd85-37c1a269d49e",
+        ),
+        Metadata(
+            for_context=LINE,
+            input_type="string",
+            type_field="name",
+            type_i18n="main.models.Line.name",
+            type_name="Line Name",
+            uuid="b388bcaa-d14b-4d7f-945e-a6fcb60142f2",
+        ),
+        Metadata(
+            for_context=LINE,
+            input_type="strain",
+            type_field="strains",
+            type_i18n="main.models.Line.strains",
+            type_name="Strain(s)",
+            uuid="292f1ca7-30de-4ba1-89cd-87d2f6291416",
+        ),
+        # "true" metadata, but directly referenced by code for specific purposes
+        Metadata(
+            default_value="--",
+            for_context=LINE,
+            input_type="media",
+            type_i18n="main.models.Line.Media",
+            type_name="Media",
+            uuid="463546e4-a67e-4471-a278-9464e78dbc9d",
+        ),
+        Metadata(
+            for_context=ASSAY,
+            # TODO: consider making this: input_type="readonly"
+            input_type="string",
+            type_i18n="main.models.Assay.original",
+            type_name="Original Name",
+            uuid="5ef6500e-0f8b-4eef-a6bd-075bcb655caa",
+        ),
+        Metadata(
+            for_context=ASSAY,
+            input_type="time",
+            type_i18n="main.models.Assay.Time",
+            type_name="Time",
+            uuid="6629231d-4ef0-48e3-a21e-df8db6dfbb72",
+        ),
+    )
+    _SYSTEM_DEF = {t.type_name: t for t in _SYSTEM_TYPES}
+    SYSTEM = {t.type_name: t.uuid for t in _SYSTEM_TYPES}
 
     class Meta:
         db_table = "metadata_type"
@@ -82,8 +200,6 @@ class MetadataType(models.Model, EDDSerialize):
         help_text=_("Name for Metadata Type"), verbose_name=_("Name")
     )
     # an i18n lookup for type label
-    # NOTE: migration 0005_SYNBIO-1120_linked_metadata adds a partial unique index to this field
-    # i.e. CREATE UNIQUE INDEX … ON metadata_type(type_i18n) WHERE type_i18n IS NOT NULL
     type_i18n = VarCharField(
         blank=True,
         help_text=_("i18n key used for naming this Metadata Type."),
@@ -151,6 +267,17 @@ class MetadataType(models.Model, EDDSerialize):
         return MetadataType.objects.filter(pk__in=ids).order_by(
             Func(F("type_name"), function="LOWER")
         )
+
+    @classmethod
+    def system(cls, name):
+        """Load a pre-defined system-wide MetadataType."""
+        typedef = cls._SYSTEM_DEF.get(name, None)
+        if typedef is None:
+            raise cls.DoesNotExist
+        fields = {f.name for f in dataclasses.fields(Metadata)}
+        defaults = {k: v for k, v in typedef.__dict__.items() if k in fields and v}
+        meta, created = cls.objects.get_or_create(uuid=typedef.uuid, defaults=defaults)
+        return meta
 
     def decode_value(self, value):
         """

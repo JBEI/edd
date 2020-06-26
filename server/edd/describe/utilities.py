@@ -563,7 +563,7 @@ class AutomatedNamingStrategy(NamingStrategy):
                         element,
                     )
                 if importer.errors:
-                    raise ValueError("Invalid input")
+                    raise ValueError(f"Invalid input: {importer.errors}")
 
                 related_obj_meta_pks.add(line_meta_pk)
         return related_obj_meta_pks
