@@ -46,7 +46,7 @@ def set_file_info(sender, instance, raw, using, **kwargs):
 
 # ----- common signal handlers -----
 
-has_uuid = [
+core_eddobject = [
     models.Assay,
     models.CarbonSource,
     models.Line,
@@ -55,7 +55,10 @@ has_uuid = [
     models.Study,
     models.WorklistTemplate,
 ]
-has_update = has_uuid + [
+has_uuid = core_eddobject + [
+    models.MetadataType,
+]
+has_update = core_eddobject + [
     models.Attachment,
     models.Comment,
     models.Measurement,
@@ -83,7 +86,7 @@ def ensure_updates(sender, instance, raw, using, **kwargs):
         instance.update_ref = update
 
 
-@receiver(post_save, sender=has_uuid)
+@receiver(post_save, sender=core_eddobject)
 def log_update(sender, instance, created, raw, using, **kwargs):
     if raw:
         # cannot access database when doing raw signal

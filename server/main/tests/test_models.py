@@ -1,10 +1,12 @@
 import math
+import warnings
 from unittest.mock import patch
 
 import pytest
 from django.core.exceptions import ValidationError
 
 from edd import TestCase
+from edd.utilities import JSONEncoder
 
 from .. import models
 from . import factory
@@ -295,3 +297,273 @@ class MetaboliteTests(TestCase):
         # verify provisional type
         assert created.provisional
         assert created.pubchem_cid == "9999"
+
+
+@pytest.fixture(scope="module")
+def study_metadata():
+    meta = factory.MetadataTypeFactory.build(for_context=models.MetadataType.STUDY)
+    # fake setting a primary key; avoiding database use
+    meta.pk = factory.fake.pyint()
+    return meta
+
+
+@pytest.fixture(scope="module")
+def study_field_metadata():
+    field = factory.fake.word()
+    meta = factory.MetadataTypeFactory.build(
+        for_context=models.MetadataType.STUDY, type_field=field
+    )
+    # fake setting a primary key; avoiding database use
+    meta.pk = factory.fake.pyint()
+    return meta
+
+
+def test_deprecation_models_SYSTEM_META_TYPES():
+    # test deprecation when reading from main.models
+    with warnings.catch_warnings(record=True) as w:
+        models.SYSTEM_META_TYPES.get("something", None)
+    assert len(w) == 1
+    assert issubclass(w[0].category, DeprecationWarning)
+
+
+def test_deprecation_metadata_SYSTEM_META_TYPES():
+    # test deprecation when reading from main.models.metadata
+    with warnings.catch_warnings(record=True) as w:
+        from main.models.metadata import SYSTEM_META_TYPES
+
+        SYSTEM_META_TYPES.get("something", None)
+    assert len(w) == 1
+    assert issubclass(w[0].category, DeprecationWarning)
+
+
+def test_MetadataType_system_lookup(db):
+    # verify that an existing system type gets returned
+    md = models.MetadataType.system("Time")
+    assert md.for_context == models.MetadataType.ASSAY
+    assert md.type_name == "Time"
+
+
+def test_MetadataType_system_unknown_type(db):
+    # verify that a not-existing system type yields exception
+    with pytest.raises(models.MetadataType.DoesNotExist):
+        models.MetadataType.system("this does not exist")
+
+
+def test_MetadataType_for_assay():
+    md = factory.MetadataTypeFactory.build(for_context=models.MetadataType.ASSAY)
+    assert md.for_assay()
+    assert not md.for_line()
+    assert not md.for_study()
+
+
+def test_MetadataType_for_line():
+    md = factory.MetadataTypeFactory.build(for_context=models.MetadataType.LINE)
+    assert md.for_line()
+    assert not md.for_assay()
+    assert not md.for_study()
+
+
+def test_MetadataType_for_study():
+    md = factory.MetadataTypeFactory.build(for_context=models.MetadataType.STUDY)
+    assert md.for_study()
+    assert not md.for_assay()
+    assert not md.for_line()
+
+
+def test_MetadataType_str_works():
+    # casting to a string does reasonable stuff
+    md = factory.MetadataTypeFactory.build()
+    string = str(md)
+    assert string == md.type_name
+
+
+def test_MetadataType_to_json_works():
+    # using to_json method makes something that can serialize to JSON
+    md = factory.MetadataTypeFactory.build()
+    result = JSONEncoder.dumps(md.to_json())
+    assert md.type_name in result
+
+
+def test_EDDMetadata_allow_metadata():
+    # the base mixin for objects with metadata will always return False
+    # implementing classes are responsible for setting allowlist
+    obj = models.EDDMetadata()
+    md = factory.MetadataTypeFactory.build()
+    assert not obj.allow_metadata(md)
+    assert not obj.allow_metadata(None)
+
+
+def test_EDDMetadata_metadata_get_from_empty(study_metadata):
+    obj = factory.StudyFactory.build()
+    assert obj.metadata_get(study_metadata) is None
+
+
+def test_EDDMetadata_metadata_get_from_empty_with_default(study_metadata):
+    obj = factory.StudyFactory.build()
+    sentinel = object()
+    assert obj.metadata_get(study_metadata, default=sentinel) is sentinel
+
+
+def test_EDDMetadata_metadata_get_type_field(study_field_metadata):
+    obj = factory.StudyFactory.build()
+    field = study_field_metadata.type_field
+    value = factory.fake.word()
+    setattr(obj, field, value)
+    assert obj.metadata_get(study_field_metadata) == value
+
+
+def test_EDDMetadata_metadata_add_not_allowed():
+    # adding metadata meant for Line objects to a Study raises a ValueError
+    obj = factory.StudyFactory.build()
+    md = factory.MetadataTypeFactory.build(for_context=models.MetadataType.LINE)
+    with pytest.raises(ValueError):
+        obj.metadata_add(md, "this value does not matter")
+
+
+def test_EDDMetadata_metadata_add_from_empty(study_metadata):
+    # first add sets value,
+    # second add sees previous and makes list
+    # third add sees previous is list and appends
+    obj = factory.StudyFactory.build()
+    value1 = factory.fake.word()
+    value2 = factory.fake.word()
+    value3 = factory.fake.word()
+    obj.metadata_add(study_metadata, value1)
+    obj.metadata_add(study_metadata, value2)
+    obj.metadata_add(study_metadata, value3)
+    assert obj.metadata_get(study_metadata) == [value1, value2, value3]
+
+
+def test_EDDMetadata_metadata_add_twice_no_append(study_metadata):
+    # when append=False, adding does a replace instead of append
+    obj = factory.StudyFactory.build()
+    value1 = factory.fake.word()
+    value2 = factory.fake.word()
+    obj.metadata_add(study_metadata, value1, append=False)
+    obj.metadata_add(study_metadata, value2, append=False)
+    assert obj.metadata_get(study_metadata) == value2
+
+
+def test_EDDMetadata_metadata_add_type_field(study_field_metadata):
+    # adding metadata for a type_field
+    obj = factory.StudyFactory.build()
+    field = study_field_metadata.type_field
+    oldvalue = factory.fake.word()
+    newvalue = factory.fake.word()
+    setattr(obj, field, oldvalue)
+    obj.metadata_add(study_field_metadata, newvalue)
+    assert getattr(obj, field) == newvalue
+
+
+def test_EDDMetadata_metadata_add_type_field_set(study_field_metadata):
+    # adding metadata for a type_field having an add() method
+    # a set is a proxy for RelatedManager for a reverse foreign key
+    obj = factory.StudyFactory.build()
+    field = study_field_metadata.type_field
+    value = factory.fake.word()
+    setattr(obj, field, set())
+    obj.metadata_add(study_field_metadata, value)
+    assert value in getattr(obj, field)
+
+
+def test_EDDMetadata_metadata_add_type_field_set_no_append(study_field_metadata):
+    # adding metadata for a type_field having an add() method
+    # a set is a proxy for RelatedManager for a reverse foreign key
+    obj = factory.StudyFactory.build()
+    field = study_field_metadata.type_field
+    oldvalue = factory.fake.word()
+    newvalue = factory.fake.word()
+    setattr(obj, field, {oldvalue})
+    obj.metadata_add(study_field_metadata, newvalue, append=False)
+    assert oldvalue not in getattr(obj, field)
+    assert newvalue in getattr(obj, field)
+
+
+def test_EDDMetadata_metadata_clear_from_empty(study_metadata):
+    # clearing something that isn't set is fine
+    obj = factory.StudyFactory.build(metadata={})
+    obj.metadata_clear(study_metadata)
+    sentinel = object()
+    assert obj.metadata_get(study_metadata, default=sentinel) is sentinel
+
+
+def test_EDDMetadata_metadata_clear(study_metadata):
+    # setting then clearing metadata
+    obj = factory.StudyFactory.build(metadata={})
+    value = factory.fake.word()
+    obj.metadata_add(study_metadata, value)
+    assert obj.metadata_get(study_metadata) == value
+    obj.metadata_clear(study_metadata)
+    sentinel = object()
+    assert obj.metadata_get(study_metadata, default=sentinel) is sentinel
+
+
+def test_EDDMetadata_metadata_clear_type_field(study_field_metadata):
+    # clearing metadata tied to a field
+    obj = factory.StudyFactory.build()
+    field = study_field_metadata.type_field
+    value = factory.fake.word()
+    setattr(obj, field, value)
+    obj.metadata_clear(study_field_metadata)
+    assert getattr(obj, field) is None
+
+
+def test_EDDMetadata_metadata_clear_type_field_set(study_field_metadata):
+    # clearing metadata tied to a field
+    # a set is a proxy for RelatedManager for a reverse foreign key
+    obj = factory.StudyFactory.build()
+    field = study_field_metadata.type_field
+    value = factory.fake.word()
+    setattr(obj, field, {value})
+    obj.metadata_clear(study_field_metadata)
+    assert value not in getattr(obj, field)
+
+
+def test_EDDMetadata_metadata_remove_unset(study_metadata):
+    # removing something that was never set is OK
+    obj = factory.StudyFactory.build()
+    obj.metadata_remove(study_metadata, "value does not matter")
+    sentinel = object()
+    assert obj.metadata_get(study_metadata, default=sentinel) is sentinel
+
+
+def test_EDDMetadata_metadata_remove_value(study_metadata):
+    # removing something after setting it works OK
+    obj = factory.StudyFactory.build()
+    value = factory.fake.word()
+    obj.metadata_add(study_metadata, value)
+    obj.metadata_remove(study_metadata, value)
+    sentinel = object()
+    assert obj.metadata_get(study_metadata, default=sentinel) is sentinel
+
+
+def test_EDDMetadata_metadata_remove_mismatch_value(study_metadata):
+    # removing something after setting it works OK
+    obj = factory.StudyFactory.build()
+    value = factory.fake.word()
+    obj.metadata_add(study_metadata, value)
+    obj.metadata_remove(study_metadata, "value does not matter")
+    sentinel = object()
+    assert obj.metadata_get(study_metadata, default=sentinel) == value
+
+
+def test_EDDMetadata_metadata_remove_matched_item(study_metadata):
+    # removing something after setting it works OK
+    obj = factory.StudyFactory.build()
+    value1 = factory.fake.word()
+    value2 = factory.fake.word()
+    obj.metadata_add(study_metadata, value1)
+    obj.metadata_add(study_metadata, value2)
+    obj.metadata_remove(study_metadata, value1)
+    assert obj.metadata_get(study_metadata) == [value2]
+
+
+def test_EDDMetadata_metadata_remove_unmatched_item(study_metadata):
+    # removing something after setting it works OK
+    obj = factory.StudyFactory.build()
+    value1 = factory.fake.word()
+    value2 = factory.fake.word()
+    obj.metadata_add(study_metadata, value1)
+    obj.metadata_add(study_metadata, value2)
+    obj.metadata_remove(study_metadata, "value does not matter")
+    assert obj.metadata_get(study_metadata) == [value1, value2]

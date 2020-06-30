@@ -2,8 +2,6 @@
 
 import dataclasses
 import logging
-from functools import reduce
-from uuid import uuid4
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models
@@ -263,7 +261,7 @@ class MetadataType(models.Model, EDDSerialize):
             set(o.metadata.keys()) for o in instances if isinstance(o, EDDMetadata)
         ]
         # reduce all into a set to get only unique ids
-        ids = reduce(lambda a, b: a.union(b), all_ids, set())
+        ids = set().union(*all_ids)
         return MetadataType.objects.filter(pk__in=ids).order_by(
             Func(F("type_name"), function="LOWER")
         )
@@ -307,11 +305,6 @@ class MetadataType(models.Model, EDDSerialize):
     def __str__(self):
         return self.type_name
 
-    def save(self, *args, **kwargs):
-        if self.uuid is None:
-            self.uuid = uuid4()
-        super().save(*args, **kwargs)
-
     def to_json(self, depth=0):
         return {
             "id": self.pk,
@@ -324,15 +317,9 @@ class MetadataType(models.Model, EDDSerialize):
             "context": self.for_context,
         }
 
-    @classmethod
-    def all_with_groups(cls):
-        return cls.objects.select_related("group").order_by(
-            Func(F("type_name"), function="LOWER")
-        )
-
 
 class EDDMetadata(models.Model):
-    """ Base class for EDD models supporting metadata. """
+    """Base class for EDD models supporting metadata."""
 
     class Meta:
         abstract = True
@@ -350,9 +337,11 @@ class EDDMetadata(models.Model):
 
     def metadata_add(self, metatype, value, append=True):
         """
-        Adds metadata to the object; by default, if there is already metadata of the same type,
-        the value is appended to a list with previous value(s). Set kwarg `append` to False to
-        overwrite previous values.
+        Adds metadata to the object.
+
+        By default, if there is already metadata of the same type, the value is
+        appended to a list with previous value(s). Set kwarg `append` to False
+        to overwrite previous values.
         """
         if not self.allow_metadata(metatype):
             raise ValueError(
@@ -381,9 +370,9 @@ class EDDMetadata(models.Model):
     def metadata_clear(self, metatype):
         """Removes all metadata of the type from this object."""
         if metatype.type_field is None:
-            del self.metadata[metatype.pk]
+            self.metadata.pop(metatype.pk, None)
             # for backward-compatibility, also check string version
-            del self.metadata[f"{metatype.pk}"]
+            self.metadata.pop(f"{metatype.pk}", None)
         else:
             temp = getattr(self, metatype.type_field)
             if hasattr(temp, "clear"):
@@ -392,7 +381,7 @@ class EDDMetadata(models.Model):
                 setattr(self, metatype.type_field, None)
 
     def metadata_get(self, metatype, default=None):
-        """ Returns the metadata on this object matching the type. """
+        """Returns the metadata on this object matching the type."""
         if metatype.type_field is None:
             # for backward-compatibility, also check string version
             value = self.metadata.get(
@@ -404,14 +393,19 @@ class EDDMetadata(models.Model):
         return getattr(self, metatype.type_field)
 
     def metadata_remove(self, metatype, value):
-        """ Removes metadata with a value matching the argument for the type. """
-        prev = self.metadata_get(metatype)
-        if prev:
+        """Removes metadata with a value matching the argument for the type."""
+        sentinel = object()
+        prev = self.metadata_get(metatype, default=sentinel)
+        # only act when metatype already existed
+        if prev is not sentinel:
             if value == prev:
+                # clear for single values
                 self.metadata_clear(metatype)
-            else:
+            elif hasattr(prev, "remove"):
+                # for lists, call remove
                 try:
                     prev.remove(value)
-                    self.metadata_add(metatype, prev)
+                    self.metadata_add(metatype, prev, append=False)
                 except ValueError:
+                    # don't care if the value didn't exist
                     pass
