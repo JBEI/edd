@@ -170,6 +170,13 @@ class MetadataType(models.Model, EDDSerialize):
             uuid="5ef6500e-0f8b-4eef-a6bd-075bcb655caa",
         ),
         Metadata(
+            for_context=LINE,
+            input_type="replicate",
+            type_i18n="main.models.Line.replicate",
+            type_name="Replicate",
+            uuid="71f5cd94-4dd4-45ca-a926-9f0717631799",
+        ),
+        Metadata(
             for_context=ASSAY,
             input_type="time",
             type_i18n="main.models.Assay.Time",
