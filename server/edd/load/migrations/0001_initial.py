@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("main", "0022_use_varchar"),
+        ("main", "0001_edd_2_7"),
     ]
 
     operations = [

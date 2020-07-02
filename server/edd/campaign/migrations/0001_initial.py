@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("main", "0016_permission-refactor"),
+        ("main", "0001_edd_2_7"),
         ("auth", "0009_alter_user_last_name_max_length"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
