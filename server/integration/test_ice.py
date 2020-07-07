@@ -1,6 +1,4 @@
-"""
-Integration tests for ICE.
-"""
+"""Integration tests for ICE."""
 
 from io import BytesIO
 
@@ -13,9 +11,8 @@ from requests import codes
 from edd import TestCase
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi, IceApiException
-
-from .. import models
-from . import factory
+from main import models
+from main.tests import factory
 
 faker = Faker()
 
@@ -58,7 +55,7 @@ class IceUserCheck:
         except ValueError as e:
             raise AssertionError(f"Bad response: {response.content}") from e
         except Exception as e:
-            raise AssertionError(f"Failed to create user") from e
+            raise AssertionError(f"Failed to create user {user}") from e
 
     def exists(self, user):
         """Return a user ID if exists, otherwise return None."""
@@ -73,7 +70,7 @@ class IceUserCheck:
         except ValueError as e:
             raise AssertionError(f"Bad response: {response.content}") from e
         except Exception as e:
-            raise AssertionError(f"Failed to check user") from e
+            raise AssertionError(f"Failed to check user {user}") from e
 
 
 @tag("integration")
@@ -118,11 +115,16 @@ class IceIntegrationTests(TestCase):
 
     @classmethod
     def _populateTestStrains(cls, ice):
+        # create a BulkUpload object
+        response = ice.session.put(ice_url("/uploads"), json={"type": "strain"})
+        upload_id = response.json()["id"]
+        # add file data to the BulkUpload
         with factory.load_test_file("ice_entries.csv") as entries:
             response = ice.session.post(
-                ice_url("/uploads/file"), files={"type": "strain", "file": entries}
+                ice_url(f"/uploads/{upload_id}/file"),
+                files={"type": "strain", "file": entries},
             )
-        upload_id = response.json()["uploadInfo"]["id"]
+        # set upload to approved to create (click "submit" button)
         response = ice.session.put(
             ice_url(f"/uploads/{upload_id}/status"),
             json={"id": upload_id, "status": "APPROVED"},
