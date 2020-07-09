@@ -45,7 +45,7 @@ def code(context):
     if context.run(f"test -r {mounted_settings}").ok:
         print(f"Loading settings from {mounted_settings} …")
         with context.cd(f"{runtime_code}/edd/settings"):
-            context.run(f"mkdir -p local")
+            context.run("mkdir -p local")
             context.run(f"cp -R {mounted_settings}/. ./local")
 
 
@@ -137,6 +137,8 @@ def migrations(context):
                     # force re-index in the background
                     context.run("/code/manage.py edd_index --force &", disown=True)
                 else:
+                    # doing --fake-initial will mark squashed migrations as applied
+                    context.run("/code/manage.py migrate --fake-initial")
                     # re-index in the background
                     context.run("/code/manage.py edd_index &", disown=True)
         # mark this version as recently checked
