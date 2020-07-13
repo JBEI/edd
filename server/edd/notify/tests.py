@@ -10,6 +10,13 @@ from main.tests import factory
 from . import backend
 
 
+@pytest.fixture
+def fake_user():
+    """Builds a user record without touching the database, with a fake pk."""
+    user = factory.UserFactory.build(pk=factory.fake.pyint())
+    return user
+
+
 class NotificationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -91,12 +98,11 @@ async def test_notification_subscribe_no_user():
 
 
 @pytest.mark.asyncio
-async def test_notification_subscribe_empty():
+async def test_notification_subscribe_empty(fake_user):
     communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
-        communicator.scope["user"] = user
+        communicator.scope["user"] = fake_user
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()
         assert connected
@@ -113,14 +119,13 @@ async def test_notification_subscribe_empty():
 
 
 @pytest.mark.asyncio
-async def test_notification_subscribe_with_messages():
+async def test_notification_subscribe_with_messages(fake_user):
     communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    # joe is going to help us send some messages to the fake user
+    joe = backend.RedisBroker(fake_user)
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
-        communicator.scope["user"] = user
-        # joe is going to help us send some messages to the fake user
-        joe = backend.RedisBroker(user)
+        communicator.scope["user"] = fake_user
         await joe.async_notify("Hello, world!")
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()
@@ -139,14 +144,13 @@ async def test_notification_subscribe_with_messages():
 
 
 @pytest.mark.asyncio
-async def test_notification_dismiss():
+async def test_notification_dismiss(fake_user):
     communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    # joe is going to help us send some messages to the fake user
+    joe = backend.RedisBroker(fake_user)
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
-        communicator.scope["user"] = user
-        # joe is going to help us send some messages to the fake user
-        joe = backend.RedisBroker(user)
+        communicator.scope["user"] = fake_user
         marker_uuid = uuid4()
         await joe.async_notify("Hello, world!", uuid=marker_uuid)
         # websocket will allow connection
@@ -171,14 +175,13 @@ async def test_notification_dismiss():
 
 
 @pytest.mark.asyncio
-async def test_notification_dismiss_all():
+async def test_notification_dismiss_all(fake_user):
     communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    # joe is going to help us send some messages to the fake user
+    joe = backend.RedisBroker(fake_user)
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
-        communicator.scope["user"] = user
-        # joe is going to help us send some messages to the fake user
-        joe = backend.RedisBroker(user)
+        communicator.scope["user"] = fake_user
         await joe.async_notify("Hello, world!")
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()
@@ -201,14 +204,13 @@ async def test_notification_dismiss_all():
 
 
 @pytest.mark.asyncio
-async def test_notification_incoming():
+async def test_notification_incoming(fake_user):
     communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    # joe is going to help us send some messages to the fake user
+    joe = backend.RedisBroker(fake_user)
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
-        communicator.scope["user"] = user
-        # joe is going to help us send some messages to the fake user
-        joe = backend.RedisBroker(user)
+        communicator.scope["user"] = fake_user
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()
         assert connected
@@ -231,14 +233,13 @@ async def test_notification_incoming():
 
 
 @pytest.mark.asyncio
-async def test_notification_send_dismiss():
+async def test_notification_send_dismiss(fake_user):
     communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    # joe is going to help us send some messages to the fake user
+    joe = backend.RedisBroker(fake_user)
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
-        communicator.scope["user"] = user
-        # joe is going to help us send some messages to the fake user
-        joe = backend.RedisBroker(user)
+        communicator.scope["user"] = fake_user
         marker_uuid = uuid4()
         await joe.async_notify("Hello, world!", uuid=marker_uuid)
         # websocket will allow connection
@@ -263,14 +264,13 @@ async def test_notification_send_dismiss():
 
 
 @pytest.mark.asyncio
-async def test_notification_send_dismiss_older():
+async def test_notification_send_dismiss_older(fake_user):
     communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    # joe is going to help us send some messages to the fake user
+    joe = backend.RedisBroker(fake_user)
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
-        communicator.scope["user"] = user
-        # joe is going to help us send some messages to the fake user
-        joe = backend.RedisBroker(user)
+        communicator.scope["user"] = fake_user
         # manually create a bunch of Notification objects so we can control the time
         messages = [
             backend.Notification(f"{i}", None, None, i, uuid4()) for i in range(10)
@@ -301,12 +301,11 @@ async def test_notification_send_dismiss_older():
 
 
 @pytest.mark.asyncio
-async def test_notification_send_reset():
+async def test_notification_send_reset(fake_user):
     communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
-        communicator.scope["user"] = user
+        communicator.scope["user"] = fake_user
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()
         assert connected
@@ -327,12 +326,11 @@ async def test_notification_send_reset():
 
 
 @pytest.mark.asyncio
-async def test_notification_send_fetch():
+async def test_notification_send_fetch(fake_user):
     communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
-        communicator.scope["user"] = user
+        communicator.scope["user"] = fake_user
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()
         assert connected
