@@ -1,20 +1,14 @@
 import collections
 import copy
 import logging
+import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any, Dict, Iterable, List, Tuple, Union
 
 from arrow import utcnow
 
-from main.models import (
-    SYSTEM_META_TYPES,
-    Assay,
-    EDDObject,
-    Line,
-    MetadataType,
-    Protocol,
-)
+from main.models import Assay, EDDObject, Line, MetadataType, Protocol
 
 from .constants import (
     BAD_GENERIC_INPUT_CATEGORY,
@@ -179,7 +173,7 @@ class NewLineAndAssayVisitor:
         self.omit_missing_strains = omit_missing_strains
         self.omit_all_strains = omit_all_strains
 
-    def visit_line(self, line_name, description, line_metadata_dict, replicate_num):
+    def visit_line(self, line_name, description, line_metadata_dict):
         raise NotImplementedError()
 
     def visit_assay(self, protocol_pk, line, assay_name, assay_metadata_dict):
@@ -210,36 +204,28 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         self.require_strains = True
         self.cache: ExperimentDescriptionContext = cache
 
-    def visit_line(self, line_name, description, line_metadata_dict, replicate_num):
-
-        cache = self.cache
-
-        # build a metadata dictionary, omitting metadata values that represent
-        # 1-to-M or M2M relations, which can't be set until after a Line pk is defined
-        meta_subset = {
-            pk: cache.line_meta_types.get(pk).encode_value(value)
-            for pk, value in line_metadata_dict.items()
-            if value and pk not in cache.related_objects
-        }
-
+    def visit_line(self, line_name, description, line_metadata_dict):
+        # build a metadata dictionary, omitting type_field metadata
         line_attrs = {
             "name": line_name,
             "description": description,
             "study_id": self.study_pk,
-            "metadata": meta_subset,
+            "metadata": {
+                k: v for k, v in self.cache.filter_line_metadata(line_metadata_dict)
+            },
         }
 
         # add in values for single-valued relations captured by specialized MetadataTypes
-        for meta_type_pk, meta_type in cache.related_object_mtypes.items():
+        for meta_type_pk, meta_type in self.cache.related_object_mtypes.items():
             value_pks = line_metadata_dict.get(meta_type_pk)
 
-            if not value_pks or meta_type_pk in cache.many_related_mtypes:
+            if not value_pks or meta_type_pk in self.cache.many_related_mtypes:
                 continue
 
-            values = cache.get_related_objects(meta_type_pk, value_pks)
+            values = self.cache.get_related_objects(meta_type_pk, value_pks)
 
             # unpack what should be single-valued items returned as a list
-            if meta_type_pk not in cache.many_related_mtypes:
+            if meta_type_pk not in self.cache.many_related_mtypes:
                 values = values[0]
 
             line_attrs[meta_type.type_field] = values
@@ -255,20 +241,20 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
             if not value_pks:
                 continue
 
-            is_strains = meta_type.pk == cache.strains_mtype.pk
+            is_strains = meta_type.pk == self.cache.strains_mtype.pk
             if is_strains and self.omit_all_strains:
                 continue
 
             ignore_missing_strains = is_strains and (
                 self.omit_missing_strains or self.omit_all_strains
             )
-            values = cache.get_related_objects(
+            values = self.cache.get_related_objects(
                 pk, value_pks, subset=ignore_missing_strains
             )
             if not values:
                 continue
 
-            many_related_mtype = cache.many_related_mtypes[pk]
+            many_related_mtype = self.cache.many_related_mtypes[pk]
 
             # note: line.metadata_add doesn't support multiple values in a single
             # query...TypeError.  Resulting method would be too complex with this feature?
@@ -325,7 +311,7 @@ class LineAndAssayNamingVisitor(NewLineAndAssayVisitor):
         self.line_names = []
         self.lines = []
 
-    def visit_line(self, line_name, description, line_metadata_dict, replicate_num):
+    def visit_line(self, line_name, description, line_metadata_dict):
 
         self.line_names.append(line_name)
 
@@ -400,18 +386,8 @@ class ExperimentDescriptionContext:
             for meta_type in MetadataType.objects.filter(for_context=MetadataType.ASSAY)
         }
 
-        # line metadata types
-        self.strains_mtype: MetadataType = MetadataType.objects.filter(
-            uuid=SYSTEM_META_TYPES["Strain(s)"]
-        ).get()
-        self.carbon_sources_mtype: MetadataType = MetadataType.objects.filter(
-            uuid=SYSTEM_META_TYPES["Carbon Source(s)"]
-        ).get()
-        ##################################################
-
-        self.assay_time_mtype: MetadataType = MetadataType.objects.filter(
-            for_context=MetadataType.ASSAY, uuid=SYSTEM_META_TYPES["Time"]
-        ).get()
+        self.strains_mtype = MetadataType.system("Strain(s)")
+        self.assay_time_mtype = MetadataType.system("Time")
 
         # get related MetadataTypes that describe related object fields
         relation_mtypes = self.query_related_object_types(self.line_meta_types)
@@ -448,6 +424,19 @@ class ExperimentDescriptionContext:
                     many_related_mtypes[meta_pk] = meta_type
 
         return related_object_mtypes, many_related_mtypes
+
+    def filter_line_metadata(self, line_metadata):
+        for key, value in line_metadata.items():
+            meta = self.line_meta_types.get(key, None)
+            # check cached listing first, then try database lookup
+            if meta is None:
+                qs = MetadataType.objects.filter(for_context=MetadataType.LINE, id=key)
+                if qs.exists():
+                    meta = qs.get()
+                    self.line_meta_types.update({key: meta})
+            # yield only non-type_field line metadata, encoded
+            if meta and meta.type_field is None:
+                yield key, meta.encode_value(value)
 
     def get_related_objects(
         self, mtype_pk, value_pks: Union[Union[int, str], Iterable[int]], subset=False
@@ -713,11 +702,10 @@ class CombinatorialDescriptionInput:
         # only a single value is supported -- doesn't make sense to do this combinatorially
         self.description: str = kwargs.pop("description", None)
 
-        # sequences of ICE part ID's readable by users
         self.replicate_count: int = kwargs.pop("replicate_count", 1)
-        self.common_line_metadata = kwargs.pop("common_line_metadata", {})
+        self.replicate_meta = MetadataType.system("Replicate")
 
-        # maps MetadataType pk -> []
+        self.common_line_metadata = kwargs.pop("common_line_metadata", {})
         self.combinatorial_line_metadata: Dict[int, List[Any]] = defaultdict(list)
         self.combinatorial_line_metadata.update(
             kwargs.pop("combinatorial_line_metadata", {})
@@ -1078,14 +1066,15 @@ class CombinatorialDescriptionInput:
     def _visit_new_lines_and_assays(self, line_metadata_dict, visitor):
         if self.replicate_count == 0:
             self.importer.add_error(BAD_GENERIC_INPUT_CATEGORY, ZERO_REPLICATES)
+        elif self.replicate_count > 1:
+            # assign a unique replicate ID to sets of lines created as replicates
+            line_metadata_dict[self.replicate_meta.pk] = uuid.uuid4().hex
 
         for replicate_num in range(1, self.replicate_count + 1):
             line_name = self.naming_strategy.get_line_name(
                 line_metadata_dict, replicate_num
             )
-            line = visitor.visit_line(
-                line_name, self.description, line_metadata_dict, replicate_num
-            )
+            line = visitor.visit_line(line_name, self.description, line_metadata_dict)
             for protocol_pk in self.unique_protocols:
                 self._visit_new_for_protocol(visitor, line, protocol_pk)
 

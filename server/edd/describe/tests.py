@@ -64,6 +64,8 @@ class CombinatorialCreationTests(TestCase):
         # Load model objects for use in this test
         meta1 = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
         meta2 = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
+        strains_mtype = models.MetadataType.system("Strain(s)")
+        carbon_sources_mtype = models.MetadataType.system("Carbon Source(s)")
         cs_glucose, _ = models.CarbonSource.objects.get_or_create(
             name=r"1% Glucose", volume=10.00000
         )
@@ -75,25 +77,19 @@ class CombinatorialCreationTests(TestCase):
         strain1 = models.Strain.objects.create(name="JW1058")
         strain2 = models.Strain.objects.create(name="JW5327")
 
-        # creating *AFTER* setup of testing database records
-        cache = ExperimentDescriptionContext()
-
         # Define JSON test input
         ui_json_output = json.dumps(
             {
                 "name_elements": {
                     "elements": [
-                        f"{cache.strains_mtype.pk}__name",
+                        f"{strains_mtype.pk}__name",
                         f"{meta2.pk}",
-                        f"{cache.carbon_sources_mtype.pk}__name",
+                        f"{carbon_sources_mtype.pk}__name",
                         "replicate_num",
                     ],
                     "abbreviations": {
-                        f"{cache.strains_mtype.pk}__name": {
-                            "JW1058": 58,
-                            "JW5327": 27,
-                        },
-                        f"{cache.carbon_sources_mtype.pk}__name": {
+                        f"{strains_mtype.pk}__name": {"JW1058": 58, "JW5327": 27},
+                        f"{carbon_sources_mtype.pk}__name": {
                             r"1% Glucose": "GLU",
                             r"1% Galactose": "GAL",
                         },
@@ -102,12 +98,9 @@ class CombinatorialCreationTests(TestCase):
                 "replicate_count": 3,
                 "common_line_metadata": {meta1.pk: 30},
                 "combinatorial_line_metadata": {
-                    cache.strains_mtype.pk: [[strain1.pk], [strain2.pk]],
+                    strains_mtype.pk: [[strain1.pk], [strain2.pk]],
                     meta2.pk: ["EZ", "LB"],  # media
-                    cache.carbon_sources_mtype.pk: [
-                        [cs_galactose.pk],
-                        [cs_glucose.pk],
-                    ],
+                    carbon_sources_mtype.pk: [[cs_galactose.pk], [cs_glucose.pk]],
                 },
             }
         )
@@ -143,6 +136,8 @@ class CombinatorialCreationTests(TestCase):
             "27-LB-GAL-R3": {"meta": lb, "carbon": [cs_galactose.pk]},
         }
 
+        # creating *AFTER* setup of testing database records
+        cache = ExperimentDescriptionContext()
         cache.strains_by_pk = {strain1.pk: strain1, strain2.pk: strain2}
 
         study = factory.StudyFactory()
@@ -161,9 +156,10 @@ class CombinatorialCreationTests(TestCase):
         for line in result.lines_created:
             self.assertIn(line.name, expected_line_info)
             info = expected_line_info[line.name]
-            self.assertEqual(line.metadata, info["meta"])
             cs_list = list(line.carbon_source.values_list("id", flat=True))
             self.assertEqual(cs_list, info["carbon"])
+            # because of replicate, the expected metadata is a subset of actual
+            assert {*info["meta"].items()}.issubset({*line.metadata.items()})
 
     def test_basic_json(self):
         """
@@ -216,12 +212,14 @@ class CombinatorialCreationTests(TestCase):
         self.assertFalse(importer.errors, "Import generated errors")
         self.assertFalse(importer.warnings, "Import generated warnings")
         expected_line_names = ["181-aceF-R1", "181-aceF-R2", "181-aceF-R3"]
+        expected_meta = {meta.pk: "LB"}
         for line in result.lines_created:
             self.assertIn(line.name, expected_line_names)
             self.assertFalse(line.control)
             strains_list = list(line.strains.values_list("id", flat=True))
             self.assertEqual(strains_list, [strain.pk])
-            self.assertEqual(line.metadata, {meta.pk: "LB"})
+            # because of replicate, the expected metadata is a subset of actual
+            assert {*expected_meta.items()}.issubset({*line.metadata.items()})
 
     def test_advanced_experiment_description_xlsx(self):
         strain, _ = models.Strain.objects.get_or_create(name="JW0111")
