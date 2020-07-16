@@ -205,6 +205,7 @@ if (status == "SUCCESS" && git_branch == "master") {
     node("edd-test-swarm") {
         stage('Deploy Test') {
             try {
+                checkout scm
                 withCredentials([
                     usernamePassword(
                         credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
