@@ -9,8 +9,9 @@ import logging
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count
-from django.http import HttpResponse, JsonResponse
+from django.db.models import Count, Q
+from django.http import Http404, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.views import generic
 from requests import codes
 
@@ -18,9 +19,37 @@ from edd import utilities
 
 from .. import models as edd_models
 from .. import query
-from .study import StudyObjectMixin, load_study
+from .study import StudyObjectMixin
 
 logger = logging.getLogger(__name__)
+
+
+def load_study(
+    request, pk=None, slug=None, permission_type=edd_models.StudyPermission.CAN_VIEW
+):
+    """
+    Loads a study as a request user; throws a 404 if the study does not exist OR if no valid
+    permissions are set for the user on the study.
+
+    :param request: the request loading the study
+    :param pk: study's primary key; at least one of pk and slug must be provided
+    :param slug: study's slug ID; at least one of pk and slug must be provided
+    :param permission_type: required permission for the study access
+    """
+    permission = Q()
+    if not request.user.is_superuser:
+        permission = edd_models.Study.access_filter(
+            request.user, access=permission_type
+        )
+    if pk is not None:
+        return get_object_or_404(
+            edd_models.Study.objects.distinct(), permission, Q(pk=pk)
+        )
+    elif slug is not None:
+        return get_object_or_404(
+            edd_models.Study.objects.distinct(), permission, Q(slug=slug)
+        )
+    raise Http404()
 
 
 # /study/<study_id>/measurements/<protocol_id>/

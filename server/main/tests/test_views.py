@@ -1,7 +1,3 @@
-"""
-Tests used to validate the tutorial screencast functionality.
-"""
-
 import json
 from io import BytesIO
 from unittest.mock import patch
@@ -17,7 +13,7 @@ from requests import codes
 
 from edd import TestCase
 
-from .. import models, views
+from .. import models
 from . import factory
 
 faker = Faker()
@@ -50,19 +46,27 @@ class StudyViewTests(TestCase):
         # status code will say request is bad
         self.assertEqual(response.status_code, codes.bad_request)
 
-    def test_load_study(self):
+    def test_load_study_with_invalid_slug(self):
         """An invalid slug should return a Not Found code."""
         # using edddata view as simple way to go through main.view.load_study function
         response = self.client.get(reverse("main:edddata", kwargs={"slug": "invalid"}))
         self.assertEqual(response.status_code, codes.not_found)
-        response = self.client.get(reverse("main:edd-pk:edddata", kwargs={"pk": 12345}))
+
+    def test_load_study_with_invalid_pk(self):
+        """An invalid pk should return a Not Found code."""
+        # using edddata view as simple way to go through main.view.load_study function
+        response = self.client.get(reverse("main:edd-pk:edddata", kwargs={"pk": 0}))
         self.assertEqual(response.status_code, codes.not_found)
+
+    def test_load_study_without_identifier(self):
         # no view method should be calling load_study without ID or slug, but test directly
         request = HttpRequest()
         request.user = self.user
         # attempting to load study without ID or slug will raise a 404
         with self.assertRaises(Http404):
-            views.load_study(request)
+            from main.views.ajax import load_study
+
+            load_study(request)
 
     def test_create_study_get(self):
         # Verify response from the dedicated creation page
@@ -529,7 +533,7 @@ class StudyViewTests(TestCase):
             "lineId": f"{line.pk}",
         }
         response = self.client.post(target_url, data=post_data, follow=True)
-        self.assertContains(response, f"Saved 1 of 1 Lines")
+        self.assertContains(response, "Saved 1 of 1 Lines")
         self.assertTrue(self.target_study.line_set.filter(name=name).exists())
         # if passed an invalid line ID, bad request
         bad_post = {}
@@ -675,7 +679,7 @@ class StudyViewTests(TestCase):
             follow=True,
         )
         self.assertTemplateUsed(response, "main/study-data.html")
-        self.assertContains(response, f"Deleted 1 Assays")
+        self.assertContains(response, "Deleted 1 Assays")
         self.assertEqual(
             models.Assay.objects.filter(study=self.target_study, active=True).count(), 0
         )
@@ -700,7 +704,7 @@ class StudyViewTests(TestCase):
             "assayId": [assay.pk],
         }
         response = self.client.post(target_url, data=post_data, follow=True)
-        self.assertContains(response, f"Saved 1 of 1 Assays")
+        self.assertContains(response, "Saved 1 of 1 Assays")
         self.assertTrue(
             models.Assay.objects.filter(
                 study_id=self.target_study.pk, name=name, protocol_id=protocol.pk
@@ -805,7 +809,7 @@ class StudyViewTests(TestCase):
             follow=True,
         )
         self.assertTemplateUsed(response, "main/study-data.html")
-        self.assertContains(response, f"Deleted 0 Assays and 1 Measurements.")
+        self.assertContains(response, "Deleted 0 Assays and 1 Measurements.")
         self.assertEqual(
             models.Measurement.objects.filter(
                 study=self.target_study, active=True
