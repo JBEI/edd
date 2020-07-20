@@ -44,17 +44,6 @@ export function prepareIt() {
 
     linesActionPanelRefreshTimer = null;
 
-    const lineHelp = $("#line-help-content").dialog({
-        "title": "What is a line?",
-        "autoOpen": false,
-        "position": {
-            "my": "left top",
-            "at": "left bottom+10",
-            "of": "#line-help-btn",
-        },
-    });
-    $("#line-help-btn").on("click", () => lineHelp.dialog("open"));
-
     const helper = new Utl.FileDropZoneHelpers();
 
     Utl.FileDropZone.create({
