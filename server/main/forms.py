@@ -686,7 +686,6 @@ class LineForm(BulkEditMixin, MetadataEditMixin, forms.ModelForm):
             "control",
             "contact",
             "experimenter",
-            "carbon_source",
             "strains",
             "metadata",
         )
@@ -696,7 +695,6 @@ class LineForm(BulkEditMixin, MetadataEditMixin, forms.ModelForm):
             "control": _("Is Control?"),
             "contact": _("Contact"),
             "experimenter": _("Experimenter"),
-            "carbon_source": _("Carbon Source"),
             "strains": _("Strains"),
         }
         widgets = {
@@ -707,7 +705,6 @@ class LineForm(BulkEditMixin, MetadataEditMixin, forms.ModelForm):
             "control": forms.widgets.CheckboxInput(attrs={"class": "form-control"}),
             "contact": UserAutocompleteWidget(),
             "experimenter": UserAutocompleteWidget(),
-            "carbon_source": MultiCarbonSourceAutocompleteWidget(),
             "strains": MultiRegistryAutocompleteWidget(),
             "metadata": HiddenJSONWidget(),
         }
