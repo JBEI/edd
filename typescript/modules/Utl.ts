@@ -38,6 +38,18 @@ export function groupBy<T>(list: T[], key: string): { [key: string]: T[] } {
     }, {});
 }
 
+/**
+ * Function decorator to debounce frequent callbacks. By default will wait 100
+ * milliseconds after last call to trigger the wrapped function.
+ */
+export function debounce(fn: Function, wait = 100) {
+    let timer;
+    return (...args) => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(fn, wait, ...args);
+    };
+}
+
 export class EDD {
     static resolveMeasurementRecordToName(
         measurementRecord: AssayMeasurementRecord,

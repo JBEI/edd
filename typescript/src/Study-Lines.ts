@@ -1,80 +1,37 @@
 "use strict";
 
 import * as $ from "jquery";
+import Handsontable from "handsontable";
 
-import {
-    DataGrid,
-    DataGridColumnGroupSpec,
-    DataGridColumnSpec,
-    DataGridDataCell,
-    DataGridHeaderSpec,
-    DataGridHeaderWidget,
-    DataGridOptionWidget,
-    DataGridSpecBase,
-    DataGridTableSpec,
-    DGSearchWidget,
-    DGSelectAllWidget,
-} from "../modules/DataGrid";
 import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
 
+import * as Config from "../modules/line/Config";
+
 declare let window: StudyBase.EDDWindow;
 const EDDData = window.EDDData || ({} as EDDData);
-
-let linesActionPanelRefreshTimer: number;
-
-// The table spec object and table object for the Lines table.
-let linesDataGridSpec;
-let linesDataGrid;
-
-const studyBaseUrl: URL = Utl.relativeURL("../");
+const $window = $(window);
 
 // define managers for forms with metadata
 let lineMetadataManager: Forms.FormMetadataManager;
 let assayMetadataManager: Forms.FormMetadataManager;
-const $window = $(window);
 
-// Called when the page loads.
-export function prepareIt() {
-    setupHelp();
+let access: Config.Access;
 
-    linesDataGridSpec = null;
-    linesDataGrid = null;
+function defineSelectionInputs(): JQuery {
+    const selected = access.lines().filter((line) => line?.selected);
+    const inputs = selected.map(
+        (line) => $(`<input type="hidden" name="lineId" value="${line.id}"/>`)[0],
+    );
+    return $(inputs);
+}
 
-    linesActionPanelRefreshTimer = null;
-
-    const helper = new Utl.FileDropZoneHelpers();
-
-    Utl.FileDropZone.create({
-        "elementId": "addToLinesDropZone",
-        "url": Utl.relativeURL("describe/", studyBaseUrl).toString(),
-        "processResponseFn": helper.fileReturnedFromServer.bind(helper),
-        "processErrorFn": helper.fileErrorReturnedFromServer.bind(helper),
-        "processWarningFn": helper.fileWarningReturnedFromServer.bind(helper),
-    });
-
-    $("#content").on("dragover", (e: JQueryMouseEventObject) => {
-        e.stopPropagation();
-        e.preventDefault();
-        $(".linesDropZone").removeClass("off");
-    });
-    $("#content").on("dragend, dragleave, mouseleave", () => {
-        $(".linesDropZone").addClass("off");
-    });
-
-    // set up editable study name
-    const title = $("#editable-study-name").get()[0] as HTMLElement;
-    const nameEdit = new StudyBase.EditableStudyName(title);
-    nameEdit.getValue();
-
-    // Instantiate a table specification for the Lines table
-    linesDataGridSpec = new DataGridSpecLines();
-    linesDataGridSpec.init();
-    // Instantiate the table itself with the spec
-    linesDataGrid = new LineResults(linesDataGridSpec);
+// Called when the page loads the EDDData object
+function onDataLoad() {
+    access = Config.Access.initAccess(EDDData);
     // Show controls that depend on having some lines present to be useful
-    const hasLines = Object.keys(EDDData.Lines).length !== 0;
+    const hasLines = access.lines().length !== 0;
     $("#loadingLinesDiv").addClass("hide");
     $("#edUploadDirectionsDiv").removeClass("hide");
     $(".linesRequiredControls").toggleClass("hide", !hasLines);
@@ -92,14 +49,125 @@ export function prepareIt() {
             "title": "Please correct errors",
         });
     }
+
+    setupTable();
+}
+
+// setup controls once line table is displayed
+function onLineTableLoad() {
+    const parent: JQuery = $("#studyLinesTable").parent();
+    const lineModalForm = $("#editLineModal");
+    const assayModalForm = $("#addAssayModal");
+    setupModals(lineModalForm, assayModalForm);
+
+    // Enable add new Line button
+    parent.find(".addNewLineButton").on("click", () => {
+        showLineEditDialog($());
+        return false;
+    });
+
+    // Enable edit lines button
+    parent.find(".editButton").on("click", () => {
+        showLineEditDialog(defineSelectionInputs());
+        return false;
+    });
+
+    // Buttons for: clone, delete, restore
+    // each submits form with specific action, but needs to add selected IDs first
+    parent.find(".cloneButton, .disableButton, .enableButton").on("click", () => {
+        // add selected IDs before submit
+        $("#general").append(defineSelectionInputs());
+    });
+
+    // Enable add assay button
+    parent.find(".addAssayButton").on("click", () => {
+        assayMetadataManager.reset();
+        assayModalForm
+            .find(".hidden-line-inputs")
+            .empty()
+            .append(defineSelectionInputs());
+        assayModalForm
+            .removeClass("off")
+            .dialog(
+                StudyBase.dialogDefaults({
+                    "minWidth": 500,
+                }),
+            )
+            .dialog("open");
+        return false;
+    });
+
+    // Enable export button
+    parent.find(".exportLineButton").on("click", () => {
+        const form = $("#exportForm");
+        const selected = defineSelectionInputs();
+        if (selected.length === 0) {
+            form.append(
+                `<input type="hidden" name="studyId" value="${EDDData.currentStudyID}"/>`,
+            );
+        } else {
+            form.append(selected);
+        }
+        $("#exportModal")
+            .removeClass("off")
+            .dialog("open");
+        return false;
+    });
+
+    // Enable worklist button
+    parent.find(".worklistButton").on("click", () => {
+        const form = $("#exportForm");
+        const selected = defineSelectionInputs();
+        if (selected.length === 0) {
+            form.append(
+                `<input type="hidden" name="studyId" value="${EDDData.currentStudyID}"/>`,
+            );
+        } else {
+            form.append(selected);
+        }
+        form.find("select[name=export]").val("worklist");
+        form.find("button[name=action]").click();
+        return false;
+    });
+
+    // make sure the action bar is always visible
+    StudyBase.overlayContent($("#actionsBar"));
+}
+
+// Called on page loading; data may not be available
+function onPageLoad() {
+    setupHelp();
+    setupDropzone();
+    setupEditableName();
+}
+
+function setupDropzone() {
+    const contentArea = $("#content");
+    const helper = new Utl.FileDropZoneHelpers();
+    const url = $("#addToLinesDropZone").attr("data-url");
+    Utl.FileDropZone.create({
+        "elementId": "addToLinesDropZone",
+        "url": url,
+        "processResponseFn": helper.fileReturnedFromServer.bind(helper),
+        "processErrorFn": helper.fileErrorReturnedFromServer.bind(helper),
+        "processWarningFn": helper.fileWarningReturnedFromServer.bind(helper),
+    });
+    contentArea.on("dragover", (e: JQueryMouseEventObject) => {
+        e.stopPropagation();
+        e.preventDefault();
+        $(".linesDropZone").removeClass("off");
+    });
+    contentArea.on("dragend, dragleave, mouseleave", () => {
+        $(".linesDropZone").addClass("off");
+    });
+}
+
+function setupEditableName() {
+    const title = $("#editable-study-name").get()[0] as HTMLElement;
+    StudyBase.EditableStudyName.createFromElement(title);
 }
 
 function setupHelp() {
-    // for consistency with other pages, use JQuery UI to set tool tip, even though it will
-    // actually launch a new tab
-    $("#ed-help-btn").tooltip();
-
-    // launch a dialog instead of tool-tip to be more mobile-friendly
     const linesHelp = $("#line-help-content").dialog({
         "title": "What is a line?",
         "autoOpen": false,
@@ -115,37 +183,14 @@ function setupHelp() {
     $("#line-help-btn").on("click", () => linesHelp.dialog("open"));
 }
 
-// Called by DataGrid after the Lines table is rendered
-export function prepareAfterLinesTable() {
-    const parent: JQuery = $("#studyLinesTable").parent();
-    const helpBadge: JQuery = $(".move");
-    const input: JQuery = $(".tableControl").last();
-    // Enable add new Line button
-    parent
-        .find(".addNewLineButton")
-        .on("click", (ev: JQueryMouseEventObject): boolean => {
-            showLineEditDialog($());
-            return false;
-        });
-    // Enable edit lines button
-    parent.find(".editButton").on("click", (ev: JQueryMouseEventObject): boolean => {
-        showLineEditDialog($("#studyLinesTable").find("[name=lineId]:checked"));
-        return false;
-    });
-
-    $(helpBadge)
-        .insertAfter(input)
-        .removeClass("off");
-
+function setupModals(lineModalForm: JQuery, assayModalForm: JQuery) {
     // Set up jQuery modals
-    const lineModalForm = $("#editLineModal");
     lineModalForm.dialog(
         StudyBase.dialogDefaults({
             "minWidth": 500,
         }),
     );
     lineMetadataManager = new Forms.FormMetadataManager(lineModalForm, "line");
-    const assayModalForm = $("#addAssayModal");
     assayModalForm.dialog(
         StudyBase.dialogDefaults({
             "minWidth": 500,
@@ -158,96 +203,52 @@ export function prepareAfterLinesTable() {
             "minWidth": 400,
         }),
     );
-
-    parent.find(".addAssayButton").click(() => {
-        // copy inputs to the modal form
-        const inputs = $("#studyLinesTable")
-            .find("input[name=lineId]:checked")
-            .clone();
-        assayMetadataManager.reset();
-        assayModalForm
-            .find(".hidden-line-inputs")
-            .empty()
-            .append(inputs)
-            .end()
-            .removeClass("off")
-            .dialog(
-                StudyBase.dialogDefaults({
-                    "minWidth": 500,
-                }),
-            )
-            .dialog("open");
-        return false;
-    });
-
-    parent.find(".exportLineButton").click(function() {
-        const table = $("#studyLinesTable").clone();
-        const form = $("#exportForm");
-        $("#exportModal")
-            .removeClass("off")
-            .dialog("open");
-        includeAllLinesIfEmpty(form);
-        // add table to form as hidden field.
-        form.append(table.hide());
-        return false;
-    });
-
-    parent.find(".worklistButton").click(function() {
-        const table = $("#studyLinesTable").clone();
-        const form = $("#exportForm");
-        includeAllLinesIfEmpty(form);
-        form.append(table.hide())
-            .find("select[name=export]")
-            .val("worklist")
-            .end()
-            .find("button[name=action]")
-            .click()
-            .end();
-        return false;
-    });
-
-    // make sure the action bar is always visible
-    StudyBase.overlayContent($("#actionsBar"));
 }
 
-function includeAllLinesIfEmpty(form) {
-    if ($("#studyLinesTable").find("input[name=lineId]:checked").length === 0) {
-        // append study id to form
-        $("<input>")
-            .attr({
-                "name": "studyId",
-                "type": "hidden",
-                "value": EDDData.currentStudyID,
-            })
-            .appendTo(form);
-    }
-}
-
-// Start a timer to wait before calling the routine that shows the actions panel.
-export function queueLinesActionPanelShow() {
-    if (linesActionPanelRefreshTimer) {
-        clearTimeout(linesActionPanelRefreshTimer);
-    }
-    linesActionPanelRefreshTimer = window.setTimeout(linesActionPanelShow, 150);
-}
-
-function linesActionPanelShow() {
-    // Figure out how many lines are selected.
-    let checkedBoxes = [],
-        checkedBoxLen: number;
-    if (linesDataGrid) {
-        checkedBoxes = linesDataGrid.getSelectedCheckboxElements();
-    }
-    if (Object.keys(EDDData.Lines).length === 0) {
-        $(".lineExplanation").css("display", "block");
-        $(".actionsBar").addClass("off");
-    } else {
-        checkedBoxLen = checkedBoxes.length;
-        $(".linesSelectedCell")
-            .empty()
-            .text(checkedBoxLen + " selected");
-        $(".disablableButtons > button").prop("disabled", !checkedBoxLen);
-    }
+function setupTable() {
+    const container = document.getElementById("studyLinesTable");
+    const columns = Config.columns(access);
+    // Handsontable.hooks.add("afterInit", onLineTableLoad);
+    const table = new Handsontable(container, {
+        "afterChange": Config.handleChange(access, container),
+        "afterInit": onLineTableLoad,
+        "afterGetColHeader": Config.disableMenuFirstColumn,
+        "allowInsertRow": false,
+        "allowInsertColumn": false,
+        "allowRemoveRow": false,
+        "allowRemoveColumn": false,
+        "beforeColumnMove": Config.disableMoveFirstColumn,
+        "beforeStretchingColumnWidth": Config.disableResizeFirstColumn,
+        "colHeaders": columns.map((c) => c.header),
+        "columns": columns,
+        "data": access.lines(),
+        // TODO: add additional menu items, filtering, etc.
+        "dropdownMenu": ["alignment"],
+        "filters": true,
+        // freeze the first column
+        "fixedColumnsLeft": 1,
+        "height": Config.computeHeight(),
+        "hiddenColumns": {
+            "indicators": true,
+        },
+        // NOTE: JBEI and ABF covered under "academic research"
+        "licenseKey": "non-commercial-and-evaluation",
+        "manualColumnFreeze": true,
+        "manualColumnMove": true,
+        "manualColumnResize": true,
+        "manualRowResize": true,
+        "multiColumnSorting": true,
+        "readOnly": true,
+        "rowHeaders": true,
+        "stretchH": "all",
+        "width": "100%",
+    });
+    // re-fit the table when scrolling or resizing window
+    $window.on("scroll resize", () => {
+        table.updateSettings({ "height": Config.computeHeight() });
+    });
+    // handler for select all box
+    $(container).on("click", ".select-all", toggleSelectAllState);
 }
 
 function showLineEditDialog(selection: JQuery): void {
@@ -302,19 +303,6 @@ function showLineEditDialog(selection: JQuery): void {
             form.find("[name=line-experimenter_1"),
             "experimenter",
         ).render((): Pair => [experimenter.display(), str(experimenter.id())]),
-        "carbon": new Forms.Autocomplete(
-            form.find("[name=line-carbon_source_0"),
-            form.find("[name=line-carbon_source_1"),
-            "carbon",
-        ).render(
-            (r): Pair => {
-                const list = r.carbon || [];
-                const names = list.map(
-                    (v) => Utl.lookup(EDDData.CSources, v).name || "--",
-                );
-                return [names.join(", "), list.join(",")];
-            },
-        ),
         "strain": new Forms.Autocomplete(
             form.find("[name=line-strains_0"),
             form.find("[name=line-strains_1"),
@@ -343,636 +331,36 @@ function showLineEditDialog(selection: JQuery): void {
     }
 
     // special case, ignore name field when editing multiples
+    const nameInput = form.find("[name=line-name]");
+    const nameParent = nameInput.parent();
     if (selection.length > 1) {
-        form.find("[name=line-name]")
-            // remove required property
-            .prop("required", false)
-            // also hide form elements and uncheck bulk box
-            .parent()
-            .hide()
-            .find(":checkbox")
-            .prop("checked", false)
-            .end()
-            .end();
+        // remove required property
+        nameInput.prop("required", false);
+        // also hide form elements and uncheck bulk box
+        nameParent.hide();
+        nameParent.find(":checkbox").prop("checked", false);
     } else {
-        form.find("[name=line-name]")
-            // make sure line name is required
-            .prop("required", true)
-            // and line name is shown
-            .parent()
-            .show()
-            .end()
-            .end();
+        // make sure line name is required
+        nameInput.prop("required", true);
+        // and line name is shown
+        nameParent.show();
     }
 
     // display modal dialog
     form.removeClass("off").dialog("open");
 }
 
-class LineResults extends DataGrid {
-    constructor(dataGridSpec: DataGridSpecBase) {
-        super(dataGridSpec);
-    }
-
-    _getClasses(): string {
-        return "dataTable sortable dragboxes hastablecontrols table-striped";
-    }
-}
-
-class DGSelectAllLinesWidget extends DGSelectAllWidget {
-    clickHandler(): void {
-        super.clickHandler();
-        // update selected text
-        const checkedBoxLen = $("#studyLinesTable").find(
-            "tbody input[type=checkbox]:checked",
-        ).length;
-        $(".linesSelectedCell")
-            .empty()
-            .text(checkedBoxLen + " selected");
-        queueLinesActionPanelShow();
-    }
-}
-
-// The spec object that will be passed to DataGrid to create the Lines table
-class DataGridSpecLines extends DataGridSpecBase {
-    metaDataIDsUsedInLines: any;
-    groupIDsInOrder: any;
-    groupIDsToGroupIndexes: any;
-    groupIDsToGroupNames: any;
-
-    init() {
-        this.findMetaDataIDsUsedInLines();
-        this.findGroupIDsAndNames();
-        super.init();
-    }
-
-    findMetaDataIDsUsedInLines() {
-        const seenHash: any = {};
-        // loop lines
-        $.each(this.getRecordIDs(), (index, id) => {
-            const line = EDDData.Lines[id];
-            if (line) {
-                $.each(line.meta || {}, (key) => (seenHash[key] = true));
-            }
-        });
-        // store all metadata IDs seen
-        this.metaDataIDsUsedInLines = Object.keys(seenHash);
-    }
-
-    findGroupIDsAndNames() {
-        const rowGroups = {};
-        // Gather all the row IDs under the group ID each belongs to.
-        $.each(this.getRecordIDs(), (index, id) => {
-            const line = EDDData.Lines[id],
-                rep = line.replicate;
-            if (rep) {
-                // use parent replicate as a replicate group ID, push all matching line IDs
-                (rowGroups[rep] = rowGroups[rep] || [rep]).push(id);
-            }
-        });
-        this.groupIDsToGroupNames = {};
-        // For each group ID, just use parent replicate name
-        $.each(rowGroups, (group: any, lines) => {
-            if (
-                typeof EDDData.Lines[group] === undefined ||
-                typeof EDDData.Lines[group].name === undefined
-            ) {
-                return;
-            } else {
-                this.groupIDsToGroupNames[group] = EDDData.Lines[group].name;
-            }
-        });
-        // alphanumeric sort of group IDs by name attached to those replicate groups
-        this.groupIDsInOrder = Object.keys(rowGroups).sort((a, b) => {
-            const u: string = this.groupIDsToGroupNames[a];
-            const v: string = this.groupIDsToGroupNames[b];
-            return u < v ? -1 : u > v ? 1 : 0;
-        });
-        // Now that they're sorted by name, create a hash for quickly resolving IDs to indexes in
-        // the sorted array
-        this.groupIDsToGroupIndexes = {};
-        $.each(this.groupIDsInOrder, (index, group) => {
-            this.groupIDsToGroupIndexes[group] = index;
-        });
-    }
-
-    // Specification for the table as a whole
-    defineTableSpec(): DataGridTableSpec {
-        return new DataGridTableSpec("lines", { "name": "Lines" });
-    }
-
-    private loadLineName(index: string): string {
-        const line = EDDData.Lines[index];
-        if (line) {
-            return line.name.toUpperCase();
-        }
-        return "";
-    }
-
-    private loadLineDescription(index: string): string {
-        const line = EDDData.Lines[index];
-        if (line) {
-            if (line.description != null) {
-                return line.description.toUpperCase();
-            }
-        }
-        return "";
-    }
-
-    private loadStrainName(index: string): string {
-        // ensure a strain ID exists on line, is a known strain, uppercase first found name or '?'
-        const line = EDDData.Lines[index];
-        if (line) {
-            if (line.strain && line.strain.length) {
-                const strain = EDDData.Strains[line.strain[0]];
-                if (strain) {
-                    return strain.name.toUpperCase();
-                }
-            }
-        }
-        return "?";
-    }
-
-    private loadFirstCarbonSource(index: string): any {
-        // ensure carbon source ID(s) exist on line, ensure at least one source ID, ensure first ID
-        // is known carbon source
-        const line = EDDData.Lines[index];
-        if (line) {
-            if (line.carbon && line.carbon.length) {
-                const source = EDDData.CSources[line.carbon[0]];
-                if (source) {
-                    return source;
-                }
-            }
-        }
-        return undefined;
-    }
-
-    private loadCarbonSource(index: string): string {
-        const source = this.loadFirstCarbonSource(index);
-        if (source) {
-            return source.name.toUpperCase();
-        }
-        return "?";
-    }
-
-    private loadCarbonSourceLabeling(index: string): string {
-        const source = this.loadFirstCarbonSource(index);
-        if (source) {
-            return source.labeling.toUpperCase();
-        }
-        return "?";
-    }
-
-    private loadExperimenterInitials(index: string): string {
-        // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
-        const line = EDDData.Lines[index];
-        if (line) {
-            const experimenter = EDDData.Users[line.experimenter];
-            if (experimenter) {
-                return experimenter.initials.toUpperCase();
-            }
-        }
-        return "?";
-    }
-
-    private loadLineModification(index: string): number {
-        const line = EDDData.Lines[index];
-        if (line) {
-            return line.modified.time;
-        }
-        return undefined;
-    }
-
-    // Specification for the headers along the top of the table
-    defineHeaderSpec(): DataGridHeaderSpec[] {
-        const leftSide: DataGridHeaderSpec[] = [
-            new DataGridHeaderSpec(1, "hLinesName", {
-                "name": "Name",
-                "sortBy": this.loadLineName,
-            }),
-            new DataGridHeaderSpec(2, "hLinesDescription", {
-                "name": "Description",
-                "sortBy": this.loadLineDescription,
-                "sortAfter": 0,
-            }),
-            new DataGridHeaderSpec(3, "hLinesStrain", {
-                "name": "Strain",
-                "sortBy": this.loadStrainName,
-                "sortAfter": 0,
-            }),
-            new DataGridHeaderSpec(4, "hLinesCarbon", {
-                "name": "Carbon Source(s)",
-                "size": "s",
-                "sortBy": this.loadCarbonSource,
-                "sortAfter": 0,
-            }),
-            new DataGridHeaderSpec(5, "hLinesLabeling", {
-                "name": "Labeling",
-                "size": "s",
-                "sortBy": this.loadCarbonSourceLabeling,
-                "sortAfter": 0,
-            }),
-        ];
-
-        // map all metadata IDs to HeaderSpec objects
-        const metaDataHeaders: DataGridHeaderSpec[] = this.metaDataIDsUsedInLines.map(
-            (id, index) => {
-                const mdType = EDDData.MetaDataTypes[id];
-                return new DataGridHeaderSpec(6 + index, "hLinesMeta" + id, {
-                    "name": mdType.name,
-                    "size": "s",
-                    "sortBy": this.makeMetaDataSortFunction(id),
-                    "sortAfter": 0,
-                });
-            },
-        );
-
-        const rightSide = [
-            new DataGridHeaderSpec(6 + metaDataHeaders.length, "hLinesExperimenter", {
-                "name": "Experimenter",
-                "size": "s",
-                "sortBy": this.loadExperimenterInitials,
-                "sortAfter": 0,
-            }),
-            new DataGridHeaderSpec(7 + metaDataHeaders.length, "hLinesModified", {
-                "name": "Last Modified",
-                "size": "s",
-                "sortBy": this.loadLineModification,
-                "sortAfter": 0,
-            }),
-        ];
-
-        return leftSide.concat(metaDataHeaders, rightSide);
-    }
-
-    private makeMetaDataSortFunction(id: string) {
-        return (i: string) => {
-            const line = EDDData.Lines[i];
-            if (line && line.meta) {
-                return line.meta[id] || "";
-            }
-            return "";
-        };
-    }
-
-    // The colspan value for all the cells that are not 'carbon source' or 'labeling'
-    // is based on the number of carbon sources for the respective record.
-    // Specifically, it's either the number of carbon sources, or 1, whichever is higher.
-    private rowSpanForRecord(index) {
-        return (EDDData.Lines[index].carbon || []).length || 1;
-    }
-
-    generateLineNameCells(
-        gridSpec: DataGridSpecLines,
-        index: string,
-    ): DataGridDataCell[] {
-        const line = EDDData.Lines[index];
-        return [
-            new DataGridDataCell(gridSpec, index, {
-                "checkboxName": "lineId",
-                "checkboxWithID": (id) => "line" + id + "include",
-                "hoverEffect": true,
-                "nowrap": true,
-                "rowspan": gridSpec.rowSpanForRecord(index),
-                "contentString":
-                    line.name + (line.ctrl ? '<b class="iscontroldata">C</b>' : ""),
-            }),
-        ];
-    }
-
-    generateStrainNameCells(
-        gridSpec: DataGridSpecLines,
-        index: string,
-    ): DataGridDataCell[] {
-        const line = EDDData.Lines[index];
-        let content = [];
-        if (line) {
-            content = line.strain.map((id) => {
-                const strain = EDDData.Strains[id];
-                if (strain.registry_url) {
-                    const link = $("<a>")
-                        .attr("href", strain.registry_url)
-                        .attr("target", "_blank")
-                        .html(strain.name);
-                    // render the element to text
-                    return link[0].outerHTML;
-                }
-                return strain.name;
-            });
-        }
-        return [
-            new DataGridDataCell(gridSpec, index, {
-                "rowspan": gridSpec.rowSpanForRecord(index),
-                "contentString": content.join("; ") || "--",
-            }),
-        ];
-    }
-
-    generateDescriptionCells(
-        gridSpec: DataGridSpecLines,
-        index: string,
-    ): DataGridDataCell[] {
-        const line = EDDData.Lines[index];
-        let strings = "--";
-        if (line) {
-            if (line.description && line.description.length) {
-                strings = line.description;
-            }
-        }
-        return [
-            new DataGridDataCell(gridSpec, index, {
-                "rowspan": gridSpec.rowSpanForRecord(index),
-                "contentString": strings,
-            }),
-        ];
-    }
-
-    generateCarbonSourceCells(
-        gridSpec: DataGridSpecLines,
-        index: string,
-    ): DataGridDataCell[] {
-        const line = EDDData.Lines[index];
-        let strings = ["--"];
-        if (line) {
-            if (line.carbon && line.carbon.length) {
-                strings = line.carbon.map((id) => EDDData.CSources[id].name);
-            }
-        }
-        return strings.map((name) => {
-            return new DataGridDataCell(gridSpec, index, { "contentString": name });
-        });
-    }
-
-    generateCarbonSourceLabelingCells(
-        gridSpec: DataGridSpecLines,
-        index: string,
-    ): DataGridDataCell[] {
-        const line = EDDData.Lines[index];
-        let strings = ["--"];
-        if (line) {
-            if (line.carbon && line.carbon.length) {
-                strings = line.carbon.map((id) => EDDData.CSources[id].labeling);
-            }
-        }
-        return strings.map((labeling) => {
-            return new DataGridDataCell(gridSpec, index, { "contentString": labeling });
-        });
-    }
-
-    generateExperimenterInitialsCells(
-        gridSpec: DataGridSpecLines,
-        index: string,
-    ): DataGridDataCell[] {
-        const line = EDDData.Lines[index];
-        let content;
-        if (line) {
-            const exp = EDDData.Users[line.experimenter];
-            if (EDDData.Users && exp) {
-                content = exp.initials;
-            }
-        }
-        return [
-            new DataGridDataCell(gridSpec, index, {
-                "rowspan": gridSpec.rowSpanForRecord(index),
-                "contentString": content || "?",
-            }),
-        ];
-    }
-
-    generateModificationDateCells(
-        gridSpec: DataGridSpecLines,
-        index: string,
-    ): DataGridDataCell[] {
-        return [
-            new DataGridDataCell(gridSpec, index, {
-                "rowspan": gridSpec.rowSpanForRecord(index),
-                "contentString": Utl.JS.timestampToTodayString(
-                    EDDData.Lines[index].modified.time,
-                ),
-            }),
-        ];
-    }
-
-    makeMetaDataCellsGeneratorFunction(id) {
-        return (gridSpec: DataGridSpecLines, index: string): DataGridDataCell[] => {
-            const line = EDDData.Lines[index];
-            const type = EDDData.MetaDataTypes[id];
-            let contentStr = line.meta[id] || "";
-            if (line && type && line.meta && contentStr) {
-                contentStr = [type.prefix || "", contentStr, type.postfix || ""]
-                    .join(" ")
-                    .trim();
-            }
-            return [
-                new DataGridDataCell(gridSpec, index, {
-                    "rowspan": gridSpec.rowSpanForRecord(index),
-                    "contentString": contentStr,
-                }),
-            ];
-        };
-    }
-
-    // Specification for each of the data columns that will make up the body of the table
-    defineColumnSpec(): DataGridColumnSpec[] {
-        const leftSide = [
-            new DataGridColumnSpec(1, this.generateLineNameCells),
-            new DataGridColumnSpec(2, this.generateDescriptionCells),
-            new DataGridColumnSpec(3, this.generateStrainNameCells),
-            new DataGridColumnSpec(4, this.generateCarbonSourceCells),
-            new DataGridColumnSpec(5, this.generateCarbonSourceLabelingCells),
-        ];
-        const metaDataCols = this.metaDataIDsUsedInLines.map((id, index) => {
-            return new DataGridColumnSpec(
-                6 + index,
-                this.makeMetaDataCellsGeneratorFunction(id),
-            );
-        });
-        const rightSide = [
-            new DataGridColumnSpec(
-                6 + metaDataCols.length,
-                this.generateExperimenterInitialsCells,
-            ),
-            new DataGridColumnSpec(
-                7 + metaDataCols.length,
-                this.generateModificationDateCells,
-            ),
-        ];
-
-        return leftSide.concat(metaDataCols, rightSide);
-    }
-
-    // Specification for each of the groups that the headers and data columns are organized into
-    defineColumnGroupSpec(): DataGridColumnGroupSpec[] {
-        const topSection: DataGridColumnGroupSpec[] = [
-            new DataGridColumnGroupSpec("Line Name", { "showInVisibilityList": false }),
-            new DataGridColumnGroupSpec("Description"),
-            new DataGridColumnGroupSpec("Strain"),
-            new DataGridColumnGroupSpec("Carbon Source(s)"),
-            new DataGridColumnGroupSpec("Labeling"),
-        ];
-
-        const metaDataColGroups: DataGridColumnGroupSpec[] = this.metaDataIDsUsedInLines.map(
-            (id, index): DataGridColumnGroupSpec => {
-                const mdType = EDDData.MetaDataTypes[id];
-                return new DataGridColumnGroupSpec(mdType.name);
-            },
-        );
-
-        const bottomSection: DataGridColumnGroupSpec[] = [
-            new DataGridColumnGroupSpec("Experimenter", { "hiddenByDefault": true }),
-            new DataGridColumnGroupSpec("Last Modified", { "hiddenByDefault": true }),
-        ];
-
-        return topSection.concat(metaDataColGroups, bottomSection);
-    }
-
-    // Specification for the groups that rows can be gathered into
-    defineRowGroupSpec(): any {
-        const rowGroupSpec = [];
-        for (const id of this.groupIDsInOrder) {
-            const rowGroupSpecEntry: any = {
-                // Groups are numbered starting from 0
-                "name": this.groupIDsToGroupNames[id],
-            };
-            rowGroupSpec.push(rowGroupSpecEntry);
-        }
-
-        return rowGroupSpec;
-    }
-
-    // The table element on the page that will be turned into the DataGrid.  Any preexisting table
-    // content will be removed.
-    getTableElement() {
-        return document.getElementById("studyLinesTable");
-    }
-
-    // An array of unique identifiers (numbers, not strings), used to identify the records in the
-    // data set being displayed
-    getRecordIDs() {
-        return Object.keys(EDDData.Lines);
-    }
-
-    // This is called to generate the array of custom header widgets. The order
-    // of the array will be the order they are added to the header bar. It's
-    // perfectly fine to return an empty array.
-    createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[] {
-        const widgetSet: DataGridHeaderWidget[] = [];
-
-        // Create a single widget for substring searching
-        const searchLinesWidget = new DGLinesSearchWidget(
-            dataGrid,
-            this,
-            "Search Lines",
-            30,
-            false,
-        );
-        widgetSet.push(searchLinesWidget);
-        // A "select all / select none" button
-        const selectAllWidget = new DGSelectAllLinesWidget(dataGrid, this);
-        selectAllWidget.displayBeforeViewMenu(true);
-        widgetSet.push(selectAllWidget);
-        return widgetSet;
-    }
-
-    // This is called to generate the array of custom options menu widgets. The order of the array
-    // will be the order they are displayed in the menu. Empty array = OK.
-    createCustomOptionsWidgets(dataGrid: DataGrid): DataGridOptionWidget[] {
-        const widgetSet: DataGridOptionWidget[] = [];
-        const disabledLinesWidget = new DGDisabledLinesWidget(dataGrid, this);
-        widgetSet.push(disabledLinesWidget);
-        return widgetSet;
-    }
-
-    // This is called after everything is initialized, including the creation of the table content.
-    onInitialized(dataGrid: DataGrid): void {
-        // Wire up the 'action panels' for the Lines and Assays sections
-        const linesTable = this.getTableElement();
-        $(linesTable).on("change", ":checkbox", () => queueLinesActionPanelShow());
-
-        // Wire-in our custom edit fields for the Studies page, and continue with general init
-        prepareAfterLinesTable();
-    }
-}
-
-// When unchecked, this hides the set of Lines that are marked as disabled.
-class DGDisabledLinesWidget extends DataGridOptionWidget {
-    createElements(uniqueID: any): void {
-        const cbID: string = this.dataGridSpec.tableSpec.id + "ShowDLinesCB" + uniqueID;
-        const cb: any = this._createCheckbox(cbID, cbID, "1");
-        $(cb).click((e: any) => this.dataGridOwnerObject.clickedOptionWidget(e));
-        if (this.isEnabledByDefault()) {
-            cb.setAttribute("checked", "checked");
-        }
-        this.checkBoxElement = cb;
-        this.labelElement = this._createLabel("Show Disabled", cbID);
-        this._createdElements = true;
-    }
-
-    applyFilterToIDs(rowIDs: string[]): string[] {
-        let checked = false;
-        if (this.checkBoxElement.checked) {
-            checked = true;
-        }
-        // If the box is checked, return the set of IDs unfiltered
-        if (checked && rowIDs) {
-            $(".enableButton").removeClass("off");
-            return rowIDs;
-        } else {
-            $(".enableButton").addClass("off");
-        }
-
-        const filteredIDs = [];
-        for (const id of rowIDs) {
-            // Here is the condition that determines whether the rows associated with this ID are
-            // shown or hidden.
-            if (EDDData.Lines[id].active) {
-                filteredIDs.push(id);
-            }
-        }
-        return filteredIDs;
-    }
-
-    initialFormatRowElementsForID(dataRowObjects: any, rowID: string): void {
-        if (!EDDData.Lines[rowID].active) {
-            $.each(dataRowObjects, (x, row) => {
-                $(row.getElement()).addClass("disabledRecord");
-            });
-        }
-    }
-}
-
-// This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
-// options for additional data types, querying the server for results.
-class DGLinesSearchWidget extends DGSearchWidget {
-    searchDisclosureElement: any;
-
-    constructor(
-        dataGridOwnerObject: any,
-        dataGridSpec: any,
-        placeHolder: string,
-        size: number,
-        getsFocus: boolean,
-    ) {
-        super(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
-    }
-
-    // The uniqueID is provided to assist the widget in avoiding collisions when creating input
-    // element labels or other things requiring an ID.
-    createElements(uniqueID: any): void {
-        super.createElements(uniqueID);
-        this.createdElements(true);
-    }
-
-    // This is called to append the widget elements beneath the given element. If the elements have
-    // not been created yet, they are created, and the uniqueID is passed along.
-    appendElements(container: any, uniqueID: any): void {
-        if (!this.createdElements()) {
-            this.createElements(uniqueID);
-        }
-        container.appendChild(this.element);
-    }
+function toggleSelectAllState() {
+    const container = document.getElementById("studyLinesTable");
+    const box = $(".select-all", container);
+    const selectAll = box.prop("indeterminate") || !box.prop("checked");
+    box.prop("checked", selectAll);
+    access.lines().forEach((line) => {
+        line.selected = selectAll;
+    });
+    return false;
 }
 
 // wait for edddata event to begin processing page
-$(document).on("edddata", prepareIt);
+$(document).on("edddata", onDataLoad);
+$(onPageLoad);

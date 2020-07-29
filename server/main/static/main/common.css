@@ -335,11 +335,12 @@ div.bottomBar {
     bottom: 0;
     position: fixed;
     width: 100%;
+    z-index: 200;
 }
 
 /* Mouseover help boxes for the various steps */
 
-div.helpBadgeDiv {
+.helpBadgeDiv {
     cursor: pointer;
     font-weight: bold;
     display: inline-block;
@@ -353,7 +354,7 @@ div.helpBadgeDiv {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
-div.helpBadgeDiv:hover {
+.helpBadgeDiv:hover {
     background-color: #ceceff;
 }
 div.helpContent {
@@ -563,9 +564,6 @@ tr.columnLabels > th.sortheader.right {
 }
 tr.columnLabels > th.sortheader.center {
     text-align: center;
-}
-tr.columnLabels > th.smaller {
-    font-size: 14px;
 }
 table.dataTable tr.columnLabels > th.sortheader:hover {
     text-decoration: underline;
@@ -1093,21 +1091,6 @@ table.formTable tr > td textarea {
     overflow: hidden;
 }
 
-#studyLinesTable td:nth-child(2) {
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    width: 40%;
-    overflow: hidden;
-    max-width: 200px;
-    word-wrap: break-word;
-}
-
-#studyLinesTable td:active:nth-child(2) {
-    height: auto;
-    overflow: visible;
-    max-width: initial;
-}
-
 #studiesTable td:first-child {
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -1136,7 +1119,8 @@ div.multientrybutton {
 /* Autocomplete input element styling */
 
 ul.edd-autocomplete-list {
-    z-index: 115;
+    /* above any modal dialogs */
+    z-index: 215;
     display: table;
 }
 ul.edd-autocomplete-list > li {
@@ -1178,7 +1162,8 @@ ul.ui-autocomplete {
 }
 
 .ui-dialog {
-    z-index: 100 !important ;
+    /* above Handsontable "sticky" elements */
+    z-index: 200 !important;
 }
 
 .ice_strain {
@@ -1548,6 +1533,7 @@ input[type="checkbox"].form-control {
     /* override bootstrap */
     box-shadow: none;
     height: 20px;
+    width: 20px;
 }
 .off.meta-restore,
 .off.bulk-ignore {
@@ -1714,19 +1700,6 @@ div.linesZone {
     width: 100%;
     height: 100%;
     position: absolute;
-}
-
-div.linesDropZone {
-    background-color: #eeeeee;
-    border: 1px solid #e0e0e0;
-    text-align: center;
-    color: gray;
-    padding-bottom: 16px;
-    z-index: 100;
-    position: absolute;
-    opacity: 0.8;
-    width: 100%;
-    height: 80%;
 }
 
 div.fileDropInfoSending {
