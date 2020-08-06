@@ -57,7 +57,7 @@ interface AssayRecord extends EDDRecord {
 }
 
 // This is what we expect in EDDData.AssayMeasurements
-interface AssayMeasurementRecord {
+interface MeasurementRecord {
     id: number; // Measurement ID
     assay: number; // Assay ID
     type: number; // MeasurementTypeRecord ID
@@ -66,17 +66,6 @@ interface AssayMeasurementRecord {
     values: number[][][]; // array of data values
     x_units: number;
     y_units: number;
-    /////// BELOW ARE DEPRECATED ////////
-    aid: number; // Assay ID
-    dis: boolean; // Disabled
-    lid: number; // Line ID
-    mf: number; // Measurement Type Format
-    mt: number; // Measurement Type ID
-    mst: number; // Measurement Subtype
-    mq: number; // Measurement Type Compartment
-    mtdf: number; // Display Format
-    uid: number; // Y Axis Units ID
-    d: any[]; // Data (array of x,y pairs)
 }
 
 interface MeasurementCompartmentRecord {
@@ -90,21 +79,6 @@ interface MeasurementTypeRecord {
     name: string; // Type name
     family: string; // 'm', 'g', 'p' for metabolite, gene, protien
 }
-
-// This is what we expect in EDDData.MetaboliteTypes
-interface MetaboliteTypeRecord extends MeasurementTypeRecord {
-    formula: string; // Molecular Formula
-    molar: number; // Molar Mass As Number
-    carbons: number; // Carbon Count As Number
-}
-
-// This is what we expect in EDDData.ProteinTypes
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface ProteinTypeRecord extends MeasurementTypeRecord {}
-
-// This is what we expect in EDDData.GeneTypes
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface GeneTypeRecord extends MeasurementTypeRecord {}
 
 interface UnitType {
     id: number;
@@ -151,28 +125,19 @@ interface UserRecord {
 
 // Declare interface and EDDData variable for highlight support
 interface EDDData {
-    currentStudyID: number; // Can be null/undefined when no Study is chosen
-    Studies: RecordList<any>;
-    AssayMeasurements: RecordList<AssayMeasurementRecord>;
+    // Can be null/undefined when no Study is chosen
+    currentStudyID?: number;
+    AssayMeasurements: RecordList<MeasurementRecord>;
     Assays: RecordList<AssayRecord>;
     CSources: RecordList<CarbonSourceRecord>;
-    GeneTypes: RecordList<GeneTypeRecord>;
     Lines: RecordList<LineRecord>;
     MeasurementTypeCompartments: RecordList<MeasurementCompartmentRecord>;
     MeasurementTypes: RecordList<MeasurementTypeRecord>;
-    MetaboliteTypes: RecordList<MetaboliteTypeRecord>;
     MetaDataTypes: RecordList<MetadataTypeRecord>;
-    ProteinTypes: RecordList<ProteinTypeRecord>;
     Protocols: RecordList<ProtocolRecord>;
     Strains: RecordList<StrainRecord>;
     UnitTypes: RecordList<UnitType>;
     Users: RecordList<UserRecord>;
-
-    Exchange: any;
-    Species: any;
-
-    // TODO: is this used anymore?
-    MediaTypes: { [shortform: string]: string };
 }
 
 declare let EDDData: EDDData;

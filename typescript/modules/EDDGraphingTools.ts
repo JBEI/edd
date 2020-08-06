@@ -118,7 +118,7 @@ export class EDDGraphingTools {
      *      ...
      *    ]
      */
-    transformSingleLineItem(item: AssayMeasurementRecord, color: Color): GraphValue[] {
+    transformSingleLineItem(item: MeasurementRecord, color: Color): GraphValue[] {
         // array of x and y values for sorting
         const assay: AssayRecord = this.globalInfo.Assays[item.assay];
         const line: LineRecord = this.globalInfo.Lines[assay.lid];

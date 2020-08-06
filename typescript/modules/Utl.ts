@@ -51,53 +51,16 @@ export function debounce(fn: Function, wait = 100) {
 }
 
 export class EDD {
-    static resolveMeasurementRecordToName(
-        measurementRecord: AssayMeasurementRecord,
-    ): string {
-        let mName = "";
-        // We figure out the name and units differently based on the subtype.
-        const mst = measurementRecord.mst;
-        if (mst === 1) {
-            // Metabolite type.  Magic numbers.  EW!  TODO: Eeeew!
-            let compName = "";
-            const compID = measurementRecord.mq;
-            if (compID) {
-                const cRecord = EDDData.MeasurementTypeCompartments[compID];
-                if (cRecord) {
-                    compName = cRecord.code + " ";
-                }
-            }
-            const mRecord = EDDData.MetaboliteTypes[measurementRecord.mt];
-            mName = compName + mRecord.name;
-        } else if (mst === 2) {
-            // Gene type.  EWW EWW
-            mName = EDDData.GeneTypes[measurementRecord.mt].name;
-        } else if (mst === 3) {
-            // Protein type.  EWW EWW
-            mName = EDDData.ProteinTypes[measurementRecord.mt].name;
-        }
-        return mName;
+    static resolveMeasurementRecordToName(measure: MeasurementRecord): string {
+        const mtype = EDDData.MeasurementTypes[measure.type];
+        const comp = EDDData.MeasurementTypeCompartments[measure.comp];
+        const code = comp?.code || "";
+        const name = mtype?.name || "Unknown";
+        return `${code} ${name}`.trim();
     }
 
-    static resolveMeasurementRecordToUnits(
-        measurementRecord: AssayMeasurementRecord,
-    ): string {
-        let mUnits = "";
-        const mst = measurementRecord.mst;
-        if (mst === 1) {
-            if (measurementRecord.uid) {
-                const uRecord = EDDData.UnitTypes[measurementRecord.uid];
-                if (uRecord) {
-                    mUnits = uRecord.name;
-                }
-            }
-        } else if (mst === 2) {
-            // Units for Proteomics? Anyone?
-            mUnits = "";
-        } else if (mst === 3) {
-            mUnits = "RPKM";
-        }
-        return mUnits;
+    static resolveMeasurementRecordToUnits(measure: MeasurementRecord): string {
+        return EDDData.UnitTypes?.[measure.y_units]?.name || "";
     }
 
     static findCSRFToken(): string {

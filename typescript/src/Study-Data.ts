@@ -75,7 +75,7 @@ export interface AccumulatedRecordIDs {
     measurementIDs: string[];
 }
 const NULL_LINE: LineRecord = {} as LineRecord;
-const NULL_MEASURE: AssayMeasurementRecord = {} as AssayMeasurementRecord;
+const NULL_MEASURE: MeasurementRecord = {} as MeasurementRecord;
 
 // define managers for forms with metadata
 let assayMetadataManager: Forms.FormMetadataManager;
@@ -1217,11 +1217,28 @@ export class MeasurementFilterSection extends GenericFilterSection {
     isFilterUseful(): boolean {
         return this.loadPending || this.uniqueValuesOrder.length > 0;
     }
+
+    protected updateUniqueIndexesByFamily(ids: string[], family: string): void {
+        this.uniqueIndexes = {};
+        this.filterHash = {};
+        ids.forEach((measureId: string) => {
+            const measure: MeasurementRecord =
+                EDDData.AssayMeasurements[measureId] || NULL_MEASURE;
+            this.filterHash[measureId] = this.filterHash[measureId] || [];
+            if (measure?.type) {
+                const t = EDDData.MeasurementTypes[measure.type];
+                if (t?.name && t?.family === family) {
+                    this.filterHash[measureId].push(this.assignUniqueIndex(t.name));
+                }
+            }
+        });
+        // If we've been called to build our hashes, assume there's no load pending
+        this.loadPending = false;
+    }
 }
 
 // A filter for the names of General Measurements.
 export class GeneralMeasurementFilterSection extends MeasurementFilterSection {
-    // Whenever this filter is instantiated, we
     loadPending: boolean;
 
     configure(): void {
@@ -1233,23 +1250,8 @@ export class GeneralMeasurementFilterSection extends MeasurementFilterSection {
         return this.loadPending || this.uniqueValuesOrder.length > 0;
     }
 
-    updateUniqueIndexesHash(mIds: string[]): void {
-        this.uniqueIndexes = {};
-        this.filterHash = {};
-        mIds.forEach((measureId: string): void => {
-            const measure: AssayMeasurementRecord =
-                EDDData.AssayMeasurements[measureId] || {};
-            this.filterHash[measureId] = this.filterHash[measureId] || [];
-            if (measure && measure.type) {
-                const mType: MeasurementTypeRecord =
-                    EDDData.MeasurementTypes[measure.type] ||
-                    ({} as MeasurementTypeRecord);
-                if (mType && mType.name) {
-                    this.filterHash[measureId].push(this.assignUniqueIndex(mType.name));
-                }
-            }
-        });
-        this.loadPending = false;
+    updateUniqueIndexesHash(ids: string[]): void {
+        this.updateUniqueIndexesByFamily(ids, "_");
     }
 }
 
@@ -1259,26 +1261,8 @@ export class MetaboliteFilterSection extends MeasurementFilterSection {
         super.configure("Metabolite", "me");
     }
 
-    updateUniqueIndexesHash(amIDs: string[]): void {
-        this.uniqueIndexes = {};
-        this.filterHash = {};
-        amIDs.forEach((measureId: string) => {
-            const measure: AssayMeasurementRecord =
-                EDDData.AssayMeasurements[measureId] || {};
-            this.filterHash[measureId] = this.filterHash[measureId] || [];
-            if (measure && measure.type) {
-                const metabolite: MetaboliteTypeRecord =
-                    EDDData.MetaboliteTypes[measure.type] ||
-                    ({} as MetaboliteTypeRecord);
-                if (metabolite && metabolite.name) {
-                    this.filterHash[measureId].push(
-                        this.assignUniqueIndex(metabolite.name),
-                    );
-                }
-            }
-        });
-        // If we've been called to build our hashes, assume there's no load pending
-        this.loadPending = false;
+    updateUniqueIndexesHash(ids: string[]): void {
+        this.updateUniqueIndexesByFamily(ids, "m");
     }
 }
 
@@ -1288,25 +1272,8 @@ export class ProteinFilterSection extends MeasurementFilterSection {
         super.configure("Protein", "pr");
     }
 
-    updateUniqueIndexesHash(amIDs: string[]): void {
-        this.uniqueIndexes = {};
-        this.filterHash = {};
-        amIDs.forEach((measureId: string) => {
-            const measure: AssayMeasurementRecord =
-                EDDData.AssayMeasurements[measureId] || {};
-            this.filterHash[measureId] = this.filterHash[measureId] || [];
-            if (measure && measure.type) {
-                const protein: ProteinTypeRecord =
-                    EDDData.ProteinTypes[measure.type] || ({} as ProteinTypeRecord);
-                if (protein && protein.name) {
-                    this.filterHash[measureId].push(
-                        this.assignUniqueIndex(protein.name),
-                    );
-                }
-            }
-        });
-        // If we've been called to build our hashes, assume there's no load pending
-        this.loadPending = false;
+    updateUniqueIndexesHash(ids: string[]): void {
+        this.updateUniqueIndexesByFamily(ids, "p");
     }
 }
 
@@ -1316,23 +1283,8 @@ export class GeneFilterSection extends MeasurementFilterSection {
         super.configure("Gene", "gn");
     }
 
-    updateUniqueIndexesHash(amIDs: string[]): void {
-        this.uniqueIndexes = {};
-        this.filterHash = {};
-        amIDs.forEach((measureId: string) => {
-            const measure: AssayMeasurementRecord =
-                EDDData.AssayMeasurements[measureId] || {};
-            this.filterHash[measureId] = this.filterHash[measureId] || [];
-            if (measure && measure.type) {
-                const gene: GeneTypeRecord =
-                    EDDData.GeneTypes[measure.type] || ({} as GeneTypeRecord);
-                if (gene && gene.name) {
-                    this.filterHash[measureId].push(this.assignUniqueIndex(gene.name));
-                }
-            }
-        });
-        // If we've been called to build our hashes, assume there's no load pending
-        this.loadPending = false;
+    updateUniqueIndexesHash(ids: string[]): void {
+        this.updateUniqueIndexesByFamily(ids, "g");
     }
 }
 
@@ -1920,7 +1872,7 @@ function remakeMainGraphArea() {
     // set any unchecked labels to black
     progressiveFilteringWidget.lineNameFilter.setLineColors();
     dataSets = postFilteringMeasurements.map((mId: number, i: number): GraphValue[] => {
-        const measure: AssayMeasurementRecord = EDDData.AssayMeasurements[mId];
+        const measure: MeasurementRecord = EDDData.AssayMeasurements[mId];
         const points: number = measure ? measure.values.length : 0;
         // Skip the rest if we've hit our limit
         if (dataPointsDisplayed > 15000) {
@@ -2585,9 +2537,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             const timeCount: { [time: number]: number } = {};
             // count values at each x for all measurements
             ids.forEach((measureId) => {
-                const measure: AssayMeasurementRecord =
-                    EDDData.AssayMeasurements[measureId] ||
-                    ({} as AssayMeasurementRecord);
+                const measure = EDDData.AssayMeasurements[measureId] || NULL_MEASURE;
                 const points: number[][][] = measure.values || [];
                 points.forEach((point: number[][]) => {
                     timeCount[point[0][0]] = timeCount[point[0][0]] || 0;
@@ -2614,13 +2564,11 @@ class DataGridSpecAssays extends DataGridSpecBase {
         interface CellValue {
             name: string;
             id: number;
-            measure: AssayMeasurementRecord;
+            measure: MeasurementRecord;
         }
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             "metaboliteToValue": (measureId: number): CellValue => {
-                const measure: AssayMeasurementRecord =
-                    EDDData.AssayMeasurements[measureId] ||
-                    ({} as AssayMeasurementRecord);
+                const measure = EDDData.AssayMeasurements[measureId] || NULL_MEASURE;
                 const mtype: MeasurementTypeRecord =
                     EDDData.MeasurementTypes[measure.type] ||
                     ({} as MeasurementTypeRecord);
@@ -2636,7 +2584,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 return ((y > z) as any) - ((z > y) as any);
             },
             "metaboliteValueToCell": (value: CellValue) => {
-                const measure = value.measure || ({} as AssayMeasurementRecord);
+                const measure = value.measure || ({} as MeasurementRecord);
                 const format = measure.format === "1" ? "carbon" : "";
                 const points = measure.values || [];
                 const svg = gridSpec.assembleSVGStringForDataPoints(points, format);

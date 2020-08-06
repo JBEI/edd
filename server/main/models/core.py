@@ -5,6 +5,7 @@ from itertools import chain
 
 import arrow
 from django.conf import settings
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import Q
@@ -158,11 +159,18 @@ class Attachment(models.Model):
         return self.object_ref.user_can_read(user)
 
 
+class EDDObjectManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().select_related("created", "updated")
+
+
 class EDDObject(EDDMetadata, EDDSerialize):
     """A first-class EDD object, with update trail, comments, attachments."""
 
     class Meta:
         db_table = "edd_object"
+
+    objects = EDDObjectManager()
 
     name = VarCharField(help_text=_("Name of this object."), verbose_name=_("Name"))
     description = models.TextField(
@@ -742,9 +750,13 @@ class Strain(EDDObject):
         return f"{self.registry_id}@{self.name}"
 
     def to_json(self, depth=0):
-        json_dict = super().to_json(depth)
-        json_dict.update(registry_id=self.registry_id, registry_url=self.registry_url)
-        return json_dict
+        # explicitly ignoring parent EDDObject.to_json
+        return dict(
+            id=self.pk,
+            name=self.name,
+            registry_id=self.registry_id,
+            registry_url=self.registry_url,
+        )
 
     @staticmethod
     def user_can_change(user):
@@ -789,11 +801,18 @@ class CarbonSource(EDDObject):
         return f"{self.name} ({self.labeling})"
 
 
+class LineManager(EDDObjectManager):
+    def get_queryset(self):
+        return super().get_queryset().annotate(strain_ids=ArrayAgg("strains__id"))
+
+
 class Line(EDDObject):
     """A single item to be studied (contents of well, tube, dish, etc)."""
 
     class Meta:
         db_table = "line"
+
+    objects = LineManager()
 
     study = models.ForeignKey(
         Study,
@@ -908,8 +927,7 @@ class Line(EDDObject):
             control=self.control,
             contact=contact,
             experimenter=self.get_attr_depth("experimenter", depth),
-            strain=[s.pk for s in self.strains.all()],
-            carbon=[c.pk for c in self.carbon_source.all()],
+            strain=self.strain_ids,
         )
         if depth > 0:
             json_dict.update(study=self.study_id)
