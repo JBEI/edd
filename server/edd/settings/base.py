@@ -112,10 +112,9 @@ MIDDLEWARE = (
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "main.utilities.EDDThreadLocalMiddleware",
+    "threadlocals.middleware.ThreadLocalMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "main.utilities.EDDSettingsMiddleware",
 )
 TEMPLATES = [
     {

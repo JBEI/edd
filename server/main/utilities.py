@@ -1,38 +1,7 @@
 import logging
 from collections import Iterable, defaultdict
 
-from django.conf import settings
-from threadlocals.middleware import ThreadLocalMiddleware
-
 logger = logging.getLogger(__name__)
-
-
-class EDDSettingsMiddleware:
-    """
-    Adds an `edd_deployment` attribute to requests passing through the middleware with a value
-    of the current deployment environment.
-    """
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        request.edd_deployment = settings.EDD_DEPLOYMENT_ENVIRONMENT
-        return self.get_response(request)
-
-
-class EDDThreadLocalMiddleware(ThreadLocalMiddleware):
-    """
-    Alternate version of threadlocals.middleware.ThreadLocalMiddleware that will work with
-    Django 2.0+.
-    """
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        response = self.process_request(request)
-        return response or self.get_response(request)
 
 
 def flatten_json(source):
