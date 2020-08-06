@@ -9,6 +9,7 @@ from edd import TestCase
 from edd.utilities import JSONEncoder
 
 from .. import models
+from ..utilities import flatten_json
 from . import factory
 
 
@@ -567,3 +568,32 @@ def test_EDDMetadata_metadata_remove_unmatched_item(study_metadata):
     obj.metadata_add(study_metadata, value2)
     obj.metadata_remove(study_metadata, "value does not matter")
     assert obj.metadata_get(study_metadata) == [value1, value2]
+
+
+def test_Worklist_flatten_json_empty_dict():
+    result = flatten_json({})
+    assert result == {}
+    # verify that results won't throw KeyError when %-formatting strings
+    assert "%(invalid)s" % result == ""
+
+
+def test_Worklist_flatten_json_list():
+    result = flatten_json(["Hello", "world"])
+    assert result == {"0": "Hello", "1": "world"}
+
+
+def test_Worklist_flatten_json_nested_list():
+    result = flatten_json({"message": ["Hello", "world"]})
+    assert result == {"message.0": "Hello", "message.1": "world"}
+
+
+def test_Worklist_flatten_json_nested_dict():
+    color = factory.fake.color()
+    result = flatten_json({"user": {"profile": {"favorite_color": color}}})
+    assert result == {"user.profile.favorite_color": color}
+
+
+def test_Worklist_flatten_json_numeric_value():
+    number = factory.fake.pyint()
+    result = flatten_json({"user_count": number})
+    assert result == {"user_count": number}

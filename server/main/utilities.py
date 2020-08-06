@@ -9,7 +9,8 @@ def flatten_json(source):
     Takes a json-shaped input (usually a dict), and flattens any nested dict,
     list, or tuple with dotted key names.
     """
-    # TODO: test this!
+    # using a defaultdict because this used in rendering worklists
+    # lookup of invalid key results in empty string instead of errors
     output = defaultdict(lambda: "")
     # convert lists/tuples to a dict
     if not isinstance(source, dict) and isinstance(source, Iterable):
@@ -20,7 +21,7 @@ def flatten_json(source):
             output[key] = value
         elif isinstance(value, (dict, Iterable)):
             for sub, item in flatten_json(value).items():
-                output[".".join((key, sub))] = item
+                output[f"{key}.{sub}"] = item
         else:
             output[key] = value
     return output
