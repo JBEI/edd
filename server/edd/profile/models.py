@@ -48,11 +48,21 @@ class InstitutionID(models.Model):
     """
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profile", "sort_key"], name="profile_institution_ordering_idx"
+            ),
+        ]
         db_table = "profile_institution_user"
 
     institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
     profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     identifier = VarCharField(blank=True, null=True)
+    sort_key = models.PositiveIntegerField(
+        null=False,
+        help_text=_("Relative order this Institution is displayed in a UserProfile."),
+        verbose_name=_("Display order"),
+    )
 
 
 class UserManager(models.Manager):
