@@ -5,6 +5,8 @@ import pytest
 from django.test import override_settings
 from faker import Faker
 
+from edd.profile.factory import UserFactory
+
 from .. import models
 from ..signals import core, sbml
 from . import factory
@@ -71,7 +73,7 @@ def test_set_file_info_missing_mime():
 
 
 def test_study_contact_extra_with_user():
-    contact = factory.UserFactory.build()
+    contact = UserFactory.build()
     study = factory.StudyFactory.build(contact_extra=None, contact=contact)
     assert study.contact_extra is None
     core.study_contact_extra(models.Study, study, raw=False, using="default")

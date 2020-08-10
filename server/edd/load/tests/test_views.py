@@ -12,6 +12,7 @@ from rest_framework.reverse import reverse as rest_reverse
 from rest_framework.test import APITestCase
 
 from edd import TestCase
+from edd.profile.factory import GroupFactory, UserFactory
 from edd.rest.tests import EddApiTestCaseMixin
 from main import models
 from main.tests import factory as main_factory
@@ -27,7 +28,7 @@ class CategoryViewTests(EddApiTestCaseMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = main_factory.UserFactory()
+        cls.user = UserFactory()
         # relying on defaults from migrations for data to query
 
     def test_list_category_with_anonymous(self):
@@ -46,7 +47,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = main_factory.UserFactory()
+        cls.user = UserFactory()
         cls.study = main_factory.StudyFactory()
         cls.study.userpermission_set.create(
             user=cls.user, permission_type=models.StudyPermission.WRITE
@@ -62,7 +63,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
     def test_create_load_no_permission(self):
         # users without permission should not be able to start loading data
         url = rest_reverse("rest:study_load-list", args=[self.study.pk])
-        self.client.force_login(main_factory.UserFactory())
+        self.client.force_login(UserFactory())
         response = self.client.post(url, format="multipart")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -136,7 +137,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
     def test_destroy_load_no_permission(self):
         # users without permissions cannot delete in-process loading data
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
-        self.client.force_login(main_factory.UserFactory())
+        self.client.force_login(UserFactory())
         response = self.client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -187,7 +188,7 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
     def test_update_load_no_permission(self):
         # users without permissions cannot update in-process loading data
         url = rest_reverse("rest:study_load-detail", args=[self.study.pk, "abcdef"])
-        self.client.force_login(main_factory.UserFactory())
+        self.client.force_login(UserFactory())
         response = self.client.patch(url, format="multipart")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -292,9 +293,9 @@ class LoadRequestViewTests(EddApiTestCaseMixin, APITestCase):
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def _add_groups_permission(self):
-        other_user = main_factory.UserFactory()
-        group1 = main_factory.GroupFactory()
-        group2 = main_factory.GroupFactory()
+        other_user = UserFactory()
+        group1 = GroupFactory()
+        group2 = GroupFactory()
         other_user.groups.add(group1)
         other_user.groups.add(group2)
         self.study.grouppermission_set.create(
@@ -319,7 +320,7 @@ class ImportTableViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = main_factory.UserFactory()
+        cls.user = UserFactory()
         cls.study = main_factory.StudyFactory()
         cls.url = reverse("main:load:table", kwargs={"slug": cls.study.slug})
 
@@ -530,7 +531,7 @@ class UtilityParseViewTests(TestCase):
     def setUpTestData(cls):
         super().setUpTestData()
         cls.url = reverse("main:load_flat:parse")
-        cls.user = main_factory.UserFactory()
+        cls.user = UserFactory()
         cls.import_mode = "fakemode"
 
     def setUp(self):
@@ -602,12 +603,12 @@ class ImportViewTests(TestCase):
         self.assertRedirects(response, f"{login_url}?next={self.url}")
 
     def test_get_with_no_permission(self):
-        self.client.force_login(main_factory.UserFactory())
+        self.client.force_login(UserFactory())
         response = self.client.get(self.url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_with_readonly(self):
-        user = main_factory.UserFactory()
+        user = UserFactory()
         self.study.userpermission_set.update_or_create(
             permission_type=models.StudyPermission.READ, user=user
         )
@@ -616,7 +617,7 @@ class ImportViewTests(TestCase):
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_with_write(self):
-        user = main_factory.UserFactory()
+        user = UserFactory()
         self.study.userpermission_set.update_or_create(
             permission_type=models.StudyPermission.WRITE, user=user
         )
@@ -635,7 +636,7 @@ class ImportHelpViewTests(TestCase):
 
     def test_help(self):
         url = reverse("main:load_flat:wizard_help")
-        self.client.force_login(main_factory.UserFactory())
+        self.client.force_login(UserFactory())
         response = self.client.get(url)
         assert response.status_code == status.HTTP_200_OK
         self.assertTemplateUsed(response, "edd/load/wizard_help.html")
@@ -645,7 +646,7 @@ class ImportAdminTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = main_factory.UserFactory(is_superuser=True, is_staff=True)
+        cls.user = UserFactory(is_superuser=True, is_staff=True)
 
     def setUp(self):
         super().setUp()

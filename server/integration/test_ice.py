@@ -9,6 +9,7 @@ from openpyxl.workbook import Workbook
 from requests import codes
 
 from edd import TestCase
+from edd.profile.factory import UserFactory
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi, IceApiException
 from main import models
@@ -96,9 +97,9 @@ class IceIntegrationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.admin_ice_user = factory.UserFactory(email="admin@example.org")
-        cls.read_ice_user = factory.UserFactory(email="reader@example.org")
-        cls.none_ice_user = factory.UserFactory(email="none@example.org")
+        cls.admin_ice_user = UserFactory(email="admin@example.org")
+        cls.read_ice_user = UserFactory(email="reader@example.org")
+        cls.none_ice_user = UserFactory(email="none@example.org")
 
     @classmethod
     def _ensureTestUsers(cls, ice):

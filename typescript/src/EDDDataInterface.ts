@@ -116,8 +116,6 @@ interface UserRecord {
     email: string;
     initials: string;
     name: string;
-    institution: string;
-    description: string;
     lastname: string;
     firstname: string;
     disabled: boolean;

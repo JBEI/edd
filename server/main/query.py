@@ -66,10 +66,10 @@ def get_edddata_study(study):
     strains = study.get_strains_used()
     lines = models.Line.objects.filter(study=study)
     User = auth.get_user_model()
-    study_contact = User.objects.filter(contact_study_set=study)
-    line_contacts = User.objects.filter(line_contact_set__study=study)
-    line_experimenters = User.objects.filter(line_experimenter_set__study=study)
-    assay_experimenters = User.objects.filter(assay_experimenter_set__study=study)
+    study_contact = User.profiles.filter(contact_study_set=study)
+    line_contacts = User.profiles.filter(line_contact_set__study=study)
+    line_experimenters = User.profiles.filter(line_experimenter_set__study=study)
+    assay_experimenters = User.profiles.filter(assay_experimenter_set__study=study)
     all_users = study_contact.union(
         line_contacts, line_experimenters, assay_experimenters
     )

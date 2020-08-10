@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.views import debug
 from requests import codes
 
-from main.tests.factory import UserFactory
+from edd.profile.factory import UserFactory
 
 # Tests for cleanse_setting function of django.views.debug
 # that is monkey-patched in server/edd/__init__.py

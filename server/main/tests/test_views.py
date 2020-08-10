@@ -12,6 +12,7 @@ from faker import Faker
 from requests import codes
 
 from edd import TestCase
+from edd.profile.factory import GroupFactory, UserFactory
 
 from .. import models
 from . import factory
@@ -25,7 +26,7 @@ class StudyViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.target_study = factory.StudyFactory()
         cls.target_kwargs = {"slug": cls.target_study.slug}
         cls.target_study.userpermission_set.update_or_create(
@@ -133,7 +134,7 @@ class StudyViewTests(TestCase):
     def test_overview_get_admin_sees_all(self):
         # create study with no permissions and an admin user
         hidden_study = factory.StudyFactory()
-        admin_user = factory.UserFactory()
+        admin_user = UserFactory()
         admin_user.is_superuser = True
         admin_user.save()
         # admin user can see the study
@@ -143,7 +144,7 @@ class StudyViewTests(TestCase):
         self.assertEqual(response.status_code, codes.ok)
 
     def test_overview_update(self):
-        new_user = factory.UserFactory()
+        new_user = UserFactory()
         # edit study info as default test user
         target_url = reverse("main:overview", kwargs=self.target_kwargs)
         response = self.client.post(
@@ -165,7 +166,7 @@ class StudyViewTests(TestCase):
 
     def test_overview_update_without_permissions(self):
         # verify that new_user without permissions cannot modify study
-        new_user = factory.UserFactory()
+        new_user = UserFactory()
         target_url = reverse("main:overview", kwargs=self.target_kwargs)
         self.target_study.userpermission_set.update_or_create(
             permission_type=models.StudyPermission.READ, user=new_user
@@ -308,7 +309,7 @@ class StudyViewTests(TestCase):
 
     def test_overview_delete_readonly(self):
         # prevent deletion with user not having write permission
-        readonly_user = factory.UserFactory()
+        readonly_user = UserFactory()
         self.client.force_login(readonly_user)
         self.target_study.userpermission_set.update_or_create(
             permission_type=models.StudyPermission.READ, user=readonly_user
@@ -345,7 +346,7 @@ class StudyViewTests(TestCase):
         self.target_study.active = False
         self.target_study.save()
         # send restore as admin
-        admin_user = factory.UserFactory()
+        admin_user = UserFactory()
         admin_user.is_superuser = True
         admin_user.save()
         self.client.force_login(admin_user)
@@ -875,7 +876,7 @@ class AjaxPermissionViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.target_study = factory.StudyFactory()
         cls.target_kwargs = {"slug": cls.target_study.slug}
 
@@ -983,8 +984,8 @@ class AjaxPermissionViewTests(TestCase):
         # have one permission before post
         self.assertEqual(self._length_of_permissions(), 1)
         # create a bunch of things to add permissions for
-        other_user = factory.UserFactory()
-        some_group = factory.GroupFactory()
+        other_user = UserFactory()
+        some_group = GroupFactory()
         add_other_user = {
             "type": models.StudyPermission.WRITE,
             "user": {"id": other_user.id},
@@ -1003,7 +1004,7 @@ class AjaxPermissionViewTests(TestCase):
         target_url = reverse("main:permissions", kwargs=self.target_kwargs)
         self._set_permission(models.StudyPermission.WRITE)
         # create some permissions to delete
-        other_user = factory.UserFactory()
+        other_user = UserFactory()
         self._set_permission(models.StudyPermission.READ, user=other_user)
         delete_other_user = {
             "type": models.StudyPermission.NONE,

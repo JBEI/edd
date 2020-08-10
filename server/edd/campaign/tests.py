@@ -8,8 +8,9 @@ from faker import Faker
 from requests import codes
 
 from edd import TestCase
+from edd.profile.factory import GroupFactory, UserFactory
 from main import models as edd_models
-from main.tests import factory as edd_factory
+from main.tests.factory import StudyFactory
 
 from . import factory, models, views
 
@@ -40,7 +41,7 @@ class CampaignPermissionTests(TestCase):
 
     def test_campaign_filtering_user(self):
         # permission is for everyone, so any user can filter
-        user = edd_factory.UserFactory()
+        user = UserFactory()
         q = models.Campaign.filter_for(user)
         self.assertTrue(models.Campaign.objects.filter(q).exists())
 
@@ -63,18 +64,18 @@ class CampaignPermissionTests(TestCase):
         self.assertFalse(self.campaign.user_can_write(anon))
 
     def test_campaign_helpers_normal_user(self):
-        user = edd_factory.UserFactory()
+        user = UserFactory()
         self.assertTrue(self.campaign.user_can_read(user))
         self.assertFalse(self.campaign.user_can_write(user))
 
     def test_campaign_helpers_normal_user_empty_permissions(self):
         campaign = factory.CampaignFactory()
-        user = edd_factory.UserFactory()
+        user = UserFactory()
         self.assertFalse(campaign.user_can_read(user))
         self.assertFalse(campaign.user_can_write(user))
 
     def test_campaign_helpers_admin_user(self):
-        user = edd_factory.UserFactory(is_superuser=True)
+        user = UserFactory(is_superuser=True)
         self.assertTrue(self.campaign.user_can_read(user))
         self.assertTrue(self.campaign.user_can_write(user))
 
@@ -128,7 +129,7 @@ class CampaignPermissionTests(TestCase):
     def test_study_permission_applied(self):
         READ = models.CampaignPermission.READ
         # create user and permission on campaign
-        user = edd_factory.UserFactory()
+        user = UserFactory()
         models.UserPermission.objects.create(
             campaign=self.campaign,
             campaign_permission=READ,
@@ -136,7 +137,7 @@ class CampaignPermissionTests(TestCase):
             user=user,
         )
         # create group and permission on campaign
-        group = edd_factory.GroupFactory()
+        group = GroupFactory()
         models.GroupPermission.objects.create(
             campaign=self.campaign,
             campaign_permission=READ,
@@ -144,7 +145,7 @@ class CampaignPermissionTests(TestCase):
             group=group,
         )
         # create study
-        study = edd_factory.StudyFactory()
+        study = StudyFactory()
         # add study to campaign
         models.CampaignMembership.objects.create(campaign=self.campaign, study=study)
         # verify study permissions applied
@@ -173,7 +174,7 @@ class CampaignIndexViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user1 = edd_factory.UserFactory()
+        cls.user1 = UserFactory()
         cls.campaign = factory.CampaignFactory()
         cls.index_url = reverse("campaign:index")
         cls.link_url = reverse("campaign:detail", kwargs={"slug": cls.campaign.slug})
@@ -235,7 +236,7 @@ class CampaignDetailViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user1 = edd_factory.UserFactory()
+        cls.user1 = UserFactory()
         cls.campaign = factory.CampaignFactory()
         cls.detail_url = reverse("campaign:detail", kwargs={"slug": cls.campaign.slug})
         membership = factory.CampaignMembershipFactory(campaign=cls.campaign)

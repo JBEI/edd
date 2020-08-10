@@ -2,6 +2,7 @@ import decimal
 import math
 
 from edd import TestCase
+from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory
 
@@ -49,7 +50,7 @@ class WorklistExportTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         # initialize study for worklist
         cls.study = factory.StudyFactory()
         cls.study.userpermission_set.update_or_create(
@@ -59,7 +60,7 @@ class WorklistExportTests(TestCase):
         cls.protocol = factory.ProtocolFactory(name="potato")
         # initialize twenty lines in the study, 1-base index
         cls.lines = [
-            factory.LineFactory(name=f"L{l}", study=cls.study) for l in range(1, 21)
+            factory.LineFactory(name=f"L{i}", study=cls.study) for i in range(1, 21)
         ]
         # initialize 3x assays on lines 6, 8, 10, 12, 14 (1-base)
         # assays at times 12, 24, 36

@@ -31,7 +31,6 @@ from .permission import (
 )
 from .sbml import MetaboliteExchange, MetaboliteSpecies, SBMLTemplate
 from .update import Datasource, Update
-from .user import User, patch_user_model
 from .worklist import WorklistColumn, WorklistTemplate
 
 __all__ = [
@@ -56,7 +55,6 @@ __all__ = [
     MetaboliteSpecies,
     MetadataGroup,
     MetadataType,
-    patch_user_model,
     Phosphor,
     ProteinIdentifier,
     Protocol,
@@ -65,7 +63,6 @@ __all__ = [
     Study,
     StudyPermission,
     Update,
-    User,
     UserPermission,
     WorklistColumn,
     WorklistTemplate,

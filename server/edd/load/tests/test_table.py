@@ -2,6 +2,7 @@ from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory
 
 from edd import TestCase
+from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory
 
@@ -12,7 +13,7 @@ class TableImportTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.target_study = factory.StudyFactory()
         cls.target_kwargs = {"slug": cls.target_study.slug}
 

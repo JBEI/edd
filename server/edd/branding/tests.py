@@ -3,7 +3,7 @@ from django.urls import reverse
 from requests import codes
 
 from edd import TestCase
-from main.tests import factory
+from edd.profile.factory import UserFactory
 
 from . import models
 
@@ -144,7 +144,7 @@ class BrandingAdminTests(TestCase):
     def setUpTestData(cls):
         super().setUpTestData()
         # admin user to see the admin site
-        cls.admin_user = factory.UserFactory(
+        cls.admin_user = UserFactory(
             email="admin@example.org", is_staff=True, is_superuser=True
         )
         # create a Branding instance to test admin action

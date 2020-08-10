@@ -1,6 +1,7 @@
 import pytest
 
 from edd import TestCase
+from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory as main_factory
 
@@ -13,7 +14,7 @@ class ImportExecutorSetupTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = main_factory.UserFactory()
+        cls.user = UserFactory()
 
     def test_executor_setup_from_created(self):
         load = LoadRequest(status=LoadRequest.Status.CREATED)
@@ -96,7 +97,7 @@ class ImportExecutorRunningTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = main_factory.UserFactory()
+        cls.user = UserFactory()
         cls.protocol = main_factory.ProtocolFactory()
         cls.target_study = main_factory.StudyFactory()
         cls.target_study.userpermission_set.create(

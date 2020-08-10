@@ -18,6 +18,7 @@ from edd import TestCase, utilities
 from edd.export import table as export_table
 from edd.load import tasks
 from edd.load.broker import ImportBroker
+from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory
 
@@ -199,7 +200,7 @@ class FBAImportDataTests(ImportDataTestsMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.target_study = factory.StudyFactory()
         cls.target_study.userpermission_set.create(
             user=cls.user, permission_type=models.StudyPermission.WRITE
@@ -272,7 +273,7 @@ class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.target_study = factory.StudyFactory()
         cls.target_study.userpermission_set.create(
             user=cls.user, permission_type=models.StudyPermission.WRITE
@@ -441,7 +442,7 @@ class FBAExportDataTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.target_study = factory.StudyFactory()
         cls.target_study.userpermission_set.create(
             user=cls.user, permission_type=models.StudyPermission.WRITE
@@ -511,7 +512,7 @@ class PCAPExportDataTests(TestCase):
         # run imports to have some data to validate exports
         import_shim = ImportDataTestsMixin()
         cls.target_study = factory.StudyFactory()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.target_study.userpermission_set.create(
             user=cls.user, permission_type=models.StudyPermission.WRITE
         )

@@ -1,19 +1,22 @@
 import time
 from uuid import uuid4
 
+import faker
 import pytest
 from channels.testing import WebsocketCommunicator
 
 from edd import TestCase, asgi
-from main.tests import factory
+from edd.profile.factory import UserFactory
 
 from . import backend
+
+fake = faker.Faker()
 
 
 @pytest.fixture
 def fake_user():
     """Builds a user record without touching the database, with a fake pk."""
-    user = factory.UserFactory.build(pk=factory.fake.pyint())
+    user = UserFactory.build(pk=fake.pyint())
     return user
 
 
@@ -21,7 +24,7 @@ class NotificationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
 
     def test_notification_equality(self):
         # simple message

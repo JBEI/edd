@@ -8,6 +8,7 @@ from django.test import override_settings
 from faker import Faker
 
 from edd import TestCase
+from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory
 
@@ -145,7 +146,7 @@ def test_StudySearch_acl_none():
 
 def test_StudySearch_acl_admin():
     # superusers should get no restrictions
-    admin = factory.UserFactory.build(is_superuser=True)
+    admin = UserFactory.build(is_superuser=True)
     search = solr.StudySearch(ident=admin)
     read, write = search.build_acl_filter()
     assert read == ""
@@ -159,7 +160,7 @@ class SolrTests(TestCase):
     def setUpClass(cls):
         # doing this as classmethod to avoid doing multiple collection creations
         super().setUpClass()
-        cls.admin = factory.UserFactory.build(is_superuser=True)
+        cls.admin = UserFactory.build(is_superuser=True)
         cls.collection = solr.StudySearch(ident=cls.admin)
         # create a new collection, instead of sending to main collection
         cls.collection.create_collection()
@@ -179,7 +180,7 @@ class SolrTests(TestCase):
         )
 
     def test_acl(self):
-        user = factory.UserFactory()
+        user = UserFactory()
         # patch the normal user to the collection ident
         self.collection.ident = user
         # verify the ACLs
@@ -225,19 +226,17 @@ def test_solr_removed_type_forwards():
 
 
 def test_solr_removed_user_without_key():
-    User = factory.get_user_model()
-    user = factory.UserFactory.build()
+    user = UserFactory.build()
     with patch("main.signals.user_removed") as signal:
         # no forward if cache_deleting_key is not called first
-        signals.removed_type(User, user, using="default")
+        signals.removed_type(type(user), user, using="default")
         assert signal.send.call_count == 0
 
 
 def test_solr_removed_user_forwards():
-    User = factory.get_user_model()
-    user = factory.UserFactory.build()
+    user = UserFactory.build()
     with patch("main.signals.user_removed") as signal:
         # forward happens when cache_deleting_key is called
-        signals.cache_deleting_key(User, user)
-        signals.removed_user(User, user, using="default")
+        signals.cache_deleting_key(type(user), user)
+        signals.removed_user(type(user), user, using="default")
         signal.send.assert_called_once()

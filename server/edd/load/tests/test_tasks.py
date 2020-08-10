@@ -8,6 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from openpyxl import Workbook
 
 from edd import TestCase
+from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory
 
@@ -20,7 +21,7 @@ class ImportTableTaskTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.study = factory.StudyFactory()
         cls.study.userpermission_set.create(
             user=cls.user, permission_type=models.StudyPermission.WRITE
@@ -73,7 +74,7 @@ class EmailTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.study = factory.StudyFactory()
 
     def test_send_import_completion_email(self):
@@ -177,7 +178,7 @@ class WizardParseTaskTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.study = factory.StudyFactory()
         cls.study.userpermission_set.create(
             user=cls.user, permission_type=models.StudyPermission.WRITE
@@ -315,7 +316,7 @@ class WizardLoadTaskTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.protocol = factory.ProtocolFactory()
         cls.study = factory.StudyFactory()
         cls.study.userpermission_set.create(

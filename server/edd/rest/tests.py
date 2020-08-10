@@ -24,6 +24,7 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 from threadlocals.threadlocals import set_thread_variable
 
+from edd.profile.factory import GroupFactory, UserFactory
 from main import models
 from main.tests import factory
 
@@ -104,17 +105,17 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.read_only_group = factory.GroupFactory()
-        cls.write_only_group = factory.GroupFactory()
-        cls.superuser = factory.UserFactory(is_superuser=True)
-        cls.unprivileged_user = factory.UserFactory()
-        cls.readonly_user = factory.UserFactory()
-        cls.write_user = factory.UserFactory()
-        cls.group_readonly_user = factory.UserFactory()
+        cls.read_only_group = GroupFactory()
+        cls.write_only_group = GroupFactory()
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.unprivileged_user = UserFactory()
+        cls.readonly_user = UserFactory()
+        cls.write_user = UserFactory()
+        cls.group_readonly_user = UserFactory()
         cls.group_readonly_user.groups.add(cls.read_only_group)
-        cls.group_write_user = factory.UserFactory()
+        cls.group_write_user = UserFactory()
         cls.group_write_user.groups.add(cls.write_only_group)
-        cls.staff_user = factory.UserFactory(is_staff=True)
+        cls.staff_user = UserFactory(is_staff=True)
         cls.staff_user.user_permissions.add(
             *load_permissions(models.Study, "add_study", "change_study", "delete_study")
         )
@@ -388,5 +389,5 @@ class EddObjectSearchTest(EddApiTestCaseMixin, APITestCase):
 
     def test_line_list_with_superuser(self):
         url = reverse("rest:lines-list")
-        self.client.force_login(factory.UserFactory(is_superuser=True))
+        self.client.force_login(UserFactory(is_superuser=True))
         self._check_status(self.client.get(url), status.HTTP_200_OK)

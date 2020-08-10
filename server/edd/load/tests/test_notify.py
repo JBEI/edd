@@ -2,7 +2,7 @@ import pytest
 from channels.testing import WebsocketCommunicator
 
 from edd import asgi
-from main.tests import factory
+from edd.profile.factory import UserFactory
 
 from ..notify import WsBroker
 
@@ -12,7 +12,7 @@ async def test_notification_incoming(settings):
     communicator = WebsocketCommunicator(asgi.application, "/ws/load/")
     try:
         # force login with fake user
-        user = factory.UserFactory.build()
+        user = UserFactory.build()
         communicator.scope["user"] = user
 
         # set up back-end broker for sending messages

@@ -8,6 +8,7 @@ from jsonschema import Draft4Validator
 from requests import codes
 
 from edd import TestCase
+from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory
 
@@ -38,7 +39,7 @@ class CombinatorialCreationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.testuser = factory.UserFactory()
+        cls.testuser = UserFactory()
         cls.metabolomics = factory.ProtocolFactory(name="Metabolomics")
         cls.targeted_proteomics = factory.ProtocolFactory(name="Targeted Proteomics")
 
@@ -285,7 +286,7 @@ class ExperimentDescriptionParseTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.testuser = factory.UserFactory()
+        cls.testuser = UserFactory()
         cls.metabolomics = factory.ProtocolFactory(name="Metabolomics")
         cls.targeted_proteomics = factory.ProtocolFactory(name="Targeted Proteomics")
 
@@ -434,7 +435,7 @@ class ViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = factory.UserFactory()
+        cls.user = UserFactory()
         cls.study = factory.StudyFactory()
         cls.study_kwargs = {"slug": cls.study.slug}
         cls.study.userpermission_set.update_or_create(
@@ -523,14 +524,14 @@ class ViewTests(TestCase):
         self.assertEqual(response.status_code, codes.internal_server_error)
 
     def test_get_DescribeView_no_permission(self):
-        other_user = factory.UserFactory()
+        other_user = UserFactory()
         self.client.force_login(other_user)
         url = reverse("main:describe:describe", kwargs=self.study_kwargs)
         response = self.client.get(url)
         self.assertEqual(response.status_code, codes.not_found)
 
     def test_get_DescribeView_readonly(self):
-        other_user = factory.UserFactory()
+        other_user = UserFactory()
         self.study.userpermission_set.update_or_create(
             permission_type=models.StudyPermission.READ, user=other_user
         )
@@ -547,14 +548,14 @@ class ViewTests(TestCase):
         self.assertTemplateUsed(response, "edd/describe/combos.html")
 
     def test_post_DescribeView_no_permission(self):
-        other_user = factory.UserFactory()
+        other_user = UserFactory()
         self.client.force_login(other_user)
         url = reverse("main:describe:describe", kwargs=self.study_kwargs)
         response = self.client.post(url)
         self.assertEqual(response.status_code, codes.not_found)
 
     def test_post_DescribeView_readonly(self):
-        other_user = factory.UserFactory()
+        other_user = UserFactory()
         self.study.userpermission_set.update_or_create(
             permission_type=models.StudyPermission.READ, user=other_user
         )

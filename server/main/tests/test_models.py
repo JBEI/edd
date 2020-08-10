@@ -6,6 +6,7 @@ import pytest
 from django.core.exceptions import ValidationError
 
 from edd import TestCase
+from edd.profile.factory import GroupFactory, UserFactory
 from edd.utilities import JSONEncoder
 
 from .. import models
@@ -13,91 +14,18 @@ from ..utilities import flatten_json
 from . import factory
 
 
-class UserTests(TestCase):
-    JSON_KEYS = [
-        "description",
-        "disabled",
-        "email",
-        "firstname",
-        "groups",
-        "id",
-        "initials",
-        "institution",
-        "lastname",
-        "name",
-        "uid",
-    ]
-    SOLR_KEYS = [
-        "date_joined",
-        "email",
-        "fullname",
-        "group",
-        "id",
-        "initials",
-        "institution",
-        "is_active",
-        "is_staff",
-        "is_superuser",
-        "last_login",
-        "name",
-        "username",
-    ]
-
-    # create test users
-    @classmethod
-    def setUpTestData(cls):
-        cls.user1 = factory.UserFactory(
-            email="jsmith@localhost", first_name="Jane", last_name="Smith"
-        )
-        cls.user2 = factory.UserFactory(
-            email="jdoe@localhost", first_name="", last_name=""
-        )
-        cls.admin = factory.UserFactory(
-            email="ssue@localhost",
-            is_staff=True,
-            is_superuser=True,
-            first_name="Sally",
-            last_name="Sue",
-        )
-
-    def test_monkey_patches(self):
-        """ Checking the properties monkey-patched on to the User model. """
-        # Asserts
-        self.assertIsNotNone(self.user1.profile)
-        self.assertEqual(self.user1.initials, "JS")
-        self.assertEqual(self.user1.profile.initials, "JS")
-        self.assertIsNone(self.user1.institution)
-        self.assertEqual(len(self.user1.institutions), 0)
-        self.assertIsNotNone(self.user2.profile)
-        self.assertEqual(self.user2.initials, "")
-        self.assertEqual(self.user2.profile.initials, "")
-        # ensure keys exist in JSON and Solr dict repr
-        user_json = self.user1.to_json()
-        for key in self.JSON_KEYS:
-            self.assertIn(key, user_json)
-        user_solr = self.user1.to_solr_json()
-        for key in self.SOLR_KEYS:
-            self.assertIn(key, user_solr)
-
-    def test_initial_permissions(self):
-        """ Checking initial class-based permissions for normal vs admin user. """
-        # Asserts
-        self.assertFalse(self.user1.has_perm("main.change.protocol"))
-        self.assertTrue(self.admin.has_perm("main.change.protocol"))
-
-
 class StudyTests(TestCase):
     def test_with_no_permissions(self):
         """Ensure that a study without permissions cannot be read."""
         study = factory.StudyFactory()
-        user = factory.UserFactory()
+        user = UserFactory()
         assert not study.user_can_read(user)
         assert not study.user_can_write(user)
 
     def test_with_read_permission(self):
         """Ensure that a study can be read by a user with read permissions."""
         study = factory.StudyFactory()
-        user = factory.UserFactory()
+        user = UserFactory()
         models.UserPermission.objects.create(
             study=study, permission_type=models.StudyPermission.READ, user=user
         )
@@ -107,7 +35,7 @@ class StudyTests(TestCase):
     def test_with_write_permission(self):
         """Ensure that a study can be written by a user with write permissions."""
         study = factory.StudyFactory()
-        user = factory.UserFactory()
+        user = UserFactory()
         models.UserPermission.objects.create(
             study=study, permission_type=models.StudyPermission.WRITE, user=user
         )
@@ -117,14 +45,14 @@ class StudyTests(TestCase):
     def test_with_admin(self):
         """Ensure that a study can be written by a superuser."""
         study = factory.StudyFactory()
-        user = factory.UserFactory(is_superuser=True)
+        user = UserFactory(is_superuser=True)
         assert study.user_can_read(user)
         assert study.user_can_write(user)
 
     def test_with_group_read_permission(self):
         study = factory.StudyFactory()
-        user = factory.UserFactory()
-        group = factory.GroupFactory()
+        user = UserFactory()
+        group = GroupFactory()
         user.groups.add(group)
         models.GroupPermission.objects.create(
             study=study, permission_type=models.StudyPermission.READ, group=group
@@ -134,8 +62,8 @@ class StudyTests(TestCase):
 
     def test_with_group_write_permission(self):
         study = factory.StudyFactory()
-        user = factory.UserFactory()
-        group = factory.GroupFactory()
+        user = UserFactory()
+        group = GroupFactory()
         user.groups.add(group)
         models.GroupPermission.objects.create(
             study=study, permission_type=models.StudyPermission.WRITE, group=group
@@ -145,9 +73,9 @@ class StudyTests(TestCase):
 
     def test_with_multiple_groups(self):
         study = factory.StudyFactory()
-        user = factory.UserFactory()
-        group1 = factory.GroupFactory()
-        group2 = factory.GroupFactory()
+        user = UserFactory()
+        group1 = GroupFactory()
+        group2 = GroupFactory()
         user.groups.add(group1)
         user.groups.add(group2)
         models.GroupPermission.objects.create(

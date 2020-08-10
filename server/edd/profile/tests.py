@@ -3,11 +3,78 @@ from django.urls import reverse
 from requests import codes
 
 from edd import TestCase
-from main.tests.factory import UserFactory
 
 from . import models
+from .factory import UserFactory
 
 User = get_user_model()
+
+
+class UserTests(TestCase):
+    JSON_KEYS = [
+        "disabled",
+        "email",
+        "firstname",
+        "id",
+        "initials",
+        "lastname",
+        "name",
+        "uid",
+    ]
+    SOLR_KEYS = [
+        "date_joined",
+        "email",
+        "fullname",
+        "group",
+        "id",
+        "initials",
+        "institution",
+        "is_active",
+        "is_staff",
+        "is_superuser",
+        "last_login",
+        "name",
+        "username",
+    ]
+
+    # create test users
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email="jsmith@localhost", first_name="Jane", last_name="Smith"
+        )
+        cls.user2 = UserFactory(email="jdoe@localhost", first_name="", last_name="")
+        cls.admin = UserFactory(
+            email="ssue@localhost",
+            is_staff=True,
+            is_superuser=True,
+            first_name="Sally",
+            last_name="Sue",
+        )
+
+    def test_monkey_patches(self):
+        """ Checking the properties monkey-patched on to the User model. """
+        # Asserts
+        self.assertIsNotNone(self.user1.profile)
+        self.assertEqual(self.user1.initials, "JS")
+        self.assertEqual(self.user1.profile.initials, "JS")
+        self.assertEqual(len(self.user1.institutions), 0)
+        self.assertIsNotNone(self.user2.profile)
+        self.assertEqual(self.user2.initials, "")
+        self.assertEqual(self.user2.profile.initials, "")
+        # ensure keys exist in JSON and Solr dict repr
+        user_json = self.user1.to_json()
+        for key in self.JSON_KEYS:
+            self.assertIn(key, user_json)
+        user_solr = self.user1.to_solr_json()
+        for key in self.SOLR_KEYS:
+            self.assertIn(key, user_solr)
+
+    def test_initial_permissions(self):
+        """ Checking initial class-based permissions for normal vs admin user. """
+        # Asserts
+        self.assertFalse(self.user1.has_perm("main.change.protocol"))
+        self.assertTrue(self.admin.has_perm("main.change.protocol"))
 
 
 class UserProfileTest(TestCase):

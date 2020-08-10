@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.test import override_settings
 
 from edd import TestCase
+from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory as main_factory
 
@@ -20,7 +21,7 @@ class TypeResolverTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = main_factory.UserFactory()
+        cls.user = UserFactory()
 
     def test_resolve_broad_type(self):
         broad = factory.CategoryFactory()
@@ -158,7 +159,7 @@ class ImportResolverTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.user = main_factory.UserFactory()
+        cls.user = UserFactory()
         cls.target_study = main_factory.StudyFactory()
         cls.target_study.userpermission_set.create(
             user=cls.user, permission_type=models.StudyPermission.WRITE

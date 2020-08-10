@@ -3,9 +3,9 @@
 import environ
 import factory
 import faker
-from django.contrib.auth import get_user_model
-from django.contrib.auth import models as auth_models
 from django.core.files.base import ContentFile
+
+from edd.profile.factory import UserFactory
 
 from .. import models
 
@@ -132,25 +132,6 @@ class ValueFactory(factory.django.DjangoModelFactory):
     measurement = factory.SubFactory(MeasurementFactory)
     x = []
     y = []
-
-
-class UserFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = get_user_model()
-        django_get_or_create = ("username",)
-
-    username = factory.Faker("user_name")
-    email = factory.Faker("safe_email")
-    first_name = factory.Faker("first_name")
-    last_name = factory.Faker("last_name")
-
-
-class GroupFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = auth_models.Group
-        django_get_or_create = ("name",)
-
-    name = factory.Faker("word")
 
 
 class UpdateFactory(factory.django.DjangoModelFactory):
