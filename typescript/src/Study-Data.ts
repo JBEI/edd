@@ -26,6 +26,7 @@ import {
 import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
+import * as Config from "../modules/line/Config";
 
 declare let window: StudyBase.EDDWindow;
 const EDDData = window.EDDData || ({} as EDDData);
@@ -1928,29 +1929,24 @@ function remakeMainGraphArea() {
 }
 
 export function showEditAssayDialog(selection: JQuery): void {
+    // TODO: move this to handler for "edddata" event
+    const access = Config.Access.initAccess(EDDData);
     const form = $("#assayMain");
     let titleText: string;
     let record: AssayRecord;
-    let experimenter: StudyBase.EDDContact;
+    let experimenter: Utl.EDDContact;
 
     // Update the dialog title and fetch selection info
     if (selection.length === 0) {
         titleText = $("#new_assay_title").text();
-    } else if (selection.length > 1) {
-        titleText = $("#bulk_assay_title").text();
-        // merge all selected items into a single record
-        record = selection
-            .toArray()
-            .map(
-                (elem: Element): AssayRecord =>
-                    Utl.lookup(EDDData.Assays, $(elem).val() as string),
-            )
-            .reduce(StudyBase.mergeAssays);
-        experimenter = new StudyBase.EDDContact(record.experimenter);
-    } else if (selection.length === 1) {
-        titleText = $("#edit_assay_title").text();
-        record = Utl.lookup(EDDData.Assays, selection.val() as string);
-        experimenter = new StudyBase.EDDContact(record.experimenter);
+    } else {
+        if (selection.length > 1) {
+            titleText = $("#bulk_assay_title").text();
+        } else {
+            titleText = $("#edit_assay_title").text();
+        }
+        record = access.assayFromSelection(selection);
+        experimenter = new Utl.EDDContact(record.experimenter);
     }
     form.dialog({ "title": titleText });
 

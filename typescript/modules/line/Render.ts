@@ -37,11 +37,26 @@ function buildRenderer<T>(fn: RenderFn<T>): Handsontable.renderers.Base {
  * Registers named renderers with Handsontable.
  *
  * Each renderer expects the value it receives to be a specific type:
+ * edd.replicate_name -- entire LineRecord object
  * edd.strain -- a StrainRecord array
  * edd.timestamp -- a number (seconds since epoch)
  * edd.user -- a UserRecord
  */
 export function register() {
+    Handsontable.renderers.registerRenderer(
+        "edd.replicate_name",
+        buildRenderer((td, row, column, value: LineRecord) => {
+            if (value.replicate_names) {
+                const added_count = value.replicate_names.length - 1;
+                const first = value.replicate_names[0];
+                const additional = `<span class="replicateLineShow">(+${added_count})</span>`;
+                td.innerHTML = `${first} ${additional}`;
+            } else {
+                td.innerHTML = value?.name;
+            }
+            return td;
+        }),
+    );
     Handsontable.renderers.registerRenderer(
         "edd.strain",
         buildRenderer((td, row, column, value: StrainRecord[]) => {

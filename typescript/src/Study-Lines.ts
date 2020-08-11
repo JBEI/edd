@@ -19,12 +19,64 @@ let assayMetadataManager: Forms.FormMetadataManager;
 
 let access: Config.Access;
 
+/**
+ * Calculates pixel height available in page with bottom bar overlaid on the
+ * content container.
+ */
+function computeHeight() {
+    const container = $("#studyLinesTable");
+    const bottomBar = $("#bottomBar");
+    return Math.max(
+        500,
+        $window.height() - container.offset().top - bottomBar.height(),
+    );
+}
+
 function defineSelectionInputs(): JQuery {
     const selected = access.lines().filter((line) => line?.selected);
     const inputs = selected.map(
         (line) => $(`<input type="hidden" name="lineId" value="${line.id}"/>`)[0],
     );
     return $(inputs);
+}
+
+function disableMenuFirstColumn(column, th): void {
+    // see: https://github.com/handsontable/handsontable/issues/4253
+    // hack to disable menu on only the first column
+    if (column === 0) {
+        $("button", th).remove();
+    }
+}
+
+function disableMoveFirstColumn(cols: number[], target: number): boolean | void {
+    if (cols.indexOf(0) !== -1 || target === 0) {
+        return false;
+    }
+}
+
+function disableResizeFirstColumn(width: number, column: number): number {
+    if (column === 0) {
+        return 23;
+    }
+    return width;
+}
+
+/**
+ * Creates a listener for changes to table data, updating status of buttons and
+ * the select-all checkbox.
+ */
+function handleChange(container: Element): (...args: any[]) => void {
+    return Utl.debounce(() => {
+        const lines: LineRecord[] = access.lines();
+        const total = lines.length;
+        const selected = lines.filter((line) => line?.selected).length;
+        const selectAll = $(".select-all", container);
+        selectAll
+            .prop("indeterminate", 0 < selected && selected < total)
+            .prop("checked", selected === total);
+        // enable buttons if needed
+        $(".disablableButtons > button").prop("disabled", selected === 0);
+    });
 }
 
 // Called when the page loads the EDDData object
@@ -210,15 +262,15 @@ function setupTable() {
     const columns = Config.columns(access);
     // Handsontable.hooks.add("afterInit", onLineTableLoad);
     const table = new Handsontable(container, {
-        "afterChange": Config.handleChange(access, container),
+        "afterChange": handleChange(container),
         "afterInit": onLineTableLoad,
-        "afterGetColHeader": Config.disableMenuFirstColumn,
+        "afterGetColHeader": disableMenuFirstColumn,
         "allowInsertRow": false,
         "allowInsertColumn": false,
         "allowRemoveRow": false,
         "allowRemoveColumn": false,
-        "beforeColumnMove": Config.disableMoveFirstColumn,
-        "beforeStretchingColumnWidth": Config.disableResizeFirstColumn,
+        "beforeColumnMove": disableMoveFirstColumn,
+        "beforeStretchingColumnWidth": disableResizeFirstColumn,
         "colHeaders": columns.map((c) => c.header),
         "columns": columns,
         "data": access.lines(),
@@ -227,7 +279,7 @@ function setupTable() {
         "filters": true,
         // freeze the first column
         "fixedColumnsLeft": 1,
-        "height": Config.computeHeight(),
+        "height": computeHeight(),
         "hiddenColumns": {
             "indicators": true,
         },
@@ -245,7 +297,7 @@ function setupTable() {
     });
     // re-fit the table when scrolling or resizing window
     $window.on("scroll resize", () => {
-        table.updateSettings({ "height": Config.computeHeight() });
+        table.updateSettings({ "height": computeHeight() });
     });
     // handler for select all box
     $(container).on("click", ".select-all", toggleSelectAllState);
@@ -255,29 +307,21 @@ function showLineEditDialog(selection: JQuery): void {
     const form = $("#editLineModal");
     let titleText: string;
     let record: LineRecord;
-    let contact: StudyBase.EDDContact;
-    let experimenter: StudyBase.EDDContact;
+    let contact: Utl.EDDContact;
+    let experimenter: Utl.EDDContact;
 
     // Update the dialog title and fetch selection info
     if (selection.length === 0) {
         titleText = $("#new_line_title").text();
-    } else if (selection.length > 1) {
-        titleText = $("#bulk_line_title").text();
-        // merge all selected items into a single record
-        record = selection
-            .toArray()
-            .map(
-                (elem: Element): LineRecord =>
-                    Utl.lookup(EDDData.Lines, $(elem).val() as string),
-            )
-            .reduce(StudyBase.mergeLines);
-        contact = new StudyBase.EDDContact(record.contact);
-        experimenter = new StudyBase.EDDContact(record.experimenter);
-    } else if (selection.length === 1) {
-        titleText = $("#edit_line_title").text();
-        record = Utl.lookup(EDDData.Lines, selection.val() as string);
-        contact = new StudyBase.EDDContact(record.contact);
-        experimenter = new StudyBase.EDDContact(record.experimenter);
+    } else {
+        if (selection.length > 1) {
+            titleText = $("#bulk_line_title").text();
+        } else {
+            titleText = $("#edit_line_title").text();
+        }
+        record = access.lineFromSelection(selection);
+        contact = new Utl.EDDContact(record.contact);
+        experimenter = new Utl.EDDContact(record.experimenter);
     }
     form.dialog({ "title": titleText });
 

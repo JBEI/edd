@@ -33,13 +33,13 @@ interface LineRecord extends EDDRecord {
     // experimenter can vary depending on source call
     experimenter: number | UserRecord | BasicContact;
     strain: number[]; // Strain ID array
-    carbon: number[]; // Carbon Sources ID array
 
     // optional properties, set only in graphing code, not received from backend
     identifier?: string; // HTML ID for the line filter checkbox
     color?: string;
     // optional properties, set only in line table code
     selected?: boolean;
+    replicate_names?: string[];
 }
 
 // This is what we expect in EDDData.Assays

@@ -261,22 +261,15 @@ export class Color {
         );
     }
 
-    static toString(clr: any): string {
+    static toString(clr: Color | string): string {
         // If it's something else (like a string) already, just return that value.
         if (typeof clr === "string") {
             return clr;
         }
-        return (
-            "rgba(" +
-            Math.floor(clr.r) +
-            ", " +
-            Math.floor(clr.g) +
-            ", " +
-            Math.floor(clr.b) +
-            ", " +
-            clr.a / 255 +
-            ")"
-        );
+        const r = Math.floor(clr.r);
+        const g = Math.floor(clr.g);
+        const b = Math.floor(clr.b);
+        return `rgba(${r}, ${g}, ${b}, ${clr.a / 255})`;
     }
 
     toString(): string {
@@ -324,6 +317,14 @@ export class Table {
 
 // Javascript utilities
 export class JS {
+    /**
+     * Tests if arrays both contain the same elements (order-agnostic).
+     */
+    static arrayEquivalent(a: any[], b: any[]): boolean {
+        const combined: Set<any> = new Set<any>([...(a || []), ...(b || [])]);
+        return combined.size === (a || []).length && combined.size === (b || []).length;
+    }
+
     static assert(condition: boolean, message: string): void {
         if (!condition) {
             message = message || "Assertion failed";
@@ -335,13 +336,32 @@ export class JS {
         }
     }
 
+    /**
+     * A shorter alias for `Object.prototype.hasOwnProperty.call(obj, name)`.
+     * Used in place of calling `obj.hasOwnProperty(name)` to account for
+     * danger of the prototype method being replaced on `obj`.
+     */
+    static hasOwnProp(obj: any, name: string): boolean {
+        return Object.prototype.hasOwnProperty.call(obj, name);
+    }
+
+    /**
+     * Tests if a property on two objects are equal.
+     */
+    static propertyEqual(a: object, b: object, name: string): boolean {
+        // guard against undefined/null inputs
+        a = a || {};
+        b = b || {};
+        return JS.hasOwnProp(a, name) && JS.hasOwnProp(b, name) && a[name] === b[name];
+    }
+
     // Given a date in seconds (with a possible fractional portion being milliseconds),
     // based on zero being midnight of Jan 1, 1970 (standard old-school POSIX time),
     // return a string formatted in the manner of "Dec 21 2012, 11:45am",
     // with exceptions for 'Today' and 'Yesterday', e.g. "Yesterday, 3:12pm".
     static timestampToTodayString(timestamp: number): string {
         if (!timestamp || timestamp < 1) {
-            return "<span style=\"color:#888;\">N/A</span>";
+            return `<span style="color:#888;">N/A</span>`;
         }
         const time: Date = new Date(Math.round(timestamp * 1000));
         const now: Date = new Date();
@@ -376,7 +396,7 @@ export class JS {
             "hour": "numeric",
             "minute": "numeric",
         }).format(time);
-        return day_str + ", " + time_str;
+        return `${day_str}, ${time_str}`;
     }
 
     static utcToTodayString(utc: string): string {
@@ -520,7 +540,7 @@ export class FileDropZoneHelpers {
             });
 
         $("<p>", {
-            "text": "Success! " + result.lines_created + " lines added!",
+            "text": `Success! ${result.lines_created} lines added!`,
             "style": "margin:auto",
         }).appendTo("#linesAdded");
         // display success message
@@ -545,7 +565,7 @@ export class FileDropZoneHelpers {
                 .hide();
             // forward click events on copy to the original button
             copy.on("click", "button", (e) => {
-                original.find("#" + e.target.id).trigger(e);
+                original.find(`#${e.target.id}`).trigger(e);
             });
             const originalDismiss: JQuery = $("#dismissAll").find(".dismissAll");
             const copyDismiss: JQuery = originalDismiss
@@ -725,7 +745,7 @@ export class FileDropZoneHelpers {
     private organizeMessages(responses) {
         const obj = {};
         for (const response of responses) {
-            const message = response.summary + ": " + response.details;
+            const message = `${response.summary}: ${response.details}`;
             if (Object.prototype.hasOwnProperty.call(obj, response.category)) {
                 obj[response.category].push(message);
             } else {
@@ -756,7 +776,7 @@ export class FileDropZoneHelpers {
 
     private alertIceWarning(response): void {
         const iceError = $("#iceError");
-        response.category = "Warning! " + response.category;
+        response.category = `Warning! ${response.category}`;
         this.createAlertMessage(iceError, response);
     }
 
@@ -774,7 +794,7 @@ export class FileDropZoneHelpers {
             .text(response.category);
         $(alertClone)
             .children("p")
-            .text(response.summary + ": " + response.details);
+            .text(`${response.summary}: ${response.details}`);
         $("#alert_placeholder").append(alertClone);
         $(alertClone)
             .removeClass("off")
@@ -785,11 +805,11 @@ export class FileDropZoneHelpers {
         if (type === "warnings") {
             $(newAlert)
                 .children("h4")
-                .text("Warning! " + subject);
+                .text(`Warning! ${subject}`);
         } else {
             $(newAlert)
                 .children("h4")
-                .text("Error! " + subject);
+                .text(`Error! ${subject}`);
             this.clearDropZone();
         }
         $.each(messages, (key, message) => {
@@ -810,5 +830,58 @@ export class FileDropZoneHelpers {
         $("#fileDropInfoName").addClass("off");
         $("#fileDropInfoSending").addClass("off");
         $(".linesDropZone").addClass("off");
+    }
+}
+
+/**
+ * Wraps a "contact" value that can be number, UserRecord, or BasicContact.
+ */
+export class EDDContact {
+    constructor(private readonly self: number | UserRecord | BasicContact) {}
+    as_contact(): BasicContact {
+        return { "extra": this.display(), "user_id": this.id() };
+    }
+    display(fallback?: string): string {
+        fallback = fallback || "--";
+        if (this.is_userrecord()) {
+            return ((this.self || {}) as UserRecord).uid;
+        } else if (this.is_basiccontact()) {
+            const basic = (this.self || {}) as BasicContact;
+            const user = EDDData.Users[basic.user_id] || ({} as UserRecord);
+            return basic.extra || user.uid || fallback;
+        } else if (typeof this.self === "number") {
+            const user = EDDData.Users[this.self as number] || ({} as UserRecord);
+            return user.uid || fallback;
+        }
+        return fallback;
+    }
+    equals(other: number | UserRecord | BasicContact): boolean {
+        const a: object = this.self as object;
+        const b: object = other as object;
+        // when both are IDs, using normal equality works
+        return (
+            (this.self !== undefined && this.self === other) ||
+            // when both are UserRecord, use propertyEqual on "id"
+            JS.propertyEqual(a, b, "id") ||
+            // when both are BasicContact, use propertyEqual on both "user_id" and "extra"
+            (JS.propertyEqual(a, b, "user_id") && JS.propertyEqual(a, b, "extra"))
+        );
+    }
+    id(): number {
+        if (this.is_userrecord()) {
+            return ((this.self || {}) as UserRecord).id;
+        } else if (this.is_basiccontact()) {
+            return ((this.self || {}) as BasicContact).user_id;
+        } else if (typeof this.self === "number") {
+            return this.self as number;
+        }
+        return null;
+    }
+    private is_basiccontact(): boolean {
+        const self = this.self || {};
+        return JS.hasOwnProp(self, "user_id") || JS.hasOwnProp(self, "extra");
+    }
+    private is_userrecord(): boolean {
+        return JS.hasOwnProp(this.self || {}, "id");
     }
 }

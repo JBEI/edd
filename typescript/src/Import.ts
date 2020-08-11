@@ -23,20 +23,6 @@ import * as Utl from "../modules/Utl";
 
 import "../modules/Styles";
 
-// Doing this bullshit because TypeScript/InternetExplorer do not recognize
-// static methods on Number
-const JSNumber: any = Number;
-JSNumber.isFinite =
-    JSNumber.isFinite ||
-    function(value: any) {
-        return typeof value === "number" && isFinite(value);
-    };
-JSNumber.isNaN =
-    JSNumber.isNaN ||
-    function(value: any) {
-        return value !== value;
-    };
-
 // Type name for the grid of values pasted in
 type RawInput = string[][];
 // type for the stats generated from parsing input text
@@ -1909,22 +1895,22 @@ export class IdentifyStructuresStep implements ImportStep {
                         if (xy[0] === null) {
                             // keep explicit null values
                             time = null;
-                        } else if (!JSNumber.isFinite(xy[0])) {
+                        } else if (!Number.isFinite(xy[0])) {
                             // Sometimes people - or Excel docs - drop commas into large numbers.
                             time = parseFloat((xy[0] || "0").replace(/,/g, ""));
                         } else {
                             time = xy[0] as number;
                         }
                         // If we can't parse a usable timestamp, discard this point.
-                        // NOTE: JSNumber.isNaN(null) === false
-                        if (JSNumber.isNaN(time)) {
+                        // NOTE: Number.isNaN(null) === false
+                        if (Number.isNaN(time)) {
                             return;
                         }
                         if (!xy[1] && xy[1] !== 0) {
                             // If we're ignoring gaps, skip any undefined/null values.
                             // A null is our standard placeholder value
                             value = null;
-                        } else if (!JSNumber.isFinite(xy[1])) {
+                        } else if (!Number.isFinite(xy[1])) {
                             value = parseFloat((xy[1] || "").replace(/,/g, ""));
                         } else {
                             value = xy[1] as number;
