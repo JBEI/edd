@@ -1,6 +1,4 @@
-"""
-General utility code for EDD, not tied to Django or Celery.
-"""
+"""General utility code for EDD."""
 
 import json
 import mimetypes
@@ -11,12 +9,13 @@ from uuid import UUID
 
 from dateutil import parser as date_parser
 from django.conf import settings
-from django.contrib.staticfiles.storage import ManifestStaticFilesStorage
+from django.contrib.staticfiles import storage
 from django.core.exceptions import ValidationError
 from django.utils.encoding import force_text
 from django.utils.functional import Promise
 from django.utils.translation import gettext as _
 from kombu.serialization import register
+from storages.backends import s3boto3
 
 DATETIME = "__datetime__"
 TYPE = "__type__"
@@ -78,7 +77,30 @@ class JSONDecoder(json.JSONDecoder):
         return json.loads(text, cls=JSONDecoder)
 
 
-class StaticFilesStorage(ManifestStaticFilesStorage):
+class S3MediaStorage(s3boto3.S3Boto3Storage):
+    """Stores media/upload files using the S3 API."""
+
+    location = "media"
+
+
+class S3PrivateStorage(s3boto3.S3Boto3Storage):
+    """Stores media/upload files that will not need anonymous access using S3 API."""
+
+    location = "private"
+
+
+class S3StaticStorage(storage.ManifestFilesMixin, s3boto3.S3Boto3Storage):
+    """
+    Uses Django Manifest storage combined with S3 storage. Static files are
+    saved with a hash in the name, recorded in a manifest file. The backing
+    storage is a bucket using the S3 API, instead of the filesystem.
+    """
+
+    location = "static"
+    manifest_name = getattr(settings, "STATICFILES_MANIFEST", "staticfiles.json")
+
+
+class StaticFilesStorage(storage.ManifestStaticFilesStorage):
     """
     Exactly the same as ManifestStaticFilesStorage from the Django contrib
     package, except this one optionally changes the manifest file name

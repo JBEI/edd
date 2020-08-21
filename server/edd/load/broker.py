@@ -6,7 +6,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 from django.conf import settings
-from django.core.files.storage import default_storage
+from django.utils.module_loading import import_string
 from django.utils.translation import gettext as _
 from django_redis import get_redis_connection
 
@@ -16,6 +16,20 @@ from . import exceptions, reporting
 from .models import ParserMapping
 
 logger = logging.getLogger(__name__)
+
+
+def create_file_storage():
+    try:
+        custom_storage = getattr(settings, "EDD_LOAD_STORAGE", None)
+        Storage = import_string(custom_storage)
+        return Storage()
+    except Exception:
+        from django.core.files.storage import default_storage
+
+        return default_storage
+
+
+file_storage = create_file_storage()
 
 
 class ImportBroker:
@@ -259,8 +273,8 @@ class LoadRequest:
     def open(self):
         try:
             if self.mime_type and self.mime_type[:5] == "text/":
-                return default_storage.open(self.path, mode="rt")
-            return default_storage.open(self.path)
+                return file_storage.open(self.path, mode="rt")
+            return file_storage.open(self.path)
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
@@ -413,7 +427,7 @@ class LoadRequest:
 
     def _delete_file(self):
         if self.path:
-            default_storage.delete(self.path)
+            file_storage.delete(self.path)
             self.path = None
             self.mime_type = None
 
@@ -431,5 +445,5 @@ class LoadRequest:
             # clean up any existing file(s)
             self._delete_file()
             # write to storage
-            self.path = default_storage.save(self._create_path(), file)
+            self.path = file_storage.save(self._create_path(), file)
             self.mime_type = getattr(file, "content_type", "application/octet-stream")

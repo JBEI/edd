@@ -1,5 +1,6 @@
 import logging
 
+from celery import shared_task
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
@@ -18,6 +19,7 @@ from django_auth_ldap.backend import LDAPBackend
 
 from edd.export.sbml import validate_sbml_attachment
 from edd.search.solr import StudySearch, UserSearch
+from edd.utilities import S3MediaStorage
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi, IceApiException
 
@@ -33,16 +35,82 @@ from .forms import (
 logger = logging.getLogger(__name__)
 
 
-class AttachmentInline(admin.TabularInline):
-    """ Inline submodel for editing attachments """
+class AttachmentTabular(admin.TabularInline):
+    """A read-only tabular inline for existing attachments."""
 
     model = models.Attachment
-    fields = ("file", "description", "created", "mime_type", "file_size")
-    # would like to have file readonly for existing attachments
-    # Django cannot currently do this on Inlines; see:
     # https://code.djangoproject.com/ticket/15602
-    readonly_fields = ("created", "file_size")
+    extra = 0
+    max_num = 0
+    fields = ("file", "description", "created", "mime_type", "file_size")
+    readonly_fields = ("file", "created", "file_size")
+
+
+class AttachmentStacked(admin.StackedInline):
+    """A write-only stacked inline for adding attachments."""
+
+    model = models.Attachment
+    fields = ("file", "description")
     extra = 1
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.none()
+
+
+class AttachmentAdmin(admin.ModelAdmin):
+    """"""
+
+    actions = ["migrate_storage"]
+    fields = tuple()
+    list_display = ("file", "mime_type", "file_size", "created")
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        # only show the S3 migration action when explicitly enabled in settings
+        if getattr(settings, "EDD_ENABLE_S3_MIGRATE", False) is not True:
+            del actions["migrate_storage"]
+        return actions
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.select_related("created__mod_by")
+
+    def migrate_storage(self, request, queryset):
+        migrate_storage.delay()
+        self.message_user(request, _("Queued migration task"), messages.SUCCESS)
+
+    migrate_storage.short_description = _("(global) Migrate S3 Storage")
+
+
+@shared_task
+def migrate_storage():
+    from edd.branding.models import Branding
+
+    def migrate_object(ident, obj, content_type=None):
+        try:
+            with obj.open() as content:
+                if content_type:
+                    content.content_type = content_type
+                storage.save(obj.name, content)
+        except Exception as e:
+            logger.error(f"Failed migration [{ident}]: {e}")
+
+    storage = S3MediaStorage()
+    # go through all Attachment objects
+    for a in models.Attachment.objects.all():
+        logger.info(f"Migrating [{a.pk}]{a.filename}")
+        # use known MIME in database, instead of guessing
+        migrate_object(a.pk, a.file, content_type=a.mime_type)
+    # go through all Branding objects
+    for b in Branding.objects.all():
+        logger.info(f"Migrating branding for [{b.logo_name}]")
+        if b.style_sheet:
+            migrate_object(b.logo_name, b.style_sheet)
+        if b.logo_file:
+            migrate_object(b.logo_name, b.logo_file)
+        if b.favicon_file:
+            migrate_object(b.logo_name, b.favicon_file)
 
 
 class AssayAdmin(admin.ModelAdmin):
@@ -180,7 +248,10 @@ class ProtocolAdmin(EDDObjectAdmin):
         "categorization",
         "owner",
     ]
-    inlines = (AttachmentInline,)
+    inlines = (
+        AttachmentTabular,
+        AttachmentStacked,
+    )
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -662,7 +733,12 @@ class StudyAdmin(EDDObjectAdmin):
         "metadata",
     ]
     fields = []
-    inlines = (UserPermissionInline, GroupPermissionInline, AttachmentInline)
+    inlines = (
+        UserPermissionInline,
+        GroupPermissionInline,
+        AttachmentTabular,
+        AttachmentStacked,
+    )
     list_display = ["name", "description", "created", "updated"]
 
     def get_queryset(self, request):
@@ -698,7 +774,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
         "biomass_exchange_name",
         "created",
     )
-    inlines = (AttachmentInline,)
+    inlines = (AttachmentTabular, AttachmentStacked)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "sbml_file":
@@ -715,13 +791,6 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
         # save model for later
         self._obj = obj
         return super().get_form(request, obj, **kwargs)
-
-    def get_formsets_with_inlines(self, request, obj=None):
-        for inline in self.get_inline_instances(request, obj):
-            if isinstance(inline, AttachmentInline) and obj is None:
-                inline.extra = 1
-                inline.max_num = 1
-            yield inline.get_formset(request, obj), inline
 
     def get_queryset(self, request):
         q = super().get_queryset(request)
@@ -915,20 +984,22 @@ class MeasurementUnitAdmin(admin.ModelAdmin):
     pass
 
 
+admin.site.register(models.Assay, AssayAdmin)
+admin.site.register(models.Attachment, AttachmentAdmin)
+admin.site.register(models.CarbonSource, CarbonSourceAdmin)
+admin.site.register(models.GeneIdentifier, GeneAdmin)
+admin.site.register(models.MeasurementType, MeasurementTypeAdmin)
+admin.site.register(models.MeasurementUnit, MeasurementUnitAdmin)
+admin.site.register(models.Metabolite, MetaboliteAdmin)
 admin.site.register(models.MetadataGroup, MetadataGroupAdmin)
 admin.site.register(models.MetadataType, MetadataTypeAdmin)
-admin.site.register(models.Protocol, ProtocolAdmin)
-admin.site.register(models.Strain, StrainAdmin)
-admin.site.register(models.CarbonSource, CarbonSourceAdmin)
-admin.site.register(models.MeasurementType, MeasurementTypeAdmin)
-admin.site.register(models.Metabolite, MetaboliteAdmin)
-admin.site.register(models.GeneIdentifier, GeneAdmin)
-admin.site.register(models.ProteinIdentifier, ProteinAdmin)
 admin.site.register(models.Phosphor, PhosphorAdmin)
-admin.site.register(models.Study, StudyAdmin)
-admin.site.register(models.Assay, AssayAdmin)
+admin.site.register(models.ProteinIdentifier, ProteinAdmin)
+admin.site.register(models.Protocol, ProtocolAdmin)
 admin.site.register(models.SBMLTemplate, SBMLTemplateAdmin)
+admin.site.register(models.Strain, StrainAdmin)
+admin.site.register(models.Study, StudyAdmin)
 admin.site.register(models.WorklistTemplate, WorklistTemplateAdmin)
-admin.site.register(models.MeasurementUnit, MeasurementUnitAdmin)
+
 admin.site.unregister(get_user_model())
 admin.site.register(get_user_model(), EDDUserAdmin)

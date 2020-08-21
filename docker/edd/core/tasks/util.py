@@ -3,7 +3,6 @@ import re
 import time
 
 import environ
-import invoke
 import kombu
 import psycopg2
 import redis
@@ -15,17 +14,6 @@ pg_url = re.compile(r"^(?:psql|pgsql|postgres)://")
 
 class StartupError(Exception):
     pass
-
-
-def check_static_manifest(context):
-    try:
-        version_hash = get_version_hash(context)
-        manifest = f"/var/www/static/staticfiles.{version_hash}.json"
-        result = context.run(f"test -f '{manifest}'", warn=True)
-        if not result.ok:
-            return version_hash
-    except Exception:
-        raise invoke.exceptions.Exit("Staticfiles manifest check failed")
 
 
 def ensure_dir_owner(context, directory):

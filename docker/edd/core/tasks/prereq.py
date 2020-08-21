@@ -69,12 +69,7 @@ def staticfiles(context):
     cache = util.get_redis()
     try:
         with cache.lock(b"edd.startup.staticfiles", timeout=60):
-            missing_manifest = util.check_static_manifest(context)
-            if missing_manifest is None:
-                print("Found staticfiles OK")
-            else:
-                print(f"Copying staticfiles for manifest {missing_manifest}")
-                context.run("cp -R /usr/local/edd-static/. /var/www/static/")
+            context.run("/code/manage.py collectstatic --noinput")
     except Exception as e:
         print(e)
         raise invoke.exceptions.Exit("Staticfiles check failed") from e
