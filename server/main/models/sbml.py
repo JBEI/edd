@@ -76,12 +76,10 @@ class SBMLTemplate(EDDObject):
             # self.sbml_file.file.file.name = path to file
             import libsbml
 
-            self._sbml_document = libsbml.readSBML(self.sbml_file.file.file.name)
+            with self.sbml_file.file.open() as upload:
+                text = upload.read().decode("utf-8")
+                self._sbml_document = libsbml.readSBMLFromString(text)
         return self._sbml_document
-
-    def save(self, *args, **kwargs):
-        # may need to do a post-save signal; get sbml attachment and save in sbml_file
-        super().save(*args, **kwargs)
 
     def to_json(self, depth=0):
         return {

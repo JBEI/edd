@@ -29,19 +29,29 @@ LinePreDelete = collections.namedtuple("LinePreDelete", ("study", "strain_ids"))
 
 @receiver(pre_save, sender=models.Attachment)
 def set_file_info(sender, instance, raw, using, **kwargs):
-    if instance.file.readable():
-        instance.filename = instance.file.name
-        instance.file_size = instance.file.size
-        # set the mime_type if it is not already set
-        if not instance.mime_type:
-            # if there is a content_type from the uploaded file, use that
-            # instance.file is the db field; instance.file.file is the actual uploaded file
-            uploaded_file = instance.file.file
-            if hasattr(uploaded_file, "content_type"):
-                instance.mime_type = uploaded_file.content_type
-            else:
-                # if there is no upload, give up and guess that it's a bunch of bytes
-                instance.mime_type = "application/octet-stream"
+    if instance.file and instance.file.readable():
+        set_file_info_filename(instance)
+        set_file_info_file_size(instance)
+        set_file_info_mime_type(instance)
+
+
+def set_file_info_filename(instance):
+    if not instance.filename:
+        instance.filename = getattr(instance.file, "name", "unnamed-file")
+
+
+def set_file_info_file_size(instance):
+    if instance.file_size == 0:
+        instance.file_size = getattr(instance.file, "size", 0)
+
+
+def set_file_info_mime_type(instance):
+    if not instance.mime_type:
+        # instance.file is the db field; instance.file.file is the actual uploaded file
+        # if there is no content_type found, guess that it's a bunch of bytes
+        instance.mime_type = getattr(
+            instance.file.file, "content_type", "application/octet-stream"
+        )
 
 
 # ----- common signal handlers -----

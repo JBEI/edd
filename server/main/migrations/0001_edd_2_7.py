@@ -1,11 +1,12 @@
-import os
+import io
+import pathlib
 
 import environ
 import libsbml
 from django.apps import apps as django_apps
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, jsonb
-from django.core.files import storage
+from django.core.files.base import ContentFile
 from django.db import migrations, models
 
 from edd.fields import FileField, VarCharField
@@ -372,12 +373,9 @@ def bootstrap_template(apps, now):
     # define models
     SBMLTemplate = apps.get_model("main", "SBMLTemplate")
     Attachment = apps.get_model("main", "Attachment")
-    # load template file
+    # load template file and copy to temporary buffer
     conf = django_apps.get_app_config("main")
-    fixture_dir = os.path.join(conf.path, "fixtures")
-    template_file = os.path.join(fixture_dir, "StdEciJO1366.xml")
-    with open(template_file, "rb") as fp:
-        path = storage.default_storage.save("StdEciJO1366.xml", fp)
+    template_file = pathlib.Path(conf.path) / "fixtures" / "StdEciJO1366.xml"
     # Create objects
     template = SBMLTemplate(
         name="StdEciJO1366",
@@ -387,15 +385,21 @@ def bootstrap_template(apps, now):
         updated=now,
     )
     template.save()
-    sbml_file = Attachment(
-        object_ref=template,
-        file=storage.default_storage.path(path),
-        filename="StdEciJO1366.xml",
-        mime_type="text/xml",
-        file_size=os.path.getsize(template_file),
-        created=now,
-    )
-    sbml_file.save()
+    with open(template_file, "rb") as fp, io.BytesIO() as buff:
+        buff.write(fp.read())
+        cf = ContentFile(buff.getbuffer())
+        sbml_file = Attachment(
+            object_ref=template,
+            file=cf,
+            filename="StdEciJO1366.xml",
+            mime_type="text/xml",
+            file_size=template_file.stat().st_size,
+            created=now,
+        )
+        sbml_file.save()
+        # work-around: above save isn't actually saving the file
+        sbml_file.file.save(sbml_file.filename, cf)
+    # re-save SBMLTemplate object, getting around the chicken-and-egg problem
     template.sbml_file = sbml_file
     # can these be calculated from the model?
     template.biomass_calculation = 8.78066
@@ -422,10 +426,12 @@ def set_default_site(apps):
 # chain of migrations.
 def template_sync_species(apps, instance):
     """
-    Task parses an SBML document, then creates MetaboliteSpecies and MetaboliteExchange records
-    for every species and single-reactant reaction in the model.
+    Task parses an SBML document, then creates MetaboliteSpecies and
+    MetaboliteExchange records for every species and single-reactant reaction
+    in the model.
     """
-    doc = libsbml.readSBML(instance.sbml_file.file.file.name)
+    with instance.sbml_file.file.open() as upload:
+        doc = libsbml.readSBMLFromString(upload.read().decode("utf-8"))
     model = doc.getModel()
     # filter to only those for the updated template
     MetaboliteSpecies = apps.get_model("main", "MetaboliteSpecies")

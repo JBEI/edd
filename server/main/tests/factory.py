@@ -1,12 +1,11 @@
 """Factory classes used to generate objects under test."""
 
-from unittest import mock
-
 import environ
 import factory
 import faker
 from django.contrib.auth import get_user_model
 from django.contrib.auth import models as auth_models
+from django.core.files.base import ContentFile
 
 from .. import models
 
@@ -25,11 +24,9 @@ def load_test_file(name, mode="rb"):
 
 
 def create_fake_upload():
-    fake_upload = mock.Mock()
+    fake_upload = ContentFile(fake.binary(length=fake.random_int()))
     fake_upload.name = fake.file_name()
-    fake_upload.size = fake.random_int()
-    fake_upload.file = mock.Mock()
-    fake_upload.file.content_type = fake.mime_type()
+    fake_upload.content_type = fake.mime_type()
     return fake_upload
 
 
