@@ -181,11 +181,9 @@ def rabbitmq(context, limit=10):
 
 
 # owner: Set container directory ownership to edduser
-@invoke.task(pre=[code, staticfiles])
+@invoke.task(pre=[code])
 def owner(context):
-    """
-    Sets ownership on necessary directories.
-    """
+    """Sets ownership on necessary directories."""
     dirs = [
         # container copy of code
         "/usr/local/edd",
