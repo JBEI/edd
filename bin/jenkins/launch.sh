@@ -19,6 +19,7 @@ cat secrets/edd_ice_key | docker config create "${PROJECT}_ice_key" -
 # 2. remove volume mounts from edd-core containers
 # 3. add reference for settings config to edd-core containers
 # 4. add reference for HMAC config to ice container
+# 5. remove service definitions for nginx
 yq w -s - -i docker-compose.override.yml <<EOF
 - command: update
   path: services.http.image
@@ -61,6 +62,10 @@ yq w -s - -i docker-compose.override.yml <<EOF
   value:
   - source: "${PROJECT}_ice_key"
     target: "/usr/local/tomcat/data/rest-auth/edd"
+- command: delete
+  path: services.nginx
+- command: delete
+  path: services.nginx-gen
 EOF
 
 ## define the stack
