@@ -14,12 +14,18 @@ cat settings/example | docker config create "${PROJECT}_settings" -
 # doing this as config is *only* because this is a transient test
 cat secrets/edd_ice_key | docker config create "${PROJECT}_ice_key" -
 
+# get info on current node
+THIS_NODE_ID="$(docker node inspect --format '{{.ID}}' self)"
+
 # Rewrite docker-compose.override.yml to:
 # 1. insert correct image tag, pointing to registry image
 # 2. remove volume mounts from edd-core containers
 # 3. add reference for settings config to edd-core containers
 # 4. add reference for HMAC config to ice container
 # 5. remove service definitions for nginx
+# 6. add labels to services for easier checking later
+# 7. add deploy constraints so scripts can exec later
+# 8. strip ports exposed; not needed for testing
 yq w -s - -i docker-compose.override.yml <<EOF
 - command: update
   path: services.http.image
@@ -66,19 +72,46 @@ yq w -s - -i docker-compose.override.yml <<EOF
   path: services.nginx
 - command: delete
   path: services.nginx-gen
+- command: update
+  path: "services.ice.deploy.labels[0]"
+  value: "org.jbei.jenkins.edd.ice=true"
+- command: update
+  path: "services.http.deploy.placement.constraints[0]"
+  value: "node.id==${THIS_NODE_ID}"
+- command: update
+  path: "services.ice_db.deploy.placement.constraints[0]"
+  value: "node.id==${THIS_NODE_ID}"
+- command: delete
+  path: "services.*.ports"
 EOF
 
-## define the stack
+# define the stack
 docker-compose config > stack.yml
-## launch the stack with stack deploy
+# launch the stack with stack deploy
 docker stack deploy --with-registry-auth -c stack.yml "${PROJECT}"
 
 # wait for ice to finish coming up
-# name ${PROJECT}_ice matches both ICE and its database
-# but the database doesn't currently run a healthcheck
-until [ -n "$(docker ps -q -f "name=${PROJECT}_ice" -f "health=healthy")" ]; do
-    echo "Waiting on ICE"
-    sleep 10
+ICE_IS_UP="false"
+until [ "${ICE_IS_UP}" == "true" ]; do
+    ICE_SERVICE_ID="$(docker service ls -f "label=org.jbei.jenkins.edd.ice" -q)"
+    if [ -z "${ICE_SERVICE_ID}" ]; then
+        echo "Waiting for services to deploy"
+        sleep 10
+        continue
+    fi
+    ICE_TASK_ID="$(docker service ps -f "desired-state=running" -q "${ICE_SERVICE_ID}")"
+    if [ -z "${ICE_TASK_ID}" ]; then
+        echo "Waiting for services to replicate"
+        sleep 10
+        continue
+    fi
+    ICE_STATE="$(docker inspect --format '{{.Status.State}}' "${ICE_TASK_ID}")"
+    if [ "$(docker inspect --format '{{.Status.State}}' "${ICE_TASK_ID}")" == "running" ]; then
+        ICE_IS_UP="true"
+    else
+        echo "Waiting on ICE"
+        sleep 10
+    fi
 done
 
 # correct the default DATA_DIRECTORY
@@ -92,6 +125,7 @@ SET value = '/usr/bin'
 WHERE key = 'BLAST_INSTALL_DIR';
 EOM
 )
+# because deploy constraint, we know ice_db is on this host and we can exec in it
 CONTAINER="$(docker ps -q -f "name=${PROJECT}_ice_db")"
 docker exec "${CONTAINER}" psql -U iceuser -c "${SQL}" ice
 
@@ -99,7 +133,24 @@ docker exec "${CONTAINER}" psql -U iceuser -c "${SQL}" ice
 docker service update --force "${PROJECT}_ice"
 
 # wait for http service to report healthy
-until [ -n "$(docker ps -q -f "name=${PROJECT}_http" -f "health=healthy")" ]; do
-    echo "Waiting for http service to report healthy"
-    sleep 10
+HTTP_IS_UP="false"
+until [ "${HTTP_IS_UP}" == "true" ]; do
+    HTTP_SERVICE_ID="$(docker service ls -f "name=${PROJECT}_http" -q)"
+    if [ -z "${HTTP_SERVICE_ID}" ]; then
+        echo "Waiting for services to deploy"
+        sleep 10
+        continue
+    fi
+    HTTP_TASK_ID="$(docker service ps -f "desired-state=running" -q "${HTTP_SERVICE_ID}")"
+    if [ -z "${HTTP_TASK_ID}" ]; then
+        echo "Waiting for services to replicate"
+        sleep 10
+        continue
+    fi
+    if [ "$(docker inspect --format '{{.Status.State}}' "${HTTP_TASK_ID}")" == "running" ]; then
+        HTTP_IS_UP="true"
+    else
+        echo "Waiting for http service to report healthy"
+        sleep 10
+    fi
 done
