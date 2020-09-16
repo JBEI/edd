@@ -628,6 +628,85 @@ class StudyViewTests(TestCase):
         )
         self.assertTemplateUsed(response, "main/create_study.html")
 
+    def test_lines_replicate_with_empty_selection(self):
+        target_url = reverse("main:lines", kwargs=self.target_kwargs)
+        replicate = models.MetadataType.system("Replicate")
+        factory.LineFactory(study=self.target_study)
+        factory.LineFactory(study=self.target_study)
+        # post replicate action without any selection
+        response = self.client.post(
+            target_url, data={"action": "replicate"}, follow=True,
+        )
+        assigned_ids = [
+            line.metadata_get(replicate) for line in self.target_study.line_set.all()
+        ]
+        unique_ids = set(assigned_ids)
+        self.assertTemplateUsed(response, "main/study-lines.html")
+        # both lines show as not having replicate
+        assert len(unique_ids) == 1
+        assert None in unique_ids
+
+    def test_lines_replicate_with_valid_selection(self):
+        target_url = reverse("main:lines", kwargs=self.target_kwargs)
+        replicate = models.MetadataType.system("Replicate")
+        line1 = factory.LineFactory(study=self.target_study)
+        line2 = factory.LineFactory(study=self.target_study)
+        # post replicate action with lines selected
+        response = self.client.post(
+            target_url,
+            data={"action": "replicate", "lineId": [line1.pk, line2.pk]},
+            follow=True,
+        )
+        assigned_ids = [
+            line.metadata_get(replicate) for line in self.target_study.line_set.all()
+        ]
+        unique_ids = set(assigned_ids)
+        self.assertTemplateUsed(response, "main/study-lines.html")
+        # both lines have *same* non-None ID assigned
+        assert len(unique_ids) == 1
+        assert None not in unique_ids
+
+    def test_lines_unreplicate_with_empty_selection(self):
+        target_url = reverse("main:lines", kwargs=self.target_kwargs)
+        replicate = models.MetadataType.system("Replicate")
+        metadata = {replicate.pk: "some value"}
+        factory.LineFactory(study=self.target_study, metadata=metadata)
+        factory.LineFactory(study=self.target_study, metadata=metadata)
+        # post unreplicate action without any selection
+        response = self.client.post(
+            target_url, data={"action": "unreplicate"}, follow=True,
+        )
+        assigned_ids = [
+            line.metadata_get(replicate) for line in self.target_study.line_set.all()
+        ]
+        unique_ids = set(assigned_ids)
+        self.assertTemplateUsed(response, "main/study-lines.html")
+        # both lines keep original replicate ID
+        assert len(unique_ids) == 1
+        assert "some value" in unique_ids
+
+    def test_lines_unreplicate_with_valid_selection(self):
+        target_url = reverse("main:lines", kwargs=self.target_kwargs)
+        replicate = models.MetadataType.system("Replicate")
+        metadata = {replicate.pk: "some value"}
+        line1 = factory.LineFactory(study=self.target_study, metadata=metadata)
+        line2 = factory.LineFactory(study=self.target_study, metadata=metadata)
+        # post replicate action with lines selected
+        response = self.client.post(
+            target_url,
+            data={"action": "unreplicate", "lineId": [line1.pk, line2.pk]},
+            follow=True,
+        )
+        assigned_ids = [
+            line.metadata_get(replicate) for line in self.target_study.line_set.all()
+        ]
+        print(assigned_ids)
+        unique_ids = set(assigned_ids)
+        self.assertTemplateUsed(response, "main/study-lines.html")
+        # both lines show as not having replicate
+        assert len(unique_ids) == 1
+        assert None in unique_ids
+
     def test_detail_get(self):
         # when study has no lines, get a redirect to the overview page
         response = self.client.get(reverse("main:detail", kwargs=self.target_kwargs))

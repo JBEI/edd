@@ -2,6 +2,7 @@
 
 import collections
 import logging
+import uuid
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -356,6 +357,8 @@ class StudyLinesView(StudyDetailBaseView):
             enable=self.handle_enable,
             export=self.handle_line_export,
             line=self.handle_line,
+            replicate=self.handle_replicate,
+            unreplicate=self.handle_unreplicate,
         )
         return action_lookup
 
@@ -516,6 +519,35 @@ class StudyLinesView(StudyDetailBaseView):
             )
             return True
         context.update(new_line=form)
+        return False
+
+    def handle_replicate(self, request, context, *args, **kwargs):
+        self.check_write_permission(request)
+        study = self.get_object()
+        selectForm = export_forms.ExportSelectionForm(
+            data=request.POST, user=request.user
+        )
+        replicate = edd_models.MetadataType.system("Replicate")
+        value = uuid.uuid4().hex
+        if selectForm.is_valid():
+            for line in selectForm.selection.lines.filter(study_id=study.pk):
+                line.metadata_add(replicate, value, append=False)
+                line.save()
+            return True
+        return False
+
+    def handle_unreplicate(self, request, context, *args, **kwargs):
+        self.check_write_permission(request)
+        study = self.get_object()
+        selectForm = export_forms.ExportSelectionForm(
+            data=request.POST, user=request.user
+        )
+        replicate = edd_models.MetadataType.system("Replicate")
+        if selectForm.is_valid():
+            for line in selectForm.selection.lines.filter(study_id=study.pk):
+                line.metadata_clear(replicate)
+                line.save()
+            return True
         return False
 
 
