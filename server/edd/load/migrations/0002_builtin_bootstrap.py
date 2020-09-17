@@ -35,7 +35,7 @@ def bootstrap(apps, schema_editor):
     CATEGORY_TRANSCRIPTOMCIS = Category.objects.create(
         name="Transcriptomics", sort_key=3
     )
-    CATEGORY_OD = Category.objects.create(name="OD", sort_key=4)
+    CATEGORY_OTHER = Category.objects.create(name="Other", sort_key=4)
     CategoryLayout = apps.get_model("load", "CategoryLayout")
     CategoryLayout.objects.get_or_create(
         layout=LAYOUT_GENERIC, category=CATEGORY_PROTEOMICS, defaults={"sort_key": 2},
@@ -49,7 +49,7 @@ def bootstrap(apps, schema_editor):
         defaults={"sort_key": 3},
     )
     CategoryLayout.objects.get_or_create(
-        layout=LAYOUT_GENERIC, category=CATEGORY_OD, defaults={"sort_key": 4}
+        layout=LAYOUT_GENERIC, category=CATEGORY_OTHER, defaults={"sort_key": 4}
     )
     CategoryLayout.objects.get_or_create(
         layout=LAYOUT_SKYLINE, category=CATEGORY_PROTEOMICS, defaults={"sort_key": 1},
