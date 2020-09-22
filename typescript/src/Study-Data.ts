@@ -1370,7 +1370,6 @@ export function prepareIt() {
     // and does the same to elements named in the 'for' attributes of each button.
     // We still need to add our own responders to actually do stuff.
     Utl.ButtonBar.prepareButtonBars();
-    StudyBase.overlayContent($("#assaysActionPanel"));
     // Prepend show/hide filter button for better alignment
     // Note: this will be removed when we implement left side filtering
 

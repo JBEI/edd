@@ -13,6 +13,10 @@ declare let window: StudyBase.EDDWindow;
 const EDDData = window.EDDData || ({} as EDDData);
 const $window = $(window);
 
+// define main form and assay modals
+let form: JQuery;
+let lineModal: JQuery;
+let assayModal: JQuery;
 // define managers for forms with metadata
 let lineMetadataManager: Forms.FormMetadataManager;
 let assayMetadataManager: Forms.FormMetadataManager;
@@ -20,16 +24,15 @@ let assayMetadataManager: Forms.FormMetadataManager;
 let access: Config.Access;
 
 /**
- * Calculates pixel height available in page with bottom bar overlaid on the
- * content container.
+ * Calculates pixel height available in page to keep the Action Bar visible.
  */
 function computeHeight() {
     const container = $("#studyLinesTable");
-    const bottomBar = $("#bottomBar");
-    return Math.max(
-        500,
-        $window.height() - container.offset().top - bottomBar.height(),
-    );
+    const actionsBar = $("#actionsBar");
+    const vertical = $window.height() - container.offset().top - actionsBar.height();
+    // always reserve at least 500 pixels
+    // also include a fudge factor of 20 pixels
+    return Math.max(500, vertical - 20);
 }
 
 function defineSelectionInputs(): JQuery {
@@ -75,7 +78,11 @@ function handleChange(container: Element): (...args: any[]) => void {
             .prop("indeterminate", 0 < selected && selected < total)
             .prop("checked", selected === total);
         // enable buttons if needed
-        $(".disablableButtons > button").prop("disabled", selected === 0);
+        $(".needs-lines-selected")
+            .toggleClass("disabled", selected === 0)
+            .prop("disabled", selected === 0);
+        // update badge counters
+        $(".badge.selected-line-count").text(selected ? selected.toString() : "");
     });
 }
 
@@ -85,15 +92,11 @@ function onDataLoad() {
     // Show controls that depend on having some lines present to be useful
     const hasLines = access.lines().length !== 0;
     $("#loadingLinesDiv").addClass("hide");
-    $("#edUploadDirectionsDiv").removeClass("hide");
-    $(".linesRequiredControls").toggleClass("hide", !hasLines);
-    $("#noLinesDiv").toggleClass("hide", hasLines);
 
     // if dialog had errors, open on page reload
-    const lineModalForm = $("#editLineModal");
-    if (lineModalForm.hasClass("validation_error")) {
+    if (lineModal.hasClass("validation_error")) {
         const navbar = $("nav.navbar");
-        lineModalForm.removeClass("off").dialog({
+        lineModal.removeClass("off").dialog({
             "maxHeight": $window.height() - navbar.height(),
             "maxWidth": $window.width(),
             "minWidth": 500,
@@ -101,96 +104,81 @@ function onDataLoad() {
             "title": "Please correct errors",
         });
     }
+    if (hasLines) {
+        $("#actionsBar").removeClass("hide");
+        setupTable();
+    } else {
+        $("#noLinesDiv").removeClass("hide");
+        setupAddButtonEvents();
+    }
+}
 
-    setupTable();
+function onExport(value: string) {
+    const selected = defineSelectionInputs();
+    if (selected.length === 0) {
+        form.append(
+            `<input type="hidden" name="studyId" value="${EDDData.currentStudyID}"/>`,
+        );
+    } else {
+        form.append(selected);
+    }
+    form.append($(`<input type="hidden" name="action" value="export"/>`));
+    form.append($(`<input type="hidden" name="export" value="${value}"/>`));
+    form.trigger("submit");
+    return false;
 }
 
 // setup controls once line table is displayed
 function onLineTableLoad() {
-    const parent: JQuery = $("#studyLinesTable").parent();
-    const lineModalForm = $("#editLineModal");
-    const assayModalForm = $("#addAssayModal");
-    setupModals(lineModalForm, assayModalForm);
-
-    // Enable add new Line button
-    parent.find(".addNewLineButton").on("click", () => {
-        showLineEditDialog($());
-        return false;
-    });
-
-    // Enable edit lines button
-    parent.find(".editButton").on("click", () => {
-        showLineEditDialog(defineSelectionInputs());
-        return false;
-    });
-
-    // Buttons for: clone, delete, restore
-    // each submits form with specific action, but needs to add selected IDs first
-    parent.find(".cloneButton, .disableButton, .enableButton").on("click", () => {
-        // add selected IDs before submit
-        $("#general").append(defineSelectionInputs());
-    });
-
-    // Enable add assay button
-    parent.find(".addAssayButton").on("click", () => {
-        assayMetadataManager.reset();
-        assayModalForm
-            .find(".hidden-line-inputs")
-            .empty()
-            .append(defineSelectionInputs());
-        assayModalForm
-            .removeClass("off")
-            .dialog(
-                StudyBase.dialogDefaults({
-                    "minWidth": 500,
-                }),
-            )
-            .dialog("open");
-        return false;
-    });
-
-    // Enable export button
-    parent.find(".exportLineButton").on("click", () => {
-        const form = $("#exportForm");
-        const selected = defineSelectionInputs();
-        if (selected.length === 0) {
-            form.append(
-                `<input type="hidden" name="studyId" value="${EDDData.currentStudyID}"/>`,
-            );
-        } else {
-            form.append(selected);
-        }
-        $("#exportModal")
-            .removeClass("off")
-            .dialog("open");
-        return false;
-    });
-
-    // Enable worklist button
-    parent.find(".worklistButton").on("click", () => {
-        const form = $("#exportForm");
-        const selected = defineSelectionInputs();
-        if (selected.length === 0) {
-            form.append(
-                `<input type="hidden" name="studyId" value="${EDDData.currentStudyID}"/>`,
-            );
-        } else {
-            form.append(selected);
-        }
-        form.find("select[name=export]").val("worklist");
-        form.find("button[name=action]").click();
-        return false;
-    });
-
-    // make sure the action bar is always visible
-    StudyBase.overlayContent($("#actionsBar"));
+    setupEditButtonEvents();
+    setupAddButtonEvents();
+    setupExportButtonEvents();
+    setupModals();
 }
 
 // Called on page loading; data may not be available
 function onPageLoad() {
-    setupHelp();
+    form = $("#general");
+    lineModal = $("#editLineModal");
+    assayModal = $("#addAssayModal");
     setupDropzone();
     setupEditableName();
+}
+
+function setupAddButtonEvents() {
+    // Enable add new Line button
+    form.on("click", ".addNewLineButton", () => {
+        showLineEditDialog($());
+        return false;
+    });
+    // menu item for clone
+    form.on("click", "#cloneButton", () => {
+        const selection = defineSelectionInputs();
+        if (selection.length > 0) {
+            form.append(selection);
+            form.append($(`<input type="hidden" name="action" value="clone"/>`));
+            form.trigger("submit");
+        }
+        return false;
+    });
+    // menu item for add assay
+    form.on("click", "#addAssayButton", () => {
+        const selection = defineSelectionInputs();
+        if (selection.length > 0) {
+            const hiddenInputs = assayModal.find(".hidden-line-inputs");
+            assayMetadataManager.reset();
+            hiddenInputs.empty().append(selection);
+            assayModal
+                .removeClass("off")
+                .dialog(
+                    StudyBase.dialogDefaults({
+                        "minWidth": 500,
+                    }),
+                )
+                .dialog("open");
+        }
+        return false;
+    });
 }
 
 function setupDropzone() {
@@ -219,42 +207,58 @@ function setupEditableName() {
     StudyBase.EditableStudyName.createFromElement(title);
 }
 
-function setupHelp() {
-    const linesHelp = $("#line-help-content").dialog({
-        "title": "What is a line?",
-        "autoOpen": false,
-        "modal": true,
-        "resizable": true,
-        "position": {
-            "my": "left top",
-            "at": "left bottom",
-            "of": "#line-help-btn",
-        },
+function setupEditButtonEvents() {
+    // Enable edit lines button
+    form.on("click", "#editButton", () => {
+        const selection = defineSelectionInputs();
+        if (selection.length > 0) {
+            showLineEditDialog(selection);
+        }
+        return false;
     });
-
-    $("#line-help-btn").on("click", () => linesHelp.dialog("open"));
+    // menu items for delete, restore
+    form.on("click", "#disableButton", () => {
+        const selection = defineSelectionInputs();
+        if (selection.length > 0) {
+            form.append(selection);
+            form.append($(`<input type="hidden" name="action" value="disable"/>`));
+            form.trigger("submit");
+        }
+        return false;
+    });
+    form.on("click", "#enableButton", () => {
+        const selection = defineSelectionInputs();
+        if (selection.length > 0) {
+            form.append(selection);
+            form.append($(`<input type="hidden" name="action" value="enable"/>`));
+            form.trigger("submit");
+        }
+        return false;
+    });
 }
 
-function setupModals(lineModalForm: JQuery, assayModalForm: JQuery) {
+function setupExportButtonEvents() {
+    // Enable export buttons
+    form.on("click", "#exportLineButton", () => onExport("csv"));
+    form.on("click", "#worklistButton", () => onExport("worklist"));
+    form.on("click", "#sbmlButton", () => onExport("sbml"));
+    form.on("click", "#exportNewStudyButton", () => onExport("study"));
+}
+
+function setupModals() {
     // Set up jQuery modals
-    lineModalForm.dialog(
+    lineModal.dialog(
         StudyBase.dialogDefaults({
             "minWidth": 500,
         }),
     );
-    lineMetadataManager = new Forms.FormMetadataManager(lineModalForm, "line");
-    assayModalForm.dialog(
+    lineMetadataManager = new Forms.FormMetadataManager(lineModal, "line");
+    assayModal.dialog(
         StudyBase.dialogDefaults({
             "minWidth": 500,
         }),
     );
-    assayMetadataManager = new Forms.FormMetadataManager(assayModalForm, "assay");
-    $("#exportModal").dialog(
-        StudyBase.dialogDefaults({
-            "maxHeight": 400,
-            "minWidth": 400,
-        }),
-    );
+    assayMetadataManager = new Forms.FormMetadataManager(assayModal, "assay");
 }
 
 function setupTable() {
@@ -304,7 +308,6 @@ function setupTable() {
 }
 
 function showLineEditDialog(selection: JQuery): void {
-    const form = $("#editLineModal");
     let titleText: string;
     let record: LineRecord;
     let contact: Utl.EDDContact;
@@ -323,33 +326,33 @@ function showLineEditDialog(selection: JQuery): void {
         contact = new Utl.EDDContact(record.contact);
         experimenter = new Utl.EDDContact(record.experimenter);
     }
-    form.dialog({ "title": titleText });
+    lineModal.dialog({ "title": titleText });
 
     // create object to handle form interactions
-    const formManager = new Forms.BulkFormManager(form, "line");
+    const formManager = new Forms.BulkFormManager(lineModal, "line");
     const str = (x: any): string => "" + (x || ""); // forces values to string, falsy === ""
     // define fields on form
     type Pair = [string, string]; // this gets used below to disambiguate Autocomplete renders
     const fields: { [name: string]: Forms.IFormField } = {
-        "name": new Forms.Field(form.find("[name=line-name]"), "name"),
+        "name": new Forms.Field(lineModal.find("[name=line-name]"), "name"),
         "description": new Forms.Field(
-            form.find("[name=line-description]"),
+            lineModal.find("[name=line-description]"),
             "description",
         ),
-        "control": new Forms.Checkbox(form.find("[name=line-control]"), "control"),
+        "control": new Forms.Checkbox(lineModal.find("[name=line-control]"), "control"),
         "contact": new Forms.Autocomplete(
-            form.find("[name=line-contact_0"),
-            form.find("[name=line-contact_1"),
+            lineModal.find("[name=line-contact_0"),
+            lineModal.find("[name=line-contact_1"),
             "contact",
         ).render((): Pair => [contact.display(), str(contact.id())]),
         "experimenter": new Forms.Autocomplete(
-            form.find("[name=line-experimenter_0"),
-            form.find("[name=line-experimenter_1"),
+            lineModal.find("[name=line-experimenter_0"),
+            lineModal.find("[name=line-experimenter_1"),
             "experimenter",
         ).render((): Pair => [experimenter.display(), str(experimenter.id())]),
         "strain": new Forms.Autocomplete(
-            form.find("[name=line-strains_0"),
-            form.find("[name=line-strains_1"),
+            lineModal.find("[name=line-strains_0"),
+            lineModal.find("[name=line-strains_1"),
             "strain",
         ).render(
             (r): Pair => {
@@ -375,7 +378,7 @@ function showLineEditDialog(selection: JQuery): void {
     }
 
     // special case, ignore name field when editing multiples
-    const nameInput = form.find("[name=line-name]");
+    const nameInput = lineModal.find("[name=line-name]");
     const nameParent = nameInput.parent();
     if (selection.length > 1) {
         // remove required property
@@ -391,7 +394,7 @@ function showLineEditDialog(selection: JQuery): void {
     }
 
     // display modal dialog
-    form.removeClass("off").dialog("open");
+    lineModal.removeClass("off").dialog("open");
 }
 
 function toggleSelectAllState() {

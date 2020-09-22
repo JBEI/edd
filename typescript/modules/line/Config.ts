@@ -13,7 +13,7 @@ type FetchMode = "copy" | "render" | void;
  * Access object and a listing of metadata to show.
  */
 export function columns(access: Access): Handsontable.ColumnSettings[] {
-    const metaColumns = access.metadata().map((meta) => ({
+    const metaColumns = access.metadataForTable().map((meta) => ({
         "data": `meta.${meta.id}`,
         "header": meta.name,
         // TODO: apply renderers if exists on MetadataType
@@ -163,6 +163,12 @@ export class Access {
 
     metadata(): MetadataTypeRecord[] {
         return this._metadata;
+    }
+
+    metadataForTable(): MetadataTypeRecord[] {
+        // metadata to show in table is everything except replicate
+        // maybe later also filter out other things
+        return this._metadata.filter((meta) => meta.input_type !== "replicate");
     }
 
     /**

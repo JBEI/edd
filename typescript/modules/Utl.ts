@@ -503,12 +503,10 @@ export class FileDropZone {
  */
 export class FileDropZoneHelpers {
     private pageRedirect: string;
-    private actionPanelIsCopied: boolean;
 
     constructor(options?: any) {
         options = options || {};
         this.pageRedirect = options.pageRedirect || "";
-        this.actionPanelIsCopied = false;
     }
 
     // This is called upon receiving a response from a file upload operation, and unlike
@@ -531,7 +529,6 @@ export class FileDropZoneHelpers {
         // TODO: fix hard-coded URL redirect
         const base = relativeURL("../");
         const redirect = relativeURL(this.pageRedirect, base);
-        this.copyActionButtons();
         $("#acceptWarnings")
             .find(".acceptWarnings")
             .on("click", (ev: JQueryMouseEventObject): boolean => {
@@ -556,45 +553,9 @@ export class FileDropZoneHelpers {
         }, 1000);
     }
 
-    private copyActionButtons(): void {
-        if (!this.actionPanelIsCopied) {
-            const original: JQuery = $("#actionWarningBar");
-            const copy: JQuery = original
-                .clone()
-                .appendTo("#bottomBar")
-                .hide();
-            // forward click events on copy to the original button
-            copy.on("click", "button", (e) => {
-                original.find(`#${e.target.id}`).trigger(e);
-            });
-            const originalDismiss: JQuery = $("#dismissAll").find(".dismissAll");
-            const copyDismiss: JQuery = originalDismiss
-                .clone()
-                .appendTo("#bottomBar")
-                .hide();
-            // forward click events on copy to the original button
-            copyDismiss.on("click", "button", (e) => {
-                originalDismiss.trigger(e);
-            });
-            const originalAcceptWarnings: JQuery = $("#acceptWarnings").find(
-                ".acceptWarnings",
-            );
-            const copyAcceptWarnings: JQuery = originalAcceptWarnings
-                .clone()
-                .appendTo("#bottomBar")
-                .hide();
-            // forward click events on copy to the original button
-            copyAcceptWarnings.on("click", "button", (e) => {
-                originalAcceptWarnings.trigger(e);
-            });
-            this.actionPanelIsCopied = true;
-        }
-    }
-
     // This is called upon receiving an error in a file upload operation, and
     // is passed an unprocessed result from the server as a second argument.
     fileErrorReturnedFromServer(dropZone: FileDropZone, file, msg, xhr): void {
-        this.copyActionButtons();
         const parent: JQuery = $("#alert_placeholder");
         const dismissAll: JQuery = $("#dismissAll");
         // TODO: fix hard-coded URL redirect

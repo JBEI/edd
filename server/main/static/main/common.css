@@ -95,6 +95,11 @@ label {
 input:disabled + label {
     color: #ccc;
 }
+/* TODO: replace HTML with .mx-2 in Bootstrap 4 */
+.label-spaced {
+    margin-left: 0.25em;
+    margin-right: 0.25em;
+}
 
 .disabled-label {
     color: #ccc;
@@ -230,7 +235,6 @@ input:disabled + label {
 .top {
     vertical-align: top !important;
 }
-:disabled,
 .disabled > input,
 .disabled > select,
 .disabled > textarea {
