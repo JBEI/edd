@@ -235,6 +235,25 @@ function setupEditButtonEvents() {
         }
         return false;
     });
+    // menu items for grouping and resetting replicates
+    form.on("click", "#replicateButton", () => {
+        const selection = defineSelectionInputs();
+        if (selection.length > 0) {
+            form.append(selection);
+            form.append($(`<input type="hidden" name="action" value="replicate"/>`));
+            form.trigger("submit");
+        }
+        return false;
+    });
+    form.on("click", "#unreplicateButton", () => {
+        const selection = defineSelectionInputs();
+        if (selection.length > 0) {
+            form.append(selection);
+            form.append($(`<input type="hidden" name="action" value="unreplicate"/>`));
+            form.trigger("submit");
+        }
+        return false;
+    });
 }
 
 function setupExportButtonEvents() {
