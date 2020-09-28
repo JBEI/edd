@@ -257,11 +257,41 @@ function setupEditButtonEvents() {
 }
 
 function setupExportButtonEvents() {
-    // Enable export buttons
     form.on("click", "#exportLineButton", () => onExport("csv"));
     form.on("click", "#worklistButton", () => onExport("worklist"));
     form.on("click", "#sbmlButton", () => onExport("sbml"));
     form.on("click", "#exportNewStudyButton", () => onExport("study"));
+}
+
+function setupFilter(table: Handsontable) {
+    const menu = $(".table-filter-options");
+    const checked = "glyphicon-check";
+    const unchecked = "glyphicon-unchecked";
+    const choose_data = (key, enabled) => {
+        if (enabled) {
+            switch (key) {
+                case "showDisabledItem":
+                    return access.disabledLines();
+                case "groupReplicateItem":
+                    return access.replicates();
+            }
+        }
+        return access.lines();
+    };
+    menu.on("click", "a", (event) => {
+        const item = $(event.target);
+        const icon = item.find(".glyphicon");
+        const adding_check = icon.hasClass(unchecked);
+        // uncheck all items
+        menu.find(".glyphicon")
+            .addClass(unchecked)
+            .removeClass(checked);
+        // change clicked item state
+        icon.toggleClass(checked, adding_check).toggleClass(unchecked, !adding_check);
+        // refresh table data
+        table.loadData(choose_data(item.attr("id"), adding_check));
+        return false;
+    });
 }
 
 function setupModals() {
@@ -324,6 +354,8 @@ function setupTable() {
     });
     // handler for select all box
     $(container).on("click", ".select-all", toggleSelectAllState);
+    // handlers for filter bar
+    setupFilter(table);
 }
 
 function showLineEditDialog(selection: JQuery): void {

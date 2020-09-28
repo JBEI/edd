@@ -105,26 +105,26 @@
         </button>
         <ul class="dropdown-menu">
           <li class="needs-lines-selected">
-            <a id="disableButton">
+            <a href="#" id="disableButton">
               <span class="glyphicon glyphicon-trash"></span>
               {% trans 'Disable' %}
             </a>
           </li>
           <li class="needs-lines-selected">
-            <a id="enableButton">
+            <a href="#" id="enableButton">
               <span class="glyphicon glyphicon-refresh"></span>
               {% trans 'Restore' %}
             </a>
           </li>
           <li role="separator" class="divider"></li>
           <li class="needs-lines-selected">
-            <a id="replicateButton">
+            <a href="#" id="replicateButton">
               <span class="glyphicon glyphicon-star"></span>
               {% trans 'Group as replicates ...' %}
             </a>
           </li>
           <li class="needs-lines-selected">
-            <a id="unreplicateButton">
+            <a href="#" id="unreplicateButton">
               <span class="glyphicon glyphicon-star-empty"></span>
               {% trans 'Ungroup replicates ...' %}
             </a>
@@ -154,7 +154,7 @@
             </a>
           </li>
           <li class="needs-lines-selected">
-            <a id="cloneButton">
+            <a href="#" id="cloneButton">
               <span class="glyphicon glyphicon-duplicate"></span>
               {% trans 'Clone Lines' %}
               <span class="badge selected-line-count"></span>
@@ -162,7 +162,7 @@
           </li>
           <li role="separator" class="divider"></li>
           <li class="needs-lines-selected">
-            <a id="addAssayButton">
+            <a href="#" id="addAssayButton">
               <span class="glyphicon glyphicon-plus"></span>
               {% trans 'Add Assay' %}
               <span class="badge selected-line-count"></span>
@@ -171,6 +171,32 @@
         </ul>
       </div>
       {% endif %}
+      <div class="btn-group dropup">
+        <button
+          aria-expanded="false"
+          aria-haspopup="true"
+          class="btn btn-default dropdown-toggle"
+          data-toggle="dropdown"
+          type="button"
+        >
+          <span class="glyphicon glyphicon-filter"></span>
+          {% trans 'View Options' %}
+        </button>
+        <ul class="dropdown-menu table-filter-options">
+          <li>
+            <a href="#" id="showDisabledItem">
+              <span class="glyphicon glyphicon-unchecked"></span>
+              {% trans 'Show Disabled' %}
+            </a>
+          </li>
+          <li>
+            <a href="#" id="groupReplicateItem">
+              <span class="glyphicon glyphicon-unchecked"></span>
+              {% trans 'Group Replicates' %}
+            </a>
+          </li>
+        </ul>
+      </div>
     </div>
     <div class="btn-group dropup">
       <button class="btn btn-primary" id="exportLineButton" type="button">
@@ -187,22 +213,22 @@
         <span class="caret"></span>
         <span class="sr-only">{% trans 'Toggle Menu' %}</span>
       </button>
-      <ul class="dropdown-menu">
+      <ul class="dropdown-menu dropdown-menu-right">
         <li>
-          <a id="exportNewStudyButton">
+          <a href="#" id="exportNewStudyButton">
             <span class="glyphicon glyphicon-duplicate"></span>
             {% trans 'to New Study' %}
           </a>
         </li>
         <li>
-          <a id="sbmlButton">
+          <a href="#" id="sbmlButton">
             <span class="glyphicon glyphicon-send"></span>
             {% trans 'SBML Export' %}
           </a>
         </li>
         <li role="separator" class="divider"></li>
         <li>
-          <a id="worklistButton">
+          <a href="#" id="worklistButton">
             <span class="glyphicon glyphicon-save"></span>
             {% trans 'Generate Worklist' %}
           </a>
