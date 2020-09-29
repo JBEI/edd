@@ -39,6 +39,7 @@ interface LineRecord extends EDDRecord {
     color?: string;
     // optional properties, set only in line table code
     selected?: boolean;
+    replicate_ids?: number[];
     replicate_names?: string[];
 }
 

@@ -236,30 +236,37 @@ export class Access {
         const lookup = {};
         // scan all lines, merging those that are replicates
         this.lines().forEach((line: LineRecord) => {
-            const replicate_id = line.meta[this._replicate.id];
+            // create a copy of the line for replicates view
+            const copy = { ...line };
+            const replicate_id = copy.meta[this._replicate.id];
+            // TODO: better way to handle selection state when switching modes?
+            // this means switching between replicate and normal mode will clear selection
+            copy.selected = false;
             if (replicate_id) {
                 // find any previous match
                 const match_index = lookup[replicate_id];
                 if (match_index !== undefined) {
                     // merge with previous match
                     const previous = replicates[match_index];
-                    const updated = mergeLines(previous, line, conflict);
-                    // track the names
-                    updated.replicate_names = previous.replicate_names;
-                    updated.replicate_names.push(line.name);
+                    const updated = mergeLines(previous, copy, conflict);
+                    // track the names, IDs, and selection state
+                    updated.replicate_ids = [...previous.replicate_ids, copy.id];
+                    updated.replicate_names = [...previous.replicate_names, copy.name];
+                    updated.selected = false;
                     // keep the updated object
                     replicates[match_index] = updated;
                 } else {
-                    // make a copy for "replicate" version
-                    const updated = { ...line };
-                    // record index and add to list
+                    // record index and add to lookup
                     lookup[replicate_id] = replicates.length;
-                    updated.replicate_names = [line.name];
-                    replicates.push(updated);
+                    // track names and IDs
+                    copy.replicate_ids = [copy.id];
+                    copy.replicate_names = [copy.name];
+                    // pass to list
+                    replicates.push(copy);
                 }
             } else {
-                // if no replicate, pass directly to list
-                replicates.push(line);
+                // if no replicate_id, pass directly to list
+                replicates.push(copy);
             }
         });
         return replicates;
@@ -285,7 +292,7 @@ export class Access {
             return row.strain
                 .map((item) => {
                     const strain = this._data.Strains?.[item];
-                    return strain?.registry_url;
+                    return strain?.registry_url || strain?.name;
                 })
                 .filter(identity)
                 .join("\n");

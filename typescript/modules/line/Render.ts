@@ -7,12 +7,7 @@ import * as Utl from "../Utl";
 
 const base = Handsontable.renderers.BaseRenderer;
 // define a subset of the base renderer arguments
-type RenderFn<T> = (
-    td: HTMLTableCellElement,
-    rowIndex: number,
-    colIndex: number,
-    value: T,
-) => HTMLTableCellElement;
+type RenderFn<T> = (td: HTMLTableCellElement, value: T) => HTMLTableCellElement;
 
 function buildRenderer<T>(fn: RenderFn<T>): Handsontable.renderers.Base {
     return (hot, td, row, column, prop, value, cellProp) => {
@@ -20,8 +15,9 @@ function buildRenderer<T>(fn: RenderFn<T>): Handsontable.renderers.Base {
         let resolved: T;
         if ($.isFunction(prop)) {
             // fetch the "render" value from ColumnDataGetterSetterFunction
+            const physical_row = hot.toPhysicalRow(row);
             resolved = prop.apply(null, [
-                hot.getSourceDataAtRow(row),
+                hot.getSourceDataAtRow(physical_row),
                 undefined,
                 "render",
             ]);
@@ -29,7 +25,7 @@ function buildRenderer<T>(fn: RenderFn<T>): Handsontable.renderers.Base {
             // value is already the "render" value
             resolved = value;
         }
-        return fn(td, row, column, resolved);
+        return fn(td, resolved);
     };
 }
 
@@ -45,7 +41,7 @@ function buildRenderer<T>(fn: RenderFn<T>): Handsontable.renderers.Base {
 export function register() {
     Handsontable.renderers.registerRenderer(
         "edd.replicate_name",
-        buildRenderer((td, row, column, value: LineRecord) => {
+        buildRenderer((td, value: LineRecord) => {
             if (value.replicate_names) {
                 const added_count = value.replicate_names.length - 1;
                 const first = value.replicate_names[0];
@@ -59,7 +55,7 @@ export function register() {
     );
     Handsontable.renderers.registerRenderer(
         "edd.strain",
-        buildRenderer((td, row, column, value: StrainRecord[]) => {
+        buildRenderer((td, value: StrainRecord[]) => {
             if (value.length > 0) {
                 td.innerHTML = value
                     .map((strain) => {
@@ -78,14 +74,14 @@ export function register() {
     );
     Handsontable.renderers.registerRenderer(
         "edd.timestamp",
-        buildRenderer((td, row, column, value: number) => {
+        buildRenderer((td, value: number) => {
             td.innerHTML = Utl.JS.timestampToTodayString(value);
             return td;
         }),
     );
     Handsontable.renderers.registerRenderer(
         "edd.user",
-        buildRenderer((td, row, column, value: UserRecord) => {
+        buildRenderer((td, value: UserRecord) => {
             td.innerHTML = value?.initials || "--";
             return td;
         }),

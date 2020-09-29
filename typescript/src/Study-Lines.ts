@@ -22,6 +22,7 @@ let lineMetadataManager: Forms.FormMetadataManager;
 let assayMetadataManager: Forms.FormMetadataManager;
 
 let access: Config.Access;
+let hot: Handsontable;
 
 /**
  * Calculates pixel height available in page to keep the Action Bar visible.
@@ -36,10 +37,18 @@ function computeHeight() {
 }
 
 function defineSelectionInputs(): JQuery {
-    const selected = access.lines().filter((line) => line?.selected);
-    const inputs = selected.map(
-        (line) => $(`<input type="hidden" name="lineId" value="${line.id}"/>`)[0],
-    );
+    const rows = hot.getSourceData() as LineRecord[];
+    const selected = rows.filter((line) => line?.selected);
+    const template = (id) => $(`<input type="hidden" name="lineId" value="${id}"/>`)[0];
+    // TODO: replace with flatMap once supported
+    const inputs: HTMLElement[] = [];
+    selected.forEach((line) => {
+        if (line.replicate_ids?.length) {
+            inputs.push(...line.replicate_ids.map(template));
+        } else {
+            inputs.push(template(line.id));
+        }
+    });
     return $(inputs);
 }
 
@@ -62,28 +71,6 @@ function disableResizeFirstColumn(width: number, column: number): number {
         return 23;
     }
     return width;
-}
-
-/**
- * Creates a listener for changes to table data, updating status of buttons and
- * the select-all checkbox.
- */
-function handleChange(container: Element): (...args: any[]) => void {
-    return Utl.debounce(() => {
-        const lines: LineRecord[] = access.lines();
-        const total = lines.length;
-        const selected = lines.filter((line) => line?.selected).length;
-        const selectAll = $(".select-all", container);
-        selectAll
-            .prop("indeterminate", 0 < selected && selected < total)
-            .prop("checked", selected === total);
-        // enable buttons if needed
-        $(".needs-lines-selected")
-            .toggleClass("disabled", selected === 0)
-            .prop("disabled", selected === 0);
-        // update badge counters
-        $(".badge.selected-line-count").text(selected ? selected.toString() : "");
-    });
 }
 
 // Called when the page loads the EDDData object
@@ -113,7 +100,7 @@ function onDataLoad() {
     }
 }
 
-function onExport(value: string) {
+function onExport(exportType: string) {
     const selected = defineSelectionInputs();
     if (selected.length === 0) {
         form.append(
@@ -123,7 +110,7 @@ function onExport(value: string) {
         form.append(selected);
     }
     form.append($(`<input type="hidden" name="action" value="export"/>`));
-    form.append($(`<input type="hidden" name="export" value="${value}"/>`));
+    form.append($(`<input type="hidden" name="export" value="${exportType}"/>`));
     form.trigger("submit");
     return false;
 }
@@ -263,7 +250,7 @@ function setupExportButtonEvents() {
     form.on("click", "#exportNewStudyButton", () => onExport("study"));
 }
 
-function setupFilter(table: Handsontable) {
+function setupFilter() {
     const menu = $(".table-filter-options");
     const checked = "glyphicon-check";
     const unchecked = "glyphicon-unchecked";
@@ -289,7 +276,7 @@ function setupFilter(table: Handsontable) {
         // change clicked item state
         icon.toggleClass(checked, adding_check).toggleClass(unchecked, !adding_check);
         // refresh table data
-        table.loadData(choose_data(item.attr("id"), adding_check));
+        hot.loadData(choose_data(item.attr("id"), adding_check));
         return false;
     });
 }
@@ -313,11 +300,12 @@ function setupModals() {
 function setupTable() {
     const container = document.getElementById("studyLinesTable");
     const columns = Config.columns(access);
-    // Handsontable.hooks.add("afterInit", onLineTableLoad);
-    const table = new Handsontable(container, {
-        "afterChange": handleChange(container),
+    const changeHandler = Utl.debounce(updateSelectionState);
+    hot = new Handsontable(container, {
+        "afterChange": changeHandler,
         "afterInit": onLineTableLoad,
         "afterGetColHeader": disableMenuFirstColumn,
+        "afterRender": changeHandler,
         "allowInsertRow": false,
         "allowInsertColumn": false,
         "allowRemoveRow": false,
@@ -327,8 +315,14 @@ function setupTable() {
         "colHeaders": columns.map((c) => c.header),
         "columns": columns,
         "data": access.lines(),
-        // TODO: add additional menu items, filtering, etc.
-        "dropdownMenu": ["alignment"],
+        "dropdownMenu": [
+            "alignment",
+            // TODO: filter works off clipboard value, not rendered value
+            // maybe need special handlers per column or render type?
+            "filter_by_condition",
+            "filter_by_value",
+            "filter_action_bar",
+        ],
         "filters": true,
         // freeze the first column
         "fixedColumnsLeft": 1,
@@ -350,12 +344,12 @@ function setupTable() {
     });
     // re-fit the table when scrolling or resizing window
     $window.on("scroll resize", () => {
-        table.updateSettings({ "height": computeHeight() });
+        hot.updateSettings({ "height": computeHeight() });
     });
     // handler for select all box
     $(container).on("click", ".select-all", toggleSelectAllState);
     // handlers for filter bar
-    setupFilter(table);
+    setupFilter();
 }
 
 function showLineEditDialog(selection: JQuery): void {
@@ -449,14 +443,36 @@ function showLineEditDialog(selection: JQuery): void {
 }
 
 function toggleSelectAllState() {
-    const container = document.getElementById("studyLinesTable");
-    const box = $(".select-all", container);
+    const box = $(".select-all", hot.rootElement);
     const selectAll = box.prop("indeterminate") || !box.prop("checked");
+    const rows = hot.getSourceData() as LineRecord[];
     box.prop("checked", selectAll);
-    access.lines().forEach((line) => {
+    rows.forEach((line) => {
         line.selected = selectAll;
     });
     return false;
+}
+
+function updateSelectionState() {
+    const rows: LineRecord[] = hot.getSourceData() as LineRecord[];
+    const selectedRows = rows.filter((line) => line?.selected);
+    const total = rows.length;
+    const selected = selectedRows.length;
+    // count is one per selected row, or the number of grouped replicates if present
+    const count = selectedRows.reduce(
+        (acc, line) => acc + (line?.replicate_ids?.length || 1),
+        0,
+    );
+    const selectAll = $(".select-all", hot.rootElement);
+    selectAll
+        .prop("indeterminate", 0 < selected && selected < total)
+        .prop("checked", selected === total);
+    // enable buttons if needed
+    $(".needs-lines-selected")
+        .toggleClass("disabled", selected === 0)
+        .prop("disabled", selected === 0);
+    // update badge counters
+    $(".badge.selected-line-count").text(count ? count.toString() : "");
 }
 
 // wait for edddata event to begin processing page
