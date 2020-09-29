@@ -62,11 +62,13 @@ export function register() {
         buildRenderer((td, row, column, value: StrainRecord[]) => {
             if (value.length > 0) {
                 td.innerHTML = value
-                    .map(
-                        (strain) => `<a
-                            href="${strain.registry_url}"
-                            target="_blank">${strain.name}</a>`,
-                    )
+                    .map((strain) => {
+                        if (strain.registry_url) {
+                            return `<a href="${strain.registry_url}"
+                                target="_blank">${strain.name}</a>`;
+                        }
+                        return strain.name;
+                    })
                     .join("<br/>");
             } else {
                 td.innerHTML = "--";
