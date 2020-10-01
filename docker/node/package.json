@@ -26,16 +26,13 @@
         "eslint-loader": "^4.0.2",
         "eslint-plugin-prettier": "^3.1.1",
         "eslint-plugin-react": "^7.18.3",
-        "fibers": "^4.0.0",
         "file-loader": "^6.1.0",
         "handsontable": "^7.0.0",
         "jquery": "^3.2.1",
         "jquery-ui": "^1.12.1",
         "mini-css-extract-plugin": "^0.11.2",
-        "node-sass": "^4.12.0",
         "prettier": "^1.19.1",
         "promise": "^8.0.0",
-        "qtip2": "^3.0.3",
         "react": "^16.10.0",
         "react-dom": "^16.10.0",
         "react-dropzone": "^10.1.0",
@@ -53,6 +50,10 @@
     "scripts": {
         "build": "NODE_ENV=production webpack -p --progress --profile --colors --config edd/typescript/webpack.config.js",
         "watch": "webpack -p --progress --profile --colors --watch --watch-poll --config edd/typescript/webpack.config.js"
+    },
+    "resolutions": {
+        "source-map-resolve": "^0.6.0",
+        "chokidar": "^3.4.2"
     },
     "repository": {
         "type": "git",

@@ -6,6 +6,7 @@ COPY package.json /run/
 
 WORKDIR /run/
 
-RUN npm install --no-optional
+RUN yarn install --non-interactive --ignore-optional \
+ && yarn cache clean
 
 CMD ["sh"]
