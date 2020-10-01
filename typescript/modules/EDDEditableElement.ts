@@ -1,4 +1,4 @@
-import * as tinymce from "tinymce/tinymce";
+import tinymce from "tinymce/tinymce";
 
 import "tinymce/plugins/link";
 import "tinymce/themes/silver";
