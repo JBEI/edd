@@ -9,78 +9,78 @@
 {% endblock js_css %}
 
 
-{% block head_title %}
-  {{ block.super }}
-{% endblock head_title %}
-
-
-{% block body_title %}
-  {{ block.super }}
-{% endblock body_title %}
-
-
 {% block content %}
   {{ block.super }}
 
-<div class="buttonBar" id="displayModeButtons">
-  <span class="active" id="lineGraphButton" for="graphDisplayContainer">
-    <img src="{% static 'main/images/study-data-icon-lines.png' %}"
-        style="vertical-align: bottom" width="18" height="18" />
-    {% trans 'Line Graph' %}
-  </span><span id="barGraphButton" for="graphDisplayContainer">
-    <img src="{% static 'main/images/study-data-icon-bars.png' %}"
-        style="vertical-align: bottom" width="18" height="18" />
-    {% trans 'Bar Graphs' %}
-  </span><span id="dataTableButton" for="studyAssaysTable">
-    <img src="{% static 'main/images/study-data-icon-chart.png' %}"
-        style="vertical-align: bottom" width="18" height="18" />
-    {% trans 'Table' %}
-  </span>
-  <div class="buttonBar off" id="barGraphTypeButtons">
-    <span id="measurementBarGraphButton" class="active" for="barGraphByMeasurement">
-      {% trans 'Measurement' %}
-    </span>
-    <span id="lineBarGraphButton" for="barGraphByLine">
-      {% trans 'Line' %}
-    </span>
-    <span id="timeBarGraphButton" for="barGraphByTime">
-      {% trans 'Time' %}
-    </span>
-  </div>
-  <div id="filterControlsArea" style="margin:auto 0 auto 15px;">
-    <div id="filterControlsMenu" class="pulldownMenu">
-      <div id="filterControlsMenuLabel"
-          class="pulldownMenuLabelOff">{% trans 'View options' %} ▾</div>
-      <div class="pulldownMenuMenuBlock off">
-        <ul>
+  <div class="btn-toolbar">
+    <div
+      aria-label="{% trans 'Display Modes' %}"
+      class="btn-group"
+      id="displayModeButtons"
+      role="group"
+    >
+      <button class="btn btn-default" id="lineGraphButton" type="button">
+        <span class="fas fa-chart-line"></span>
+        <span class="collapse-label">{% trans 'Line Graph' %}</span>
+      </button>
+      <div class="btn-group" role="group">
+        <button
+          aria-expanded="false"
+          aria-haspopup="true"
+          class="btn btn-default dropdown-toggle"
+          data-toggle="dropdown"
+          id="barGraphButton"
+          type="button"
+        >
+          <span class="fas fa-chart-bar"></span>
+          <span class="collapse-label">{% trans 'Bar Graph' %}</span>
+          <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li class="dropdown-header">{% trans 'Grouped By' %}</li>
           <li>
-            <input id="filteringShowDisabledCheckbox"
-                name="filteringShowDisabled"
-                type="checkbox"
-                value="1">
-            <label for="filteringShowDisabledCheckbox"
-                title="{% trans 'Show assays that have been disabled.' %}">
-              {% trans 'Show Disabled' %}
-            </label>
+            <a href="#" id="groupMeasureBtn">{% trans 'Measurement' %}</a>
           </li>
           <li>
-            <input id="filteringShowEmptyCheckbox"
-                name="filteringShowEmpty"
-                type="checkbox"
-                value="1">
-            <label for="filteringShowEmptyCheckbox"
-                title="{% trans 'Show assays that do not have any measurements in them.' %}">
-              {% trans 'Show Empty' %}
-            </label>
+            <a href="#" id="groupLineBtn">{% trans 'Line' %}</a>
+          </li>
+          <li>
+            <a href="#" id="groupTimeBtn">{% trans 'Time' %}</a>
           </li>
         </ul>
       </div>
+      <button class="btn btn-default" id="dataTableButton" type="button">
+        <span class="fas fa-table"></span>
+        <span class="collapse-label">{% trans 'Table' %}</span>
+      </button>
+    </div>
+    <div class="btn-group" id="filterControlsArea">
+      <button
+        aria-expanded="false"
+        aria-haspopup="true"
+        class="btn btn-default dropdown-toggle"
+        data-toggle="dropdown"
+        type="button"
+      >
+        <span>{% trans 'View options' %}</span>
+        <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu">
+        <li><a>
+          <label for="filteringShowDisabledCheckbox">
+            <input id="filteringShowDisabledCheckbox" type="checkbox" />
+            {% trans 'Show Disabled' %}
+          </label>
+        </a></li>
+        <li><a>
+          <label for="filteringShowEmptyCheckbox">
+            <input id="filteringShowEmptyCheckbox" type="checkbox" />
+            {% trans 'Show Empty' %}
+          </label>
+        </a></li>
+      </ul>
     </div>
   </div>
-  <div id="tableControlsArea" class="off" style="margin:auto 0;">
-    {# filled out client-side #}
-  </div>
-</div>
 
 <div id="graphDisplayContainer">
   <div class="off noData">{% trans 'No measurements.' %}</div>
@@ -88,16 +88,13 @@
     {% trans 'Too many points to display! Please change your filter settings.' %}
   </div>
   <div id="graphLoading" class="wait-larger"></div>
-  <div id="lineGraph" class="off"></div>
-  <div id="barGraphByMeasurement" class="off"></div>
-  <div id="barGraphByLine" class="off"></div>
-  <div id="barGraphByTime" class="off"></div>
+  <div id="graphArea" class="off"></div>
 </div>
 
 <form action="" method="POST">
 {% csrf_token %}
 {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-<table id="studyAssaysTable" class="off"></table>
+<table id="assaysTable" class="off"></table>
 
 <div id="assaysActionPanel" class="sectionActions assayActions">
   <button class="hideFilterSection" style="margin: 14px 0px 0px 15px;"

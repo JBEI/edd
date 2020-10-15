@@ -32,9 +32,7 @@ declare let window: StudyBase.EDDWindow;
 const EDDData = window.EDDData || ({} as EDDData);
 
 let viewingMode: ViewingMode;
-let viewingModeIsStale: { [id: string]: boolean };
 let barGraphMode: BarGraphMode;
-let barGraphTypeButtonsJQ: JQuery;
 
 let progressiveFilteringWidget: ProgressiveFilteringWidget;
 let postFilteringMeasurements: any[];
@@ -1290,53 +1288,39 @@ export class GeneFilterSection extends MeasurementFilterSection {
 }
 
 function _displayLineGraph(): void {
-    $("#exportButton, #tableControlsArea, .tableActionButtons").addClass("off");
+    $("#exportButton, .tableActionButtons").addClass("off");
     $("#filterControlsArea").removeClass("off");
-    $("#displayModeButtons .active").removeClass("active");
-    $("#lineGraphButton").addClass("active");
-    queueActionPanelRefresh();
-    viewingMode = "linegraph";
-    barGraphTypeButtonsJQ.addClass("off");
-    $("#lineGraph").removeClass("off");
-    $("#barGraphByTime, #barGraphByLine, #barGraphByMeasurement").addClass("off");
-    $("#studyAssaysTable").addClass("off");
-    $("#mainFilterSection").appendTo("#content");
-    queueRefreshDataDisplayIfStale();
+    _setActiveDisplayButton("#lineGraphButton", "linegraph");
+    $("#graphArea").removeClass("off");
+    $("#assaysTable").addClass("off");
 }
 
-function _displayBarGraph(mode: "time" | "line" | "measurement"): void {
-    $("#exportButton, #tableControlsArea, .tableActionButtons").addClass("off");
+function _displayBarGraph(mode: BarGraphMode): void {
+    $("#exportButton, .tableActionButtons").addClass("off");
     $("#filterControlsArea").removeClass("off");
-    $("#displayModeButtons .active").removeClass("active");
-    $("#barGraphButton")
-        .add("#" + mode + "BarGraphButton")
-        .addClass("active");
-    queueActionPanelRefresh();
-    viewingMode = "bargraph";
-    barGraphTypeButtonsJQ.removeClass("off");
-    $("#lineGraph, #studyAssaysTable").addClass("off");
-    $("#barGraphByTime").toggleClass("off", "time" !== mode);
-    $("#barGraphByLine").toggleClass("off", "line" !== mode);
-    $("#barGraphByMeasurement").toggleClass("off", "measurement" !== mode);
-    $("#mainFilterSection").appendTo("#content");
-    queueRefreshDataDisplayIfStale();
+    _setActiveDisplayButton("#barGraphButton", "bargraph");
+    $("#graphArea").removeClass("off");
+    $("#assaysTable").addClass("off");
 }
 
 function _displayTable(): void {
-    $("#exportButton, #tableControlsArea, .tableActionButtons").removeClass("off");
+    $("#exportButton, .tableActionButtons").removeClass("off");
     $("#filterControlsArea").addClass("off");
-    $("#displayModeButtons .active").removeClass("active");
-    $("#dataTableButton").addClass("active");
+    _setActiveDisplayButton("#dataTableButton", "table");
+    $("#graphArea").addClass("off");
+    $("#assaysTable").removeClass("off");
+}
+
+function _setActiveDisplayButton(selector: string, mode: ViewingMode): void {
+    $("#displayModeButtons")
+        .find(".active")
+        .removeClass("active");
+    $("#displayModeButtons")
+        .find(selector)
+        .addClass("active");
+    viewingMode = mode;
     queueActionPanelRefresh();
-    viewingMode = "table";
-    barGraphTypeButtonsJQ.addClass("off");
-    $("#studyAssaysTable").removeClass("off");
-    $("#lineGraph, #barGraphByTime, #barGraphByLine, #barGraphByMeasurement").addClass(
-        "off",
-    );
-    progressiveFilteringWidget.lineNameFilter.setLineColors();
     queueRefreshDataDisplayIfStale();
-    // TODO: enable users to export filtered data from graph
 }
 
 // Called when the page loads.
@@ -1348,30 +1332,12 @@ export function prepareIt() {
     // By default, we always show the graph
     viewingMode = "linegraph";
     barGraphMode = "measurement";
-    barGraphTypeButtonsJQ = $("#barGraphTypeButtons");
-    // Start out with every display mode needing a refresh
-    viewingModeIsStale = {
-        "linegraph": true,
-        "bargraph": true,
-        "table": true,
-    };
     refresDataDisplayIfStaleTimer = null;
 
     assaysDataGridSpec = null;
     assaysDataGrid = null;
 
     actionPanelRefreshTimer = null;
-
-    // set up editable study name
-    const title = $("#editable-study-name").get()[0] as HTMLElement;
-    const nameEdit = new StudyBase.EditableStudyName(title);
-    nameEdit.getValue();
-    // This only adds code that turns the other buttons off when a button is made active,
-    // and does the same to elements named in the 'for' attributes of each button.
-    // We still need to add our own responders to actually do stuff.
-    Utl.ButtonBar.prepareButtonBars();
-    // Prepend show/hide filter button for better alignment
-    // Note: this will be removed when we implement left side filtering
 
     // when all ajax requests are finished, determine if there are AssayMeasurements.
     $(document).ajaxStop(() => {
@@ -1388,19 +1354,8 @@ export function prepareIt() {
         }
     });
 
-    $("#dataTableButton").click(() => {
-        if (EDDData.currentStudyID) {
-            _displayTable();
-            updateGraphViewFlag({
-                "buttonElem": "#dataTableButton",
-                "type": "table",
-                "study_id": EDDData.currentStudyID,
-            });
-        }
-    });
-
-    $("#editAssayButton").click((ev) => {
-        showEditAssayDialog($("#studyAssaysTable").find("[name=assayId]:checked"));
+    $("#editAssayButton").click(() => {
+        showEditAssayDialog($("#assaysTable").find("[name=assayId]:checked"));
         return false;
     });
 
@@ -1408,65 +1363,31 @@ export function prepareIt() {
     $("#lineGraphButton").click(() => {
         if (EDDData.currentStudyID) {
             _displayLineGraph();
-            updateGraphViewFlag({
-                "buttonElem": "#lineGraphButton",
-                "type": viewingMode,
-                "study_id": EDDData.currentStudyID,
-            });
+            updateGraphViewFlag({ "type": viewingMode });
         }
     });
-
-    // one time click event handler for loading spinner
-    $("#barGraphButton").one("click", function() {
-        $("#graphLoading").removeClass("off");
-    });
-    $("#timeBarGraphButton").one("click", function() {
-        $("#graphLoading").removeClass("off");
-    });
-    $("#lineBarGraphButton").one("click", function() {
-        $("#graphLoading").removeClass("off");
-    });
-    $("#measurementBarGraphButton").one("click", function() {
-        $("#graphLoading").removeClass("off");
-    });
-    $("#barGraphButton").click(() => {
-        if (EDDData.currentStudyID) {
-            _displayBarGraph(barGraphMode);
-            updateGraphViewFlag({
-                "buttonElem": "#measurementBarGraphButton",
-                "type": barGraphMode,
-                "study_id": EDDData.currentStudyID,
-            });
-        }
-    });
-    $("#timeBarGraphButton").click(() => {
+    $("#groupTimeBtn").click(() => {
         if (EDDData.currentStudyID) {
             _displayBarGraph((barGraphMode = "time"));
-            updateGraphViewFlag({
-                "buttonElem": "#timeBarGraphButton",
-                "type": barGraphMode,
-                "study_id": EDDData.currentStudyID,
-            });
+            updateGraphViewFlag({ "type": barGraphMode });
         }
     });
-    $("#lineBarGraphButton").click(() => {
+    $("#groupLineBtn").click(() => {
         if (EDDData.currentStudyID) {
             _displayBarGraph((barGraphMode = "line"));
-            updateGraphViewFlag({
-                "buttonElem": "#lineBarGraphButton",
-                "type": barGraphMode,
-                "study_id": EDDData.currentStudyID,
-            });
+            updateGraphViewFlag({ "type": barGraphMode });
         }
     });
-    $("#measurementBarGraphButton").click(() => {
+    $("#groupMeasureBtn").click(() => {
         if (EDDData.currentStudyID) {
             _displayBarGraph((barGraphMode = "measurement"));
-            updateGraphViewFlag({
-                "buttonElem": "#measurementBarGraphButton",
-                "type": barGraphMode,
-                "study_id": EDDData.currentStudyID,
-            });
+            updateGraphViewFlag({ "type": barGraphMode });
+        }
+    });
+    $("#dataTableButton").click(() => {
+        if (EDDData.currentStudyID) {
+            _displayTable();
+            updateGraphViewFlag({ "type": "table" });
         }
     });
 
@@ -1482,40 +1403,6 @@ export function prepareIt() {
         $("#mainFilterSection").toggle();
         return false;
     });
-
-    // The next few lines wire up event handlers for a pulldownMenu that we use to contain a
-    // couple of controls related to the filtering section.  This menu is styled to look
-    // exactly like the typical 'view options' menu generated by DataGrid.
-
-    const menuLabel = $("#filterControlsMenuLabel");
-    menuLabel.click(() => {
-        if (menuLabel.hasClass("pulldownMenuLabelOff")) {
-            menuLabel
-                .removeClass("pulldownMenuLabelOff")
-                .addClass("pulldownMenuLabelOn");
-            $("#filterControlsMenu > div.pulldownMenuMenuBlock").removeClass("off");
-        }
-    });
-
-    // event handlers to hide menu if clicking outside menu block or pressing ESC
-    $(document)
-        .click((ev) => {
-            const t = $(ev.target);
-            if (t.closest($("#filterControlsMenu").get(0)).length === 0) {
-                menuLabel
-                    .removeClass("pulldownMenuLabelOn")
-                    .addClass("pulldownMenuLabelOff");
-                $("#filterControlsMenu > div.pulldownMenuMenuBlock").addClass("off");
-            }
-        })
-        .keydown((ev) => {
-            if (ev.keyCode === 27) {
-                menuLabel
-                    .removeClass("pulldownMenuLabelOn")
-                    .addClass("pulldownMenuLabelOff");
-                $("#filterControlsMenu > div.pulldownMenuMenuBlock").addClass("off");
-            }
-        });
 
     onSuccessEDDData();
 
@@ -1537,7 +1424,7 @@ export function prepareIt() {
 
     $("#addMeasurementButton").click(() => {
         // copy inputs to the modal form
-        const inputs = $("#studyAssaysTable")
+        const inputs = $("#assaysTable")
             .find("input[name=assayId]:checked")
             .clone();
         $("#addMeasurement")
@@ -1552,13 +1439,8 @@ export function prepareIt() {
 
     // Callbacks to respond to the filtering section
     $("#mainFilterSection")
-        .on("mouseover mousedown mouseup", queueRefreshDataDisplayIfStale.bind(this))
-        .on("keydown", filterTableKeyDown.bind(this));
-}
-
-function basePayload(): any {
-    const token: string = Utl.EDD.findCSRFToken();
-    return { "csrfmiddlewaretoken": token };
+        .on("mouseover mousedown mouseup", queueRefreshDataDisplayIfStale)
+        .on("keydown", filterTableKeyDown);
 }
 
 function _settingsPath(propKey: string): string {
@@ -1567,8 +1449,11 @@ function _settingsPath(propKey: string): string {
 }
 
 function updateGraphViewFlag(type) {
-    $.ajax(_settingsPath("measurement-" + type.study_id), {
-        "data": $.extend({}, basePayload(), { "data": JSON.stringify(type) }),
+    $.ajax(_settingsPath(`measurement-${EDDData.currentStudyID}`), {
+        "data": {
+            "csrfmiddlewaretoken": Utl.EDD.findCSRFToken(),
+            "data": JSON.stringify(type),
+        },
         "type": "POST",
     });
 }
@@ -1634,20 +1519,12 @@ function fetchMeasurements() {
     });
 }
 
-function filterTableKeyDown(e) {
-    switch (e.keyCode) {
-        case 38: // up
-        case 40: // down
-        case 9: // tab
-        case 13: // return
-            return;
-        default:
-            // ignore if the following keys are pressed: [shift] [capslock]
-            if (e.keyCode > 8 && e.keyCode < 32) {
-                return;
-            }
-            queueRefreshDataDisplayIfStale();
+function filterTableKeyDown(event) {
+    if (event.keyCode < 47) {
+        // ignoring keydown on special keys
+        return;
     }
+    queueRefreshDataDisplayIfStale();
 }
 
 export function requestAssayData(assay) {
@@ -1730,14 +1607,11 @@ function processMeasurementData(protocol, data) {
     queueRefreshDataDisplayIfStale();
 }
 
-export function queueRefreshDataDisplayIfStale() {
+function queueRefreshDataDisplayIfStale() {
     if (refresDataDisplayIfStaleTimer) {
         clearTimeout(refresDataDisplayIfStaleTimer);
     }
-    refresDataDisplayIfStaleTimer = setTimeout(
-        refreshDataDisplayIfStale.bind(this),
-        100,
-    );
+    refresDataDisplayIfStaleTimer = window.setTimeout(refreshDataDisplayIfStale, 100);
 }
 
 export function queueActionPanelRefresh() {
@@ -1750,7 +1624,7 @@ export function queueActionPanelRefresh() {
 // This function determines if the filtering sections (or settings related to them) have
 // changed since the last time we were in the current display mode (e.g. line graph, table,
 // bar graph in various modes, etc) and updates the display only if a change is detected.
-function refreshDataDisplayIfStale(force?: boolean) {
+function refreshDataDisplayIfStale() {
     // Any switch between viewing modes, or change in filtering, is also cause to check the UI
     // in the action panel and make sure it's current.
     queueActionPanelRefresh();
@@ -1759,39 +1633,21 @@ function refreshDataDisplayIfStale(force?: boolean) {
     // If the filtering widget claims a change since the last inquiry,
     // then all the viewing modes are stale, no matter what.
     // So we mark them all.
-    if (progressiveFilteringWidget.checkRedrawRequired(force)) {
-        viewingModeIsStale.linegraph = true;
-        viewingModeIsStale["bargraph-time"] = true;
-        viewingModeIsStale["bargraph-line"] = true;
-        viewingModeIsStale["bargraph-measurement"] = true;
-        viewingModeIsStale.table = true;
+    if (progressiveFilteringWidget.checkRedrawRequired()) {
         // Pull out a fresh set of filtered measurements and assays
         const filterResults = progressiveFilteringWidget.buildFilteredMeasurements();
         postFilteringMeasurements = filterResults.filteredMeasurements;
         // If the filtering widget has not changed and the current mode does not claim to be
         // stale, we are done.
-    } else if (viewingMode === "bargraph") {
-        // Special case to handle the extra sub-modes of the bar graph
-        if (!viewingModeIsStale[viewingMode + "-" + barGraphMode]) {
-            return;
-        }
-    } else if (!viewingModeIsStale[viewingMode]) {
-        return;
     }
 
     if (viewingMode === "table") {
         assaysDataGridSpec = new DataGridSpecAssays();
         assaysDataGridSpec.init();
         assaysDataGrid = new DataGridAssays(assaysDataGridSpec);
-        viewingModeIsStale.table = false;
         progressiveFilteringWidget.lineNameFilter.setLineColors();
     } else {
         remakeMainGraphArea();
-        if (viewingMode === "bargraph") {
-            viewingModeIsStale[viewingMode + "-" + barGraphMode] = false;
-        } else {
-            viewingModeIsStale.linegraph = false;
-        }
     }
 }
 
@@ -1857,14 +1713,10 @@ function remakeMainGraphArea() {
     let dataSets: GraphValue[][] = [];
 
     $("#tooManyPoints").hide();
-    $("#lineGraph").addClass("off");
-    $("#barGraphByTime").addClass("off");
-    $("#barGraphByLine").addClass("off");
-    $("#barGraphByMeasurement").addClass("off");
 
     // show message that there's no data to display
     if (postFilteringMeasurements.length === 0) {
-        $("#graphLoading").addClass("off"); // Remove load spinner if still present
+        $("#graphLoading").addClass("off");
         $("#noData").removeClass("off");
         return;
     }
@@ -1894,35 +1746,11 @@ function remakeMainGraphArea() {
         "height": 220,
     };
 
+    const elem = $("#graphArea").empty();
+    const view = new GraphView(elem.get(0));
     if (viewingMode === "linegraph") {
-        const view = new GraphView(
-            $("#lineGraph")
-                .empty()
-                .removeClass("off")
-                .get(0),
-        );
         view.buildLineGraph(graphSet);
     } else if (viewingMode === "bargraph") {
-        let elem: Element;
-        if (barGraphMode === "time") {
-            elem = $("#barGraphByTime")
-                .empty()
-                .removeClass("off")
-                .get(0);
-        } else if (barGraphMode === "line") {
-            elem = $("#barGraphByLine")
-                .empty()
-                .removeClass("off")
-                .get(0);
-        } else if (barGraphMode === "measurement") {
-            elem = $("#barGraphByMeasurement")
-                .empty()
-                .removeClass("off")
-                .get(0);
-        } else {
-            return;
-        }
-        const view = new GraphView(elem);
         view.buildGroupedBarGraph(graphSet, barGraphMode);
     }
 }
@@ -2074,7 +1902,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table
     // content will be removed.
     getTableElement() {
-        return document.getElementById("studyAssaysTable");
+        return document.getElementById("assaysTable");
     }
 
     // Specification for the table as a whole
