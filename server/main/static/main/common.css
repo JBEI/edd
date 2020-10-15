@@ -134,19 +134,6 @@ input:disabled + label {
 .emptyRecord {
     color: #666666;
 }
-.link_indicator {
-    background-image: url("images/link_go.png");
-    background-position: right;
-    background-repeat: no-repeat;
-}
-.clickableLink {
-    font-style: italic;
-    color: black;
-}
-.clickableLink:hover {
-    color: #44b;
-    cursor: pointer;
-}
 .wait {
     background-repeat: no-repeat;
     background-position: center;
@@ -923,120 +910,6 @@ div.filterHeadSearch > input[type="text"] {
     -moz-border-radius: 7px;
 }
 
-/* Tab sets for page sections */
-
-ul.studyTabs {
-    margin: 15px 0px 10px 0px;
-}
-
-.disabled-button {
-    opacity: 0.5;
-}
-
-div.tabBar {
-    padding: 0px 10px 0px 10px;
-    background-repeat: repeat-x;
-    background-size: 416px 26px;
-    background-position: bottom;
-    background-image: url(images/tab_section_background.png);
-    margin: 20px 0px 20px 0px;
-    z-index: 3;
-}
-div.tabBar > span {
-    display: inline-block;
-    color: #3c3c3c;
-    font-size: 14px;
-    margin: 0px;
-    border-style: solid;
-    border-color: #d0d0d0;
-    border-top-width: 1px;
-    border-bottom-width: 1px;
-    border-left-width: 1px;
-    border-right-width: 0px;
-    padding: 8px 12px 8px 12px;
-}
-div.tabBar.larger > span {
-    font-size: 17px;
-    padding: 10px 14px 10px 14px;
-}
-div.tabBar > span:first-of-type {
-    border-top-left-radius: 6px;
-}
-div.tabBar > span:last-of-type {
-    border-right-width: 1px;
-    border-top-right-radius: 6px;
-}
-div.tabBar > span.active {
-    border-bottom-width: 0px;
-    padding-bottom: 9px;
-    z-index: 4;
-    background-color: #ffffff;
-}
-div.tabBar.larger > span.active {
-    padding-bottom: 11px;
-}
-div.tabBar > span:not(.active) {
-    background-color: #f7f7f7;
-    cursor: pointer;
-    box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.09) inset;
-}
-
-/* Button bars (largely the same as tab bars) */
-
-div.buttonBar {
-    display: flex;
-    align-items: center;
-    flex-wrap: nowrap;
-    flex-direction: row;
-    padding: 10px;
-}
-div.buttonBar > span {
-    display: inline-block;
-    color: #3c3c3c;
-    font-size: 14px;
-    margin: 0px;
-    border-style: solid;
-    border-color: #ffffff;
-    background-color: #ffffff;
-    border-width: 1px;
-    padding: 8px 12px 8px 12px;
-}
-div.buttonBar > span:hover {
-    border-color: #d0d0d0;
-}
-div.buttonBar.larger > span {
-    font-size: 17px;
-    padding: 10px 14px 10px 14px;
-}
-div.buttonBar > span:first-of-type {
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
-}
-div.buttonBar > span:last-of-type {
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
-}
-div.buttonBar > span.active {
-    border-color: #d0d0d0;
-    background-color: #f7f7f7;
-    box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.09) inset;
-}
-div.buttonBar > span:not(.active) {
-    color: #888888;
-    cursor: pointer;
-}
-div.buttonBar > span:not(.active) > img {
-    opacity: 0.4;
-}
-
-/* This overrides some of the settings in the pageSection style */
-
-div.pageSectionTabContent {
-    margin: 0px 8px 3px 8px;
-    border-width: 2px 0px 0px 0px;
-    z-index: 0;
-}
-
 /* Tables for filling out forms */
 
 table.formTable {
@@ -1110,13 +983,6 @@ table.formTable tr > td textarea {
 #studyLinesTable tbody > tr:hover,
 #studiesTable tbody > tr:hover {
     background-color: #ccf;
-}
-
-tr.multientrybuttonrow:hover div.multientrybutton {
-    opacity: 1;
-}
-div.multientrybutton {
-    opacity: 0;
 }
 
 /* Autocomplete input element styling */
@@ -2141,21 +2007,6 @@ body > .navbar {
 .sampleFileDownloadLink a:link,
 .sampleFileDownloadLink :visited .sampleFileDownloadLink {
     color: gray;
-}
-
-/* Import 2.0 prototype button */
-#importPrototypeBtn {
-    color: darkslategrey;
-    background: #bbbbbb;
-    padding-top: 7px;
-    padding-bottom: 10px;
-    margin-right: 10px;
-}
-
-#importPrototypeBtn .new {
-    vertical-align: super;
-    font-size: 60%;
-    color: slategrey;
 }
 
 /* End of common styles */

@@ -203,8 +203,6 @@ export function prepareIt() {
         "processWarningFn": helper.fileWarningReturnedFromServer.bind(helper),
     });
 
-    Utl.Tabs.prepareTabs();
-
     $(window).on("load", preparePermissions);
 }
 
