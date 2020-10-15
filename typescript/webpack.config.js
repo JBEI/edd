@@ -22,6 +22,8 @@ module.exports = {
         "Common": [
             path.resolve("node_modules/bootstrap/dist/js/bootstrap"),
             path.resolve("node_modules/bootstrap/dist/css/bootstrap.min.css"),
+            path.resolve("node_modules/@fortawesome/fontawesome-free/js/all.min.js"),
+            path.resolve("node_modules/@fortawesome/fontawesome-free/css/all.min.css"),
             path.resolve(__dirname, "./src/Common.ts"),
         ],
         "Cytometry": path.resolve(__dirname, "./src/Cytometry.ts"),
