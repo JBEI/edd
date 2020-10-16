@@ -32,12 +32,10 @@
     {% endif %}
   </ui>
   {% if writable and not showingimport %}
-    <a class="{% if not lines %}off{% endif %}"
-        href="{% url 'main:load:wizard' slug=study.slug %}">
-      <button type="button"
-          style="float:right;"
-          class="actionButton primary larger">
-        <span class="glyphicon glyphicon-cloud-upload"></span>
+    {% url "main:load:wizard" slug=study.slug as wizard_url %}
+    <a class="{% if not lines %}off{% endif %}" href="{{ wizard_url}}">
+      <button class="btn btn-primary btn-large pull-right" type="button">
+        <span class="fas fa-cloud-upload-alt"></span>
         {% trans 'Import Data' %}
       </button>
     </a>

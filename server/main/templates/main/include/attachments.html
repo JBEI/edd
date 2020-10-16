@@ -28,15 +28,15 @@ TODO deleting a file may be a little too easy; should we require confirmation?
       <a href="{{ filelink }}">{{ a.filename }}</a>
     </td>
     <td>{{ a.description }}</td>
-    <td style="text-align:right;">{{ a.file_size|filesizeformat }}</td>
-    <td style="text-align:center;">{{ a.user_initials }}</td>
+    <td class="text-right">{{ a.file_size|filesizeformat }}</td>
+    <td class="text-center">{{ a.user_initials }}</td>
     <td>{{ a.created.format_timestamp }}</td>
     {% if writable %}
-    <td style="text-align:right;">
+    <td class="text-right">
       <form action="{{ filelink }}" method="POST">
         {% csrf_token %}
         <button type="submit" class="btn btn-danger btn-xs" aria-label="{% trans 'Delete' %}">
-          <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+          <span class="fas fa-trash-alt" aria-hidden="true"></span>
         </button>
       </form>
     </td>

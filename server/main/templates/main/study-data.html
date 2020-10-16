@@ -114,7 +114,7 @@
     <label for="assay_action_edit">{% trans 'Edit Measurements' %}</label>
     <input id="assay_action_export" type="radio" name="assay_action" value="export" />
     <label for="assay_action_export">
-      <span class="glyphicon glyphicon-cloud-download"></span>
+      <span class="fas fa-cloud-download-alt"></span>
       {% trans 'Export Data' %}
     </label>
     <button name="action" type="submit" value="assay_action">
@@ -124,56 +124,68 @@
   </div>
   <div id="tableActionButtons" class="tableActionButtons off" style="margin:auto 0;">
     {% if writable %}
-    <button id="editAssayButton"
-        class="assayButton actionButton"
-        disabled="true"
-        title="{% trans 'Edit selected assays' %}">
+    <button
+      class="assayButton btn btn-default"
+      disabled="true"
+      id="editAssayButton"
+      title="{% trans 'Edit selected assays' %}"
+    >
       {% trans 'Edit Assays' %}
     </button>
-    <button id="editMeasurementButton"
-        class="actionButton"
-        disabled="true"
-        name="action"
-        type="submit"
-        value="measurement_edit"
-        title="{% trans 'Edit selected measurements' %}">
+    <button
+      class="btn btn-default"
+      disabled="true"
+      id="editMeasurementButton"
+      name="action"
+      title="{% trans 'Edit selected measurements' %}"
+      type="submit"
+      value="measurement_edit"
+    >
       {% trans 'Edit Measurements' %}
     </button>
-    <button id="addMeasurementButton"
-        class="assayButton actionButton"
-        disabled="true"
-        title="{% trans 'Add a measurement to selected assays' %}">
+    <button
+      class="assayButton btn btn-default"
+      disabled="true"
+      id="addMeasurementButton"
+      title="{% trans 'Add a measurement to selected assays' %}"
+    >
       {% trans 'Add Measurement' %}
     </button>
-    <button id="deleteButton"
-        class="actionButton"
-        name="action"
-        type="submit"
-        value="disable_assay"
-        disabled="true"
-        title="{% trans 'Delete selected assays and/or measurements' %}">
+    <button
+      class="btn btn-default"
+      disabled="true"
+      id="deleteButton"
+      name="action"
+      title="{% trans 'Delete selected assays and/or measurements' %}"
+      type="submit"
+      value="disable_assay"
+    >
       {% trans 'Delete' %}
     </button>
-    <button id="enableButton"
-        class="actionButton off"
-        name="action"
-        type="submit"
-        value="enable"
-        disabled="true"
-        title="{% trans 'Restore selected assays and/or measurements' %}">
+    <button
+      class="btn btn-default off"
+      disabled="true"
+      id="enableButton"
+      name="action"
+      title="{% trans 'Restore selected assays and/or measurements' %}"
+      type="submit"
+      value="enable"
+    >
       {% trans 'Restore' %}
     </button>
     {% endif %}
   </div>
 
   <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
-    <button id="exportButton"
-        class="exportButton actionButton primary off"
-        name="action"
-        title="{% trans 'Export your data as CSV' %}"
-        type="submit"
-        value="export">
-      <span class="glyphicon glyphicon-cloud-download"></span>
+    <button
+      class="exportButton btn btn-primary off"
+      id="exportButton"
+      name="action"
+      title="{% trans 'Export your data as CSV' %}"
+      type="submit"
+      value="export"
+    >
+      <span class="fas fa-cloud-download-alt"></span>
       {% trans 'Export Data' %}
     </button>
   </div>
@@ -209,7 +221,7 @@
         <p class="bulk-note off">{% trans "Only enabled fields will be modified." %}</p>
         {{ new_assay.as_p }}
         <span class="off bulk-ignore btn btn-default btn-xs">
-          <i class="glyphicon glyphicon-minus-sign"></i>
+          <i class="fas fa-minus-circle"></i>
           {% trans "Don't Change" %}
         </span>
       </fieldset>

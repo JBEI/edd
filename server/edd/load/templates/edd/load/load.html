@@ -646,17 +646,17 @@
         <span>Your import is submitted! You can continue to use EDD, and
           will receive a message when your import has been processed.</span>
         <a class="return-link" href="{% url 'main:detail' slug=study.slug %}">
-          <button type="button" class="actionButton primary">Return to Study</button>
+          <button type="button" class="btn btn-primary">Return to Study</button>
         </a>
       </div>
       <div id="importSubmitErrorDiv" class="off alert alert-danger" role="alert">
         <strong>Error!</strong>
         <span>There was an error submitting your import. Please try again.</span>
         <a id="retry-button" href="#">
-          <button type="button" class="actionButton secondary">Retry Import</button>
+          <button type="button" class="btn btn-default">Retry Import</button>
         </a>
         <a class="return-link" href="{% url 'main:detail' slug=study.slug %}">
-          <button type="button" class="actionButton primary">Return to Study</button>
+          <button type="button" class="btn btn-primary">Return to Study</button>
         </a>
       </div>
     </div>

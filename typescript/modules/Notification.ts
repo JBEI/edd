@@ -238,7 +238,7 @@ export class NotificationMenu {
             .html(message.message)
             .appendTo(item);
         $("<span>")
-            .addClass("message-close glyphicon glyphicon-remove")
+            .addClass("message-close fas fa-times")
             .appendTo(item);
         return item;
     }

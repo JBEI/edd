@@ -40,7 +40,7 @@
         class="label label-info label-spaced"
         href="{% static 'main/example/sample_experiment_description.xlsx' %}"
       >
-        <span class="glyphicon glyphicon-download-alt"></span>
+        <span class="fas fa-download"></span>
         {% trans 'Example File' %}
       </a>
       <a
@@ -67,12 +67,12 @@
     {% if writable %}
     <p>
       <button class="btn btn-primary addNewLineButton" type="button">
-        <span class="glyphicon glyphicon-plus"></span>
+        <span class="fas fa-plus"></span>
         {% trans 'Add Line' %}
       </button>
       <a href="{% url 'main:describe:describe' slug=study.slug %}">
         <button class="btn btn-primary" type="button">
-          <span class="glyphicon glyphicon-random"></span>
+          <span class="fas fa-random"></span>
           {% trans "Add Line Combinations" %}
         </button>
       </a>
@@ -89,7 +89,7 @@
       {% if writable %}
       <div class="btn-group dropup">
         <button class="btn btn-primary needs-lines-selected" id="editButton" type="button">
-          <span class="glyphicon glyphicon-pencil"></span>
+          <span class="fas fa-pencil-alt"></span>
           {% trans 'Edit' %}
           <span class="badge selected-line-count"></span>
         </button>
@@ -106,26 +106,26 @@
         <ul class="dropdown-menu">
           <li class="needs-lines-selected">
             <a href="#" id="disableButton">
-              <span class="glyphicon glyphicon-trash"></span>
+              <span class="fas fa-trash-alt"></span>
               {% trans 'Disable' %}
             </a>
           </li>
           <li class="needs-lines-selected">
             <a href="#" id="enableButton">
-              <span class="glyphicon glyphicon-refresh"></span>
+              <span class="fas fa-sync-alt"></span>
               {% trans 'Restore' %}
             </a>
           </li>
           <li role="separator" class="divider"></li>
           <li class="needs-lines-selected">
             <a href="#" id="replicateButton">
-              <span class="glyphicon glyphicon-star"></span>
+              <span class="fas fa-link"></span>
               {% trans 'Group as replicates ...' %}
             </a>
           </li>
           <li class="needs-lines-selected">
             <a href="#" id="unreplicateButton">
-              <span class="glyphicon glyphicon-star-empty"></span>
+              <span class="fas fa-unlink"></span>
               {% trans 'Ungroup replicates ...' %}
             </a>
           </li>
@@ -133,7 +133,7 @@
       </div>
       <div class="btn-group dropup">
         <button class="btn btn-primary addNewLineButton" type="button">
-          <span class="glyphicon glyphicon-plus"></span>
+          <span class="fas fa-plus"></span>
           {% trans 'Add Line' %}
         </button>
         <button
@@ -149,13 +149,13 @@
         <ul class="dropdown-menu">
           <li>
             <a href="{% url 'main:describe:describe' slug=study.slug %}">
-              <span class="glyphicon glyphicon-random"></span>
+              <span class="fas fa-random"></span>
               {% trans "Add Line Combinations" %}
             </a>
           </li>
           <li class="needs-lines-selected">
             <a href="#" id="cloneButton">
-              <span class="glyphicon glyphicon-duplicate"></span>
+              <span class="fas fa-copy"></span>
               {% trans 'Clone Lines' %}
               <span class="badge selected-line-count"></span>
             </a>
@@ -163,7 +163,7 @@
           <li role="separator" class="divider"></li>
           <li class="needs-lines-selected">
             <a href="#" id="addAssayButton">
-              <span class="glyphicon glyphicon-plus"></span>
+              <span class="fas fa-plus"></span>
               {% trans 'Add Assay' %}
               <span class="badge selected-line-count"></span>
             </a>
@@ -179,19 +179,19 @@
           data-toggle="dropdown"
           type="button"
         >
-          <span class="glyphicon glyphicon-filter"></span>
+          <span class="fas fa-filter"></span>
           {% trans 'View Options' %}
         </button>
         <ul class="dropdown-menu table-filter-options">
           <li>
             <a href="#" id="showDisabledItem">
-              <span class="glyphicon glyphicon-unchecked"></span>
+              <span class="fas fa-toggle-off"></span>
               {% trans 'Show Disabled' %}
             </a>
           </li>
           <li>
             <a href="#" id="groupReplicateItem">
-              <span class="glyphicon glyphicon-unchecked"></span>
+              <span class="fas fa-toggle-off"></span>
               {% trans 'Group Replicates' %}
             </a>
           </li>
@@ -200,7 +200,7 @@
     </div>
     <div class="btn-group dropup">
       <button class="btn btn-primary" id="exportLineButton" type="button">
-        <span class="glyphicon glyphicon-cloud-download"></span>
+        <span class="fas fa-cloud-download-alt"></span>
         {% trans 'Export Data' %}
       </button>
       <button
@@ -216,20 +216,20 @@
       <ul class="dropdown-menu dropdown-menu-right">
         <li>
           <a href="#" id="exportNewStudyButton">
-            <span class="glyphicon glyphicon-duplicate"></span>
+            <span class="fas fa-copy"></span>
             {% trans 'to New Study' %}
           </a>
         </li>
         <li>
           <a href="#" id="sbmlButton">
-            <span class="glyphicon glyphicon-send"></span>
+            <span class="fas fa-paper-plane"></span>
             {% trans 'SBML Export' %}
           </a>
         </li>
         <li role="separator" class="divider"></li>
         <li>
           <a href="#" id="worklistButton">
-            <span class="glyphicon glyphicon-save"></span>
+            <span class="fas fa-clipboard-list"></span>
             {% trans 'Generate Worklist' %}
           </a>
         </li>
@@ -251,7 +251,7 @@
         <p class="bulk-note off">{% trans "Only enabled fields will be modified." %}</p>
         {{ new_line.as_p }}
         <span class="off bulk-ignore btn btn-default btn-xs">
-          <i class="glyphicon glyphicon-minus-sign"></i>
+          <i class="fas fa-minus-circle"></i>
           {% trans "Don't Change" %}
         </span>
       </fieldset>

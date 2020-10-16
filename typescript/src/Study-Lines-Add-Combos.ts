@@ -106,7 +106,7 @@ function addRetryButton(container: JQuery, retryFunction): JQuery {
 
     // set button icon in a span, per Bootstrap suggestion
     $("<span>")
-        .addClass("glyphicon glyphicon-refresh")
+        .addClass("fas fa-sync-alt")
         .appendTo(btn)
         .after(" ");
 
@@ -1903,7 +1903,7 @@ export class CreationManager {
                         creationManager.createLines();
                     });
                 $("<span>")
-                    .addClass("glyphicon glyphicon-warning-sign")
+                    .addClass("fas fa-exclamation-triangle")
                     .appendTo(forceBtn)
                     .after(" ");
                 $("<span>")
@@ -2381,10 +2381,10 @@ export class CreationManager {
         // disable buttons and set styling to match the rest of EDD
         $("#return-to-study-btn")
             .prop("disabled", true)
-            .addClass("actionButton");
+            .addClass("btn btn-primary");
         $("#create-more-btn")
             .prop("disabled", true)
-            .addClass("actionButton");
+            .addClass("btn btn-primary");
         $("#creation-wait-spinner").removeClass("hide");
         $("#creation-status-div").empty();
         $("#line-count-span").text(this.plannedLineCount);

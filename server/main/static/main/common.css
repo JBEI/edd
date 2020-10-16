@@ -1813,47 +1813,6 @@ body > .navbar {
     width: 50px;
 }
 
-.actionButton {
-    display: inline-block;
-    margin: 10px 10px 0px 0px;
-    background-color: rgb(32, 77, 116);
-    border-color: rgb(18, 43, 64);
-    border-radius: 3px;
-    border-style: solid;
-    border-width: 1px;
-    box-shadow: rgba(0, 0, 0, 0.121569) 0px 3px 5px 0px inset;
-    box-sizing: border-box;
-    color: rgb(255, 255, 255);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: normal;
-    line-height: 18px;
-    margin: 2px 2px 0px 2px;
-    padding: 5px 10px 5px 10px;
-    text-align: center;
-    text-decoration: none;
-    vertical-align: middle;
-    white-space: nowrap;
-}
-
-.actionButton.primary {
-    color: #fff;
-    background-color: #337ab7;
-    border-color: #2e6da4;
-}
-
-.actionButton.larger {
-    font-size: 17px;
-    padding: 10px 14px 10px 14px;
-}
-
-.actionButton:disabled {
-    background-color: #ffffff;
-    color: #888888;
-    border-color: #888888;
-    cursor: not-allowed;
-}
-
 .assayTable {
     padding-left: 100px;
 }

@@ -17,10 +17,11 @@
 {% block content %}
   {{ block.super }}
   {% if can_create %}
-    <button id="addCampaignButton"
-        class="actionButton primary larger"
-        style="float: right;"
-        title="{% trans 'Add a new Campaign' context 'button tooltip' %}">
+    <button
+      class="btn btn-primary btn-lg pull-right"
+      id="addCampaignButton"
+      title="{% trans 'Add a new Campaign' context 'button tooltip' %}"
+    >
       {% trans 'New Campaign' context 'button label' %}
     </button>
     <div id="addCampaignModal"

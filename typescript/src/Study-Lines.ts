@@ -252,8 +252,8 @@ function setupExportButtonEvents() {
 
 function setupFilter() {
     const menu = $(".table-filter-options");
-    const checked = "glyphicon-check";
-    const unchecked = "glyphicon-unchecked";
+    const checked = "fa-toggle-on";
+    const unchecked = "fa-toggle-off";
     const choose_data = (key, enabled) => {
         if (enabled) {
             switch (key) {
@@ -267,14 +267,16 @@ function setupFilter() {
     };
     menu.on("click", "a", (event) => {
         const item = $(event.target);
-        const icon = item.find(".glyphicon");
+        const icon = item.find("svg");
         const adding_check = icon.hasClass(unchecked);
         // uncheck all items
-        menu.find(".glyphicon")
-            .addClass(unchecked)
-            .removeClass(checked);
+        menu.find(`.${checked}`)
+            .removeClass(checked)
+            .addClass(unchecked);
         // change clicked item state
-        icon.toggleClass(checked, adding_check).toggleClass(unchecked, !adding_check);
+        if (adding_check) {
+            icon.removeClass(unchecked).addClass(checked);
+        }
         // refresh table data
         hot.loadData(choose_data(item.attr("id"), adding_check));
         return false;

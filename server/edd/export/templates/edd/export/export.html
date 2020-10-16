@@ -40,11 +40,13 @@
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
       {{ option_form.as_p }}
-      <button type="submit"
-          class="actionButton primary larger"
-          name="action"
-          value="download">
-        <span class="glyphicon gliphicon-cloud-download"></span>
+      <button
+        class="btn btn-primary btn-lg"
+        name="action"
+        type="submit"
+        value="download"
+      >
+        <span class="fas fa-cloud-download-alt"></span>
         {% trans 'Request Download' %}
       </button>
     </div>

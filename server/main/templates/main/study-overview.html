@@ -115,24 +115,28 @@
     </div>
     <a href="{% static 'main/example/sample_experiment_description.xlsx' %}"
         class="sampleFileDownloadLink">
-      {% trans 'Example File' %} <span class="glyphicon glyphicon-download-alt"></span>
+      {% trans 'Example File' %} <span class="fas fa-download"></span>
     </a>
   </div>
   <a class="dropLink" href="{% url 'main:describe:describe' slug=study.slug %}">
-    <button id="combosButton"
-        class="combosButton actionButton primary"
-        type="button"
-        name="action">
-      <span class="glyphicon glyphicon-random"></span>
+    <button
+      class="btn btn-primary combosButton"
+      id="combosButton"
+      name="action"
+      type="button"
+    >
+      <span class="fas fa-random"></span>
       {% trans "Add Line Combo's" %}
     </button>
   </a>
   <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">
-    <button id="manualButton"
-        class="manualButton actionButton primary"
-        type="button"
-        name="action">
-      <span class="glyphicon glyphicon-pencil"></span>
+    <button
+      class="btn btn-primary manualButton"
+      id="manualButton"
+      name="action"
+      type="button"
+    >
+      <span class="fas fa-pencil-alt"></span>
       {% trans 'Enter Manually' %}
     </button>
   </a>
@@ -163,7 +167,7 @@
       </table>
       {% endif %}
       {% endwith %}
-      <button class="actionButton primary" id="addPermission">
+      <button class="btn btn-primary" id="addPermission">
         {% trans 'Configure Permissions' %}
       </button>
     </div>
@@ -192,11 +196,13 @@
         {% csrf_token %}
         {{ new_attach.as_p }}
         <p>
-          <button type="submit"
-              class="actionButton primary"
-              style="margin-top:-4px"
-              name="action"
-              value="attach">
+          <button
+            class="btn btn-primary btn-sm"
+            name="action"
+            style="margin-top:-4px"
+            type="submit"
+            value="attach"
+          >
             {% trans 'Attach File' %}
           </button>
         </p>
@@ -235,10 +241,12 @@
           {% csrf_token %}
           {{ new_comment.as_p }}
           <p>
-            <button type="submit"
-                class="actionButton primary"
-                name="action"
-                value="comment">
+            <button
+              class="btn btn-primary"
+              name="action"
+              type="submit"
+              value="comment"
+            >
               {% trans 'Add Comment' %}
             </button>
           </p>

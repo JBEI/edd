@@ -11,10 +11,11 @@
 {% block content %}
   {{ block.super }}
   {% if can_create_study %}
-    <button id="addStudyButton"
-        class="actionButton primary larger"
-        style="float: right;"
-        title="{% trans 'Add a new Study' %}">
+    <button
+      class="btn btn-primary btn-lg pull-right"
+      id="addStudyButton"
+      title="{% trans 'Add a new Study' %}"
+    >
       {% trans 'New Study' context 'button' %}
     </button>
     {# the DIV below is hidden by default; TypeScript code removes and puts in a modal #}
