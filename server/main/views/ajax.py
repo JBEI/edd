@@ -1,6 +1,4 @@
-"""
-Views used as AJAX calls by the front-end Typescript code in EDD.
-"""
+"""Views used as AJAX calls by the front-end Typescript code in EDD."""
 
 import collections
 import json
@@ -52,33 +50,64 @@ def load_study(
     raise Http404()
 
 
-# /study/<study_id>/measurements/<protocol_id>/
-def study_measurements(request, pk=None, slug=None, protocol=None):
-    """ Request measurement data in a study. """
-    # TODO: uncovered code
-    obj = load_study(request, pk=pk, slug=slug)
-    measure_types = edd_models.MeasurementType.objects.filter(
-        measurement__assay__line__study=obj, measurement__assay__protocol_id=protocol
+def _query_measure_types(*, study, protocol_id, assay_id=None):
+    assay_filter = Q() if assay_id is None else Q(measurement__assay_id=assay_id)
+    return edd_models.MeasurementType.objects.filter(
+        assay_filter,
+        measurement__active=True,
+        measurement__assay__active=True,
+        measurement__assay__line__active=True,
+        measurement__assay__line__study_id=study.pk,
+        measurement__assay__protocol_id=protocol_id,
     ).distinct()
-    # stash QuerySet to use in both measurements and total_measures below
-    qmeasurements = edd_models.Measurement.objects.filter(
-        assay__line__study=obj,
-        assay__protocol_id=protocol,
+
+
+def _query_measurements(*, study, protocol_id, assay_id=None):
+    assay_filter = Q() if assay_id is None else Q(assay_id=assay_id)
+    return edd_models.Measurement.objects.filter(
+        assay_filter,
         active=True,
+        assay__active=True,
         assay__line__active=True,
+        assay__line__study_id=study.pk,
+        assay__protocol_id=protocol_id,
     )
-    # Limit the measurements returned to keep browser performance
+
+
+def _query_values(*, study, protocol_id, assay_id=None, id_range=None):
+    assay_filter = Q() if assay_id is None else Q(measurement__assay_id=assay_id)
+    range_filter = Q() if id_range is None else Q(measurement__pk__range=id_range)
+    return edd_models.MeasurementValue.objects.filter(
+        assay_filter,
+        range_filter,
+        measurement__active=True,
+        measurement__assay__active=True,
+        measurement__assay__line__active=True,
+        measurement__assay__line__study_id=study.pk,
+        measurement__assay__protocol_id=protocol_id,
+    )
+
+
+# /study/<study_id>/measurements/<protocol_id>/<assay_id?>/
+def study_measurements(request, pk=None, slug=None, protocol=None, assay=None):
+    """Request measurement data in a study, for a single assay."""
+    obj = load_study(request, pk=pk, slug=slug)
+    measure_types = _query_measure_types(
+        study=obj, protocol_id=protocol, assay_id=assay
+    )
+    # stash QuerySet to use in both measurements and total_measures below
+    qmeasurements = _query_measurements(study=obj, protocol_id=protocol, assay_id=assay)
+    # Limit the measurements returned to keep browser performant
     measurements = qmeasurements.order_by("id")[:5000]
     total_measures = qmeasurements.values("assay_id").annotate(count=Count("assay_id"))
     measure_list = list(measurements)
     if len(measure_list):
         # only try to pull values when we have measurement objects
-        values = edd_models.MeasurementValue.objects.filter(
-            measurement__assay__line__study=obj,
-            measurement__assay__protocol_id=protocol,
-            measurement__active=True,
-            measurement__assay__line__active=True,
-            measurement__pk__range=(measure_list[0].id, measure_list[-1].id),
+        values = _query_values(
+            study=obj,
+            protocol_id=protocol,
+            assay_id=assay,
+            id_range=(measure_list[0].id, measure_list[-1].id),
         )
     else:
         values = []
@@ -94,54 +123,6 @@ def study_measurements(request, pk=None, slug=None, protocol=None):
         "data": value_dict,
     }
     return JsonResponse(payload, encoder=utilities.JSONEncoder)
-    # END uncovered
-
-
-# /study/<study_id>/measurements/<protocol_id>/<assay_id>/
-def study_assay_measurements(request, pk=None, slug=None, protocol=None, assay=None):
-    """ Request measurement data in a study, for a single assay. """
-    # TODO: uncovered code
-    obj = load_study(request, pk=pk, slug=slug)
-    measure_types = edd_models.MeasurementType.objects.filter(
-        measurement__assay__line__study=obj,
-        measurement__assay__protocol_id=protocol,
-        measurement__assay=assay,
-    ).distinct()
-    # stash QuerySet to use in both measurements and total_measures below
-    qmeasurements = edd_models.Measurement.objects.filter(
-        assay__line__study_id=obj.pk,
-        assay__protocol_id=protocol,
-        assay=assay,
-        active=True,
-        assay__active=True,
-        assay__line__active=True,
-    )
-    # Limit the measurements returned to keep browser performant
-    measurements = qmeasurements.order_by("id")[:5000]
-    total_measures = qmeasurements.values("assay_id").annotate(count=Count("assay_id"))
-    measure_list = list(measurements)
-    values = edd_models.MeasurementValue.objects.filter(
-        measurement__assay__line__study_id=obj.pk,
-        measurement__assay__protocol_id=protocol,
-        measurement__assay=assay,
-        measurement__active=True,
-        measurement__assay__active=True,
-        measurement__assay__line__active=True,
-        measurement__id__range=(measure_list[0].id, measure_list[-1].id),
-    )
-    value_dict = collections.defaultdict(list)
-    for v in values:
-        value_dict[v.measurement_id].append((v.x, v.y))
-    payload = {
-        "total_measures": {
-            x["assay_id"]: x.get("count", 0) for x in total_measures if "assay_id" in x
-        },
-        "types": {t.pk: t.to_json() for t in measure_types},
-        "measures": [m.to_json() for m in measure_list],
-        "data": value_dict,
-    }
-    return JsonResponse(payload, encoder=utilities.JSONEncoder)
-    # END uncovered
 
 
 # /study/<study_id>/edddata/
@@ -151,18 +132,15 @@ def study_edddata(request, pk=None, slug=None):
     EDDData JS object on the client.
     """
     model = load_study(request, pk=pk, slug=slug)
-    # TODO: uncovered code
     data_misc = query.get_edddata_misc()
     data_study = query.get_edddata_study(model)
     data_study.update(data_misc)
     return JsonResponse(data_study, encoder=utilities.JSONEncoder)
-    # END uncovered
 
 
 # /study/<study_id>/assaydata/
 def study_assay_table_data(request, pk=None, slug=None):
-    """ Request information on assays associated with a study. """
-    # TODO: uncovered code
+    """Request information on assays associated with a study."""
     model = load_study(request, pk=pk, slug=slug)
     active_param = request.GET.get("active", None)
     active_value = "true" == active_param if active_param in ("true", "false") else None
@@ -184,11 +162,10 @@ def study_assay_table_data(request, pk=None, slug=None):
         },
         encoder=utilities.JSONEncoder,
     )
-    # END uncovered
 
 
 class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
-    """ Implements a REST-style view for /study/<id-or-slug>/permissions/ """
+    """Implements a REST-style view for /study/<id-or-slug>/permissions/"""
 
     def get(self, request, *args, **kwargs):
         instance = self.object = self.get_object()
@@ -216,11 +193,9 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
                     raise PermissionDenied()
         except PermissionDenied:
             raise
-        # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Error modifying study ({instance}) permissions: {e}")
-            return HttpResponse(status=codes.server_error)
-        # END uncovered
+            return HttpResponse(status=codes.bad_request)
         return HttpResponse(status=codes.no_content)
 
     # Treat PUT requests the same as POST
@@ -235,11 +210,9 @@ class StudyPermissionJSONView(StudyObjectMixin, generic.detail.BaseDetailView):
                 instance.everyonepermission_set.all().delete()
                 instance.grouppermission_set.all().delete()
                 instance.userpermission_set.all().delete()
-        # TODO: uncovered code
         except Exception as e:
             logger.exception(f"Error deleting study ({instance}) permissions: {e}")
-            return HttpResponse(status=codes.server_error)
-        # END uncovered
+            return HttpResponse(status=codes.bad_request)
         return HttpResponse(status=codes.no_content)
 
     def _handle_permission_update(self, permission_def):

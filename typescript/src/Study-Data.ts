@@ -211,11 +211,9 @@ export class ProgressiveFilteringWidget {
     // Clear out any old filters in the filtering section, and add in the ones that
     // claim to be "useful".
     repopulateColumns(): void {
-        let dark = false;
         $.each(this.allFilters, (i, widget) => {
             if (widget.isFilterUseful()) {
                 widget.addToParent(this.filterTableJQ[0]);
-                dark = !dark;
             } else {
                 widget.detach();
             }
@@ -1294,6 +1292,7 @@ function _displayLineGraph(): void {
 }
 
 function _displayBarGraph(mode: BarGraphMode): void {
+    barGraphMode = mode;
     $("#exportButton, .tableActionButtons").addClass("off");
     $("#filterControlsArea").removeClass("off");
     _setActiveDisplayButton("#barGraphButton", "bargraph");
@@ -1333,21 +1332,6 @@ export function prepareIt() {
 
     actionPanelRefreshTimer = null;
 
-    // when all ajax requests are finished, determine if there are AssayMeasurements.
-    $(document).ajaxStop(() => {
-        // show assay table by default if there are assays but no assay measurements
-        if (
-            !$.isEmptyObject(EDDData.Assays) &&
-            $.isEmptyObject(EDDData.AssayMeasurements)
-        ) {
-            // TODO: create prepare it for no data?
-            _displayTable();
-            $("#exportButton").prop("disabled", true);
-        } else {
-            $("#exportButton").prop("disabled", false);
-        }
-    });
-
     $("#editAssayButton").click(() => {
         showEditAssayDialog($("#assaysTable").find("[name=assayId]:checked"));
         return false;
@@ -1357,31 +1341,31 @@ export function prepareIt() {
     $("#lineGraphButton").click(() => {
         if (EDDData.currentStudyID) {
             _displayLineGraph();
-            updateGraphViewFlag({ "type": viewingMode });
+            updateDisplaySetting({ "type": viewingMode });
         }
     });
     $("#groupTimeBtn").click(() => {
         if (EDDData.currentStudyID) {
-            _displayBarGraph((barGraphMode = "time"));
-            updateGraphViewFlag({ "type": barGraphMode });
+            _displayBarGraph("time");
+            updateDisplaySetting({ "type": barGraphMode });
         }
     });
     $("#groupLineBtn").click(() => {
         if (EDDData.currentStudyID) {
-            _displayBarGraph((barGraphMode = "line"));
-            updateGraphViewFlag({ "type": barGraphMode });
+            _displayBarGraph("line");
+            updateDisplaySetting({ "type": barGraphMode });
         }
     });
     $("#groupMeasureBtn").click(() => {
         if (EDDData.currentStudyID) {
-            _displayBarGraph((barGraphMode = "measurement"));
-            updateGraphViewFlag({ "type": barGraphMode });
+            _displayBarGraph("measurement");
+            updateDisplaySetting({ "type": barGraphMode });
         }
     });
     $("#dataTableButton").click(() => {
         if (EDDData.currentStudyID) {
             _displayTable();
-            updateGraphViewFlag({ "type": "table" });
+            updateDisplaySetting({ "type": "table" });
         }
     });
 
@@ -1435,39 +1419,28 @@ export function prepareIt() {
         .on("keydown", filterTableKeyDown);
 }
 
-function _settingsPath(propKey: string): string {
-    // make sure the final slash is on path so Django can accept POST requests
-    return "/profile/settings/" + propKey + "/";
+interface DisplaySetting {
+    type: ViewingMode | BarGraphMode;
 }
 
-function updateGraphViewFlag(type) {
-    $.ajax(_settingsPath(`measurement-${EDDData.currentStudyID}`), {
+function updateDisplaySetting(type: DisplaySetting) {
+    const url = $("#settinglink").attr("href");
+    $.ajax({
         "data": {
             "csrfmiddlewaretoken": Utl.EDD.findCSRFToken(),
             "data": JSON.stringify(type),
         },
         "type": "POST",
+        "url": url,
     });
 }
 
-export function fetchSettings(
-    propKey: string,
-    callback: (value: any) => void,
-    defaultValue?: any,
-): void {
-    $.ajax(_settingsPath(propKey), {
+function fetchDisplaySetting(callback: (value: DisplaySetting) => void): void {
+    const url = $("#settinglink").attr("href");
+    $.ajax({
         "dataType": "json",
-        "success": (data: any): void => {
-            data = data || defaultValue;
-            if (typeof data === "string") {
-                try {
-                    data = JSON.parse(data);
-                } catch (e) {
-                    /* ParseError, just use string value */
-                }
-            }
-            callback.call({}, data);
-        },
+        "success": callback,
+        "url": url,
     });
 }
 
@@ -1477,37 +1450,30 @@ function onSuccessEDDData() {
     $("#filteringShowDisabledCheckbox, #filteringShowEmptyCheckbox").change(() => {
         queueRefreshDataDisplayIfStale();
     });
-    fetchSettings(
-        "measurement-" + EDDData.currentStudyID,
-        (payload) => {
-            if (typeof payload !== "object" || typeof payload.type === "undefined") {
-                // do nothing if the parameter is not an object
-                return;
-            } else if (payload.type === "linegraph") {
-                _displayLineGraph();
-            } else if (payload.type === "table") {
-                _displayTable();
-            } else {
-                _displayBarGraph(payload.type);
-            }
-        },
-        [],
-    );
+    fetchDisplaySetting((payload: DisplaySetting) => {
+        if (typeof payload !== "object" || typeof payload.type === "undefined") {
+            // do nothing if the parameter is not an object
+            return;
+        } else if (payload.type === "linegraph") {
+            _displayLineGraph();
+        } else if (payload.type === "table") {
+            _displayTable();
+        } else if (payload.type === "bargraph") {
+            _displayBarGraph("measurement");
+        } else {
+            _displayBarGraph(payload.type);
+        }
+    });
     fetchMeasurements();
 }
 
 function fetchMeasurements() {
-    // pulling in protocol measurements AssayMeasurements
-    $.each(EDDData.Protocols, (id, protocol) => {
+    EDDData.valueLinks.forEach((link: string) => {
         $.ajax({
-            "url": "measurements/" + id + "/",
-            "type": "GET",
             "dataType": "json",
-            "error": (xhr, status) => {
-                return;
-            },
-            "success": processMeasurementData.bind(this, protocol),
-        });
+            "type": "GET",
+            "url": link,
+        }).done(processMeasurementData);
     });
 }
 
@@ -1519,39 +1485,24 @@ function filterTableKeyDown(event) {
     queueRefreshDataDisplayIfStale();
 }
 
-export function requestAssayData(assay) {
-    const protocol = EDDData.Protocols[assay.pid];
-    $.ajax({
-        "url": ["measurements", assay.pid, assay.id, ""].join("/"),
-        "type": "GET",
-        "dataType": "json",
-        "error": (xhr, status) => {
-            return;
-        },
-        "success": processMeasurementData.bind(this, protocol),
-    });
-}
-
-function processMeasurementData(protocol, data) {
+function processMeasurementData(payload: AssayValues) {
     const assaySeen = {};
     const protocolToAssay = {};
     let count_total = 0;
     let count_rec = 0;
     EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
-    EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
+    EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, payload.types);
 
     // attach measurement counts to each assay
-    $.each(data.total_measures, (assayId: string, count: number): void => {
+    $.each(payload.total_measures, (assayId: number, count: number): void => {
         const assay = EDDData.Assays[assayId];
         if (assay) {
-            // TODO: If we ever fetch by something other than protocol,
-            // Isn't there a chance this is cumulative, and we should += ?
             assay.count = count;
             count_total += count;
         }
     });
     // loop over all downloaded measurements
-    $.each(data.measures || {}, (index, measurement) => {
+    payload.measures.forEach((measurement) => {
         const assay = EDDData.Assays[measurement.assay];
         ++count_rec;
         if (!assay || assay.count === undefined) {
@@ -1562,7 +1513,7 @@ function processMeasurementData(protocol, data) {
             return;
         }
         // attach values
-        $.extend(measurement, { "values": data.data[measurement.id] || [] });
+        $.extend(measurement, { "values": payload.data[measurement.id] || [] });
         // store the measurements
         EDDData.AssayMeasurements[measurement.id] = measurement;
         // track which assays received updated measurements
@@ -1570,7 +1521,7 @@ function processMeasurementData(protocol, data) {
         protocolToAssay[assay.pid] = protocolToAssay[assay.pid] || {};
         protocolToAssay[assay.pid][assay.id] = true;
         // handle measurement data based on type
-        const mtype = data.types[measurement.type] || {};
+        const mtype = payload.types[measurement.type] || ({} as MeasurementTypeRecord);
         (assay.measures = assay.measures || []).push(measurement.id);
         if (mtype.family === "m") {
             // measurement is of metabolite
@@ -1588,8 +1539,8 @@ function processMeasurementData(protocol, data) {
     });
 
     progressiveFilteringWidget.processIncomingMeasurementRecords(
-        data.measures || {},
-        data.types,
+        payload.measures || {},
+        payload.types,
     );
 
     if (count_rec < count_total) {

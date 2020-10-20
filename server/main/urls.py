@@ -28,7 +28,7 @@ study_url_patterns = [
                 path("", login_required(views.study_measurements), name="measurements"),
                 path(
                     "<int:assay>/",
-                    login_required(views.study_assay_measurements),
+                    login_required(views.study_measurements),
                     name="assay_measurements",
                 ),
             ]

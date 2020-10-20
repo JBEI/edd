@@ -576,6 +576,10 @@ class StudyDetailView(StudyDetailBaseView):
             new_assay=edd_forms.AssayForm(prefix="assay", study=study),
             new_measurement=edd_forms.MeasurementForm(prefix="measurement"),
             showingdata=True,
+            # pass along link to get/set personal setting on last view for study
+            settinglink=reverse(
+                "profile:settings_key", kwargs={"key": f"measurement-{study.id}"},
+            ),
             writable=self.get_object().user_can_write(self.request.user),
         )
         return context

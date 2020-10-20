@@ -75,6 +75,10 @@ def get_edddata_study(study):
     )
     return {
         "currentStudyID": study.id,
+        "valueLinks": [
+            reverse("main:measurements", kwargs={"slug": study.slug, "protocol": p.id})
+            for p in protocols
+        ],
         "Assays": {a.id: a.to_json() for a in assays},
         "Lines": {line.id: line.to_json() for line in lines},
         "MeasurementTypes": {t.id: t.to_json() for t in measure_types},

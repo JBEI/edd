@@ -45,16 +45,20 @@ interface LineRecord extends EDDRecord {
 
 // This is what we expect in EDDData.Assays
 interface AssayRecord extends EDDRecord {
+    // this section comes from server endpoint
     active: boolean; // Active assay
+    count: number;
+    experimenter: number; // Experimenter ID
     lid: number; // Line ID
     pid: number; // Protocol ID
-    experimenter: number; // Experimenter ID
-    measures: number[]; // All collected measurements associated with Assay
-    metabolites: number[]; // Metabolite measurements associated with Assay
-    transcriptions: number[]; // Transcription measurements associated with Assay
-    proteins: number[]; // Proteins measurements associated with Assay
-    general: number[]; // Measurements for everything else
-    count: number;
+    study: number;
+
+    // this section gets added on frontend
+    measures?: number[]; // All collected measurements associated with Assay
+    metabolites?: number[]; // Metabolite measurements associated with Assay
+    transcriptions?: number[]; // Transcription measurements associated with Assay
+    proteins?: number[]; // Proteins measurements associated with Assay
+    general?: number[]; // Measurements for everything else
 }
 
 // This is what we expect in EDDData.AssayMeasurements
@@ -62,14 +66,15 @@ interface MeasurementRecord {
     id: number; // Measurement ID
     assay: number; // Assay ID
     type: number; // MeasurementTypeRecord ID
-    comp: string; // see main/models.py:MeasurementCompartment for enum choices
-    format: string; // see main/models.py:MeasurementFormat for enum choices
+    comp: string; // see main/models.py:Measurement.Compartment for enum choices
+    format: string; // see main/models.py:Measurement.Format for enum choices
     values: number[][][]; // array of data values
     x_units: number;
     y_units: number;
 }
 
 interface MeasurementCompartmentRecord {
+    id: string;
     name: string;
     code: string;
 }
@@ -122,10 +127,20 @@ interface UserRecord {
     disabled: boolean;
 }
 
+interface AssayValues {
+    // {ID: [[[x1], [y1]], [[x2], [y2]], ... ]}
+    data: { [measurement_id: number]: number[][][] };
+    measures: MeasurementRecord[];
+    types: RecordList<MeasurementTypeRecord>;
+    total_measures: { [assay_id: number]: number };
+}
+
 // Declare interface and EDDData variable for highlight support
 interface EDDData {
     // Can be null/undefined when no Study is chosen
     currentStudyID?: number;
+    // Can be null/undefined when no Study is chosen
+    valueLinks?: string[];
     AssayMeasurements: RecordList<MeasurementRecord>;
     Assays: RecordList<AssayRecord>;
     CSources: RecordList<CarbonSourceRecord>;
