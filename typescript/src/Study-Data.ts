@@ -131,7 +131,7 @@ export class ProgressiveFilteringWidget {
         this.lastFilteringResults = null;
     }
 
-    // Read through the Lines, Assays, and AssayMeasurements structures to learn what types
+    // Read through the Lines, Assays, and Measurements structures to learn what types
     // are present, then instantiate the relevant subclasses of GenericFilterSection, to
     // create a series of columns for the filtering section under the main graph on the page.
     // This must be outside the constructor because EDDData.Lines and EDDData.Assays are not
@@ -225,7 +225,7 @@ export class ProgressiveFilteringWidget {
     // their various categories, and flag them as available for popualting the
     // filtering section.  Then call to repopulate the filtering based on the expanded sets.
     processIncomingMeasurementRecords(measures, types): void {
-        // loop over all downloaded measurements. measures corresponds to AssayMeasurements
+        // loop over all downloaded measurements. measures corresponds to Measurements
         $.each(measures || {}, (index, measurement) => {
             const assay = EDDData.Assays[measurement.assay];
             // If we've seen it already (rather unlikely), skip it.
@@ -281,7 +281,7 @@ export class ProgressiveFilteringWidget {
 
         if (!this.showingDisabled) {
             const filterDisabled = (measureId: string): boolean => {
-                const measure: any = EDDData.AssayMeasurements[measureId];
+                const measure: any = EDDData.Measurements[measureId];
                 if (!measure) {
                     return false;
                 }
@@ -1179,7 +1179,7 @@ export class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         this.uniqueIndexes = {};
         this.filterHash = {};
         amIDs.forEach((measureId: string) => {
-            const measure = EDDData.AssayMeasurements[measureId] || {};
+            const measure = EDDData.Measurements[measureId] || {};
             this.filterHash[measureId] = this.filterHash[measureId] || [];
             const value: MeasurementCompartmentRecord =
                 EDDData.MeasurementTypeCompartments[measure.compartment] ||
@@ -1218,7 +1218,7 @@ export class MeasurementFilterSection extends GenericFilterSection {
         this.filterHash = {};
         ids.forEach((measureId: string) => {
             const measure: MeasurementRecord =
-                EDDData.AssayMeasurements[measureId] || NULL_MEASURE;
+                EDDData.Measurements[measureId] || NULL_MEASURE;
             this.filterHash[measureId] = this.filterHash[measureId] || [];
             if (measure?.type) {
                 const t = EDDData.MeasurementTypes[measure.type];
@@ -1490,7 +1490,7 @@ function processMeasurementData(payload: AssayValues) {
     const protocolToAssay = {};
     let count_total = 0;
     let count_rec = 0;
-    EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
+    EDDData.Measurements = EDDData.Measurements || {};
     EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, payload.types);
 
     // attach measurement counts to each assay
@@ -1515,7 +1515,7 @@ function processMeasurementData(payload: AssayValues) {
         // attach values
         $.extend(measurement, { "values": payload.data[measurement.id] || [] });
         // store the measurements
-        EDDData.AssayMeasurements[measurement.id] = measurement;
+        EDDData.Measurements[measurement.id] = measurement;
         // track which assays received updated measurements
         assaySeen[assay.id] = true;
         protocolToAssay[assay.pid] = protocolToAssay[assay.pid] || {};
@@ -1641,10 +1641,7 @@ function actionPanelRefresh() {
     }
     // if there are assays but no data, show empty assays
     // note: this is to combat the current default setting for showing graph on page load
-    if (
-        !$.isEmptyObject(EDDData.Assays) &&
-        $.isEmptyObject(EDDData.AssayMeasurements)
-    ) {
+    if (!$.isEmptyObject(EDDData.Assays) && $.isEmptyObject(EDDData.Measurements)) {
         if (!$("#TableShowEAssaysCB").prop("checked")) {
             $("#TableShowEAssaysCB").click();
         }
@@ -1667,7 +1664,7 @@ function remakeMainGraphArea() {
     // set any unchecked labels to black
     progressiveFilteringWidget.lineNameFilter.setLineColors();
     dataSets = postFilteringMeasurements.map((mId: number, i: number): GraphValue[] => {
-        const measure: MeasurementRecord = EDDData.AssayMeasurements[mId];
+        const measure: MeasurementRecord = EDDData.Measurements[mId];
         const points: number = measure ? measure.values.length : 0;
         // Skip the rest if we've hit our limit
         if (dataPointsDisplayed > 15000) {
@@ -1884,7 +1881,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                     // reduce to find highest/lowest value across all measures
                     recordMinmax = measures.reduce<MinMax>(
                         (middle: MinMax, measureId): MinMax => {
-                            const lookup = EDDData.AssayMeasurements || {};
+                            const lookup = EDDData.Measurements || {};
                             const measure = lookup[measureId] || NULL_MEASURE;
                             // reduce to find highest/lowest value across all data in measurement
                             const measureMinmax = (measure.values || []).reduce(
@@ -2112,7 +2109,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         const factory = (): DataGridDataCell => new DataGridDataCell(gridSpec, index);
 
         if ((record.metabolites || []).length > 0) {
-            if (EDDData.AssayMeasurements === undefined) {
+            if (EDDData.Measurements === undefined) {
                 cells.push(
                     new DataGridLoadingCell(gridSpec, index, {
                         "rowspan": record.metabolites.length,
@@ -2127,7 +2124,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             }
         }
         if ((record.general || []).length > 0) {
-            if (EDDData.AssayMeasurements === undefined) {
+            if (EDDData.Measurements === undefined) {
                 cells.push(
                     new DataGridLoadingCell(gridSpec, index, {
                         "rowspan": record.general.length,
@@ -2143,7 +2140,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         }
         // generate only one cell if there is any transcriptomics data
         if ((record.transcriptions || []).length > 0) {
-            if (EDDData.AssayMeasurements === undefined) {
+            if (EDDData.Measurements === undefined) {
                 cells.push(new DataGridLoadingCell(gridSpec, index));
             } else {
                 cells.push(opt.transcriptToCell(record.transcriptions));
@@ -2151,7 +2148,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         }
         // generate only one cell if there is any proteomics data
         if ((record.proteins || []).length > 0) {
-            if (EDDData.AssayMeasurements === undefined) {
+            if (EDDData.Measurements === undefined) {
                 cells.push(new DataGridLoadingCell(gridSpec, index));
             } else {
                 cells.push(opt.proteinToCell(record.proteins));
@@ -2177,7 +2174,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     ): DataGridDataCell[] {
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             "metaboliteToValue": (measureId) => {
-                const measure: any = EDDData.AssayMeasurements[measureId] || {},
+                const measure: any = EDDData.Measurements[measureId] || {},
                     mtype: any = EDDData.MeasurementTypes[measure.type] || {};
                 return { "name": mtype.name || "", "id": measureId };
             },
@@ -2217,7 +2214,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     ): DataGridDataCell[] {
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             "metaboliteToValue": (measureId) => {
-                const measure: any = EDDData.AssayMeasurements[measureId] || {},
+                const measure: any = EDDData.Measurements[measureId] || {},
                     mtype: any = EDDData.MeasurementTypes[measure.type] || {},
                     unit: any = EDDData.UnitTypes[measure.y_units] || {};
                 return {
@@ -2255,12 +2252,12 @@ class DataGridSpecAssays extends DataGridSpecBase {
     ): DataGridDataCell[] {
         // function to use in Array#reduce to count all the values in a set of measurements
         const reduceCount = (prev: number, measureId) => {
-            const measure: any = EDDData.AssayMeasurements[measureId] || {};
+            const measure: any = EDDData.Measurements[measureId] || {};
             return prev + (measure.values || []).length;
         };
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             "metaboliteToValue": (measureId) => {
-                const measure: any = EDDData.AssayMeasurements[measureId] || {},
+                const measure: any = EDDData.Measurements[measureId] || {},
                     mtype: any = EDDData.MeasurementTypes[measure.type] || {};
                 return {
                     "name": mtype.name || "",
@@ -2303,7 +2300,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             const timeCount: { [time: number]: number } = {};
             // count values at each x for all measurements
             ids.forEach((measureId) => {
-                const measure = EDDData.AssayMeasurements[measureId] || NULL_MEASURE;
+                const measure = EDDData.Measurements[measureId] || NULL_MEASURE;
                 const points: number[][][] = measure.values || [];
                 points.forEach((point: number[][]) => {
                     timeCount[point[0][0]] = timeCount[point[0][0]] || 0;
@@ -2334,7 +2331,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         }
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             "metaboliteToValue": (measureId: number): CellValue => {
-                const measure = EDDData.AssayMeasurements[measureId] || NULL_MEASURE;
+                const measure = EDDData.Measurements[measureId] || NULL_MEASURE;
                 const mtype: MeasurementTypeRecord =
                     EDDData.MeasurementTypes[measure.type] ||
                     ({} as MeasurementTypeRecord);

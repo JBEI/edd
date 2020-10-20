@@ -61,7 +61,7 @@ interface AssayRecord extends EDDRecord {
     general?: number[]; // Measurements for everything else
 }
 
-// This is what we expect in EDDData.AssayMeasurements
+// This is what we expect in EDDData.Measurements
 interface MeasurementRecord {
     id: number; // Measurement ID
     assay: number; // Assay ID
@@ -111,11 +111,6 @@ interface StrainRecord extends EDDRecord {
     registry_url: string;
 }
 
-interface CarbonSourceRecord extends EDDRecord {
-    labeling: string;
-    volume: number;
-}
-
 interface UserRecord {
     id: number;
     uid: string;
@@ -141,10 +136,10 @@ interface EDDData {
     currentStudyID?: number;
     // Can be null/undefined when no Study is chosen
     valueLinks?: string[];
-    AssayMeasurements: RecordList<MeasurementRecord>;
     Assays: RecordList<AssayRecord>;
-    CSources: RecordList<CarbonSourceRecord>;
     Lines: RecordList<LineRecord>;
+    // added in follow-on queries
+    Measurements?: RecordList<MeasurementRecord>;
     MeasurementTypeCompartments: RecordList<MeasurementCompartmentRecord>;
     MeasurementTypes: RecordList<MeasurementTypeRecord>;
     MetaDataTypes: RecordList<MetadataTypeRecord>;
