@@ -2,41 +2,23 @@
 
 import * as $ from "jquery";
 
-import {
-    DataGrid,
-    DataGridColumnGroupSpec,
-    DataGridColumnSpec,
-    DataGridDataCell,
-    DataGridHeaderSpec,
-    DataGridHeaderWidget,
-    DataGridLoadingCell,
-    DataGridOptionWidget,
-    DataGridSpecBase,
-    DataGridTableSpec,
-    DGSelectAllWidget,
-} from "../modules/DataGrid";
+import * as Config from "../modules/line/Config";
+import * as DG from "../modules/DataGrid";
 import * as Dragboxes from "../modules/Dragboxes";
-import {
-    BarGraphMode,
-    EDDGraphingTools,
-    GraphValue,
-    GraphView,
-    ViewingMode,
-} from "../modules/EDDGraphingTools";
 import * as Forms from "../modules/Forms";
+import * as GT from "../modules/EDDGraphingTools";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
-import * as Config from "../modules/line/Config";
 
 declare let window: StudyBase.EDDWindow;
 const EDDData = window.EDDData || ({} as EDDData);
 
-let viewingMode: ViewingMode;
-let barGraphMode: BarGraphMode;
+let viewingMode: GT.ViewingMode;
+let barGraphMode: GT.BarGraphMode;
 
 let progressiveFilteringWidget: ProgressiveFilteringWidget;
 let postFilteringMeasurements: any[];
-let eddGraphing: EDDGraphingTools;
+let eddGraphing: GT.EDDGraphingTools;
 let actionPanelRefreshTimer: any;
 let refresDataDisplayIfStaleTimer: any;
 
@@ -1039,7 +1021,7 @@ export class LineNameFilterSection extends GenericFilterSection {
             this.lastAssignedColor = null;
         } else {
             type FilterItem = { line: LineRecord; label: JQuery };
-            const palette: Set<string> = new Set(EDDGraphingTools.colors);
+            const palette: Set<string> = new Set(GT.EDDGraphingTools.colors);
             const needsColor: FilterItem[] = [];
             // any selection(s) already having a color should keep it
             checked.each((_, elem) => {
@@ -1179,11 +1161,9 @@ export class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         this.uniqueIndexes = {};
         this.filterHash = {};
         amIDs.forEach((measureId: string) => {
-            const measure = EDDData.Measurements[measureId] || {};
+            const measure = Utl.lookup(EDDData.Measurements, measureId);
             this.filterHash[measureId] = this.filterHash[measureId] || [];
-            const value: MeasurementCompartmentRecord =
-                EDDData.MeasurementTypeCompartments[measure.compartment] ||
-                ({} as MeasurementCompartmentRecord);
+            const value = Utl.lookup(EDDData.MeasurementTypeCompartments, measure.comp);
             if (value && value.name) {
                 this.filterHash[measureId].push(this.assignUniqueIndex(value.name));
             }
@@ -1291,7 +1271,7 @@ function _displayLineGraph(): void {
     $("#assaysTable").addClass("off");
 }
 
-function _displayBarGraph(mode: BarGraphMode): void {
+function _displayBarGraph(mode: GT.BarGraphMode): void {
     barGraphMode = mode;
     $("#exportButton, .tableActionButtons").addClass("off");
     $("#filterControlsArea").removeClass("off");
@@ -1308,7 +1288,7 @@ function _displayTable(): void {
     $("#assaysTable").removeClass("off");
 }
 
-function _setActiveDisplayButton(selector: string, mode: ViewingMode): void {
+function _setActiveDisplayButton(selector: string, mode: GT.ViewingMode): void {
     $("#displayModeButtons").find(".active").removeClass("active");
     $("#displayModeButtons").find(selector).addClass("active");
     viewingMode = mode;
@@ -1318,7 +1298,7 @@ function _setActiveDisplayButton(selector: string, mode: ViewingMode): void {
 
 // Called when the page loads.
 export function prepareIt() {
-    eddGraphing = new EDDGraphingTools(EDDData);
+    eddGraphing = new GT.EDDGraphingTools(EDDData);
     progressiveFilteringWidget = new ProgressiveFilteringWidget();
     postFilteringMeasurements = [];
 
@@ -1420,7 +1400,7 @@ export function prepareIt() {
 }
 
 interface DisplaySetting {
-    type: ViewingMode | BarGraphMode;
+    type: GT.ViewingMode | GT.BarGraphMode;
 }
 
 function updateDisplaySetting(type: DisplaySetting) {
@@ -1650,7 +1630,7 @@ function actionPanelRefresh() {
 
 function remakeMainGraphArea() {
     let dataPointsDisplayed = 0;
-    let dataSets: GraphValue[][] = [];
+    let dataSets: GT.GraphValue[][] = [];
 
     $("#tooManyPoints").hide();
 
@@ -1663,18 +1643,20 @@ function remakeMainGraphArea() {
 
     // set any unchecked labels to black
     progressiveFilteringWidget.lineNameFilter.setLineColors();
-    dataSets = postFilteringMeasurements.map((mId: number, i: number): GraphValue[] => {
-        const measure: MeasurementRecord = EDDData.Measurements[mId];
-        const points: number = measure ? measure.values.length : 0;
-        // Skip the rest if we've hit our limit
-        if (dataPointsDisplayed > 15000) {
-            return;
-        }
-        dataPointsDisplayed += points;
-        const assay: AssayRecord = EDDData.Assays[measure.assay];
-        const line: LineRecord = EDDData.Lines[assay.lid];
-        return eddGraphing.transformSingleLineItem(measure, line.color);
-    });
+    dataSets = postFilteringMeasurements.map(
+        (mId: number, i: number): GT.GraphValue[] => {
+            const measure: MeasurementRecord = EDDData.Measurements[mId];
+            const points: number = measure ? measure.values.length : 0;
+            // Skip the rest if we've hit our limit
+            if (dataPointsDisplayed > 15000) {
+                return;
+            }
+            dataPointsDisplayed += points;
+            const assay: AssayRecord = EDDData.Assays[measure.assay];
+            const line: LineRecord = EDDData.Lines[assay.lid];
+            return eddGraphing.transformSingleLineItem(measure, line.color);
+        },
+    );
 
     $(".displayedDiv").text(dataPointsDisplayed + " measurements displayed");
     $("#noData").addClass("off");
@@ -1687,7 +1669,7 @@ function remakeMainGraphArea() {
     };
 
     const elem = $("#graphArea").empty();
-    const view = new GraphView(elem.get(0));
+    const view = new GT.GraphView(elem.get(0));
     if (viewingMode === "linegraph") {
         view.buildLineGraph(graphSet);
     } else if (viewingMode === "bargraph") {
@@ -1774,8 +1756,8 @@ export function showEditAssayDialog(selection: JQuery): void {
     form.removeClass("off").dialog("open");
 }
 
-class DataGridAssays extends DataGrid {
-    constructor(dataGridSpec: DataGridSpecBase) {
+class DataGridAssays extends DG.DataGrid {
+    constructor(dataGridSpec: DG.DataGridSpecBase) {
         super(dataGridSpec);
     }
 
@@ -1791,13 +1773,13 @@ interface AssayRecordExended extends AssayRecord {
     minXValue: number;
 }
 
-// The spec object that will be passed to DataGrid to create the Assays table(s)
-class DataGridSpecAssays extends DataGridSpecBase {
+// The spec object that will be passed to DG.DataGrid to create the Assays table(s)
+class DataGridSpecAssays extends DG.DataGridSpecBase {
     metaDataIDsUsedInAssays: any;
     maximumXValueInData: number;
     minimumXValueInData: number;
 
-    measuringTimesHeaderSpec: DataGridHeaderSpec;
+    measuringTimesHeaderSpec: DG.DataGridHeaderSpec;
 
     graphObject: any;
 
@@ -1824,7 +1806,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     // This is an override.  Called when a data reset is triggered, but before the table rows are
     // rebuilt.
-    onDataReset(dataGrid: DataGrid): void {
+    onDataReset(dataGrid: DG.DataGrid): void {
         this.findMaximumXValueInData();
         if (this.measuringTimesHeaderSpec && this.measuringTimesHeaderSpec.element) {
             $(this.measuringTimesHeaderSpec.element)
@@ -1839,15 +1821,15 @@ class DataGridSpecAssays extends DataGridSpecBase {
         }
     }
 
-    // The table element on the page that will be turned into the DataGrid.  Any preexisting table
-    // content will be removed.
+    // The table element on the page that will be turned into the DG.DataGrid.
+    // Any preexisting table content will be removed.
     getTableElement() {
         return document.getElementById("assaysTable");
     }
 
     // Specification for the table as a whole
-    defineTableSpec(): DataGridTableSpec {
-        return new DataGridTableSpec("assays", {
+    defineTableSpec(): DG.DataGridTableSpec {
+        return new DG.DataGridTableSpec("assays", {
             "defaultSort": 0,
         });
     }
@@ -1954,12 +1936,12 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
     // Specification for the headers along the top of the table
-    defineHeaderSpec(): DataGridHeaderSpec[] {
+    defineHeaderSpec(): DG.DataGridHeaderSpec[] {
         // map all metadata IDs to HeaderSpec objects
-        const metaDataHeaders: DataGridHeaderSpec[] = this.metaDataIDsUsedInAssays.map(
+        const metaDataHeaders: DG.DataGridHeaderSpec[] = this.metaDataIDsUsedInAssays.map(
             (id, index) => {
                 const mdType = EDDData.MetaDataTypes[id];
-                return new DataGridHeaderSpec(2 + index, "hAssaysMetaid" + id, {
+                return new DG.DataGridHeaderSpec(2 + index, "hAssaysMetaid" + id, {
                     "name": mdType.name,
                     "headerRow": 2,
                     "size": "s",
@@ -1970,13 +1952,13 @@ class DataGridSpecAssays extends DataGridSpecBase {
         );
 
         // The left section of the table has Assay Name and Line (Name)
-        const leftSide: DataGridHeaderSpec[] = [
-            new DataGridHeaderSpec(1, "hAssaysName", {
+        const leftSide: DG.DataGridHeaderSpec[] = [
+            new DG.DataGridHeaderSpec(1, "hAssaysName", {
                 "name": "Assay Name",
                 "headerRow": 2,
                 "sortBy": this.loadAssayName,
             }),
-            new DataGridHeaderSpec(2, "hAssayLineName", {
+            new DG.DataGridHeaderSpec(2, "hAssayLineName", {
                 "name": "Line",
                 "headerRow": 2,
                 "sortBy": this.loadLineName,
@@ -1986,20 +1968,20 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // Offsets for the right side of the table depends on size of the preceding sections
         let rightOffset = leftSide.length + metaDataHeaders.length;
         const rightSide = [
-            new DataGridHeaderSpec(++rightOffset, "hAssaysMName", {
+            new DG.DataGridHeaderSpec(++rightOffset, "hAssaysMName", {
                 "name": "Measurement",
                 "headerRow": 2,
             }),
-            new DataGridHeaderSpec(++rightOffset, "hAssaysUnits", {
+            new DG.DataGridHeaderSpec(++rightOffset, "hAssaysUnits", {
                 "name": "Units",
                 "headerRow": 2,
             }),
-            new DataGridHeaderSpec(++rightOffset, "hAssaysCount", {
+            new DG.DataGridHeaderSpec(++rightOffset, "hAssaysCount", {
                 "name": "Count",
                 "headerRow": 2,
             }),
             // The measurement times are referenced elsewhere, so are saved to the object
-            (this.measuringTimesHeaderSpec = new DataGridHeaderSpec(
+            (this.measuringTimesHeaderSpec = new DG.DataGridHeaderSpec(
                 ++rightOffset,
                 "hAssaysCount",
                 {
@@ -2007,13 +1989,13 @@ class DataGridSpecAssays extends DataGridSpecBase {
                     "headerRow": 2,
                 },
             )),
-            new DataGridHeaderSpec(++rightOffset, "hAssaysExperimenter", {
+            new DG.DataGridHeaderSpec(++rightOffset, "hAssaysExperimenter", {
                 "name": "Experimenter",
                 "headerRow": 2,
                 "sortBy": this.loadExperimenterInitials,
                 "sortAfter": 1,
             }),
-            new DataGridHeaderSpec(++rightOffset, "hAssaysModified", {
+            new DG.DataGridHeaderSpec(++rightOffset, "hAssaysModified", {
                 "name": "Last Modified",
                 "headerRow": 2,
                 "sortBy": this.loadAssayModification,
@@ -2052,10 +2034,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
     generateAssayNameCells(
         gridSpec: DataGridSpecAssays,
         index: string,
-    ): DataGridDataCell[] {
+    ): DG.DataGridDataCell[] {
         const record = EDDData.Assays[index];
         return [
-            new DataGridDataCell(gridSpec, index, {
+            new DG.DataGridDataCell(gridSpec, index, {
                 "checkboxName": "assayId",
                 "checkboxWithID": (id) => "assay" + id + "include",
                 "hoverEffect": true,
@@ -2069,11 +2051,11 @@ class DataGridSpecAssays extends DataGridSpecBase {
     generateLineNameCells(
         gridSpec: DataGridSpecAssays,
         index: string,
-    ): DataGridDataCell[] {
+    ): DG.DataGridDataCell[] {
         const record = EDDData.Assays[index],
             line = EDDData.Lines[record.lid];
         return [
-            new DataGridDataCell(gridSpec, index, {
+            new DG.DataGridDataCell(gridSpec, index, {
                 "rowspan": gridSpec.rowSpanForRecord(index),
                 "contentString": line.name,
             }),
@@ -2081,7 +2063,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
     makeMetaDataCellsGeneratorFunction(id) {
-        return (gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[] => {
+        return (gridSpec: DataGridSpecAssays, index: string): DG.DataGridDataCell[] => {
             const assay = EDDData.Assays[index];
             const type = EDDData.MetaDataTypes[id];
             let contentStr = assay.meta[id] || "";
@@ -2091,7 +2073,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                     .trim();
             }
             return [
-                new DataGridDataCell(gridSpec, index, {
+                new DG.DataGridDataCell(gridSpec, index, {
                     "rowspan": gridSpec.rowSpanForRecord(index),
                     "contentString": contentStr,
                 }),
@@ -2103,15 +2085,16 @@ class DataGridSpecAssays extends DataGridSpecBase {
         gridSpec: DataGridSpecAssays,
         index: string,
         opt: any,
-    ): DataGridDataCell[] {
+    ): DG.DataGridDataCell[] {
         let cells = [];
         const record: AssayRecord = EDDData.Assays[index];
-        const factory = (): DataGridDataCell => new DataGridDataCell(gridSpec, index);
+        const factory = (): DG.DataGridDataCell =>
+            new DG.DataGridDataCell(gridSpec, index);
 
         if ((record.metabolites || []).length > 0) {
             if (EDDData.Measurements === undefined) {
                 cells.push(
-                    new DataGridLoadingCell(gridSpec, index, {
+                    new DG.DataGridLoadingCell(gridSpec, index, {
                         "rowspan": record.metabolites.length,
                     }),
                 );
@@ -2126,7 +2109,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         if ((record.general || []).length > 0) {
             if (EDDData.Measurements === undefined) {
                 cells.push(
-                    new DataGridLoadingCell(gridSpec, index, {
+                    new DG.DataGridLoadingCell(gridSpec, index, {
                         "rowspan": record.general.length,
                     }),
                 );
@@ -2141,7 +2124,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // generate only one cell if there is any transcriptomics data
         if ((record.transcriptions || []).length > 0) {
             if (EDDData.Measurements === undefined) {
-                cells.push(new DataGridLoadingCell(gridSpec, index));
+                cells.push(new DG.DataGridLoadingCell(gridSpec, index));
             } else {
                 cells.push(opt.transcriptToCell(record.transcriptions));
             }
@@ -2149,7 +2132,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // generate only one cell if there is any proteomics data
         if ((record.proteins || []).length > 0) {
             if (EDDData.Measurements === undefined) {
-                cells.push(new DataGridLoadingCell(gridSpec, index));
+                cells.push(new DG.DataGridLoadingCell(gridSpec, index));
             } else {
                 cells.push(opt.proteinToCell(record.proteins));
             }
@@ -2158,7 +2141,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         if (!cells.length) {
             if (record.count) {
                 // we have a count, but no data yet; still loading
-                cells.push(new DataGridLoadingCell(gridSpec, index));
+                cells.push(new DG.DataGridLoadingCell(gridSpec, index));
             } else if (opt.empty) {
                 cells.push(opt.empty.call({}));
             } else {
@@ -2171,7 +2154,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     generateMeasurementNameCells(
         gridSpec: DataGridSpecAssays,
         index: string,
-    ): DataGridDataCell[] {
+    ): DG.DataGridDataCell[] {
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             "metaboliteToValue": (measureId) => {
                 const measure: any = EDDData.Measurements[measureId] || {},
@@ -2184,7 +2167,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 return ((y > z) as any) - ((z > y) as any);
             },
             "metaboliteValueToCell": (value) => {
-                return new DataGridDataCell(gridSpec, value.id, {
+                return new DG.DataGridDataCell(gridSpec, value.id, {
                     "hoverEffect": true,
                     "checkboxName": "measurementId",
                     "checkboxWithID": () => "measurement" + value.id + "include",
@@ -2192,17 +2175,17 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 });
             },
             "transcriptToCell": (ids: any[]) => {
-                return new DataGridDataCell(gridSpec, index, {
+                return new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": "Transcriptomics Data",
                 });
             },
             "proteinToCell": (ids: any[]) => {
-                return new DataGridDataCell(gridSpec, index, {
+                return new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": "Proteomics Data",
                 });
             },
             "empty": () =>
-                new DataGridDataCell(gridSpec, index, {
+                new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": "<i>No Measurements</i>",
                 }),
         });
@@ -2211,7 +2194,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     generateUnitsCells(
         gridSpec: DataGridSpecAssays,
         index: string,
-    ): DataGridDataCell[] {
+    ): DG.DataGridDataCell[] {
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             "metaboliteToValue": (measureId) => {
                 const measure: any = EDDData.Measurements[measureId] || {},
@@ -2229,17 +2212,17 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 return ((y > z) as any) - ((z > y) as any);
             },
             "metaboliteValueToCell": (value) => {
-                return new DataGridDataCell(gridSpec, index, {
+                return new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": value.unit,
                 });
             },
             "transcriptToCell": (ids: any[]) => {
-                return new DataGridDataCell(gridSpec, index, {
+                return new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": "RPKM",
                 });
             },
             "proteinToCell": (ids: any[]) => {
-                return new DataGridDataCell(gridSpec, index, {
+                return new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": "", // TODO: what are proteomics measurement units?
                 });
             },
@@ -2249,7 +2232,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     generateCountCells(
         gridSpec: DataGridSpecAssays,
         index: string,
-    ): DataGridDataCell[] {
+    ): DG.DataGridDataCell[] {
         // function to use in Array#reduce to count all the values in a set of measurements
         const reduceCount = (prev: number, measureId) => {
             const measure: any = EDDData.Measurements[measureId] || {};
@@ -2271,7 +2254,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 return ((y > z) as any) - ((z > y) as any);
             },
             "metaboliteValueToCell": (value) => {
-                return new DataGridDataCell(gridSpec, index, {
+                return new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": [
                         "(",
                         (value.measure.values || []).length,
@@ -2280,12 +2263,12 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 });
             },
             "transcriptToCell": (ids: any[]) => {
-                return new DataGridDataCell(gridSpec, index, {
+                return new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": ["(", ids.reduce(reduceCount, 0), ")"].join(""),
                 });
             },
             "proteinToCell": (ids: any[]) => {
-                return new DataGridDataCell(gridSpec, index, {
+                return new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": ["(", ids.reduce(reduceCount, 0), ")"].join(""),
                 });
             },
@@ -2295,7 +2278,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     generateMeasuringTimesCells(
         gridSpec: DataGridSpecAssays,
         index: string,
-    ): DataGridDataCell[] {
+    ): DG.DataGridDataCell[] {
         const svgCellForTimeCounts = (ids: any[]) => {
             const timeCount: { [time: number]: number } = {};
             // count values at each x for all measurements
@@ -2320,7 +2303,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             if (consolidated.length) {
                 svg = gridSpec.assembleSVGStringForDataPoints(consolidated, "");
             }
-            return new DataGridDataCell(gridSpec, index, {
+            return new DG.DataGridDataCell(gridSpec, index, {
                 "contentString": svg,
             });
         };
@@ -2351,7 +2334,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 const format = measure.format === "1" ? "carbon" : "";
                 const points = measure.values || [];
                 const svg = gridSpec.assembleSVGStringForDataPoints(points, format);
-                return new DataGridDataCell(gridSpec, index, {
+                return new DG.DataGridDataCell(gridSpec, index, {
                     "contentString": svg,
                 });
             },
@@ -2363,11 +2346,11 @@ class DataGridSpecAssays extends DataGridSpecBase {
     generateExperimenterCells(
         gridSpec: DataGridSpecAssays,
         index: string,
-    ): DataGridDataCell[] {
-        const exp = EDDData.Assays[index].exp;
+    ): DG.DataGridDataCell[] {
+        const exp = EDDData.Assays[index].experimenter;
         const uRecord = EDDData.Users[exp];
         return [
-            new DataGridDataCell(gridSpec, index, {
+            new DG.DataGridDataCell(gridSpec, index, {
                 "rowspan": gridSpec.rowSpanForRecord(index),
                 "contentString": uRecord ? uRecord.initials : "?",
             }),
@@ -2377,12 +2360,12 @@ class DataGridSpecAssays extends DataGridSpecBase {
     generateModificationDateCells(
         gridSpec: DataGridSpecAssays,
         index: string,
-    ): DataGridDataCell[] {
+    ): DG.DataGridDataCell[] {
         return [
-            new DataGridDataCell(gridSpec, index, {
+            new DG.DataGridDataCell(gridSpec, index, {
                 "rowspan": gridSpec.rowSpanForRecord(index),
                 "contentString": Utl.JS.timestampToTodayString(
-                    EDDData.Assays[index].mod,
+                    EDDData.Assays[index].modified.time,
                 ),
             }),
         ];
@@ -2448,55 +2431,57 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
     // Specification for each of the data columns that will make up the body of the table
-    defineColumnSpec(): DataGridColumnSpec[] {
+    defineColumnSpec(): DG.DataGridColumnSpec[] {
         let counter = 0;
         const leftSide = [
-            new DataGridColumnSpec(++counter, this.generateAssayNameCells),
-            new DataGridColumnSpec(++counter, this.generateLineNameCells),
+            new DG.DataGridColumnSpec(++counter, this.generateAssayNameCells),
+            new DG.DataGridColumnSpec(++counter, this.generateLineNameCells),
         ];
         const metaDataCols = this.metaDataIDsUsedInAssays.map((id) => {
-            return new DataGridColumnSpec(
+            return new DG.DataGridColumnSpec(
                 ++counter,
                 this.makeMetaDataCellsGeneratorFunction(id),
             );
         });
         const rightSide = [
-            new DataGridColumnSpec(++counter, this.generateMeasurementNameCells),
-            new DataGridColumnSpec(++counter, this.generateUnitsCells),
-            new DataGridColumnSpec(++counter, this.generateCountCells),
-            new DataGridColumnSpec(++counter, this.generateMeasuringTimesCells),
-            new DataGridColumnSpec(++counter, this.generateExperimenterCells),
-            new DataGridColumnSpec(++counter, this.generateModificationDateCells),
+            new DG.DataGridColumnSpec(++counter, this.generateMeasurementNameCells),
+            new DG.DataGridColumnSpec(++counter, this.generateUnitsCells),
+            new DG.DataGridColumnSpec(++counter, this.generateCountCells),
+            new DG.DataGridColumnSpec(++counter, this.generateMeasuringTimesCells),
+            new DG.DataGridColumnSpec(++counter, this.generateExperimenterCells),
+            new DG.DataGridColumnSpec(++counter, this.generateModificationDateCells),
         ];
 
         return leftSide.concat(metaDataCols, rightSide);
     }
 
     // Specification for each of the groups that the headers and data columns are organized into
-    defineColumnGroupSpec(): DataGridColumnGroupSpec[] {
-        const topSection: DataGridColumnGroupSpec[] = [
-            new DataGridColumnGroupSpec("Name", { "showInVisibilityList": false }),
-            new DataGridColumnGroupSpec("Line", { "showInVisibilityList": false }),
+    defineColumnGroupSpec(): DG.DataGridColumnGroupSpec[] {
+        const topSection: DG.DataGridColumnGroupSpec[] = [
+            new DG.DataGridColumnGroupSpec("Name", { "showInVisibilityList": false }),
+            new DG.DataGridColumnGroupSpec("Line", { "showInVisibilityList": false }),
         ];
 
-        const metaDataColGroups: DataGridColumnGroupSpec[] = this.metaDataIDsUsedInAssays.map(
-            (id, index): DataGridColumnGroupSpec => {
+        const metaDataColGroups: DG.DataGridColumnGroupSpec[] = this.metaDataIDsUsedInAssays.map(
+            (id, index): DG.DataGridColumnGroupSpec => {
                 const mdType = EDDData.MetaDataTypes[id];
-                return new DataGridColumnGroupSpec(mdType.name);
+                return new DG.DataGridColumnGroupSpec(mdType.name);
             },
         );
 
-        const bottomSection: DataGridColumnGroupSpec[] = [
-            new DataGridColumnGroupSpec("Measurement", {
+        const bottomSection: DG.DataGridColumnGroupSpec[] = [
+            new DG.DataGridColumnGroupSpec("Measurement", {
                 "showInVisibilityList": false,
             }),
-            new DataGridColumnGroupSpec("Units", { "showInVisibilityList": false }),
-            new DataGridColumnGroupSpec("Count", { "showInVisibilityList": false }),
-            new DataGridColumnGroupSpec("Measuring Times", {
+            new DG.DataGridColumnGroupSpec("Units", { "showInVisibilityList": false }),
+            new DG.DataGridColumnGroupSpec("Count", { "showInVisibilityList": false }),
+            new DG.DataGridColumnGroupSpec("Measuring Times", {
                 "showInVisibilityList": false,
             }),
-            new DataGridColumnGroupSpec("Experimenter", { "hiddenByDefault": true }),
-            new DataGridColumnGroupSpec("Last Modified", { "hiddenByDefault": true }),
+            new DG.DataGridColumnGroupSpec("Experimenter", { "hiddenByDefault": true }),
+            new DG.DataGridColumnGroupSpec("Last Modified", {
+                "hiddenByDefault": true,
+            }),
         ];
 
         return topSection.concat(metaDataColGroups, bottomSection);
@@ -2505,8 +2490,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // This is called to generate the array of custom header widgets.
     // The order of the array will be the order they are added to the header bar.
     // It's perfectly fine to return an empty array.
-    createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[] {
-        const widgetSet: DataGridHeaderWidget[] = [];
+    createCustomHeaderWidgets(dataGrid: DG.DataGrid): DG.DataGridHeaderWidget[] {
+        const widgetSet: DG.DataGridHeaderWidget[] = [];
 
         // A "select all / select none" button
         const selectAllWidget = new DGSelectAllAssaysMeasurementsWidget(dataGrid, this);
@@ -2519,8 +2504,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // This is called to generate the array of custom options menu widgets.
     // The order of the array will be the order they are displayed in the menu.
     // It's perfectly fine to return an empty array.
-    createCustomOptionsWidgets(dataGrid: DataGrid): DataGridOptionWidget[] {
-        const widgetSet: DataGridOptionWidget[] = [];
+    createCustomOptionsWidgets(dataGrid: DG.DataGrid): DG.DataGridOptionWidget[] {
+        const widgetSet: DG.DataGridOptionWidget[] = [];
         const disabledAssaysWidget = new DGDisabledAssaysWidget(dataGrid, this);
         const emptyAssaysWidget = new DGEmptyAssaysWidget(dataGrid, this);
         widgetSet.push(disabledAssaysWidget);
@@ -2541,7 +2526,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 // A slightly modified "Select All" header widget
 // that triggers a refresh of the actions panel when it changes the checkbox state.
-class DGSelectAllAssaysMeasurementsWidget extends DGSelectAllWidget {
+class DGSelectAllAssaysMeasurementsWidget extends DG.DGSelectAllWidget {
     clickHandler(): void {
         super.clickHandler();
         queueActionPanelRefresh();
@@ -2549,7 +2534,7 @@ class DGSelectAllAssaysMeasurementsWidget extends DGSelectAllWidget {
 }
 
 // When unchecked, this hides the set of Assays that are marked as disabled.
-class DGDisabledAssaysWidget extends DataGridOptionWidget {
+class DGDisabledAssaysWidget extends DG.DataGridOptionWidget {
     // Return a fragment to use in generating option widget IDs
     getIDFragment(uniqueID): string {
         return "TableShowDAssaysCB";
@@ -2619,7 +2604,7 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
 }
 
 // When unchecked, this hides the set of Assays that have no measurement data.
-class DGEmptyAssaysWidget extends DataGridOptionWidget {
+class DGEmptyAssaysWidget extends DG.DataGridOptionWidget {
     // Return a fragment to use in generating option widget IDs
     getIDFragment(uniqueID): string {
         return "TableShowEAssaysCB";
