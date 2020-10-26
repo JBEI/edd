@@ -783,8 +783,37 @@ div.pulldownMenuMenuBlock ul > li > input[type="checkbox"] {
     margin: 0px 7px 0px 0px;
 }
 
-/* Styling for a special-purpose "filter criteria" table */
+.studyPrevNext {
+    margin: 0px 40px 0px 20px;
+    float: right;
+}
 
+.dropLink {
+    vertical-align: top;
+}
+
+.dropImg {
+    background-image: url(images/download_icon.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+div.lastViewed span {
+    display: inline-block;
+    background-color: white;
+    margin-bottom: 5px;
+    font-weight: normal;
+    border: 1px solid #f1f1f1;
+    padding: 9px 10px;
+    font-size: 14px;
+    line-height: normal;
+    border-radius: 3px;
+    margin-right: 10px;
+}
+
+/* TODO begin delete section */
+/* Styling for a special-purpose "filter criteria" table */
 div.filteringSection {
     overflow-x: auto;
     overflow-y: hidden;
@@ -805,21 +834,6 @@ div.filterTable > div.filterColumn {
     margin: 0px;
     border: none;
     vertical-align: top;
-}
-.studyPrevNext {
-    margin: 0px 40px 0px 20px;
-    float: right;
-}
-
-.dropLink {
-    vertical-align: top;
-}
-
-.dropImg {
-    background-image: url(images/download_icon.png);
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
 }
 
 div.filterTable > div.filterColumn div.filterCriteriaScrollZone {
@@ -853,19 +867,6 @@ table.filterCriteriaTable input[type="checkbox"] {
     margin-left: 4px;
     margin-right: 4px;
     vertical-align: middle;
-}
-
-div.lastViewed span {
-    display: inline-block;
-    background-color: white;
-    margin-bottom: 5px;
-    font-weight: normal;
-    border: 1px solid #f1f1f1;
-    padding: 9px 10px;
-    font-size: 14px;
-    line-height: normal;
-    border-radius: 3px;
-    margin-right: 10px;
 }
 div.filterHead {
     padding: 4px 8px 2px 2px;
@@ -908,6 +909,40 @@ div.filterHeadSearch > input[type="text"] {
     border-radius: 7px;
     -webkit-border-radius: 7px;
     -moz-border-radius: 7px;
+}
+/* TODO end delete section */
+
+.filter-section {
+    border: 1px solid blue; /* temporary */
+    display: flex;
+    max-height: 300px;
+    white-space: nowrap;
+}
+.filter-section > .filter-column {
+    max-height: 300px;
+    overflow-y: scroll;
+    padding-right: 1em;
+}
+.filter-column > ul {
+    list-style: none;
+}
+.filter-column > ul > li {
+    font-size: 13px;
+    margin: 2px 0;
+}
+.filter-column input {
+    bottom: 1px; /* better matching w/ label along with vertical-align */
+    margin: 0;
+    position: relative;
+    vertical-align: middle;
+}
+.filter-head {
+    font-weight: bold;
+}
+.filter-head > .filter-clear {
+    float: none;
+    font-size: 14px;
+    padding: 2px;
 }
 
 /* Tables for filling out forms */
