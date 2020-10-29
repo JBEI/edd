@@ -163,6 +163,7 @@ REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` authentication.
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         # Note: DjangoModelPermissions would be better, but documentation won't support it
