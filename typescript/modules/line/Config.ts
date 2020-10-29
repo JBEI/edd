@@ -74,7 +74,6 @@ export class Access {
     protected constructor(
         private _data: EDDData,
         private _metadata: MetadataTypeRecord[],
-        private _replicate: MetadataTypeRecord,
     ) {}
 
     public static initAccess(data: EDDData): Access {
@@ -88,10 +87,7 @@ export class Access {
             Object.keys(line.meta).forEach((key) => metaKeys.add(key));
         });
         const metadata = Array.from(metaKeys).map((key) => data.MetaDataTypes[key]);
-        const replicate: MetadataTypeRecord = Object.values(data.MetaDataTypes).find(
-            (md: MetadataTypeRecord) => md.input_type === "replicate",
-        );
-        return new Access(data, metadata, replicate);
+        return new Access(data, metadata);
     }
 
     /**
@@ -234,11 +230,17 @@ export class Access {
     replicates(conflict?: any): LineRecord[] {
         const replicates: LineRecord[] = [];
         const lookup = {};
+        // find replicate metadata for Lines to do grouping
+        const meta_types = Object.values(this._data.MetaDataTypes);
+        const replicate_type: MetadataTypeRecord = meta_types.find(
+            (md: MetadataTypeRecord) =>
+                md.input_type === "replicate" && md.context === "L",
+        );
         // scan all lines, merging those that are replicates
         this.lines().forEach((line: LineRecord) => {
             // create a copy of the line for replicates view
             const copy = { ...line };
-            const replicate_id = copy.meta[this._replicate.id];
+            const replicate_id = copy.meta[replicate_type.id];
             // TODO: better way to handle selection state when switching modes?
             // this means switching between replicate and normal mode will clear selection
             copy.selected = false;
