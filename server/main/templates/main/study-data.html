@@ -20,7 +20,13 @@
       id="displayModeButtons"
       role="group"
     >
-      <button class="btn btn-default" id="lineGraphButton" type="button">
+      <button
+        class="btn btn-default edd-view-select"
+        id="lineGraphButton"
+        type="button"
+        data-selector="#lineGraphButton"
+        data-viewmode="linegraph"
+      >
         <span class="fas fa-chart-line"></span>
         <span class="collapse-label">{% trans 'Line Graph' %}</span>
       </button>
@@ -40,17 +46,38 @@
         <ul class="dropdown-menu">
           <li class="dropdown-header">{% trans 'Grouped By' %}</li>
           <li>
-            <a href="#" id="groupMeasureBtn">{% trans 'Measurement' %}</a>
+            <a
+              class="edd-view-select"
+              href="#"
+              data-selector="#barGraphButton"
+              data-viewmode="measurement"
+            >{% trans 'Measurement' %}</a>
           </li>
           <li>
-            <a href="#" id="groupLineBtn">{% trans 'Line' %}</a>
+            <a
+              class="edd-view-select"
+              href="#"
+              data-selector="#barGraphButton"
+              data-viewmode="line"
+            >{% trans 'Line' %}</a>
           </li>
           <li>
-            <a href="#" id="groupTimeBtn">{% trans 'Time' %}</a>
+            <a
+              class="edd-view-select"
+              href="#"
+              data-selector="#barGraphButton"
+              data-viewmode="time"
+            >{% trans 'Time' %}</a>
           </li>
         </ul>
       </div>
-      <button class="btn btn-default" id="dataTableButton" type="button">
+      <button
+        class="btn btn-default edd-view-select"
+        id="dataTableButton"
+        type="button"
+        data-selector="#dataTableButton"
+        data-viewmode="table"
+      >
         <span class="fas fa-table"></span>
         <span class="collapse-label">{% trans 'Table' %}</span>
       </button>
@@ -84,24 +111,21 @@
   </div>
 
 <div id="graphDisplayContainer">
-  <div class="off noData">{% trans 'No measurements.' %}</div>
-  <div class="off tooManyPoints">
-    {% trans 'Too many points to display! Please change your filter settings.' %}
+  <div class="hidden jumbotron" id="noData">
+    <h2>{% trans "No measurements to display." %}</h2>
   </div>
-  <div id="graphLoading" class="wait-larger"></div>
-  <div id="graphArea" class="off"></div>
+  <div class="jumbotron" id="graphLoading">
+    <h2>{% trans "Loading data for display." %}</h2>
+  </div>
+  <div class="hidden" id="graphArea"></div>
 </div>
 
 <form action="" method="POST">
 {% csrf_token %}
 {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-<table id="assaysTable" class="off"></table>
+<div id="assaysTable" class="hidden"></div>
 
 <div id="assaysActionPanel" class="sectionActions assayActions">
-  <button class="hideFilterSection" style="margin: 14px 0px 0px 15px;"
-      data-off-text="{% trans 'Show Filter Section' %}">
-    {% trans 'Hide Filter Section' %}
-  </button>
 
   <div class="{% if not assays %}off{% endif %} assayFlex">
     {# TODO: this gets replaced in Typescript, figure out i18n there #}
@@ -123,7 +147,7 @@
     </button>
     <div class="clear"></div>
   </div>
-  <div id="tableActionButtons" class="tableActionButtons off" style="margin:auto 0;">
+  <div id="tableActionButtons" class="tableActionButtons">
     {% if writable %}
     <button
       class="assayButton btn btn-default"
@@ -179,7 +203,7 @@
 
   <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
     <button
-      class="exportButton btn btn-primary off"
+      class="exportButton btn btn-primary"
       id="exportButton"
       name="action"
       title="{% trans 'Export your data as CSV' %}"

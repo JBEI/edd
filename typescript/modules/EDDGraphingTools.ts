@@ -36,8 +36,8 @@ interface GroupingMode {
 
 export type Color = string;
 export type XYPair = [string | number, string | number];
-export type ViewingMode = "linegraph" | "bargraph" | "table";
 export type BarGraphMode = "time" | "line" | "measurement";
+export type ViewingMode = "linegraph" | "table" | BarGraphMode;
 export type GenericSelection = d3.Selection<d3.BaseType, any, HTMLElement, any>;
 
 export interface MeasurementValueSequence {
@@ -400,7 +400,8 @@ export class GraphView {
 
     buildGroupedBarGraph(params: GraphParams, mode: BarGraphMode) {
         const values: GraphValue[] = this.sortOnX(params.values);
-        const grouping: GroupingMode = GraphView.groupingLookup[mode];
+        const grouping: GroupingMode =
+            GraphView.groupingLookup[mode] || GraphView.groupingLookup.line;
         // define the x-axis primary scale; d3.set() keeps items in insertion order
         const primary_scale = d3
             .scaleBand()
