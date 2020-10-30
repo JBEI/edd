@@ -24,6 +24,14 @@
     {% csrf_token %}
 </form>
 
+{% url "main:table-import" slug=study.slug as legacy_import_url %}
+<a href="{{ legacy_import_url }}">
+  <button type="button" class="btn btn-primary pull-right">
+    <span class="glyphicon glyphicon-cloud-upload"></span>
+    {% trans 'Legacy Import' %}
+  </button>
+</a>
+
 <div id="categoryHelpContent" className="hide toolTipContent">
     <h3>{% trans "Category" %}</h3>
     {% blocktrans %}
