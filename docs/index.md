@@ -33,8 +33,8 @@ docker-compose up -d
 ```
 
 This will start a deployment of EDD accessible only on your computer, via
-[http://edd.lvh.me][9]. The [tutorials][10] available from the JBEI Public EDD
-gives a basic overview of EDD functionality.
+[http://edd.lvh.me][9]. The [tutorial site][10] gives a basic overview of EDD
+functionality for end-users.
 
 ---
 
@@ -47,5 +47,5 @@ gives a basic overview of EDD functionality.
 [7]: https://github.com/JBEI/edd
 [8]: Contributing.md
 [9]: http://edd.lvh.me
-[10]: https://public-edd.jbei.org/pages/tutorials/
+[10]: https://sites.google.com/lbl.gov/esedataautomation/data-acquisition-storage/experiment-data-depot-edd
 [11]: http://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204
