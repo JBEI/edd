@@ -97,10 +97,14 @@ def celery(context):
         print(
             # use exec so that the command here becomes PID 1
             "exec "
-            # run celery as edduser, using gosu
-            "gosu edduser celery worker "
+            # run as edduser, using gosu
+            "gosu edduser "
+            # running celery command
+            "celery "
             # using the edd project
             "-A edd "
+            # and the worker sub-command
+            "worker "
             # using INFO logging level
             "-l info ",
             file=script,
