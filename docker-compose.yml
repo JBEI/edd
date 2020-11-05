@@ -76,12 +76,12 @@ services:
       test:
         - CMD
         - celery
-        - inspect
-        - ping
         - -A
         - edd
         - --workdir
         - /code
+        - inspect
+        - ping
       interval: 1m
       start_period: 120s
       timeout: 20s
