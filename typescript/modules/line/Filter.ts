@@ -106,6 +106,62 @@ export class Filter {
         return items.filter((r) => active.every((p) => p(r)));
     }
 
+    getFilteredByLine(): Item[] {
+        const grouped: Item[] = [];
+        const lookup: { [item_hash: string]: number } = {};
+        this.getFiltered().forEach((item: Item) => {
+            const hash = Filter.measurementHash(item.measurement);
+            const match_index = lookup[`${item.line.id}:${item.assay.pid}:${hash}`];
+            if (match_index !== undefined) {
+                const match = grouped[match_index];
+                // TODO: is merging assays necessary?
+                // match.assay = mergeAssays(match.assay, item.assay);
+                match.measurement.values = [
+                    ...match.measurement.values,
+                    ...item.measurement.values,
+                ];
+            } else {
+                // record index and add to lookup
+                lookup[item.line.id] = grouped.length;
+                grouped.push(item);
+            }
+        });
+        return grouped;
+    }
+
+    getFilteredByReplicate(): Item[] {
+        const grouped: Item[] = [];
+        const lookup: { [item_hash: string]: number } = {};
+        // find replicate metadata for Lines to do grouping
+        const meta_types = Object.values(this._data.MetaDataTypes);
+        const replicate_type: MetadataTypeRecord = meta_types.find(
+            (md: MetadataTypeRecord) =>
+                md.input_type === "replicate" && md.context === "L",
+        );
+        this.getFiltered().forEach((item: Item) => {
+            const hash = Filter.measurementHash(item.measurement);
+            const replicate_id = item.line.meta[replicate_type.id];
+            const key = replicate_id
+                ? `r${replicate_id}:${item.assay.pid}:${hash}`
+                : `l${item.line.id}:${item.assay.pid}:${hash}`;
+            const match_index = lookup[key];
+            if (match_index !== undefined) {
+                const match = grouped[match_index];
+                // TODO: is merging assays necessary?
+                // match.assay = mergeAssays(match.assay, item.assay);
+                match.measurement.values = [
+                    ...match.measurement.values,
+                    ...item.measurement.values,
+                ];
+            } else {
+                // record index and add to lookup
+                lookup[item.line.id] = grouped.length;
+                grouped.push(item);
+            }
+        });
+        return grouped;
+    }
+
     /**
      * Update the filter with newly-downloaded measurement information.
      */
@@ -148,6 +204,10 @@ export class Filter {
         // use set for possibly excluding others later
         const exclude = new Set(["replicate"]);
         return t.context === "L" && !exclude.has(t.input_type);
+    }
+
+    private static measurementHash(m: MeasurementRecord): string {
+        return `${m.type}:${m.comp}:${m.format}:${m.x_units}:${m.y_units}`;
     }
 }
 

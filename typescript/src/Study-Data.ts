@@ -23,9 +23,6 @@ let hot: Handsontable;
 let assayMetadataManager: Forms.FormMetadataManager;
 
 function _display(selector: string, mode: GT.ViewingMode) {
-    // show/hide elements for the selected mode
-    $("#graphArea").toggleClass("hidden", mode === "table");
-    $("#assaysTable").toggleClass("hidden", mode !== "table");
     // highlight the active button
     $("#displayModeButtons").find(".active").removeClass("active");
     $("#displayModeButtons").find(selector).addClass("active");
@@ -172,7 +169,9 @@ function fetchMeasurements() {
 
 function refreshDataDisplayIfStale() {
     $("#graphLoading").addClass("hidden");
-
+    // show/hide elements for the selected mode
+    $("#graphArea").toggleClass("hidden", viewingMode === "table");
+    $("#assaysTable").toggleClass("hidden", viewingMode !== "table");
     if (viewingMode === "table") {
         hot.loadData(filter.getFiltered());
     } else {
