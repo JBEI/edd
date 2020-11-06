@@ -3,11 +3,10 @@
 import * as $ from "jquery";
 import Handsontable from "handsontable";
 
+import * as Config from "../modules/table/Config";
 import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
-
-import * as Config from "../modules/line/Config";
 
 declare let window: StudyBase.EDDWindow;
 const EDDData = window.EDDData || ({} as EDDData);

@@ -3,8 +3,8 @@
 import * as $ from "jquery";
 import Handsontable from "handsontable";
 
-import * as Config from "../modules/line/Config";
-import * as Filter from "../modules/line/Filter";
+import * as Config from "../modules/table/Config";
+import * as Filter from "../modules/table/Filter";
 import * as Forms from "../modules/Forms";
 import * as GT from "../modules/EDDGraphingTools";
 import * as StudyBase from "../modules/Study";
