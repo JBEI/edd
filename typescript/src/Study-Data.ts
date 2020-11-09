@@ -59,7 +59,7 @@ function onDataLoad() {
     fetchDisplaySetting();
     fetchMeasurements();
 
-    const columns = defineColumns();
+    const columns = Config.defineAssayColumns();
     hot = new Handsontable(document.getElementById("assaysTable"), {
         // "afterChange": changeHandler,
         // "afterInit": onLineTableLoad,
@@ -289,49 +289,6 @@ function showEditAssayDialog(selection: JQuery): void {
 
     // display modal dialog
     form.removeClass("off").dialog("open");
-}
-
-function defineColumns(): Handsontable.ColumnSettings[] {
-    // TODO: form of Filter.Item depends on filter mode:
-    // - Assay, like current EDD, individual assays are distinct;
-    // - Line, any assays with same Line + Protocol are joined;
-    // - Replicate, any assays with same Replicate ID + Protocol are joined;
-    return [
-        {
-            "editor": "checkbox",
-            "header": `<input type="checkbox" class="select-all"/>`,
-            "readOnly": false,
-            "renderer": "checkbox",
-            "width": 23,
-        },
-        {
-            "data": "assay.name",
-            "header": "Assay Name",
-        },
-        {
-            "data": "line.name",
-            "header": "Line",
-        },
-        {
-            "editor": "checkbox",
-            "header": `<input type="checkbox" class="select-all"/>`,
-            "readOnly": false,
-            "renderer": "checkbox",
-            "width": 23,
-        },
-        {
-            "data": "measurement.type",
-            "header": "Measurement",
-        },
-        {
-            "data": "measurement.y_units",
-            "header": "Units",
-        },
-        {
-            "data": "measurement.values.length",
-            "header": "Count",
-        },
-    ];
 }
 
 // wait for edddata event to begin processing page

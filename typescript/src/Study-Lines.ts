@@ -51,27 +51,6 @@ function defineSelectionInputs(): JQuery {
     return $(inputs);
 }
 
-function disableMenuFirstColumn(column, th): void {
-    // see: https://github.com/handsontable/handsontable/issues/4253
-    // hack to disable menu on only the first column
-    if (column === 0) {
-        $("button", th).remove();
-    }
-}
-
-function disableMoveFirstColumn(cols: number[], target: number): boolean | void {
-    if (cols.indexOf(0) !== -1 || target === 0) {
-        return false;
-    }
-}
-
-function disableResizeFirstColumn(width: number, column: number): number {
-    if (column === 0) {
-        return 23;
-    }
-    return width;
-}
-
 // Called when the page loads the EDDData object
 function onDataLoad() {
     access = Config.Access.initAccess(EDDData);
@@ -298,19 +277,19 @@ function setupModals() {
 
 function setupTable() {
     const container = document.getElementById("studyLinesTable");
-    const columns = Config.columns(access);
+    const columns = Config.defineLineColumns(access);
     const changeHandler = Utl.debounce(updateSelectionState);
     hot = new Handsontable(container, {
         "afterChange": changeHandler,
         "afterInit": onLineTableLoad,
-        "afterGetColHeader": disableMenuFirstColumn,
+        "afterGetColHeader": Config.disableMenuFirstColumn,
         "afterRender": changeHandler,
         "allowInsertRow": false,
         "allowInsertColumn": false,
         "allowRemoveRow": false,
         "allowRemoveColumn": false,
-        "beforeColumnMove": disableMoveFirstColumn,
-        "beforeStretchingColumnWidth": disableResizeFirstColumn,
+        "beforeColumnMove": Config.disableMoveFirstColumn,
+        "beforeStretchingColumnWidth": Config.disableResizeFirstColumn,
         "colHeaders": columns.map((c) => c.header),
         "columns": columns,
         "data": access.lines(),

@@ -9,11 +9,58 @@ const identity = (item) => item;
 type FetchMode = "copy" | "render" | void;
 
 /**
- * Defines column settings for table displaying Line information, given an
- * Access object and a listing of metadata to show.
+ * Define column settings for table displaying Assay and Measurement
+ * information. The defined table takes Filter.Item objects as data.
  */
-export function columns(access: Access): Handsontable.ColumnSettings[] {
-    const metaColumns = access.metadataForTable().map((meta) => ({
+export function defineAssayColumns(): Handsontable.ColumnSettings[] {
+    // TODO: form of Filter.Item depends on filter mode:
+    // - Assay, like current EDD, individual assays are distinct;
+    // - Line, any assays with same Line + Protocol are joined;
+    // - Replicate, any assays with same Replicate ID + Protocol are joined;
+    return [
+        {
+            "editor": "checkbox",
+            "header": `<input type="checkbox" class="select-all"/>`,
+            "readOnly": false,
+            "renderer": "checkbox",
+            "width": 23,
+        },
+        {
+            "data": "assay.name",
+            "header": "Assay Name",
+        },
+        {
+            "data": "line.name",
+            "header": "Line",
+        },
+        {
+            "editor": "checkbox",
+            "header": `<input type="checkbox" class="select-all"/>`,
+            "readOnly": false,
+            "renderer": "checkbox",
+            "width": 23,
+        },
+        {
+            "data": "measurement.type",
+            "header": "Measurement",
+        },
+        {
+            "data": "measurement.y_units",
+            "header": "Units",
+        },
+        {
+            "data": "measurement.values.length",
+            "header": "Count",
+        },
+    ];
+}
+
+/**
+ * Defines column settings for table displaying Line information. The defined
+ * table takes LineRecord objects as data.
+ */
+export function defineLineColumns(access: Access): Handsontable.ColumnSettings[] {
+    const metaColumns = access.metadataForLineTable().map((meta) => ({
         "data": `meta.${meta.id}`,
         "header": meta.name,
         // TODO: apply renderers if exists on MetadataType
@@ -59,6 +106,39 @@ export function columns(access: Access): Handsontable.ColumnSettings[] {
 }
 
 /**
+ * Callback for Handsontable.GridSettings.afterGetColHeader. Setting the event
+ * handler to this function removes the menu dropdown from the first column.
+ */
+export function disableMenuFirstColumn(column, th): void {
+    // see: https://github.com/handsontable/handsontable/issues/4253
+    // hack to disable menu on only the first column
+    if (column === 0) {
+        $("button", th).remove();
+    }
+}
+
+/**
+ * Callback for Handsontable.GridSettings.beforeColumnMove. Setting the event
+ * handler to this function prevents moving the first column of the table.
+ */
+export function disableMoveFirstColumn(cols: number[], target: number): boolean | void {
+    if (cols.indexOf(0) !== -1 || target === 0) {
+        return false;
+    }
+}
+
+/**
+ * Callback for Handsontable.GridSettings.beforeStretchingColumnWidth. Setting
+ * the event handler to this function prevents resizing the first column.
+ */
+export function disableResizeFirstColumn(width: number, column: number): number {
+    if (column === 0) {
+        return 23;
+    }
+    return width;
+}
+
+/**
  * Class collects function factories used to create accessor functions.
  *
  * Once initialized with a view of data, the methods on this class give
@@ -71,23 +151,16 @@ export function columns(access: Access): Handsontable.ColumnSettings[] {
  * extended to allow inline editing of values in addition to existing forms.
  */
 export class Access {
-    protected constructor(
-        private _data: EDDData,
-        private _metadata: MetadataTypeRecord[],
-    ) {}
+    protected constructor(private _data: EDDData) {}
 
     public static initAccess(data: EDDData): Access {
-        const metaKeys = new Set<string | number>();
         Object.values(data.Lines).forEach((line) => {
             // initializing every LineRecord with selected = false
             // prevents checkboxes from showing as initially disabled
             // failing to initialize will give undefined behavior to select-all checkbox
             line.selected = false;
-            // collecting the used metadata keys
-            Object.keys(line.meta).forEach((key) => metaKeys.add(key));
         });
-        const metadata = Array.from(metaKeys).map((key) => data.MetaDataTypes[key]);
-        return new Access(data, metadata);
+        return new Access(data);
     }
 
     /**
@@ -157,14 +230,25 @@ export class Access {
         return Object.values(this._data.Lines).filter((line) => line.active);
     }
 
-    metadata(): MetadataTypeRecord[] {
-        return this._metadata;
+    metadataForAssayTable(): MetadataTypeRecord[] {
+        const keys = new Set<string | number>();
+        Object.values(this._data.Assays).forEach((assay) => {
+            // collecting the used metadata keys
+            Object.keys(assay.meta).forEach((key) => keys.add(key));
+        });
+        return Array.from(keys).map((k) => this._data.MetaDataTypes[k]);
     }
 
-    metadataForTable(): MetadataTypeRecord[] {
+    metadataForLineTable(): MetadataTypeRecord[] {
+        const keys = new Set<string | number>();
+        Object.values(this._data.Lines).forEach((line) => {
+            // collecting the used metadata keys
+            Object.keys(line.meta).forEach((key) => keys.add(key));
+        });
+        const metadata = Array.from(keys).map((k) => this._data.MetaDataTypes[k]);
         // metadata to show in table is everything except replicate
         // maybe later also filter out other things
-        return this._metadata.filter((meta) => meta.input_type !== "replicate");
+        return metadata.filter((meta) => meta.input_type !== "replicate");
     }
 
     /**
