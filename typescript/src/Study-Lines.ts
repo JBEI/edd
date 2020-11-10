@@ -35,13 +35,14 @@ function computeHeight() {
     return Math.max(500, vertical - 20);
 }
 
-function defineSelectionInputs(): JQuery {
-    const rows = hot.getSourceData() as LineRecord[];
-    const selected = rows.filter((line) => line?.selected);
+function defineSelectionInputs(lines?: LineRecord[]): JQuery {
+    if (lines === undefined) {
+        lines = findSelectedLines();
+    }
     const template = (id) => $(`<input type="hidden" name="lineId" value="${id}"/>`)[0];
     // TODO: replace with flatMap once supported
     const inputs: HTMLElement[] = [];
-    selected.forEach((line) => {
+    lines.forEach((line) => {
         if (line.replicate_ids?.length) {
             inputs.push(...line.replicate_ids.map(template));
         } else {
@@ -49,6 +50,11 @@ function defineSelectionInputs(): JQuery {
         }
     });
     return $(inputs);
+}
+
+function findSelectedLines(): LineRecord[] {
+    const rows = hot.getSourceData() as LineRecord[];
+    return rows.filter((line) => line?.selected);
 }
 
 // Called when the page loads the EDDData object
@@ -113,7 +119,7 @@ function onPageLoad() {
 function setupAddButtonEvents() {
     // Enable add new Line button
     form.on("click", ".addNewLineButton", () => {
-        showLineEditDialog($());
+        showLineEditDialog([]);
         return false;
     });
     // menu item for clone
@@ -175,9 +181,9 @@ function setupEditableName() {
 function setupEditButtonEvents() {
     // Enable edit lines button
     form.on("click", "#editButton", () => {
-        const selection = defineSelectionInputs();
-        if (selection.length > 0) {
-            showLineEditDialog(selection);
+        const lines = findSelectedLines();
+        if (lines.length > 0) {
+            showLineEditDialog(lines);
         }
         return false;
     });
@@ -330,22 +336,22 @@ function setupTable() {
     setupFilter();
 }
 
-function showLineEditDialog(selection: JQuery): void {
+function showLineEditDialog(lines: LineRecord[]): void {
     let titleText: string;
     let record: LineRecord;
     let contact: Utl.EDDContact;
     let experimenter: Utl.EDDContact;
 
     // Update the dialog title and fetch selection info
-    if (selection.length === 0) {
+    if (lines.length === 0) {
         titleText = $("#new_line_title").text();
     } else {
-        if (selection.length > 1) {
+        if (lines.length > 1) {
             titleText = $("#bulk_line_title").text();
         } else {
             titleText = $("#edit_line_title").text();
         }
-        record = access.lineFromSelection(selection);
+        record = access.mergeLines(lines);
         contact = new Utl.EDDContact(record.contact);
         experimenter = new Utl.EDDContact(record.experimenter);
     }
@@ -391,6 +397,7 @@ function showLineEditDialog(selection: JQuery): void {
         ),
     };
     // initialize the form to clean slate, pass in active selection, selector for previous items
+    const selection = defineSelectionInputs(lines);
     formManager
         .init(selection, "[name=lineId]")
         .fields($.map(fields, (v: Forms.IFormField) => v));
@@ -403,7 +410,7 @@ function showLineEditDialog(selection: JQuery): void {
     // special case, ignore name field when editing multiples
     const nameInput = lineModal.find("[name=line-name]");
     const nameParent = nameInput.parent();
-    if (selection.length > 1) {
+    if (lines.length > 1) {
         // remove required property
         nameInput.prop("required", false);
         // also hide form elements and uncheck bulk box

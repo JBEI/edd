@@ -17,6 +17,7 @@ const EDDData = window.EDDData || ({} as EDDData);
 let viewingMode: GT.ViewingMode = "linegraph";
 let filter: Filter.Filter;
 let eddGraph: GT.EDDGraphingTools;
+let access: Config.Access;
 let hot: Handsontable;
 
 // define managers for forms with metadata
@@ -33,17 +34,15 @@ function _display(selector: string, mode: GT.ViewingMode) {
     $.event.trigger("eddfilter");
 }
 
-// Called when the page loads.
+// Called when initial non-measurement data is loaded
 function onDataLoad() {
-    // initialize graph
+    // initialize Access facade
+    access = Config.Access.initAccess(EDDData);
+    // initialize graphing module
     eddGraph = new GT.EDDGraphingTools(EDDData);
-    $(document).on("eddfilter", Utl.debounce(refreshDataDisplayIfStale));
-
-    $("#editAssayButton").click(() => {
-        showEditAssayDialog($("#assaysTable").find("[name=assayId]:checked"));
-        return false;
-    });
-
+    // add refresh handler when filter event triggered
+    $(document).on("eddfilter", Utl.debounce(refreshDisplay));
+    // add click handlers to toggle display modes
     $("#displayModeButtons").on("click", ".edd-view-select", (event) => {
         const target = $(event.currentTarget);
         _display(target.data("selector"), target.data("viewmode"));
@@ -63,14 +62,13 @@ function onDataLoad() {
     hot = new Handsontable(document.getElementById("assaysTable"), {
         // "afterChange": changeHandler,
         // "afterInit": onLineTableLoad,
-        // "afterGetColHeader": disableMenuFirstColumn,
         // "afterRender": changeHandler,
         "allowInsertRow": false,
         "allowInsertColumn": false,
         "allowRemoveRow": false,
         "allowRemoveColumn": false,
-        // "beforeColumnMove": disableMoveFirstColumn,
-        // "beforeStretchingColumnWidth": disableResizeFirstColumn,
+        "beforeColumnMove": Config.disableMoveFirstColumn,
+        "beforeStretchingColumnWidth": Config.disableResizeFirstColumn,
         "colHeaders": columns.map((c) => c.header),
         "columns": columns,
         "data": filter.getFiltered(),
@@ -167,7 +165,7 @@ function fetchMeasurements() {
     });
 }
 
-function refreshDataDisplayIfStale() {
+function refreshDisplay() {
     $("#graphLoading").addClass("hidden");
     // show/hide elements for the selected mode
     $("#graphArea").toggleClass("hidden", viewingMode === "table");
@@ -212,24 +210,22 @@ function remakeMainGraphArea() {
     }
 }
 
-function showEditAssayDialog(selection: JQuery): void {
-    // TODO: move this to handler for "edddata" event
-    const access = Config.Access.initAccess(EDDData);
+function showEditAssayDialog(items: AssayRecord[]): void {
     const form = $("#assayMain");
     let titleText: string;
     let record: AssayRecord;
     let experimenter: Utl.EDDContact;
 
     // Update the dialog title and fetch selection info
-    if (selection.length === 0) {
+    if (items.length === 0) {
         titleText = $("#new_assay_title").text();
     } else {
-        if (selection.length > 1) {
+        if (items.length > 1) {
             titleText = $("#bulk_assay_title").text();
         } else {
             titleText = $("#edit_assay_title").text();
         }
-        record = access.assayFromSelection(selection);
+        record = access.mergeAssays(items);
         experimenter = new Utl.EDDContact(record.experimenter);
     }
     form.dialog({ "title": titleText });
@@ -255,6 +251,8 @@ function showEditAssayDialog(selection: JQuery): void {
         ]),
     };
     // initialize the form to clean slate, pass in active selection, selector for previous items
+    // TODO: build selection from items
+    const selection = $();
     formManager
         .init(selection, "[name=assayId]")
         .fields($.map(fields, (v: Forms.IFormField) => v));
@@ -265,26 +263,15 @@ function showEditAssayDialog(selection: JQuery): void {
     }
 
     // special case, ignore name field when editing multiples
-    if (selection.length > 1) {
-        form.find("[name=assay-name]")
-            // remove required property
-            .prop("required", false)
-            // also hide form elements and uncheck bulk box
-            .parent()
-            .hide()
-            .find(":checkbox")
-            .prop("checked", false)
-            .end()
-            .end();
+    const nameInput = form.find("[name=assay-name]");
+    const nameParent = nameInput.parent();
+    if (items.length > 1) {
+        nameInput.prop("required", false);
+        nameParent.hide();
+        nameParent.find(":checkbox").prop("checked", false);
     } else {
-        form.find("[name=assay-name]")
-            // make sure line name is required
-            .prop("required", true)
-            // and line name is shown
-            .parent()
-            .show()
-            .end()
-            .end();
+        nameInput.prop("required", true);
+        nameParent.show();
     }
 
     // display modal dialog
