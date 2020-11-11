@@ -1,5 +1,8 @@
 import * as d3 from "d3";
 
+import { Access } from "./table/Access";
+import * as Filter from "./table/Filter";
+
 export interface GraphParams {
     height: number;
     width: number;
@@ -15,7 +18,7 @@ export interface GraphValue {
     color: string;
     measurement: string;
     fullName: string;
-    newLine: boolean;
+    newLine?: boolean;
 }
 interface ScaledValue extends GraphValue {
     scaled_y: number;
@@ -77,21 +80,29 @@ export class EDDGraphingTools {
         "#7A5230", // brown
     ];
 
-    labels: JQuery[];
-    remakeGraphCalls: number;
-    globalInfo: EDDData;
+    private readonly access: Access;
+    labels: JQuery[] = [];
+    remakeGraphCalls = 0;
 
-    constructor(globalInfo: EDDData) {
-        this.labels = [];
-        this.remakeGraphCalls = 0;
-        this.globalInfo = globalInfo;
+    constructor(data: Access | EDDData) {
+        // accept an Access object, or build one from passed data
+        if (data instanceof Access) {
+            this.access = data;
+        } else {
+            this.access = Access.initAccess(data);
+        }
+        // assign colors to lines
+        const colors = EDDGraphingTools.colors;
+        this.access.lines().forEach((line, index) => {
+            line.color = colors[index % colors.length];
+        });
     }
 
     /**
      *  This function takes a unit id and unit type json and returns the unit name
      */
     private unitName(unitId: number): string {
-        return this.globalInfo.UnitTypes[unitId].name;
+        return this.access.findUnit(unitId)?.name;
     }
 
     /**
@@ -99,35 +110,26 @@ export class EDDGraphingTools {
      *  measurement name
      */
     private measurementName(measurementId: number, compId?: string): string {
-        const name = this.globalInfo.MeasurementTypes[measurementId].name;
+        const name = this.access.findMeasurementType(measurementId)?.name;
         if (compId) {
-            const comp = this.globalInfo.MeasurementTypeCompartments[compId];
+            const comp = this.access.findCompartment(compId);
             return [comp.code, name].join(" ").trim();
         }
         return name;
     }
 
     /**
-     *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
-     *  transforms it into the following schema:
-     *    [
-     *      {label: "dt9304, x: 1, y: 2.5, x_unit: "n/a", y_unit: "cmol",
-     *        name: "i'm a protein name"},
-     *      {label: "dt3903, x: 1, y: 23.5, x_unit: "n/a", y_unit: "cmol",
-     *        name: "i'm another protein name"},
-     *      ...
-     *    ]
+     * Converts an Item to an array of GraphValue objects.
      */
-    transformSingleLineItem(item: MeasurementRecord, color: Color): GraphValue[] {
-        // array of x and y values for sorting
-        const assay: AssayRecord = this.globalInfo.Assays[item.assay];
-        const line: LineRecord = this.globalInfo.Lines[assay.lid];
-        const x_units: string = this.unitName(item.x_units);
-        const y_units: string = this.unitName(item.y_units);
-        const measurementName = this.measurementName(item.type, item.comp);
-        const values = item.values.map(
+    transformSingleItem(item: Filter.Item): GraphValue[] {
+        const x_units: string = this.unitName(item.measurement.x_units);
+        const y_units: string = this.unitName(item.measurement.y_units);
+        const measurementName = this.measurementName(
+            item.measurement.type,
+            item.measurement.comp,
+        );
+        const values = item.measurement.values.map(
             (dataValue: number[][], index): GraphValue => {
-                const dataset: GraphValue = {} as GraphValue;
                 // abort if dataValue is not a 2-item array for x and y
                 if (dataValue.length !== 2) {
                     return;
@@ -143,15 +145,16 @@ export class EDDGraphingTools {
                 ) {
                     return;
                 }
-                dataset.x = x[0];
-                dataset.y = y[0];
-                dataset.x_unit = x_units;
-                dataset.y_unit = y_units;
-                dataset.name = line.name;
-                dataset.color = color;
-                dataset.measurement = measurementName;
-                dataset.fullName = line.name + " " + measurementName;
-                return dataset;
+                return {
+                    "x": x[0],
+                    "y": y[0],
+                    "x_unit": x_units,
+                    "y_unit": y_units,
+                    "name": item.line.name,
+                    "color": item.line.color,
+                    "measurement": measurementName,
+                    "fullName": item.line.name + " " + measurementName,
+                };
             },
         );
         values.sort((a, b) => a.x - b.x);
@@ -184,25 +187,6 @@ export class EDDGraphingTools {
         );
         values.sort((a, b) => a.x - b.x);
         return values;
-    }
-
-    /**
-     * Takes a listing of lines and maps each to a color value.
-     * loosely based on d3 category20 in following link:
-     * http://bl.ocks.org/aaizemberg/78bd3dade9593896a59d
-     */
-    renderColor(lines: RecordList<LineRecord>): any {
-        // new color object with assay ids and color hex
-        const lineColors = {};
-        // values of line obj
-        const lineValues: LineRecord[] = $.map(lines, (v) => v);
-        lineValues.forEach((line, index) => {
-            const color =
-                EDDGraphingTools.colors[index % EDDGraphingTools.colors.length];
-            line.color = color;
-            lineColors[line.id] = color;
-        });
-        return lineColors;
     }
 
     /**

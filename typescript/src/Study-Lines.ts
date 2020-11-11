@@ -3,6 +3,7 @@
 import * as $ from "jquery";
 import Handsontable from "handsontable";
 
+import { Access } from "../modules/table/Access";
 import * as Config from "../modules/table/Config";
 import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
@@ -20,7 +21,7 @@ let assayModal: JQuery;
 let lineMetadataManager: Forms.FormMetadataManager;
 let assayMetadataManager: Forms.FormMetadataManager;
 
-let access: Config.Access;
+let access: Access;
 let hot: Handsontable;
 
 /**
@@ -59,7 +60,7 @@ function findSelectedLines(): LineRecord[] {
 
 // Called when the page loads the EDDData object
 function onDataLoad() {
-    access = Config.Access.initAccess(EDDData);
+    access = Access.initAccess(EDDData);
     // Show controls that depend on having some lines present to be useful
     const hasLines = access.lines().length !== 0;
     $("#loadingLinesDiv").addClass("hide");

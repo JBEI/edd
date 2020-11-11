@@ -3,6 +3,7 @@
 import * as $ from "jquery";
 import Handsontable from "handsontable";
 
+import { Access } from "../modules/table/Access";
 import * as Config from "../modules/table/Config";
 import * as Filter from "../modules/table/Filter";
 import * as Forms from "../modules/Forms";
@@ -16,8 +17,8 @@ const EDDData = window.EDDData || ({} as EDDData);
 // default start on line graph
 let viewingMode: GT.ViewingMode = "linegraph";
 let filter: Filter.Filter;
-let eddGraph: GT.EDDGraphingTools;
-let access: Config.Access;
+let graph: GT.EDDGraphingTools;
+let access: Access;
 let hot: Handsontable;
 
 // define managers for forms with metadata
@@ -37,9 +38,9 @@ function _display(selector: string, mode: GT.ViewingMode) {
 // Called when initial non-measurement data is loaded
 function onDataLoad() {
     // initialize Access facade
-    access = Config.Access.initAccess(EDDData);
+    access = Access.initAccess(EDDData);
     // initialize graphing module
-    eddGraph = new GT.EDDGraphingTools(EDDData);
+    graph = new GT.EDDGraphingTools(access);
     // add refresh handler when filter event triggered
     $(document).on("eddfilter", Utl.debounce(refreshDisplay));
     // add click handlers to toggle display modes
@@ -48,7 +49,6 @@ function onDataLoad() {
         _display(target.data("selector"), target.data("viewmode"));
     });
 
-    eddGraph.renderColor(EDDData.Lines);
     filter = Filter.Filter.create(EDDData);
     $("#content").append(filter.createElements());
 
@@ -186,7 +186,7 @@ function remakeMainGraphArea() {
             return;
         }
         displayed += item.measurement.values.length;
-        return eddGraph.transformSingleLineItem(item.measurement, item.line.color);
+        return graph.transformSingleItem(item);
     });
     // when no points to display show message that there's no data to display
     $("#noData").toggleClass("hidden", items.length > 0);
