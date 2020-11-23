@@ -2,23 +2,27 @@
 
 import Handsontable from "handsontable";
 
-import { Access } from "./Access";
+import { Access, Item } from "./Access";
 import * as Render from "./Render";
 
 const identity = (item) => item;
 type FetchMode = "copy" | "render" | void;
 
 /**
- * Define column settings for table displaying Assay and Measurement
- * information. The defined table takes Filter.Item objects as data.
+ * Define column settings for table displaying Assay information. The defined
+ * table takes AssayRecord objects as data.
  */
-export function defineAssayColumns(): Handsontable.ColumnSettings[] {
-    // TODO: form of Filter.Item depends on filter mode:
-    // - Assay, like current EDD, individual assays are distinct;
-    // - Line, any assays with same Line + Protocol are joined;
-    // - Replicate, any assays with same Replicate ID + Protocol are joined;
+export function defineAssayColumns(access: Access): Handsontable.ColumnSettings[] {
+    const metaColumns = access.metadataForAssayTable().map((meta) => ({
+        "data": `meta.${meta.id}`,
+        "header": meta.name,
+        // TODO: apply renderers if exists on MetadataType
+    }));
+    // register renderers used below
+    Render.register();
     return [
         {
+            "data": "selected",
             "editor": "checkbox",
             "header": `<input type="checkbox" class="select-all"/>`,
             "readOnly": false,
@@ -26,31 +30,24 @@ export function defineAssayColumns(): Handsontable.ColumnSettings[] {
             "width": 23,
         },
         {
-            "data": "assay.name",
+            "data": "name",
             "header": "Assay Name",
         },
         {
-            "data": "line.name",
+            "data": ParentLineColumn.using(access),
             "header": "Line",
+            "renderer": "edd.replicate_name",
         },
         {
-            "editor": "checkbox",
-            "header": `<input type="checkbox" class="select-all"/>`,
-            "readOnly": false,
-            "renderer": "checkbox",
-            "width": 23,
+            "data": ProtocolColumn.using(access),
+            "header": "Protocol",
+            "renderer": "edd.protocol",
         },
+        ...metaColumns,
         {
-            "data": "measurement.type",
-            "header": "Measurement",
-        },
-        {
-            "data": "measurement.y_units",
-            "header": "Units",
-        },
-        {
-            "data": "measurement.values.length",
-            "header": "Count",
+            "data": "count",
+            "header": "# of Measurements",
+            "width": 50,
         },
     ];
 }
@@ -77,7 +74,7 @@ export function defineLineColumns(access: Access): Handsontable.ColumnSettings[]
             "width": 23,
         },
         {
-            "data": LineNameColumn.create(access).data(),
+            "data": LineNameColumn.using(access),
             "header": "Name",
             "renderer": "edd.replicate_name",
         },
@@ -85,31 +82,38 @@ export function defineLineColumns(access: Access): Handsontable.ColumnSettings[]
         // pair custom getter/setter with custom renderer
         // see a link from renderer, see a URL when copying, actual value is an ID
         {
-            "data": StrainColumn.create(access).data(),
+            "data": StrainColumn.using(access),
             "header": "Strain",
             "renderer": "edd.strain",
         },
         // splice in metadata columns here
         ...metaColumns,
         {
-            "data": LineExperimenterColumn.create(access).data(),
+            "data": LineExperimenterColumn.using(access),
             "header": "Experimenter",
             "renderer": "edd.user",
         },
         // see a date string in renderer, a UTC string when copying, actual value is timestamp
         {
-            "data": LineModifiedColumn.create(access).data(),
+            "data": LineModifiedColumn.using(access),
             "header": "Last Modified",
             "renderer": "edd.timestamp",
         },
     ];
 }
 
+/**
+ * Define column settings for table displaying Measurement information. The
+ * defined table takes Access.Item objects as data.
+ */
 export function defineMeasurementColumns(
     access: Access,
 ): Handsontable.ColumnSettings[] {
+    // register renderers used below
+    Render.register();
     return [
         {
+            "data": "measurement.selected",
             "editor": "checkbox",
             "header": `<input type="checkbox" class="select-all"/>`,
             "readOnly": false,
@@ -117,16 +121,26 @@ export function defineMeasurementColumns(
             "width": 23,
         },
         {
-            "data": "measurement.type",
+            "data": CategoryColumn.using(access),
             "header": "Measurement",
+            "renderer": "edd.category",
         },
         {
-            "data": "measurement.y_units",
+            "data": YUnitColumn.using(access),
             "header": "Units",
         },
         {
+            "data": "line.name",
+            "header": "Line",
+        },
+        {
+            "data": "assay.name",
+            "header": "Assay",
+        },
+        {
             "data": "measurement.values.length",
-            "header": "Count",
+            "header": "# of Values",
+            "width": 50,
         },
     ];
 }
@@ -165,49 +179,65 @@ export function disableResizeFirstColumn(width: number, column: number): number 
 }
 
 /**
- * Base class for accessor function factories. Calling the data() method yields
- * an instance of ColumnDataGetterSetterFunction, determining how a column in
- * the table will get displayed and copied to the clipboard.
+ * Base class for accessor function factories.
+ *
+ * The first, U, type parameter is type of row object in the table.
+ * The second, V, type parameter is the type sent to the cell renderer.
  */
-abstract class TableAccessor {
+abstract class TableAccessor<U, V> {
     protected constructor(protected readonly _access: Access) {}
 
     data(): Handsontable.ColumnDataGetterSetterFunction {
-        return (row: LineRecord, value?: any, mode?: FetchMode): any | void => {
+        return (row: U, value?: any, mode?: FetchMode): any | void => {
+            // explicit no-op when used as a setter!
             if (value === undefined) {
                 if (mode === "render") {
-                    return this.forRender()(row, value);
+                    return this.forRender(row, value);
                 } else {
-                    return this.forCopy()(row, value);
+                    return this.forCopy(row, value);
                 }
             }
         };
     }
 
-    abstract forCopy(): Handsontable.ColumnDataGetterSetterFunction;
-    abstract forRender(): Handsontable.ColumnDataGetterSetterFunction;
+    abstract forCopy(row: U, value?: any): string;
+    abstract forRender(row: U, value?: any): V;
+}
+
+class CategoryColumn extends TableAccessor<Item, Category> {
+    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
+        return new CategoryColumn(access).data();
+    }
+
+    forCopy(row: Item, value?: any): string {
+        const cat = this.forRender(row, value);
+        // TODO: copy formal ID when available
+        return cat.measurementType.name;
+    }
+
+    forRender(row: Item, value?: any): Category {
+        return {
+            "compartment": this._access.findCompartment(row.measurement.comp),
+            "measurementType": this._access.findMeasurementType(row.measurement.type),
+        };
+    }
 }
 
 /**
  * Creates an accessor function for experimenter, yielding email addresses
  * while copying and a UserRecord object for the HTML renderer.
  */
-class LineExperimenterColumn extends TableAccessor {
-    static create(access: Access): LineExperimenterColumn {
-        return new LineExperimenterColumn(access);
+class LineExperimenterColumn extends TableAccessor<LineRecord, UserRecord> {
+    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
+        return new LineExperimenterColumn(access).data();
     }
 
-    forCopy(): Handsontable.ColumnDataGetterSetterFunction {
-        return (row: LineRecord, value?: any): string => {
-            const user = this._access.findUser(row.experimenter);
-            return user?.email || "--";
-        };
+    forCopy(row: LineRecord, value?: any): string {
+        return this.forRender(row, value)?.email || "--";
     }
 
-    forRender(): Handsontable.ColumnDataGetterSetterFunction {
-        return (row: LineRecord, value?: any): UserRecord => {
-            return this._access.findUser(row.experimenter);
-        };
+    forRender(row: LineRecord, value?: any): UserRecord {
+        return this._access.findUser(row.experimenter);
     }
 }
 
@@ -216,25 +246,23 @@ class LineExperimenterColumn extends TableAccessor {
  * Clipboard value gives the first replicate name and count of replicates if
  * they exist, otherwise gives the string value of the name.
  */
-class LineNameColumn extends TableAccessor {
-    static create(access: Access): LineNameColumn {
-        return new LineNameColumn(access);
+class LineNameColumn extends TableAccessor<LineRecord, LineRecord> {
+    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
+        return new LineNameColumn(access).data();
     }
 
-    forCopy(): Handsontable.ColumnDataGetterSetterFunction {
-        return (row: LineRecord, value?: any): string => {
-            if (row.replicate_names) {
-                const add_count = row.replicate_names.length - 1;
-                return `${row.replicate_names[0]} (+${add_count})`;
-            } else if (row.name) {
-                return row.name;
-            }
-            return "--";
-        };
+    forCopy(row: LineRecord, value?: any): string {
+        if (row.replicate_names) {
+            const add_count = row.replicate_names.length - 1;
+            return `${row.replicate_names[0]} (+${add_count})`;
+        } else if (row.name) {
+            return row.name;
+        }
+        return "--";
     }
 
-    forRender(): Handsontable.ColumnDataGetterSetterFunction {
-        return (row: LineRecord, value?: any): LineRecord => row;
+    forRender(row: LineRecord, value?: any): LineRecord {
+        return row;
     }
 }
 
@@ -242,24 +270,50 @@ class LineNameColumn extends TableAccessor {
  * Creates an accessor for modification time, allowing the renderer to create
  * HTML based on timestamp and a ISO-format string copied to the clipboard.
  */
-class LineModifiedColumn extends TableAccessor {
-    static create(access: Access): LineModifiedColumn {
-        return new LineModifiedColumn(access);
+class LineModifiedColumn extends TableAccessor<LineRecord, number> {
+    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
+        return new LineModifiedColumn(access).data();
     }
 
-    forCopy(): Handsontable.ColumnDataGetterSetterFunction {
-        return (row: LineRecord, value?: any): string => {
-            const timestamp = row.modified?.time * 1000;
-            if (Number.isNaN(timestamp)) {
-                return "";
-            }
-            const date = new Date(row.modified?.time * 1000);
-            return date.toISOString();
-        };
+    forCopy(row: LineRecord, value?: any): string {
+        const timestamp = this.forRender(row, value);
+        if (Number.isNaN(timestamp)) {
+            return "";
+        }
+        const date = new Date(timestamp * 1000);
+        return date.toISOString();
     }
 
-    forRender(): Handsontable.ColumnDataGetterSetterFunction {
-        return (row: LineRecord, value?: any): number => row.modified?.time;
+    forRender(row: LineRecord, value?: any): number {
+        return row.modified?.time;
+    }
+}
+
+class ParentLineColumn extends TableAccessor<AssayRecord, LineRecord> {
+    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
+        return new ParentLineColumn(access).data();
+    }
+
+    forCopy(row: AssayRecord, value?: any): string {
+        return this.forRender(row, value).name;
+    }
+
+    forRender(row: AssayRecord, value?: any): LineRecord {
+        return this._access.findLine(row.lid);
+    }
+}
+
+class ProtocolColumn extends TableAccessor<AssayRecord, ProtocolRecord> {
+    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
+        return new ProtocolColumn(access).data();
+    }
+
+    forCopy(row: AssayRecord, value?: any): string {
+        return this.forRender(row, value).name;
+    }
+
+    forRender(row: AssayRecord, value?: any): ProtocolRecord {
+        return this._access.findProtocol(row.pid);
     }
 }
 
@@ -268,28 +322,32 @@ class LineModifiedColumn extends TableAccessor {
  * objects. Clipboard value yields newline-delimited string of ICE URL if it
  * exists, or the strain name.
  */
-class StrainColumn extends TableAccessor {
-    static create(access: Access): StrainColumn {
-        return new StrainColumn(access);
+class StrainColumn extends TableAccessor<LineRecord, StrainRecord[]> {
+    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
+        return new StrainColumn(access).data();
     }
 
-    forCopy(): Handsontable.ColumnDataGetterSetterFunction {
-        return (row: LineRecord, value?: any): string => {
-            return row.strain
-                .map((item) => {
-                    const strain = this._access.findStrain(item);
-                    return strain?.registry_url || strain?.name;
-                })
-                .filter(identity)
-                .join("\n");
-        };
+    forCopy(row: LineRecord, value?: any): string {
+        return this.forRender(row, value)
+            .map((strain) => strain.registry_url || strain.name)
+            .join("\n");
     }
 
-    forRender(): Handsontable.ColumnDataGetterSetterFunction {
-        return (row: LineRecord, value?: any): StrainRecord[] => {
-            return row.strain
-                .map((item) => this._access.findStrain(item))
-                .filter(identity);
-        };
+    forRender(row: LineRecord, value?: any): StrainRecord[] {
+        return row.strain.map((item) => this._access.findStrain(item)).filter(identity);
+    }
+}
+
+class YUnitColumn extends TableAccessor<Item, string> {
+    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
+        return new YUnitColumn(access).data();
+    }
+
+    forCopy(row: Item, value?: any): string {
+        return this._access.findUnit(row.measurement.y_units).name;
+    }
+
+    forRender(row: Item, value?: any): string {
+        return this._access.findUnit(row.measurement.y_units).name;
     }
 }

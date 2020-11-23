@@ -39,6 +39,26 @@ function buildRenderer<T>(fn: RenderFn<T>): Handsontable.renderers.Base {
  * edd.user -- a UserRecord
  */
 export function register() {
+    // TODO: link to PubChem or UniProt or ICE or ...?
+    Handsontable.renderers.registerRenderer(
+        "edd.category",
+        buildRenderer((td, value: Category) => {
+            if (value.measurementType.family === "m" && value.compartment.id !== "0") {
+                td.innerHTML = `${value.compartment.code} ${value.measurementType.name}`;
+            } else {
+                td.innerHTML = value.measurementType.name;
+            }
+            return td;
+        }),
+    );
+    // TODO: link to protocol.io once available?
+    Handsontable.renderers.registerRenderer(
+        "edd.protocol",
+        buildRenderer((td, value: ProtocolRecord) => {
+            td.innerHTML = value.name;
+            return td;
+        }),
+    );
     Handsontable.renderers.registerRenderer(
         "edd.replicate_name",
         buildRenderer((td, value: LineRecord) => {

@@ -243,7 +243,7 @@ function setupFilter() {
         if (enabled) {
             switch (key) {
                 case "showDisabledItem":
-                    return access.disabledLines();
+                    return access.linesWithDisabled();
                 case "groupReplicateItem":
                     return access.replicates();
             }
@@ -323,6 +323,7 @@ function setupTable() {
         "manualRowResize": true,
         "multiColumnSorting": true,
         "readOnly": true,
+        "renderAllRows": true,
         "rowHeaders": true,
         "stretchH": "all",
         "width": "100%",

@@ -5,6 +5,7 @@
 
 {% block js_css %}
   {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="{% static 'main/study-data.css' %}" />
   <script type="text/javascript" src="{% static 'dist/StudyData.js' %}"></script>
 {% endblock js_css %}
 
@@ -13,7 +14,7 @@
   {{ block.super }}
 
   <a id="settinglink" href="{{ settinglink }}" class="off"></a>
-  <div class="btn-toolbar">
+  <div class="btn-toolbar sectionActions">
     <div
       aria-label="{% trans 'Display Modes' %}"
       class="btn-group"
@@ -22,10 +23,10 @@
     >
       <button
         class="btn btn-default edd-view-select"
-        id="lineGraphButton"
+        id="plot-button"
         type="button"
-        data-selector="#lineGraphButton"
-        data-viewmode="linegraph"
+        data-selector="#plot-button"
+        data-viewmode="plot-line"
       >
         <span class="fas fa-chart-line"></span>
         <span class="collapse-label">{% trans 'Line Graph' %}</span>
@@ -36,7 +37,7 @@
           aria-haspopup="true"
           class="btn btn-default dropdown-toggle"
           data-toggle="dropdown"
-          id="barGraphButton"
+          id="bar-button"
           type="button"
         >
           <span class="fas fa-chart-bar"></span>
@@ -49,64 +50,61 @@
             <a
               class="edd-view-select"
               href="#"
-              data-selector="#barGraphButton"
-              data-viewmode="measurement"
+              data-selector="#bar-button"
+              data-viewmode="bar-measurement"
             >{% trans 'Measurement' %}</a>
           </li>
           <li>
             <a
               class="edd-view-select"
               href="#"
-              data-selector="#barGraphButton"
-              data-viewmode="line"
+              data-selector="#bar-button"
+              data-viewmode="bar-line"
             >{% trans 'Line' %}</a>
           </li>
           <li>
             <a
               class="edd-view-select"
               href="#"
-              data-selector="#barGraphButton"
-              data-viewmode="time"
+              data-selector="#bar-button"
+              data-viewmode="bar-time"
             >{% trans 'Time' %}</a>
           </li>
         </ul>
       </div>
-      <button
-        class="btn btn-default edd-view-select"
-        id="dataTableButton"
-        type="button"
-        data-selector="#dataTableButton"
-        data-viewmode="table"
-      >
-        <span class="fas fa-table"></span>
-        <span class="collapse-label">{% trans 'Table' %}</span>
-      </button>
-    </div>
-    <div class="btn-group" id="filterControlsArea">
-      <button
-        aria-expanded="false"
-        aria-haspopup="true"
-        class="btn btn-default dropdown-toggle"
-        data-toggle="dropdown"
-        type="button"
-      >
-        <span>{% trans 'View options' %}</span>
-        <span class="caret"></span>
-      </button>
-      <ul class="dropdown-menu">
-        <li><a>
-          <label for="filteringShowDisabledCheckbox">
-            <input id="filteringShowDisabledCheckbox" type="checkbox" />
-            {% trans 'Show Disabled' %}
-          </label>
-        </a></li>
-        <li><a>
-          <label for="filteringShowEmptyCheckbox">
-            <input id="filteringShowEmptyCheckbox" type="checkbox" />
-            {% trans 'Show Empty' %}
-          </label>
-        </a></li>
-      </ul>
+      <div class="btn-group" role="group">
+        <button
+          aria-expanded="false"
+          aria-haspopup="true"
+          class="btn btn-default dropdown-toggle"
+          data-toggle="dropdown"
+          id="table-button"
+          type="button"
+        >
+          <span class="fas fa-table"></span>
+          <span class="collapse-label">{% trans 'Table' %}</span>
+          <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li class="dropdown-header">{% trans 'For Selecting' %}</li>
+          <li>
+            <a
+              class="edd-view-select"
+              href="#"
+              data-selector="#table-button"
+              data-viewmode="table-measurement"
+            >{% trans 'Measurements' %}</a>
+          </li>
+          <li>
+            <a
+              class="edd-view-select"
+              href="#"
+              data-selector="#table-button"
+              data-viewmode="table-assay"
+            >{% trans 'Assays' %}</a>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -123,7 +121,10 @@
 <form action="" method="POST">
 {% csrf_token %}
 {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
-<div id="assaysTable" class="hidden"></div>
+<div id="tableArea" class="hidden">
+  <div id="assayTable" class="hidden"></div>
+  <div id="measurementTable" class="hidden"></div>
+</div>
 
 <div id="assaysActionPanel" class="sectionActions assayActions">
 
@@ -147,7 +148,7 @@
     </button>
     <div class="clear"></div>
   </div>
-  <div id="tableActionButtons" class="tableActionButtons">
+  <div class="btn-toolbar">
     {% if writable %}
     <button
       class="assayButton btn btn-default"
@@ -199,9 +200,7 @@
       {% trans 'Restore' %}
     </button>
     {% endif %}
-  </div>
 
-  <div style="margin:auto 30px auto 15px;" class="{% if not assays %}off{% endif %}">
     <button
       class="exportButton btn btn-primary"
       id="exportButton"

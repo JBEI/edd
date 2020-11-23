@@ -3,6 +3,17 @@
 import * as Utl from "../Utl";
 
 /**
+ * Groups together a MeasurementRecord with its corresponding AssayRecord and
+ * LineRecord. Doing this up front allows Filter predicates to skip repeating
+ * the logic of looking up these values from the mapping.
+ */
+export interface Item {
+    assay: AssayRecord;
+    line: LineRecord;
+    measurement: MeasurementRecord;
+}
+
+/**
  * Facade class providing a more convenient interface to EDDData structure.
  *
  * Once initialized with a view of data, the methods on this class give
@@ -18,17 +29,22 @@ export class Access {
     protected constructor(private _data: EDDData) {}
 
     public static initAccess(data: EDDData): Access {
+        // selected property must be pre-defined to initially false
+        // table select-all checkbox has undefined behavior otherwise
         Object.values(data.Lines).forEach((line) => {
-            // initializing every LineRecord with selected = false
-            // prevents checkboxes from showing as initially disabled
-            // failing to initialize will give undefined behavior to select-all checkbox
             line.selected = false;
         });
+        Object.values(data.Assays).forEach((assay) => {
+            assay.measurements = [];
+            assay.selected = false;
+        });
+        // initialize Measurements listing
+        data.Measurements = data.Measurements || {};
         return new Access(data);
     }
 
-    disabledLines(): LineRecord[] {
-        return Object.values(this._data.Lines);
+    assays(): AssayRecord[] {
+        return Object.values(this._data.Assays);
     }
 
     findAssay(id: number | string): AssayRecord {
@@ -43,12 +59,20 @@ export class Access {
         return Utl.lookup(this._data.Lines, id);
     }
 
+    findMeasurement(id: number | string): MeasurementRecord {
+        return Utl.lookup(this._data.Measurements, id);
+    }
+
     findMeasurementType(id: number | string): MeasurementTypeRecord {
         return Utl.lookup(this._data.MeasurementTypes, id);
     }
 
     findMetadataType(id: number | string): MetadataTypeRecord {
         return Utl.lookup(this._data.MetaDataTypes, id);
+    }
+
+    findProtocol(id: number | string): ProtocolRecord {
+        return Utl.lookup(this._data.Protocols, id);
     }
 
     findStrain(id: number | string): StrainRecord {
@@ -69,6 +93,32 @@ export class Access {
         return this._data.Users[value as number];
     }
 
+    item(measurement: MeasurementRecord): Item {
+        const assay = this.findAssay(measurement.assay);
+        const line = this.findLine(assay.lid);
+        return {
+            "assay": assay,
+            "line": line,
+            "measurement": measurement,
+        };
+    }
+
+    lines(): LineRecord[] {
+        return Object.values(this._data.Lines).filter((line) => line.active);
+    }
+
+    linesWithDisabled(): LineRecord[] {
+        return Object.values(this._data.Lines);
+    }
+
+    measurementItems(): Item[] {
+        return this.measurements().map((m) => this.item(m));
+    }
+
+    measurements(): MeasurementRecord[] {
+        return Object.values(this._data.Measurements);
+    }
+
     /**
      * Returns an AssayRecord for use in an edit dialog, with data merged from
      * items in the argument.
@@ -87,29 +137,35 @@ export class Access {
         return items.reduce((a, b) => mergeLines(a, b));
     }
 
-    lines(): LineRecord[] {
-        return Object.values(this._data.Lines).filter((line) => line.active);
-    }
-
-    metadataForAssayTable(): MetadataTypeRecord[] {
+    metadataForAssayTable(assays?: AssayRecord[]): MetadataTypeRecord[] {
         const keys = new Set<string | number>();
-        Object.values(this._data.Assays).forEach((assay) => {
+        if (assays === undefined) {
+            assays = this.assays();
+        }
+        assays.forEach((assay) => {
             // collecting the used metadata keys
             Object.keys(assay.meta).forEach((key) => keys.add(key));
         });
-        return Array.from(keys).map((k) => this._data.MetaDataTypes[k]);
+        return Array.from(keys).map((k) => this.findMetadataType(k));
     }
 
-    metadataForLineTable(): MetadataTypeRecord[] {
+    metadataForLineTable(lines?: LineRecord[]): MetadataTypeRecord[] {
         const keys = new Set<string | number>();
-        Object.values(this._data.Lines).forEach((line) => {
+        if (lines === undefined) {
+            lines = this.lines();
+        }
+        lines.forEach((line) => {
             // collecting the used metadata keys
             Object.keys(line.meta).forEach((key) => keys.add(key));
         });
-        const metadata = Array.from(keys).map((k) => this._data.MetaDataTypes[k]);
+        const metadata = Array.from(keys).map((k) => this.findMetadataType(k));
         // metadata to show in table is everything except replicate
         // maybe later also filter out other things
         return metadata.filter((meta) => meta.input_type !== "replicate");
+    }
+
+    protocols(): ProtocolRecord[] {
+        return Object.values(this._data.Protocols);
     }
 
     replicates(conflict?: any): LineRecord[] {
@@ -157,6 +213,28 @@ export class Access {
             }
         });
         return replicates;
+    }
+
+    strains(): StrainRecord[] {
+        return Object.values(this._data.Strains);
+    }
+
+    updateAssayValues(payload: AssayValues): void {
+        // update types with any new types in the payload
+        Object.assign(this._data.MeasurementTypes, payload.types);
+        // update assays with real counts; not all measurements may get downloaded
+        for (const [assayId, count] of Object.entries(payload.total_measures)) {
+            const assay = Utl.lookup(this._data.Assays, assayId);
+            assay.count = count;
+        }
+        // match measurements with value arrays, store, and return
+        payload.measures.forEach((value) => {
+            const assay = Utl.lookup(this._data.Assays, value.assay);
+            value.selected = false;
+            value.values = payload.data[value.id] || [];
+            this._data.Measurements[value.id] = value;
+            assay.measurements.push(value);
+        });
     }
 
     private isBasicContact(value): boolean {

@@ -1,7 +1,6 @@
 import * as d3 from "d3";
 
-import { Access } from "./table/Access";
-import * as Filter from "./table/Filter";
+import { Access, Item } from "./table/Access";
 
 export interface GraphParams {
     height: number;
@@ -39,8 +38,9 @@ interface GroupingMode {
 
 export type Color = string;
 export type XYPair = [string | number, string | number];
-export type BarGraphMode = "time" | "line" | "measurement";
-export type ViewingMode = "linegraph" | "table" | BarGraphMode;
+export type BarGraphMode = "bar-line" | "bar-measurement" | "bar-time";
+type TableMode = "table-assay" | "table-measurement";
+export type ViewingMode = "plot-line" | TableMode | BarGraphMode;
 export type GenericSelection = d3.Selection<d3.BaseType, any, HTMLElement, any>;
 
 export interface MeasurementValueSequence {
@@ -121,30 +121,36 @@ export class EDDGraphingTools {
     /**
      * Converts an Item to an array of GraphValue objects.
      */
-    transformSingleItem(item: Filter.Item): GraphValue[] {
+    transformSingleItem(item: Item): GraphValue[] {
         const x_units: string = this.unitName(item.measurement.x_units);
         const y_units: string = this.unitName(item.measurement.y_units);
         const measurementName = this.measurementName(
             item.measurement.type,
             item.measurement.comp,
         );
-        const values = item.measurement.values.map(
-            (dataValue: number[][], index): GraphValue => {
-                // abort if dataValue is not a 2-item array for x and y
-                if (dataValue.length !== 2) {
-                    return;
-                }
-                const x = dataValue[0];
-                const y = dataValue[1];
-                // skip adding any invalid values
-                if (
-                    x.length === 0 ||
-                    y.length === 0 ||
-                    !isFinite(x[0]) ||
-                    !isFinite(y[0])
-                ) {
-                    return;
-                }
+        // TODO: handle formats other than item.measurement.format === "0" AKA SCALAR
+        const valid = item.measurement.values.filter((value: number[][]): boolean => {
+            // abort if value is not a 2-item array for x and y
+            if (value.length !== 2) {
+                return false;
+            }
+            // skip if any of the values are invalid
+            const x = value[0];
+            const y = value[1];
+            if (
+                x.length === 0 ||
+                y.length === 0 ||
+                !isFinite(x[0]) ||
+                !isFinite(y[0])
+            ) {
+                return false;
+            }
+            return true;
+        });
+        const values = valid.map(
+            (value: number[][], index): GraphValue => {
+                const x = value[0];
+                const y = value[1];
                 return {
                     "x": x[0],
                     "y": y[0],
@@ -153,7 +159,7 @@ export class EDDGraphingTools {
                     "name": item.line.name,
                     "color": item.line.color,
                     "measurement": measurementName,
-                    "fullName": item.line.name + " " + measurementName,
+                    "fullName": `${item.line.name} ${measurementName}`,
                 };
             },
         );
@@ -287,34 +293,32 @@ export class GraphView {
             return icon;
         },
     ];
-    // map BarGraphMode to a human-friendly title (TODO: i18n)
+    // map ViewingMode to a human-friendly X-Axis title (TODO: i18n)
     private static readonly titleLookup: { [k: string]: string } = {
-        "line": "Line",
-        "time": "Hours",
-        "measurement": "Measurement",
+        "bar-line": "Line",
+        "bar-time": "Hours",
+        "bar-measurement": "Measurement",
+        "plot-line": "Hours",
     };
-    // map BarGraphMode to a GroupingKey function
-    private static readonly keyingLookup: { [k: string]: GroupingKey } = {
-        "line": (v) => v.name,
-        "time": (v) => "" + v.x,
-        "measurement": (v) => v.measurement,
-    };
+    private static readonly lineGrouping: GroupingKey = (v) => v.name;
+    private static readonly timeGrouping: GroupingKey = (v) => `${v.x}`;
+    private static readonly typeGrouping: GroupingKey = (v) => v.measurement;
     // map BarGraphMode to a GroupingMode priority of groupings
     private static readonly groupingLookup: { [k: string]: GroupingMode } = {
-        "line": {
-            "primary": GraphView.keyingLookup.line,
-            "secondary": GraphView.keyingLookup.time,
-            "tertiary": GraphView.keyingLookup.measurement,
+        "bar-line": {
+            "primary": GraphView.lineGrouping,
+            "secondary": GraphView.timeGrouping,
+            "tertiary": GraphView.typeGrouping,
         },
-        "time": {
-            "primary": GraphView.keyingLookup.time,
-            "secondary": GraphView.keyingLookup.line,
-            "tertiary": GraphView.keyingLookup.measurement,
+        "bar-time": {
+            "primary": GraphView.timeGrouping,
+            "secondary": GraphView.lineGrouping,
+            "tertiary": GraphView.typeGrouping,
         },
-        "measurement": {
-            "primary": GraphView.keyingLookup.measurement,
-            "secondary": GraphView.keyingLookup.time,
-            "tertiary": GraphView.keyingLookup.line,
+        "bar-measurement": {
+            "primary": GraphView.typeGrouping,
+            "secondary": GraphView.timeGrouping,
+            "tertiary": GraphView.lineGrouping,
         },
     };
 
@@ -347,7 +351,7 @@ export class GraphView {
         const ordinalColors = d3.scaleOrdinal(EDDGraphingTools.colors);
 
         // create x axis svg
-        this.buildXAxis(params, x_scale, "time");
+        this.buildXAxis(params, x_scale, "plot-line");
 
         // iterate through the different unit groups getting min y value, data, and range.
         d3.nest<GraphValue>()
@@ -385,7 +389,7 @@ export class GraphView {
     buildGroupedBarGraph(params: GraphParams, mode: BarGraphMode) {
         const values: GraphValue[] = this.sortOnX(params.values);
         const grouping: GroupingMode =
-            GraphView.groupingLookup[mode] || GraphView.groupingLookup.line;
+            GraphView.groupingLookup[mode] || GraphView.groupingLookup["bar-line"];
         // define the x-axis primary scale; d3.set() keeps items in insertion order
         const primary_scale = d3
             .scaleBand()
@@ -512,7 +516,7 @@ export class GraphView {
     private buildXAxis<T extends d3.AxisDomain>(
         params: GraphParams,
         scale: d3.AxisScale<T>,
-        mode: BarGraphMode,
+        mode: ViewingMode,
     ): d3.Axis<T> {
         // define the x-axis itself
         let x_axis: d3.Axis<T> = d3.axisBottom<T>(scale);

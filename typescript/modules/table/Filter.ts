@@ -1,6 +1,6 @@
 "use strict";
 
-import * as Utl from "../Utl";
+import { Access, Item } from "./Access";
 
 /**
  * Describes an entry in a FilterSection; e.g. a Strain.
@@ -10,17 +10,6 @@ class FilterValue<U> {
     selected = false;
 
     constructor(readonly value: U) {}
-}
-
-/**
- * Groups together a MeasurementRecord with its corresponding AssayRecord and
- * LineRecord. Doing this up front allows Filter predicates to skip repeating
- * the logic of looking up these values from the mapping.
- */
-export interface Item {
-    assay: AssayRecord;
-    line: LineRecord;
-    measurement: MeasurementRecord;
 }
 
 /**
@@ -37,7 +26,17 @@ const ALLOW = () => true;
 export abstract class FilterLayer {
     abstract createElements(): JQuery;
     abstract isUseful(): boolean;
-    predicate(): (item: Item) => boolean {
+    /**
+     * Only use as a pre-filter! Layers may choose to skip implementing if
+     * given only an AssayRecord and not a full Item tuple.
+     */
+    allowAssay(): (assay: AssayRecord) => boolean {
+        return ALLOW;
+    }
+    /**
+     * Create a function to accept or reject an argument Item tuple.
+     */
+    allowItem(): (item: Item) => boolean {
         return ALLOW;
     }
 }
@@ -45,43 +44,65 @@ export abstract class FilterLayer {
 /**
  * Top-level object controlling filtering of data for display in EDD.
  */
-export class Filter {
+export class Filter extends FilterLayer {
     private readonly layers: FilterLayer[] = [];
     private measurementLayer: MeasurementFilterLayer;
     private root: JQuery = null;
 
-    private constructor(private readonly _data: EDDData) {
-        this._data.Measurements = this._data.Measurements || {};
+    private constructor(private readonly access: Access) {
+        super();
         this.measurementLayer = new MeasurementFilterLayer();
     }
 
     /**
      * Create the filter from information known in initial EDDData request.
      */
-    static create(data: EDDData): Filter {
-        const self = new Filter(data);
-        // layer for line names
-        const lines: LineRecord[] = Object.values(data.Lines);
-        self.layers.push(LineNameFilterSection.create(lines));
-        // layer for strains
-        const strains: StrainRecord[] = Object.values(data.Strains);
-        self.layers.push(StrainFilterSection.create(strains));
-        // layer for line metadata
-        const metadata: MetadataTypeRecord[] = Object.values(data.MetaDataTypes);
-        metadata.filter(Filter.lineMetadataFilter).forEach((t) => {
+    static create(access: Access): Filter {
+        const self = new Filter(access);
+        const lines = access.lines();
+        self.layers.push(LineNameFilterSection.create(access.lines()));
+        self.layers.push(StrainFilterSection.create(access.strains()));
+        // layers for line metadata
+        access.metadataForLineTable(lines).forEach((t) => {
             self.layers.push(MetadataFilterSection.create(lines, t));
         });
-        // layer for protocols
-        const protocols: ProtocolRecord[] = Object.values(data.Protocols);
-        self.layers.push(ProtocolFilterSection.create(protocols));
-        // layer for assay metadata
-        const assays: AssayRecord[] = Object.values(data.Assays);
-        metadata.filter(Filter.assayMetadataFilter).forEach((t) => {
+        self.layers.push(ProtocolFilterSection.create(access.protocols()));
+        // layers for assay metadata
+        const assays = access.assays();
+        access.metadataForAssayTable(assays).forEach((t) => {
             self.layers.push(MetadataFilterSection.create(assays, t));
         });
         // layer for types of measurements at the end
         self.layers.push(self.measurementLayer);
         return self;
+    }
+
+    allowAssay(): (assay: AssayRecord) => boolean {
+        // get every section to give callback for Array.filter()
+        const predicates = this.layers.map((s) => s.allowAssay());
+        // remove any ALLOW to speed up iteration
+        const active = predicates.filter((p) => p !== ALLOW);
+        // predicate accepts anything that satisfies every active layer
+        return (assay) => active.every((p) => p(assay));
+    }
+
+    allowItem(): (item: Item) => boolean {
+        // get every section to give callback for Array.filter()
+        const predicates = this.layers.map((s) => s.allowItem());
+        // remove any ALLOW to speed up iteration
+        const active = predicates.filter((p) => p !== ALLOW);
+        // predicate accepts anything that satisfies every active layer
+        return (item) => active.every((p) => p(item));
+    }
+
+    assays(): AssayRecord[] {
+        // run initial filter on assays
+        const assays = this.access.assays().filter((assay) => this.allowAssay());
+        // find assays where at least one measurement passes filters
+        return assays.filter((assay) => {
+            const items = assay.measurements.map((m) => this.access.item(m));
+            return items.some(this.allowItem());
+        });
     }
 
     createElements(): JQuery {
@@ -94,116 +115,27 @@ export class Filter {
         return this.root;
     }
 
-    getFiltered(): Item[] {
-        // get every section to give callback for Array.filter()
-        const predicates = this.layers.map((s) => s.predicate());
-        // remove any ALLOW to speed up iteration
-        const active = predicates.filter((p) => p !== ALLOW);
-        // do lookups for AssayRecord and LineRecord
-        const measurements = Object.values(this._data.Measurements);
-        const items = measurements.map(this.createItem);
-        // narrow down all to just those allowed by filter layers
-        return items.filter((r) => active.every((p) => p(r)));
+    isUseful(): boolean {
+        return this.layers.length > 0;
     }
 
-    getFilteredByLine(): Item[] {
-        const grouped: Item[] = [];
-        const lookup: { [item_hash: string]: number } = {};
-        this.getFiltered().forEach((item: Item) => {
-            const hash = Filter.measurementHash(item.measurement);
-            const match_index = lookup[`${item.line.id}:${item.assay.pid}:${hash}`];
-            if (match_index !== undefined) {
-                const match = grouped[match_index];
-                // TODO: is merging assays necessary?
-                // match.assay = mergeAssays(match.assay, item.assay);
-                match.measurement.values = [
-                    ...match.measurement.values,
-                    ...item.measurement.values,
-                ];
-            } else {
-                // record index and add to lookup
-                lookup[item.line.id] = grouped.length;
-                grouped.push(item);
-            }
-        });
-        return grouped;
-    }
-
-    getFilteredByReplicate(): Item[] {
-        const grouped: Item[] = [];
-        const lookup: { [item_hash: string]: number } = {};
-        // find replicate metadata for Lines to do grouping
-        const meta_types = Object.values(this._data.MetaDataTypes);
-        const replicate_type: MetadataTypeRecord = meta_types.find(
-            (md: MetadataTypeRecord) =>
-                md.input_type === "replicate" && md.context === "L",
-        );
-        this.getFiltered().forEach((item: Item) => {
-            const hash = Filter.measurementHash(item.measurement);
-            const replicate_id = item.line.meta[replicate_type.id];
-            const key = replicate_id
-                ? `r${replicate_id}:${item.assay.pid}:${hash}`
-                : `l${item.line.id}:${item.assay.pid}:${hash}`;
-            const match_index = lookup[key];
-            if (match_index !== undefined) {
-                const match = grouped[match_index];
-                // TODO: is merging assays necessary?
-                // match.assay = mergeAssays(match.assay, item.assay);
-                match.measurement.values = [
-                    ...match.measurement.values,
-                    ...item.measurement.values,
-                ];
-            } else {
-                // record index and add to lookup
-                lookup[item.line.id] = grouped.length;
-                grouped.push(item);
-            }
-        });
-        return grouped;
+    measurements(): Item[] {
+        return this.access.measurementItems().filter(this.allowItem());
     }
 
     /**
      * Update the filter with newly-downloaded measurement information.
      */
     update(payload: AssayValues): void {
-        // update types with any new types in the payload
-        Object.assign(this._data.MeasurementTypes, payload.types);
-        // update assays with real counts; not all measurements may get downloaded
-        for (const [assayId, count] of Object.entries(payload.total_measures)) {
-            const assay = Utl.lookup(this._data.Assays, assayId);
-            assay.count = count;
-        }
+        this.access.updateAssayValues(payload);
         const categories = payload.measures.map((value) => {
-            // convert the MeasurementRecord to a Category struct
-            const c = Utl.lookup(this._data.MeasurementTypeCompartments, value.comp);
-            const t = Utl.lookup(this._data.MeasurementTypes, value.type);
-            const category = { "compartment": c, "measurementType": t };
-            // merge record for Measurement with its data array
-            value.values = payload.data[value.id] || [];
-            // store it
-            this._data.Measurements[value.id] = value;
-            return category;
+            return {
+                "compartment": this.access.findCompartment(value.comp),
+                "measurementType": this.access.findMeasurementType(value.type),
+            };
         });
         // pass to measurementLayer so it can update its options
         this.measurementLayer.update(categories);
-    }
-
-    private createItem(measurement: MeasurementRecord): Item {
-        const assay = EDDData.Assays[measurement.assay];
-        const line = EDDData.Lines[assay.lid];
-        return { "assay": assay, "line": line, "measurement": measurement };
-    }
-
-    private static assayMetadataFilter(t: MetadataTypeRecord): boolean {
-        // use set for possibly excluding others later
-        const exclude = new Set(["replicate"]);
-        return t.context === "A" && !exclude.has(t.input_type);
-    }
-
-    private static lineMetadataFilter(t: MetadataTypeRecord): boolean {
-        // use set for possibly excluding others later
-        const exclude = new Set(["replicate"]);
-        return t.context === "L" && !exclude.has(t.input_type);
     }
 
     private static measurementHash(m: MeasurementRecord): string {
@@ -276,15 +208,6 @@ export abstract class FilterSection<U> extends FilterLayer {
         return this.items.length > 1;
     }
 
-    /**
-     * Creates a function for Array.filter() to remove measurements this
-     * FilterSection eliminates.
-     */
-    predicate(): (item: Item) => boolean {
-        // default is just let everything through
-        return ALLOW;
-    }
-
     protected registerHandlers() {
         // changing state of checkbox in the section
         this.section.on("change", "input", (event) => {
@@ -299,7 +222,7 @@ export abstract class FilterSection<U> extends FilterLayer {
         });
         // clicking the clear button for the section
         this.section.on("click", ".filter-clear", (event) => {
-            const button = $(event.target);
+            const button = $(event.currentTarget);
             if (!button.hasClass("invisible")) {
                 this.items.forEach((item) => {
                     item.selected = false;
@@ -307,6 +230,7 @@ export abstract class FilterSection<U> extends FilterLayer {
                 this.section.find("input[type=checkbox]").prop("checked", false);
                 button.addClass("invisible");
                 $.event.trigger("eddfilter");
+                button.blur();
             }
         });
     }
@@ -348,12 +272,20 @@ export class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
         return result;
     }
 
-    predicate(): (item: Item) => boolean {
+    allowAssay(): (assay: AssayRecord) => boolean {
         const selected = this.selectedIds();
         if (selected.size === 0) {
             return ALLOW;
         }
-        return (r) => selected.has(r.assay.lid);
+        return (assay) => selected.has(assay.lid);
+    }
+
+    allowItem(): (item: Item) => boolean {
+        const selected = this.selectedIds();
+        if (selected.size === 0) {
+            return ALLOW;
+        }
+        return (item) => selected.has(item.line.id);
     }
 }
 
@@ -364,13 +296,13 @@ export class StrainFilterSection extends EDDRecordFilter<StrainRecord> {
         return section;
     }
 
-    predicate(): (item: Item) => boolean {
+    allowItem(): (item: Item) => boolean {
         const selected = this.selectedIds();
         if (selected.size === 0) {
             return ALLOW;
         }
         // at least one line strain is in selected items
-        return (r) => r.line.strain.some((s) => selected.has(s));
+        return (item) => item.line.strain.some((s) => selected.has(s));
     }
 }
 
@@ -381,12 +313,20 @@ export class ProtocolFilterSection extends EDDRecordFilter<ProtocolRecord> {
         return section;
     }
 
-    predicate(): (item: Item) => boolean {
+    allowAssay(): (assay: AssayRecord) => boolean {
         const selected = this.selectedIds();
         if (selected.size === 0) {
             return ALLOW;
         }
-        return (r) => selected.has(r.assay.pid);
+        return (assay) => selected.has(assay.pid);
+    }
+
+    allowItem(): (item: Item) => boolean {
+        const selected = this.selectedIds();
+        if (selected.size === 0) {
+            return ALLOW;
+        }
+        return (item) => selected.has(item.assay.pid);
     }
 }
 
@@ -409,14 +349,14 @@ export class MetadataFilterSection extends FilterSection<string> {
         return section;
     }
 
-    predicate(): (item: Item) => boolean {
+    allowItem(): (item: Item) => boolean {
         const selected = new Set(this.selectedItems());
         if (selected.size === 0) {
             return ALLOW;
         } else if (this.metadataType.context === "L") {
-            return (r) => selected.has(r.line.meta[this.metadataType.id]);
+            return (item) => selected.has(item.line.meta[this.metadataType.id]);
         } else if (this.metadataType.context === "A") {
-            return (r) => selected.has(r.assay.meta[this.metadataType.id]);
+            return (item) => selected.has(item.assay.meta[this.metadataType.id]);
         }
         return ALLOW;
     }
@@ -424,14 +364,6 @@ export class MetadataFilterSection extends FilterSection<string> {
     valueToDisplay(value: string): string {
         return value;
     }
-}
-
-/**
- * Defines parts of a MeasurementRecord to use in filtering by kinds of measurement.
- */
-interface Category {
-    compartment: MeasurementCompartmentRecord;
-    measurementType: MeasurementTypeRecord;
 }
 
 export class MeasurementFilterLayer extends FilterLayer {
@@ -459,9 +391,9 @@ export class MeasurementFilterLayer extends FilterLayer {
         return true;
     }
 
-    predicate(): (item: Item) => boolean {
+    allowItem(): (item: Item) => boolean {
         // get filter predicate function for each section in layer
-        const subpredicates = this.sections.map((section) => section.predicate());
+        const subpredicates = this.sections.map((section) => section.allowItem());
         // discard any ALLOW
         const active = subpredicates.filter((p) => p !== ALLOW);
         // if any section is actively filtering
@@ -527,6 +459,17 @@ abstract class MeasurementFilterSection extends FilterSection<Category> {
         return true;
     }
 
+    allowItem(): (item: Item) => boolean {
+        // include symbol in type so .has(skip) is a legal check
+        const selected = new Set(
+            this.selectedItems().map((t) => MeasurementFilterSection.typeHash(t)),
+        );
+        if (selected.size === 0) {
+            return ALLOW;
+        }
+        return (item) => selected.has(MeasurementFilterSection.itemHash(item));
+    }
+
     createListItems(): void {
         super.createListItems();
         this.dirty = false;
@@ -534,16 +477,6 @@ abstract class MeasurementFilterSection extends FilterSection<Category> {
 
     isUseful(): boolean {
         return this.items.length > 0;
-    }
-
-    predicate(): (item: Item) => boolean {
-        const selected = new Set(
-            this.selectedItems().map((t) => MeasurementFilterSection.typeHash(t)),
-        );
-        if (selected.size === 0) {
-            return ALLOW;
-        }
-        return (x) => selected.has(MeasurementFilterSection.itemHash(x));
     }
 
     refresh(): void {

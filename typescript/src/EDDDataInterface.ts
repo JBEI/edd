@@ -35,9 +35,8 @@ interface LineRecord extends EDDRecord {
     strain: number[]; // Strain ID array
 
     // optional properties, set only in graphing code, not received from backend
-    identifier?: string; // HTML ID for the line filter checkbox
     color?: string;
-    // optional properties, set only in line table code
+    // optional properties, set only in table code
     selected?: boolean;
     replicate_ids?: number[];
     replicate_names?: string[];
@@ -45,7 +44,6 @@ interface LineRecord extends EDDRecord {
 
 // This is what we expect in EDDData.Assays
 interface AssayRecord extends EDDRecord {
-    // this section comes from server endpoint
     active: boolean; // Active assay
     count: number;
     experimenter: number; // Experimenter ID
@@ -53,12 +51,9 @@ interface AssayRecord extends EDDRecord {
     pid: number; // Protocol ID
     study: number;
 
-    // this section gets added on frontend
-    measures?: number[]; // All collected measurements associated with Assay
-    metabolites?: number[]; // Metabolite measurements associated with Assay
-    transcriptions?: number[]; // Transcription measurements associated with Assay
-    proteins?: number[]; // Proteins measurements associated with Assay
-    general?: number[]; // Measurements for everything else
+    // optional properties, set only in table code
+    measurements?: MeasurementRecord[];
+    selected?: boolean;
 }
 
 // This is what we expect in EDDData.Measurements
@@ -71,6 +66,9 @@ interface MeasurementRecord {
     values: number[][][]; // array of data values
     x_units: number;
     y_units: number;
+
+    // optional properties, set only in table code
+    selected?: boolean;
 }
 
 interface MeasurementCompartmentRecord {
@@ -84,6 +82,14 @@ interface MeasurementTypeRecord {
     uuid: string; // Type UUID
     name: string; // Type name
     family: string; // 'm', 'g', 'p' for metabolite, gene, protien
+}
+
+/**
+ * Defines parts of a MeasurementRecord to use in filtering by kinds of measurement.
+ */
+interface Category {
+    compartment: MeasurementCompartmentRecord;
+    measurementType: MeasurementTypeRecord;
 }
 
 interface UnitType {

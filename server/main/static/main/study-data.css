@@ -1,0 +1,4 @@
+/* overriding the grey color for read-only tables */
+#tableArea .handsontable .htDimmed {
+    color: inherit;
+}
