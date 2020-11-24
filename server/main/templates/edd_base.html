@@ -97,19 +97,21 @@
     </div>
   </nav>
   <div id="content" class="content">
-    <div class="statusMessage">
     {% block status %}
       {% if messages %}
         {% csrf_token %}
         {% for message in messages %}
-        <div class="{{ message.tags }}">
-          <a class="close" aria-label="{% trans 'Close' %}" data-dismiss="alert">×</a>
+        <div class="alert alert-{{ message.level_tag }} {{ message.extra_tags }}" role="alert">
+          <a
+            aria-label="{% trans 'Close' %}"
+            class="close"
+            data-dismiss="alert"
+          >&times;</a>
           {{ message }}
         </div>
         {% endfor %}
       {% endif %}
     {% endblock status %}
-    </div>
     {% block content %}
     {% endblock content %}
   </div>

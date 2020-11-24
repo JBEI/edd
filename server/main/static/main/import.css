@@ -383,3 +383,9 @@ select.disamStd {
 #resetstep2 {
     margin-left: 15px;
 }
+
+.missingSingleFormInput {
+    color: red;
+    display: block;
+    font-size: 11px;
+}

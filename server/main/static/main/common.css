@@ -1,5 +1,4 @@
 /* CSS reset */
-
 html,
 body,
 div,
@@ -38,7 +37,6 @@ td {
     margin: 0;
     padding: 0;
 }
-
 h1,
 h2,
 h3,
@@ -47,7 +45,6 @@ h5,
 h6 {
     color: inherit;
 }
-
 table {
     border-collapse: collapse;
     border-spacing: 0;
@@ -58,7 +55,6 @@ fieldset {
 }
 
 /* EDD basic style */
-
 html {
     color: #000000;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -69,19 +65,15 @@ body {
     height: 100%;
     line-height: 1;
 }
-
 p {
     margin: 0.4em;
     padding: 0.2em;
 }
-
 /* Links */
-
 a {
     color: #4c81c0;
     text-decoration: none;
 }
-
 a.darker {
     color: #000000;
 }
@@ -91,8 +83,8 @@ a:hover {
 label {
     font-weight: normal !important;
 }
-
-input:disabled + label {
+input:disabled + label,
+.disabled-label {
     color: #ccc;
 }
 /* TODO: replace HTML with .mx-2 in Bootstrap 4 */
@@ -101,12 +93,7 @@ input:disabled + label {
     margin-right: 0.25em;
 }
 
-.disabled-label {
-    color: #ccc;
-}
-
 /* Functional classes */
-
 .clear {
     clear: both;
 }
@@ -158,7 +145,6 @@ input:disabled + label {
     height: 16px;
     vertical-align: -25%;
 }
-
 .spinner {
     height: 50px;
     width: 50px;
@@ -168,30 +154,30 @@ input:disabled + label {
     top: 30%;
     left: 50%;
 }
-
 .noData {
     margin: 30px;
 }
-
 .disableLink {
     pointer-events: none;
     cursor: default;
     color: grey;
 }
+
+/* classes for branding indicators for testing, development, integration */
 .test {
     color: mediumvioletred;
     font-size: 12px;
 }
-
 .dev {
     color: green;
     font-size: 12px;
 }
-
 .int {
     color: orange;
     font-size: 12px;
 }
+
+/* TODO: replace uses of .disclose with <DETAILS> and <SUMMARY> tags */
 .disclose {
     clear: both;
 }
@@ -219,6 +205,7 @@ input:disabled + label {
     cursor: pointer;
     color: black;
 }
+
 .top {
     vertical-align: top !important;
 }
@@ -235,64 +222,8 @@ input:disabled + label {
     display: none;
     visibility: hidden;
 }
-form.noMargins {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-}
 
-/* Main flex layout */
-
-div.mainFlex {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start; /* align items in Main Axis */
-    align-items: stretch; /* align items in Cross Axis */
-    align-content: stretch; /* Extra space in Cross Axis */
-    flex-wrap: nowrap;
-    padding: 0;
-    margin: 0;
-}
-
-/* A section near the top of the page for reporting the result of attempted operations */
-
-div.statusMessage {
-    clear: both;
-    font-size: 14px;
-    padding: 0.7em 0.6em 0.1em 0.6em;
-}
-div.statusMessage > div {
-    border-width: 2px;
-    border-radius: 6px;
-    border-style: solid;
-    color: black;
-    margin: 0;
-    padding: 10px;
-    -webkit-border-radius: 6px;
-    -moz-border-radius: 6px;
-}
-div.statusMessage > .success {
-    color: #0000ff;
-    font-weight: bold;
-}
-div.statusMessage > .good {
-    background-color: #f3f9f4;
-    border-color: green;
-}
-div.statusMessage > .neutral {
-    background-color: #d8e4f1;
-    border-color: #77b1ef;
-}
-div.statusMessage > .warn,
-div.statusMessage > .warning {
-    background-color: #fffdf6;
-    border-color: #ffeaae;
-}
-div.statusMessage > .bad {
-    background-color: #ffcccc;
-    border-color: red;
-}
+/* TODO: remove; only used in legacy import and flow cytometry prototype */
 div.errorMessage {
     background: #fff0f0;
     margin: 0;
@@ -301,10 +232,14 @@ div.errorMessage {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
+div.errorMessage > a.close {
+    cursor: pointer;
+    float: right;
+    margin: 0 5px;
+}
 
 /* Main content section */
-div.content,
-div.bottomBar {
+div.content {
     padding-left: 15px;
     padding-right: 15px;
 }
@@ -321,16 +256,8 @@ div.footer-text {
 div.footer-text > span {
     margin: 0 2em;
 }
-div.bottomBar {
-    background: inherit;
-    bottom: 0;
-    position: fixed;
-    width: 100%;
-    z-index: 200;
-}
 
 /* Mouseover help boxes for the various steps */
-
 .helpBadgeDiv {
     cursor: pointer;
     font-weight: bold;
@@ -359,10 +286,6 @@ div.helpContent h1 {
 }
 
 /* Page sections */
-
-div.newPageSection {
-    margin: 10px 40px 3px 20px;
-}
 div.pageSection div.sectionHead {
     color: #606060;
     display: flex;
@@ -426,52 +349,6 @@ div.sectionActions {
 div.pageSection div.sectionHead span.sectionTitle {
     margin-right: auto;
 }
-
-div.lineFlex {
-    display: flex;
-    flex-wrap: nowrap;
-    flex-direction: row;
-    justify-content: space-between;
-}
-
-div.overviewFlex {
-    display: flex;
-    flex-wrap: nowrap;
-    flex-direction: row;
-    align-items: top;
-    justify-content: space-between;
-}
-
-div.assayDisplayed {
-    padding: 1px;
-}
-
-div.tooManyPoints {
-    height: 300px;
-    width: 100%;
-    padding: auto;
-    text-align: center;
-    vertical-align: middle;
-}
-
-div.assayFlex {
-    flex-grow: 0;
-    margin: 0 15px 0 auto;
-    font-size: 0.9em;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-div.assayActions {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start; /* align items in Main Axis */
-    align-items: stretch; /* align items in Cross Axis */
-    align-content: stretch; /* Extra space in Cross Axis */
-    flex-wrap: nowrap;
-}
-
 div.pageSection.discloseHide.minor {
     background: transparent;
     border-width: 0;
@@ -483,36 +360,45 @@ div.pageSection.minor div.sectionHead {
     background: transparent;
 }
 
-ul.studyTabs {
-    margin: 15px 0px 10px 0px;
-    border-bottom: 1px solid lightgray;
+div.lineFlex {
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    justify-content: space-between;
 }
-
-span.allowError {
-    font-weight: bold;
-    margin-left: 2px;
-    margin-right: 10px;
+div.assayFlex {
+    flex-grow: 0;
+    margin: 0 15px 0 auto;
+    font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+div.assayActions {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start; /* align items in Main Axis */
+    align-items: stretch; /* align items in Cross Axis */
+    align-content: stretch; /* Extra space in Cross Axis */
+    flex-wrap: nowrap;
 }
 
 input.dontAllowError {
     margin-right: 10px;
     margin-left: 10px;
 }
-
 span.alertSubject {
     font-weight: bold;
 }
-
 input.yesAlertInput {
     margin-right: 10px;
 }
 
-.alert-trim {
-    display: inline-block;
+.replicateLineShow {
+    color: grey;
 }
 
 /* Data tables and controls */
-
 table.dataTable {
     width: 100%;
     border: none;
@@ -540,9 +426,7 @@ tr.columnLabels > th {
     -ms-user-select: none;
     user-select: none;
 }
-
 /* Table sorting components */
-
 tr.columnLabels > th.sortheader {
     cursor: pointer;
     text-align: left;
@@ -558,7 +442,6 @@ table.dataTable tr.columnLabels > th.sortheader:hover {
     text-decoration: underline;
     background-color: #ccf;
 }
-
 tr.columnLabels > th.sortedup > div {
     background-image: url(images/sortup-dark.png);
     background-repeat: no-repeat;
@@ -578,9 +461,7 @@ tr.columnLabels > th.sortwait > div:hover {
     text-decoration: underline;
     background-color: rgba(108, 164, 233, 0.6);
 }
-
 /* Data table regular cells */
-
 table.dataTable tr > td {
     padding: 4px 4px 4px 8px;
     margin: 0px;
@@ -614,7 +495,6 @@ table.dataTable tr > td span {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-
 table.dataTable tr > td p {
     margin: 3px 3px 0px 0px;
     padding: 0px;
@@ -623,20 +503,14 @@ tr.groupHeader.replicate > td:before {
     padding: 0;
     content: "▼";
 }
-
 tr.groupHeader > td:before {
     padding: 0;
     content: "►";
 }
-
-.replicateLineShow {
-    color: grey;
-}
-
-/* Data table controls for DataGrids.  These can fit inside "sectionHeads" or the "header" row of a "dataTable" */
-
+/* Data table controls for DataGrids. These can fit inside "sectionHeads" or
+ * the "header" row of a "dataTable"
+ */
 span.tableControl {
-    /*    float:left;   */
     font-weight: normal;
     margin: 10px 5px 10px 0px;
     padding: 0px;
@@ -661,7 +535,6 @@ span.tableControl > select {
     padding: 0px;
     font-size: 10px;
 }
-
 span.tableControlImport {
     font-weight: normal;
     margin: 10px 1px 0px 16px;
@@ -685,11 +558,9 @@ span.tableControlImport > select {
     padding: 0px;
     font-size: 10px;
 }
-
 span.tableHeader {
     margin-right: 10px;
 }
-
 input[type="button"].tableControl {
     margin: 10px 5px 10px 0px;
     font-size: 10px;
@@ -706,12 +577,7 @@ input[type="text"].searchBox {
     background-size: 15px 15px;
     background-position: right 5px top 1px;
 }
-input[type="text"].searchBox.tableControl {
-    /*    float:left;   */
-}
-
 /* DataGrid header pulldown menus */
-
 div.pulldownMenu {
     display: inline-block;
     margin: 10px 5px 10px 0px;
@@ -811,95 +677,12 @@ div.lastViewed span {
     margin-right: 10px;
 }
 
-.filter-section {
-    display: flex;
-    max-height: 300px;
-    white-space: nowrap;
-}
-.filter-section > .filter-column {
-    max-height: 300px;
-    overflow-y: scroll;
-    padding-right: 1em;
-}
-.filter-column > ul {
-    list-style: none;
-}
-.filter-column > ul > li {
-    font-size: 13px;
-    margin: 2px 0;
-}
-.filter-column input {
-    bottom: 1px; /* better matching w/ label along with vertical-align */
-    margin: 0;
-    position: relative;
-    vertical-align: middle;
-}
-.filter-head {
-    font-weight: bold;
-}
-.filter-head > .filter-clear {
-    float: none;
-    font-size: 14px;
-    padding: 2px;
-}
-
-/* Tables for filling out forms */
-
-table.formTable {
-    margin: 10px 3px 20px 3px;
-    border: none;
-    font-size: 16px;
-    width: 100%;
-}
-table.formTable tr > td {
-    text-align: left;
-    vertical-align: top;
-    padding: 4px 6px 4px 4px;
-}
-table.formTable tr > td.form-label {
-    word-break: keep-all;
-    color: #a0a0a0;
-    font-size: 15px;
-    padding-top: 7px;
-    padding-left: 16px;
-}
-
-table.formTable tr > td input {
-    padding: 0px;
-    margin: 0;
-}
-table.formTable tr > td input[type="checkbox"] {
-    padding: 0px;
-    margin: 3px 3px 0px 9px;
-}
-table.formTable tr > td input[type="radio"] {
-    padding: 0px;
-    margin: 3px 3px 0px 9px;
-}
-table.formTable tr > td select {
-    padding: 0px;
-    margin: 0px 4px 0px 2px;
-}
-table.formTable tr > td span {
-    margin: 0px;
-    padding: 3px 3px 0px 0px;
-}
-table.formTable tr > td p {
-    margin: 3px 3px 0px 0px;
-    padding: 0px;
-}
-table.formTable tr > td textarea {
-    margin: 0;
-    padding: 0;
-}
-
 #studiesTable td:nth-child(2) {
     white-space: nowrap;
     text-overflow: ellipsis;
     width: 40%;
     overflow: hidden;
 }
-
 #studiesTable td:first-child {
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -907,11 +690,6 @@ table.formTable tr > td textarea {
     overflow: hidden;
     max-width: 200px;
 }
-
-.uploadFileIcon {
-    padding-left: 10px;
-}
-
 #studyAssaysTable tbody > tr:hover,
 #studyLinesTable tbody > tr:hover,
 #studiesTable tbody > tr:hover {
@@ -919,7 +697,6 @@ table.formTable tr > td textarea {
 }
 
 /* Autocomplete input element styling */
-
 ul.edd-autocomplete-list {
     /* above any modal dialogs */
     z-index: 215;
@@ -938,7 +715,6 @@ ul.edd-autocomplete-list > li > div.ui-state-active {
     border-width: 0px;
     border: none;
 }
-
 input.autocomplete,
 input.autocomp {
     background-repeat: no-repeat;
@@ -958,7 +734,6 @@ input.autocomp.wait {
     float: left;
     padding: 0 4px;
 }
-
 ul.ui-autocomplete {
     list-style: none;
 }
@@ -968,84 +743,7 @@ ul.ui-autocomplete {
     z-index: 200 !important;
 }
 
-.ice_strain {
-    font-size: 11px;
-}
-.ice_strain:hover {
-    background-color: Highlight;
-    color: HighlightText;
-}
-.ice_strain > b {
-    margin-right: 1em;
-}
-
-div.graphContainer {
-    height: 240px;
-    min-height: 100px;
-    padding: 0;
-    position: relative;
-    width: 100%;
-    display: none;
-}
-
-div.graphToolTip {
-    font-family: arial;
-    font-size: 12px;
-    position: absolute;
-    border: 1px solid;
-    border-color: #666;
-    padding: 3px;
-    margin: 0px;
-    background-color: #fff;
-    opacity: 0.93;
-}
-div.graphHoverWidget {
-    font-family: Helvetica, sans-serif;
-    font-size: 11px;
-    position: absolute;
-    border: 1px solid;
-    border-color: #666;
-    padding: 3px 5px;
-    margin: 0px;
-    background-color: #fff;
-    opacity: 0.93;
-    border-radius: 0px 4px 4px 4px;
-    -webkit-border-radius: 0px 4px 4px 4px;
-    -moz-border-radius: 0px 4px 4px 4px;
-}
-div.graphClickWidget {
-    font-family: Helvetica, sans-serif;
-    font-size: 11px;
-    position: absolute;
-    border: 2px solid;
-    border-color: #444;
-    padding: 2px 4px;
-    margin: 0px;
-    background-color: #fff;
-    border-radius: 0px 4px 4px 4px;
-    -webkit-border-radius: 0px 4px 4px 4px;
-    -moz-border-radius: 0px 4px 4px 4px;
-}
-.iscontroldata {
-    font-weight: bold;
-    font-size: 9px;
-    padding: 0px 2px 0px 2px;
-    margin-left: 3px;
-    color: #88a000;
-    border-color: #680;
-    border-width: 1px;
-    border-style: dotted;
-    border-radius: 2px;
-    -webkit-border-radius: 2px;
-    -moz-border-radius: 2px;
-}
-
 /* Classes for editable fields */
-div.form-value {
-    word-break: break-all;
-    word-wrap: break-word;
-    white-space: pre-wrap;
-}
 div.editable-field {
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
@@ -1072,7 +770,6 @@ div.editable-field.inactive input,
 div.editable-field.inactive textarea {
     display: none;
 }
-
 div.editable-field:hover,
 .editable-field.saving {
     box-shadow: 0 0 0 1px rgba(108, 164, 233, 0.6);
@@ -1082,7 +779,6 @@ div.editable-field.active {
     padding-top: 0px;
     box-shadow: 0 0 0 1px rgba(108, 164, 233, 0.6);
 }
-
 div.editable-field.active.verticalButtons {
     padding-right: 27px;
 }
@@ -1206,47 +902,24 @@ td.editable-field span.icon.icon-cancel {
     font-size: 150%;
 }
 
-div.errorMessage {
-    background: #fff0f0;
-    margin: 0;
-    border: 2px solid red;
-    border-radius: 6px;
-    -webkit-border-radius: 6px;
-    -moz-border-radius: 6px;
-}
-
 a.close {
     font-size: inherit;
-    text-align: center;
-    width: 1em;
 }
-
-div.errorMessage > a.close {
-    cursor: pointer;
-    float: right;
-    margin: 0 5px;
-}
-
 span.alertSubject {
     font-weight: bold;
 }
-
 .dismissAll {
     margin-bottom: 10px;
 }
-
 .acceptWarnings {
     margin: 10px 0px 10px 0px;
 }
-
 input.yesAlertInput {
     margin-right: 10px;
 }
-
 p.alertWarning {
     margin: 0px;
 }
-
 .errorlist {
     list-style: none;
     margin: 0;
@@ -1317,13 +990,6 @@ ol.comment-list > li {
     display: block;
     font-size: 11px;
 }
-
-.missingSingleFormInput {
-    color: red;
-    display: block;
-    font-size: 11px;
-}
-
 .bulk {
     display: none;
     visibility: hidden;
@@ -1413,7 +1079,6 @@ form.comments textarea {
 }
 
 /* File drop-zone styling */
-
 .fd-zone {
     background-attachment: scroll;
     background-color: inherit;
@@ -1425,15 +1090,12 @@ form.comments textarea {
     min-height: 220px;
     padding: 5px;
 }
-
 .fd-zone.over {
     background-image: url(images/dropzone-excel_csv-over.png);
 }
-
 .fd-zone.excel {
     background-image: url(images/dropzone-excel.png);
 }
-
 .fd-zone.excel.over {
     background-image: url(images/dropzone-excel-over.png);
 }
@@ -1458,11 +1120,9 @@ form.comments textarea {
 .fd-zone .dz-details > .dz-filename {
     margin-top: 3.5em; /* adding space to make upload filename visible */
 }
-
 div.fileDropInfoArea {
     margin: 30px 8px 24px 8px;
 }
-
 div.fileDropInfoIcon {
     height: 128px;
     background-repeat: no-repeat;
@@ -1479,7 +1139,6 @@ div.fileDropInfoIcon.excel {
 div.fileDropInfoIcon.xml {
     background-image: url(images/dropzone-xml-over.png);
 }
-
 div.fileDropInfoName {
     color: #8db0e6;
     text-align: center;
@@ -1487,7 +1146,6 @@ div.fileDropInfoName {
     margin: 1px 8px 5px 8px;
     font-weight: bold;
 }
-
 div.overviewDropZone {
     background-color: #eeeeee;
     border: 1px solid #e0e0e0;
@@ -1495,7 +1153,6 @@ div.overviewDropZone {
     color: gray;
     padding-bottom: 16px;
 }
-
 div.linesZone {
     background-color: #eeeeee;
     opacity: 0.8;
@@ -1503,7 +1160,6 @@ div.linesZone {
     height: 100%;
     position: absolute;
 }
-
 div.fileDropInfoSending {
     margin: 3px;
 }
@@ -1511,61 +1167,25 @@ div.fileDropInfoSending span {
     font-size: 12px;
     margin-right: 10px;
 }
-
 div.fileDropInfoLog {
     padding: 0px;
     font-size: 12px;
 }
 
 /* Styles brought over from style.css */
-
+.axis {
+    font-size: 12px;
+}
 .axis path,
 .axis line {
     fill: none;
     stroke: #000;
     shape-rendering: crispEdges;
 }
-
-.axis2 path,
-.axis2 line {
-    fill: none;
-    stroke: #000;
-    shape-rendering: crispEdges;
-}
-
-.axis2 text {
-    display: none;
-}
-
 .axis-text {
     z-index: -1;
     position: relative;
 }
-
-.blankSvg {
-    height: 302px;
-    width: auto;
-    position: relative;
-}
-
-.btn-default {
-    outline: none;
-    border-color: #ccc;
-}
-
-.btn:focus,
-.btn:active:focus,
-.btn.active:focus {
-    outline: none;
-    box-shadow: none;
-    border-color: #fff;
-}
-
-.chart-img {
-    height: 24px;
-    width: 24px;
-}
-
 div.ui-tooltip {
     max-width: 30em;
 }
@@ -1584,48 +1204,33 @@ div.tooltip2 {
     border-radius: 8px;
     pointer-events: none;
 }
-
 .grid .tick {
     stroke: lightgrey;
     stroke-opacity: 0.7;
     shape-rendering: crispEdges;
 }
-
 .grid path {
     stroke-width: 0;
 }
-
-.barAssay {
-    display: none;
+.tick text {
+    font-size: 8px;
 }
-
-.barMeasurement {
-    display: none;
+.tick line {
+    opacity: 0.2;
 }
-
-.line {
-    fill: none;
-    stroke-width: 1.5px;
+.x.axis {
+    line: 0.1;
 }
-
-.lineNoData {
-    margin-top: 15px;
+.x.axis path {
+    opacity: 0.2;
 }
-
-.dotted-line {
-    fill: none;
-    stroke-dasharray: 10, 10;
-}
-
-.dotted-line-random {
-    fill: none;
-    stroke-dasharray: 20, 10, 5, 5, 5, 10;
+.y.axis path {
+    opacity: 0.2;
 }
 
 .required:before {
     content: "*";
 }
-
 .form-control-meta {
     display: inline-block;
     width: 50%;
@@ -1640,57 +1245,9 @@ div.tooltip2 {
     margin-left: 8px;
 }
 
-.tick text {
-    font-size: 8px;
-}
-
-.tick line {
-    opacity: 0.2;
-}
-
-.barTime {
-    display: none;
-}
-
-.rect {
-    opacity: 0.5;
-}
-
-.tooMuchData {
-    color: red;
-    text-align: center;
-    font-size: 18px;
-}
-
-.x.axis {
-    line: 0.1;
-}
-.x.axis path {
-    opacity: 0.2;
-}
-
-.y.axis path {
-    opacity: 0.2;
-}
-
-.y-checkbox {
-    margin-left: 10px;
-}
-
 /*
   New UI CSS below
 */
-
-.importExport {
-    background-color: #6ca5e9;
-    display: inline-block;
-    margin: 10px 0px 0px 30px;
-    padding: 20px 30px 20px 30px;
-    color: white;
-    border: 1px solid;
-    text-align: center;
-}
-
 body > .navbar {
     margin-bottom: inherit;
 }
@@ -1712,7 +1269,9 @@ body > .navbar {
     font-size: 18px;
     margin-top: 10px;
 }
-
+.navbar .navbar-collapse {
+    text-align: center;
+}
 #notification-dropdown > a.dropdown-toggle > .badge {
     /* display badge floating over inbox icon */
     background-color: red;
@@ -1741,45 +1300,23 @@ body > .navbar {
 #notification-list > .message-empty {
     text-align: center;
 }
-
 .eddLogo {
     width: 50px;
-}
-
-.assayTable {
-    padding-left: 100px;
-}
-
-#measurementMain {
-    margin-right: 30px;
-}
-
-.filterHeader {
-    font-size: 12px;
-    color: grey;
-    margin-top: 5px;
-}
-
-.navbar .navbar-collapse {
-    text-align: center;
 }
 
 .studyNav {
     width: 100%;
     text-align: center;
 }
-
 .studyNav a:hover {
     color: #111;
     border-bottom-color: rgba(0, 0, 0, 0.1);
 }
-
 .studyNav .nav > li {
     position: relative;
     display: block;
     margin: 0px 15px 0px 15px;
 }
-
 .studyNav .nav > li > a {
     color: lightgray;
     position: relative;
@@ -1792,11 +1329,9 @@ body > .navbar {
     list-style: none;
     padding-left: 0;
 }
-
 .studyNav .navbar .nav > .active > a {
     background: none;
 }
-
 .studyNav .nav > li > a:hover,
 .nav > li > a:focus {
     text-decoration: none;
@@ -1805,7 +1340,6 @@ body > .navbar {
     border-radius: 0px;
     color: black;
 }
-
 #studyTable .nav > li > a:hover,
 .nav > li > a:focus {
     text-decoration: none;
@@ -1813,7 +1347,6 @@ body > .navbar {
     border-radius: 0px;
     border-bottom: none;
 }
-
 .studyNav .nav-pills {
     color: black;
     font-size: 16px;
@@ -1821,7 +1354,6 @@ body > .navbar {
     float: none;
     vertical-align: top;
 }
-
 .studyNav .nav-pills > li.active > a,
 .nav-pills > li.active > a:hover,
 .nav-pills > li.active > a:focus {
@@ -1840,7 +1372,6 @@ body > .navbar {
     margin-bottom: 10px;
     font-weight: 600;
 }
-
 .pageDivider span {
     background-color: white;
     padding-right: 10px;
@@ -1859,7 +1390,6 @@ body > .navbar {
 .permissionUser {
     margin: 0px 10px 10px 9px;
 }
-
 .permissionGroup {
     margin: 0px 10px 10px 0px;
 }
@@ -1867,38 +1397,14 @@ body > .navbar {
 .indent {
     margin-left: 33px;
 }
-/* Tutorial style */
-
-.tutorialContents > ul {
-    padding: 4px;
-    margin-left: 10px;
-}
-
-#graphDisplayContainer > #noData {
-    height: 300px;
-    width: 100%;
-    padding: auto;
-    text-align: center;
-    vertical-align: middle;
-}
-
-#graphDisplayContainer > #graphLoading {
-    opacity: 0.7;
-    height: 300px;
-    width: 100%;
-    padding: auto;
-}
 
 /** Remove distracting styling from the sample file download links*/
 .sampleFileDownloadLink {
     text-decoration: none;
     font-size: 75%;
 }
-
 .sampleFileDownloadLink,
 .sampleFileDownloadLink a:link,
 .sampleFileDownloadLink :visited .sampleFileDownloadLink {
     color: gray;
 }
-
-/* End of common styles */

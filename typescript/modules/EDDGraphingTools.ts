@@ -544,7 +544,6 @@ export class GraphView {
         const axis_group = this.svg
             .append("g")
             .attr("class", "x axis")
-            .style("font-size", "12px")
             .attr("transform", "translate(0," + params.height + ")")
             .call(x_axis);
         // adding grid-lines to the plot
@@ -566,7 +565,6 @@ export class GraphView {
             .attr("x", params.width / 2)
             .attr("y", 40)
             .attr("fill", "#000")
-            .style("text-anchor", "middle")
             .text(GraphView.titleLookup[mode]);
         return x_axis;
     }
@@ -611,7 +609,6 @@ export class GraphView {
         const axisGroup = this.svg
             .append("g")
             .attr("class", "y axis")
-            .style("font-size", "12px")
             .call(this.addAxisTickFormat(yAxis));
         // entire label group is rotated counter-clockwise about a top-left origin
         const axisLabel = axisGroup
@@ -669,7 +666,6 @@ export class GraphView {
             .append("g")
             .attr("class", "y axis")
             .attr("transform", "translate(" + spacing + " ,0)")
-            .style("font-size", "12px")
             .call(this.addAxisTickFormat(yAxis));
         const axisLabel = axisGroup
             .append("g")

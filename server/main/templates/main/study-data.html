@@ -130,8 +130,8 @@
 
   <div class="{% if not assays %}off{% endif %} assayFlex">
     {# TODO: this gets replaced in Typescript, figure out i18n there #}
-    <div id="displayedDiv" class="displayedDiv assayDisplayed">{% trans '0 displayed' %}</div>
-    <div id="selectedDiv" class="selectedDiv assayDisplayed">{% trans '0 selected' %}</div>
+    <div id="displayedDiv" class="displayedDiv">{% trans '0 displayed' %}</div>
+    <div id="selectedDiv" class="selectedDiv">{% trans '0 selected' %}</div>
   </div>
   <div class="off">
     <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />

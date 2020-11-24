@@ -2,3 +2,50 @@
 #tableArea .handsontable .htDimmed {
     color: inherit;
 }
+
+/* styling for filter sections */
+.filter-section {
+    display: flex;
+    max-height: 300px;
+    white-space: nowrap;
+}
+.filter-section > .filter-column {
+    max-height: 300px;
+    overflow-y: scroll;
+    padding-right: 1em;
+}
+.filter-column > ul {
+    list-style: none;
+}
+.filter-column > ul > li {
+    font-size: 13px;
+    margin: 2px 0;
+}
+.filter-column input {
+    bottom: 1px; /* better matching w/ label along with vertical-align */
+    margin: 0;
+    position: relative;
+    vertical-align: middle;
+}
+.filter-head {
+    font-weight: bold;
+}
+.filter-head > .filter-clear {
+    float: none;
+    font-size: 14px;
+    padding: 2px;
+}
+
+#graphDisplayContainer > #noData {
+    height: 300px;
+    width: 100%;
+    padding: auto;
+    text-align: center;
+    vertical-align: middle;
+}
+#graphDisplayContainer > #graphLoading {
+    opacity: 0.7;
+    height: 300px;
+    width: 100%;
+    padding: auto;
+}
