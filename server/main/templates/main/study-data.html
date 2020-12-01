@@ -116,105 +116,66 @@
     <h2>{% trans "Loading data for display." %}</h2>
   </div>
   <div class="hidden" id="graphArea"></div>
+  <div class="assayActions sectionActions">
+    <div class="assayFlex">
+      <div>
+        {% trans 'Measurements' %}
+        <span class="badge edd-measurement-count"></span>
+      </div>
+      <div>
+        {% trans 'Values' %}
+        <span class="badge edd-value-count"></span>
+      </div>
+    </div>
+    <div class="btn-toolbar">
+      <button
+        class="btn btn-primary edd-export-button"
+        title="{% trans 'Export data as CSV' %}"
+        type="button"
+      >
+        <span class="fas fa-cloud-download-alt"></span>
+        {% trans 'Export Data' %}
+      </button>
+    </div>
+  </div>
 </div>
 
-<form action="" method="POST">
-{% csrf_token %}
-{# studyLinesTable will have checkboxes; name=lineId, value=pk #}
 <div id="tableArea" class="hidden">
   <div id="assayTable" class="hidden"></div>
   <div id="measurementTable" class="hidden"></div>
-</div>
-
-<div id="assaysActionPanel" class="sectionActions assayActions">
-
-  <div class="{% if not assays %}off{% endif %} assayFlex">
-    {# TODO: this gets replaced in Typescript, figure out i18n there #}
-    <div id="displayedDiv" class="displayedDiv">{% trans '0 displayed' %}</div>
-    <div id="selectedDiv" class="selectedDiv">{% trans '0 selected' %}</div>
-  </div>
-  <div class="off">
-    <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
-    <label for="assay_action_delete">{% trans 'Delete Measurements' %}</label>
-    <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
-    <label for="assay_action_edit">{% trans 'Edit Measurements' %}</label>
-    <input id="assay_action_export" type="radio" name="assay_action" value="export" />
-    <label for="assay_action_export">
-      <span class="fas fa-cloud-download-alt"></span>
-      {% trans 'Export Data' %}
-    </label>
-    <button name="action" type="submit" value="assay_action">
-      {% trans 'Take Action' %}
-    </button>
-    <div class="clear"></div>
-  </div>
-  <div class="btn-toolbar">
+  <div class="assayActions sectionActions">
     {% if writable %}
-    <button
-      class="assayButton btn btn-default"
-      disabled="true"
-      id="editAssayButton"
-      title="{% trans 'Edit selected assays' %}"
-    >
-      {% trans 'Edit Assays' %}
-    </button>
-    <button
-      class="btn btn-default"
-      disabled="true"
-      id="editMeasurementButton"
-      name="action"
-      title="{% trans 'Edit selected measurements' %}"
-      type="submit"
-      value="measurement_edit"
-    >
-      {% trans 'Edit Measurements' %}
-    </button>
-    <button
-      class="assayButton btn btn-default"
-      disabled="true"
-      id="addMeasurementButton"
-      title="{% trans 'Add a measurement to selected assays' %}"
-    >
-      {% trans 'Add Measurement' %}
-    </button>
-    <button
-      class="btn btn-default"
-      disabled="true"
-      id="deleteButton"
-      name="action"
-      title="{% trans 'Delete selected assays and/or measurements' %}"
-      type="submit"
-      value="disable_assay"
-    >
-      {% trans 'Delete' %}
-    </button>
-    <button
-      class="btn btn-default off"
-      disabled="true"
-      id="enableButton"
-      name="action"
-      title="{% trans 'Restore selected assays and/or measurements' %}"
-      type="submit"
-      value="enable"
-    >
-      {% trans 'Restore' %}
-    </button>
+    <div class="btn-toolbar">
+      <button
+        class="btn btn-primary edd-edit-button"
+        disabled="true"
+        title="{% trans 'Edit selected assays' %}"
+      >
+        <span class="fas fa-pencil-alt"></span>
+        {% trans 'Edit' %}
+      </button>
+      <button
+        class="btn btn-primary edd-add-button"
+        disabled="true"
+        title="{% trans 'Add a measurement to selected assays' %}"
+      >
+        <span class="fas fa-plus"></span>
+        {% trans 'Add' %}
+      </button>
+    </div>
     {% endif %}
-
-    <button
-      class="exportButton btn btn-primary"
-      id="exportButton"
-      name="action"
-      title="{% trans 'Export your data as CSV' %}"
-      type="submit"
-      value="export"
-    >
-      <span class="fas fa-cloud-download-alt"></span>
-      {% trans 'Export Data' %}
-    </button>
+    <div class="assayFlex btn-toolbar">
+      <button
+        class="btn btn-primary edd-export-button"
+        title="{% trans 'Export data as CSV' %}"
+        type="button"
+      >
+        <span class="fas fa-cloud-download-alt"></span>
+        {% trans 'Export Data' %}
+      </button>
+    </div>
   </div>
 </div>
-</form>
 
 <div id="mainFilterSection" class="filteringSection"></div>
 
@@ -233,7 +194,7 @@
   </form>
 </div>
 
-<div id="assayMain" class="off" title="Edit Assay">
+<div id="assayMain" class="off">
   <span class="off" id="new_assay_title">{% trans "Add New Assay" %}</span>
   <span class="off" id="edit_assay_title">{% trans "Edit Assay" %}</span>
   <span class="off" id="bulk_assay_title">{% trans "Bulk Edit Assays" %}</span>
@@ -263,4 +224,9 @@
     </div>
   </form>
 </div>
+
+<form action="{% url 'export:export' %}" class="hidden" id="exportForm" method="POST">
+  {% csrf_token %}
+  <div class="off hidden-inputs"></div>
+</form>
 {% endblock content %}

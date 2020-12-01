@@ -29,6 +29,16 @@ let assayMetadataManager: Forms.FormMetadataManager;
  * Forces values to string, falsy === ""
  */
 const str = (x: any): string => `${x || ""}`;
+/**
+ * Converts an AssayRecord to an HTML <INPUT> for a form.
+ */
+const _assayToInput = (assay: AssayRecord): JQuery =>
+    $(`<input type="hidden" name="assayId" value="${assay.id}" />`);
+/**
+ * Converts an Item to an HTML <INPUT> for a form.
+ */
+const _itemToInput = (item: Item): JQuery =>
+    $(`<input type="hidden" name="measurementId" value="${item.measurement.id}" />`);
 
 function _display(selector: string, mode: GT.ViewingMode) {
     // highlight the active button
@@ -42,12 +52,20 @@ function _display(selector: string, mode: GT.ViewingMode) {
     $.event.trigger("eddfilter");
 }
 
+function computeHeight(): number {
+    const container = $("#tableArea");
+    // reserve about 200 pixels for filter section
+    const vertical = $(window).height() - container.offset().top - 200;
+    // always reserve at least 500 pixels for table
+    return Math.max(500, vertical);
+}
+
 // Called when initial non-measurement data is loaded
 function onDataLoad() {
     access = Access.initAccess(EDDData);
     tools = new GT.EDDGraphingTools(access);
     filter = Filter.Filter.create(access);
-    $("#content").append(filter.createElements());
+    $("#mainFilterSection").append(filter.createElements());
 
     setupEvents();
     setupModals();
@@ -101,7 +119,7 @@ function refreshDisplay() {
     // show/hide elements for the selected mode
     const isTable = viewingMode.startsWith("table-");
     $("#tableArea").toggleClass("hidden", !isTable);
-    $("#graphArea").toggleClass("hidden", isTable);
+    $("#graphDisplayContainer").toggleClass("hidden", isTable);
     if (viewingMode === "table-assay") {
         $("#assayTable").removeClass("hidden");
         $("#measurementTable").addClass("hidden");
@@ -109,6 +127,10 @@ function refreshDisplay() {
     } else if (viewingMode === "table-measurement") {
         $("#assayTable").addClass("hidden");
         $("#measurementTable").removeClass("hidden");
+        // always disable buttons in measurement mode
+        $(".edd-add-button,.edd-edit-button")
+            .addClass("disabled")
+            .prop("disabled", true);
         measureTable.loadData(filter.measurements());
     } else if (!isTable) {
         remakeMainGraphArea();
@@ -128,9 +150,8 @@ function remakeMainGraphArea() {
     });
     // when no points to display show message that there's no data to display
     $("#noData").toggleClass("hidden", items.length > 0);
-    $(".displayedDiv").text(
-        `${items.length} measurements with ${displayed} values displayed`,
-    );
+    $(".badge.edd-measurement-count").text(`${items.length}`);
+    $(".badge.edd-value-count").text(`${displayed}`);
     // replace graph
     const elem = $("#graphArea")
         .toggleClass("hidden", items.length === 0)
@@ -157,21 +178,61 @@ function setupEvents(): void {
         _display(target.data("selector"), target.data("viewmode"));
     });
     // TODO: handle the buttons for edit, add, delete
-    $("#editAssayButton").on("click", (event) => {
-        showEditAssayDialog([]);
+    $(".edd-add-button").on("click", (event) => {
+        if (viewingMode === "table-assay") {
+            const rows = assayTable.getSourceData() as AssayRecord[];
+            const selected = rows.filter((assay) => assay?.selected);
+            if (selected.length) {
+                showAddMeasurementDialog(selected);
+            }
+        }
+    });
+    $(".edd-edit-button").on("click", (event) => {
+        if (viewingMode === "table-assay") {
+            const rows = assayTable.getSourceData() as AssayRecord[];
+            const selected = rows.filter((assay) => assay?.selected);
+            if (selected.length) {
+                showEditAssayDialog(selected);
+            }
+        }
+        return false;
+    });
+    $(".edd-export-button").on("click", (event) => {
+        const form = $("#exportForm");
+        const inputs = form.find(".hidden-inputs").empty();
+        if (viewingMode === "table-assay") {
+            const rows = assayTable.getSourceData() as AssayRecord[];
+            const selected = rows.filter((assay) => assay?.selected);
+            // when nothing selected, act as if everything selected
+            const items = selected.length ? selected : rows;
+            // append IDs to export
+            inputs.append(...items.map(_assayToInput));
+        } else if (viewingMode === "table-measurement") {
+            const rows = measureTable.getSourceData() as Item[];
+            const selected = rows.filter((item) => item?.measurement?.selected);
+            // when nothing selected, act as if everything selected
+            const items = selected.length ? selected : rows;
+            // append IDs to export
+            inputs.append(...items.map(_itemToInput));
+        } else {
+            const items = filter.measurements();
+            // append IDs to export
+            inputs.append(...items.map(_itemToInput));
+        }
+        form.trigger("submit");
         return false;
     });
 }
 
 function setupModals(): void {
     // set up the "add" (edit) assay dialog
-    const assayModalForm = $("#assayMain");
-    assayModalForm.dialog(
+    const assayModal = $("#assayMain");
+    assayModal.dialog(
         StudyBase.dialogDefaults({
             "minWidth": 500,
         }),
     );
-    assayMetadataManager = new Forms.FormMetadataManager(assayModalForm, "assay");
+    assayMetadataManager = new Forms.FormMetadataManager(assayModal, "assay");
     // Set up the Add Measurement to Assay modal
     $("#addMeasurement").dialog(
         StudyBase.dialogDefaults({
@@ -190,6 +251,7 @@ function setupTables(): void {
         "beforeStretchingColumnWidth": Config.disableResizeFirstColumn,
         // freeze the first column
         "fixedColumnsLeft": 1,
+        "height": computeHeight(),
         // NOTE: JBEI and ABF covered under "academic research"
         "licenseKey": "non-commercial-and-evaluation",
         "manualColumnFreeze": true,
@@ -198,35 +260,80 @@ function setupTables(): void {
         "manualRowResize": true,
         "multiColumnSorting": true,
         "readOnly": true,
+        "renderAllRows": true,
         "rowHeaders": true,
         "stretchH": "all",
         "width": "100%",
     };
+    const assayChange = Utl.debounce(updateSelectedAssays);
     const assayColumns = Config.defineAssayColumns(access);
+    const assayContainer = document.getElementById("assayTable");
+    const measureChange = Utl.debounce(updateSelectedMeasurements);
     const measureColumns = Config.defineMeasurementColumns(access);
+    const measureContainer = document.getElementById("measurementTable");
     assayTable = new Handsontable(
-        document.getElementById("assayTable"),
+        assayContainer,
         Object.assign({}, baseConfig, {
+            "afterChange": assayChange,
+            "afterRender": assayChange,
             "colHeaders": assayColumns.map((c) => c.header),
             "columns": assayColumns,
             "data": filter.assays(),
-        }),
+        } as Handsontable.GridSettings),
     );
+    $(assayContainer).on("click", ".select-all", (event) => {
+        const box = $(event.currentTarget);
+        const goingToSelectAll = box.prop("indeterminate") || !box.prop("checked");
+        box.prop("checked", goingToSelectAll);
+        assayTable.getSourceData().forEach((assay: AssayRecord) => {
+            assay.selected = goingToSelectAll;
+        });
+        return false;
+    });
     measureTable = new Handsontable(
-        document.getElementById("measurementTable"),
+        measureContainer,
         Object.assign({}, baseConfig, {
+            "afterChange": measureChange,
+            "afterRender": measureChange,
             "colHeaders": measureColumns.map((c) => c.header),
             "columns": measureColumns,
             "data": filter.measurements(),
-        }),
+        } as Handsontable.GridSettings),
     );
+    $(measureContainer).on("click", ".select-all", (event) => {
+        const box = $(event.currentTarget);
+        const goingToSelectAll = box.prop("indeterminate") || !box.prop("checked");
+        box.prop("checked", goingToSelectAll);
+        measureTable.getSourceData().forEach((item: Item) => {
+            item.measurement.selected = goingToSelectAll;
+        });
+        return false;
+    });
+    // re-fit tables when scrolling or resizing window
+    $(window).on("scroll resize", () => {
+        assayTable.updateSettings({ "height": computeHeight() });
+        measureTable.updateSettings({ "height": computeHeight() });
+    });
+}
+
+function showAddMeasurementDialog(items: AssayRecord[]): void {
+    const dialog = $("#addMeasurement");
+    // create form elements for currently selected assays
+    const selection = items.reduce(
+        (acc, v) =>
+            acc.add($(`<input type="hidden" name="assayId" value="${v.id}" />`)),
+        $(),
+    );
+    const selectionInputs = dialog.find(".hidden-assay-inputs").empty();
+    selectionInputs.append(selection);
+    // display modal dialog
+    dialog.removeClass("off").dialog("open");
 }
 
 function showEditAssayDialog(items: AssayRecord[]): void {
-    const form = $("#assayMain");
+    const dialog = $("#assayMain");
     let titleText: string;
     let record: AssayRecord;
-    let experimenter: Utl.EDDContact;
 
     // Update the dialog title and fetch selection info
     if (items.length === 0) {
@@ -238,35 +345,33 @@ function showEditAssayDialog(items: AssayRecord[]): void {
             titleText = $("#edit_assay_title").text();
         }
         record = access.mergeAssays(items);
-        experimenter = new Utl.EDDContact(record.experimenter);
     }
-    form.dialog({ "title": titleText });
+    dialog.dialog({ "title": titleText });
 
     // create object to handle form interactions
-    const formManager = new Forms.BulkFormManager(form, "assay");
+    const formManager = new Forms.BulkFormManager(dialog, "assay");
     // define fields on form
-    const fields: { [name: string]: Forms.IFormField } = {
-        "name": new Forms.Field(form.find("[name=assay-name]"), "name"),
-        "description": new Forms.Field(
-            form.find("[name=assay-description]"),
-            "description",
-        ),
-        "protocol": new Forms.Field(form.find("[name=assay-protocol"), "pid"),
-        "experimenter": new Forms.Autocomplete(
-            form.find("[name=assay-experimenter_0"),
-            form.find("[name=assay-experimenter_1"),
+    const fields: Forms.IFormField[] = [
+        new Forms.Field(dialog.find("[name=assay-name]"), "name"),
+        new Forms.Field(dialog.find("[name=assay-description]"), "description"),
+        new Forms.Field(dialog.find("[name=assay-protocol"), "pid"),
+        new Forms.Autocomplete(
+            dialog.find("[name=assay-experimenter_0"),
+            dialog.find("[name=assay-experimenter_1"),
             "experimenter",
-        ).render((): [string, string] => [
-            experimenter.display(),
-            str(experimenter.id()),
+        ).render((value: Utl.EDDContact): [string, string] => [
+            value?.display() || "",
+            str(value?.id() || ""),
         ]),
-    };
-    // initialize the form to clean slate, pass in active selection, selector for previous items
-    // TODO: build selection from items
-    const selection = $();
-    formManager
-        .init(selection, "[name=assayId]")
-        .fields($.map(fields, (v: Forms.IFormField) => v));
+    ];
+    // create form elements for currently selected assays
+    const selection = items.reduce(
+        (acc, v) =>
+            acc.add($(`<input type="hidden" name="assayId" value="${v.id}" />`)),
+        $(),
+    );
+    // initialize the form to clean slate
+    formManager.init(selection, "[name=assayId]").fields(fields);
     assayMetadataManager.reset();
     if (record !== undefined) {
         formManager.fill(record);
@@ -274,7 +379,7 @@ function showEditAssayDialog(items: AssayRecord[]): void {
     }
 
     // special case, ignore name field when editing multiples
-    const nameInput = form.find("[name=assay-name]");
+    const nameInput = dialog.find("[name=assay-name]");
     const nameParent = nameInput.parent();
     if (items.length > 1) {
         nameInput.prop("required", false);
@@ -286,7 +391,34 @@ function showEditAssayDialog(items: AssayRecord[]): void {
     }
 
     // display modal dialog
-    form.removeClass("off").dialog("open");
+    dialog.removeClass("off").dialog("open");
+}
+
+function updateSelectedAssays() {
+    const rows = assayTable.getSourceData() as AssayRecord[];
+    const selectedRows = rows.filter((assay) => assay?.selected);
+    const total = rows.length;
+    const selected = selectedRows.length;
+    const selectAll = $(".select-all", assayTable.rootElement);
+    selectAll
+        .prop("indeterminate", 0 < selected && selected < total)
+        .prop("checked", selected === total);
+    // enable buttons if needed
+    const disabled = viewingMode !== "table-assay" || selected === 0;
+    $(".edd-add-button,.edd-edit-button")
+        .toggleClass("disabled", disabled)
+        .prop("disabled", disabled);
+}
+
+function updateSelectedMeasurements() {
+    const rows = measureTable.getSourceData() as Item[];
+    const selectedRows = rows.filter((item) => item?.measurement?.selected);
+    const total = rows.length;
+    const selected = selectedRows.length;
+    const selectAll = $(".select-all", measureTable.rootElement);
+    selectAll
+        .prop("indeterminate", 0 < selected && selected < total)
+        .prop("checked", selected === total);
 }
 
 // wait for edddata event to begin processing page
