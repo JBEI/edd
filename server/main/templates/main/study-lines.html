@@ -304,4 +304,24 @@
   </form>
 </div>
 {% endif %}
+
+<form action="{% url 'export:export' %}" class="hidden" id="exportForm" method="POST">
+  {% csrf_token %}
+  <div class="off hidden-inputs"></div>
+</form>
+
+<form action="{% url 'export:worklist' %}" class="hidden" id="worklistForm" method="POST">
+  {% csrf_token %}
+  <div class="off hidden-inputs"></div>
+</form>
+
+<form action="{% url 'export:sbml' %}" class="hidden" id="sbmlForm" method="POST">
+  {% csrf_token %}
+  <div class="off hidden-inputs"></div>
+</form>
+
+<form action="{% url 'main:create_study' %}" class="hidden" id="newStudyForm" method="POST">
+  {% csrf_token %}
+  <div class="off hidden-inputs"></div>
+</form>
 {% endblock content %}

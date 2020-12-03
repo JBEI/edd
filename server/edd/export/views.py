@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 class EDDExportView(generic.TemplateView):
     """Base view for exporting EDD information."""
 
-    study = None
     _export_ok = False
     _selection = ExportSelection(None)
 
@@ -44,10 +43,7 @@ class EDDExportView(generic.TemplateView):
         return ["edd/export/export.html"]
 
     def init_forms(self, request, payload):
-        fallback = {"studyId": [self.study.pk]} if self.study else None
-        select_form = forms.ExportSelectionForm(
-            data=payload, user=request.user, fallback=fallback
-        )
+        select_form = forms.ExportSelectionForm(data=payload, user=request.user)
         try:
             self._selection = select_form.get_selection()
         except Exception as e:

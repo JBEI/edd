@@ -1,6 +1,8 @@
 import decimal
 import math
 
+from django.urls import reverse
+
 from edd import TestCase
 from edd.profile.factory import UserFactory
 from main import models
@@ -44,6 +46,41 @@ def test_columnchoice_lookup_exception_gives_empty_string():
     choice = table.ColumnChoice(None, None, None, bad_function)
     result = choice.get_value(None)
     assert result == ""
+
+
+class ExportViewPostTests(TestCase):
+    """Tests for initial POST requests to export endpoints."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = UserFactory()
+        # initialize study for worklist
+        study = factory.StudyFactory()
+        study.userpermission_set.update_or_create(
+            permission_type=models.StudyPermission.READ, user=cls.user
+        )
+        line = factory.LineFactory(study=study)
+        cls.payload = {"lineId": [line.id]}
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def test_lines_export_csv(self):
+        url = reverse("export:export")
+        response = self.client.post(url, data=self.payload, follow=True)
+        self.assertTemplateUsed(response, "edd/export/export.html")
+
+    def test_lines_export_sbml(self):
+        url = reverse("export:sbml")
+        response = self.client.post(url, data=self.payload, follow=True)
+        self.assertTemplateUsed(response, "edd/export/sbml_export.html")
+
+    def test_lines_export_worklist(self):
+        url = reverse("export:worklist")
+        response = self.client.post(url, data=self.payload, follow=True)
+        self.assertTemplateUsed(response, "edd/export/worklist.html")
 
 
 class WorklistExportTests(TestCase):

@@ -17,7 +17,6 @@ from rest_framework.reverse import reverse as rest_reverse
 
 from edd.export import forms as export_forms
 from edd.export import table
-from edd.export import views as export_views
 
 from .. import forms as edd_forms
 from .. import models as edd_models
@@ -355,7 +354,6 @@ class StudyLinesView(StudyDetailBaseView):
             disable=self.handle_delete_line,
             disable_confirm=self.handle_disable,
             enable=self.handle_enable,
-            export=self.handle_line_export,
             line=self.handle_line,
             replicate=self.handle_replicate,
             unreplicate=self.handle_unreplicate,
@@ -471,20 +469,6 @@ class StudyLinesView(StudyDetailBaseView):
             return self.handle_line_new(request, context)
         messages.error(request, _("Failed to load line for editing."))
         return False
-
-    def handle_line_export(self, request, context, *args, **kwargs):
-        # use "csv" as default if no parameter provided
-        export_type = request.POST.get("export", "csv")
-        study = self.get_object()
-        # TODO: remove direct dependency on edd.export.views
-        types = {
-            "csv": export_views.ExportView.as_view(study=study),
-            "sbml": export_views.SbmlView.as_view(study=study),
-            "study": StudyCreateView.as_view(),
-            "worklist": export_views.WorklistView.as_view(study=study),
-        }
-        # use "csv" as default if parameter does not match list
-        return types.get(export_type, types["csv"])
 
     def handle_line_edit(self, request, context, lines):
         study = self.get_object()

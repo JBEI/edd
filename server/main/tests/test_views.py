@@ -708,46 +708,6 @@ class StudyDescriptionViewTests(StudyViewTestCase):
         self.assertContains(response, "fake error", status_code=codes.bad_request)
         assert self.target_study.line_set.filter(description=description).count() == 0
 
-    def test_lines_export_csv(self):
-        line = factory.LineFactory(study=self.target_study)
-        payload = {
-            "action": "export",
-            "export": "csv",
-            "lineId": [line.id],
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertTemplateUsed(response, "edd/export/export.html")
-
-    def test_lines_export_sbml(self):
-        line = factory.LineFactory(study=self.target_study)
-        payload = {
-            "action": "export",
-            "export": "sbml",
-            "lineId": [line.id],
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertTemplateUsed(response, "edd/export/sbml_export.html")
-
-    def test_lines_export_worklist(self):
-        line = factory.LineFactory(study=self.target_study)
-        payload = {
-            "action": "export",
-            "export": "worklist",
-            "lineId": [line.id],
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertTemplateUsed(response, "edd/export/worklist.html")
-
-    def test_lines_export_new_study(self):
-        line = factory.LineFactory(study=self.target_study)
-        payload = {
-            "action": "export",
-            "export": "study",
-            "lineId": [line.id],
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertTemplateUsed(response, "main/create_study.html")
-
     def test_lines_replicate_with_empty_selection(self):
         replicate = models.MetadataType.system("Replicate")
         factory.LineFactory(study=self.target_study)

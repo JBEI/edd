@@ -85,18 +85,17 @@ function onDataLoad() {
     }
 }
 
-function onExport(exportType: string) {
+function onExport(exportForm: JQuery) {
+    const inputs = exportForm.find(".hidden-inputs").empty();
     const selected = defineSelectionInputs();
     if (selected.length === 0) {
-        form.append(
+        inputs.append(
             `<input type="hidden" name="studyId" value="${EDDData.currentStudyID}"/>`,
         );
     } else {
-        form.append(selected);
+        inputs.append(selected);
     }
-    form.append($(`<input type="hidden" name="action" value="export"/>`));
-    form.append($(`<input type="hidden" name="export" value="${exportType}"/>`));
-    form.trigger("submit");
+    exportForm.trigger("submit");
     return false;
 }
 
@@ -229,10 +228,10 @@ function setupEditButtonEvents() {
 }
 
 function setupExportButtonEvents() {
-    form.on("click", "#exportLineButton", () => onExport("csv"));
-    form.on("click", "#worklistButton", () => onExport("worklist"));
-    form.on("click", "#sbmlButton", () => onExport("sbml"));
-    form.on("click", "#exportNewStudyButton", () => onExport("study"));
+    form.on("click", "#exportLineButton", () => onExport($("#exportForm")));
+    form.on("click", "#worklistButton", () => onExport($("#worklistForm")));
+    form.on("click", "#sbmlButton", () => onExport($("#sbmlForm")));
+    form.on("click", "#exportNewStudyButton", () => onExport($("#newStudyForm")));
 }
 
 function setupFilter() {
