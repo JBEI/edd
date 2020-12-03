@@ -960,24 +960,6 @@ class StudyDetailViewTests(StudyViewTestCase):
         )
         assert self.target_study.assay_set.filter(name=assay.name).exists()
 
-    def test_detail_assay_export(self):
-        line = factory.LineFactory(study=self.target_study)
-        assay = factory.AssayFactory(line=line)
-        response = self.client.post(
-            self.url, data={"action": "export", "assayId": [assay.pk]}, follow=True,
-        )
-        self.assertTemplateUsed(response, "edd/export/export.html")
-        self.assertContains(response, self.target_study.name)
-        # TODO: replace with a proper parser to eliminate brittle exact match
-        self.assertContains(response, f'name="assayId" value="{assay.pk}"')
-
-    def test_detail_export_without_selection(self):
-        response = self.client.post(self.url, data={"action": "export"}, follow=True,)
-        self.assertTemplateUsed(response, "edd/export/export.html")
-        self.assertContains(response, self.target_study.name)
-        # TODO: replace with a proper parser to eliminate brittle exact match
-        self.assertContains(response, f'name="studyId" value="{self.target_study.pk}"')
-
     def test_detail_measurement_add_with_empty_form(self):
         line = factory.LineFactory(study=self.target_study)
         factory.AssayFactory(line=line)

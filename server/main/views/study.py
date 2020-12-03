@@ -562,7 +562,6 @@ class StudyDetailView(StudyDetailBaseView):
             assay=self.handle_assay_edit,
             disable_assay=self.handle_assay_delete,
             disable_assay_confirm=self.handle_assay_confirm_delete,
-            export=self.handle_export,
             measurement=self.handle_measurement_add,
             measurement_edit=self.handle_measurement_edit,
             measurement_update=self.handle_measurement_edit,
@@ -647,10 +646,6 @@ class StudyDetailView(StudyDetailBaseView):
             _("Saved {saved} of {total} Assays").format(saved=saved, total=total),
         )
         return saved > 0
-
-    def handle_export(self, request, context, *args, **kwargs):
-        # TODO: remove direct dependency on edd.export.views
-        return export_views.ExportView.as_view(study=self.get_object())
 
     def handle_measurement_add(self, request, context, *args, **kwargs):
         self.check_write_permission(request)
