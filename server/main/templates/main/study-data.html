@@ -14,10 +14,10 @@
   {{ block.super }}
 
   <a id="settinglink" href="{{ settinglink }}" class="off"></a>
-  <div class="btn-toolbar sectionActions">
+  <div class="btn-toolbar flex-row sectionActions">
     <div
       aria-label="{% trans 'Display Modes' %}"
-      class="btn-group"
+      class="btn-group flex-item"
       id="displayModeButtons"
       role="group"
     >
@@ -106,6 +106,14 @@
         </ul>
       </div>
     </div>
+    <div class="flex-item"></div>
+    {% url "main:load:wizard" slug=study.slug as wizard_url %}
+    <a class="{% if not lines %}off{% endif %} pull-right" href="{{ wizard_url}}">
+      <button class="btn btn-primary btn-large" type="button">
+        <span class="fas fa-cloud-upload-alt"></span>
+        {% trans 'Import Data' %}
+      </button>
+    </a>
   </div>
 
 <div id="graphDisplayContainer">

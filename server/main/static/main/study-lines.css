@@ -9,7 +9,7 @@
 
 /* overriding the grey color for read-only tables */
 #studyLinesTable .handsontable .htDimmed {
-    color: inherit;
+    color: inherit !important;
 }
 
 div.linesDropZone {

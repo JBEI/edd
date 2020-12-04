@@ -359,13 +359,18 @@ div.pageSection.discloseHide.minor {
 div.pageSection.minor div.sectionHead {
     background: transparent;
 }
-
-div.lineFlex {
+div.flex-row {
     display: flex;
-    flex-wrap: nowrap;
     flex-direction: row;
     justify-content: space-between;
 }
+div.flex-item {
+    flex-grow: 1;
+}
+summary:focus {
+    outline: 0; /* disable outline on focus because it looks bad */
+}
+
 div.assayFlex {
     flex-grow: 0;
     margin: 0 15px 0 auto;
@@ -1372,6 +1377,9 @@ body > .navbar {
     margin-bottom: 10px;
     font-weight: 600;
 }
+summary.pageDivider {
+    margin-top: 10px; /* lower top margin because of added margin from <DETAILS> */
+}
 .pageDivider span {
     background-color: white;
     padding-right: 10px;
@@ -1383,6 +1391,7 @@ body > .navbar {
     left: 0;
     right: 0;
     height: 0.5em;
+    margin-left: 10em;
     border-top: 1px solid lightgray;
     z-index: -1;
 }
