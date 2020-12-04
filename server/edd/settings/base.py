@@ -8,6 +8,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/dev/ref/settings/
 """
 
+import ipaddress
 import logging
 
 import environ
@@ -20,6 +21,29 @@ def load_secret(name, default=None):
             return f.read().strip()
     except Exception:
         return default
+
+
+class IpNetworks:
+    """
+    Use to define INTERNAL_IPS with netmasks.
+
+    >>> INTERNAL_IPS = IpNetworks(["127.0.0.1", "10.0.0.0/8"])
+    >>> "127.0.0.1" in INTERNAL_IPS
+    True
+    >>> "10.0.8.42" in INTERNAL_IPS
+    True
+    >>> "192.168.1.42" in INTERNAL_IPS
+    False
+    """
+
+    networks = []
+
+    def __init__(self, addresses):
+        self.networks += [ipaddress.ip_network(address) for address in addresses]
+
+    def __contains__(self, address):
+        a = ipaddress.ip_address(address)
+        return any(a in network for network in self.networks)
 
 
 # root is two parents up of directory containing base.py
