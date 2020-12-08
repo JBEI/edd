@@ -12,6 +12,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
+from rest_framework import status
 
 from main.forms import CreateStudyForm
 
@@ -35,14 +36,18 @@ def gcms_home(request):
 
 
 def gcms_parse(request):
-    """ Process an Agilent MSDChemStation report and return a table of data as JSON string. """
+    """
+    Process an Agilent MSDChemStation report and return a table of data as JSON string.
+    """
     try:
         json_result = gc_ms_workbench.process_gc_ms_form_and_parse_file(
             form=request.POST, file=request.FILES["file"]
         )
         return JsonResponse(json_result)
     except Exception as e:
-        return JsonResponse({"python_error": f"{e}"}, status=500)
+        return JsonResponse(
+            {"python_error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 def gcms_merge(request):
@@ -50,7 +55,9 @@ def gcms_merge(request):
     try:
         return JsonResponse(gc_ms_workbench.finalize_gc_ms_spreadsheet(data))
     except RuntimeError as e:
-        return JsonResponse({"python_error": f"{e}"}, status=500)
+        return JsonResponse(
+            {"python_error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 def gcms_export(request):
@@ -73,7 +80,7 @@ def gcms_export(request):
         return response
     except Exception as e:
         messages.error(request, f"Could not generate the GC-MS export file: {e}")
-        return HttpResponse(status=500)
+        return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
 
 
 ########################################################################
@@ -93,7 +100,9 @@ def skyline_parse(request):
         return JsonResponse(result)
     except Exception as e:
         logger.exception(f"Problem parsing skyline file: {e}")
-        return JsonResponse({"python_error": f"{e}"}, status=500)
+        return JsonResponse(
+            {"python_error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 ########################################################################
@@ -107,9 +116,8 @@ def cytometry_home(request):
 def cytometry_parse(request):
     upload = request.FILES.get("file", None)
     try:
-        content_type = upload.content_type
         if (
-            content_type
+            upload.content_type
             == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ):
             # read in all cells, replace all whitespace with a single space, output tab-delimited
@@ -131,7 +139,9 @@ def cytometry_parse(request):
             # try to parse as plain text
             return JsonResponse({"data": upload.read()})
     except Exception as e:
-        return JsonResponse({"python_error": f"{e}"}, status=500)
+        return JsonResponse(
+            {"python_error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 def cytometry_import(request):
