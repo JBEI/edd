@@ -678,7 +678,7 @@ class ProteinIdentifier(MeasurementType):
 def lookup_protein_in_uniprot(pk):
     """Background task to fetch UniProt metadata for a ProteinIdentifier."""
     try:
-        protein = models.ProteinIdentifier.objects.get(pk=pk)
+        protein = ProteinIdentifier.objects.get(pk=pk)
         protein.update_from_uniprot()
     except Exception as e:
         logger.exception(f"Failed task updating protein ID {pk} from Uniprot: {e}")
