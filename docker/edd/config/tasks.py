@@ -70,7 +70,9 @@ class ServiceDefinition:
                 for key, value in self._properties:
                     print(f"{key}: {value}", file=script)
             self.context.run(
-                f"yq w -s {script_file} -i {self.filename}", echo_stdin=False
+                f"yq w -s {script_file} -i {self.filename}",
+                echo=True,
+                echo_stdin=False,
             )
             os.remove(script_file)
         return self
@@ -168,6 +170,7 @@ class ServiceComposer:
         os.makedirs(f"{output_dir}/secrets", exist_ok=True)
 
     def core(self, *, dev=False, expose=False, proxy=False, settings=True, tls=False):
+        print("Configuring core")
         http = self.services["http"]
         websocket = self.services["websocket"]
         worker = self.services["worker"]
@@ -206,6 +209,7 @@ class ServiceComposer:
         return service
 
     def setup_ice(self, url=None, hmac=None):
+        print("Configuring ice")
         # bundle ice when no url provided
         if url is None:
             ice = self.define("ice")
@@ -228,6 +232,7 @@ class ServiceComposer:
             service.write_env("ICE_URL", url)
 
     def setup_letsencrypt(self):
+        print("Configuring letsencrypt")
         # only necessary to define services
         # configuration auto-discovered via Docker APIs
         self.define("nginx")
@@ -235,12 +240,14 @@ class ServiceComposer:
         return self
 
     def setup_nginx(self):
+        print("Configuring nginx")
         # only necessary to define service
         # configuration auto-discovered via Docker APIs
         self.define("nginx")
         return self
 
     def setup_postgres(self, url=None):
+        print("Configuring postgres")
         if url:
             for service_name in ("http", "websocket", "worker"):
                 service = self.services[service_name]
@@ -263,6 +270,7 @@ class ServiceComposer:
         return self
 
     def setup_rabbitmq(self, url=None):
+        print("Configuring rabbitmq")
         if url:
             for service_name in ("http", "websocket", "worker"):
                 service = self.services[service_name]
@@ -280,6 +288,7 @@ class ServiceComposer:
         return self
 
     def setup_redis(self, url=None):
+        print("Configuring redis")
         if url:
             for service_name in ("http", "websocket", "worker"):
                 service = self.services[service_name]
@@ -291,6 +300,7 @@ class ServiceComposer:
         return self
 
     def setup_smtp(self, url=None):
+        print("Configuring mail")
         if url:
             print("NOTE: EDD does not currently support simple SMTP config via URL.")
             print("Must manually overwrite Django mail settings in settings directory.")
@@ -300,6 +310,7 @@ class ServiceComposer:
         return self
 
     def setup_solr(self, url=None):
+        print("Configuring solr")
         if url:
             for service_name in ("http", "websocket", "worker"):
                 service = self.services[service_name]
@@ -341,7 +352,9 @@ class ServiceComposer:
             to_merge = pool.map(build, configured)
         to_merge = " ".join(to_merge)
         override_file = f"{output_dir}/docker-compose.override.yml"
-        self.context.run(f"yq m -a {to_merge} > {override_file}")
+        self.context.run(
+            f"yq m -a {to_merge} > {override_file}", echo=True, echo_stdin=False,
+        )
         return self
 
 
@@ -432,7 +445,9 @@ def offline(
 
     # TODO: maybe configuration with doing tarball output?
     result = f"{output_dir}.tgz"
-    context.run(f"tar -czf {result} -C {output_dir} .")
+    context.run(
+        f"tar -czf {result} -C {output_dir} .", echo=True, echo_stdin=False,
+    )
 
 
 # TODO: finish this @invoke.task
