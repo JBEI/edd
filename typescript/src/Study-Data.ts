@@ -5,19 +5,23 @@ import Handsontable from "handsontable";
 
 import { Access, Item } from "../modules/table/Access";
 import * as Config from "../modules/table/Config";
-import * as Filter from "../modules/table/Filter";
+import { Filter } from "../modules/table/Filter";
 import * as Forms from "../modules/Forms";
-import * as GT from "../modules/EDDGraphingTools";
+import { Graph } from "../modules/table/Graph";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
 
 declare let window: StudyBase.EDDWindow;
 const EDDData = window.EDDData || ({} as EDDData);
 
+type TableMode = "table-assay" | "table-measurement";
+type BarGraphMode = "bar-line" | "bar-measurement" | "bar-time";
+type ViewingMode = "plot-line" | TableMode | BarGraphMode;
+
 // default start on line graph
-let viewingMode: GT.ViewingMode = "plot-line";
-let filter: Filter.Filter;
-let tools: GT.EDDGraphingTools;
+let viewingMode: ViewingMode = "plot-line";
+let filter: Filter;
+let plot: Graph;
 let access: Access;
 let assayTable: Handsontable;
 let measureTable: Handsontable;
@@ -40,7 +44,7 @@ const _assayToInput = (assay: AssayRecord): JQuery =>
 const _itemToInput = (item: Item): JQuery =>
     $(`<input type="hidden" name="measurementId" value="${item.measurement.id}" />`);
 
-function _display(selector: string, mode: GT.ViewingMode) {
+function _display(selector: string, mode: ViewingMode) {
     // highlight the active button
     const buttons = $("#displayModeButtons");
     buttons.find(".active").removeClass("active");
@@ -63,9 +67,9 @@ function computeHeight(): number {
 // Called when initial non-measurement data is loaded
 function onDataLoad() {
     access = Access.initAccess(EDDData);
-    tools = new GT.EDDGraphingTools(access);
-    filter = Filter.Filter.create(access);
+    filter = Filter.create(access);
     $("#mainFilterSection").append(filter.createElements());
+    plot = Graph.create(document.getElementById("graphArea"), access);
 
     setupEvents();
     setupModals();
@@ -75,10 +79,10 @@ function onDataLoad() {
 }
 
 interface DisplaySetting {
-    type: GT.ViewingMode;
+    type: ViewingMode;
 }
 
-function updateDisplaySetting(mode: GT.ViewingMode) {
+function updateDisplaySetting(mode: ViewingMode) {
     const url = $("#settinglink").attr("href");
     const payload: DisplaySetting = { "type": mode };
     $.ajax({
@@ -120,6 +124,11 @@ function refreshDisplay() {
     const isTable = viewingMode.startsWith("table-");
     $("#tableArea").toggleClass("hidden", !isTable);
     $("#graphDisplayContainer").toggleClass("hidden", isTable);
+    // check on any changes in colors
+    const items = filter.measurements();
+    plot.assignColors(items);
+    filter.refresh();
+    // update display based on current display mode
     if (viewingMode === "table-assay") {
         $("#assayTable").removeClass("hidden");
         $("#measurementTable").addClass("hidden");
@@ -133,40 +142,35 @@ function refreshDisplay() {
             .prop("disabled", true);
         measureTable.loadData(filter.measurements());
     } else if (!isTable) {
-        remakeMainGraphArea();
+        remakeMainGraphArea(items);
     }
 }
 
-function remakeMainGraphArea() {
-    let displayed = 0;
-    const items = filter.measurements();
-    const dataSets = items.map((item: Item): GT.GraphValue[] => {
-        // Skip the rest if we've hit our limit
-        if (displayed > 15000) {
-            return;
-        }
-        displayed += item.measurement.values.length;
-        return tools.transformSingleItem(item);
-    });
+function remakeMainGraphArea(items: Item[]) {
     // when no points to display show message that there's no data to display
     $("#noData").toggleClass("hidden", items.length > 0);
+    // replace graph
+    $("#graphArea")
+        .toggleClass("hidden", items.length === 0)
+        .find("svg")
+        .empty();
+    let displayed = 0;
+    switch (viewingMode) {
+        case "plot-line":
+            displayed = plot.renderLinePlot(items);
+            break;
+        case "bar-line":
+            displayed = plot.renderBarPlot(items, Graph.GroupLine);
+            break;
+        case "bar-measurement":
+            displayed = plot.renderBarPlot(items, Graph.GroupType);
+            break;
+        case "bar-time":
+            displayed = plot.renderBarPlot(items, Graph.GroupTime);
+            break;
+    }
     $(".badge.edd-measurement-count").text(`${items.length}`);
     $(".badge.edd-value-count").text(`${displayed}`);
-    // replace graph
-    const elem = $("#graphArea")
-        .toggleClass("hidden", items.length === 0)
-        .empty();
-    const view = new GT.GraphView(elem.get(0));
-    const graphSet = {
-        "values": Utl.chainArrays(dataSets),
-        "width": 750,
-        "height": 220,
-    };
-    if (viewingMode === "plot-line") {
-        view.buildLineGraph(graphSet);
-    } else if (viewingMode.startsWith("bar-")) {
-        view.buildGroupedBarGraph(graphSet, viewingMode as GT.BarGraphMode);
-    }
 }
 
 function setupEvents(): void {

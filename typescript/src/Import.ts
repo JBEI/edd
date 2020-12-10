@@ -11,14 +11,7 @@ import * as $ from "jquery";
 import "jquery-ui/ui/widgets/dialog";
 import "jquery-ui/ui/widgets/progressbar";
 
-import { EDDATDGraphing } from "../modules/AssayTableDataGraphing";
 import * as EDDAuto from "../modules/EDDAutocomplete";
-import {
-    EDDGraphingTools,
-    GraphingSet,
-    MeasurementValueSequence,
-    XYPair,
-} from "../modules/EDDGraphingTools";
 import * as Utl from "../modules/Utl";
 
 import "../modules/Styles";
@@ -29,6 +22,11 @@ type RawInput = string[][];
 interface RawInputStat {
     input: RawInput;
     columns: number;
+}
+type XYPair = [string | number, string | number];
+interface MeasurementValueSequence {
+    // may be received as string, should insert as number
+    data: XYPair[];
 }
 
 interface EDDWindow extends Window {
@@ -1118,7 +1116,6 @@ export class IdentifyStructuresStep implements ImportStep {
     // Data structures pulled from the Step 2 grid or server response,
     // and composed into sets suitable for submission to the server.
     parsedSets: RawImportSet[];
-    graphSets: GraphingSet[];
     uniqueLineNames: any[];
     uniqueAssayNames: string[];
     uniqueMeasurementNames: any[];
@@ -1177,7 +1174,6 @@ export class IdentifyStructuresStep implements ImportStep {
         this.graphRefreshTimerID = null;
 
         this.parsedSets = [];
-        this.graphSets = [];
         this.uniqueLineNames = [];
         this.uniqueAssayNames = [];
         this.uniqueMeasurementNames = [];
@@ -1807,7 +1803,6 @@ export class IdentifyStructuresStep implements ImportStep {
 
         // Here are the arrays we will use later
         this.parsedSets = [];
-        this.graphSets = [];
 
         this.uniqueLineNames = [];
         this.uniqueAssayNames = [];
@@ -1918,14 +1913,6 @@ export class IdentifyStructuresStep implements ImportStep {
                         "data": reassembledData,
                     };
                     this.parsedSets.push(set);
-
-                    const graphSet = {
-                        "label": (ln ? ln + ": " : "") + an + ": " + mn,
-                        "name": mn,
-                        "units": "units",
-                        "data": reassembledData,
-                    };
-                    this.graphSets.push(graphSet);
                 },
             );
             return;
@@ -2183,14 +2170,6 @@ export class IdentifyStructuresStep implements ImportStep {
             }
 
             this.parsedSets.push(set);
-
-            const graphSet: GraphingSet = {
-                "label": "Column " + col,
-                "name": "Column " + col,
-                "units": "units",
-                "data": reassembledData,
-            };
-            this.graphSets.push(graphSet);
         });
     }
 
@@ -2258,37 +2237,7 @@ export class IdentifyStructuresStep implements ImportStep {
     }
 
     remakeGraphArea(): void {
-        $("body").addClass("waitCursor");
-        const eddGraphing = new EDDGraphingTools(window.EDDData);
-        const mode = this.selectMajorKindStep.interpretationMode;
-        const sets = this.graphSets;
-        const graph = $("#graphDiv");
-        const atdGraphing = new EDDATDGraphing(graph);
-
-        this.graphRefreshTimerID = 0;
-        if (!atdGraphing || !this.graphEnabled) {
-            return;
-        }
-
-        $("#processingStep2ResultsLabel").removeClass("off");
-
-        atdGraphing.clearAllSets();
-
-        // If we're not in either of these modes, drawing a graph is nonsensical.
-        if (
-            (mode === "std" || mode === "biolector" || mode === "hplc") &&
-            sets.length > 0
-        ) {
-            graph.removeClass("off");
-            atdGraphing.addNewSet(
-                sets.map((gs: GraphingSet) => eddGraphing.transformNewLineItem(gs)),
-            );
-        } else {
-            graph.addClass("off");
-        }
-
-        $("body").removeClass("waitCursor");
-        $("#processingStep2ResultsLabel").addClass("off");
+        // do nothing; deprecated
     }
 
     getUserWarnings(): ImportMessage[] {

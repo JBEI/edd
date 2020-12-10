@@ -29,9 +29,12 @@ export class Access {
     protected constructor(private _data: EDDData) {}
 
     public static initAccess(data: EDDData): Access {
+        const access = new Access(data);
+        const replicate = access.replicate_type();
         // selected property must be pre-defined to initially false
         // table select-all checkbox has undefined behavior otherwise
         Object.values(data.Lines).forEach((line) => {
+            line.replicate = line.meta[replicate.id] || null;
             line.selected = false;
         });
         Object.values(data.Assays).forEach((assay) => {
@@ -40,7 +43,7 @@ export class Access {
         });
         // initialize Measurements listing
         data.Measurements = data.Measurements || {};
-        return new Access(data);
+        return access;
     }
 
     assays(): AssayRecord[] {
@@ -83,7 +86,7 @@ export class Access {
         return Utl.lookup(this._data.UnitTypes, id);
     }
 
-    findUser(value: number | BasicContact | UserRecord) {
+    findUser(value: number | BasicContact | UserRecord): UserRecord {
         if (this.isBasicContact(value)) {
             const basic = value as BasicContact;
             return this._data.Users[basic.user_id];
@@ -168,15 +171,18 @@ export class Access {
         return Object.values(this._data.Protocols);
     }
 
-    replicates(conflict?: any): LineRecord[] {
-        const replicates: LineRecord[] = [];
-        const lookup = {};
-        // find replicate metadata for Lines to do grouping
-        const meta_types = Object.values(this._data.MetaDataTypes);
-        const replicate_type: MetadataTypeRecord = meta_types.find(
+    replicate_type(): MetadataTypeRecord {
+        return Object.values(this._data.MetaDataTypes).find(
             (md: MetadataTypeRecord) =>
                 md.input_type === "replicate" && md.context === "L",
         );
+    }
+
+    replicates(conflict = null): LineRecord[] {
+        const replicates: LineRecord[] = [];
+        const lookup = {};
+        // find replicate metadata for Lines to do grouping
+        const replicate_type = this.replicate_type();
         // scan all lines, merging those that are replicates
         this.lines().forEach((line: LineRecord) => {
             // create a copy of the line for replicates view
@@ -254,7 +260,7 @@ export class Access {
     }
 }
 
-function mergeMeta<T extends object>(a: T, b: T, conflict?: any): T {
+function mergeMeta<T>(a: T, b: T, conflict = null): T {
     // metadata values, set key when equal, and set symmetric difference to conflict value
     const meta = {} as any;
     for (const [key, value] of Object.entries(a || {})) {
@@ -276,13 +282,7 @@ function mergeMeta<T extends object>(a: T, b: T, conflict?: any): T {
  * Merges properties that match in a and b; to same key in c. Optionally set a
  * conflict value, defaulting to undefined.
  */
-function mergeProp<T extends object>(
-    a: T,
-    b: T,
-    c: T,
-    prop: string,
-    conflict?: any,
-): void {
+function mergeProp<T>(a: T, b: T, c: T, prop: string, conflict = null): void {
     if (Utl.JS.propertyEqual(a, b, prop)) {
         c[prop] = a[prop];
     } else {
@@ -290,7 +290,7 @@ function mergeProp<T extends object>(
     }
 }
 
-function mergeLines(a: LineRecord, b: LineRecord, conflict?: any): LineRecord {
+function mergeLines(a: LineRecord, b: LineRecord, conflict = null): LineRecord {
     if (a === undefined) {
         return b;
     } else if (b === undefined) {
@@ -307,7 +307,7 @@ function mergeLines(a: LineRecord, b: LineRecord, conflict?: any): LineRecord {
         if (Utl.JS.arrayEquivalent(a.strain, b.strain)) {
             c.strain = [].concat(a.strain);
         } else {
-            c.strain = conflict;
+            c.strain = null;
         }
         // set metadata to merged result, set all keys that appear and only set equal values
         c.meta = mergeMeta(a.meta, b.meta, conflict);

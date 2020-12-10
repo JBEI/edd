@@ -26,6 +26,7 @@ const ALLOW = () => true;
 export abstract class FilterLayer {
     abstract createElements(): JQuery;
     abstract isUseful(): boolean;
+    abstract refresh(): void;
     /**
      * Only use as a pre-filter! Layers may choose to skip implementing if
      * given only an AssayRecord and not a full Item tuple.
@@ -123,17 +124,23 @@ export class Filter extends FilterLayer {
         return this.access.measurementItems().filter(this.allowItem());
     }
 
+    refresh(): void {
+        this.layers.forEach((layer) => layer.refresh());
+    }
+
     /**
      * Update the filter with newly-downloaded measurement information.
      */
     update(payload: AssayValues): void {
         this.access.updateAssayValues(payload);
-        const categories = payload.measures.map((value) => {
-            return {
-                "compartment": this.access.findCompartment(value.comp),
-                "measurementType": this.access.findMeasurementType(value.type),
-            };
-        });
+        const categories = payload.measures.map(
+            (value): Category => {
+                return {
+                    "compartment": this.access.findCompartment(value.comp),
+                    "measurementType": this.access.findMeasurementType(value.type),
+                };
+            },
+        );
         // pass to measurementLayer so it can update its options
         this.measurementLayer.update(categories);
     }
@@ -208,7 +215,11 @@ export abstract class FilterSection<U> extends FilterLayer {
         return this.items.length > 1;
     }
 
-    protected registerHandlers() {
+    refresh(): void {
+        // most sections do nothing on refresh
+    }
+
+    protected registerHandlers(): void {
         // changing state of checkbox in the section
         this.section.on("change", "input", (event) => {
             const box = $(event.target);
@@ -258,6 +269,7 @@ abstract class EDDRecordFilter<U extends EDDRecord> extends FilterSection<U> {
 }
 
 export class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
+    private labels: JQuery[] = [];
     static create(source: LineRecord[]): LineNameFilterSection {
         const section = new LineNameFilterSection("Line");
         section.items.push(...source.map((line) => new FilterValue(line)));
@@ -266,6 +278,7 @@ export class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
 
     protected createCheckbox(item: FilterValue<LineRecord>, i: number): JQuery {
         const result = super.createCheckbox(item, i);
+        this.labels[i] = result;
         if (!item.hidden && item.value.color) {
             result.css("color", item.value.color);
         }
@@ -286,6 +299,13 @@ export class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
             return ALLOW;
         }
         return (item) => selected.has(item.line.id);
+    }
+
+    refresh(): void {
+        this.items.forEach((item, index) => {
+            const color = item.value.color || null;
+            this.labels[index].css("color", color);
+        });
     }
 }
 
@@ -335,7 +355,10 @@ export class MetadataFilterSection extends FilterSection<string> {
         super(metadataType.name);
     }
 
-    static create(source: EDDRecord[], meta: MetadataTypeRecord) {
+    static create(
+        source: EDDRecord[],
+        meta: MetadataTypeRecord,
+    ): MetadataFilterSection {
         const section = new MetadataFilterSection(meta);
         const values = new Set<string>();
         source.forEach((x) => {
@@ -403,6 +426,10 @@ export class MeasurementFilterLayer extends FilterLayer {
         }
         // otherwise allow anything
         return ALLOW;
+    }
+
+    refresh(): void {
+        // not doing anything
     }
 
     update(types: Category[]): void {
@@ -499,6 +526,10 @@ class MetaboliteSection extends MeasurementFilterSection {
 
     protected accept(value: Category) {
         return value.measurementType.family === "m";
+    }
+
+    valueToDisplay(value: Category): string {
+        return `${value.compartment.code} ${value.measurementType.name}`.trim();
     }
 }
 
