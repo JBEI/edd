@@ -353,7 +353,7 @@ export class Access {
     }
 }
 
-function mergeMeta<T extends object>(a: T, b: T, conflict?: any): T {
+function mergeMeta<T extends unknown>(a: T, b: T, conflict?: any): T {
     // metadata values, set key when equal, and set symmetric difference to conflict value
     const meta = {} as any;
     for (const [key, value] of Object.entries(a || {})) {
@@ -375,7 +375,7 @@ function mergeMeta<T extends object>(a: T, b: T, conflict?: any): T {
  * Merges properties that match in a and b; to same key in c. Optionally set a
  * conflict value, defaulting to undefined.
  */
-function mergeProp<T extends object>(
+function mergeProp<T extends unknown>(
     a: T,
     b: T,
     c: T,

@@ -50,8 +50,8 @@ export let typeDisambiguationStep: TypeDisambiguationStep;
 export let reviewStep: ReviewStep;
 
 export interface RawModeProcessor {
-    parse(rawInputStep: RawInputStep, rawData: string): RawInputStat;
-    process(rawInputStep: RawInputStep, stat: RawInputStat): void;
+    parse(step: RawInputStep, rawData: string): RawInputStat;
+    process(step: RawInputStep, stat: RawInputStat): void;
 }
 
 // These are returned by the server after parsing a dropped file

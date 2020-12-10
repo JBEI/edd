@@ -89,10 +89,27 @@ export function prepareTable() {
     });
 }
 
+interface StudyDoc {
+    n: string;
+    id: string;
+    url: string;
+    active: boolean;
+    des: string;
+    con: string;
+    own: string;
+    write: boolean;
+    cr: string;
+    mod: string;
+    ownerName: string;
+    ownerEmail: string;
+    initials: string;
+    match: ResultMatcher;
+}
+
 // The spec object that will be passed to DataGrid to create the Studies table
 class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
     // spec object tracks what data should be displayed by the table
-    private dataObj: {};
+    private dataObj: Record<string, StudyDoc>;
     private recordIds: string[] = [];
     private _size = 0;
     private _offset = 0;
@@ -481,7 +498,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         return this;
     }
 
-    private _transformData(docs: any[]): any {
+    private _transformData(docs: any[]): Record<string, StudyDoc> {
         const transformed = {};
         this.recordIds = docs.map((doc): string => {
             const match = new ResultMatcher(this._query);

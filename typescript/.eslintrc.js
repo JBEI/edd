@@ -42,7 +42,6 @@ module.exports = {
         "@typescript-eslint/array-type": "warn",
         "@typescript-eslint/ban-types": "error",
         "@typescript-eslint/camelcase": "off",
-        "@typescript-eslint/class-name-casing": "error",
         "@typescript-eslint/consistent-type-assertions": "error",
         "@typescript-eslint/explicit-member-accessibility": [
             "off",

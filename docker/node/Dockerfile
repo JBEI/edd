@@ -1,4 +1,4 @@
-FROM node:12-alpine
+FROM node:lts-alpine
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
@@ -6,7 +6,8 @@ COPY package.json /run/
 
 WORKDIR /run/
 
-RUN yarn install --non-interactive --ignore-optional \
+RUN apk add --no-cache zsh \
+ && yarn install --non-interactive --ignore-optional \
  && yarn cache clean
 
-CMD ["sh"]
+CMD ["/bin/zsh"]

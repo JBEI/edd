@@ -849,14 +849,14 @@ export class DataGrid {
         // create it according to the specs,
         // and add it to the appropriate row.
         this._spec.tableHeaderSpec.forEach((header) => {
-            const commonCss: {} = {
+            const commonCss = {
                 "width": header.width
                     ? header.width.substr(-1) !== "%"
                         ? header.width + "px"
                         : header.width
                     : undefined,
             };
-            const css: {} = $.extend(
+            const css = $.extend(
                 {
                     "text-align": header.align,
                     "vertical-align": header.valign,
@@ -1022,9 +1022,9 @@ export class DataGrid {
      * @returns {} line id as key and the replicate id the line is associated with
      * @private
      */
-    private _groupReplicates(): {} {
+    private _groupReplicates(): Record<string, unknown> {
         const lines: any = EDDData.Lines;
-        const rows: any = {};
+        const rows = {};
         $.each(lines, function(key) {
             if (lines[key].replicate) {
                 rows[lines[key].id] = lines[key].replicate;

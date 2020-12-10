@@ -6,8 +6,15 @@
 //  to get a path relative to webpack.config.js, use path.resolve(__dirname, "rel/path")
 const path = require("path");
 const webpack = require("webpack");
+
+const ESLintPlugin = require("eslint-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
+const eslint = new ESLintPlugin({
+    "extensions": ["js", "jsx", "ts", "tsx"],
+    // uncomment below to do auto-fix in local builds
+    // "fix": true,
+});
 const css_extract = new MiniCssExtractPlugin({
     "allChunks": true,
     "chunkFilename": "[name].css",
@@ -89,17 +96,6 @@ module.exports = {
                 "test": /\.tsx?$/,
                 "loader": "ts-loader",
             },
-            // define loader that also runs eslint for our files
-            {
-                "enforce": "pre",
-                "test": /\.tsx?$/,
-                "exclude": /node_modules/,
-                "loader": "eslint-loader",
-                // uncomment below to do auto-fix in local builds
-                // options: {
-                //   fix: true,
-                // }
-            },
             // define loader for stylesheets
             {
                 "test": /\.css$/,
@@ -123,6 +119,7 @@ module.exports = {
     },
     "devtool": "source-map",
     "plugins": [
+        eslint,
         new webpack.DefinePlugin({
             "process.env.NODE_ENV": '"production"',
         }),

@@ -533,7 +533,7 @@ export class FormMetadataManager {
         return name;
     }
 
-    private cleanMeta(a: object): object {
+    private cleanMeta(a: Record<string, unknown>): Record<string, unknown> {
         // take metadata created from mergeMeta, and clean out the null values
         const meta = {};
         $.each(a || {}, (key, value) => {

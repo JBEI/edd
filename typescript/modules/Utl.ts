@@ -42,7 +42,7 @@ export function groupBy<T>(list: T[], key: string): { [key: string]: T[] } {
  * Function decorator to debounce frequent callbacks. By default will wait 100
  * milliseconds after last call to trigger the wrapped function.
  */
-export function debounce(fn: Function, wait = 100) {
+export function debounce(fn: () => void, wait = 100): () => void {
     let timer;
     return (...args) => {
         window.clearTimeout(timer);
@@ -153,14 +153,14 @@ export class JS {
      * Used in place of calling `obj.hasOwnProperty(name)` to account for
      * danger of the prototype method being replaced on `obj`.
      */
-    static hasOwnProp(obj: any, name: string): boolean {
+    static hasOwnProp(obj: unknown, name: string): boolean {
         return Object.prototype.hasOwnProperty.call(obj, name);
     }
 
     /**
      * Tests if a property on two objects are equal.
      */
-    static propertyEqual(a: object, b: object, name: string): boolean {
+    static propertyEqual(a: unknown, b: unknown, name: string): boolean {
         // guard against undefined/null inputs
         a = a || {};
         b = b || {};
@@ -629,15 +629,14 @@ export class EDDContact {
         return fallback;
     }
     equals(other: number | UserRecord | BasicContact): boolean {
-        const a: object = this.self as object;
-        const b: object = other as object;
-        // when both are IDs, using normal equality works
         return (
+            // when both are IDs, using normal equality works
             (this.self !== undefined && this.self === other) ||
             // when both are UserRecord, use propertyEqual on "id"
-            JS.propertyEqual(a, b, "id") ||
+            JS.propertyEqual(this.self, other, "id") ||
             // when both are BasicContact, use propertyEqual on both "user_id" and "extra"
-            (JS.propertyEqual(a, b, "user_id") && JS.propertyEqual(a, b, "extra"))
+            (JS.propertyEqual(this.self, other, "user_id") &&
+                JS.propertyEqual(this.self, other, "extra"))
         );
     }
     id(): number {
