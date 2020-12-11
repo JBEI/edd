@@ -2,7 +2,6 @@ import base64
 import collections
 import os
 from distutils.util import strtobool
-from multiprocessing import Pool
 
 import environ
 import invoke
@@ -332,7 +331,7 @@ class ServiceComposer:
             service = self.services[name]
             if not service:
                 raise ValueError(f"Core service {name} not configured")
-            configured.append(service)
+            configured.append(service.build().filename)
         for name in support_names:
             service = self.services.get(name, None)
             if name in self.urls:
@@ -340,26 +339,20 @@ class ServiceComposer:
                 pass
             elif service:
                 # defined bundled service, add to list
-                configured.append(service)
+                configured.append(service.build().filename)
             else:
                 # oops, missed support service, raise error
                 raise ValueError(f"Support service {name} not configured")
         for name in optional_names:
             service = self.services[name]
             if service:
-                configured.append(service)
-        with Pool(processes=4) as pool:
-            to_merge = pool.map(build, configured)
-        to_merge = " ".join(to_merge)
+                configured.append(service.build().filename)
+        to_merge = " ".join(configured)
         override_file = f"{output_dir}/docker-compose.override.yml"
         self.context.run(
             f"yq m -a {to_merge} > {override_file}", echo=True, echo_stdin=False,
         )
         return self
-
-
-def build(service):
-    return service.build().filename
 
 
 def enforce(name, param):
