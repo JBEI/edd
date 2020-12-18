@@ -245,9 +245,6 @@ $(() => {
     });
     const wizardRoot = $("#wizard");
     const props = readStrings(wizardRoot);
-    const wizardElement = wizardRoot
-        .empty()
-        .removeClass("off")
-        .get(0);
+    const wizardElement = wizardRoot.empty().removeClass("off").get(0);
     ReactDOM.render(<Wizard {...props} />, wizardElement);
 });

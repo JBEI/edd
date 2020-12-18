@@ -11,7 +11,7 @@ import "../modules/Styles";
 
 declare let EDDData;
 
-(function($) {
+(function ($) {
     EDDData = EDDData || {};
     let import_data = {};
     let stdSel = $("<div>");
@@ -20,13 +20,11 @@ declare let EDDData;
         $.ajax({
             "url": ["/study", id, "edddata/"].join("/"),
             "type": "GET",
-            "error": function(xhr, status, e) {
+            "error": function (xhr, status, e) {
                 // Hide all following steps
-                $("#import_step_1")
-                    .nextAll(".import_step")
-                    .addClass("off");
+                $("#import_step_1").nextAll(".import_step").addClass("off");
             },
-            "success": function(data) {
+            "success": function (data) {
                 EDDData = data;
                 // Show step 2
                 $("#import_step_2").removeClass("off");
@@ -42,7 +40,7 @@ declare let EDDData;
             const delim =
                 rows[0].split(comma).length > rows[0].split(tab).length ? comma : tab;
             // pick out the data to a 2D array without label row/column
-            import_data = rows.slice(1).map(function(row) {
+            import_data = rows.slice(1).map(function (row) {
                 return row.split(delim).slice(1);
             });
             $("#id_data").val(JSON.stringify(import_data));
@@ -52,9 +50,7 @@ declare let EDDData;
             $("#import_step_3").removeClass("off");
         } else {
             // Hide all following steps if no data found
-            $("#import_step_2")
-                .nextAll(".import_step")
-                .addClass("off");
+            $("#import_step_2").nextAll(".import_step").addClass("off");
         }
     }
 
@@ -73,20 +69,15 @@ declare let EDDData;
             ["Viable %", "viab"],
             ["Metadata", "meta"],
             // TODO (histogram bin?, other statistics?)
-        ].forEach(function(item) {
-            $("<option>")
-                .text(item[0])
-                .appendTo(sel)
-                .val(item[1]);
+        ].forEach(function (item) {
+            $("<option>").text(item[0]).appendTo(sel).val(item[1]);
         });
-        labels.forEach(function(label, i) {
+        labels.forEach(function (label, i) {
             let tr, td;
             if (label.length) {
                 $((tr = (table[0] as HTMLTableElement).insertRow())).data("i", i);
                 td = tr.insertCell();
-                $("<div>")
-                    .text(label)
-                    .appendTo(td);
+                $("<div>").text(label).appendTo(td);
                 td = tr.insertCell();
                 sel.clone()
                     .attr("name", "column" + i)
@@ -95,14 +86,11 @@ declare let EDDData;
                 td = tr.insertCell(); // this cell gets filled depending on previous select
             }
         });
-        table.on("change", "select.column_disam", function(ev) {
+        table.on("change", "select.column_disam", function (ev) {
             const target = $(ev.target);
             const colId = target.data("i");
             const val = target.val();
-            let auto = target
-                .closest("td")
-                .next("td")
-                .empty();
+            let auto = target.closest("td").next("td").empty();
             if (val === "meta") {
                 auto = EDDAuto.BaseAuto.create_autocomplete(auto);
                 auto.next().attr("name", "meta" + colId);
@@ -128,12 +116,9 @@ declare let EDDData;
                     .addClass("column_std_disam")
                     .attr("name", val + colId)
                     .appendTo(auto);
-                labels.forEach(function(label, i) {
+                labels.forEach(function (label, i) {
                     if (i !== colId) {
-                        $("<option>")
-                            .text(label)
-                            .appendTo(auto)
-                            .val(i);
+                        $("<option>").text(label).appendTo(auto).val(i);
                     }
                 });
             }
@@ -151,20 +136,14 @@ declare let EDDData;
             .appendTo(assaySel)
             .val("new")
             .prop("selected", true);
-        $("<option>")
-            .text("Ignore")
-            .appendTo(assaySel)
-            .val("ignore");
+        $("<option>").text("Ignore").appendTo(assaySel).val("ignore");
         let optgroup = $("<optgroup>")
             .attr("label", "Existing Assays")
             .appendTo(assaySel);
-        $.each(EDDData.Assays || {}, function(id, assay) {
+        $.each(EDDData.Assays || {}, function (id, assay) {
             const protocol = EDDData.Protocols[assay.pid];
             if (protocol.name === "Flow Cytometry Characterization") {
-                $("<option>")
-                    .text(assay.name)
-                    .appendTo(optgroup)
-                    .val(id.toString());
+                $("<option>").text(assay.name).appendTo(optgroup).val(id.toString());
             }
         });
         const lineSel = $("<select>").addClass("disamLine");
@@ -173,14 +152,9 @@ declare let EDDData;
             .appendTo(lineSel)
             .val("new")
             .prop("selected", true);
-        optgroup = $("<optgroup>")
-            .attr("label", "Existing Lines")
-            .appendTo(lineSel);
-        $.each(EDDData.Lines || {}, function(id, line) {
-            $("<option>")
-                .text(line.name)
-                .appendTo(optgroup)
-                .val(id.toString());
+        optgroup = $("<optgroup>").attr("label", "Existing Lines").appendTo(lineSel);
+        $.each(EDDData.Lines || {}, function (id, line) {
+            $("<option>").text(line.name).appendTo(optgroup).val(id.toString());
         });
         stdSel = $("<select>")
             .prop("multiple", true)
@@ -191,15 +165,10 @@ declare let EDDData;
             const index = row.search(delim);
             if (index > 0) {
                 const label = row.substring(0, index);
-                $("<option>")
-                    .text(label)
-                    .val(i.toString())
-                    .appendTo(stdSel);
+                $("<option>").text(label).val(i.toString()).appendTo(stdSel);
                 $((tr = (table[0] as HTMLTableElement).insertRow())).data("i", i);
                 td = tr.insertCell();
-                $("<div>")
-                    .text(label)
-                    .appendTo(td);
+                $("<div>").text(label).appendTo(td);
                 td = tr.insertCell();
                 $('<input type="hidden">')
                     .attr("name", "sample" + i)
@@ -209,9 +178,7 @@ declare let EDDData;
                     .clone()
                     .attr("name", "assay" + i)
                     .appendTo(td);
-                td = $("<span>")
-                    .text("for Line: ")
-                    .appendTo(td);
+                td = $("<span>").text("for Line: ").appendTo(td);
                 lineSel
                     .clone()
                     .attr("name", "line" + i)
@@ -219,7 +186,7 @@ declare let EDDData;
             }
         });
         // Only show the line selection if assay selection is "new"
-        table.on("change", ".disamAssay", function(ev) {
+        table.on("change", ".disamAssay", function (ev) {
             const target = $(ev.target);
             const val = target.val();
             target.next().toggleClass("off", val !== "new");
@@ -256,9 +223,9 @@ declare let EDDData;
         return true;
     }
 
-    $(function() {
+    $(function () {
         // http://stackoverflow.com/questions/22063612
-        $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
+        $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
             jqXHR.setRequestHeader("X-CSRFToken", Utl.EDD.findCSRFToken());
         });
         const _textarea = $("#id_rawtext");
@@ -266,7 +233,7 @@ declare let EDDData;
             "clickable": false,
             "url": "/utilities/cytometry/parse/",
         });
-        _dropzone.on("success", function(file, response) {
+        _dropzone.on("success", function (file, response) {
             if (response.python_error) {
                 window.alert(response.python_error);
             } else {
@@ -276,22 +243,18 @@ declare let EDDData;
         // set up study selection input
         const _auto = $("#id_study_0");
         EDDAuto.BaseAuto.initPreexisting(_auto);
-        _auto.on("mcautocompleteselect", function(ev, ui) {
+        _auto.on("mcautocompleteselect", function (ev, ui) {
             if (ui.item) {
                 fetchStudyInfo(ui.item.id);
             }
             _auto.blur();
         });
         // unhide the study creation form and toggle box
-        $("#import_step_1")
-            .find(".off")
-            .removeClass("off");
+        $("#import_step_1").find(".off").removeClass("off");
         $("#id_create_study")
-            .change(function(ev) {
+            .change(function (ev) {
                 const checked = $(ev.target).prop("checked");
-                $("#import_step_1")
-                    .find(".edd-form :input")
-                    .prop("disabled", !checked);
+                $("#import_step_1").find(".edd-form :input").prop("disabled", !checked);
                 $("#id_study_0").prop("disabled", checked);
                 $("#import_step_2").toggleClass(
                     "off",
@@ -305,31 +268,34 @@ declare let EDDData;
             .on("paste", window.setTimeout.bind(window, parseRawText, 10));
         // Add a standard selection row for every column with type 'avg' + valid measurement type
         const stdRows = {};
-        $("#id_first_row").on("mcautocompleteselect", ".autocomp_signal", function(
-            ev,
-            ui,
-        ) {
-            let td;
-            // there is enough to import at this point, make sure all steps are shown
-            $(".import_step").removeClass("off");
-            const target = $(ev.target);
-            const targRow = target.closest("tr");
-            const rowId = targRow.data("i");
-            const table = $("#id_std_table");
-            // if this row was previously added, remove the old one
-            $(stdRows[rowId]).remove();
-            const tr = (stdRows[rowId] = (table[0] as HTMLTableElement).insertRow());
-            $((td = tr.insertCell())).addClass("top");
-            const label = [ui.item.name, targRow.find("td > div").text()].join(" - ");
-            $("<div>")
-                .text(label)
-                .appendTo(td);
-            td = tr.insertCell();
-            stdSel
-                .clone()
-                .attr("name", "standard" + rowId)
-                .appendTo(td);
-        });
+        $("#id_first_row").on(
+            "mcautocompleteselect",
+            ".autocomp_signal",
+            function (ev, ui) {
+                let td;
+                // there is enough to import at this point, make sure all steps are shown
+                $(".import_step").removeClass("off");
+                const target = $(ev.target);
+                const targRow = target.closest("tr");
+                const rowId = targRow.data("i");
+                const table = $("#id_std_table");
+                // if this row was previously added, remove the old one
+                $(stdRows[rowId]).remove();
+                const tr = (stdRows[
+                    rowId
+                ] = (table[0] as HTMLTableElement).insertRow());
+                $((td = tr.insertCell())).addClass("top");
+                const label = [ui.item.name, targRow.find("td > div").text()].join(
+                    " - ",
+                );
+                $("<div>").text(label).appendTo(td);
+                td = tr.insertCell();
+                stdSel
+                    .clone()
+                    .attr("name", "standard" + rowId)
+                    .appendTo(td);
+            },
+        );
         // Do basic validation before submit
         $("#import_form").on("submit", checkSubmit);
     });

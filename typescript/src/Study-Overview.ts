@@ -24,13 +24,13 @@ function preparePermissions() {
     group.init();
 
     // check public permission input on click
-    $("#set_everyone_permission").on("click", function() {
+    $("#set_everyone_permission").on("click", function () {
         $("#permission_public").prop("checked", true);
     });
-    $("#set_group_permission").on("click", function() {
+    $("#set_group_permission").on("click", function () {
         $("#permission_group").prop("checked", true);
     });
-    $("#set_user_permission").on("click", function() {
+    $("#set_user_permission").on("click", function () {
         $("#permission_user").prop("checked", true);
     });
 
@@ -42,13 +42,9 @@ function preparePermissions() {
             const token: string = $("form#permissions")
                 .find("[name=csrfmiddlewaretoken]")
                 .val() as string;
-            perm.type = $(auto)
-                .siblings("select")
-                .val();
+            perm.type = $(auto).siblings("select").val();
             perm[klass.toLowerCase()] = {
-                "id": $(auto)
-                    .siblings("input:hidden")
-                    .val(),
+                "id": $(auto).siblings("input:hidden").val(),
             };
             $.ajax({
                 // TODO: fix hard-coded URL
@@ -65,9 +61,7 @@ function preparePermissions() {
                         .siblings("select")
                         .val("N");
                     // reset input
-                    $("form#permissions")
-                        .find(".autocomp_search")
-                        .val("");
+                    $("form#permissions").find(".autocomp_search").val("");
 
                     $("<div>")
                         .text("Permission Updated")
@@ -83,9 +77,7 @@ function preparePermissions() {
                         .siblings("select")
                         .val("N");
                     // reset input
-                    $("form#permissions")
-                        .find(".autocomp_search")
-                        .val("");
+                    $("form#permissions").find(".autocomp_search").val("");
                     $("<div>")
                         .text("Server Error: " + err)
                         .addClass("bad")
@@ -117,10 +109,8 @@ function preparePermissions() {
         "autoOpen": false,
     });
 
-    $("#addPermission").click(function() {
-        $("#permissionsSection")
-            .removeClass("off")
-            .dialog("open");
+    $("#addPermission").click(function () {
+        $("#permissionsSection").removeClass("off").dialog("open");
         return false;
     });
 }
@@ -132,11 +122,7 @@ export class EditableStudyDescription extends StudyBase.EditableStudyElement {
         super(inputElement, style);
         this.minimumRows = 4;
         this.fieldName("description");
-        this.formURL(
-            $(inputElement)
-                .parents("form")
-                .attr("data-rest"),
-        );
+        this.formURL($(inputElement).parents("form").attr("data-rest"));
     }
 
     getValue(): string {
@@ -152,11 +138,7 @@ export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
     constructor(inputElement: HTMLElement, style?: string) {
         super(inputElement, style);
         this.fieldName("contact_id");
-        this.formURL(
-            $(inputElement)
-                .parents("form")
-                .attr("data-rest"),
-        );
+        this.formURL($(inputElement).parents("form").attr("data-rest"));
     }
 
     canCommit(value): boolean {

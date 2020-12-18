@@ -28,15 +28,11 @@ export function prepareIt() {
     EDDAuto.BaseAuto.initPreexisting();
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus
-    $(document).on("focus", ".autocomp", function(ev) {
-        $(ev.target)
-            .addClass("autocomp_search")
-            .mcautocomplete("search");
+    $(document).on("focus", ".autocomp", function (ev) {
+        $(ev.target).addClass("autocomp_search").mcautocomplete("search");
     });
 
-    $(".disclose")
-        .find(".discloseLink")
-        .on("click", disclose);
+    $(".disclose").find(".discloseLink").on("click", disclose);
 
     const modal = $("#addStudyModal");
     modal.dialog({ "minWidth": 600, "autoOpen": false });
@@ -46,7 +42,7 @@ export function prepareIt() {
         modal.removeClass("off").dialog("open");
     }
 
-    $("#addStudyButton").click(function() {
+    $("#addStudyButton").click(function () {
         modal.removeClass("off").dialog("open");
         return false;
     });
@@ -55,9 +51,7 @@ export function prepareIt() {
 }
 
 export function disclose() {
-    $(this)
-        .closest(".disclose")
-        .toggleClass("discloseHide");
+    $(this).closest(".disclose").toggleClass("discloseHide");
     return false;
 }
 
@@ -68,11 +62,8 @@ export function prepareTable() {
 
     // prepare tooltip for matched searches
     $(studiesDataGridSpec.tableElement).tooltip({
-        "content": function() {
-            return $(this)
-                .find(".popupmenu")
-                .clone(true)
-                .removeClass("off");
+        "content": function () {
+            return $(this).find(".popupmenu").clone(true).removeClass("off");
         },
         "items": ".has-popupmenu",
         "hide": false, // no animations

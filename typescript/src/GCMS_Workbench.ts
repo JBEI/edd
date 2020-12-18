@@ -12,20 +12,20 @@ import "../modules/Styles";
 
 $(document).ready(() => {
     $("#hidden-options").toggle();
-    $("#auto-peaks").change(function() {
+    $("#auto-peaks").change(function () {
         $("#hidden-options").toggle();
     });
-    $("#add-molecule").click(function() {
+    $("#add-molecule").click(function () {
         onAddMolecule();
     });
-    $("#del-molecule").click(function() {
+    $("#del-molecule").click(function () {
         onDeleteMolecule();
     });
     $("#n-molecules").data("n_mols", 1);
 });
 
 // http://stackoverflow.com/questions/22063612
-$.ajaxPrefilter(function(options, originalOptions, jqXHR) {
+$.ajaxPrefilter(function (options, originalOptions, jqXHR) {
     const token = Utl.EDD.findCSRFToken();
     jqXHR.setRequestHeader("X-CSRFToken", token);
 });
@@ -33,7 +33,7 @@ $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
 Dropzone.options.gcmsDropzone = {
     "uploadMultiple": false,
     "previewsContainer": "#file-preview",
-    "init": function() {
+    "init": function () {
         this.element
             .querySelector("button[type=submit]")
             .addEventListener("click", (e) => {
@@ -52,11 +52,11 @@ Dropzone.options.gcmsDropzone = {
             });
     },
     // reset file preview div when a new file is dropped
-    "drop": function(e) {
+    "drop": function (e) {
         $("#file-preview").empty();
         return this.element.classList.remove("dz-drag-hover");
     },
-    "success": function(file, response) {
+    "success": function (file, response) {
         if (response.python_error) {
             // only if ValueError encountered on server
             alert(response.python_error);
@@ -95,11 +95,7 @@ function processReportData(response) {
     let table = null;
     if (response.auto_peak) {
         const peak_sel = $("<select/>").attr("id", "standard-peak");
-        peak_sel.append(
-            $("<option/>")
-                .attr("value", 0)
-                .text("---"),
-        );
+        peak_sel.append($("<option/>").attr("value", 0).text("---"));
         for (let i = 0; i < response.peak_times.length; i++) {
             peaks.push(response.peak_times[i].toFixed(4));
             peak_sel.append(
@@ -122,7 +118,7 @@ function processReportData(response) {
                 $("<td/>").append(peak_sel),
             ),
         );
-        peak_sel.change(function() {
+        peak_sel.change(function () {
             onSelectStandard(table);
         });
     }
@@ -152,35 +148,31 @@ function processReportData(response) {
         .append(abort_btn);
     if (response.errors) {
         for (const error of response.errors) {
-            target1.append(
-                $("<font/>")
-                    .attr("id", "error")
-                    .text(error),
-            );
+            target1.append($("<font/>").attr("id", "error").text(error));
         }
     }
     const samples = JSON.parse(response.samples);
     const svgplot = new RTPlot(samples);
     table = initialize_table(response.sample_data, response.errors, svgplot);
-    rel_btn.click(function() {
+    rel_btn.click(function () {
         try {
             convertToRelativeAreas(table);
         } catch (err) {
             alert(err);
         }
     });
-    submit_btn.click(function() {
+    submit_btn.click(function () {
         try {
             onFinalize(table);
         } catch (err) {
             alert(err);
         }
     });
-    reset_btn.click(function() {
+    reset_btn.click(function () {
         $("#tableview").data("relative_areas", false);
         load_data(table, raw_data, response.errors);
     });
-    abort_btn.click(function() {
+    abort_btn.click(function () {
         location.reload();
     });
 }
@@ -215,17 +207,17 @@ function initialize_table(data, errors, plot) {
         "comments": true,
         "contextMenu": true,
         "multiSelect": false,
-        "afterSelection": function(r, c, r2, c2) {
+        "afterSelection": function (r, c, r2, c2) {
             if (r >= 2) {
                 plot.set_selected(data[r][0]);
             } else {
                 plot.set_selected(null);
             }
         },
-        "afterDeselect": function() {
+        "afterDeselect": function () {
             plot.set_selected(null);
         },
-        "cells": function(row, col, prop) {
+        "cells": function (row, col, prop) {
             const cellProperties: any = {};
             if (
                 (row === 0 && col === 0) ||
@@ -281,7 +273,7 @@ function load_data(table, data, errors) {
             "items": {
                 "remove_row": {
                     "name": "Delete sample",
-                    "disabled": function() {
+                    "disabled": function () {
                         // protect first two rows from deletion
                         const i_row = table.getSelected()[0];
                         return i_row === 0 || i_row === 1;
@@ -334,7 +326,7 @@ function onFinalize(table) {
                 "key_table": xlsx.table,
             }),
         })
-        .done(function(response) {
+        .done(function (response) {
             if (response.python_error) {
                 alert(response.python_error);
             } else {
@@ -511,7 +503,7 @@ function RTPlot(samples) {
     const xAxis = d3.axisBottom(x);
 
     const yfmt = d3.format(".1f");
-    const yAxis = d3.axisLeft(y).tickFormat(function(d: number): string {
+    const yAxis = d3.axisLeft(y).tickFormat(function (d: number): string {
         if (d === 0) {
             return "" + d;
         } else {
@@ -530,13 +522,13 @@ function RTPlot(samples) {
     this.keys = keys;
     this.selected = null;
 
-    const xlim = d3.extent(data, function(d) {
+    const xlim = d3.extent(data, function (d) {
         return d.retention_time;
     });
     x.domain([xlim[0] - 0.2, xlim[1] + 0.2]);
     y.domain([
         0,
-        d3.max(data, function(d) {
+        d3.max(data, function (d) {
             return d.peak_area * 1e-6;
         }),
     ]);
@@ -564,21 +556,21 @@ function RTPlot(samples) {
         .data(data)
         .enter()
         .append("rect")
-        .attr("class", function(d) {
+        .attr("class", function (d) {
             if (d.is_picked) {
                 return "ms-peak";
             } else {
                 return "ms-peak-unpicked";
             }
         })
-        .attr("x", function(d) {
+        .attr("x", function (d) {
             return x(d.retention_time);
         })
         .attr("width", 1)
-        .attr("y", function(d) {
+        .attr("y", function (d) {
             return y(d.peak_area * 1e-6);
         })
-        .attr("height", function(d) {
+        .attr("height", function (d) {
             return height - y(d.peak_area * 1e-6);
         });
 
@@ -594,14 +586,14 @@ function RTPlot(samples) {
         .append("rect")
         .attr("class", "ms-peak-hidden")
         .attr("id", "ms-select-peak")
-        .attr("x", function(d) {
+        .attr("x", function (d) {
             return x(d.retention_time);
         })
         .attr("width", 2)
-        .attr("y", function(d) {
+        .attr("y", function (d) {
             return y(d.peak_area * 1e-6);
         })
-        .attr("height", function(d) {
+        .attr("height", function (d) {
             return height - y(d.peak_area * 1e-6);
         });
 
@@ -611,15 +603,15 @@ function RTPlot(samples) {
         .text((d) => d.peak_area + " @ " + rt_fmt(d.retention_time))
         .attr("class", "bar-label-hidden")
         .attr("id", "bar-label")
-        .attr("x", function(d) {
+        .attr("x", function (d) {
             return x(d.retention_time) + 2;
         })
-        .attr("y", function(d) {
+        .attr("y", function (d) {
             return y(d.peak_area * 1e-6) - 2;
         })
         .attr("text-anchor", "middle");
 
-    this.set_selected = function(sample_id) {
+    this.set_selected = function (sample_id) {
         this.selected = sample_id;
         d3.selectAll("#ms-select-peak").attr("class", (d: any) => {
             if (d.sample_id === this.selected) {

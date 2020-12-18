@@ -270,9 +270,7 @@ function setupFilter() {
         const icon = item.find("svg");
         const adding_check = icon.hasClass(unchecked);
         // uncheck all items
-        menu.find(`.${checked}`)
-            .removeClass(checked)
-            .addClass(unchecked);
+        menu.find(`.${checked}`).removeClass(checked).addClass(unchecked);
         // change clicked item state
         if (adding_check) {
             icon.removeClass(unchecked).addClass(checked);

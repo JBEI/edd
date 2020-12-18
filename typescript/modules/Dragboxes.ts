@@ -18,9 +18,7 @@ export function dragEnd(event: JQueryMouseEventObject): void {
 
 export function dragOver(): void {
     if (globalChecked !== null) {
-        $(":checkbox", this)
-            .prop("checked", globalChecked)
-            .trigger("change");
+        $(":checkbox", this).prop("checked", globalChecked).trigger("change");
     }
 }
 

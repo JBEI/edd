@@ -37,7 +37,7 @@ export class NonValueItem {
     }
 }
 
-(function($) {
+(function ($) {
     // immediately invoked function to bind jQuery to $
 
     /*
@@ -54,11 +54,11 @@ export class NonValueItem {
      * Heavily modified by JBEI to not use "float:left", as it has been Deemed Harmful.
      */
     $.widget("custom.mcautocomplete", $.ui.autocomplete, {
-        "_create": function() {
+        "_create": function () {
             this._super();
             this.widget().menu("option", "items", "> :not(.ui-widget-header)");
         },
-        "_valOrNbsp": function(jQ, value) {
+        "_valOrNbsp": function (jQ, value) {
             if (typeof value === "object") {
                 jQ.append(value);
             } else if (value && value.trim()) {
@@ -67,7 +67,7 @@ export class NonValueItem {
                 jQ.html("&nbsp;");
             }
         },
-        "_appendCell": function(row, column, label) {
+        "_appendCell": function (row, column, label) {
             const cell = $("<div></div>");
             if (column && column.width) {
                 cell.css("minWidth", column.width);
@@ -79,14 +79,12 @@ export class NonValueItem {
             row.append(cell);
             return cell;
         },
-        "_appendMessage": function(row, label) {
+        "_appendMessage": function (row, label) {
             const cell = $("<div></div>").appendTo(row);
-            $("<i>")
-                .text(label)
-                .appendTo(cell);
+            $("<i>").text(label).appendTo(cell);
             return cell;
         },
-        "_renderMenu": function(ul, items) {
+        "_renderMenu": function (ul, items) {
             if (this.options.showHeader) {
                 const table = $('<li class="ui-widget-header"></div>');
                 // Column headers
@@ -99,12 +97,9 @@ export class NonValueItem {
             $.each(items, (index, item) => {
                 this._renderItem(ul, item);
             });
-            $(ul)
-                .addClass("edd-autocomplete-list")
-                .find("li:odd")
-                .addClass("odd");
+            $(ul).addClass("edd-autocomplete-list").find("li:odd").addClass("odd");
         },
-        "_renderItem": function(ul, item) {
+        "_renderItem": function (ul, item) {
             const result = $("<li>").data("ui-autocomplete-item", item);
             if (item instanceof NonValueItem) {
                 this._appendMessage(result, item.label);

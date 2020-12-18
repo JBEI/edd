@@ -3,9 +3,7 @@ import "jquery-ui/ui/widgets/dialog";
 
 // called when the page loads
 export function prepareIt() {
-    $(".disclose")
-        .find(".discloseLink")
-        .on("click", disclose);
+    $(".disclose").find(".discloseLink").on("click", disclose);
 
     const modal = $("#addStudyModal");
     modal.dialog({ "minWidth": 600, "autoOpen": false });
@@ -22,9 +20,7 @@ export function prepareIt() {
 }
 
 export function disclose() {
-    $(this)
-        .closest(".disclose")
-        .toggleClass("discloseHide");
+    $(this).closest(".disclose").toggleClass("discloseHide");
     return false;
 }
 

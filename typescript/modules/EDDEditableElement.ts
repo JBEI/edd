@@ -240,9 +240,7 @@ export class EditableElement {
     setInactiveStyling() {
         this.elementJQ.removeClass("active");
         this.elementJQ.addClass("inactive");
-        $(this.editControlsContainer)
-            .children()
-            .detach();
+        $(this.editControlsContainer).children().detach();
         this.editControlsContainer.appendChild(this.editButtonElement);
     }
 
@@ -350,9 +348,7 @@ export class EditableElement {
         this.elementJQ.contents().detach(); // children() does not capture text nodes
         // Re-add the controls area
         this.element.appendChild(this.editControlsPositioner);
-        $(this.editControlsContainer)
-            .children()
-            .detach();
+        $(this.editControlsContainer).children().detach();
         this.editControlsContainer.appendChild(this.acceptButtonElement);
         this.editControlsContainer.appendChild(this.cancelButtonElement);
         this.element.removeAttribute("title");

@@ -105,15 +105,10 @@ function addRetryButton(container: JQuery, retryFunction): JQuery {
         });
 
     // set button icon in a span, per Bootstrap suggestion
-    $("<span>")
-        .addClass("fas fa-sync-alt")
-        .appendTo(btn)
-        .after(" ");
+    $("<span>").addClass("fas fa-sync-alt").appendTo(btn).after(" ");
 
     // set button text
-    $("<span>")
-        .text("Retry")
-        .appendTo(btn);
+    $("<span>").text("Retry").appendTo(btn);
 
     return btn.appendTo(container);
 }
@@ -126,9 +121,7 @@ function showMetaWaitMessage(): void {
         .addClass("loading-resource-message")
         .appendTo(div);
 
-    $("<span>")
-        .addClass("wait waitbadge-new")
-        .appendTo(div);
+    $("<span>").addClass("wait waitbadge-new").appendTo(div);
 }
 
 function showMetaLoadFailed(jqXHR, textStatus: string, errorThrown: string): void {
@@ -238,19 +231,14 @@ export class MultiValueInput {
     addButton: JQuery;
 
     constructor(label: string, options: MultiValueInputOptions) {
-        this.uiLabel = $("<label>")
-            .text(label)
-            .addClass("not-in-use");
+        this.uiLabel = $("<label>").text(label).addClass("not-in-use");
         this.maxRows = options.maxRows === undefined ? 30 : options.maxRows;
         this.minEntries = options.minEntries || 0;
     }
 
     hasValidInput(rowIndex: number): boolean {
         return (
-            (this.rows[rowIndex]
-                .find("input")
-                .first()
-                .val() as string).trim() !== ""
+            (this.rows[rowIndex].find("input").first().val() as string).trim() !== ""
         );
     }
 
@@ -282,13 +270,8 @@ export class MultiValueInput {
 
         if (this.getRowCount() > this.minEntries) {
             rowIndex = this.getRowCount() - 1;
-            btn = $("<button>")
-                .addClass("removeButton")
-                .appendTo(container);
-            $("<span>")
-                .addClass("ui-icon")
-                .addClass("ui-icon-trash")
-                .appendTo(btn);
+            btn = $("<button>").addClass("removeButton").appendTo(container);
+            $("<span>").addClass("ui-icon").addClass("ui-icon-trash").appendTo(btn);
             this.registerRemoveRowEvtHandler(btn, rowIndex);
             return btn;
         }
@@ -325,9 +308,7 @@ export class MultiValueInput {
 
     appendRow(initialInput?: any): void {
         const prevRow = this.rows[this.rows.length - 1];
-        const newRow = $("<div>")
-            .addClass("table-row")
-            .insertAfter(prevRow);
+        const newRow = $("<div>").addClass("table-row").insertAfter(prevRow);
         this.fillRowControls(newRow, initialInput);
         this.updateInputState();
     }
@@ -342,9 +323,7 @@ export class MultiValueInput {
             .children(".inputCell")
             .children()
             .each((index: number, element: Element) => {
-                $(element)
-                    .detach()
-                    .appendTo(inputCell);
+                $(element).detach().appendTo(inputCell);
             });
     }
 
@@ -457,10 +436,7 @@ export class LinePropertyInput extends MultiValueInput {
     }
 
     getInput(rowIndex: number): any {
-        const value = this.rows[rowIndex]
-            .find("input")
-            .first()
-            .val() as string;
+        const value = this.rows[rowIndex].find("input").first().val() as string;
         return value.trim();
     }
 
@@ -611,9 +587,7 @@ export class LinePropertyInput extends MultiValueInput {
             .addClass("bulk_lines_table_cell")
             .addClass("addCell")
             .appendTo(row);
-        const labelCell = $("<div>")
-            .addClass("bulk_lines_table_cell")
-            .appendTo(row);
+        const labelCell = $("<div>").addClass("bulk_lines_table_cell").appendTo(row);
         const firstRow = this.getRowCount() === 1;
         if (firstRow) {
             this.buildAddBtn(addCell);
@@ -623,9 +597,7 @@ export class LinePropertyInput extends MultiValueInput {
             .addClass("bulk_lines_table_cell")
             .addClass("inputCell")
             .appendTo(row);
-        const flewGrowWrapper = $("<div>")
-            .addClass("inputContent")
-            .appendTo(inputCell);
+        const flewGrowWrapper = $("<div>").addClass("inputContent").appendTo(inputCell);
         this.fillInputControls(flewGrowWrapper, initialValue);
         const applyAllCell = $("<div>")
             .addClass("bulk_lines_table_cell")
@@ -771,9 +743,7 @@ export class CustomElementInput extends MultiValueInput {
         const firstRowCell = firstRow.children(".custom-name-cell").empty();
         // detach and relocate input cell content from the following row, moving it up
         nextRow.children(".custom-val-cell").each((index: number, element: Element) => {
-            $(element)
-                .detach()
-                .appendTo(firstRowCell);
+            $(element).detach().appendTo(firstRowCell);
         });
     }
 
@@ -875,9 +845,7 @@ export class AbbreviationInput extends LinePropertyInput {
             .addClass("bulk_lines_table_cell")
             .addClass("addCell")
             .appendTo(row);
-        const labelCell = $("<div>")
-            .addClass("bulk_lines_table_cell")
-            .appendTo(row);
+        const labelCell = $("<div>").addClass("bulk_lines_table_cell").appendTo(row);
         const firstRow = this.getRowCount() === 1;
         if (firstRow) {
             this.buildAddBtn(addCell);
@@ -898,9 +866,7 @@ export class AbbreviationInput extends LinePropertyInput {
             .children(".abbrev-match-cell")
             .children(".abbrev-val-cell")
             .each((index: number, element: Element) => {
-                $(element)
-                    .detach()
-                    .appendTo(firstRowCell);
+                $(element).detach().appendTo(firstRowCell);
             });
     }
 
@@ -1023,9 +989,7 @@ export class BooleanInput extends LinePropertyInput {
                 creationManager.updateNameEltChoices(true);
             })
             .appendTo(buttonsDiv);
-        $("<label>")
-            .text("Yes")
-            .appendTo(buttonsDiv);
+        $("<label>").text("Yes").appendTo(buttonsDiv);
         this.noCheckbox = $('<input type="checkbox">')
             .addClass("noCheckBox")
             .on("change", () => {
@@ -1033,9 +997,7 @@ export class BooleanInput extends LinePropertyInput {
                 creationManager.updateNameEltChoices(true);
             })
             .appendTo(buttonsDiv);
-        $("<label>")
-            .text("No")
-            .appendTo(buttonsDiv);
+        $("<label>").text("No").appendTo(buttonsDiv);
         const removeBtn = this.buildRemoveBtn(rowContainer);
         removeBtn.addClass("controlRemoveBtn");
     }
@@ -1172,9 +1134,7 @@ export class IceFolderInput extends LinePropertyInput {
             return;
         }
         const prevRow = this.rows[this.rows.length - 1];
-        const newRow = $("<div>")
-            .addClass("table-row")
-            .insertAfter(prevRow);
+        const newRow = $("<div>").addClass("table-row").insertAfter(prevRow);
         this.fillRowControls(newRow, initialInput);
         this.updateInputState();
         // unlike other inputs,
@@ -1334,9 +1294,7 @@ export class CreationManager {
         // remove the custom element from our tracking and from the DOM
         this.customNameAdditions.splice(foundIndex, 1);
         const rowClass = "custom_name_elt_" + customEltId;
-        $("#custom-elements-table")
-            .children(rowClass)
-            .remove();
+        $("#custom-elements-table").children(rowClass).remove();
         this.updateHasCustomNameElts();
         this.queuePreviewUpdate();
     }
@@ -1760,9 +1718,7 @@ export class CreationManager {
     updateStep3Error(jqXHR, textStatus: string, errorThrown: string): void {
         const json = jqXHR.responseJSON;
         $("#line-preview-div").addClass("hide");
-        const errsDiv = $("#step3-errors-div")
-            .empty()
-            .removeClass("hide");
+        const errsDiv = $("#step3-errors-div").empty().removeClass("hide");
         const summary = this.showErrorMessages(errsDiv, json, jqXHR.status, true, () =>
             creationManager.queuePreviewUpdate(),
         );
@@ -1782,15 +1738,9 @@ export class CreationManager {
         retryFunction,
     ): ErrSummary {
         creationManager.setStep3InputsEnabled(true);
-        const div = $("<div>")
-            .addClass("add-combos-subsection")
-            .appendTo(parentDiv);
-        $("<label>")
-            .text("Error(s):")
-            .appendTo(div);
-        const tableDiv = $("<div>")
-            .addClass("bulk-line-table")
-            .appendTo(parentDiv);
+        const div = $("<div>").addClass("add-combos-subsection").appendTo(parentDiv);
+        $("<label>").text("Error(s):").appendTo(div);
+        const tableDiv = $("<div>").addClass("bulk-line-table").appendTo(parentDiv);
         let anyNonStrainErr = false;
         let anyIceAccessErr = false;
         let nonUniqueLineNames = false;
@@ -1906,9 +1856,7 @@ export class CreationManager {
                     .addClass("fas fa-exclamation-triangle")
                     .appendTo(forceBtn)
                     .after(" ");
-                $("<span>")
-                    .text("Force Line Creation")
-                    .appendTo(forceBtn);
+                $("<span>").text("Force Line Creation").appendTo(forceBtn);
                 forceBtn.appendTo(btnDiv);
                 btnDiv.appendTo(row);
             }
@@ -1952,13 +1900,8 @@ export class CreationManager {
             );
         // copy the "options" label into the alert
         const optLabel = $('label[for="' + optsChkbxId + '"]');
-        const alertLbl = $("<label>")
-            .text(optLabel.text())
-            .attr("for", alertChkbxId);
-        $("<div>")
-            .append(alertChkbx)
-            .append(alertLbl)
-            .appendTo(alert);
+        const alertLbl = $("<label>").text(optLabel.text()).attr("for", alertChkbxId);
+        $("<div>").append(alertChkbx).append(alertLbl).appendTo(alert);
         // add a class that allows us to locate and restyle the alert later
         // if the workaround is selected
         alert.addClass(alertClass);
@@ -1979,9 +1922,7 @@ export class CreationManager {
             lines = responseJson.lines;
         }
         this.plannedLineCount = count;
-        $("#step3-errors-div")
-            .empty()
-            .addClass("hide");
+        $("#step3-errors-div").empty().addClass("hide");
         // show # lines to be created
         $("#line-count-div").text(count);
         this.addLineNamesToTable(lines);
@@ -2279,7 +2220,7 @@ export class CreationManager {
 
     getPropertyInput(jsonId: any) {
         let result: LinePropertyInput = null;
-        this.lineProperties.forEach(function(input) {
+        this.lineProperties.forEach(function (input) {
             if (input.lineProperty.jsonId === jsonId) {
                 result = input;
                 return false; // stop looping
@@ -2359,32 +2300,22 @@ export class CreationManager {
     }
 
     appendAlert(statusDiv: JQuery, message: ErrorSummary): JQuery {
-        const div = $("<div>")
-            .addClass("alert alert-danger")
-            .appendTo(statusDiv);
-        $("<h4>")
-            .text(message.category)
-            .appendTo(div);
+        const div = $("<div>").addClass("alert alert-danger").appendTo(statusDiv);
+        $("<h4>").text(message.category).appendTo(div);
         if (message.details) {
             $("<p>")
                 .text(message.summary + ": " + message.details)
                 .appendTo(div);
         } else {
-            $("<p>")
-                .text(message.summary)
-                .appendTo(div);
+            $("<p>").text(message.summary).appendTo(div);
         }
         return div;
     }
 
     showCreatingLinesDialog(): void {
         // disable buttons and set styling to match the rest of EDD
-        $("#return-to-study-btn")
-            .prop("disabled", true)
-            .addClass("btn btn-primary");
-        $("#create-more-btn")
-            .prop("disabled", true)
-            .addClass("btn btn-primary");
+        $("#return-to-study-btn").prop("disabled", true).addClass("btn btn-primary");
+        $("#create-more-btn").prop("disabled", true).addClass("btn btn-primary");
         $("#creation-wait-spinner").removeClass("hide");
         $("#creation-status-div").empty();
         $("#line-count-span").text(this.plannedLineCount);
@@ -2518,7 +2449,7 @@ export class CreationManager {
         // name element ordering
         const nameElts: any = {};
         const elts = [];
-        this.lineNameElements.forEach(function(nameElement: LinePropertyDescriptor) {
+        this.lineNameElements.forEach(function (nameElement: LinePropertyDescriptor) {
             elts.push(nameElement.nameEltJsonId);
         });
         nameElts.elements = elts;
@@ -2635,7 +2566,7 @@ export function onDocumentReady(): void {
 
     // send CSRF header on each AJAX request from this page
     $.ajaxSetup({
-        "beforeSend": function(xhr) {
+        "beforeSend": function (xhr) {
             const csrfToken = Utl.EDD.findCSRFToken();
             xhr.setRequestHeader("X-CSRFToken", csrfToken);
         },

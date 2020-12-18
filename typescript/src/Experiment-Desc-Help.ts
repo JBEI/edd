@@ -16,9 +16,7 @@ let loadedProtocols = false;
 // As soon as the window load signal is sent, call back to the server for the set of reference
 // records that will be used to disambiguate labels in imported data.
 function onDocumentReady(): void {
-    $(".disclose")
-        .find(".discloseLink")
-        .on("click", disclose);
+    $(".disclose").find(".discloseLink").on("click", disclose);
 
     loadAllLineMetadataTypes();
     loadAllAssayMetadataTypes();
@@ -27,9 +25,7 @@ function onDocumentReady(): void {
 }
 
 function disclose() {
-    $(this)
-        .closest(".disclose")
-        .toggleClass("discloseHide");
+    $(this).closest(".disclose").toggleClass("discloseHide");
     return false;
 }
 
@@ -38,7 +34,7 @@ function loadAllLineMetadataTypes(): void {
         "success": lineMetaSuccessHandler,
         "error": lineErrorHandler,
         "request_all": true, // get all result pages
-        "wait": function() {
+        "wait": function () {
             showWaitMessage(LINE_DIV_SELECTOR);
         },
         "context": EddRest.LINE_METADATA_CONTEXT,
@@ -51,7 +47,7 @@ function loadAllAssayMetadataTypes(): void {
         "success": assayMetaSuccessHandler,
         "error": assayErrorHandler,
         "request_all": true, // get all result pages
-        "wait": function() {
+        "wait": function () {
             showWaitMessage(ASSAY_DIV_SELECTOR);
         },
         "context": EddRest.ASSAY_METADATA_CONTEXT,
@@ -149,28 +145,16 @@ function showProtocols() {
     }
     const div = $("#protocols").empty();
     if (protocols.length > 0) {
-        const table = $("<table>")
-            .addClass("figureTable")
-            .appendTo(div);
+        const table = $("<table>").addClass("figureTable").appendTo(div);
         const head = $("<thead>").appendTo(table);
-        $("<th>")
-            .text("Name")
-            .appendTo(head);
-        $("<th>")
-            .text("Description")
-            .appendTo(head);
-        $("<th>")
-            .text("Default Units")
-            .appendTo(head);
+        $("<th>").text("Name").appendTo(head);
+        $("<th>").text("Description").appendTo(head);
+        $("<th>").text("Default Units").appendTo(head);
         const body = $("<tbody>").appendTo(table);
         protocols.forEach((protocol: any): void => {
             const row = $("<tr>").appendTo(body);
-            $("<td>")
-                .text(protocol.name)
-                .appendTo(row);
-            $("<td>")
-                .text(protocol.description)
-                .appendTo(row);
+            $("<td>").text(protocol.name).appendTo(row);
+            $("<td>").text(protocol.description).appendTo(row);
             let unitsStr = "None";
             if (protocol.default_units) {
                 // if the related query has returned, look up the name of the related default units
@@ -178,9 +162,7 @@ function showProtocols() {
                     ? measurementUnits[protocol.default_units].unit_name
                     : String(protocol.default_units);
             }
-            $("<td>")
-                .text(unitsStr)
-                .appendTo(row);
+            $("<td>").text(unitsStr).appendTo(row);
         });
     } else {
         div.text("No protocols were found.");
@@ -197,16 +179,10 @@ function showMetadataTypes(
         and to have a description. */
     const div = $(divSelector).empty();
     if (metadataTypes) {
-        const table = $("<table>")
-            .addClass("figureTable metadataList")
-            .appendTo(div);
+        const table = $("<table>").addClass("figureTable metadataList").appendTo(div);
         const head = $("<thead>").appendTo(table);
-        $("<th>")
-            .text("Name")
-            .appendTo(head);
-        $("<th>")
-            .text("Units")
-            .appendTo(head);
+        $("<th>").text("Name").appendTo(head);
+        $("<th>").text("Units").appendTo(head);
         const body = $("<tbody>").appendTo(table);
         metadataTypes.forEach((metadataType: any): boolean => {
             // omit items included in the 'primary characteristics' table
@@ -215,12 +191,8 @@ function showMetadataTypes(
                 return true;
             }
             const row: JQuery = $("<tr>").appendTo(body);
-            $("<td>")
-                .text(metadataType.type_name)
-                .appendTo(row);
-            $("<td>")
-                .text(metadataType.postfix)
-                .appendTo(row);
+            $("<td>").text(metadataType.type_name).appendTo(row);
+            $("<td>").text(metadataType.postfix).appendTo(row);
         });
     } else {
         div.val("No metadata types were found.");

@@ -109,9 +109,7 @@ export class DataGrid {
             }
         }
         this._waitBadge = document.createElement("span");
-        $(this._waitBadge)
-            .addClass("waitbadge wait")
-            .appendTo(this._tableControlsArea);
+        $(this._waitBadge).addClass("waitbadge wait").appendTo(this._tableControlsArea);
         // If we're asked not to display a header,
         // create it anyway so widgets can go somewhere, but hide it.
         if (!dataGridSpec.tableSpec.showHeader) {
@@ -418,10 +416,7 @@ export class DataGrid {
                                 this._clickedColVisibilityControl(e),
                             );
                         group.checkboxElement = checkbox[0];
-                        $("<label>")
-                            .attr("for", id)
-                            .text(group.name)
-                            .appendTo(item);
+                        $("<label>").attr("for", id).text(group.name).appendTo(item);
                         if (!group.currentlyHidden) {
                             checkbox.prop("checked", true);
                         }
@@ -577,9 +572,7 @@ export class DataGrid {
     arrangeTableDataRows(): DataGrid {
         let striping = 1;
 
-        $(this._tableBody)
-            .children()
-            .detach();
+        $(this._tableBody).children().detach();
         // We create a document fragment
         // a kind of container for document-related objects
         // that we don't want in the page
@@ -654,10 +647,7 @@ export class DataGrid {
         }
         // TODO: This really needs to be moved
         if ($("#GroupStudyReplicatesCB").prop("checked") === false) {
-            $(frag)
-                .children()
-                .removeClass("replicateLineShow")
-                .show();
+            $(frag).children().removeClass("replicateLineShow").show();
         }
         // Remember that we last sorted by this column
         this._tableBody.appendChild(frag);
@@ -952,7 +942,7 @@ export class DataGrid {
      */
     private _findReplicateLines(replicates, oneGroup): string[] {
         const groupedIds = []; // returns ids associated with replicate id.
-        $.each(replicates, function(key) {
+        $.each(replicates, function (key) {
             if (EDDData.Lines[replicates[key]].name === oneGroup.name) {
                 groupedIds.push(key);
             }
@@ -1010,9 +1000,7 @@ export class DataGrid {
         const lines = this.addReplicateRows(replicateIds);
         $(rowGroup.replicateGroupTitleRow).addClass("replicate");
         $.each(lines, (line: any) => {
-            $(line)
-                .show()
-                .addClass("replicateLineShow");
+            $(line).show().addClass("replicateLineShow");
             $(rowGroup.replicateGroupTitleRow).after(line);
         });
     }
@@ -1025,7 +1013,7 @@ export class DataGrid {
     private _groupReplicates(): Record<string, unknown> {
         const lines: any = EDDData.Lines;
         const rows = {};
-        $.each(lines, function(key) {
+        $.each(lines, function (key) {
             if (lines[key].replicate) {
                 rows[lines[key].id] = lines[key].replicate;
             }

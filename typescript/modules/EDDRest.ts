@@ -89,7 +89,7 @@ export function loadMetadataTypes(options: any): void {
     jQuery.ajax("/rest/metadata_types/", {
         "dataType": "json",
         "data": queryParams,
-        "success": function(responseJson) {
+        "success": function (responseJson) {
             receivedSoFar = receivedSoFar.concat(responseJson.results);
             // if results had to be paginated and aren't all received yet,
             // make a recursive call to get the rest
@@ -177,7 +177,7 @@ export function loadMeasurementTypes(options: MTypeOptions): void {
     jQuery.ajax("/rest/measurement_types/", {
         "dataType": "json",
         "data": queryParams,
-        "success": function(responseJson) {
+        "success": function (responseJson) {
             const singlePageResults: any[] = responseJson.results;
             receivedSoFar = receivedSoFar.concat(singlePageResults);
 
@@ -229,7 +229,7 @@ export function loadMeasurementUnits(options: any): void {
     jQuery.ajax("/rest/measurement_units/", {
         "dataType": "json",
         "data": queryParams,
-        "success": function(responseJson) {
+        "success": function (responseJson) {
             receivedSoFar = receivedSoFar.concat(responseJson.results);
             // if results had to be paginated and aren't all received yet,
             // make a recursive call to get the rest

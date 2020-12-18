@@ -114,7 +114,7 @@ export class BaseAuto {
     static initial_search(auto: BaseAuto, term: string): void {
         const autoInput = auto.visibleInput;
         const oldResponse = autoInput.mcautocomplete("option", "response");
-        autoInput.mcautocomplete("option", "response", function(ev, ui) {
+        autoInput.mcautocomplete("option", "response", function (ev, ui) {
             let highest = 0;
             let best;
             const termLower = term.toLowerCase();
@@ -175,9 +175,7 @@ export class BaseAuto {
 
         this.visibleInput =
             this.opt.visibleInput ||
-            $('<input type="text"/>')
-                .addClass("autocomp")
-                .appendTo(this.container);
+            $('<input type="text"/>').addClass("autocomp").appendTo(this.container);
         this.hiddenInput =
             this.opt.hiddenInput ||
             $('<input type="hidden"/>').appendTo(this.container);
@@ -202,10 +200,7 @@ export class BaseAuto {
 
     clear() {
         const blank = this.opt.emptyCreatesNew ? "new" : "";
-        this.hiddenInput
-            .val(blank)
-            .trigger("change")
-            .trigger("input");
+        this.hiddenInput.val(blank).trigger("change").trigger("input");
     }
 
     init() {
@@ -421,7 +416,7 @@ export class CarbonSource extends BaseAuto {
 export class MetadataType extends BaseAuto {
     static columns = [
         new MultiColumnAuto.AutoColumn("Name", "200px", "name"),
-        new MultiColumnAuto.AutoColumn("For", "50px", function(item, column, index) {
+        new MultiColumnAuto.AutoColumn("For", "50px", function (item, column, index) {
             const con = item.context;
             return $("<span>")
                 .addClass("tag")

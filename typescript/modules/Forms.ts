@@ -127,10 +127,7 @@ export class BulkFormManager {
             }
             parent.find(".bulk-ignore").removeClass("off");
         };
-        this.form
-            .find(".bulk")
-            .closest("p")
-            .each(init_buttons);
+        this.form.find(".bulk").closest("p").each(init_buttons);
     }
 
     private removeBulkEventHandlers() {
@@ -138,10 +135,7 @@ export class BulkFormManager {
     }
 
     private removeDisabledClass() {
-        this.form
-            .find(".bulk")
-            .closest("p")
-            .removeClass("disabled");
+        this.form.find(".bulk").closest("p").removeClass("disabled");
     }
 
     private removeReportedErrors() {
@@ -242,9 +236,7 @@ export class Autocomplete extends Field {
     static build(row: JQuery, name: string): Autocomplete {
         // row sent by FormMetadataManager has visible input element
         const visible = row.find("input");
-        const hidden = $("<input>")
-            .attr("type", "hidden")
-            .insertAfter(visible);
+        const hidden = $("<input>").attr("type", "hidden").insertAfter(visible);
         const field = new Autocomplete(visible, hidden, name);
         return field;
     }
@@ -285,9 +277,7 @@ export class Checkbox extends Field {
     static build(row: JQuery, name: string): Checkbox {
         // need to replace default textbox with a checkbox
         const existing = row.find("input");
-        const checkbox = $("<input>")
-            .attr("type", "checkbox")
-            .insertAfter(existing);
+        const checkbox = $("<input>").attr("type", "checkbox").insertAfter(existing);
         const field = new Checkbox(checkbox, name);
         existing.remove();
         return field;
@@ -576,10 +566,7 @@ export class FormMetadataManager {
                     "id": `row-${id}`,
                 })
                 .insertBefore(selectionRow);
-            addingRow
-                .find("label")
-                .attr("for", `id-${id}`)
-                .text(metaType.name);
+            addingRow.find("label").attr("for", `id-${id}`).text(metaType.name);
             this.buildInputElement(addingRow, metaType, initialValue);
             if (metaType.prefix) {
                 addingRow

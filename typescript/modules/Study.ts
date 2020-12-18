@@ -22,9 +22,7 @@ $(window).on("load", () => {
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus
     $(document).on("focus", ".autocomp", (ev) => {
-        $(ev.target)
-            .addClass("autocomp_search")
-            .mcautocomplete("search");
+        $(ev.target).addClass("autocomp_search").mcautocomplete("search");
     });
     // fetch EDDData if available
     const datalink = $("#datalink");
@@ -61,11 +59,7 @@ export class EditableStudyName extends EditableStudyElement {
     constructor(inputElement: HTMLElement) {
         super(inputElement);
         this.fieldName("name");
-        this.formURL(
-            $(inputElement)
-                .parents("form")
-                .attr("data-rest"),
-        );
+        this.formURL($(inputElement).parents("form").attr("data-rest"));
     }
 
     static createFromElement(element: HTMLElement): EditableStudyName {
@@ -100,9 +94,7 @@ export function prepareIt() {
     );
     // put the click handler at the document level, then filter to any link inside a .disclose
     $(document).on("click", ".disclose .discloseLink", (e) => {
-        $(e.target)
-            .closest(".disclose")
-            .toggleClass("discloseHide");
+        $(e.target).closest(".disclose").toggleClass("discloseHide");
         return false;
     });
     // UI Dialog will by default auto-focus the first :tabbable in a Dialog on open

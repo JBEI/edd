@@ -141,7 +141,7 @@ export function onWindowLoad(): void {
     ["1", "2", "3", "4", "5"].forEach(setupHelp);
     // send CSRF header on each AJAX request from this page
     $.ajaxSetup({
-        "beforeSend": function(xhr) {
+        "beforeSend": function (xhr) {
             const csrfToken = Utl.EDD.findCSRFToken();
             xhr.setRequestHeader("X-CSRFToken", csrfToken);
         },
@@ -150,14 +150,10 @@ export function onWindowLoad(): void {
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus
     $(document).on("focus", ".autocomp", (ev) => {
-        $(ev.target)
-            .addClass("autocomp_search")
-            .mcautocomplete("search");
+        $(ev.target).addClass("autocomp_search").mcautocomplete("search");
     });
 
-    $(".disclose")
-        .find("a.discloseLink")
-        .on("click", disclose);
+    $(".disclose").find("a.discloseLink").on("click", disclose);
 
     // Populate ATData and EDDData objects via AJAX calls
     const datalink = $("#datalink");
@@ -260,9 +256,7 @@ export function reviewStepCallback(): void {
 
 // The usual click-to-disclose callback.  Perhaps this should be in Utl.ts?
 export function disclose(): boolean {
-    $(this)
-        .closest(".disclose")
-        .toggleClass("discloseHide");
+    $(this).closest(".disclose").toggleClass("discloseHide");
     return false;
 }
 
@@ -794,9 +788,7 @@ export class RawInputStep {
                 " measurements with " +
                 points +
                 " total data points.";
-            $("<p>")
-                .text(label)
-                .appendTo($(".dz-preview"));
+            $("<p>").text(label).appendTo($(".dz-preview"));
             this.processedSetsFromFile = data;
             this.processedSetsAvailable = true;
             this.processingFile = false;
@@ -841,9 +833,7 @@ export class RawInputStep {
         } else if (xhr.status === 504) {
             text = "Time out uploading file.  Please try again.";
         }
-        $(".dz-error-message")
-            .text(text)
-            .removeClass("off");
+        $(".dz-error-message").text(text).removeClass("off");
 
         // update step 2 feedback so it no longer looks like we're waiting on the file upload
         $("#processingStep2ResultsLabel").addClass("off");
@@ -1503,9 +1493,7 @@ export class IdentifyStructuresStep implements ImportStep {
                 "x": 0,
                 "y": i + 1,
             });
-            $("<div>")
-                .text(gridRowMarkers[i])
-                .appendTo(cell);
+            $("<div>").text(gridRowMarkers[i]).appendTo(cell);
             this.rowLabelCells.push(cell[0]);
 
             /////////////////////////
@@ -1525,9 +1513,7 @@ export class IdentifyStructuresStep implements ImportStep {
                     "title": value,
                     "isblank": value === "" ? 1 : undefined,
                 });
-                $("<div>")
-                    .text(short)
-                    .appendTo(cell);
+                $("<div>").text(short).appendTo(cell);
                 this.dataCells[i].push(cell[0]);
             });
         });
@@ -1565,9 +1551,7 @@ export class IdentifyStructuresStep implements ImportStep {
             } else {
                 const opts: RowPulldownOption[] = option[1] as RowPulldownOption[];
                 this.populatePulldown(
-                    $("<optgroup>")
-                        .attr("label", option[0])
-                        .appendTo(select),
+                    $("<optgroup>").attr("label", option[0]).appendTo(select),
                     opts,
                     value,
                 );
@@ -1795,13 +1779,9 @@ export class IdentifyStructuresStep implements ImportStep {
             this.activeColFlags[x] = true;
         });
         // Flip all the checkboxes on in the header cells for the data columns
-        $("#dataTableDiv")
-            .find("[name=enableColumn]")
-            .prop("checked", true);
+        $("#dataTableDiv").find("[name=enableColumn]").prop("checked", true);
         // Same for the checkboxes in the row label cells
-        $("#dataTableDiv")
-            .find("[name=enableRow]")
-            .prop("checked", true);
+        $("#dataTableDiv").find("[name=enableRow]").prop("checked", true);
         this.interpretDataTable();
         this.redrawEnabledFlagMarkers();
         this.queueGraphRemake();
@@ -2415,10 +2395,8 @@ export class TypeDisambiguationStep {
         );
 
         // toggle matched assay section
-        $("#matchedAssaysSection .discloseLink").on("click", function(e) {
-            $(e.target)
-                .closest(".disclose")
-                .toggleClass("discloseHide");
+        $("#matchedAssaysSection .discloseLink").on("click", function (e) {
+            $(e.target).closest(".disclose").toggleClass("discloseHide");
         });
 
         const masterInputSelectors = ["#masterTimestamp"].concat(reDoStepOnChange);
@@ -2450,10 +2428,7 @@ export class TypeDisambiguationStep {
                         if (following.data("userSetValue")) {
                             return false;
                         }
-                        following
-                            .val(visibleValue)
-                            .next("input")
-                            .val(hiddenValue);
+                        following.val(visibleValue).next("input").val(hiddenValue);
                     });
             });
         });
@@ -2464,7 +2439,7 @@ export class TypeDisambiguationStep {
             "." + TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS,
         );
 
-        allUserInputs.each(function(index: number, domElement: HTMLElement) {
+        allUserInputs.each(function (index: number, domElement: HTMLElement) {
             const input = $(domElement);
             if (enabled) {
                 input.removeAttr("disabled");
@@ -2682,15 +2657,9 @@ export class TypeDisambiguationStep {
                 this.userChangedLineDisam(ev.target as HTMLElement);
             })[0] as HTMLTableElement;
         const header = $("<thead>").appendTo(table);
-        $("<th>")
-            .text("Line Imported")
-            .appendTo(header);
-        $("<th>")
-            .text("Line")
-            .appendTo(header);
-        $("<th>")
-            .text("Assays")
-            .appendTo(header);
+        $("<th>").text("Line Imported").appendTo(header);
+        $("<th>").text("Line").appendTo(header);
+        $("<th>").text("Assays").appendTo(header);
         const body = $("<tbody>").appendTo(table)[0] as HTMLTableElement;
         uniqueLineNames.forEach((name: string, i: number): void => {
             let disam: LineDisambiguationRow = this.lineObjSets[name];
@@ -2761,9 +2730,7 @@ export class TypeDisambiguationStep {
         // if there's already a table, remove it
         $("#matchedAssaysTable").remove();
         // remove rows of disambiguation table
-        $("#disambiguateAssaysTable tbody")
-            .find("tr")
-            .remove();
+        $("#disambiguateAssaysTable tbody").find("tr").remove();
 
         const tableMatched = $("<table>")
             .attr({ "id": "matchedAssaysTable", "cellspacing": 0 })
@@ -2842,10 +2809,7 @@ export class TypeDisambiguationStep {
             "off",
             "missingSingleFormInput",
         ];
-        return $("<div>")
-            .text(text)
-            .addClass(adding.join(" "))
-            .appendTo(parentDiv);
+        return $("<div>").text(text).addClass(adding.join(" ")).appendTo(parentDiv);
     }
 
     remakeMeasurementSection(): void {
@@ -3013,10 +2977,7 @@ export class TypeDisambiguationStep {
                 return;
             }
             // set dropdown to 'new' and reveal the line autoselect
-            textInput
-                .val("new")
-                .next()
-                .removeClass("off");
+            textInput.val("new").next().removeClass("off");
         });
         return false;
     }
@@ -3045,10 +3006,7 @@ export class TypeDisambiguationStep {
                 return;
             }
             // set assay dropdown to 'new' and reveal the line autocomplete
-            assaySelect
-                .val("named_or_new")
-                .next()
-                .removeClass("off");
+            assaySelect.val("named_or_new").next().removeClass("off");
         });
         return false;
     }
@@ -3355,9 +3313,7 @@ export class DisambiguationRow {
         this.addIgnoreCheckbox();
 
         // Next, add a table cell with the string we are disambiguating
-        $("<div>")
-            .text(name)
-            .appendTo(this.row.insertCell());
+        $("<div>").text(name).appendTo(this.row.insertCell());
 
         this.build(body, name, i);
     }
@@ -3520,9 +3476,7 @@ export class LineDisambiguationRow extends DisambiguationRow {
         this.lineAuto.init();
 
         // if there is a line name, auto fill line.
-        $(this.lineAuto.container[0])
-            .children(".autocomp")
-            .val(defaultSelection.name);
+        $(this.lineAuto.container[0]).children(".autocomp").val(defaultSelection.name);
 
         this.lineAuto.visibleInput
             .data("setByUser", false)
@@ -3588,9 +3542,7 @@ export class AssayDisambiguationRow extends LineDisambiguationRow {
             const parentDiv = $("#disambiguateAssaysSection");
             const table = $("#disambiguateAssaysSection table");
             $(parentDiv).removeClass("off");
-            $(this.row)
-                .find("input[type=checkbox]")
-                .prop("checked", false);
+            $(this.row).find("input[type=checkbox]").prop("checked", false);
             $(table).append(this.row);
         } else {
             /////////////////////////////////////////////////////////////////////////////
@@ -3797,12 +3749,8 @@ export class ReviewStep {
         // they are for
         if (createCheckboxes) {
             header = $("<thead>").appendTo(table);
-            $("<th>")
-                .text("Warning")
-                .appendTo(header);
-            $("<th>")
-                .text("Acknowledge")
-                .appendTo(header);
+            $("<th>").text("Warning").appendTo(header);
+            $("<th>").text("Acknowledge").appendTo(header);
         }
         const tableBody = $("<tbody>").appendTo(table)[0];
 
@@ -3810,9 +3758,7 @@ export class ReviewStep {
             (stepMessages: ImportMessage[], stepIndex: number): void => {
                 stepMessages.forEach((message: ImportMessage): void => {
                     const row = $("<tr>").appendTo(tableBody);
-                    const cell = $("<td>")
-                        .css("text-align", "left")
-                        .appendTo(row);
+                    const cell = $("<td>").css("text-align", "left").appendTo(row);
                     const div = $("<div>")
                         .attr("class", messageCssClass)
                         .appendTo(cell);

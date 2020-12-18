@@ -398,9 +398,7 @@ export class FileDropZoneHelpers {
                                 dropZone.dropzone.options.url,
                                 window.location.toString(),
                             );
-                            $(ev.target)
-                                .parent()
-                                .remove();
+                            $(ev.target).parent().remove();
                             parsedUrl.searchParams.append(
                                 "IGNORE_ICE_ACCESS_ERRORS",
                                 "true",
@@ -484,9 +482,7 @@ export class FileDropZoneHelpers {
         const responseMessages = this.organizeMessages(response);
         $.each(responseMessages, (key: string, value: any) => {
             const template = type === "error" ? ".alert-danger" : ".alert-warning";
-            const div = $(template)
-                .eq(0)
-                .clone();
+            const div = $(template).eq(0).clone();
             this.alertMessage(key, value, div, type);
         });
     }
@@ -554,47 +550,31 @@ export class FileDropZoneHelpers {
     }
 
     private alertError(response): void {
-        const newErrorAlert = $(".alert-danger")
-            .eq(0)
-            .clone();
+        const newErrorAlert = $(".alert-danger").eq(0).clone();
         this.createAlertMessage(newErrorAlert, response);
         this.clearDropZone();
     }
 
     private createAlertMessage(alertClone, response) {
-        $(alertClone)
-            .children("h4")
-            .text(response.category);
-        $(alertClone)
-            .children("p")
-            .text(`${response.summary}: ${response.details}`);
+        $(alertClone).children("h4").text(response.category);
+        $(alertClone).children("p").text(`${response.summary}: ${response.details}`);
         $("#alert_placeholder").append(alertClone);
-        $(alertClone)
-            .removeClass("off")
-            .show();
+        $(alertClone).removeClass("off").show();
     }
 
     private alertMessage(subject, messages, newAlert, type): void {
         if (type === "warnings") {
-            $(newAlert)
-                .children("h4")
-                .text(`Warning! ${subject}`);
+            $(newAlert).children("h4").text(`Warning! ${subject}`);
         } else {
-            $(newAlert)
-                .children("h4")
-                .text(`Error! ${subject}`);
+            $(newAlert).children("h4").text(`Error! ${subject}`);
             this.clearDropZone();
         }
         $.each(messages, (key, message) => {
-            const summary = $("<p>")
-                .addClass("alertWarning")
-                .text(message);
+            const summary = $("<p>").addClass("alertWarning").text(message);
             $(newAlert).append(summary);
         });
         $("#alert_placeholder").append(newAlert);
-        $(newAlert)
-            .removeClass("off")
-            .show();
+        $(newAlert).removeClass("off").show();
     }
 
     private clearDropZone(): void {

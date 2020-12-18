@@ -230,16 +230,9 @@ export class NotificationMenu {
     }
 
     private processMessage(message: Message): JQuery | null {
-        const item = $("<li>")
-            .addClass("message")
-            .data("uuid", message.uuid);
-        $("<span>")
-            .addClass("message-text")
-            .html(message.message)
-            .appendTo(item);
-        $("<span>")
-            .addClass("message-close fas fa-times")
-            .appendTo(item);
+        const item = $("<li>").addClass("message").data("uuid", message.uuid);
+        $("<span>").addClass("message-text").html(message.message).appendTo(item);
+        $("<span>").addClass("message-close fas fa-times").appendTo(item);
         return item;
     }
 }

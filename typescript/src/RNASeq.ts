@@ -20,17 +20,9 @@ export class EDDRnaSeq {
             const tbody = $("#sample-fields");
             tbody.empty();
             $("#assay-id").empty();
-            $("#assay-id").append(
-                $("<option/>")
-                    .val("0")
-                    .text("(new assay)"),
-            );
+            $("#assay-id").append($("<option/>").val("0").text("(new assay)"));
             for (const assay of result.assays) {
-                $("#assay-id").append(
-                    $("<option/>")
-                        .val(assay.id)
-                        .text(assay.name),
-                );
+                $("#assay-id").append($("<option/>").val(assay.id).text(assay.name));
             }
             $("#n-cols").val(result.samples.length);
             for (let i = 0; i < result.samples.length; i++) {

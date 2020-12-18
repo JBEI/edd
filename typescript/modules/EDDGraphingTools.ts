@@ -356,16 +356,10 @@ export class GraphView {
         const x_extent: [number, number] = d3.extent(values, (v: GraphValue) => v.x);
 
         // tool tip svg
-        d3.select("body")
-            .append("div")
-            .attr("class", "tooltip2")
-            .style("opacity", 0);
+        d3.select("body").append("div").attr("class", "tooltip2").style("opacity", 0);
 
         // x axis range
-        const x_scale = d3
-            .scaleLinear()
-            .domain(x_extent)
-            .range([0, params.width]);
+        const x_scale = d3.scaleLinear().domain(x_extent).range([0, params.width]);
         const ordinalColors = d3.scaleOrdinal(EDDGraphingTools.colors);
 
         // create x axis svg
@@ -654,10 +648,7 @@ export class GraphView {
                 "y": text_y + 8,
             } as GraphValue;
             // create an enter selection with a fake value at icon location
-            const labelIcon = axisLabel
-                .selectAll(".icon")
-                .data([fakeValue])
-                .enter();
+            const labelIcon = axisLabel.selectAll(".icon").data([fakeValue]).enter();
             // using absolute coordinates, identity scale
             const ident = d3.scaleIdentity();
             icon.call(this, labelIcon, new Positioning(ident, ident));
@@ -716,10 +707,7 @@ export class GraphView {
                 "y": text_y - 4,
             } as GraphValue;
             // create an enter selection with a fake value at icon location
-            const labelIcon = axisLabel
-                .selectAll(".icon")
-                .data([fakeValue])
-                .enter();
+            const labelIcon = axisLabel.selectAll(".icon").data([fakeValue]).enter();
             // using absolute coordinates, identity scale
             const ident = d3.scaleIdentity();
             icon.call(this, labelIcon, new Positioning(ident, ident));
@@ -784,10 +772,7 @@ export class GraphView {
         }
         this.svg.selectAll(".graphValue").style("opacity", 0.1);
         // use addBack() for bar graph, where bar is .graphValue
-        $(event.target)
-            .parents(".graphValue")
-            .addBack()
-            .css("opacity", 1);
+        $(event.target).parents(".graphValue").addBack().css("opacity", 1);
     }
 
     private tooltip_out(): void {

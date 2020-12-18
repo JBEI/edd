@@ -20,15 +20,13 @@ function buildMenu(menuElement: HTMLElement): Notification.NotificationMenu {
 // called when the page loads
 export function prepareIt() {
     // adding click handlers to close buttons on status messages
-    $(document).on("click", ".statusMessage a.close", function(ev) {
+    $(document).on("click", ".statusMessage a.close", function (ev) {
         const link = $(this);
         const href = link.attr("close-href");
-        const token = $(".statusMessage [name=csrfmiddlewaretoken]")
-            .first()
-            .val();
+        const token = $(".statusMessage [name=csrfmiddlewaretoken]").first().val();
         ev.preventDefault();
         if (href) {
-            $.post(href, { "csrfmiddlewaretoken": token }, function() {
+            $.post(href, { "csrfmiddlewaretoken": token }, function () {
                 link.parent().fadeOut();
             });
         } else {

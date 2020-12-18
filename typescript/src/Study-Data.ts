@@ -610,9 +610,7 @@ export class GenericFilterSection {
     createContainerObjects(): void {
         const sBoxID: string = "filter" + this.sectionShortLabel + "SearchBox";
         this.filterColumnDiv = $("<div>").addClass("filterColumn")[0];
-        const textTitle = $("<span>")
-            .addClass("filterTitle")
-            .text(this.sectionTitle);
+        const textTitle = $("<span>").addClass("filterTitle").text(this.sectionTitle);
         const clearIcon = $("<span>").addClass("filterClearIcon");
         this.plaintextTitleDiv = $("<div>")
             .addClass("filterHead")
@@ -1312,12 +1310,8 @@ function _displayTable(): void {
 }
 
 function _setActiveDisplayButton(selector: string, mode: ViewingMode): void {
-    $("#displayModeButtons")
-        .find(".active")
-        .removeClass("active");
-    $("#displayModeButtons")
-        .find(selector)
-        .addClass("active");
+    $("#displayModeButtons").find(".active").removeClass("active");
+    $("#displayModeButtons").find(selector).addClass("active");
     viewingMode = mode;
     queueActionPanelRefresh();
     queueRefreshDataDisplayIfStale();
@@ -1424,9 +1418,7 @@ export function prepareIt() {
 
     $("#addMeasurementButton").click(() => {
         // copy inputs to the modal form
-        const inputs = $("#assaysTable")
-            .find("input[name=assayId]:checked")
-            .clone();
+        const inputs = $("#assaysTable").find("input[name=assayId]:checked").clone();
         $("#addMeasurement")
             .find(".hidden-assay-inputs")
             .empty()
@@ -2656,11 +2648,7 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
 
         const anyDisabledChecked: boolean = $(".disabledRecord")
             .toArray()
-            .some((row): boolean =>
-                $(row)
-                    .find("input")
-                    .prop("checked"),
-            );
+            .some((row): boolean => $(row).find("input").prop("checked"));
         $("#enableButton").prop("disabled", !anyDisabledChecked);
 
         // If the box is checked, return the set of IDs unfiltered
