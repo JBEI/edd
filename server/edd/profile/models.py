@@ -125,7 +125,9 @@ def User_to_solr_json(self):
 
 def format_solr_date(date):
     # arrow will give current time when argument is None
-    return arrow.get(date).isoformat() if date else None
+    if date:
+        return arrow.get(date).to("utc").format("YYYY-MM-DDTHH:mm:ss.SSS") + "Z"
+    return None
 
 
 def patch_user_model(User):
