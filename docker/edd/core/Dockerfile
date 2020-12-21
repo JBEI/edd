@@ -38,7 +38,7 @@ WORKDIR /install
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
 
 COPY ./docker/edd/core/Pipfile* /install/
-COPY ./docker/edd/core/run_tests.sh /usr/local/bin/run_tests.sh
+COPY ./docker/edd/core/bin/* /usr/local/bin/
 
 RUN set -ex \
     # update package index from base file
