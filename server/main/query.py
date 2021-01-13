@@ -58,9 +58,7 @@ def get_edddata_study(study):
     that are not "children" of a Study, they have been filtered to include only
     those that are used by the given study.
     """
-    measure_types = models.MeasurementType.objects.filter(
-        assay__line__study=study
-    ).distinct()
+    measure_types = models.MeasurementType.used_in_study(study)
     protocols = study.get_protocols_used()
     assays = study.get_assays()
     strains = study.get_strains_used()
@@ -73,6 +71,7 @@ def get_edddata_study(study):
     all_users = study_contact.union(
         line_contacts, line_experimenters, assay_experimenters
     )
+
     return {
         "currentStudyID": study.id,
         "valueLinks": [

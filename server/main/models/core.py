@@ -1265,6 +1265,22 @@ class Measurement(EDDMetadata, EDDSerialize):
     def is_concentration_measurement(self):
         return self.y_axis_units_name in ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L"]
 
+    @classmethod
+    def active_in(cls, *, study_id, protocol_id, assay_id=None):
+        """
+        Queries all active/enabled measurements matching criteria.
+        """
+        assay_filter = Q() if assay_id is None else Q(assay_id=assay_id)
+        active = cls.objects.filter(
+            assay_filter,
+            active=True,
+            assay__active=True,
+            assay__line__active=True,
+            assay__line__study_id=study_id,
+            assay__protocol_id=protocol_id,
+        )
+        return active
+
 
 def measurement_formal_id(measurement):
     mt = measurement.measurement_type
@@ -1341,3 +1357,21 @@ class MeasurementValue(models.Model):
 
     def is_defined(self):
         return self.y is not None and len(self.y) > 0
+
+    @classmethod
+    def active_in(cls, *, study_id, protocol_id, assay_id=None, id_range=None):
+        """
+        Queries all active/enabled values matching criteria.
+        """
+        assay_filter = Q() if assay_id is None else Q(measurement__assay_id=assay_id)
+        range_filter = Q() if id_range is None else Q(measurement__pk__range=id_range)
+        active = cls.objects.filter(
+            assay_filter,
+            range_filter,
+            measurement__active=True,
+            measurement__assay__active=True,
+            measurement__assay__line__active=True,
+            measurement__assay__line__study_id=study_id,
+            measurement__assay__protocol_id=protocol_id,
+        )
+        return active

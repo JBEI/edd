@@ -50,61 +50,25 @@ def load_study(
     raise Http404()
 
 
-def _query_measure_types(*, study, protocol_id, assay_id=None):
-    assay_filter = Q() if assay_id is None else Q(measurement__assay_id=assay_id)
-    return edd_models.MeasurementType.objects.filter(
-        assay_filter,
-        measurement__active=True,
-        measurement__assay__active=True,
-        measurement__assay__line__active=True,
-        measurement__assay__line__study_id=study.pk,
-        measurement__assay__protocol_id=protocol_id,
-    ).distinct()
-
-
-def _query_measurements(*, study, protocol_id, assay_id=None):
-    assay_filter = Q() if assay_id is None else Q(assay_id=assay_id)
-    return edd_models.Measurement.objects.filter(
-        assay_filter,
-        active=True,
-        assay__active=True,
-        assay__line__active=True,
-        assay__line__study_id=study.pk,
-        assay__protocol_id=protocol_id,
-    )
-
-
-def _query_values(*, study, protocol_id, assay_id=None, id_range=None):
-    assay_filter = Q() if assay_id is None else Q(measurement__assay_id=assay_id)
-    range_filter = Q() if id_range is None else Q(measurement__pk__range=id_range)
-    return edd_models.MeasurementValue.objects.filter(
-        assay_filter,
-        range_filter,
-        measurement__active=True,
-        measurement__assay__active=True,
-        measurement__assay__line__active=True,
-        measurement__assay__line__study_id=study.pk,
-        measurement__assay__protocol_id=protocol_id,
-    )
-
-
 # /study/<study_id>/measurements/<protocol_id>/<assay_id?>/
 def study_measurements(request, pk=None, slug=None, protocol=None, assay=None):
     """Request measurement data in a study, for a single assay."""
     obj = load_study(request, pk=pk, slug=slug)
-    measure_types = _query_measure_types(
-        study=obj, protocol_id=protocol, assay_id=assay
+    measure_types = edd_models.MeasurementType.active_in(
+        study_id=obj.id, protocol_id=protocol, assay_id=assay,
     )
     # stash QuerySet to use in both measurements and total_measures below
-    qmeasurements = _query_measurements(study=obj, protocol_id=protocol, assay_id=assay)
+    qmeasurements = edd_models.Measurement.active_in(
+        study_id=obj.id, protocol_id=protocol, assay_id=assay,
+    )
     # Limit the measurements returned to keep browser performant
     measurements = qmeasurements.order_by("id")[:5000]
     total_measures = qmeasurements.values("assay_id").annotate(count=Count("assay_id"))
     measure_list = list(measurements)
     if len(measure_list):
         # only try to pull values when we have measurement objects
-        values = _query_values(
-            study=obj,
+        values = edd_models.MeasurementValue.active_in(
+            study_id=obj.id,
             protocol_id=protocol,
             assay_id=assay,
             id_range=(measure_list[0].id, measure_list[-1].id),

@@ -78,11 +78,28 @@ interface MeasurementCompartmentRecord {
     code: string;
 }
 
+/**
+ * Information about a type of measurement stored in EDD.
+ */
 interface MeasurementTypeRecord {
-    id: number; // Type ID
-    uuid: string; // Type UUID
-    name: string; // Type name
-    family: string; // 'm', 'g', 'p' for metabolite, gene, protien
+    /** Internal ID / primary key. */
+    id: number;
+    /** External UUID / alternate primary key. */
+    uuid: string;
+    /** Display name for the measurement type. */
+    name: string;
+    /**
+     * Enum string for class of measurement:
+     *  - "m": metabolite
+     *  - "g": gene / transcript
+     *  - "p": protein
+     *  - "_": general / other
+     */
+    family: string;
+    /** (optional) PubChem Compund ID, if available. */
+    cid?: number;
+    /** (optional) UniProt Accession ID, if available. */
+    accession?: string;
 }
 
 /**

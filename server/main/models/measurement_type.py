@@ -10,6 +10,7 @@ from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models import F, Q
 from django.utils.translation import gettext as _u
 from django.utils.translation import gettext_lazy as _
 from rdflib import Graph
@@ -132,12 +133,18 @@ class MeasurementType(EDDSerialize, models.Model):
         }
 
     def to_json(self, depth=0):
-        return {
+        payload = {
             "id": self.pk,
             "uuid": self.uuid,
             "name": self.type_name,
             "family": self.type_group,
         }
+        # optionally add CID or Accession if from annotated query
+        if (cid := getattr(self, "cid", None)) is not None:
+            payload["cid"] = cid
+        elif (accession := getattr(self, "accession", None)) is not None:
+            payload["accession"] = accession
+        return payload
 
     def __str__(self):
         return self.type_name
@@ -156,6 +163,36 @@ class MeasurementType(EDDSerialize, models.Model):
 
     def export_name(self):
         return self.type_name
+
+    @classmethod
+    def active_in(cls, *, study_id, protocol_id, assay_id=None):
+        """
+        Queries all unique types on active/enabled measurements matching criteria.
+        """
+        assay_filter = Q() if assay_id is None else Q(measurement__assay_id=assay_id)
+        active = cls.objects.filter(
+            assay_filter,
+            measurement__active=True,
+            measurement__assay__active=True,
+            measurement__assay__line__active=True,
+            measurement__assay__line__study_id=study_id,
+            measurement__assay__protocol_id=protocol_id,
+        ).distinct()
+        return active.annotate(
+            cid=F("metabolite__pubchem_cid"),
+            accession=F("proteinidentifier__accession_code"),
+        )
+
+    @classmethod
+    def used_in_study(cls, study):
+        """
+        Queries all unique types used in a specific study.
+        """
+        used = cls.objects.filter(assay__study=study).distinct()
+        return used.annotate(
+            cid=F("metabolite__pubchem_cid"),
+            accession=F("proteinidentifier__accession_code"),
+        )
 
 
 class Metabolite(MeasurementType):

@@ -529,7 +529,13 @@ class MetaboliteSection extends MeasurementFilterSection {
     }
 
     valueToDisplay(value: Category): string {
-        return `${value.compartment.code} ${value.measurementType.name}`.trim();
+        const t = value.measurementType;
+        let link = "";
+        if (t.cid) {
+            link = `<a href="https://pubchem.ncbi.nlm.nih.gov/compound/${t.cid}"
+                target="_blank">CID:${t.cid}</a>`;
+        }
+        return `${value.compartment.code} ${t.name} ${link}`.trim();
     }
 }
 
@@ -540,6 +546,16 @@ class ProteinSection extends MeasurementFilterSection {
 
     protected accept(value: Category) {
         return value.measurementType.family === "p";
+    }
+
+    valueToDisplay(value: Category): string {
+        const t = value.measurementType;
+        let link = "";
+        if (t.accession) {
+            link = `<a href="https://ebi10.uniprot.org/uniprot/${t.accession}"
+                target="_blank">${t.accession}</a>`;
+        }
+        return `${value.compartment.code} ${t.name} ${link}`.trim();
     }
 }
 
