@@ -28,7 +28,7 @@ class Notification(NotificationBase):
 
     def __new__(cls, message, tags=None, payload=None, time=None, uuid=None):
         tags = tuple() if tags is None else tuple(tags)
-        time = arrow.utcnow().timestamp if time is None else time
+        time = arrow.utcnow().int_timestamp if time is None else time
         uuid = uuid4() if uuid is None else uuid
         self = super().__new__(cls, message, tags, payload, time, uuid)
         return self

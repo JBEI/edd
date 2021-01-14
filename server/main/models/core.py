@@ -218,7 +218,7 @@ class EDDObject(EDDMetadata, EDDSerialize):
 
     @property
     def mod_epoch(self):
-        return arrow.get(self.updated.mod_time).timestamp
+        return arrow.get(self.updated.mod_time).int_timestamp
 
     @property
     def last_modified(self):

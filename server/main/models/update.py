@@ -130,7 +130,7 @@ class Update(models.Model, EDDSerialize):
             is positive, the dict will expand links to other objects, rather than inserting a
             database identifier. """
         return {
-            "time": arrow.get(self.mod_time).timestamp,
+            "time": arrow.get(self.mod_time).int_timestamp,
             "user": self.get_attr_depth("mod_by", depth),
         }
 
