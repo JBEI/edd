@@ -1,8 +1,10 @@
 from channels.routing import ProtocolTypeRouter, URLRouter
-from django.conf.urls import url
+from django.urls import path
 
 from . import consumers
 
-urls = [url(r"", consumers.NotifySubscribeConsumer)]
+application = ProtocolTypeRouter(
+    {"websocket": URLRouter([path("", consumers.NotifySubscribeConsumer)])}
+)
 
-application = ProtocolTypeRouter({"websocket": URLRouter(urls)})
+__all__ = [application]
