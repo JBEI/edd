@@ -199,7 +199,7 @@ class ImportExecutorRunningTests(TestCase):
         assert self.load.status == LoadRequest.Status.COMPLETED
 
     def test_executor_with_existing_assays_and_times(self):
-        time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        time = models.MetadataType.system("Time")
         x = 12
         y = 42
         assay_A = main_factory.AssayFactory(
@@ -267,7 +267,7 @@ class ImportExecutorRunningTests(TestCase):
         assert self.load.status == LoadRequest.Status.FAILED
 
     def test_executor_with_partial_time_lookup_errors(self):
-        time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        time = models.MetadataType.system("Time")
         # has time
         assay_A = main_factory.AssayFactory(
             line=self.BW1, metadata={time.pk: "12"}, protocol=self.protocol,

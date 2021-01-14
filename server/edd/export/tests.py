@@ -16,11 +16,6 @@ def bad_function(*args, **kwargs):
     raise Exception
 
 
-def load_metadata(name):
-    uuid = models.SYSTEM_META_TYPES[name]
-    return models.MetadataType.objects.get(uuid=uuid)
-
-
 def test_columnchoice_from_model_default_value():
     default = factory.fake.word()
     column = models.WorklistColumn(default_value=default)
@@ -101,7 +96,7 @@ class WorklistExportTests(TestCase):
         ]
         # initialize 3x assays on lines 6, 8, 10, 12, 14 (1-base)
         # assays at times 12, 24, 36
-        time = load_metadata("Time")
+        time = models.MetadataType.system("Time")
         cls.assays = [
             factory.AssayFactory(
                 line=cls.lines[line],
@@ -148,7 +143,7 @@ class WorklistExportTests(TestCase):
         columns = [
             models.WorklistColumn.objects.create(
                 heading="Name",
-                meta_type=load_metadata("Line Name"),
+                meta_type=models.MetadataType.system("Line Name"),
                 ordering=1,
                 template=template,
             ),
@@ -198,7 +193,7 @@ class WorklistExportTests(TestCase):
         columns = [
             models.WorklistColumn.objects.create(
                 heading="Name",
-                meta_type=load_metadata("Line Name"),
+                meta_type=models.MetadataType.system("Line Name"),
                 ordering=1,
                 template=template,
             ),
@@ -247,7 +242,7 @@ class WorklistExportTests(TestCase):
         columns = [
             models.WorklistColumn.objects.create(
                 heading="Name",
-                meta_type=load_metadata("Assay Name"),
+                meta_type=models.MetadataType.system("Assay Name"),
                 ordering=1,
                 template=template,
             ),
@@ -257,7 +252,7 @@ class WorklistExportTests(TestCase):
             models.WorklistColumn.objects.create(
                 default_value="",
                 heading="Time",
-                meta_type=load_metadata("Time"),
+                meta_type=models.MetadataType.system("Time"),
                 ordering=3,
                 template=template,
             ),
@@ -291,7 +286,7 @@ class WorklistExportTests(TestCase):
         columns = [
             models.WorklistColumn.objects.create(
                 heading="Name",
-                meta_type=load_metadata("Assay Name"),
+                meta_type=models.MetadataType.system("Assay Name"),
                 ordering=1,
                 template=template,
             ),
@@ -301,7 +296,7 @@ class WorklistExportTests(TestCase):
             models.WorklistColumn.objects.create(
                 default_value="",
                 heading="Time",
-                meta_type=load_metadata("Time"),
+                meta_type=models.MetadataType.system("Time"),
                 ordering=3,
                 template=template,
             ),

@@ -45,9 +45,7 @@ class ImportExecutor:
         self._assays_by_pk: typing.Dict[int, models.Assay] = {}
 
         self._use_assay_time_meta: bool = False
-        self.assay_time_mtype = models.MetadataType.objects.get(
-            uuid=models.SYSTEM_META_TYPES["Time"]
-        )
+        self.assay_time_mtype = models.MetadataType.system("Time")
         # MeasurementValue counts resulting from this import
         self.total_added: int = 0
         self.total_updated: int = 0

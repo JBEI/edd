@@ -279,7 +279,7 @@ class ImportResolverTests(TestCase):
 
     def test_resolve_with_times_on_assays(self):
         # setup
-        time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        time = models.MetadataType.system("Time")
         assay_A = main_factory.AssayFactory(
             line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
         )
@@ -342,7 +342,7 @@ class ImportResolverTests(TestCase):
 
     def test_resolve_with_partial_times_on_assays(self):
         # setup
-        time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        time = models.MetadataType.system("Time")
         assay_A = main_factory.AssayFactory(
             line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
         )
@@ -375,7 +375,7 @@ class ImportResolverTests(TestCase):
 
     def test_resolve_with_overdetermined_time(self):
         # setup
-        time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        time = models.MetadataType.system("Time")
         assay_A = main_factory.AssayFactory(
             line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
         )
@@ -410,7 +410,7 @@ class ImportResolverTests(TestCase):
 
     def test_resolve_with_partial_overdetermined_time(self):
         # setup
-        time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        time = models.MetadataType.system("Time")
         assay_A = main_factory.AssayFactory(
             line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
         )

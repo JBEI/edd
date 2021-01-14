@@ -270,7 +270,7 @@ class WizardParseTaskTests(TestCase):
         task.delay.assert_called_once()
 
     def _setup_parse_add_time(self):
-        time = models.MetadataType.objects.get(uuid=models.SYSTEM_META_TYPES["Time"])
+        time = models.MetadataType.system("Time")
         qs = models.Assay.objects.filter(study=self.study, protocol=self.protocol)
         qs.update(metadata={time.pk: 12})
 

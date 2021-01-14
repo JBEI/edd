@@ -177,9 +177,7 @@ class CombinatorialCreationTests(TestCase):
         meta = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
         # Create strains for this test
         strain, _ = models.Strain.objects.get_or_create(name="JW0111")
-        control = models.MetadataType.objects.get(
-            uuid=models.SYSTEM_META_TYPES["Control"]
-        )
+        control = models.MetadataType.system("Control")
 
         # creating *AFTER* setup of testing database records
         cache = ExperimentDescriptionContext()
@@ -391,9 +389,7 @@ class ExperimentDescriptionParseTests(TestCase):
         parser = ExperimentDescFileParser(cache, importer)
         parsed: List[CombinatorialDescriptionInput] = parser.parse_csv(lines_iter)
 
-        time_meta_type = models.MetadataType.objects.get(
-            uuid=models.SYSTEM_META_TYPES["Time"]
-        )
+        time_meta_type = models.MetadataType.system("Time")
         self.assertDictEqual(
             parsed[0].protocol_to_assay_metadata,
             {self.targeted_proteomics.pk: {time_meta_type.pk: 2.0}},
@@ -419,9 +415,7 @@ class ExperimentDescriptionParseTests(TestCase):
         parsed: List[CombinatorialDescriptionInput] = parser.parse_excel(ed_file)
         combo_input: CombinatorialDescriptionInput = parsed[0]
 
-        time_meta_type = models.MetadataType.objects.get(
-            uuid=models.SYSTEM_META_TYPES["Time"]
-        )
+        time_meta_type = models.MetadataType.system("Time")
         self.assertDictEqual(
             combo_input.protocol_to_combinatorial_meta_dict,
             {

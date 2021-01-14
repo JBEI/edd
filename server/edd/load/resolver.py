@@ -103,9 +103,7 @@ class ImportResolver:
         self.parsed = parsed
 
         self._assay_time_error: bool = False
-        self._assay_time_metatype = models.MetadataType.objects.get(
-            uuid=models.SYSTEM_META_TYPES["Time"]
-        )
+        self._assay_time_metatype = models.MetadataType.system("Time")
 
         # maps type identifier strings to model objects
         self._mtype_name_to_type: typing.Dict[str, models.MeasurementType] = {}
