@@ -50,7 +50,7 @@ export class EditableStudyElement extends EDDEditable.EditableElement {
     editAllowed(): boolean {
         return true;
     }
-    canCommit(value): boolean {
+    canCommit(value: string): boolean {
         return true;
     }
 }
@@ -66,7 +66,7 @@ export class EditableStudyName extends EditableStudyElement {
         return new EditableStudyName(element);
     }
 
-    canCommit(value): boolean {
+    canCommit(value: string): boolean {
         return "" !== value.trim();
     }
 
@@ -88,7 +88,7 @@ function patchedFocusTabbable() {
 }
 
 // Called when the page loads.
-export function prepareIt() {
+function prepareIt(): void {
     EditableStudyName.createFromElement(
         $("#editable-study-name").get()[0] as HTMLElement,
     );
@@ -102,7 +102,7 @@ export function prepareIt() {
     $.ui.dialog.prototype._focusTabbable = patchedFocusTabbable;
 }
 
-export function buildModalPosition() {
+export function buildModalPosition(): JQueryUI.JQueryPositionOptions {
     // want to position modal below the navigation bar
     // has to be in a function instead of global because navbar is built later
     const navbar = $("nav.navbar");
@@ -113,16 +113,18 @@ export function buildModalPosition() {
     };
 }
 
-export function dialogDefaults(options: any): any {
+export function dialogDefaults(
+    options: JQueryUI.DialogOptions,
+): JQueryUI.DialogOptions {
     const navbar = $("nav.navbar");
     const $window = $(window);
-    const defaults = {
+    const defaults: JQueryUI.DialogOptions = {
         "autoOpen": false,
         "maxHeight": $window.height() - navbar.height(),
         "maxWidth": $window.width(),
         "position": buildModalPosition(),
     };
-    $.extend(defaults, options);
+    Object.assign(defaults, options);
     return defaults;
 }
 

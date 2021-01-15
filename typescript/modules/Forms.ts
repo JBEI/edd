@@ -3,37 +3,39 @@
 import * as $ from "jquery";
 import * as EDDAuto from "./EDDAutocomplete";
 
-export type Renderer = (record?: any) => any;
+type GenericRecord = Record<string, any>;
+
+export type Renderer = (record?: GenericRecord) => any;
 export interface FieldRenderer extends Renderer {
-    (record?: any): string;
+    (record?: GenericRecord): string;
 }
 export interface AutocompleteRenderer extends Renderer {
-    (record?: any): [string, string];
+    (record?: GenericRecord): [string, string];
 }
 export interface CheckboxRenderer extends Renderer {
-    (record?: any): boolean;
+    (record?: GenericRecord): boolean;
 }
-export interface IFormField {
-    clear(): IFormField;
-    enabled(enabled: boolean): IFormField;
-    fill(record: any): IFormField;
+export interface IFormField<T> {
+    clear(): IFormField<T>;
+    enabled(enabled: boolean): IFormField<T>;
+    fill(record: GenericRecord): IFormField<T>;
     name: string;
-    parse(): any;
+    parse(): T;
     render(): Renderer;
-    render(r: Renderer): IFormField;
-    render(r?: Renderer): Renderer | IFormField;
+    render(r: Renderer): void;
+    render(r?: Renderer): Renderer | void;
 }
 
 /**
  * Handles interactions with forms that can use bulk editing.
  */
 export class BulkFormManager {
-    private _fields: { [name: string]: IFormField } = {};
+    private _fields: { [name: string]: IFormField<any> } = {};
     private _selection: JQuery;
 
     constructor(private form: JQuery, private prefix?: string) {}
 
-    fields(fields: IFormField[]): BulkFormManager {
+    fields(fields: IFormField<any>[]): BulkFormManager {
         fields.forEach((f) => {
             this._fields[f.name] = f;
             f.clear();
@@ -41,7 +43,7 @@ export class BulkFormManager {
         return this;
     }
 
-    fill(record: any): BulkFormManager {
+    fill(record: GenericRecord): BulkFormManager {
         $.each(this._fields, (name, f) => f.fill(record));
         // only when selection has multiple items, show ignore buttons on non-disabled inputs
         if (this._selection.length > 1) {
@@ -151,38 +153,19 @@ export class BulkFormManager {
     }
 }
 
-/**
- * Basic field; a single input element, having a single value mapped to a record property.
- * Appropriate for plain text inputs, selects, textareas. Defaults to disabling field
- * elements when the filled record does not have a property matching this field.
- */
-export class Field implements IFormField {
+abstract class AbstractField<T> implements IFormField<T> {
     public static placeholder: string;
     private _render: Renderer;
     private _required: boolean;
 
-    static build(row: JQuery, name: string): Field {
-        // row sent by FormMetadataManager already has an appropriate input element
-        const input = row.find("input");
-        const field = new Field(input, name);
-        return field;
-    }
-
-    constructor(private field: JQuery, public readonly name: string) {
+    constructor(protected field: JQuery, public readonly name: string) {
         // set name data on parent P element to make it easier to map events to a Field object
         field.closest("p").data("name", name);
         this._required = field.prop("required");
     }
 
-    protected defaultRender(record?: any): string {
-        return record[this.name];
-    }
-
-    clear(): Field {
-        this.field.val("");
-        return this;
-    }
-    enabled(enabled: boolean, message?: string): Field {
+    abstract clear(): IFormField<T>;
+    enabled(enabled: boolean, message?: string): IFormField<T> {
         message = message || Field.placeholder;
         if (enabled) {
             this.field
@@ -203,24 +186,56 @@ export class Field implements IFormField {
         }
         return this;
     }
-    parse(): any {
-        return this.field.val();
-    }
-    fill(record: any): Field {
+    fill(record: GenericRecord): IFormField<T> {
         const hasValue = Object.prototype.hasOwnProperty.call(record, this.name);
         this.enabled(hasValue);
         return this.set(this.render()(record));
     }
+    abstract parse(): T;
     render(): Renderer;
-    render(r: Renderer): Field;
-    render(r?: Renderer): Renderer | Field {
+    render(r: Renderer): void;
+    render(r?: Renderer): Renderer | void {
         if (r === undefined) {
             return this._render ? this._render : this.defaultRender.bind(this);
         }
         this._render = r;
+    }
+    abstract set(value: T): AbstractField<T>;
+
+    protected defaultRender(record?: GenericRecord): string {
+        return record[this.name];
+    }
+}
+
+/**
+ * Basic field; a single input element, having a single value mapped to a record property.
+ * Appropriate for plain text inputs, selects, textareas. Defaults to disabling field
+ * elements when the filled record does not have a property matching this field.
+ */
+export class Field extends AbstractField<string> {
+    static build(row: JQuery, name: string): Field {
+        // row sent by FormMetadataManager already has an appropriate input element
+        const input = row.find("input");
+        const field = new Field(input, name);
+        return field;
+    }
+
+    constructor(field: JQuery, name: string) {
+        super(field, name);
+    }
+
+    protected defaultRender(record?: GenericRecord): string {
+        return record[this.name];
+    }
+
+    clear(): Field {
+        this.field.val("");
         return this;
     }
-    set(value: any): Field {
+    parse(): string {
+        return this.field.val() as string;
+    }
+    set(value: string): Field {
         this.field.val(value);
         return this;
     }
@@ -232,7 +247,7 @@ export type WidgetInit = (row: JQuery, widget: Field) => void;
  * Autocomplete field; has a visible element and a hidden element. Overrides the Renderer used
  * to generate both the visible and hidden values.
  */
-export class Autocomplete extends Field {
+export class Autocomplete extends AbstractField<[string, string]> {
     static build(row: JQuery, name: string): Autocomplete {
         // row sent by FormMetadataManager has visible input element
         const visible = row.find("input");
@@ -262,18 +277,18 @@ export class Autocomplete extends Field {
         return this.hidden.val();
     }
     render(): AutocompleteRenderer;
-    render(r: AutocompleteRenderer): Field;
-    render(r?: AutocompleteRenderer): AutocompleteRenderer | Field {
+    render(r: AutocompleteRenderer): void;
+    render(r?: AutocompleteRenderer): AutocompleteRenderer | void {
         return super.render(r);
     }
-    set(value: any): Autocomplete {
+    set(value: [string, string]): Autocomplete {
         this.visible.val(value[0]);
         this.hidden.val(value[1]);
         return this;
     }
 }
 
-export class Checkbox extends Field {
+export class Checkbox extends AbstractField<boolean> {
     static build(row: JQuery, name: string): Checkbox {
         // need to replace default textbox with a checkbox
         const existing = row.find("input");
@@ -299,17 +314,17 @@ export class Checkbox extends Field {
         return this.checkbox.prop("checked");
     }
     render(): CheckboxRenderer;
-    render(r: CheckboxRenderer): Field;
-    render(r?: CheckboxRenderer): CheckboxRenderer | Field {
+    render(r: CheckboxRenderer): void;
+    render(r?: CheckboxRenderer): CheckboxRenderer | void {
         return super.render(r);
     }
-    set(value: any): Checkbox {
+    set(value: boolean): Checkbox {
         this.checkbox.prop("checked", value);
         return this;
     }
 }
 
-export class Readonly extends Field {
+export class Readonly extends AbstractField<string> {
     static build(row: JQuery, name: string): Readonly {
         // replacing default textbox with a non-input text label
         const existing = row.find("input");
@@ -329,10 +344,10 @@ export class Readonly extends Field {
     enabled(enabled: boolean, message?: string): Readonly {
         return this;
     }
-    parse(): any {
+    parse(): string {
         return this.valueElem.text();
     }
-    set(value: any): Readonly {
+    set(value: string): Readonly {
         this.valueElem.text(value);
         return this;
     }
@@ -381,7 +396,7 @@ export class FormMetadataManager {
     restore_metadata_button_class = "meta-restore";
     clear_metadata_button_class = "meta-clear";
 
-    private _mfields: { [name: string]: IFormField } = {};
+    private _mfields: { [name: string]: IFormField<any> } = {};
 
     constructor(private form: JQuery, private prefix?: string) {
         this.attachEvents();

@@ -355,18 +355,20 @@ function showEditAssayDialog(items: AssayRecord[]): void {
     // create object to handle form interactions
     const formManager = new Forms.BulkFormManager(dialog, "assay");
     // define fields on form
-    const fields: Forms.IFormField[] = [
+    const experimenterField = new Forms.Autocomplete(
+        dialog.find("[name=assay-experimenter_0"),
+        dialog.find("[name=assay-experimenter_1"),
+        "experimenter",
+    );
+    experimenterField.render((value: Utl.EDDContact): [string, string] => [
+        value?.display() || "",
+        str(value?.id() || ""),
+    ]);
+    const fields: Forms.IFormField<any>[] = [
         new Forms.Field(dialog.find("[name=assay-name]"), "name"),
         new Forms.Field(dialog.find("[name=assay-description]"), "description"),
         new Forms.Field(dialog.find("[name=assay-protocol"), "pid"),
-        new Forms.Autocomplete(
-            dialog.find("[name=assay-experimenter_0"),
-            dialog.find("[name=assay-experimenter_1"),
-            "experimenter",
-        ).render((value: Utl.EDDContact): [string, string] => [
-            value?.display() || "",
-            str(value?.id() || ""),
-        ]),
+        experimenterField,
     ];
     // create form elements for currently selected assays
     const selection = items.reduce(

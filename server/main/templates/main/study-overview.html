@@ -95,6 +95,7 @@
 {% if writable %}
 <div class="overviewDropZone">
   <div class="fd-zone excel" id="experimentDescDropZone">
+    <a class="hidden target" href="{% url 'main:describe:describe' slug=study.slug %}"></a>
     <div id="dz-title">
       <span>{% trans 'Upload an Experiment Description file' %}</span>
       <a href="{% url 'main:describe:help' slug=study.slug %}" target="_blank">
@@ -279,7 +280,7 @@
 {# add permissions modal #}
 <div class="indent off" title="{% trans 'Configure Permissions' %}" id="permissionsSection">
   <div class="sectionActions">
-    <form action=""
+    <form action="{% url 'main:permissions' slug=study.slug %}"
         method="POST"
         class="edd-form"
         id="permissions"

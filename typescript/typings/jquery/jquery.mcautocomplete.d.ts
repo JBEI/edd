@@ -1,9 +1,11 @@
 declare namespace MultiColumnAuto {
+    type ValueFieldCallback = (item: any, col: ColumnDef, i: number) => string | JQuery;
+
     interface ColumnDef {
         name: string;
         width: string;
         maxWidth?: string;
-        valueField: string;
+        valueField: string | ValueFieldCallback;
     }
 
     interface AutocompleteOptions extends JQueryUI.AutocompleteOptions {

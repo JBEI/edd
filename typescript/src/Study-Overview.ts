@@ -7,12 +7,6 @@ import * as EDDEditable from "../modules/EDDEditableElement";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
 
-declare let window: StudyBase.EDDWindow;
-const EDDData = window.EDDData || ({} as EDDData);
-
-// TODO: fix hard-coded URL
-const studyBaseUrl: URL = Utl.relativeURL("../");
-
 function preparePermissions() {
     const user = new EDDAuto.User({
         "container": $("#permission_user_box"),
@@ -34,10 +28,11 @@ function preparePermissions() {
         $("#permission_user").prop("checked", true);
     });
 
-    $("form#permissions")
-        .on("submit", (ev: JQueryEventObject): boolean => {
+    const permissionForm = $("form#permissions");
+    permissionForm
+        .on("submit", (event: JQuery.SubmitEvent): boolean => {
             const perm: any = {};
-            const auto: JQuery = $("form#permissions").find("[name=class]:checked");
+            const auto: JQuery = permissionForm.find("[name=class]:checked");
             const klass: string = auto.val() as string;
             const token: string = $("form#permissions")
                 .find("[name=csrfmiddlewaretoken]")
@@ -47,8 +42,7 @@ function preparePermissions() {
                 "id": $(auto).siblings("input:hidden").val(),
             };
             $.ajax({
-                // TODO: fix hard-coded URL
-                "url": Utl.relativeURL("permissions/", studyBaseUrl).toString(),
+                "url": permissionForm.attr("action"),
                 "type": "POST",
                 "data": {
                     "data": JSON.stringify([perm]),
@@ -141,7 +135,7 @@ export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
         this.formURL($(inputElement).parents("form").attr("data-rest"));
     }
 
-    canCommit(value): boolean {
+    canCommit(value: string): boolean {
         return "" !== value.trim();
     }
 
@@ -151,7 +145,7 @@ export class EditableStudyContact extends EDDEditable.EditableAutocomplete {
 }
 
 // Called when the page loads.
-export function prepareIt() {
+function prepareIt() {
     const contact = $("#editable-study-contact").get()[0] as HTMLElement;
     const desc = $("#editable-study-description").get()[0] as HTMLElement;
     const contactEdit = new EditableStudyContact(contact);
@@ -174,10 +168,11 @@ export function prepareIt() {
         "pageRedirect": "description/",
     });
 
+    const dropzoneDiv = $("#experimentDescDropZone");
+    const url = dropzoneDiv.find("a.target").attr("href");
     Utl.FileDropZone.create({
         "elementId": "experimentDescDropZone",
-        // TODO: fix hard-coded URL
-        "url": Utl.relativeURL("describe/", studyBaseUrl),
+        "url": url,
         // must bind these functions; otherwise the function this will be the options object
         // here, instead of the helper object
         "processResponseFn": helper.fileReturnedFromServer.bind(helper),

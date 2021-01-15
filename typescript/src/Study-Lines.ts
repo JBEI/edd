@@ -363,45 +363,51 @@ function showLineEditDialog(lines: LineRecord[]): void {
     const str = (x: any): string => "" + (x || ""); // forces values to string, falsy === ""
     // define fields on form
     type Pair = [string, string]; // this gets used below to disambiguate Autocomplete renders
-    const fields: { [name: string]: Forms.IFormField } = {
+    const contactField = new Forms.Autocomplete(
+        lineModal.find("[name=line-contact_0"),
+        lineModal.find("[name=line-contact_1"),
+        "contact",
+    );
+    contactField.render((): Pair => [contact.display(), str(contact.id())]);
+    const experimenterField = new Forms.Autocomplete(
+        lineModal.find("[name=line-experimenter_0"),
+        lineModal.find("[name=line-experimenter_1"),
+        "experimenter",
+    );
+    experimenterField.render(
+        (): Pair => [experimenter.display(), str(experimenter.id())],
+    );
+    const strainField = new Forms.Autocomplete(
+        lineModal.find("[name=line-strains_0"),
+        lineModal.find("[name=line-strains_1"),
+        "strain",
+    );
+    strainField.render(
+        (r): Pair => {
+            const list = r.strain || [];
+            const names = list.map((v) => Utl.lookup(EDDData.Strains, v).name || "--");
+            const uuids = list.map(
+                (v) => Utl.lookup(EDDData.Strains, v).registry_id || "",
+            );
+            return [names.join(", "), uuids.join(",")];
+        },
+    );
+    const fields: { [name: string]: Forms.IFormField<any> } = {
         "name": new Forms.Field(lineModal.find("[name=line-name]"), "name"),
         "description": new Forms.Field(
             lineModal.find("[name=line-description]"),
             "description",
         ),
         "control": new Forms.Checkbox(lineModal.find("[name=line-control]"), "control"),
-        "contact": new Forms.Autocomplete(
-            lineModal.find("[name=line-contact_0"),
-            lineModal.find("[name=line-contact_1"),
-            "contact",
-        ).render((): Pair => [contact.display(), str(contact.id())]),
-        "experimenter": new Forms.Autocomplete(
-            lineModal.find("[name=line-experimenter_0"),
-            lineModal.find("[name=line-experimenter_1"),
-            "experimenter",
-        ).render((): Pair => [experimenter.display(), str(experimenter.id())]),
-        "strain": new Forms.Autocomplete(
-            lineModal.find("[name=line-strains_0"),
-            lineModal.find("[name=line-strains_1"),
-            "strain",
-        ).render(
-            (r): Pair => {
-                const list = r.strain || [];
-                const names = list.map(
-                    (v) => Utl.lookup(EDDData.Strains, v).name || "--",
-                );
-                const uuids = list.map(
-                    (v) => Utl.lookup(EDDData.Strains, v).registry_id || "",
-                );
-                return [names.join(", "), uuids.join(",")];
-            },
-        ),
+        "contact": contactField,
+        "experimenter": experimenterField,
+        "strain": strainField,
     };
     // initialize the form to clean slate, pass in active selection, selector for previous items
     const selection = defineSelectionInputs(lines);
     formManager
         .init(selection, "[name=lineId]")
-        .fields($.map(fields, (v: Forms.IFormField) => v));
+        .fields($.map(fields, (v: Forms.IFormField<any>) => v));
     lineMetadataManager.reset();
     if (record !== undefined) {
         formManager.fill(record);

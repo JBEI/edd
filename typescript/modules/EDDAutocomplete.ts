@@ -5,6 +5,10 @@ import * as MultiColumnAuto from "./MultiColumnAutocomplete";
 // track automatically generated caches for values in autocomplete types
 const autoCache = {};
 
+type GenericRecord = Record<string, any>;
+type CacheKey = string | number;
+type Cache = Record<CacheKey, GenericRecord>;
+
 export interface AutocompleteOptions {
     // Mandatory: A JQuery object identifying the DOM element that contains, or will contain,
     // the input elements used by this autocomplete object.
@@ -51,7 +55,7 @@ export interface AutocompleteOptions {
 
     // an optional dictionary to use / maintain as a cache of query results for this
     // autocomplete. Maps search term -> results.
-    cache?: any;
+    cache?: Cache;
 
     // the URI of the REST resource to use for querying autocomplete results
     search_uri?: string;
@@ -72,19 +76,19 @@ export class BaseAuto {
     opt: AutocompleteOptions;
     search_opt: ExtraSearchParameters;
     columns: MultiColumnAuto.AutoColumn[];
-    display_key: any;
-    value_key: any;
-    cacheId: any;
-    cache: any;
+    display_key: string;
+    value_key: string;
+    cacheId: string;
+    cache: Cache;
     search_uri: string;
 
     delete_last = false;
 
     static _uniqueIndex = 1;
-    static _request_cache = {};
+    static _request_cache: { [name: string]: Cache } = {};
 
-    static initPreexisting(context?: Element | JQuery) {
-        $("input.autocomp", context).map((i, element) => {
+    static initPreexisting(context?: Element | JQuery): void {
+        $("input.autocomp", context).each((i, element) => {
             const visibleInput: JQuery = $(element);
             const autocompleteType: string = $(element).attr("eddautocompletetype");
             if (!autocompleteType) {
@@ -198,12 +202,13 @@ export class BaseAuto {
         this.columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
     }
 
-    clear() {
+    clear(): BaseAuto {
         const blank = this.opt.emptyCreatesNew ? "new" : "";
         this.hiddenInput.val(blank).trigger("change").trigger("input");
+        return this;
     }
 
-    init() {
+    init(): BaseAuto {
         // this.cacheId might have been set by a constructor in a subclass
         this.cacheId = this.cacheId || "cache_" + this.uid;
         this.cache =
@@ -298,30 +303,30 @@ export class BaseAuto {
                 const val = this.visibleInput.val().toString();
                 this.delete_last = val.trim() === "";
             });
+        return this;
     }
 
-    loadDisplayValue(record: any): any {
-        return record[this.display_key] || "";
+    loadDisplayValue(record: GenericRecord, defaultValue = ""): string {
+        return record[this.display_key] || defaultValue;
     }
 
-    loadHiddenValue(record: any): any {
-        return record[this.value_key] || "";
+    loadHiddenValue(record: GenericRecord, defaultValue = ""): string {
+        return record[this.value_key] || defaultValue;
     }
 
-    loadModelCache(): any {
+    loadModelCache(): Cache {
         const cache = BaseAuto._request_cache[this.modelName] || {};
         BaseAuto._request_cache[this.modelName] = cache;
         return cache;
     }
 
-    loadRecord(item: any): any {
+    loadRecord(item: GenericRecord): GenericRecord {
         const cacheKey = item[this.value_key];
         const record = (this.cache[cacheKey] = this.cache[cacheKey] || {});
-        $.extend(record, item);
-        return record;
+        return Object.assign(record, item);
     }
 
-    processResults(request, response, data: any): void {
+    private processResults(request, response, data: any): void {
         const modelCache = this.loadModelCache();
         let result;
         // The default handler will display "No Results Found" if no items are returned.
@@ -341,16 +346,17 @@ export class BaseAuto {
         response(result);
     }
 
-    undo(): void {
+    undo(): BaseAuto {
         const old: any = this.cache[this.valKey()] || {};
         this.visibleInput.val(this.loadDisplayValue(old));
+        return this;
     }
 
     val(): string {
         return this.hiddenInput.val() as string;
     }
 
-    valKey(): any {
+    valKey(): CacheKey {
         // most autocompletes key values by integers
         return parseInt(this.val(), 10);
     }
@@ -372,10 +378,10 @@ export class User extends BaseAuto {
         this.cacheId = "Users";
     }
 
-    loadDisplayValue(record: any): any {
+    loadDisplayValue(record: GenericRecord, defaultValue = ""): string {
         const value = super.loadDisplayValue(record);
         if (value.trim() === "") {
-            return record.email;
+            return record.email || defaultValue;
         } else {
             return value;
         }
@@ -416,7 +422,7 @@ export class CarbonSource extends BaseAuto {
 export class MetadataType extends BaseAuto {
     static columns = [
         new MultiColumnAuto.AutoColumn("Name", "200px", "name"),
-        new MultiColumnAuto.AutoColumn("For", "50px", function (item, column, index) {
+        new MultiColumnAuto.AutoColumn("For", "50px", (item, column, index) => {
             const con = item.context;
             return $("<span>")
                 .addClass("tag")
@@ -577,7 +583,11 @@ export class GenericOrMetabolite extends BaseAuto {
         this.visibleInput.attr("size", 45);
     }
 
-    static type_label(item: any, col: MultiColumnAuto.AutoColumn, i: number): string {
+    static type_label(
+        item: MeasurementTypeRecord,
+        col: MultiColumnAuto.AutoColumn,
+        i: number,
+    ): string {
         const type_family = GenericOrMetabolite.family_lookup[item.family];
         if (type_family !== undefined) {
             return type_family;

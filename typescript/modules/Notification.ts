@@ -52,13 +52,13 @@ export class NotificationSocket {
         }
     }
 
-    markAllRead() {
+    markAllRead(): void {
         this.send({ "reset": true });
         this.resetMessages();
         this.updateSubscribers();
     }
 
-    markRead(uuid: string) {
+    markRead(uuid: string): void {
         // keep UUID in messages map, but with null value
         if (contains(this.messages, uuid)) {
             this.messages[uuid] = null;
@@ -201,7 +201,7 @@ export class NotificationMenu {
         this.messageList.on("click", "li.close-all", this.markAllRead.bind(this));
     }
 
-    display(msgs: Message[], count: number) {
+    display(msgs: Message[], count: number): void {
         this.messageList.empty();
         $.map(msgs, (msg) => this.messageList.append(this.processMessage(msg)));
         if (count) {

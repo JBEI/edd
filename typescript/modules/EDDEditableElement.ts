@@ -20,19 +20,15 @@ export class EditableElement {
     private _formURL: string;
     private _fieldName: string;
 
-    inputElement: any;
-    editButtonElement: Element;
-    acceptButtonElement: Element;
-    cancelButtonElement: Element;
-    waitButtonElement: Element;
-    editControlsPositioner: any;
-    editControlsContainer: any;
+    inputElement: HTMLInputElement | HTMLTextAreaElement;
+    editButtonElement: HTMLElement;
+    acceptButtonElement: HTMLElement;
+    cancelButtonElement: HTMLElement;
+    waitButtonElement: HTMLElement;
+    editControlsPositioner: HTMLElement;
+    editControlsContainer: HTMLElement;
     minimumRows: number;
     maximumRows: number;
-    // Declaring this into a variable during instantiation,
-    // so whe can ".off" the event using the reference.
-    keyESCHandler: any;
-    keyEnterHandler: any;
 
     // This constructor accepts a pre-existing editable element, in the form of
     // a div with the class 'editable-field', or a reference to a container
@@ -80,23 +76,6 @@ export class EditableElement {
         this.minimumRows = null;
         this.maximumRows = null;
 
-        // For attaching to the document
-        this.keyESCHandler = (e) => {
-            // ESCAPE key. Cancel out.
-            if (e.which === 27) {
-                this.cancelEditing();
-            }
-        };
-
-        // For attaching to the input element
-        this.keyEnterHandler = (e) => {
-            // ENTER key. Commit the changes.
-            if (e.which === 13) {
-                this.beginEditCommit();
-                return false;
-            }
-        };
-
         this.setUpMainElement();
         this.generateControlsContainer();
         this.generateControlButtons();
@@ -125,7 +104,7 @@ export class EditableElement {
         return true;
     }
 
-    canCommit(value): boolean {
+    canCommit(value: string): boolean {
         return true;
     }
 
@@ -133,12 +112,8 @@ export class EditableElement {
         return "";
     }
 
-    setValue(value) {
-        return;
-    }
-
-    onSuccess(value) {
-        return;
+    setValue(value: string): EditableElement {
+        return this;
     }
 
     blankLabel(): string {
@@ -165,7 +140,7 @@ export class EditableElement {
         return this;
     }
 
-    showValue() {
+    showValue(): EditableElement {
         const v = this.getDisplayValue(),
             bl = this.blankLabel();
         this.elementJQ.children().detach();
@@ -174,11 +149,12 @@ export class EditableElement {
         } else if (v) {
             this.elementJQ.html(v);
         }
+        return this;
     }
 
     // This is called one time to do any necessary manipulation of the main element
     // during setup.
-    setUpMainElement() {
+    protected setUpMainElement(): void {
         // We need to locate, or create, an input element before
         // we decide which styling to apply to it.
         this.setupInputElement();
@@ -196,18 +172,16 @@ export class EditableElement {
 
     // Generate a container for the editing buttons(s), and a positioning element to
     // put the controls in the right place relative to the main element.
-    generateControlsContainer() {
+    protected generateControlsContainer(): void {
         // The container is a float-right span that appears at the right edge
         // of the cell in the layout, and the icons consume space within.
-
         this.editControlsPositioner = $('<span class="icon-positioner"/>')[0];
         this.editControlsContainer = $('<span class="icon-container"/>')[0];
-
         this.editControlsPositioner.appendChild(this.editControlsContainer);
     }
 
     // Instantiates and stores all the buttons used in the controls container for later use
-    generateControlButtons() {
+    protected generateControlButtons(): void {
         this.editButtonElement = $('<span class="icon icon-edit"/>')[0];
         this.acceptButtonElement = $('<span class="icon icon-accept"/>')[0];
         this.cancelButtonElement = $('<span class="icon icon-cancel"/>')[0];
@@ -237,7 +211,7 @@ export class EditableElement {
 
     // Changes the styling of the container element to indicate that editing is allowed,
     // and adds a mouse-over control to engage editing.
-    setInactiveStyling() {
+    protected setInactiveStyling(): void {
         this.elementJQ.removeClass("active");
         this.elementJQ.addClass("inactive");
         $(this.editControlsContainer).children().detach();
@@ -246,7 +220,7 @@ export class EditableElement {
 
     // Changes the styling of the container element to indicate that editing is allowed,
     // and adds a mouse-over control to engage editing.
-    setDefaultStyling() {
+    protected setDefaultStyling(): void {
         this.elementJQ.addClass("editable-field");
         if (this.editAllowed()) {
             this.elementJQ.addClass("enabled");
@@ -272,7 +246,7 @@ export class EditableElement {
     // Instantiates the form element(s) used when editing is taking place,
     // with appropriate event handlers and styling, and adds them to the
     // container element.
-    setUpEditingMode() {
+    protected setUpEditingMode(): void {
         this.elementJQ.removeClass("inactive saving");
         this.elementJQ.addClass("active");
 
@@ -304,13 +278,14 @@ export class EditableElement {
     // editable area, and if one is located, take its value as the
     // default value for the field.  If no element exists, make a new one,
     // and assume it should be a textarea.
-    setupInputElement() {
+    protected setupInputElement(): void {
         const desiredFontSize = this.elementJQ.css("font-size");
         const desiredFontFace = this.elementJQ.css("font-family");
         if (!this.inputElement) {
             const potentialInput = this.elementJQ.children(":input").first();
             if (potentialInput.length === 1) {
-                this.inputElement = potentialInput.get(0);
+                // force-casting as compiler cannot inspect selector
+                this.inputElement = potentialInput.get(0) as HTMLInputElement;
             } else {
                 // Figure out how high to make the text edit box.
                 const lineHeight = parseInt(desiredFontSize, 10);
@@ -343,7 +318,7 @@ export class EditableElement {
     // Support function for setUpEditingMode.
     // Takes the container element that we are using as an editable element,
     // and clears it of all content, then re-adds the basic edit control widgets.
-    clearElementForEditing() {
+    protected clearElementForEditing(): void {
         // Clear the element out
         this.elementJQ.contents().detach(); // children() does not capture text nodes
         // Re-add the controls area
@@ -354,7 +329,7 @@ export class EditableElement {
         this.element.removeAttribute("title");
     }
 
-    clickToEditHandler(): boolean {
+    private clickToEditHandler(): boolean {
         if (!this.editAllowed()) {
             // Editing not allowed?  Then this has no effect.
             // Let the system handle this event.
@@ -377,7 +352,7 @@ export class EditableElement {
         return false;
     }
 
-    cancelEditing() {
+    private cancelEditing(): void {
         this.removeKeyHandler();
 
         // Remove the input box.
@@ -400,7 +375,7 @@ export class EditableElement {
         EditableElement._prevEditableElement = null;
     }
 
-    beginEditCommit() {
+    private beginEditCommit(): void {
         const value = this.getEditedValue();
         if (!this.canCommit(value)) {
             return;
@@ -410,7 +385,7 @@ export class EditableElement {
     }
 
     // Subclass this if your need a different submit behavior after the UI is set up.
-    commit() {
+    protected commit(): void {
         const payload = {};
         if (typeof tinymce !== "undefined") {
             tinymce.triggerSave();
@@ -440,7 +415,7 @@ export class EditableElement {
 
     // This changes the UI to a third state called 'saving'
     // that is different from 'active' or 'inactive'.
-    setUpCommittingIndicator() {
+    private setUpCommittingIndicator(): void {
         while (this.editControlsContainer.firstChild) {
             this.editControlsContainer.removeChild(
                 this.editControlsContainer.firstChild,
@@ -452,13 +427,13 @@ export class EditableElement {
         this.elementJQ.addClass("saving");
     }
 
-    clickToAcceptHandler(): boolean {
+    private clickToAcceptHandler(): boolean {
         this.beginEditCommit();
         // Stop handling the mouse click
         return false;
     }
 
-    clickToCancelHandler(): boolean {
+    private clickToCancelHandler(): boolean {
         if (this.inputElement.type === "textarea") {
             if (typeof tinymce !== "undefined") {
                 tinymce.remove();
@@ -485,33 +460,46 @@ export class EditableElement {
     // intended object from the DOM.
     // There is no pollution from multiple handlers because every time we
     // add one, we remove the previous.  (See clickToEditHandler)
-    setUpKeyHandler() {
-        $(document).on("keydown", this.keyESCHandler);
-        $(this.inputElement).on("keydown", this.keyEnterHandler);
+    protected setUpKeyHandler(): void {
+        $(document).on("keydown", (event: JQuery.KeyDownEvent) => {
+            if (event.which === 27) {
+                this.cancelEditing();
+            }
+        });
+        $(this.inputElement).on("keydown", (event: JQuery.KeyDownEvent) => {
+            if (event.which === 13) {
+                this.beginEditCommit();
+                return false;
+            }
+        });
     }
 
-    removeKeyHandler() {
-        $(document).off("keydown", this.keyESCHandler);
-        $(this.inputElement).off("keydown", this.keyEnterHandler);
+    protected removeKeyHandler(): void {
+        $(document).off("keydown");
+        $(this.inputElement).off("keydown");
     }
 
-    appendTo(el) {
+    private appendTo(el: Element): EditableElement {
         this.parentElement = el;
         el.appendChild(this.element);
+        return this;
     }
 
-    appendChild(el) {
+    private appendChild(el: Element): EditableElement {
         this.element.appendChild(el);
+        return this;
     }
 
-    clear() {
+    private clear(): EditableElement {
         while (this.element.lastChild) {
             $(this.element.lastChild).detach();
         }
+        return this;
     }
 
-    visible(enable: boolean) {
+    private visible(enable: boolean): EditableElement {
         this.elementJQ.toggleClass("off", !enable);
+        return this;
     }
 
     // Override if the value of the field needs to be post-processed before being displayed.
@@ -519,7 +507,7 @@ export class EditableElement {
         return this.getValue();
     }
 
-    getEditedValue(): any {
+    getEditedValue(): string {
         return this.inputElement.value;
     }
 }
@@ -532,12 +520,15 @@ export class EditableAutocomplete extends EditableElement {
         this.autoCompleteObject = null;
     }
 
-    setUpMainElement() {
+    protected setUpMainElement(): EditableElement {
         this.elementJQ.addClass("horizontalButtons");
+        return this;
     }
 
     // Override this with your specific autocomplete type
-    createAutoCompleteObject(opt?: EDDAuto.AutocompleteOptions): EDDAuto.BaseAuto {
+    protected createAutoCompleteObject(
+        opt?: EDDAuto.AutocompleteOptions,
+    ): EDDAuto.BaseAuto {
         // Create an input field that the user can edit with.
         return new EDDAuto.User($.extend({}, opt));
     }
@@ -600,13 +591,13 @@ export class EditableAutocomplete extends EditableElement {
         return autoObject;
     }
 
-    setUpEditingMode() {
+    protected setUpEditingMode(): void {
         this.elementJQ.removeClass("inactive saving");
         this.elementJQ.addClass("active");
 
         // Calling this may set it up for the first time
         const auto = this.getAutoCompleteObject();
-        this.inputElement = auto.visibleInput;
+        this.inputElement = auto.visibleInput.get(0) as HTMLInputElement;
 
         this.clearElementForEditing();
         this.elementJQ.append(auto.visibleInput).append(auto.hiddenInput);
@@ -636,7 +627,7 @@ export class EditableAutocomplete extends EditableElement {
 
 export class EditableEmail extends EditableAutocomplete {
     // Override this with your specific autocomplete type
-    createAutoCompleteObject() {
+    protected createAutoCompleteObject(): EDDAuto.BaseAuto {
         // Create an input field that the user can edit with.
         return new EDDAuto.User({
             "container": this.elementJQ,

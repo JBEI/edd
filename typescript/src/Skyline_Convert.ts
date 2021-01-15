@@ -27,7 +27,7 @@ $(() => {
     dropzone.on("error", (file, message, xhr) => {
         infobox.empty().append("Failed to process upload: " + message);
     });
-    dropzone.on("success", (file, response) => {
+    dropzone.on("success", (file, response: any) => {
         infobox
             .empty()
             .append($("<div>").text("Number of records: " + response.n_records))

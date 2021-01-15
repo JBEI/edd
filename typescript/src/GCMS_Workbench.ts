@@ -22,41 +22,35 @@ $(document).ready(() => {
         onDeleteMolecule();
     });
     $("#n-molecules").data("n_mols", 1);
-});
 
-// http://stackoverflow.com/questions/22063612
-$.ajaxPrefilter(function (options, originalOptions, jqXHR) {
-    const token = Utl.EDD.findCSRFToken();
-    jqXHR.setRequestHeader("X-CSRFToken", token);
-});
-
-Dropzone.options.gcmsDropzone = {
-    "uploadMultiple": false,
-    "previewsContainer": "#file-preview",
-    "init": function () {
-        this.element
-            .querySelector("button[type=submit]")
-            .addEventListener("click", (e) => {
-                // Make sure that the form isn't actually being sent.
-                e.preventDefault();
-                e.stopPropagation();
-                if (this.files.length === 0) {
-                    alert("No input file specified!");
-                    return false;
-                }
-                // reset the upload queue
-                for (const file of this.files) {
-                    file.status = Dropzone.QUEUED;
-                }
-                this.processQueue();
-            });
-    },
-    // reset file preview div when a new file is dropped
-    "drop": function (e) {
-        $("#file-preview").empty();
-        return this.element.classList.remove("dz-drag-hover");
-    },
-    "success": function (file, response) {
+    const gcmsDropzone = new Dropzone("#gcmsDropzone", {
+        "uploadMultiple": false,
+        "previewsContainer": "#file-preview",
+        "init": function () {
+            this.element
+                .querySelector("button[type=submit]")
+                .addEventListener("click", (e) => {
+                    // Make sure that the form isn't actually being sent.
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (this.files.length === 0) {
+                        alert("No input file specified!");
+                        return false;
+                    }
+                    // reset the upload queue
+                    for (const file of this.files) {
+                        file.status = Dropzone.QUEUED;
+                    }
+                    this.processQueue();
+                });
+        },
+        // reset file preview div when a new file is dropped
+        "drop": function (e) {
+            $("#file-preview").empty();
+            return this.element.classList.remove("dz-drag-hover");
+        },
+    });
+    gcmsDropzone.on("success", (file: Dropzone.DropzoneFile, response: any) => {
         if (response.python_error) {
             // only if ValueError encountered on server
             alert(response.python_error);
@@ -79,8 +73,14 @@ Dropzone.options.gcmsDropzone = {
                 processExcelTable(response);
             }
         }
-    },
-};
+    });
+});
+
+// http://stackoverflow.com/questions/22063612
+$.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+    const token = Utl.EDD.findCSRFToken();
+    jqXHR.setRequestHeader("X-CSRFToken", token);
+});
 
 function processReportData(response) {
     const raw_data = JSON.parse(JSON.stringify(response.sample_data));
@@ -473,11 +473,6 @@ function onDeleteMolecule() {
     $("#n-molecules")
         .data("n_mols", n_mols - 1)
         .val(n_mols + 1);
-}
-
-export function showHelp(idx) {
-    $("#overlay-back").toggle();
-    $("#help-" + idx).toggle();
 }
 
 function RTPlot(samples) {

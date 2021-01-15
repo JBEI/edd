@@ -2,20 +2,16 @@ import * as jQuery from "jquery";
 import "jquery-ui/ui/widgets/autocomplete";
 import "jquery-ui/ui/widgets/menu";
 
-export type AutoValueFieldCallback = (item: any, col: AutoColumn, i: number) => string;
-
-export class AutoColumn {
-    name: string;
+export class AutoColumn implements MultiColumnAuto.ColumnDef {
     width: string;
-    maxWidth: string;
-    valueField: any; // string | AutoValueFieldCallback;
 
-    constructor(name, minWidth, valueField, maxWidth?) {
-        this.name = name;
+    constructor(
+        public name: string,
+        minWidth: string,
+        public valueField: string | MultiColumnAuto.ValueFieldCallback,
+        public maxWidth = null,
+    ) {
         this.width = minWidth;
-        this.maxWidth = maxWidth || null;
-        this.valueField = valueField;
-        return this;
     }
 }
 

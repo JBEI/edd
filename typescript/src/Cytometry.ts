@@ -233,7 +233,7 @@ declare let EDDData;
             "clickable": false,
             "url": "/utilities/cytometry/parse/",
         });
-        _dropzone.on("success", function (file, response) {
+        _dropzone.on("success", function (file, response: any) {
             if (response.python_error) {
                 window.alert(response.python_error);
             } else {

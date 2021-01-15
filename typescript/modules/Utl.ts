@@ -239,25 +239,33 @@ export class JS {
     }
 }
 
-// A class wrapping dropzone (http://www.dropzonejs.com/)
-// and providing some additional structure.
-// A new dropzone is initialized with a single 'options' object:
-// {
-//  elementId: ID of the element to be set up as a drop zone
-//  url: url where to send request
-//  processResponseFn: process success return from server
-//  processErrorFn: process error result return from server for experiment description
-//  processWarningFn: process warning result return from server for experiment description
-//  fileInitFn: preprocess for import
-//  clickable: value to pass to dropzone clickable parameter
-// }
+interface FileDropZoneOptions {
+    /** ID of the element to be set up as a Dropzone. */
+    elementId: string;
+    /** URL target for upload requests. */
+    url: string;
+    /** Preprocess callback for import. */
+    fileInitFn?: (file, formData) => void;
+    /** Callback for error result returned from server. */
+    processErrorFn?: (file, msg, xhr) => void;
+    /** Callback for successful result returned from server. */
+    processResponseFn?: (file, response) => void;
+    /** Callback for warning result returned from server. */
+    processWarningFn?: (file, response) => void;
+    /** Assign false to prevent clicking; otherwise defaults to clickable Dropzone. */
+    clickable?: false;
+}
 
+/**
+ * A class wrapping dropzone (http://www.dropzonejs.com/)
+ * and providing some additional structure.
+ */
 export class FileDropZone {
     csrftoken: any;
-    dropzone: any;
-    options: any;
+    dropzone: Dropzone;
+    options: FileDropZoneOptions;
 
-    constructor(options: any) {
+    constructor(options: FileDropZoneOptions) {
         const element = document.getElementById(options.elementId);
         const clickable = options.clickable === undefined ? true : options.clickable;
         if (element) {
@@ -275,7 +283,7 @@ export class FileDropZone {
     }
 
     // Helper function to create and set up a FileDropZone.
-    static create(options: any): void {
+    static create(options: FileDropZoneOptions): void {
         const widget = new FileDropZone(options);
         if (widget.dropzone) {
             widget.setEventHandlers();
@@ -291,7 +299,7 @@ export class FileDropZone {
         });
         this.dropzone.on("error", (file, msg, xhr) => {
             if (typeof this.options.processErrorFn === "function") {
-                this.options.processErrorFn(this, file, msg, xhr);
+                this.options.processErrorFn(file, msg, xhr);
             }
         });
         this.dropzone.on("success", (file) => {
@@ -302,7 +310,7 @@ export class FileDropZone {
                     this.options.processWarningFn(file, response);
                 }
             } else if ("function" === typeof this.options.processResponseFn) {
-                this.options.processResponseFn(this, file, response);
+                this.options.processResponseFn(file, response);
             }
             this.dropzone.removeAllFiles();
         });
@@ -395,7 +403,7 @@ export class FileDropZoneHelpers {
                         .find(".omitStrains")
                         .on("click", (ev): void => {
                             const parsedUrl: URL = new URL(
-                                dropZone.dropzone.options.url,
+                                dropZone.options.url,
                                 window.location.toString(),
                             );
                             $(ev.target).parent().remove();
