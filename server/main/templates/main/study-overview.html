@@ -94,8 +94,11 @@
 
 {% if writable %}
 <div class="overviewDropZone">
-  <div class="fd-zone excel" id="experimentDescDropZone">
-    <a class="hidden target" href="{% url 'main:describe:describe' slug=study.slug %}"></a>
+  <div
+    class="fd-zone excel"
+    id="experimentDescDropZone"
+    data-url="{% url 'main:describe:describe' slug=study.slug %}"
+  >
     <div id="dz-title">
       <span>{% trans 'Upload an Experiment Description file' %}</span>
       <a href="{% url 'main:describe:help' slug=study.slug %}" target="_blank">

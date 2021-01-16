@@ -2,6 +2,7 @@
 
 import * as $ from "jquery";
 
+import { DescriptionDropzone } from "../modules/DescriptionDropzone";
 import * as EDDAuto from "../modules/EDDAutocomplete";
 import * as EDDEditable from "../modules/EDDEditableElement";
 import * as StudyBase from "../modules/Study";
@@ -163,21 +164,16 @@ function prepareIt() {
         },
     });
 
-    const helper = new Utl.FileDropZoneHelpers({
-        // TODO: fix hard-coded URL
-        "pageRedirect": "description/",
-    });
-
     const dropzoneDiv = $("#experimentDescDropZone");
-    const url = dropzoneDiv.find("a.target").attr("href");
+    const url = dropzoneDiv.attr("data-url");
     Utl.FileDropZone.create({
         "elementId": "experimentDescDropZone",
         "url": url,
         // must bind these functions; otherwise the function this will be the options object
         // here, instead of the helper object
-        "processResponseFn": helper.fileReturnedFromServer.bind(helper),
-        "processErrorFn": helper.fileErrorReturnedFromServer.bind(helper),
-        "processWarningFn": helper.fileWarningReturnedFromServer.bind(helper),
+        "processResponseFn": DescriptionDropzone.success,
+        "processErrorFn": DescriptionDropzone.error,
+        "processWarningFn": DescriptionDropzone.warning,
     });
 
     $(window).on("load", preparePermissions);

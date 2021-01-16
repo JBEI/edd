@@ -5,6 +5,7 @@ import Handsontable from "handsontable";
 
 import { Access } from "../modules/table/Access";
 import * as Config from "../modules/table/Config";
+import { DescriptionDropzone } from "../modules/DescriptionDropzone";
 import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
@@ -154,14 +155,13 @@ function setupAddButtonEvents() {
 
 function setupDropzone() {
     const contentArea = $("#content");
-    const helper = new Utl.FileDropZoneHelpers();
     const url = $("#addToLinesDropZone").attr("data-url");
     Utl.FileDropZone.create({
         "elementId": "addToLinesDropZone",
         "url": url,
-        "processResponseFn": helper.fileReturnedFromServer.bind(helper),
-        "processErrorFn": helper.fileErrorReturnedFromServer.bind(helper),
-        "processWarningFn": helper.fileWarningReturnedFromServer.bind(helper),
+        "processResponseFn": DescriptionDropzone.success,
+        "processErrorFn": DescriptionDropzone.error,
+        "processWarningFn": DescriptionDropzone.warning,
     });
     contentArea.on("dragover", (e: JQueryMouseEventObject) => {
         e.stopPropagation();

@@ -1125,32 +1125,6 @@ form.comments textarea {
 .fd-zone .dz-details > .dz-filename {
     margin-top: 3.5em; /* adding space to make upload filename visible */
 }
-div.fileDropInfoArea {
-    margin: 30px 8px 24px 8px;
-}
-div.fileDropInfoIcon {
-    height: 128px;
-    background-repeat: no-repeat;
-    background-attachment: scroll;
-    background-position: center;
-    background-image: url(images/dropzone-csv-over.png);
-}
-div.fileDropInfoIcon.text {
-    background-image: url(images/dropzone-text-over.png);
-}
-div.fileDropInfoIcon.excel {
-    background-image: url(images/dropzone-excel-over.png);
-}
-div.fileDropInfoIcon.xml {
-    background-image: url(images/dropzone-xml-over.png);
-}
-div.fileDropInfoName {
-    color: #8db0e6;
-    text-align: center;
-    font-size: 15px;
-    margin: 1px 8px 5px 8px;
-    font-weight: bold;
-}
 div.overviewDropZone {
     background-color: #eeeeee;
     border: 1px solid #e0e0e0;
@@ -1164,17 +1138,6 @@ div.linesZone {
     width: 100%;
     height: 100%;
     position: absolute;
-}
-div.fileDropInfoSending {
-    margin: 3px;
-}
-div.fileDropInfoSending span {
-    font-size: 12px;
-    margin-right: 10px;
-}
-div.fileDropInfoLog {
-    padding: 0px;
-    font-size: 12px;
 }
 
 /* Styles brought over from style.css */

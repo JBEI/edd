@@ -28,6 +28,10 @@ export function chainArrays<T>(a: T[][]): T[] {
     return [].concat(...a);
 }
 
+/**
+ * Takes an array of record-like objects, and groups into sub-arrays where all
+ * the inputs have the same value for a given key.
+ */
 export function groupBy<T>(list: T[], key: string): { [key: string]: T[] } {
     return list.reduce((groups, item) => {
         const value = item[key];
@@ -51,80 +55,9 @@ export function debounce(fn: () => void, wait = 100): () => void {
 }
 
 export class EDD {
-    static resolveMeasurementRecordToName(measure: MeasurementRecord): string {
-        const mtype = EDDData.MeasurementTypes[measure.type];
-        const comp = EDDData.MeasurementTypeCompartments[measure.comp];
-        const code = comp?.code || "";
-        const name = mtype?.name || "Unknown";
-        return `${code} ${name}`.trim();
-    }
-
-    static resolveMeasurementRecordToUnits(measure: MeasurementRecord): string {
-        return EDDData.UnitTypes?.[measure.y_units]?.name || "";
-    }
-
     static findCSRFToken(): string {
         return ($("input[name=csrfmiddlewaretoken]").val() as string) || "";
     }
-}
-
-// RGBA helper class.
-// Values are 0-255 (although toString() makes alpha 0-1 since that's how CSS likes it).
-export class Color {
-    r: number;
-    g: number;
-    b: number;
-    a: number;
-
-    // Note: All values are 0-255, but toString() will convert alpha to a 0-1 value
-    static rgba(r: number, g: number, b: number, alpha: number): Color {
-        const clr: Color = new Color();
-        clr.r = r;
-        clr.g = g;
-        clr.b = b;
-        clr.a = alpha;
-        return clr;
-    }
-
-    // Note: All values are 0-255, but toString() will convert alpha to a 0-1 value
-    static rgb(r: number, g: number, b: number): Color {
-        const clr: Color = new Color();
-        clr.r = r;
-        clr.g = g;
-        clr.b = b;
-        clr.a = 255;
-        return clr;
-    }
-
-    static interpolate(clr1: Color, clr2: Color, t: number): Color {
-        return Color.rgba(
-            clr1.r + (clr2.r - clr1.r) * t,
-            clr1.g + (clr2.g - clr1.g) * t,
-            clr1.b + (clr2.b - clr1.b) * t,
-            clr1.a + (clr2.a - clr1.a) * t,
-        );
-    }
-
-    static toString(clr: Color | string): string {
-        // If it's something else (like a string) already, just return that value.
-        if (typeof clr === "string") {
-            return clr;
-        }
-        const r = Math.floor(clr.r);
-        const g = Math.floor(clr.g);
-        const b = Math.floor(clr.b);
-        return `rgba(${r}, ${g}, ${b}, ${clr.a / 255})`;
-    }
-
-    toString(): string {
-        return Color.toString(this);
-    }
-
-    static red = Color.rgb(255, 0, 0);
-    static green = Color.rgb(0, 255, 0);
-    static blue = Color.rgb(0, 0, 255);
-    static black = Color.rgb(0, 0, 0);
-    static white = Color.rgb(255, 255, 255);
 }
 
 // Javascript utilities
@@ -245,13 +178,17 @@ interface FileDropZoneOptions {
     /** URL target for upload requests. */
     url: string;
     /** Preprocess callback for import. */
-    fileInitFn?: (file, formData) => void;
+    fileInitFn?: (file: Dropzone.DropzoneFile, formData: FormData) => void;
     /** Callback for error result returned from server. */
-    processErrorFn?: (file, msg, xhr) => void;
+    processErrorFn?: (
+        dropzone: Dropzone,
+        file: Dropzone.DropzoneFile,
+        response?: any,
+    ) => void;
     /** Callback for successful result returned from server. */
-    processResponseFn?: (file, response) => void;
+    processResponseFn?: (file: Dropzone.DropzoneFile, response: any) => void;
     /** Callback for warning result returned from server. */
-    processWarningFn?: (file, response) => void;
+    processWarningFn?: (file: Dropzone.DropzoneFile, response: any) => void;
     /** Assign false to prevent clicking; otherwise defaults to clickable Dropzone. */
     clickable?: false;
 }
@@ -297,300 +234,34 @@ export class FileDropZone {
                 this.options.fileInitFn(file, formData);
             }
         });
-        this.dropzone.on("error", (file, msg, xhr) => {
+        this.dropzone.on("error", (file, msg) => {
             if (typeof this.options.processErrorFn === "function") {
-                this.options.processErrorFn(file, msg, xhr);
+                try {
+                    const response = JSON.parse(file.xhr.response);
+                    this.options.processErrorFn(this.dropzone, file, response);
+                } catch {
+                    // still process if there are JSON parse errors
+                    this.options.processErrorFn(this.dropzone, file);
+                }
             }
         });
         this.dropzone.on("success", (file) => {
-            const xhr = file.xhr;
-            const response = JSON.parse(xhr.response);
-            if (response.warnings) {
-                if ("function" === typeof this.options.processWarningFn) {
-                    this.options.processWarningFn(file, response);
+            try {
+                const response = JSON.parse(file.xhr.response);
+                if (response.warnings) {
+                    if ("function" === typeof this.options.processWarningFn) {
+                        this.options.processWarningFn(file, response);
+                    }
+                } else if ("function" === typeof this.options.processResponseFn) {
+                    this.options.processResponseFn(file, response);
                 }
-            } else if ("function" === typeof this.options.processResponseFn) {
-                this.options.processResponseFn(file, response);
-            }
-            this.dropzone.removeAllFiles();
-        });
-    }
-}
-
-/**
- * Common handling code for Dropzone events in both the Overview and Lines
- * (aka Experiment Description) pages.
- */
-export class FileDropZoneHelpers {
-    private pageRedirect: string;
-
-    constructor(options?: any) {
-        options = options || {};
-        this.pageRedirect = options.pageRedirect || "";
-    }
-
-    // This is called upon receiving a response from a file upload operation, and unlike
-    // fileRead(), is passed a processed result from the server as a second argument,
-    // rather than the raw contents of the file.
-    fileReturnedFromServer(fileContainer, result): void {
-        // TODO: fix hard-coded URL redirect
-        const base = relativeURL("../");
-        const redirect = relativeURL(this.pageRedirect, base);
-        const message = JSON.parse(result.xhr.response);
-        $("<p>", {
-            "text": ["Success!", message.lines_created, "lines added!"].join(" "),
-            "style": "margin:auto",
-        }).appendTo("#linesAdded");
-        $("#linesAdded").removeClass("off");
-        this.successfulRedirect(redirect.pathname);
-    }
-
-    fileWarningReturnedFromServer(fileContainer, result): void {
-        // TODO: fix hard-coded URL redirect
-        const base = relativeURL("../");
-        const redirect = relativeURL(this.pageRedirect, base);
-        $("#acceptWarnings")
-            .find(".acceptWarnings")
-            .on("click", (ev: JQueryMouseEventObject): boolean => {
-                this.successfulRedirect(redirect.pathname);
-                return false;
-            });
-
-        $("<p>", {
-            "text": `Success! ${result.lines_created} lines added!`,
-            "style": "margin:auto",
-        }).appendTo("#linesAdded");
-        // display success message
-        $("#linesAdded").removeClass("off");
-        this.generateMessages("warnings", result.warnings);
-        this.generateAcceptWarning();
-    }
-
-    private successfulRedirect(linesPathName): void {
-        // redirect to lines page
-        window.setTimeout(() => {
-            window.location.pathname = linesPathName;
-        }, 1000);
-    }
-
-    // This is called upon receiving an error in a file upload operation, and
-    // is passed an unprocessed result from the server as a second argument.
-    fileErrorReturnedFromServer(dropZone: FileDropZone, file, msg, xhr): void {
-        const parent: JQuery = $("#alert_placeholder");
-        const dismissAll: JQuery = $("#dismissAll");
-        // TODO: fix hard-coded URL redirect
-        const baseUrl: URL = relativeURL("../");
-        // reset the drop zone here
-        // parse xhr.response
-        const contentType = xhr.getResponseHeader("Content-Type");
-
-        if (xhr.status === 504) {
-            this.generate504Error();
-        } else if (xhr.status === 413) {
-            this.generate413Error();
-        } else if (contentType === "application/json") {
-            const json = JSON.parse(xhr.response);
-            if (json.errors) {
-                if (json.errors[0].category.indexOf("ICE") > -1) {
-                    // first remove all files in upload
-                    dropZone.dropzone.removeAllFiles();
-                    file.status = undefined;
-                    file.accepted = undefined;
-                    // create alert notification
-                    this.processICEerror(json.errors);
-                    // click handler for omit strains
-                    $("#alert_placeholder")
-                        .find(".omitStrains")
-                        .on("click", (ev): void => {
-                            const parsedUrl: URL = new URL(
-                                dropZone.options.url,
-                                window.location.toString(),
-                            );
-                            $(ev.target).parent().remove();
-                            parsedUrl.searchParams.append(
-                                "IGNORE_ICE_ACCESS_ERRORS",
-                                "true",
-                            );
-                            dropZone.dropzone.options.url = parsedUrl.toString();
-                            dropZone.dropzone.addFile(file);
-                        });
-                } else {
-                    this.generateMessages("error", json.errors);
+                this.dropzone.removeAllFiles();
+            } catch {
+                if (typeof this.options.processErrorFn === "function") {
+                    this.options.processErrorFn(this.dropzone, file);
                 }
             }
-            // Note: there may be warnings in addition to errors displayed above
-            if (json.warnings) {
-                this.generateMessages("warnings", json.warnings);
-            }
-        } else {
-            // if there is a back end or proxy error (likely html response), show this
-            const defaultError = {
-                "category": "",
-                "summary": "There was an error",
-                "details": "Please try again later or contact support.",
-            };
-            this.alertError(defaultError);
-        }
-        // remove the unhelpful DZ default err message ("object")
-        $(".dz-error-message").text("File errors (see above)");
-
-        dismissAll.toggleClass("off", $(".alert").length <= 2);
-
-        // set up click handler events
-        parent
-            .find(".omitStrains")
-            .on("click", (ev: JQueryMouseEventObject): boolean => {
-                ev.preventDefault();
-                ev.stopPropagation();
-                $("#iceError").hide();
-                return false;
-            });
-        parent
-            .find(".allowDuplicates")
-            .on("click", (ev: JQueryMouseEventObject): boolean => {
-                const f = file.file;
-                const targetUrl = new URL("describe", baseUrl.toString());
-                ev.preventDefault();
-                ev.stopPropagation();
-                targetUrl.searchParams.append("ALLOW_DUPLICATE_NAMES", "true");
-                f.sendTo(targetUrl.toString());
-                $("#duplicateError").hide();
-                return false;
-            });
-        $(".noDuplicates, .noOmitStrains").on(
-            "click",
-            (ev: JQueryMouseEventObject): boolean => {
-                ev.preventDefault();
-                ev.stopPropagation();
-                window.location.reload();
-                return false;
-            },
-        );
-        // dismiss all alerts
-        dismissAll.on("click", ".dismissAll", (ev: JQueryMouseEventObject): boolean => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            parent.find(".close").click();
-            window.location.reload();
-            return false;
         });
-        $("#acceptWarnings")
-            .find(".acceptWarnings")
-            .on("click", (ev): boolean => {
-                // TODO: fix hard-coded URL redirect
-                const redirect = relativeURL("description/", baseUrl);
-                ev.preventDefault();
-                ev.stopPropagation();
-                this.successfulRedirect(redirect.pathname);
-                return false;
-            });
-    }
-
-    private generateMessages(type, response) {
-        const responseMessages = this.organizeMessages(response);
-        $.each(responseMessages, (key: string, value: any) => {
-            const template = type === "error" ? ".alert-danger" : ".alert-warning";
-            const div = $(template).eq(0).clone();
-            this.alertMessage(key, value, div, type);
-        });
-    }
-
-    private processICEerror(responses): void {
-        $(".noDuplicates, .noOmitStrains").on("click", (ev): boolean => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            window.location.reload();
-            return false;
-        });
-        for (const response of responses) {
-            // create dismissible error alert
-            this.alertIceWarning(response);
-        }
-    }
-
-    private generateAcceptWarning(): void {
-        const warningAlerts = $(".alert-warning:visible");
-        const acceptWarningDiv = $("#acceptWarnings").find(".acceptWarnings");
-        if (warningAlerts.length === 1) {
-            $(warningAlerts).append(acceptWarningDiv);
-        } else {
-            $("#alert_placeholder").prepend(acceptWarningDiv);
-        }
-        acceptWarningDiv.show();
-    }
-
-    private organizeMessages(responses) {
-        const obj = {};
-        for (const response of responses) {
-            const message = `${response.summary}: ${response.details}`;
-            if (Object.prototype.hasOwnProperty.call(obj, response.category)) {
-                obj[response.category].push(message);
-            } else {
-                obj[response.category] = [message];
-            }
-        }
-        return obj;
-    }
-
-    private generate504Error(): void {
-        const response = {
-            "category": "",
-            "summary": "EDD timed out",
-            "details": "Please reload page and re-upload file",
-        };
-        this.alertError(response);
-    }
-
-    private generate413Error(): void {
-        const response = {
-            "category": "",
-            "summary": "File too large",
-            "details":
-                "Please contact system administrators or break your file into parts.",
-        };
-        this.alertError(response);
-    }
-
-    private alertIceWarning(response): void {
-        const iceError = $("#iceError");
-        response.category = `Warning! ${response.category}`;
-        this.createAlertMessage(iceError, response);
-    }
-
-    private alertError(response): void {
-        const newErrorAlert = $(".alert-danger").eq(0).clone();
-        this.createAlertMessage(newErrorAlert, response);
-        this.clearDropZone();
-    }
-
-    private createAlertMessage(alertClone, response) {
-        $(alertClone).children("h4").text(response.category);
-        $(alertClone).children("p").text(`${response.summary}: ${response.details}`);
-        $("#alert_placeholder").append(alertClone);
-        $(alertClone).removeClass("off").show();
-    }
-
-    private alertMessage(subject, messages, newAlert, type): void {
-        if (type === "warnings") {
-            $(newAlert).children("h4").text(`Warning! ${subject}`);
-        } else {
-            $(newAlert).children("h4").text(`Error! ${subject}`);
-            this.clearDropZone();
-        }
-        $.each(messages, (key, message) => {
-            const summary = $("<p>").addClass("alertWarning").text(message);
-            $(newAlert).append(summary);
-        });
-        $("#alert_placeholder").append(newAlert);
-        $(newAlert).removeClass("off").show();
-    }
-
-    private clearDropZone(): void {
-        $("#experimentDescDropZone").removeClass("off");
-        $("#fileDropInfoIcon").addClass("off");
-        $("#fileDropInfoName").addClass("off");
-        $("#fileDropInfoSending").addClass("off");
-        $(".linesDropZone").addClass("off");
     }
 }
 
