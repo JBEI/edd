@@ -88,8 +88,8 @@ export interface StatusProps extends StatusStrings {
 /**
  * Component displays summary status of selected options thus far.
  */
-export class Status extends React.Component<StatusProps> {
-    render() {
+export class Status extends React.Component<StatusProps, unknown> {
+    render(): JSX.Element {
         const category = this.props.category && (
             <span>
                 <u>{this.props.categoryLabel}</u>: {this.props.category}
@@ -140,8 +140,8 @@ function noop(...args) {
  * Messages can be pre-fab from HTML template, received via AJAX response,
  * and/or received in websocket frame payload.
  */
-export class Messages extends React.Component<MessagesProps> {
-    render() {
+export class Messages extends React.Component<MessagesProps, unknown> {
+    render(): JSX.Element {
         const ack = this.props.onAck || noop;
         const show = this.props.show || [];
         const lookup = this.props.messages || {};
@@ -179,7 +179,7 @@ export class Messages extends React.Component<MessagesProps> {
      * the items in `on` parameter, and off the items in `off` parameter.
      */
     static curryUpdateFn(on: string[], off?: string[]) {
-        return (state, props) => {
+        return (state: MessagesProps, props: unknown): { "show": string[] } => {
             const original: Set<string> = new Set(state.show);
             const toAdd: Set<string> = new Set(on);
             original.forEach((item) => toAdd.delete(item));
@@ -195,7 +195,7 @@ export class Messages extends React.Component<MessagesProps> {
     }
 }
 
-class Message extends React.Component<MessageStrings> {
+class Message extends React.Component<MessageStrings, unknown> {
     render() {
         return (
             <div className={classNames("alert", this.props.classNames)}>
@@ -214,7 +214,7 @@ interface ProblemProps {
     onAck?: () => void;
 }
 
-class Problem extends React.Component<ProblemProps> {
+class Problem extends React.Component<ProblemProps, unknown> {
     render() {
         const hasAck =
             this.props.onAck !== undefined && this.props.ackButtonLabel !== undefined;

@@ -28,14 +28,14 @@ export class SubState {
     show: string[] = [];
 }
 
-export class Step extends React.Component<Props> {
-    componentDidMount() {
+export class Step extends React.Component<Props, unknown> {
+    componentDidMount(): void {
         if (this.props.status !== "Completed") {
             this.sendSubmit(this.props.step1.uploadUrl);
         }
     }
 
-    componentDidUpdate(prevProps, prevState) {
+    componentDidUpdate(prevProps: Props, prevState: unknown): void {
         // get notified of parent changes to props here
         if (this.checkStatusTransition(prevProps, "Failed")) {
             this.setShowMessages(["error"], ["wait"]);
@@ -44,7 +44,7 @@ export class Step extends React.Component<Props> {
         }
     }
 
-    render() {
+    render(): JSX.Element {
         return (
             <div className="stepDiv">
                 <Summary.Status {...this.props.statusProps} />

@@ -34,8 +34,8 @@ export class SubState {
     uuid: string = null;
 }
 
-export class Step extends React.Component<Props> {
-    componentDidMount() {
+export class Step extends React.Component<Props, unknown> {
+    componentDidMount(): void {
         $.get(
             this.props.categoryUrl,
             (payload) => {
@@ -45,21 +45,21 @@ export class Step extends React.Component<Props> {
         );
     }
 
-    componentWillUnmount() {
+    componentWillUnmount(): void {
         if (this.isValidated()) {
             this.sendCreate();
         }
     }
 
-    isValidated() {
+    isValidated(): boolean {
         return (
             this.props.step1.category &&
             this.props.step1.protocol &&
-            this.props.step1.layout
+            this.props.step1.layout !== null
         );
     }
 
-    render() {
+    render(): JSX.Element {
         return (
             <div className="stepDiv">
                 <Summary.Messages

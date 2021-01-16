@@ -14,8 +14,8 @@ interface MBSProps {
     onSelect: (choice) => void;
 }
 
-export class MultiButtonSelect extends React.Component<MBSProps> {
-    componentDidUpdate(prevProps, prevState) {
+export class MultiButtonSelect extends React.Component<MBSProps, unknown> {
+    componentDidUpdate(prevProps: MBSProps, prevState: unknown): void {
         const options = this.props.options || [];
         if (!prevProps.selected && options.length === 1) {
             // auto-select only option
@@ -23,7 +23,7 @@ export class MultiButtonSelect extends React.Component<MBSProps> {
         }
     }
 
-    render() {
+    render(): JSX.Element {
         const options = this.props.options || [];
         const buttons = options.map((o) => {
             const active = this.props.selected && this.props.selected.pk === o.pk;
@@ -48,8 +48,8 @@ interface TOProps {
     onChange: (name: string, set: boolean) => void;
 }
 
-export class ToggleOption extends React.Component<TOProps> {
-    render() {
+export class ToggleOption extends React.Component<TOProps, unknown> {
+    render(): JSX.Element {
         const name = this.props.original.children("input").attr("name");
         const label = this.props.original.children("label").text();
         const on = this.props.on || new Set<string>();

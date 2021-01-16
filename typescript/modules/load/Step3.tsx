@@ -22,8 +22,8 @@ export class SubState {
     autoAdvanced: Set<string> = new Set<string>();
 }
 
-export class Step extends React.Component<Props> {
-    componentDidMount() {
+export class Step extends React.Component<Props, unknown> {
+    componentDidMount(): void {
         // wait a bit then move to next step if everything OK
         if (this.isValidated() && !this.hasAutoAdvanced()) {
             window.setTimeout(() => this.props.jumpToStep(3), 5000);
@@ -32,11 +32,11 @@ export class Step extends React.Component<Props> {
         this.markAutoAdvanced();
     }
 
-    isValidated() {
+    isValidated(): boolean {
         return this.props.errors.length === 0 && this.props.warnings.length === 0;
     }
 
-    render() {
+    render(): JSX.Element {
         return (
             <div className="stepDiv">
                 <Summary.Status {...this.props.statusProps} />

@@ -31,8 +31,8 @@ export class SubState {
     show: string[] = [];
 }
 
-export class Step extends React.Component<Props> {
-    componentDidUpdate(prevProps, prevState) {
+export class Step extends React.Component<Props, unknown> {
+    componentDidUpdate(prevProps: Props, prevState: unknown): void {
         // get notified of parent changes to props here
         if (this.isFileReady() && !this.props.step2.parseSent) {
             this.props.onUpdate("step2", { "parseSent": true }, () => {
@@ -50,11 +50,11 @@ export class Step extends React.Component<Props> {
         }
     }
 
-    isValidated() {
+    isValidated(): boolean {
         return this.isStatusSet() && this.isErrorFree();
     }
 
-    render() {
+    render(): JSX.Element {
         const accept = this.accept();
         // TODO: set "excel" class based on accept value
         const baseClasses = [

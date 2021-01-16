@@ -64,12 +64,12 @@ class Wizard extends React.Component<Props, State> {
 
     // React methods
 
-    componentDidMount() {
+    componentDidMount(): void {
         const socket = new Notification.NotificationSocket({ "path": "/ws/load/" });
         socket.subscribe((messages, count) => this.onMessage(messages));
     }
 
-    render() {
+    render(): JSX.Element {
         const ackFn = (category) => this.onAck(category);
         const updateFn = (stepName, stepState, callback?) =>
             this.onUpdate(stepName, stepState, callback);
