@@ -1,6 +1,6 @@
 import * as EDDAuto from "../modules/EDDAutocomplete";
 
-export function prepareIt() {
+function prepareIt(): void {
     EDDAuto.BaseAuto.initPreexisting();
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus

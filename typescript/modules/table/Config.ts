@@ -149,7 +149,7 @@ export function defineMeasurementColumns(
  * Callback for Handsontable.GridSettings.afterGetColHeader. Setting the event
  * handler to this function removes the menu dropdown from the first column.
  */
-export function disableMenuFirstColumn(column, th): void {
+export function disableMenuFirstColumn(column: number, th: HTMLElement): void {
     // see: https://github.com/handsontable/handsontable/issues/4253
     // hack to disable menu on only the first column
     if (column === 0) {

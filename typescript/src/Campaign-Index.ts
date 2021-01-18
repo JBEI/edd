@@ -6,7 +6,7 @@ import "jquery-ui/ui/widgets/dialog";
 import * as EDDAuto from "../modules/EDDAutocomplete";
 
 // Called when the page loads.
-export function prepareIt() {
+function prepareIt(): void {
     EDDAuto.BaseAuto.initPreexisting();
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus

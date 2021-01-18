@@ -2,7 +2,7 @@ import * as $ from "jquery";
 import "jquery-ui/ui/widgets/dialog";
 
 // called when the page loads
-export function prepareIt() {
+function prepareIt(): void {
     $(".disclose").find(".discloseLink").on("click", disclose);
 
     const modal = $("#addStudyModal");
@@ -19,7 +19,7 @@ export function prepareIt() {
     });
 }
 
-export function disclose() {
+function disclose(): boolean {
     $(this).closest(".disclose").toggleClass("discloseHide");
     return false;
 }

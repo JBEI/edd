@@ -38,7 +38,7 @@ function buildRenderer<T>(fn: RenderFn<T>): Handsontable.renderers.Base {
  * edd.timestamp -- a number (seconds since epoch)
  * edd.user -- a UserRecord
  */
-export function register() {
+export function register(): void {
     // TODO: link to PubChem or UniProt or ICE or ...?
     Handsontable.renderers.registerRenderer(
         "edd.category",

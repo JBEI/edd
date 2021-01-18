@@ -18,7 +18,7 @@ function buildMenu(menuElement: HTMLElement): Notification.NotificationMenu {
 }
 
 // called when the page loads
-export function prepareIt() {
+function prepareIt(): void {
     // adding click handlers to close buttons on status messages
     $(document).on("click", ".statusMessage a.close", function (ev) {
         const link = $(this);

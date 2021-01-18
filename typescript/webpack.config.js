@@ -47,7 +47,6 @@ module.exports = {
             "react-stepzilla.css",
             path.resolve(__dirname, "./src/LoadWizard.tsx"),
         ],
-        "RNASeq": path.resolve(__dirname, "./src/RNASeq.ts"),
         "Skyline_Convert": path.resolve(__dirname, "./src/Skyline_Convert.ts"),
         "StudyData": path.resolve(__dirname, "./src/Study-Data.ts"),
         "StudyLines": path.resolve(__dirname, "./src/Study-Lines.ts"),

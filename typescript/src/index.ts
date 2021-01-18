@@ -24,7 +24,7 @@ import * as EDDAuto from "../modules/EDDAutocomplete";
 import * as Utl from "../modules/Utl";
 
 // Called when the page loads.
-export function prepareIt() {
+function prepareIt(): void {
     EDDAuto.BaseAuto.initPreexisting();
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus
@@ -50,12 +50,12 @@ export function prepareIt() {
     prepareTable();
 }
 
-export function disclose() {
+function disclose(): boolean {
     $(this).closest(".disclose").toggleClass("discloseHide");
     return false;
 }
 
-export function prepareTable() {
+function prepareTable(): void {
     // Instantiate a table specification for the Studies table
     const studiesDataGridSpec = new DataGridSpecStudies();
     studiesDataGridSpec.init();
@@ -677,7 +677,7 @@ class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
         return "My Studies Only";
     }
 
-    onWidgetChange(e): void {
+    onWidgetChange(): void {
         // update spec with filter options
         const filter = this._spec.filter();
         if (this.checkBoxElement.checked) {
@@ -710,7 +710,7 @@ class DGDisabledStudiesWidget extends DataGridOptionWidget {
         return "Show Disabled";
     }
 
-    onWidgetChange(e): void {
+    onWidgetChange(): void {
         // update spec with filter options
         const filter = this._spec.filter();
         if (this.checkBoxElement.checked) {

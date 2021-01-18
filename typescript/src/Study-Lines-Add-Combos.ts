@@ -13,7 +13,7 @@ import * as Utl from "../modules/Utl";
 import "../modules/Styles";
 
 // line metadata types that should use an autocomplete to gather user input
-export const AUTOCOMPLETE_META_UUIDS: string[] = [
+const AUTOCOMPLETE_META_UUIDS: string[] = [
     EddRest.LINE_EXPERIMENTER_META_UUID,
     EddRest.LINE_CONTACT_META_UUID,
     EddRest.CARBON_SRC_META_UUID,
@@ -21,18 +21,18 @@ export const AUTOCOMPLETE_META_UUIDS: string[] = [
 ];
 
 // line metadata types which represent a user and should use the user autocomplete
-export const USER_META_TYPE_UUIDS: string[] = [
+const USER_META_TYPE_UUIDS: string[] = [
     EddRest.LINE_CONTACT_META_UUID,
     EddRest.LINE_EXPERIMENTER_META_UUID,
 ];
 
 // line metadata types that support multiple values for a single line
-export const MULTIVALUED_LINE_META_UUIDS = [
+const MULTIVALUED_LINE_META_UUIDS = [
     EddRest.LINE_STRAINS_META_UUID,
     EddRest.CARBON_SRC_META_UUID,
 ];
 
-export interface ErrorSummary {
+interface ErrorSummary {
     category: string;
     summary: string;
     details?: string[];
@@ -222,7 +222,7 @@ class ErrSummary {
     }
 }
 
-export class MultiValueInput {
+abstract class MultiValueInput {
     uiLabel: JQuery;
     maxRows: number;
     minEntries: number;
@@ -278,11 +278,7 @@ export class MultiValueInput {
         return null;
     }
 
-    registerRemoveRowEvtHandler(removeButton, rowIndex) {
-        // empty method body for children to override
-        // TODO: inspect implementations
-        // appears inconsistent use WRT postremovecallback
-    }
+    abstract registerRemoveRowEvtHandler(removeButton: JQuery, rowIndex: number): void;
 
     buildAddBtn(container: JQuery) {
         // only add the control to the first row
@@ -313,7 +309,7 @@ export class MultiValueInput {
         this.updateInputState();
     }
 
-    promoteRowContent(firstRow: JQuery, nextRow: JQuery) {
+    promoteRowContent(firstRow: JQuery, nextRow: JQuery): void {
         // remove only the input cell content from this row,
         // leaving labeling and controls in place
         const inputCell = firstRow.children(".inputCell").empty();
@@ -368,7 +364,7 @@ export class MultiValueInput {
         }
     }
 
-    removeFromForm() {
+    removeFromForm(): void {
         // empty default implementation for children to override.
         // this method should ONLY remove the controls from the DOM...
         // handling subsequent updates to the rest of the form
@@ -392,7 +388,7 @@ export class MultiValueInput {
     }
 }
 
-export class LinePropertyInput extends MultiValueInput {
+class LinePropertyInput extends MultiValueInput {
     lineProperty: LinePropertyDescriptor;
     supportsCombinations: boolean;
 
@@ -408,7 +404,7 @@ export class LinePropertyInput extends MultiValueInput {
                 : options.supportsCombinations;
     }
 
-    updateInputState() {
+    updateInputState(): void {
         if (this.addButton) {
             this.addButton.prop("disabled", !this.canAddRows());
         }
@@ -503,7 +499,7 @@ export class LinePropertyInput extends MultiValueInput {
      * B) If the newly-added row remains unfilled, the indicator will may not match the way the
      *    value is actually treated
      */
-    autoUpdateCombinations() {
+    autoUpdateCombinations(): void {
         let combosButton: JQuery;
 
         const noCombosButton = this.rows[0].find("input:radio[value=No]");
@@ -630,7 +626,7 @@ export class LinePropertyInput extends MultiValueInput {
         this.buildRemoveBtn(inputCell);
     }
 
-    registerRemoveRowEvtHandler(removeButton: JQuery, rowIndex: number) {
+    registerRemoveRowEvtHandler(removeButton: JQuery, rowIndex: number): void {
         removeButton
             .off("click")
             .on(
@@ -649,12 +645,12 @@ export class LinePropertyInput extends MultiValueInput {
         }
     }
 
-    removeFromForm() {
+    removeFromForm(): void {
         creationManager.removeLineProperty(this.lineProperty);
     }
 }
 
-export class CustomElementInput extends MultiValueInput {
+class CustomElementInput extends MultiValueInput {
     element: CustomNameElement;
 
     constructor() {
@@ -662,7 +658,7 @@ export class CustomElementInput extends MultiValueInput {
         this.element = new CustomNameElement();
     }
 
-    getNamingElement() {
+    getNamingElement(): CustomNameElement {
         // TODO: hard-coded index won't work for combo
         if (this.hasValidInput(0)) {
             return this.element;
@@ -737,7 +733,7 @@ export class CustomElementInput extends MultiValueInput {
         this.updateInputState();
     }
 
-    promoteRowContent(firstRow: JQuery, nextRow: JQuery) {
+    promoteRowContent(firstRow: JQuery, nextRow: JQuery): void {
         // remove only the input cell content from this row,
         // leaving labeling and controls in place
         const firstRowCell = firstRow.children(".custom-name-cell").empty();
@@ -768,7 +764,7 @@ export class CustomElementInput extends MultiValueInput {
         return cell;
     }
 
-    registerRemoveRowEvtHandler(removeButton, rowIndex) {
+    registerRemoveRowEvtHandler(removeButton, rowIndex): void {
         removeButton
             .off("click")
             .on(
@@ -787,12 +783,12 @@ export class CustomElementInput extends MultiValueInput {
         creationManager.updateNameEltChoices(true);
     }
 
-    removeFromForm() {
+    removeFromForm(): void {
         creationManager.removeCustomElt(this.element.nameEltGuiId);
     }
 }
 
-export class AbbreviationInput extends LinePropertyInput {
+class AbbreviationInput extends LinePropertyInput {
     constructor(options: LinePropertyInputOptions) {
         super(options);
         // override default labeling from the parent
@@ -812,11 +808,11 @@ export class AbbreviationInput extends LinePropertyInput {
         );
     }
 
-    removeFromForm() {
+    removeFromForm(): void {
         creationManager.removeAbbrev(this.lineProperty);
     }
 
-    postRemoveCallback(rowIndex: number, hadValidInput: boolean) {
+    postRemoveCallback(rowIndex: number, hadValidInput: boolean): void {
         creationManager.updateHasCustomNameElts();
         if (hadValidInput) {
             creationManager.queuePreviewUpdate();
@@ -857,7 +853,7 @@ export class AbbreviationInput extends LinePropertyInput {
         this.updateInputState();
     }
 
-    promoteRowContent(firstRow: JQuery, nextRow: JQuery) {
+    promoteRowContent(firstRow: JQuery, nextRow: JQuery): void {
         // remove only the input cell content from this row,
         // leaving labeling and controls in place
         const firstRowCell = firstRow.children(".abbrev-match-cell").empty();
@@ -887,7 +883,7 @@ export class AbbreviationInput extends LinePropertyInput {
         return cell;
     }
 
-    registerRemoveRowEvtHandler(removeButton, rowIndex) {
+    registerRemoveRowEvtHandler(removeButton, rowIndex): void {
         removeButton
             .off("click")
             .on(
@@ -903,7 +899,7 @@ export class AbbreviationInput extends LinePropertyInput {
     }
 }
 
-export class LinePropertyAutoInput extends LinePropertyInput {
+class LinePropertyAutoInput extends LinePropertyInput {
     autoInput: EDDAuto.BaseAuto;
 
     constructor(options: LinePropertyInputOptions) {
@@ -970,7 +966,7 @@ export class LinePropertyAutoInput extends LinePropertyInput {
     }
 }
 
-export class BooleanInput extends LinePropertyInput {
+class BooleanInput extends LinePropertyInput {
     yesCheckbox: JQuery;
     noCheckbox: JQuery;
 
@@ -1006,7 +1002,7 @@ export class BooleanInput extends LinePropertyInput {
         return this.yesCheckbox.prop("checked") && this.noCheckbox.prop("checked");
     }
 
-    hasValidInput(rowIndex: number) {
+    hasValidInput(rowIndex: number): boolean {
         return this.yesCheckbox.prop("checked") || this.noCheckbox.prop("checked");
     }
 
@@ -1029,7 +1025,7 @@ export class BooleanInput extends LinePropertyInput {
     }
 }
 
-export class NumberInput extends LinePropertyInput {
+class NumberInput extends LinePropertyInput {
     constructor(options: LinePropertyInputOptions) {
         options.maxRows = 1;
         options.supportsCombinations = false;
@@ -1064,7 +1060,7 @@ export class NumberInput extends LinePropertyInput {
     }
 }
 
-export class IceFolderInput extends LinePropertyInput {
+class IceFolderInput extends LinePropertyInput {
     constructor(options: LinePropertyInputOptions) {
         super(options);
         this.supportsCombinations = true;
@@ -1088,7 +1084,7 @@ export class IceFolderInput extends LinePropertyInput {
     // and force the user to choose input first,
     // then the row added to the form
     // will be read-only feedback of user selections made in the dialog.
-    buildAddBtn(container: JQuery) {
+    buildAddBtn(container: JQuery): void {
         // only add the control to the first row
         if (this.getRowCount() === 1 && this.getRowCount() < this.maxRows) {
             this.addButton = $("<button>")
@@ -1160,7 +1156,7 @@ export class IceFolderInput extends LinePropertyInput {
         return filters;
     }
 
-    autoUpdateCombinations() {
+    autoUpdateCombinations(): void {
         // get references to the buttons used to indicate
         // whether this ICE folder results in combinatorial line creation.
         const noCombosButton = this.rows[0].find("input:radio[value=No]");
@@ -1180,7 +1176,7 @@ export class IceFolderInput extends LinePropertyInput {
     }
 }
 
-export class CreationManager {
+class CreationManager {
     // line metadata type info that drives the whole UI
     allLineMetaTypes: any = {};
     nonAutocompleteLineMetaTypes: any[] = [];
@@ -1646,7 +1642,7 @@ export class CreationManager {
         $("#step3Label").removeClass("wait");
     }
 
-    setStep3InputsEnabled(enabled: boolean) {
+    setStep3InputsEnabled(enabled: boolean): void {
         $("#step3 :input").prop("disabled", !enabled);
         $("#step3").toggleClass("disabledStep3", !enabled);
         $("#step3 #step3-waiting-div").removeClass("disabledStep3");
@@ -1706,7 +1702,7 @@ export class CreationManager {
         $("#create-more-btn").prop("disabled", false);
     }
 
-    lineCreationError(jqXHR, textStatus: string, errorThrown: string): void {
+    lineCreationError(jqXHR: JQueryXHR, textStatus: string, errorThrown: string): void {
         $("#creation-wait-spinner").addClass("hide");
         const statusDiv = $("#creation-status-div").empty();
         const json = jqXHR.responseJSON;
@@ -1715,7 +1711,7 @@ export class CreationManager {
         );
     }
 
-    updateStep3Error(jqXHR, textStatus: string, errorThrown: string): void {
+    updateStep3Error(jqXHR: JQueryXHR, textStatus: string, errorThrown: string): void {
         const json = jqXHR.responseJSON;
         $("#line-preview-div").addClass("hide");
         const errsDiv = $("#step3-errors-div").empty().removeClass("hide");
@@ -1879,7 +1875,7 @@ export class CreationManager {
         alertClass: string,
         showWhenCheckedSelector?: string,
         updatePreview?: boolean,
-    ) {
+    ): void {
         // true except when param is explicitly false
         updatePreview = updatePreview !== false;
         // make a new checkbox to put in the alert,
@@ -1931,7 +1927,7 @@ export class CreationManager {
         $("#step3-waiting-div").addClass("hide");
     }
 
-    addLineNamesToTable(lines) {
+    addLineNamesToTable(lines): void {
         let i: number, row: JQuery, cell: JQuery;
         // remove any earlier previews
         $(".line-names-preview-row").remove();
@@ -1962,7 +1958,7 @@ export class CreationManager {
         $("#line-preview-div").removeClass("hide");
     }
 
-    setLineMetaTypes(metadataTypes: any[]) {
+    setLineMetaTypes(metadataTypes: any[]): void {
         $("#step1_loading_metadata_status_div").empty();
         $("#addPropertyButton").prop("disabled", false);
         this.userMetaTypePks = [];
@@ -2218,7 +2214,7 @@ export class CreationManager {
         $("#addPropertyButton").on("click", creationManager.showAddProperty.bind(this));
     }
 
-    getPropertyInput(jsonId: any) {
+    getPropertyInput(jsonId: any): LinePropertyInput {
         let result: LinePropertyInput = null;
         this.lineProperties.forEach(function (input) {
             if (input.lineProperty.jsonId === jsonId) {
@@ -2276,7 +2272,11 @@ export class CreationManager {
             });
     }
 
-    iceFolderLookupError(jqXHR, textStatus: string, errorThrown: string): void {
+    iceFolderLookupError(
+        jqXHR: JQueryXHR,
+        textStatus: string,
+        errorThrown: string,
+    ): void {
         const contentType = jqXHR.getResponseHeader("Content-Type");
         const statusDiv = $("#folder-lookup-status-div").empty();
         const genericErrorMsg = {
@@ -2404,7 +2404,7 @@ export class CreationManager {
             .removeClass("hide"); // remove class that hides it during initial page load
     }
 
-    addSelectedAbbreviations() {
+    addSelectedAbbreviations(): void {
         $("#abbreviations-table").removeClass("hide");
         // build the list of line attributes selected in the dialog
         const abbreviationsList = $("#line-name-abbrev-list");
@@ -2533,11 +2533,11 @@ export class CreationManager {
     }
 }
 
-export const creationManager = new CreationManager();
+const creationManager = new CreationManager();
 
 // As soon as the window load signal is sent, call back to the server for the set of reference
 // records that will be used to disambiguate labels in imported data.
-export function onDocumentReady(): void {
+function onDocumentReady(): void {
     creationManager.buildLineCreationDialog();
     creationManager.buildStep1Inputs();
     creationManager.buildStep2Inputs();

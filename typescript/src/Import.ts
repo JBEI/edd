@@ -41,19 +41,19 @@ window.EDDData = window.EDDData || ({} as EDDData);
 // During initialization we will allocate one instance of each of the classes
 // that handle the major steps of the import process.
 // These are specified in the order they are called, and the order they appear on the page:
-export let selectMajorKindStep: SelectMajorKindStep;
-export let rawInputStep: RawInputStep;
-export let identifyStructuresStep: IdentifyStructuresStep;
-export let typeDisambiguationStep: TypeDisambiguationStep;
-export let reviewStep: ReviewStep;
+let selectMajorKindStep: SelectMajorKindStep;
+let rawInputStep: RawInputStep;
+let identifyStructuresStep: IdentifyStructuresStep;
+let typeDisambiguationStep: TypeDisambiguationStep;
+let reviewStep: ReviewStep;
 
-export interface RawModeProcessor {
+interface RawModeProcessor {
     parse(step: RawInputStep, rawData: string): RawInputStat;
     process(step: RawInputStep, stat: RawInputStat): void;
 }
 
 // These are returned by the server after parsing a dropped file
-export interface RawImportSet extends MeasurementValueSequence {
+interface RawImportSet extends MeasurementValueSequence {
     kind: string; // the type of import selected in step 1
     hint: string; // any additional hints about type of data
     line_name: string;
@@ -64,7 +64,7 @@ export interface RawImportSet extends MeasurementValueSequence {
 
 // This information is added post-disambiguation, in addition to the fields from RawImportSet,
 // and sent to the server
-export interface ResolvedImportSet extends RawImportSet {
+interface ResolvedImportSet extends RawImportSet {
     protocol_id: number;
     // Value of 'null' or string 'new' indicates new Line should be created with
     // name line_name.
@@ -77,7 +77,7 @@ export interface ResolvedImportSet extends RawImportSet {
 }
 
 // Captures important information to be reviewed by the user in the final import step
-export class ImportMessage {
+class ImportMessage {
     message: string;
 
     // optional. for possible future use in highlighting / scrolling to / etc.
@@ -103,7 +103,7 @@ export class ImportMessage {
 // should be summarized for the user in the UI prior to the import. Any error messages will
 // prevent the import from proceeding until they are resolved. Warnings must be acknowledged
 // by checking a checkbox before the import can proceed.
-export interface ImportStep {
+interface ImportStep {
     getUserWarnings(): ImportMessage[];
     getUserErrors(): ImportMessage[];
 
@@ -134,7 +134,7 @@ function setupHelp(helpId: string): void {
 
 // As soon as the window load signal is sent, call back to the server for the set of reference
 // records that will be used to disambiguate labels in imported data.
-export function onWindowLoad(): void {
+function onWindowLoad(): void {
     // turn on dialogs for the help buttons in each section
     ["1", "2", "3", "4", "5"].forEach(setupHelp);
     // send CSRF header on each AJAX request from this page
@@ -177,7 +177,7 @@ export function onWindowLoad(): void {
 
 // As soon as we've got and parsed the reference data, we can set up all the callbacks for the
 // UI, effectively turning the page "on".
-export function onReferenceRecordsLoad(): void {
+function onReferenceRecordsLoad(): void {
     // TODO: clarify reflected GUI state when waiting for large dataset from the server.
     // in several test cases with large #'s of lines, there's time for the user to reach a
     // later / confusing step in the process while waiting on this data to be returned.
@@ -210,7 +210,7 @@ export function onReferenceRecordsLoad(): void {
 }
 
 // This is called by our instance of selectMajorKindStep to announce changes.
-export function selectMajorKindCallback(): void {
+function selectMajorKindCallback(): void {
     // This is a bit of a hack.  We want to change the pulldown settings in Step 3 if the mode
     // in Step 1 is changed, but leave the pulldown alone otherwise (including when Step 2
     // announces its own changes.)
@@ -227,33 +227,33 @@ export function selectMajorKindCallback(): void {
 
 // This is called by our instance of Step 2, RawInputStep to announce changes.
 // We just pass the signal along to Step 3: IdentifyStructuresStep.
-export function rawInputCallback(): void {
+function rawInputCallback(): void {
     identifyStructuresStep.previousStepChanged();
 }
 
 // This is called by our instance of Step 3, IdentifyStructuresStep to announce changes.
 // We just pass the signal along to Step 4: TypeDisambiguationStep.
-export function identifyStructuresCallback(): void {
+function identifyStructuresCallback(): void {
     typeDisambiguationStep.previousStepChanged();
 }
 
 // This is called by our instance of TypeDisambiguationStep to announce changes.
 // All we do currently is repopulate the debug area.
-export function typeDisambiguationCallback(): void {
+function typeDisambiguationCallback(): void {
     reviewStep.previousStepChanged();
 }
 
 // tells step 3 that step 2 has just begun processing file input
-export function processingFileCallback(): void {
+function processingFileCallback(): void {
     identifyStructuresStep.processingFileInPreviousStep();
 }
 
-export function reviewStepCallback(): void {
+function reviewStepCallback(): void {
     // nothing to do! no subsequent steps
 }
 
 // The usual click-to-disclose callback.  Perhaps this should be in Utl.ts?
-export function disclose(): boolean {
+function disclose(): boolean {
     $(this).closest(".disclose").toggleClass("discloseHide");
     return false;
 }
@@ -261,7 +261,7 @@ export function disclose(): boolean {
 // The class responsible for everything in the "Step 1" box that you see on the data import
 // page. Here we provide UI for selecting the major kind of import, and the Protocol that the
 // data should be stored under. These choices affect the behavior of all subsequent steps.
-export class SelectMajorKindStep {
+class SelectMajorKindStep {
     // The Protocol for which we will be importing data.
     masterProtocol: number;
     // The main mode we are interpreting data in.
@@ -269,9 +269,9 @@ export class SelectMajorKindStep {
     interpretationMode: string | any;
     inputRefreshTimerID: number;
 
-    nextStepCallback: any;
+    nextStepCallback: () => void;
 
-    constructor(nextStepCallback: any) {
+    constructor(nextStepCallback: () => void) {
         this.masterProtocol = 0;
         // We rely on a separate call to reconfigure() to set this properly.
         this.interpretationMode = null;
@@ -533,6 +533,32 @@ class StandardProcessor extends BaseRawTableProcessor {
     }
 }
 
+interface ParseRecord {
+    kind: string;
+    line_name: string;
+    assay_name: string;
+    measurement_name: string;
+    metadata_by_name: Record<string, string>;
+    data: any;
+}
+
+interface ParseTable {
+    headers: string[];
+    values: string[][];
+}
+
+interface ParseWorksheets {
+    worksheets: ParseTable[];
+}
+
+interface ParseResponse {
+    /** (optional) if there is any error, a message is sent in this key */
+    python_error?: string;
+    /** (optional) if the parse was successful, detected file type is sent */
+    file_type?: "csv" | "xlsx" | "txt" | "xml";
+    file_data?: string | ParseRecord[] | ParseWorksheets;
+}
+
 // The class responsible for everything in the "Step 2" box that you see on the data import
 // page. It needs to parse the raw data from typing or pasting in the input box, or a
 // dragged-in file, into a null-padded rectangular grid that can be easily used by the next
@@ -542,7 +568,7 @@ class StandardProcessor extends BaseRawTableProcessor {
 // is parsed in-browser and the contents are placed in the text box.  When the import kind is
 // "biolector" and the user drags in an XML file, the file is sent to the server and parsed
 // there, and the resulting data is passed back to the browser and placed in the text box.
-export class RawInputStep {
+class RawInputStep {
     // This is where we organize raw data pasted into the text box by the user,
     // or placed there as a result of server-side processing - like taking apart
     // a dropped Excel file.
@@ -573,8 +599,8 @@ export class RawInputStep {
     inputRefreshTimerID: any;
 
     selectMajorKindStep: SelectMajorKindStep;
-    processingFileCallback: any;
-    nextStepCallback: any;
+    processingFileCallback: () => void;
+    nextStepCallback: () => void;
 
     haveInputData = false;
 
@@ -582,8 +608,8 @@ export class RawInputStep {
 
     constructor(
         step: SelectMajorKindStep,
-        nextStepCallback: any,
-        processingFileCallBack: any,
+        nextStepCallback: () => void,
+        processingFileCallBack: () => void,
     ) {
         this.selectMajorKindStep = step;
 
@@ -762,20 +788,17 @@ export class RawInputStep {
     }
 
     // Here, we take a look at the type of the dropped file and add extra headers
-    fileDropped(file, formData): void {
+    fileDropped(file: Dropzone.DropzoneFile, formData: FormData): void {
         this.haveInputData = true;
         processingFileCallback();
         formData.set("import_mode", this.selectMajorKindStep.interpretationMode);
     }
 
-    // This is called upon receiving a response from a file upload operation, and unlike
-    // fileRead() above, is passed a processed result from the server as a second argument,
-    // rather than the raw contents of the file.
-    fileReturnedFromServer(fileContainer, result, response): void {
+    fileReturnedFromServer(file: Dropzone.DropzoneFile, response: ParseResponse): void {
         const mode = this.selectMajorKindStep.interpretationMode;
 
         if (mode === "biolector" || mode === "hplc" || mode === "skyline") {
-            const data: any[] = response.file_data;
+            const data = response.file_data as ParseRecord[];
             const count: number = data.length;
             const points: number = data
                 .map((set): number => set.data.length)
@@ -799,7 +822,7 @@ export class RawInputStep {
             // Since we're handling this format entirely client-side, we can get rid of the
             // drop zone immediately.
             this.clearDropZone();
-            this.rawText(response.file_data);
+            this.rawText(response.file_data as string);
             this.inferSeparatorType();
             this.reprocessRawData();
             return;
@@ -807,7 +830,8 @@ export class RawInputStep {
 
         if (response.file_type === "xlsx") {
             this.clearDropZone();
-            const ws = response.file_data.worksheets[0];
+            const data = response.file_data as ParseWorksheets;
+            const ws = data.worksheets[0];
             const table = ws[0];
             let csv = [];
             if (table.headers) {
@@ -1058,14 +1082,13 @@ export class RawInputStep {
 }
 
 // type for the options in row pulldowns
-export interface RowPulldownOption
-    extends Array<string | number | RowPulldownOption[]> {
+interface RowPulldownOption extends Array<string | number | RowPulldownOption[]> {
     0: string;
     1: number | RowPulldownOption[];
 }
 
 // Magic numbers used in pulldowns to assign types to rows/fields.
-export class TypeEnum {
+class TypeEnum {
     static Gene_Name = 14; // singular!
     static Gene_Names = 10; // plural!
     static Line_Names = 1;
@@ -1085,7 +1108,7 @@ export class TypeEnum {
 // specifying the content of the rows and columns, as well as checkboxes to enable or disable
 // rows or columns. Interpret the current grid and the settings on the current table into
 // EDD-friendly sets.
-export class IdentifyStructuresStep implements ImportStep {
+class IdentifyStructuresStep implements ImportStep {
     rowLabelCells: any[];
     colCheckboxCells: any[];
     // Note: this is built, but never referenced...  Might as well cut it.
@@ -1128,7 +1151,7 @@ export class IdentifyStructuresStep implements ImportStep {
 
     rawInputStep: RawInputStep;
     selectMajorKindStep: SelectMajorKindStep;
-    nextStepCallback: any;
+    nextStepCallback: () => void;
 
     warningMessages: ImportMessage[];
     errorMessages: ImportMessage[];
@@ -1145,7 +1168,7 @@ export class IdentifyStructuresStep implements ImportStep {
     constructor(
         mkStep: SelectMajorKindStep,
         riStep: RawInputStep,
-        nextStepCallback: any,
+        nextStepCallback: () => void,
     ) {
         this.rawInputStep = riStep;
 
@@ -2267,7 +2290,7 @@ export class IdentifyStructuresStep implements ImportStep {
 
 // The class responsible for everything in the "Step 4" box that you see on the data
 // import page.
-export class TypeDisambiguationStep {
+class TypeDisambiguationStep {
     identifyStructuresStep: IdentifyStructuresStep;
 
     // These objects hold string keys that correspond to unique names found during parsing.
@@ -2289,7 +2312,7 @@ export class TypeDisambiguationStep {
     metadataObjSets: { [index: string]: MetadataDisambiguationRow };
 
     selectMajorKindStep: SelectMajorKindStep;
-    nextStepCallback: any;
+    nextStepCallback: () => void;
 
     inputRefreshTimerID: number;
     thisStepInputTimerID: number;
@@ -2309,7 +2332,7 @@ export class TypeDisambiguationStep {
     constructor(
         mkStep: SelectMajorKindStep,
         isStep: IdentifyStructuresStep,
-        nextStepCallback: any,
+        nextStepCallback: () => void,
     ) {
         this.lineObjSets = {};
         this.assayObjSets = {};
@@ -3248,7 +3271,7 @@ export class TypeDisambiguationStep {
     }
 }
 
-export class DisambiguationRow {
+class DisambiguationRow {
     row: HTMLTableRowElement;
     rowElementJQ: JQuery;
     ignoreCheckbox: JQuery;
@@ -3319,7 +3342,7 @@ export class DisambiguationRow {
     }
 }
 
-export class MetadataDisambiguationRow extends DisambiguationRow {
+class MetadataDisambiguationRow extends DisambiguationRow {
     metaAuto: EDDAuto.AssayLineMetadataType;
 
     // Cache for re-use of autocomplete objects
@@ -3342,7 +3365,7 @@ export class MetadataDisambiguationRow extends DisambiguationRow {
     }
 }
 
-export class MeasurementDisambiguationRow extends DisambiguationRow {
+class MeasurementDisambiguationRow extends DisambiguationRow {
     compAuto: EDDAuto.MeasurementCompartment;
     typeAuto: EDDAuto.GenericOrMetabolite;
     unitsAuto: EDDAuto.MeasurementUnit;
@@ -3398,7 +3421,7 @@ export class MeasurementDisambiguationRow extends DisambiguationRow {
     }
 }
 
-export class LineDisambiguationRow extends DisambiguationRow {
+class LineDisambiguationRow extends DisambiguationRow {
     lineAuto: EDDAuto.StudyLine;
 
     build(body: HTMLTableElement, name, i) {
@@ -3472,7 +3495,7 @@ export class LineDisambiguationRow extends DisambiguationRow {
     }
 }
 
-export class AssayDisambiguationRow extends LineDisambiguationRow {
+class AssayDisambiguationRow extends LineDisambiguationRow {
     selectAssayJQElement: JQuery;
 
     build(body: HTMLTableElement, name, i) {
@@ -3537,7 +3560,7 @@ export class AssayDisambiguationRow extends LineDisambiguationRow {
 // The class responsible for everything in the "Step 4" box that you see on the data import
 // page. Aggregates & displays a user-relevant/actionable summary of the import process prior
 // to final submission.
-export class ReviewStep {
+class ReviewStep {
     step1: SelectMajorKindStep;
     step2: RawInputStep;
     step3: IdentifyStructuresStep;
@@ -3546,7 +3569,7 @@ export class ReviewStep {
 
     beginSubmitTimerId: number;
     submitPageTimerId: number;
-    nextStepCallback: any;
+    nextStepCallback: () => void;
 
     warningMessages: ImportMessage[][];
     warningInputs: JQuery[][];
@@ -3558,7 +3581,7 @@ export class ReviewStep {
         step2: RawInputStep,
         step3: IdentifyStructuresStep,
         step4: TypeDisambiguationStep,
-        nextStepCallback: any,
+        nextStepCallback: () => void,
     ) {
         this.step1 = step1;
         this.step2 = step2;

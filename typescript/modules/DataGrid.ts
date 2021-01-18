@@ -474,7 +474,7 @@ export class DataGrid {
     // This function should be called during instantiation,
     // since it initializes the column visibility
     // variables that are referred to throughout the rest of the DataGrid class.
-    prepareColumnVisibility() {
+    prepareColumnVisibility(): void {
         // First, run through a sequence of checks
         // to set the 'currentlyHidden' attribute to a reasonable value.
         this._spec.tableColumnGroupSpec.forEach((group: DataGridColumnGroupSpec) => {
@@ -558,7 +558,7 @@ export class DataGrid {
         return checkedBoxes;
     }
 
-    applySortIndicators() {
+    applySortIndicators(): void {
         if (this._headerRows) {
             $(this._headerRows)
                 .find(".sortedup, .sorteddown")
@@ -657,7 +657,7 @@ export class DataGrid {
 
     // Call _refreshAllWidgets, unless a half-second cooldown timer is active from the last call,
     // in which case set a flag to call _refreshAllWidgets when the timer expires.
-    _refreshAllWidgetsWithThrottling() {
+    private _refreshAllWidgetsWithThrottling(): void {
         if (this._widgetRefreshCooldownTimer) {
             this._widgetRefreshPending = true;
             return;
@@ -669,7 +669,7 @@ export class DataGrid {
         );
     }
 
-    _refreshAllWidgetsClearTimer() {
+    private _refreshAllWidgetsClearTimer(): void {
         this._widgetRefreshCooldownTimer = null;
         // If a request to refresh came in while the cooldown was in operation,
         // clear the flag and call for another refresh.
@@ -681,7 +681,7 @@ export class DataGrid {
         }
     }
 
-    _refreshAllWidgets() {
+    private _refreshAllWidgets(): void {
         this.headerWidgets().forEach((widget) => {
             widget.refreshWidget();
         });
@@ -1044,7 +1044,7 @@ export class DataGrid {
         this.scheduleTimer("arrangeTableDataRows", () => this.arrangeTableDataRows());
     }
 
-    clickedOptionWidget(event?: Event): void {
+    clickedOptionWidget(): void {
         this.scheduleTimer("arrangeTableDataRows", () => this.arrangeTableDataRows());
     }
 
@@ -1375,7 +1375,7 @@ export class DataGridRecord {
         this.createdElements = true;
     }
 
-    removeElements() {
+    removeElements(): void {
         this.dataGridDataRows.forEach((row) => {
             row.removeElement();
         });
@@ -1383,7 +1383,7 @@ export class DataGridRecord {
 
     // Like remove, except it doesn't remove JQuery events or data.
     // Used to take the table rows temporarily out of the DOM, like when re-ordering.
-    detachElements() {
+    detachElements(): void {
         this.dataGridDataRows.forEach((row) => {
             row.detachElement();
         });
@@ -1421,7 +1421,7 @@ export class DataGridDataRow {
         this.createdElement = false;
     }
 
-    createElement() {
+    createElement(): void {
         const rowEl: HTMLElement = document.createElement("tr");
         for (const c of this.dataGridDataCells) {
             rowEl.appendChild(c.getElement());
@@ -1430,7 +1430,7 @@ export class DataGridDataRow {
         this.createdElement = true;
     }
 
-    removeElement() {
+    removeElement(): void {
         if (this.createdElement) {
             this.getElementJQ().remove();
         }
@@ -1438,7 +1438,7 @@ export class DataGridDataRow {
 
     // Like remove, except it doesn't remove JQuery events or data.
     // Used to take the table rows temporarily out of the DOM, like when re-ordering.
-    detachElement() {
+    detachElement(): void {
         if (this.createdElement) {
             this.getElementJQ().detach();
         }
@@ -1514,7 +1514,7 @@ export class DataGridDataCell {
         $.extend(this, defaults, opt || {});
     }
 
-    createElement() {
+    createElement(): void {
         const id = this.recordID;
         const c: HTMLElement = document.createElement("td");
         let checkId: string;
@@ -1722,7 +1722,7 @@ export class DataGridOptionWidget extends DataGridWidget {
     }
 
     // Return a fragment to use in generating option widget IDs
-    getIDFragment(uniqueID): string {
+    getIDFragment(uniqueID: string): string {
         return this.dataGridSpec.tableSpec.id + "GenericOptionCB" + uniqueID;
     }
 
@@ -1737,8 +1737,8 @@ export class DataGridOptionWidget extends DataGridWidget {
     }
 
     // Handle activation of widget
-    onWidgetChange(e): void {
-        this.dataGridOwnerObject.clickedOptionWidget(e);
+    onWidgetChange(): void {
+        this.dataGridOwnerObject.clickedOptionWidget();
     }
 
     // The uniqueID is provided to assist the widget in avoiding collisions
@@ -1751,7 +1751,7 @@ export class DataGridOptionWidget extends DataGridWidget {
         // Among other things,
         // the handler function will call the appropriate filtering functions
         // for all the widgets in turn.
-        $(cb).on("change.datagrid", (e) => this.onWidgetChange(e));
+        $(cb).on("change.datagrid", () => this.onWidgetChange());
         if (this.isEnabledByDefault()) {
             cb.setAttribute("checked", "checked");
         }
@@ -2000,7 +2000,7 @@ export class DGSearchWidget extends DataGridHeaderWidget {
         }
     }
 
-    inputKeyDownHandler(e) {
+    inputKeyDownHandler(e: JQuery.KeyDownEvent): void {
         // track last key pressed
         this.lastKeyPressCode = e.keyCode;
         switch (e.keyCode) {
@@ -2029,7 +2029,7 @@ export class DGSearchWidget extends DataGridHeaderWidget {
 
     // (Note: This syntax causes "this" to behave in a non-Javascript way
     // see http://stackoverflow.com/questions/16157839/typescript-this-inside-a-class-method )
-    typingDelayExpirationHandler = () => {
+    typingDelayExpirationHandler = (): void => {
         // ignore if the following keys are pressed: [del] [shift] [capslock]
         if (this.lastKeyPressCode > 8 && this.lastKeyPressCode < 32) {
             return;
@@ -2187,7 +2187,7 @@ export class DGPagingWidget extends DataGridHeaderWidget {
         this.refreshWidget();
     }
 
-    refreshWidget() {
+    refreshWidget(): void {
         const totalSize: number = this.source.totalSize();
         const viewSize: number = this.source.viewSize();
         const start: number = this.source.totalOffset();
@@ -2438,7 +2438,7 @@ export class DataGridSpecBase {
         this.tableRowGroupSpec = null;
     }
 
-    init() {
+    init(): void {
         this.tableElement = this.getTableElement();
         this.tableSpec = this.defineTableSpec();
         this.tableHeaderSpec = this.defineHeaderSpec();
