@@ -1158,6 +1158,7 @@ class CombinatorialCreationImporter:
             "lines_created": total_line_count,
             "assays_created": total_assay_count,
             "runtime_seconds": self.performance.total_time_delta.total_seconds(),
+            "success_redirect": reverse("main:lines", kwargs={"slug": self.study.slug}),
         }
 
         return codes.ok, _build_response_content(self.errors, self.warnings, content)

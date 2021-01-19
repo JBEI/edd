@@ -177,7 +177,7 @@ export class DescriptionDropzone {
             });
             // handle clicks on Omit Strains button
             parent.find(".omitStrains").on("click", (event: JQueryMouseEventObject) => {
-                const url = new URL(dropzone.options.url as string);
+                const url = Utl.relativeURL(dropzone.options.url as string);
                 // remove alert from DOM so this can't be clicked again
                 $(event.currentTarget).closest(".alert").remove();
                 // re-submit with parameter to ignore strain access errors
