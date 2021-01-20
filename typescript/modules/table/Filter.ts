@@ -301,10 +301,19 @@ export class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
         return (item) => selected.has(item.line.id);
     }
 
+    isUseful(): boolean {
+        // this section doubles as color key legend,
+        // so always display if there's at least one item,
+        // instead of more than one
+        return this.items.length > 0;
+    }
+
     refresh(): void {
-        this.items.forEach((item, index) => {
-            const color = item.value.color || null;
-            this.labels[index].css("color", color);
+        this.labels.forEach((label, index) => {
+            const item = this.items[index];
+            if (!item.hidden) {
+                label.css("color", item?.value.color || null);
+            }
         });
     }
 }
