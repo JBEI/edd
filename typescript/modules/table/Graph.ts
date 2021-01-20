@@ -761,7 +761,7 @@ export class Graph {
         const reserve_axes = Math.max(0, Math.min(max_axis_count, y_axis_count));
         const axes_total_width = reserve_axes * Graph._axis_width;
         // calculate width of plot area, removing axes and margins
-        return Graph._width - axes_total_width;
+        return Graph._width - axes_total_width - Graph._margin;
     }
 }
 
