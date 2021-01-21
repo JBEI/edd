@@ -127,7 +127,7 @@ function refreshDisplay() {
     // check on any changes in colors
     const items = filter.measurements();
     plot.assignColors(items);
-    filter.refresh();
+    filter.refresh(items);
     // update display based on current display mode
     if (viewingMode === "table-assay") {
         $("#assayTable").removeClass("hidden");

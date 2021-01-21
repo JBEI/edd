@@ -6,7 +6,7 @@ import { Access, Item } from "./Access";
  * Describes an entry in a FilterSection; e.g. a Strain.
  */
 class FilterValue<U> {
-    hidden = false;
+    dimmed = false;
     selected = false;
 
     constructor(readonly value: U) {}
@@ -24,9 +24,21 @@ const ALLOW = () => true;
  * type in FilterSection<U>.
  */
 export abstract class FilterLayer {
+    /**
+     * Builds the DOM nodes to render this FilterLayer.
+     */
     abstract createElements(): JQuery;
+    /**
+     * Checks if this FilterLayer is currently useful to show. If changing
+     * the state will not change displayed data, then this layer does not
+     * need to be shown.
+     */
     abstract isUseful(): boolean;
-    abstract refresh(): void;
+    /**
+     * Signal that the FilterLayer should check if any values no longer apply
+     * to the subset of Item objects getting filtered.
+     */
+    abstract refresh(subset: Item[]): void;
     /**
      * Only use as a pre-filter! Layers may choose to skip implementing if
      * given only an AssayRecord and not a full Item tuple.
@@ -124,8 +136,8 @@ export class Filter extends FilterLayer {
         return this.access.measurementItems().filter(this.allowItem());
     }
 
-    refresh(): void {
-        this.layers.forEach((layer) => layer.refresh());
+    refresh(subset: Item[]): void {
+        this.layers.forEach((layer) => layer.refresh(subset));
     }
 
     /**
@@ -144,17 +156,13 @@ export class Filter extends FilterLayer {
         // pass to measurementLayer so it can update its options
         this.measurementLayer.update(categories);
     }
-
-    private static measurementHash(m: MeasurementRecord): string {
-        return `${m.type}:${m.comp}:${m.format}:${m.x_units}:${m.y_units}`;
-    }
 }
 
 /**
  * Base class for filtering an individual type. A list of these sections are
  * collected into an overall filtering widget.
  */
-export abstract class FilterSection<U> extends FilterLayer {
+export abstract class FilterSection<U, K> extends FilterLayer {
     private static counter = 1;
     readonly items: FilterValue<U>[] = [];
     // use value of section_index to build unique ID attributes for HTML elements
@@ -165,6 +173,14 @@ export abstract class FilterSection<U> extends FilterLayer {
     protected constructor(readonly title: string) {
         super();
         this.section_index = FilterSection.counter++;
+    }
+
+    allowItem(): (item: Item) => boolean {
+        const selected = this.selectedKeys();
+        if (selected.size === 0) {
+            return ALLOW;
+        }
+        return (item) => this.keysItem(item).some((v) => selected.has(v));
     }
 
     protected createCheckbox(item: FilterValue<U>, i: number): JQuery {
@@ -215,8 +231,26 @@ export abstract class FilterSection<U> extends FilterLayer {
         return this.items.length > 1;
     }
 
-    refresh(): void {
-        // most sections do nothing on refresh
+    /**
+     * Converts an Item argument to an array of key values of type K.
+     */
+    protected abstract keysItem(item: Item): K[];
+
+    /**
+     * Converts an U argument to a key value of type K.
+     */
+    protected abstract keyValue(value: U): K;
+
+    refresh(subset: Item[]): void {
+        // find all relevant key values for incoming subset Items
+        const keys = new Set<K>();
+        for (const item of subset) {
+            this.keysItem(item).forEach((key) => keys.add(key));
+        }
+        // set filter items dimmed property based on incoming subset
+        this.items.forEach((item, index) => {
+            item.dimmed = !keys.has(this.keyValue(item.value));
+        });
     }
 
     protected registerHandlers(): void {
@@ -225,9 +259,7 @@ export abstract class FilterSection<U> extends FilterLayer {
             const box = $(event.target);
             const index = box.data("index");
             this.items[index].selected = box.prop("checked");
-            const anySelected = this.items.some(
-                (item) => item.selected && !item.hidden,
-            );
+            const anySelected = this.items.some((item) => item.selected);
             this.section.find(".filter-clear").toggleClass("invisible", !anySelected);
             $.event.trigger("eddfilter");
         });
@@ -247,20 +279,25 @@ export abstract class FilterSection<U> extends FilterLayer {
     }
 
     /**
-     * Items from this FilterSection that are currently active / selected.
+     * Set of key values for currently active / selected items in this FilterSection.
      */
-    protected selectedItems(): U[] {
-        return this.items
-            .filter((item) => item.selected && !item.hidden)
-            .map((item) => item.value);
+    protected selectedKeys(): Set<K> {
+        const keys = new Set<K>();
+        this.items
+            .filter((item) => item.selected)
+            .forEach((item) => keys.add(this.keyValue(item.value)));
+        return keys;
     }
 
+    /**
+     * Converts a U-typed value to an (HTML) string to use for display.
+     */
     abstract valueToDisplay(value: U): string;
 }
 
-abstract class EDDRecordFilter<U extends EDDRecord> extends FilterSection<U> {
-    protected selectedIds(): Set<number> {
-        return new Set(this.selectedItems().map((r) => r.id));
+abstract class EDDRecordFilter<U extends EDDRecord> extends FilterSection<U, number> {
+    protected keyValue(value: EDDRecord): number {
+        return value.id;
     }
 
     valueToDisplay(value: U) {
@@ -279,26 +316,18 @@ export class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
     protected createCheckbox(item: FilterValue<LineRecord>, i: number): JQuery {
         const result = super.createCheckbox(item, i);
         this.labels[i] = result;
-        if (!item.hidden && item.value.color) {
+        if (item.value.color) {
             result.css("color", item.value.color);
         }
         return result;
     }
 
     allowAssay(): (assay: AssayRecord) => boolean {
-        const selected = this.selectedIds();
+        const selected = this.selectedKeys();
         if (selected.size === 0) {
             return ALLOW;
         }
         return (assay) => selected.has(assay.lid);
-    }
-
-    allowItem(): (item: Item) => boolean {
-        const selected = this.selectedIds();
-        if (selected.size === 0) {
-            return ALLOW;
-        }
-        return (item) => selected.has(item.line.id);
     }
 
     isUseful(): boolean {
@@ -308,10 +337,18 @@ export class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
         return this.items.length > 0;
     }
 
-    refresh(): void {
+    protected keysItem(item: Item): number[] {
+        return [item.line.id];
+    }
+
+    refresh(subset: Item[]): void {
+        super.refresh(subset);
+        // set proper colors on every line label
         this.labels.forEach((label, index) => {
             const item = this.items[index];
-            if (!item.hidden) {
+            if (item.dimmed) {
+                label.css("color", "inherit");
+            } else {
                 label.css("color", item?.value.color || null);
             }
         });
@@ -325,13 +362,8 @@ export class StrainFilterSection extends EDDRecordFilter<StrainRecord> {
         return section;
     }
 
-    allowItem(): (item: Item) => boolean {
-        const selected = this.selectedIds();
-        if (selected.size === 0) {
-            return ALLOW;
-        }
-        // at least one line strain is in selected items
-        return (item) => item.line.strain.some((s) => selected.has(s));
+    protected keysItem(item: Item): number[] {
+        return item.line.strain;
     }
 }
 
@@ -343,23 +375,19 @@ export class ProtocolFilterSection extends EDDRecordFilter<ProtocolRecord> {
     }
 
     allowAssay(): (assay: AssayRecord) => boolean {
-        const selected = this.selectedIds();
+        const selected = this.selectedKeys();
         if (selected.size === 0) {
             return ALLOW;
         }
         return (assay) => selected.has(assay.pid);
     }
 
-    allowItem(): (item: Item) => boolean {
-        const selected = this.selectedIds();
-        if (selected.size === 0) {
-            return ALLOW;
-        }
-        return (item) => selected.has(item.assay.pid);
+    protected keysItem(item: Item): number[] {
+        return [item.assay.pid];
     }
 }
 
-export class MetadataFilterSection extends FilterSection<string> {
+export class MetadataFilterSection extends FilterSection<string, string> {
     protected constructor(private metadataType: MetadataTypeRecord) {
         super(metadataType.name);
     }
@@ -381,16 +409,25 @@ export class MetadataFilterSection extends FilterSection<string> {
         return section;
     }
 
-    allowItem(): (item: Item) => boolean {
-        const selected = new Set(this.selectedItems());
+    allowAssay(): (assay: AssayRecord) => boolean {
+        const selected = this.selectedKeys();
         if (selected.size === 0) {
             return ALLOW;
-        } else if (this.metadataType.context === "L") {
-            return (item) => selected.has(item.line.meta[this.metadataType.id]);
-        } else if (this.metadataType.context === "A") {
-            return (item) => selected.has(item.assay.meta[this.metadataType.id]);
         }
-        return ALLOW;
+        return (assay) => selected.has(assay.meta[this.metadataType.id]);
+    }
+
+    protected keysItem(item: Item): string[] {
+        if (this.metadataType.context === "L") {
+            return [item.line.meta[this.metadataType.id]];
+        } else if (this.metadataType.context === "A") {
+            return [item.assay.meta[this.metadataType.id]];
+        }
+        return [];
+    }
+
+    protected keyValue(value: string): string {
+        return value;
     }
 
     valueToDisplay(value: string): string {
@@ -437,7 +474,7 @@ export class MeasurementFilterLayer extends FilterLayer {
         return ALLOW;
     }
 
-    refresh(): void {
+    refresh(subset: Item[]): void {
         // not doing anything
     }
 
@@ -446,12 +483,12 @@ export class MeasurementFilterLayer extends FilterLayer {
             // .some() will short-circuit on first section to accept the type
             this.sections.some((s) => s.addType(t));
         }
-        // after adding types, refresh sections to display changes
-        this.sections.forEach((s) => s.refresh());
+        // after adding types, update sections to display changes
+        this.sections.forEach((s) => s.update());
     }
 }
 
-abstract class MeasurementFilterSection extends FilterSection<Category> {
+abstract class MeasurementFilterSection extends FilterSection<Category, string> {
     private readonly itemHashes = new Set<string>();
     private dirty = false;
 
@@ -486,7 +523,7 @@ abstract class MeasurementFilterSection extends FilterSection<Category> {
         if (!this.accept(value)) {
             return false;
         }
-        const hash = MeasurementFilterSection.typeHash(value);
+        const hash = this.keyValue(value);
         if (!this.itemHashes.has(hash)) {
             this.items.push(new FilterValue(value));
             this.itemHashes.add(hash);
@@ -497,9 +534,7 @@ abstract class MeasurementFilterSection extends FilterSection<Category> {
 
     allowItem(): (item: Item) => boolean {
         // include symbol in type so .has(skip) is a legal check
-        const selected = new Set(
-            this.selectedItems().map((t) => MeasurementFilterSection.typeHash(t)),
-        );
+        const selected = this.selectedKeys();
         if (selected.size === 0) {
             return ALLOW;
         }
@@ -515,7 +550,17 @@ abstract class MeasurementFilterSection extends FilterSection<Category> {
         return this.items.length > 0;
     }
 
-    refresh(): void {
+    keysItem(item: Item): string[] {
+        return [`${item.measurement.comp}:${item.measurement.type}`];
+    }
+
+    keyValue(value: Category): string {
+        // only care about compartment code in metabolites
+        // override in that specific section
+        return `0:${value.measurementType.id}`;
+    }
+
+    update(): void {
         if (this.dirty) {
             this.section.removeClass("hidden");
             this.list.empty();
@@ -535,6 +580,10 @@ class MetaboliteSection extends MeasurementFilterSection {
 
     protected accept(value: Category) {
         return value.measurementType.family === "m";
+    }
+
+    keyValue(value: Category): string {
+        return `${value.compartment.id}:${value.measurementType.id}`;
     }
 
     valueToDisplay(value: Category): string {
