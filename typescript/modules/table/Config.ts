@@ -277,7 +277,7 @@ class LineModifiedColumn extends TableAccessor<LineRecord, number> {
 
     forCopy(row: LineRecord, value?: any): string {
         const timestamp = this.forRender(row, value);
-        if (Number.isNaN(timestamp)) {
+        if (!Number.isFinite(timestamp)) {
             return "";
         }
         const date = new Date(timestamp * 1000);
