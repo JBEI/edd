@@ -162,6 +162,10 @@ input:disabled + label,
     cursor: default;
     color: grey;
 }
+/* fix for Chrome increasing button size by fraction of a pixel when badge inside */
+.btn .badge {
+    font-size: 70%;
+}
 
 /* classes for branding indicators for testing, development, integration */
 .test {
