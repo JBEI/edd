@@ -133,6 +133,7 @@ function refreshDisplay() {
         $("#assayTable").removeClass("hidden");
         $("#measurementTable").addClass("hidden");
         assayTable.loadData(filter.assays());
+        Config.repositionSelectAllCheckbox(assayTable);
     } else if (viewingMode === "table-measurement") {
         $("#assayTable").addClass("hidden");
         $("#measurementTable").removeClass("hidden");
@@ -141,6 +142,7 @@ function refreshDisplay() {
             .addClass("disabled")
             .prop("disabled", true);
         measureTable.loadData(filter.measurements());
+        Config.repositionSelectAllCheckbox(measureTable);
     } else if (!isTable) {
         remakeMainGraphArea(items);
     }
@@ -246,77 +248,42 @@ function setupModals(): void {
 }
 
 function setupTables(): void {
-    const baseConfig: Handsontable.GridSettings = {
-        "allowInsertRow": false,
-        "allowInsertColumn": false,
-        "allowRemoveRow": false,
-        "allowRemoveColumn": false,
-        "beforeColumnMove": Config.disableMoveFirstColumn,
-        "beforeStretchingColumnWidth": Config.disableResizeFirstColumn,
-        // freeze the first column
-        "fixedColumnsLeft": 1,
-        "height": computeHeight(),
-        // NOTE: JBEI and ABF covered under "academic research"
-        "licenseKey": "non-commercial-and-evaluation",
-        "manualColumnFreeze": true,
-        "manualColumnMove": true,
-        "manualColumnResize": true,
-        "manualRowResize": true,
-        "multiColumnSorting": true,
-        "readOnly": true,
-        "renderAllRows": true,
-        "rowHeaders": true,
-        "stretchH": "all",
-        "width": "100%",
-    };
-    const assayChange = Utl.debounce(updateSelectedAssays);
-    const assayColumns = Config.defineAssayColumns(access);
     const assayContainer = document.getElementById("assayTable");
-    const measureChange = Utl.debounce(updateSelectedMeasurements);
-    const measureColumns = Config.defineMeasurementColumns(access);
+    const assaySettings = Config.settingsForAssayTable(access, assayContainer);
     const measureContainer = document.getElementById("measurementTable");
+    const measureSettings = Config.settingsForMeasurementTable(
+        access,
+        measureContainer,
+    );
     assayTable = new Handsontable(
         assayContainer,
-        Object.assign({}, baseConfig, {
-            "afterChange": assayChange,
-            "afterRender": assayChange,
-            "colHeaders": assayColumns.map((c) => c.header),
-            "columns": assayColumns,
+        Object.assign(assaySettings, {
             "data": filter.assays(),
         } as Handsontable.GridSettings),
     );
-    $(assayContainer).on("click", ".select-all", (event) => {
-        const box = $(event.currentTarget);
-        const goingToSelectAll = box.prop("indeterminate") || !box.prop("checked");
-        box.prop("checked", goingToSelectAll);
-        assayTable.getSourceData().forEach((assay: AssayRecord) => {
-            assay.selected = goingToSelectAll;
-        });
-        return false;
-    });
     measureTable = new Handsontable(
         measureContainer,
-        Object.assign({}, baseConfig, {
-            "afterChange": measureChange,
-            "afterRender": measureChange,
-            "colHeaders": measureColumns.map((c) => c.header),
-            "columns": measureColumns,
+        Object.assign(measureSettings, {
             "data": filter.measurements(),
         } as Handsontable.GridSettings),
     );
-    $(measureContainer).on("click", ".select-all", (event) => {
-        const box = $(event.currentTarget);
-        const goingToSelectAll = box.prop("indeterminate") || !box.prop("checked");
-        box.prop("checked", goingToSelectAll);
-        measureTable.getSourceData().forEach((item: Item) => {
-            item.measurement.selected = goingToSelectAll;
-        });
-        return false;
-    });
+    // handlers for select all boxes
+    Config.setupSelectAllCheckbox(assayTable);
+    Config.setupSelectAllCheckbox(measureTable);
     // re-fit tables when scrolling or resizing window
     $(window).on("scroll resize", () => {
         assayTable.updateSettings({ "height": computeHeight() });
+        Config.repositionSelectAllCheckbox(assayTable);
         measureTable.updateSettings({ "height": computeHeight() });
+        Config.repositionSelectAllCheckbox(measureTable);
+    });
+    // change button state when changes in selected items
+    $(assayContainer).on("eddselect", (event, selected) => {
+        // enable buttons if needed
+        const disabled = viewingMode !== "table-assay" || selected === 0;
+        $(".edd-add-button,.edd-edit-button")
+            .toggleClass("disabled", disabled)
+            .prop("disabled", disabled);
     });
 }
 
@@ -398,33 +365,6 @@ function showEditAssayDialog(items: AssayRecord[]): void {
 
     // display modal dialog
     dialog.removeClass("off").dialog("open");
-}
-
-function updateSelectedAssays() {
-    const rows = assayTable.getSourceData() as AssayRecord[];
-    const selectedRows = rows.filter((assay) => assay?.selected);
-    const total = rows.length;
-    const selected = selectedRows.length;
-    const selectAll = $(".select-all", assayTable.rootElement);
-    selectAll
-        .prop("indeterminate", 0 < selected && selected < total)
-        .prop("checked", selected === total);
-    // enable buttons if needed
-    const disabled = viewingMode !== "table-assay" || selected === 0;
-    $(".edd-add-button,.edd-edit-button")
-        .toggleClass("disabled", disabled)
-        .prop("disabled", disabled);
-}
-
-function updateSelectedMeasurements() {
-    const rows = measureTable.getSourceData() as Item[];
-    const selectedRows = rows.filter((item) => item?.measurement?.selected);
-    const total = rows.length;
-    const selected = selectedRows.length;
-    const selectAll = $(".select-all", measureTable.rootElement);
-    selectAll
-        .prop("indeterminate", 0 < selected && selected < total)
-        .prop("checked", selected === total);
 }
 
 // wait for edddata event to begin processing page

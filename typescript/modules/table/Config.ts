@@ -4,15 +4,43 @@ import Handsontable from "handsontable";
 
 import { Access, Item } from "./Access";
 import * as Render from "./Render";
+import * as Utl from "../Utl";
 
 const identity = (item) => item;
 type FetchMode = "copy" | "render" | void;
 
+const Checkbox_Column_Width = 23;
+
 /**
- * Define column settings for table displaying Assay information. The defined
+ * Basic settings for a display-only table.
+ */
+const baseTableSettings: Handsontable.GridSettings = {
+    "allowInsertRow": false,
+    "allowInsertColumn": false,
+    "allowRemoveRow": false,
+    "allowRemoveColumn": false,
+    // NOTE: JBEI and ABF covered under "academic research"
+    "licenseKey": "non-commercial-and-evaluation",
+    "manualColumnFreeze": true,
+    "manualColumnMove": true,
+    "manualColumnResize": true,
+    "manualRowResize": true,
+    "multiColumnSorting": true,
+    "readOnly": true,
+    "renderAllRows": true,
+    "rowHeaders": true,
+    "stretchH": "all",
+    "width": "100%",
+};
+
+/**
+ * Define settings for table displaying Assay information. The defined
  * table takes AssayRecord objects as data.
  */
-export function defineAssayColumns(access: Access): Handsontable.ColumnSettings[] {
+export function settingsForAssayTable(
+    access: Access,
+    container: HTMLElement,
+): Handsontable.GridSettings {
     const metaColumns = access.metadataForAssayTable().map((meta) => ({
         "data": `meta.${meta.id}`,
         "header": meta.name,
@@ -20,14 +48,14 @@ export function defineAssayColumns(access: Access): Handsontable.ColumnSettings[
     }));
     // register renderers used below
     Render.register();
-    return [
+    const columns = [
         {
             "data": "selected",
             "editor": "checkbox",
-            "header": `<input type="checkbox" class="select-all"/>`,
+            "header": "",
             "readOnly": false,
             "renderer": "checkbox",
-            "width": 23,
+            "width": Checkbox_Column_Width,
         },
         {
             "data": "name",
@@ -50,13 +78,24 @@ export function defineAssayColumns(access: Access): Handsontable.ColumnSettings[
             "width": 50,
         },
     ];
+    // merge base config with assay-specific config
+    return Object.assign({}, baseTableSettings, {
+        "beforeColumnMove": disableMoveFirstColumn,
+        "beforeStretchingColumnWidth": disableResizeFirstColumn,
+        "colHeaders": columns.map((c) => c.header),
+        "columns": columns,
+        "fixedColumnsLeft": 1,
+    } as Handsontable.GridSettings);
 }
 
 /**
- * Defines column settings for table displaying Line information. The defined
+ * Defines settings for table displaying Line information. The defined
  * table takes LineRecord objects as data.
  */
-export function defineLineColumns(access: Access): Handsontable.ColumnSettings[] {
+export function settingsForLineTable(
+    access: Access,
+    container: HTMLElement,
+): Handsontable.GridSettings {
     const metaColumns = access.metadataForLineTable().map((meta) => ({
         "data": `meta.${meta.id}`,
         "header": meta.name,
@@ -64,14 +103,14 @@ export function defineLineColumns(access: Access): Handsontable.ColumnSettings[]
     }));
     // register renderers used below
     Render.register();
-    return [
+    const columns = [
         {
             "data": "selected",
             "editor": "checkbox",
-            "header": `<input type="checkbox" class="select-all"/>`,
+            "header": "",
             "readOnly": false,
             "renderer": "checkbox",
-            "width": 23,
+            "width": Checkbox_Column_Width,
         },
         {
             "data": LineNameColumn.using(access),
@@ -100,25 +139,48 @@ export function defineLineColumns(access: Access): Handsontable.ColumnSettings[]
             "renderer": "edd.timestamp",
         },
     ];
+    // merge base config with line-specific config
+    return Object.assign({}, baseTableSettings, {
+        "afterGetColHeader": disableMenuFirstColumn,
+        "beforeColumnMove": disableMoveFirstColumn,
+        "beforeStretchingColumnWidth": disableResizeFirstColumn,
+        "colHeaders": columns.map((c) => c.header),
+        "columns": columns,
+        "data": access.lines(),
+        "dropdownMenu": [
+            "alignment",
+            // TODO: filter works off clipboard value, not rendered value
+            // maybe need special handlers per column or render type?
+            "filter_by_condition",
+            "filter_by_value",
+            "filter_action_bar",
+        ],
+        "filters": true,
+        "fixedColumnsLeft": 1,
+        "hiddenColumns": {
+            "indicators": true,
+        },
+    } as Handsontable.GridSettings);
 }
 
 /**
- * Define column settings for table displaying Measurement information. The
+ * Define settings for table displaying Measurement information. The
  * defined table takes Access.Item objects as data.
  */
-export function defineMeasurementColumns(
+export function settingsForMeasurementTable(
     access: Access,
-): Handsontable.ColumnSettings[] {
+    container: HTMLElement,
+): Handsontable.GridSettings {
     // register renderers used below
     Render.register();
-    return [
+    const columns = [
         {
             "data": "measurement.selected",
             "editor": "checkbox",
             "header": `<input type="checkbox" class="select-all"/>`,
             "readOnly": false,
             "renderer": "checkbox",
-            "width": 23,
+            "width": Checkbox_Column_Width,
         },
         {
             "data": CategoryColumn.using(access),
@@ -143,13 +205,83 @@ export function defineMeasurementColumns(
             "width": 50,
         },
     ];
+    // merge base config with measurement-specific config
+    return Object.assign({}, baseTableSettings, {
+        "beforeColumnMove": disableMoveFirstColumn,
+        "beforeStretchingColumnWidth": disableResizeFirstColumn,
+        "colHeaders": columns.map((c) => c.header),
+        "columns": columns,
+        "fixedColumnsLeft": 1,
+    } as Handsontable.GridSettings);
+}
+
+/**
+ * The Handsontable code will repeatedly replace elements in table header
+ * cells. In order to prevent the flickering that occurs when the "Select All"
+ * checkbox in the header is replaced, instead create the checkbox outside of
+ * the table, then position it on top of the "empty" header cell.
+ */
+export function setupSelectAllCheckbox(hot: Handsontable, column = 0): void {
+    // define select-all checkbox
+    const selectAll = $(`<input type="checkbox" class="select-all"/>`);
+    // get the config for selection column
+    const selectCol = hot.getSettings().columns[column] as Handsontable.ColumnSettings;
+    // insert the checkbox into DOM before the table, initially hidden
+    selectAll.prependTo(hot.rootElement).addClass("hidden");
+    // attach event handler to toggle selection states
+    selectAll.on("click", (event) => {
+        const status = selectAll.prop("checked");
+        // update state of table data
+        const rows = hot.getSourceData() as Handsontable.RowObject[];
+        rows.forEach((row) => {
+            Utl.setObjectValue(row, selectCol.data as string, status);
+        });
+    });
+    // set event handlers on table to update select-all state
+    const changeHandler = Utl.debounce(() => {
+        const rows = hot.getSourceData() as Handsontable.RowObject[];
+        const on = hot.getSourceDataAtCol(column).filter((v) => v);
+        selectAll
+            .prop("indeterminate", 0 < on.length && on.length < rows.length)
+            .prop("checked", on.length === rows.length);
+        $(hot.rootElement).trigger("eddselect", [on.length]);
+    });
+    hot.updateSettings({
+        "afterChange": changeHandler,
+        "afterRender": changeHandler,
+    });
+    // move the select-all checkbox into position
+    repositionSelectAllCheckbox(hot, column);
+}
+
+/**
+ * Calculates the correct offsets to place the select-all checkbox over the
+ * correct table column header.
+ */
+export function repositionSelectAllCheckbox(hot: Handsontable, column = 0): void {
+    const headerCell = $(hot.getCell(-1, 0));
+    const offset = headerCell.offset();
+    if (offset) {
+        const selectAll = $(".select-all", hot.rootElement).removeClass("hidden");
+        const checkWidth = selectAll.outerWidth();
+        const checkHeight = selectAll.outerHeight();
+        // set styling so checkbox gets positioned on top of the table
+        selectAll.css({
+            // move to offset of cell, taking off space for padding
+            "left": offset.left - (Checkbox_Column_Width - checkWidth),
+            "position": "absolute",
+            // move down quarter checkbox height
+            "top": checkHeight / 4,
+            "z-index": 200,
+        });
+    }
 }
 
 /**
  * Callback for Handsontable.GridSettings.afterGetColHeader. Setting the event
  * handler to this function removes the menu dropdown from the first column.
  */
-export function disableMenuFirstColumn(column: number, th: HTMLElement): void {
+function disableMenuFirstColumn(column: number, th: HTMLElement): void {
     // see: https://github.com/handsontable/handsontable/issues/4253
     // hack to disable menu on only the first column
     if (column === 0) {
@@ -161,7 +293,7 @@ export function disableMenuFirstColumn(column: number, th: HTMLElement): void {
  * Callback for Handsontable.GridSettings.beforeColumnMove. Setting the event
  * handler to this function prevents moving the first column of the table.
  */
-export function disableMoveFirstColumn(cols: number[], target: number): boolean | void {
+function disableMoveFirstColumn(cols: number[], target: number): boolean | void {
     if (cols.indexOf(0) !== -1 || target === 0) {
         return false;
     }
@@ -171,9 +303,9 @@ export function disableMoveFirstColumn(cols: number[], target: number): boolean 
  * Callback for Handsontable.GridSettings.beforeStretchingColumnWidth. Setting
  * the event handler to this function prevents resizing the first column.
  */
-export function disableResizeFirstColumn(width: number, column: number): number {
+function disableResizeFirstColumn(width: number, column: number): number {
     if (column === 0) {
-        return 23;
+        return Checkbox_Column_Width;
     }
     return width;
 }

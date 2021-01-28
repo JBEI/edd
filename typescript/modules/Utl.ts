@@ -54,6 +54,23 @@ export function debounce(fn: () => void, wait = 100): () => void {
     };
 }
 
+/**
+ * Sets a value on a target object, following the given dotted-path. e.g.
+ * setObjectValue(x, "foo.bar", 42); will find the foo property of x, then set
+ * the bar property of that object to 42.
+ */
+export function setObjectValue<T>(target: T, path: string, value: unknown): T {
+    const parts = path.split(".");
+    const next = parts[0];
+    if (parts.length === 1) {
+        target[next] = value;
+    } else {
+        const rest = parts.slice(1).join(".");
+        setObjectValue(target[next], rest, value);
+    }
+    return target;
+}
+
 export class EDD {
     static findCSRFToken(): string {
         return ($("input[name=csrfmiddlewaretoken]").val() as string) || "";
