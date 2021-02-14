@@ -23,7 +23,9 @@ $(document).ready(() => {
     });
     $("#n-molecules").data("n_mols", 1);
 
-    const gcmsDropzone = new Dropzone("#gcmsDropzone", {
+    // Sometimes direct ref will cause an "x is not a constructor" TypeError
+    // Dropzone sets itself on window, so use that as a work-around
+    const gcmsDropzone = new window.Dropzone("#gcmsDropzone", {
         "uploadMultiple": false,
         "previewsContainer": "#file-preview",
         "init": function () {
