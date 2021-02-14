@@ -34,7 +34,7 @@ export class Access {
         // selected property must be pre-defined to initially false
         // table select-all checkbox has undefined behavior otherwise
         Object.values(data.Lines).forEach((line) => {
-            line.replicate = line.meta[replicate.id] || null;
+            line.replicate = line.meta[replicate?.id] || null;
             line.selected = false;
         });
         Object.values(data.Assays).forEach((assay) => {
