@@ -226,7 +226,9 @@ export class FileDropZone {
             $(element).addClass("dropzone");
             this.csrftoken = EDD.findCSRFToken();
             this.options = options;
-            this.dropzone = new Dropzone(element, {
+            // Sometimes direct ref will cause an "x is not a constructor" TypeError
+            // Dropzone sets itself on window, so use that as a work-around
+            this.dropzone = new window.Dropzone(element, {
                 "url": options.url,
                 "params": { "csrfmiddlewaretoken": this.csrftoken },
                 "maxFilesize": 2,
