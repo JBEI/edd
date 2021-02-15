@@ -1,6 +1,6 @@
 import * as $ from "jquery";
 
-import "dropzone";
+import * as Dropzone from "dropzone";
 
 import "../modules/Styles";
 import * as Utl from "../modules/Utl";
@@ -17,9 +17,7 @@ function format_table() {
 $(() => {
     const csrf = Utl.EDD.findCSRFToken();
     const select = $("#skylineDropzone").addClass("dropzone");
-    // Sometimes direct ref will cause an "x is not a constructor" TypeError
-    // Dropzone sets itself on window, so use that as a work-around
-    const dropzone = new window.Dropzone(select[0], {
+    const dropzone = new Dropzone(select[0], {
         "clickable": true,
         "params": { "csrfmiddlewaretoken": csrf },
         "url": select.attr("action"),
