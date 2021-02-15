@@ -1,6 +1,6 @@
 {
     "name": "edd",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "description": "TypeScript code for the Experiment Data Depot front-end.",
     "private": true,
     "dependencies": {},
@@ -21,7 +21,7 @@
         "css-loader": "^4.3.0",
         "classnames": "^2.2.6",
         "d3": "^6.2.0",
-        "dropzone": "^5.7.0",
+        "dropzone": "=5.7.2",
         "eslint": "^7.15.0",
         "eslint-config-prettier": "^6.5.0",
         "eslint-plugin-prettier": "^3.1.1",

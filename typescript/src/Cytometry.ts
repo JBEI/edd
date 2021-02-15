@@ -2,7 +2,7 @@
 
 import * as jQuery from "jquery";
 
-import "dropzone";
+import * as Dropzone from "dropzone";
 
 import * as EDDAuto from "../modules/EDDAutocomplete";
 import * as Utl from "../modules/Utl";
@@ -229,9 +229,7 @@ declare let EDDData;
             jqXHR.setRequestHeader("X-CSRFToken", Utl.EDD.findCSRFToken());
         });
         const _textarea = $("#id_rawtext");
-        // Sometimes direct ref will cause an "x is not a constructor" TypeError
-        // Dropzone sets itself on window, so use that as a work-around
-        const _dropzone = new window.Dropzone(_textarea[0], {
+        const _dropzone = new Dropzone(_textarea[0], {
             "clickable": false,
             "url": "/utilities/cytometry/parse/",
         });
