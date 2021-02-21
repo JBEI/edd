@@ -50,8 +50,6 @@ class LoadNoticeConsumer(AsyncJsonWebsocketConsumer):
                 await self.accept()
                 # add to the notificaiton groups
                 await self.add_user_groups(user)
-                # send any notifications in the queue
-                await self.send_notifications(user)
         except Exception as e:
             await logger_debug(
                 f"Unexpected error during connection setup {e!r}", exc_info=e,
