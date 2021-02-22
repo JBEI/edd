@@ -29,13 +29,13 @@ THIS_NODE_ID="$(docker node inspect --format '{{.ID}}' self)"
 yq w -s - -i docker-compose.override.yml <<EOF
 - command: update
   path: services.http.image
-  value: "jenkins.jbei.org:5000/jbei/edd-core:${TAG}"
+  value: "cr.ese.lbl.gov/jbei/edd-core:${TAG}"
 - command: update
   path: services.websocket.image
-  value: "jenkins.jbei.org:5000/jbei/edd-core:${TAG}"
+  value: "cr.ese.lbl.gov/jbei/edd-core:${TAG}"
 - command: update
   path: services.worker.image
-  value: "jenkins.jbei.org:5000/jbei/edd-core:${TAG}"
+  value: "cr.ese.lbl.gov/jbei/edd-core:${TAG}"
 - command: delete
   path: services.http.volumes
 - command: delete

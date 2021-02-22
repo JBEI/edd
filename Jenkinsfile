@@ -113,7 +113,7 @@ try {
                         usernameVariable: 'USERNAME'
                     )
                 ]) {
-                    sh("sudo docker login -u $USERNAME -p $PASSWORD jenkins.jbei.org:5000")
+                    sh("sudo docker login -u $USERNAME -p $PASSWORD cr.ese.lbl.gov")
                 }
                 sh("sudo bin/jenkins/push_internal.sh '${image_version}' '${branch_tag}'")
             }
@@ -201,7 +201,7 @@ mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} ${status}",
         from: "jbei-edd-admin@lists.lbl.gov"
 
 if (status == "SUCCESS" && git_branch == "master") {
-    def edd_image = "jenkins.jbei.org:5000/jbei/edd-core:master"
+    def edd_image = "cr.ese.lbl.gov/jbei/edd-core:master"
     node("edd-test-swarm") {
         stage('Deploy Test') {
             try {
@@ -213,7 +213,7 @@ if (status == "SUCCESS" && git_branch == "master") {
                         usernameVariable: 'USERNAME'
                     )
                 ]) {
-                    sh("sudo docker login -u $USERNAME -p $PASSWORD jenkins.jbei.org:5000")
+                    sh("sudo docker login -u $USERNAME -p $PASSWORD cr.ese.lbl.gov")
                 }
                 sh("sudo bin/jenkins/deploy.sh '${edd_image}'")
             } catch (exc) {

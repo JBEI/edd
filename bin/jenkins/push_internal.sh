@@ -4,7 +4,7 @@
 # $2 = branch tag added to jbei/edd-core
 IMAGE_VERSION="${1}"
 BRANCH="${2}"
-REPO="jenkins.jbei.org:5000"
+REPO="cr.ese.lbl.gov"
 IMAGE_NAME="jbei/edd-core"
 
 # tag image for registry
