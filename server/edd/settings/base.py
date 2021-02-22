@@ -204,7 +204,14 @@ REST_FRAMEWORK = {
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
 # rest API documentation
-SWAGGER_SETTINGS = {"USE_SESSION_AUTH": True, "VALIDATOR_URL": None}
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "basic": {"type": "basic"},
+        "Bearer": {"in": "header", "name": "Authorization", "type": "apiKey"},
+    },
+    "USE_SESSION_AUTH": True,
+    "VALIDATOR_URL": None,
+}
 
 
 # WebSockets / Channels
