@@ -175,9 +175,8 @@ function prepareIt() {
         "processErrorFn": DescriptionDropzone.error,
         "processWarningFn": DescriptionDropzone.warning,
     });
-
-    $(window).on("load", preparePermissions);
 }
 
 // wait for edddata event to begin processing page
 $(document).on("edddata", prepareIt);
+$(window).on("load", preparePermissions);
