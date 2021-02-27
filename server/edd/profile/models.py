@@ -1,5 +1,6 @@
 import arrow
 from django.conf import settings
+from django.contrib.auth import models as auth_models
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -65,7 +66,7 @@ class InstitutionID(models.Model):
     )
 
 
-class UserManager(models.Manager):
+class UserManager(auth_models.UserManager):
     def get_queryset(self):
         return super().get_queryset().select_related("userprofile")
 
