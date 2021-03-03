@@ -205,19 +205,26 @@ if (status == "SUCCESS" && git_branch == "master") {
     node("edd-test-swarm") {
         stage('Deploy Test') {
             try {
-                checkout scm
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
-                        passwordVariable: 'PASSWORD',
-                        usernameVariable: 'USERNAME'
-                    )
-                ]) {
-                    sh("sudo docker login -u $USERNAME -p $PASSWORD cr.ese.lbl.gov")
+                timeout(5) {
+                    checkout scm
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
+                            passwordVariable: 'PASSWORD',
+                            usernameVariable: 'USERNAME'
+                        )
+                    ]) {
+                        sh("sudo docker login -u $USERNAME -p $PASSWORD cr.ese.lbl.gov")
+                    }
+                    sh("sudo bin/jenkins/deploy.sh '${edd_image}'")
                 }
-                sh("sudo bin/jenkins/deploy.sh '${edd_image}'")
             } catch (exc) {
                 echo "Caught ${exc}"
+                mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} Deploy Test Failed",
+                        body: "See build info at <${env.BUILD_URL}>: ${exc}",
+                          to: committer_email,
+                     replyTo: committer_email,
+                        from: "jbei-edd-admin@lists.lbl.gov"
             }
         }
     }
