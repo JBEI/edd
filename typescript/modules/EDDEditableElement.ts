@@ -1,5 +1,6 @@
 import tinymce from "tinymce/tinymce";
 
+import "tinymce/icons/default";
 import "tinymce/plugins/link";
 import "tinymce/themes/silver";
 
