@@ -92,6 +92,9 @@ input:disabled + label,
     margin-left: 0.25em;
     margin-right: 0.25em;
 }
+html summary {
+    display: list-item;
+}
 
 /* Functional classes */
 .clear {
