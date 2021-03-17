@@ -2329,6 +2329,7 @@ class CreationManager {
     }
 
     buildLineCreationDialog(): void {
+        const study_url = $("#study_link").attr("href");
         $("#creating-lines-dialog")
             .dialog({
                 // let users see err messages (if any)
@@ -2351,8 +2352,7 @@ class CreationManager {
                         "text": "Return to Study",
                         "id": "return-to-study-btn",
                         "click": () => {
-                            // TODO: replace hard-coded URL (EDD-1261)
-                            window.location.href = "../";
+                            window.location.href = study_url;
                         },
                     },
                 ],
