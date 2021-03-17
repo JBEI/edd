@@ -78,7 +78,7 @@ least in theory could directly commit to the repo at
    Submit a ticket or discuss new work with core contributors to get feedback
    on planned work. Major changes should be discussed with core
    contributors first.
-2. Changes to `master` and `release/*` branches must come through a
+2. Changes to `trunk` and `release/*` branches must come through a
    pull request.
 3. Changes to all other branches are encouraged to go through a pull request.
 4. Prefer deleting source branch on merging a pull request, to keep the branch
@@ -89,10 +89,10 @@ least in theory could directly commit to the repo at
    changed. Any non-fast-forward rebase can fall back to
    merge-and-resolve workflow.
 6. Branches under `bugfix/*` or `feature/*` should never branch from a
-   `release/*` branch. Almost always should branch instead from `master`.
+   `release/*` branch. Almost always should branch instead from `trunk`.
    Sometimes may branch from another `bugfix/*` or `feature/*` branch.
 7. Branches under `hotfix/*` should always branch from a `release/*` branch.
-   Merges should go back to the `release/*` _and_ `master`. If/when EDD
+   Merges should go back to the `release/*` _and_ `trunk`. If/when EDD
    supports multiple versions, should merge into all supported releases.
 
 [1]: https://github.com/JBEI/edd/

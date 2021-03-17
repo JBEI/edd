@@ -6,9 +6,9 @@ possible, these steps should be automated.
 ### Operations in `git` repository
 
 For Major (N+1.0.0) or Minor (X.N+1.0) versions, create a date-stamped release
-branch from `master` for the release-candidate. For example, if starting a
+branch from `trunk` for the release-candidate. For example, if starting a
 4.0.0 release series on July 1st, 2019; a branch named `release/20190701` is
-started from `master`. Commits working toward a final release artifact get
+started from `trunk`. Commits working toward a final release artifact get
 added to this branch.
 
 For Bugfix (X.Y.N+1) versions, add commits to the Major/Minor release branch.
