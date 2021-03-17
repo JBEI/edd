@@ -200,8 +200,8 @@ mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} ${status}",
      replyTo: committer_email,
         from: "jbei-edd-admin@lists.lbl.gov"
 
-if (status == "SUCCESS" && git_branch == "master") {
-    def edd_image = "cr.ese.lbl.gov/jbei/edd-core:master"
+if (status == "SUCCESS" && git_branch == "trunk") {
+    def edd_image = "cr.ese.lbl.gov/jbei/edd-core:trunk"
     node("edd-test-swarm") {
         stage('Deploy Test') {
             try {
