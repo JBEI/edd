@@ -12,7 +12,7 @@
 
 {% block body_title %}
   {% url 'main:detail' slug=study.slug as study_url %}
-  Add Line Combinations for <a href="{{ study_url }}">{{ study.name }}</a>
+  Add Line Combinations for <a href="{{ study_url }}" id="study_link">{{ study.name }}</a>
 {% endblock body_title %}
 
 
