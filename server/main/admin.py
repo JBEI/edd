@@ -259,6 +259,22 @@ class ProtocolAdmin(EDDObjectAdmin):
         super().save_model(request, obj, form, change)
 
 
+def render_study_links(study_queryset, *, limit=10):
+    count = study_queryset.count()
+    if count:
+        html = ", ".join(
+            """<a href="{link}">{name}</a>""".format(
+                link=reverse("admin:main_study_change", args=[s.id]),
+                name=escape(s.name),
+            )
+            for s in study_queryset[:limit]
+        )
+        if count > limit:
+            html += f", and {count - limit} more."
+        return mark_safe(html)
+    return None
+
+
 class StrainAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Strains """
 
@@ -386,22 +402,7 @@ class StrainAdmin(EDDObjectAdmin):
 
     def study_list(self, instance):
         qs = models.Study.objects.filter(line__strains=instance).distinct()
-        count = qs.count()
-        if count:
-            html = ", ".join(
-                [
-                    '<a href="%(link)s">%(name)s</a>'
-                    % {
-                        "link": reverse("admin:main_study_change", args=[s.id]),
-                        "name": escape(s.name),
-                    }
-                    for s in qs[:10]
-                ]
-            )
-            if count > 10:
-                html += ", and {} more.".format(count - 10)
-            return mark_safe(html)
-        return None
+        return render_study_links(qs)
 
     study_list.short_description = "Referenced in Studies"
 
@@ -492,22 +493,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def study_list(self, instance):
         relevant_study = Q(line__assay__measurement__measurement_type=instance)
         qs = models.Study.objects.filter(relevant_study).distinct()
-        count = qs.count()
-        if count:
-            html = ", ".join(
-                [
-                    '<a href="%(link)s">%(name)s</a>'
-                    % {
-                        "link": reverse("admin:main_study_change", args=[s.id]),
-                        "name": escape(s.name),
-                    }
-                    for s in qs[:10]
-                ]
-            )
-            if count > 10:
-                html += ", and {} more.".format(count - 10)
-            return mark_safe(html)
-        return None
+        return render_study_links(qs)
 
     study_list.short_description = "Referenced in Studies"
 
