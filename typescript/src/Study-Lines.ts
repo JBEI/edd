@@ -105,7 +105,6 @@ function onLineTableLoad() {
     setupEditButtonEvents();
     setupAddButtonEvents();
     setupExportButtonEvents();
-    setupModals();
 }
 
 // Called on page loading; data may not be available
@@ -115,6 +114,7 @@ function onPageLoad() {
     assayModal = $("#addAssayModal");
     setupDropzone();
     setupEditableName();
+    setupModals();
 }
 
 function setupAddButtonEvents() {
