@@ -35,11 +35,11 @@ $(() => {
     EDDRest.loadMeasurementUnits({
         "ordering": "unit_name",
         "request_all": true,
-        "success": populateProtocols,
+        "success": populateUnits,
     });
     EDDRest.loadProtocols({
         "ordering": "name",
         "request_all": true,
-        "success": populateUnits,
+        "success": populateProtocols,
     });
 });
