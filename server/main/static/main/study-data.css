@@ -49,3 +49,8 @@
     width: 100%;
     padding: auto;
 }
+
+/* this doesn't exist in Bootstrap 3, can go away with Bootstrap 4 */
+.badge-warning {
+    background-color: #f0ad4e;
+}

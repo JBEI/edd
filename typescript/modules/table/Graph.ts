@@ -5,6 +5,7 @@ import * as d3 from "d3";
 import { Access, Item } from "./Access";
 
 const Colors = d3.schemeTableau10;
+const DisplayLimitLine = 5000;
 
 /**
  * Individual points, as output by e.g. `d3.rollup().entries()`.
@@ -67,6 +68,9 @@ function boundToPairs(input: XYBound): [XYPair, XYPair] {
     ];
 }
 
+/**
+ * Takes a varying number of iterables and chains them into one iterable.
+ */
 function chain<T>(...items: Iterable<T>[]): Iterable<T> {
     return {
         [Symbol.iterator]: function* () {
@@ -81,6 +85,32 @@ function chain<T>(...items: Iterable<T>[]): Iterable<T> {
                 }
             }
         },
+    };
+}
+
+interface LimitedIterable<T> extends Iterable<T> {
+    has_hit_limit: boolean;
+}
+
+/**
+ * Wraps an iterable with one that terminates after count items.
+ */
+function limit<T>(iterable: Iterable<T>, count: number): LimitedIterable<T> {
+    return {
+        [Symbol.iterator]: function* () {
+            const it = iterable[Symbol.iterator]();
+            let c = count;
+            let item = it.next();
+            while (!item.done) {
+                if (c-- <= 0) {
+                    this.has_hit_limit = true;
+                    return;
+                }
+                yield item.value;
+                item = it.next();
+            }
+        },
+        "has_hit_limit": false,
     };
 }
 
@@ -308,6 +338,8 @@ export class Graph {
     // track the currently hovered Element,
     // to prevent flicker when moving between hover targets
     private current_hover: EventTarget = null;
+    // track if the last rendered view has limited points displayed
+    private is_truncated = false;
 
     constructor(
         private readonly root: HTMLElement,
@@ -359,13 +391,18 @@ export class Graph {
         items.forEach((item) => (item.line.color = null));
     }
 
+    isTruncated(): boolean {
+        return this.is_truncated;
+    }
+
     /**
      * Renders a line plot from the given filtered items, grouped by a replicate key.
      * The replicate key should be one of Keys.byAssay, Keys.byLine, or Keys.byReplicate.
      */
     renderLinePlot(items: Item[], strategy: OrganizerStrategy = KeyAssay): number {
         const organizer = new Organizer(strategy, this.access);
-        const points = itemsToValues(items);
+        // Use a cutoff to prevent interface locking up when too many points are drawn
+        const points = limit(itemsToValues(items), DisplayLimitLine);
         // first group by units
         const unit_map = d3.group(points, Values.byUnit);
         // place the x-axis
@@ -405,6 +442,7 @@ export class Graph {
             // increment before moving to next unit
             ++axis_index;
         });
+        this.is_truncated = points.has_hit_limit;
         return displayed;
     }
 
@@ -414,7 +452,9 @@ export class Graph {
         strategy: OrganizerStrategy = KeyAssay,
     ): number {
         const organizer = new Organizer(strategy, this.access);
-        const points = itemsToValues(items);
+        // Use a dynamic limit for bar graphs,
+        // to ensure bar widths are at least a few pixels
+        const points = limit(itemsToValues(items), Math.floor(Graph._width / 4));
         const unit_map = d3.group(points, Values.byUnit);
         const plot_height = Graph._height - Graph._axis_width - Graph._margin;
         const plot_width = Graph.plotWidth(unit_map.size);
@@ -491,6 +531,7 @@ export class Graph {
                     .on("mouseout", this.tooltipOut());
             });
         });
+        this.is_truncated = points.has_hit_limit;
         return displayed;
     }
 
