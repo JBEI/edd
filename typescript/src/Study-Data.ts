@@ -172,7 +172,10 @@ function remakeMainGraphArea(items: Item[]) {
             break;
     }
     $(".badge.edd-measurement-count").text(`${items.length}`);
-    $(".badge.edd-value-count").text(`${displayed}`);
+    $(".badge.edd-value-count")
+        .text(`${displayed}`)
+        .toggleClass("badge-warning", plot.isTruncated());
+    $(".edd-value-truncated").toggleClass("hidden", !plot.isTruncated());
 }
 
 function setupEvents(): void {
