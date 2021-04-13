@@ -98,6 +98,16 @@ try {
             // ensure edd-core builds off correct edd-node
             // NOTE: sudo is required to execute docker commands
             timeout(15) {
+                // ensure login before trying to build from registry images
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
+                        passwordVariable: 'PASSWORD',
+                        usernameVariable: 'USERNAME'
+                    )
+                ]) {
+                    sh("sudo docker login -u $USERNAME -p $PASSWORD cr.ese.lbl.gov")
+                }
                 sh("sudo bin/jenkins/build_node.sh '${image_version}'")
                 sh("sudo bin/jenkins/build_core.sh '${image_version}'")
             }

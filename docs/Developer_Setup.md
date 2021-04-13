@@ -90,47 +90,37 @@ Then copy this shared secret to both the target ICE instance and EDD.
 ### Front-end Development
 
 The EDD makes use of Node.js packages for managing front-end code. All dev
-dependencies are contained in the root directory of a Docker image, available
-under the tag `jbei/edd-node` on Docker Hub. This image has `node` and `npm`
-installed, with all the packages necessary to build EDD. It is used as part of
-the build of the `jbei/edd-core` image, to prepare front-end assets.
+dependencies are contained in a Docker image, available under the tag
+`jbei/edd-node` on Docker Hub. It is used as part of the build of the
+`jbei/edd-core` image, to prepare front-end assets.
 
 EDD uses [TypeScript][1] for its client-side interface, and compiles JavaScript
-with third-party libraries using [Webpack][2] during the build process for the
-`jbei/edd-core` image. Running a full Docker build, for any change to the
-TypeScript code, will be inefficient. To avoid this, follow these configuration
-steps to get changed TypeScript deployed to a running EDD automatically.
+with third-party libraries using [Webpack][2]. The static asset files for the
+frontend are bundled with the `jbei/edd-core` image; however, running a full
+Docker build following any change to the TypeScript code, will be inefficient.
+To avoid this, follow these configuration steps to get changed TypeScript
+deployed to a running EDD without a full build.
 
 #### Launch EDD
 
-This will typically be `docker-compose up -d`, or however your workflow gets to
-a running instance of EDD. The compose file used to launch should have an
-override to load code in from the host. This should already be in place when
-using the `--deploy=dev` flag to `bin/init-config`.
-
-#### Watch Static Files
-
-Once EDD is running, in one of the containers running `jbei/edd-core`, exec a
-command to watch for changes to static files. For example:
-
-```bash
-docker-compose exec http python manage.py edd_collectstatic --watch
-```
+This will typically be `docker-compose up -d`, or `docker stack deploy`. The
+compose file used to launch should have an override to load code in from the
+host to a volume mounted at `/code`. This should already be in place when using
+the `--deploy=dev` flag to `bin/init-config`.
 
 #### Edit and Compile Typescript
 
-Once TypeScript files are modified, use the `jbei/edd-node` image to compile
-the source and copy to the running EDD instance. The node application for EDD
-has both `build` and `watch` targets. Running `build` will do a one-off build,
-while `watch` will attempt to watch for edits and rebuild when changes are
-detected. Run the build image like this:
+Use the `bin/local_typescript_shell.sh` script to launch a container for the
+EDD TypeScript environment. Inside the TypeScript container shell, execute
+`npm run local` to do a one-time local build, or `npm run watch` to monitor
+changes and run incremental builds on save.
 
-```bash
-docker run --rm \
-    -v "/full/path/to/repo:/run/edd" \
-    jbei/edd-node \
-    npm run watch
-```
+#### Refresh static files in EDD
+
+Once static files are compiled, use the `refresh_static.sh` command in an EDD
+container built in dev mode. This command will copy any changed static files so
+they can be served, and update the internal Django settings used by EDD to
+identify the currently active static files.
 
 ---
 

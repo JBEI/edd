@@ -49,8 +49,9 @@
         "webpack-cli": "^4.0.0"
     },
     "scripts": {
-        "build": "webpack --progress --color --mode production --config edd/typescript/webpack.config.js",
-        "watch": "webpack --progress --color --watch --config edd/typescript/webpack.config.js"
+        "build": "webpack --progress --color --mode production",
+        "local": "webpack --progress --color --mode production --config typescript/webpack.config.js",
+        "watch": "webpack --progress --color --watch --config typescript/webpack.config.js"
     },
     "resolutions": {
         "source-map-resolve": "^0.6.0",
