@@ -14,3 +14,11 @@
 !.git/HEAD
 !.git/refs
 !.git/objects
+
+# ignore these things under server from development work
+server/.coverage
+server/coverage.json
+server/main/static/dist
+server/**/.DS_Store
+server/**/__pycache__
+server/**/.pytest_cache

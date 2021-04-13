@@ -56,5 +56,5 @@ docker images -qf 'dangling=true' | xargs docker rmi
 
 ### View logs
 
-Check the log output for containers with `docker logs {CONTAINER-ID}` or
-`docker-compose logs {SERVICE-NAME}`.
+Check the log output for containers with `docker logs {CONTAINER-ID}`,
+`docker-compose logs {SERVICE-NAME}`, or `docker service logs {SERVICE-NAME}`.

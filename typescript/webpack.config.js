@@ -59,7 +59,7 @@ module.exports = {
     },
     "output": {
         "filename": "[name].js",
-        "path": path.resolve(__dirname, "../server/main/static/dist"),
+        "path": path.resolve("dist"),
         "publicPath": "/static/dist/",
     },
     "optimization": {

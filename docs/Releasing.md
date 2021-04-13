@@ -1,7 +1,8 @@
 ## Release Process
 
-This document is an outline of the steps that should be taken to make a new release of EDD. Where
-possible, these steps should be automated.
+This document is an outline of the steps that should be taken to make a new
+release of EDD. The instructions are mostly historical at this point. All build
+and release actions within JBEI / EmeryStation East are automated in CI.
 
 ### Operations in `git` repository
 

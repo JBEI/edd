@@ -8,9 +8,9 @@ on macOS.
 Macs have tools for development freely available, but these tools are not
 installed by default. To ensure the necessary utilities are installed, get
 XCode from the App Store. After launching the XCode app, you should be prompted
-to install additional components. As of OS X 10.9 "Mavericks" or later, and
-macOS 10.12 "Sierra" or later, the utilites used by EDD can be installed by
-running `xcode-select --install` from the Terminal.
+to install additional components. With macOS 10.12 "Sierra" or later, the
+utilites used by EDD can be installed by running `xcode-select --install` from
+the Terminal.
 
 ## Homebrew
 
