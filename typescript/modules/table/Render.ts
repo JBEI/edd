@@ -41,8 +41,8 @@ function buildRenderer<T>(fn: RenderFn<T>): Handsontable.renderers.Base {
 export function register(): void {
     // TODO: link to PubChem or UniProt or ICE or ...?
     Handsontable.renderers.registerRenderer(
-        "edd.category",
-        buildRenderer((td, value: Category) => {
+        "edd.mclass",
+        buildRenderer((td, value: MeasurementClass) => {
             if (value.measurementType.family === "m" && value.compartment.id !== "0") {
                 td.innerHTML = `${value.compartment.code} ${value.measurementType.name}`;
             } else {

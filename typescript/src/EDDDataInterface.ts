@@ -103,9 +103,12 @@ interface MeasurementTypeRecord {
 }
 
 /**
- * Defines parts of a MeasurementRecord to use in filtering by kinds of measurement.
+ * Parts of a MeasurementRecord that go beyond just the type. This includes
+ * compartment, so that filtering code can distinguish between types measured
+ * in differing compartments. Currently, only metabolites have a compartment,
+ * all other families of types should match only on type.
  */
-interface Category {
+interface MeasurementClass {
     compartment: MeasurementCompartmentRecord;
     measurementType: MeasurementTypeRecord;
 }

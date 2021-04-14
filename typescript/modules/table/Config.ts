@@ -183,9 +183,9 @@ export function settingsForMeasurementTable(
             "width": Checkbox_Column_Width,
         },
         {
-            "data": CategoryColumn.using(access),
+            "data": MeasurementClassColumn.using(access),
             "header": "Measurement",
-            "renderer": "edd.category",
+            "renderer": "edd.mclass",
         },
         {
             "data": YUnitColumn.using(access),
@@ -336,9 +336,9 @@ abstract class TableAccessor<U, V> {
     abstract forRender(row: U, value?: any): V;
 }
 
-class CategoryColumn extends TableAccessor<Item, Category> {
+class MeasurementClassColumn extends TableAccessor<Item, MeasurementClass> {
     static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
-        return new CategoryColumn(access).data();
+        return new MeasurementClassColumn(access).data();
     }
 
     forCopy(row: Item, value?: any): string {
@@ -347,7 +347,7 @@ class CategoryColumn extends TableAccessor<Item, Category> {
         return cat.measurementType.name;
     }
 
-    forRender(row: Item, value?: any): Category {
+    forRender(row: Item, value?: any): MeasurementClass {
         return {
             "compartment": this._access.findCompartment(row.measurement.comp),
             "measurementType": this._access.findMeasurementType(row.measurement.type),
