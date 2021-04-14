@@ -495,27 +495,6 @@ abstract class MeasurementFilterSection extends FilterSection<
     private readonly itemHashes = new Set<string>();
     private dirty = false;
 
-    /**
-     * Serializes the tuple of MeasurementType and MeasurementCompartment to a
-     * string for easier Set comparisons.
-     */
-    static itemHash(item: Item): string {
-        return `${item.measurement.comp}:${item.measurement.type}`;
-    }
-
-    /**
-     * Serializes the tuple of MeasurementType and MeasurementCompartment to a
-     * string for easier Set comparisons.
-     */
-    static typeHash(t: MeasurementClass): string {
-        let comp = "0";
-        if (t.measurementType.family === "m") {
-            // only care about compartment code in metabolites
-            comp = t.compartment.id;
-        }
-        return `${comp}:${t.measurementType.id}`;
-    }
-
     protected abstract accept(value: MeasurementClass): boolean;
 
     /**
@@ -535,15 +514,6 @@ abstract class MeasurementFilterSection extends FilterSection<
         return true;
     }
 
-    allowItem(): (item: Item) => boolean {
-        // include symbol in type so .has(skip) is a legal check
-        const selected = this.selectedKeys();
-        if (selected.size === 0) {
-            return ALLOW;
-        }
-        return (item) => selected.has(MeasurementFilterSection.itemHash(item));
-    }
-
     createListItems(): void {
         super.createListItems();
         this.dirty = false;
@@ -554,13 +524,11 @@ abstract class MeasurementFilterSection extends FilterSection<
     }
 
     keysItem(item: Item): string[] {
-        return [`${item.measurement.comp}:${item.measurement.type}`];
+        return [`${item.measurement.type}`];
     }
 
     keyValue(value: MeasurementClass): string {
-        // only care about compartment code in metabolites
-        // override in that specific section
-        return `0:${value.measurementType.id}`;
+        return `${value.measurementType.id}`;
     }
 
     update(): void {
@@ -585,7 +553,13 @@ class MetaboliteSection extends MeasurementFilterSection {
         return value.measurementType.family === "m";
     }
 
+    keysItem(item: Item): string[] {
+        // override from base to account for compartment
+        return [`${item.measurement.comp}:${item.measurement.type}`];
+    }
+
     keyValue(value: MeasurementClass): string {
+        // override from base to account for compartment
         return `${value.compartment.id}:${value.measurementType.id}`;
     }
 
