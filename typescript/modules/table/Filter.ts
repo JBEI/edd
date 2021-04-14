@@ -146,7 +146,7 @@ export class Filter extends FilterLayer {
     update(payload: AssayValues): void {
         this.access.updateAssayValues(payload);
         const categories = payload.measures.map(
-            (value): Category => {
+            (value): MeasurementClass => {
                 return {
                     "compartment": this.access.findCompartment(value.comp),
                     "measurementType": this.access.findMeasurementType(value.type),
@@ -478,7 +478,7 @@ export class MeasurementFilterLayer extends FilterLayer {
         // not doing anything
     }
 
-    update(types: Category[]): void {
+    update(types: MeasurementClass[]): void {
         for (const t of types) {
             // .some() will short-circuit on first section to accept the type
             this.sections.some((s) => s.addType(t));
@@ -488,7 +488,10 @@ export class MeasurementFilterLayer extends FilterLayer {
     }
 }
 
-abstract class MeasurementFilterSection extends FilterSection<Category, string> {
+abstract class MeasurementFilterSection extends FilterSection<
+    MeasurementClass,
+    string
+> {
     private readonly itemHashes = new Set<string>();
     private dirty = false;
 
@@ -504,7 +507,7 @@ abstract class MeasurementFilterSection extends FilterSection<Category, string> 
      * Serializes the tuple of MeasurementType and MeasurementCompartment to a
      * string for easier Set comparisons.
      */
-    static typeHash(t: Category): string {
+    static typeHash(t: MeasurementClass): string {
         let comp = "0";
         if (t.measurementType.family === "m") {
             // only care about compartment code in metabolites
@@ -513,13 +516,13 @@ abstract class MeasurementFilterSection extends FilterSection<Category, string> 
         return `${comp}:${t.measurementType.id}`;
     }
 
-    protected abstract accept(value: Category): boolean;
+    protected abstract accept(value: MeasurementClass): boolean;
 
     /**
      * Attempts to add item to filter, returning true if the item is acceptable
      * for the section.
      */
-    addType(value: Category): boolean {
+    addType(value: MeasurementClass): boolean {
         if (!this.accept(value)) {
             return false;
         }
@@ -554,7 +557,7 @@ abstract class MeasurementFilterSection extends FilterSection<Category, string> 
         return [`${item.measurement.comp}:${item.measurement.type}`];
     }
 
-    keyValue(value: Category): string {
+    keyValue(value: MeasurementClass): string {
         // only care about compartment code in metabolites
         // override in that specific section
         return `0:${value.measurementType.id}`;
@@ -568,7 +571,7 @@ abstract class MeasurementFilterSection extends FilterSection<Category, string> 
         }
     }
 
-    valueToDisplay(value: Category): string {
+    valueToDisplay(value: MeasurementClass): string {
         return value.measurementType.name;
     }
 }
@@ -578,15 +581,15 @@ class MetaboliteSection extends MeasurementFilterSection {
         return new MetaboliteSection("Metabolite");
     }
 
-    protected accept(value: Category) {
+    protected accept(value: MeasurementClass) {
         return value.measurementType.family === "m";
     }
 
-    keyValue(value: Category): string {
+    keyValue(value: MeasurementClass): string {
         return `${value.compartment.id}:${value.measurementType.id}`;
     }
 
-    valueToDisplay(value: Category): string {
+    valueToDisplay(value: MeasurementClass): string {
         const t = value.measurementType;
         let link = "";
         if (t.cid) {
@@ -602,11 +605,11 @@ class ProteinSection extends MeasurementFilterSection {
         return new ProteinSection("Protein");
     }
 
-    protected accept(value: Category) {
+    protected accept(value: MeasurementClass) {
         return value.measurementType.family === "p";
     }
 
-    valueToDisplay(value: Category): string {
+    valueToDisplay(value: MeasurementClass): string {
         const t = value.measurementType;
         let link = "";
         if (t.accession) {
@@ -622,7 +625,7 @@ class TranscriptSection extends MeasurementFilterSection {
         return new TranscriptSection("Transcript");
     }
 
-    protected accept(value: Category) {
+    protected accept(value: MeasurementClass) {
         return value.measurementType.family === "g";
     }
 }
@@ -632,7 +635,7 @@ class OtherSection extends MeasurementFilterSection {
         return new OtherSection("Other");
     }
 
-    protected accept(value: Category) {
+    protected accept(value: MeasurementClass) {
         return true;
     }
 }
