@@ -35,8 +35,15 @@ class Migration(migrations.Migration):
                     "type_group",
                     edd.fields.VarCharField(
                         blank=True,
-                        help_text="Constrains measurement types searched "
-                        "during data loading.",
+                        choices=[
+                            ("_", "Generic"),
+                            ("m", "Metabolite"),
+                            ("g", "Gene Identifier"),
+                            ("p", "Protein Identifier"),
+                            ("h", "Phosphor"),
+                        ],
+                        default=None,
+                        help_text="Constrains measurement types searched during data loading.",
                         null=True,
                         verbose_name="Measurement type group",
                     ),

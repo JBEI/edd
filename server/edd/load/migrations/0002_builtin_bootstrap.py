@@ -30,10 +30,14 @@ def bootstrap(apps, schema_editor):
         parser_class="edd.load.parsers.SkylineCsvParser",
     )
     Category = apps.get_model("load", "Category")
-    CATEGORY_PROTEOMICS = Category.objects.create(name="Proteomics", sort_key=1)
-    CATEGORY_METABOLOMICS = Category.objects.create(name="Metabolomics", sort_key=2)
+    CATEGORY_PROTEOMICS = Category.objects.create(
+        name="Proteomics", sort_key=1, type_group="p"
+    )
+    CATEGORY_METABOLOMICS = Category.objects.create(
+        name="Metabolomics", sort_key=2, type_group="m"
+    )
     CATEGORY_TRANSCRIPTOMCIS = Category.objects.create(
-        name="Transcriptomics", sort_key=3
+        name="Transcriptomics", sort_key=3, type_group="g",
     )
     CATEGORY_OTHER = Category.objects.create(name="Other", sort_key=4)
     CategoryLayout = apps.get_model("load", "CategoryLayout")

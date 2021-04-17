@@ -101,6 +101,8 @@ class Category(models.Model):
     )
     type_group = VarCharField(
         blank=True,
+        choices=edd_models.MeasurementType.Group.GROUP_CHOICE,
+        default=None,
         help_text=_("Constrains measurement types searched during data loading."),
         null=True,
         verbose_name=_("Measurement type group"),
