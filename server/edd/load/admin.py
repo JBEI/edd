@@ -11,18 +11,6 @@ from . import models
 logger = logging.getLogger(__name__)
 
 
-class CategoryForm(forms.ModelForm):
-    class Meta:
-        model = models.Category
-        fields = (
-            "name",
-            "sort_key",
-        )
-        labels = {
-            "name": _("Category"),
-        }
-
-
 class LayoutForm(forms.ModelForm):
     class Meta:
         model = models.Layout
@@ -59,11 +47,18 @@ class CategoryLayoutInline(admin.TabularInline):
 class CategoryAdmin(admin.ModelAdmin):
     """Definition for admin-edit of Protocols."""
 
-    form = CategoryForm
+    fields = (
+        "name",
+        "sort_key",
+        "type_group",
+    )
+    radio_fields = {"type_group": admin.HORIZONTAL}
     list_display = (
         "name",
         "sort_key",
+        "type_group",
     )
+    list_filter = ("type_group",)
     inlines = (ProtocolCategoryInline, CategoryLayoutInline)
 
     def get_readonly_fields(self, request, obj=None):
