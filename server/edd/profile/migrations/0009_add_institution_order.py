@@ -42,7 +42,6 @@ class Migration(migrations.Migration):
             model_name="institutionid",
             name="sort_key",
             field=models.PositiveIntegerField(
-                default=None,
                 help_text="Relative order this Institution is displayed in a UserProfile.",
                 verbose_name="Display order",
             ),
