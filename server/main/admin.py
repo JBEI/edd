@@ -924,7 +924,7 @@ class EDDUserAdmin(UserAdmin):
                 if user.ldap_user.dn is not None:
                     # replace local password with an invalid one
                     user.password = hashers.make_password(None)
-                    user.save(update_fields="password")
+                    user.save(update_fields=["password"])
                     # populate local record with LDAP values
                     user.ldap_user.populate_user()
                 else:
