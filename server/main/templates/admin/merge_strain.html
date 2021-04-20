@@ -3,6 +3,11 @@
 {% block extrahead %}
     {{ block.super }}
     {{ form.media }}
+    {% load static %}
+    <script type="text/javascript" src="{% static 'dist/vendor.js' %}"></script>
+    <script type="text/javascript" src="{% static 'dist/Admin.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'dist/vendor.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
 {% endblock extrahead %}
 
 {% block content %}

@@ -4,6 +4,7 @@ from celery import shared_task
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth import get_user_model, hashers
 from django.contrib.auth.admin import UserAdmin
 from django.core.validators import RegexValidator
@@ -364,9 +365,7 @@ class StrainAdmin(EDDObjectAdmin):
                 return HttpResponseRedirect(request.get_full_path())
         if not form:
             form = self.MergeWithStrainForm(
-                initial={
-                    "_selected_action": request.POST.getlist(admin.ACTION_CHECKBOX_NAME)
-                }
+                initial={"_selected_action": request.POST.getlist(ACTION_CHECKBOX_NAME)}
             )
         return render(
             request,
@@ -471,9 +470,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
                 return HttpResponseRedirect(request.get_full_path())
         if not form:
             form = MergeForm(
-                initial={
-                    "_selected_action": request.POST.getlist(admin.ACTION_CHECKBOX_NAME)
-                }
+                initial={"_selected_action": request.POST.getlist(ACTION_CHECKBOX_NAME)}
             )
         return render(
             request,
