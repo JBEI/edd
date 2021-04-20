@@ -87,6 +87,7 @@ SECRET_KEY = env(
         "this only works for local variables",
     ),
 )
+DEFAULT_EXCEPTION_REPORTER_FILTER = "edd.SafeExceptionReporterFilter"
 ALLOWED_HOSTS = []
 SITE_ID = 1
 USE_X_FORWARDED_HOST = True

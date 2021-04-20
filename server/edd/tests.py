@@ -1,49 +1,51 @@
 import pytest
 from django.urls import reverse
-from django.views import debug
 from requests import codes
 
+from edd import SafeExceptionReporterFilter
 from edd.profile.factory import UserFactory
 
-# Tests for cleanse_setting function of django.views.debug
-# that is monkey-patched in server/edd/__init__.py
+
+@pytest.fixture
+def reporter_filter():
+    return SafeExceptionReporterFilter()
 
 
-def test_cleanse_setting_benign_value_not_obfuscated():
+def test_cleanse_setting_benign_value_not_obfuscated(reporter_filter):
     # regular settings are unchanged
     original = "Some valid value"
-    cleansed = debug.cleanse_setting("BENIGN", original)
+    cleansed = reporter_filter.cleanse_setting("BENIGN", original)
     assert original == cleansed
 
 
-def test_cleanse_setting_replace_url_password():
+def test_cleanse_setting_replace_url_password(reporter_filter):
     # settings with keys matching URL or BACKEND are parsed, then
     # re-assembled with any password field obfuscated
     original = "http://user:12345@example.com/some/path/"
-    cleansed = debug.cleanse_setting("SOME_URL", original)
+    cleansed = reporter_filter.cleanse_setting("SOME_URL", original)
     assert original != cleansed
     assert "12345" not in cleansed
 
 
-def test_cleanse_setting_unchanged_non_url_key():
+def test_cleanse_setting_unchanged_non_url_key(reporter_filter):
     # when setting key does not contain URL or BACKEND,
     # no attempt to parse and obfuscate occurs
     original = "http://user:12345@example.com/some/path/"
-    cleansed = debug.cleanse_setting("NOT_REPLACED", original)
+    cleansed = reporter_filter.cleanse_setting("NOT_REPLACED", original)
     assert original == cleansed
 
 
-def test_cleanse_setting_unchanged_non_string():
+def test_cleanse_setting_unchanged_non_string(reporter_filter):
     # when setting value is not a string, no attempt to parse happens
     original = 42
-    cleansed = debug.cleanse_setting("BACKEND_COUNT", original)
+    cleansed = reporter_filter.cleanse_setting("BACKEND_COUNT", original)
     assert original == cleansed
 
 
-def test_cleanse_setting_invalid_url_unchanged():
+def test_cleanse_setting_invalid_url_unchanged(reporter_filter):
     # adding an unmatched square bracket will trigger exception handling
     original = "http://user:12345@ex[ample.com/"
-    cleansed = debug.cleanse_setting("SOME_URL", original)
+    cleansed = reporter_filter.cleanse_setting("SOME_URL", original)
     assert original == cleansed
 
 
