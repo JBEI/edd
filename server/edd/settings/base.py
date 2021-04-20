@@ -173,6 +173,7 @@ WSGI_APPLICATION = "edd.wsgi.application"
 # Database configuration
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 DATABASES = {"default": env.db()}
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 
 # Cache configuration
@@ -216,7 +217,7 @@ SWAGGER_SETTINGS = {
 
 
 # WebSockets / Channels
-ASGI_APPLICATION = "edd.routing.application"
+ASGI_APPLICATION = "edd.asgi.application"
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
