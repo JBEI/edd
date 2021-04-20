@@ -316,7 +316,7 @@ def test_MetadataType_to_json_works():
 def test_EDDMetadata_allow_metadata():
     # the base mixin for objects with metadata will always return False
     # implementing classes are responsible for setting allowlist
-    obj = models.EDDMetadata()
+    obj = models.EDDObject()
     md = factory.MetadataTypeFactory.build()
     assert not obj.allow_metadata(md)
     assert not obj.allow_metadata(None)
