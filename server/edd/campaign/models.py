@@ -1,3 +1,4 @@
+import logging
 from itertools import chain
 
 from django.contrib.postgres.fields import ArrayField
@@ -7,6 +8,8 @@ from django.utils.translation import gettext_lazy as _
 
 from edd.fields import VarCharField
 from main import models as edd_models
+
+logger = logging.getLogger(__name__)
 
 # assign names to base classes used in this module to avoid repeating namespaces
 BasePermission = edd_models.permission.Permission
@@ -106,7 +109,11 @@ class CampaignPermission(BasePermission, models.Model):
             if key not in self.link_permissions:
                 self.link_permissions.append(key)
         else:
-            self.link_permissions.remove(key)
+            # remove if present
+            try:
+                self.link_permissions.remove(key)
+            except ValueError:
+                logging.info(f"Removing permission {key} but it was not set")
 
     def get_permission_overrides(self):
         return self.LEVEL_OVERRIDES.get(self.study_permission, [])
