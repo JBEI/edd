@@ -11,7 +11,7 @@ from dateutil import parser as date_parser
 from django.conf import settings
 from django.contrib.staticfiles import storage
 from django.core.exceptions import ValidationError
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.utils.translation import gettext as _
 from kombu.serialization import register
@@ -48,7 +48,7 @@ class JSONEncoder(json.JSONEncoder):
         elif isinstance(o, (date, datetime)):
             return {TYPE: DATETIME, VALUE: o.isoformat()}
         elif isinstance(o, Promise):
-            return force_text(o)
+            return force_str(o)
         return super().default(o)
 
     @staticmethod
