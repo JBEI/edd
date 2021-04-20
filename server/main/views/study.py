@@ -441,7 +441,10 @@ class StudyLinesView(StudyDetailBaseView):
             with transaction.atomic():
                 if not active and form.selection.measurements.count() == 0:
                     # true deletion only if there are zero measurements!
-                    count, details = form.selection.lines.delete()
+                    line_ids = form.selection.lines.values_list("id", flat=True)
+                    count, details = edd_models.Line.objects.filter(
+                        id__in=line_ids
+                    ).delete()
                     count = details[edd_models.Line._meta.label]
                 else:
                     count = form.selection.lines.update(active=active)
