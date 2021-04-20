@@ -1,8 +1,10 @@
 """Integration tests for ICE."""
 
+import itertools
 from io import BytesIO
+from unittest.mock import patch
 
-from django.test import tag
+from django.test import override_settings, tag
 from django.urls import reverse
 from faker import Faker
 from openpyxl.workbook import Workbook
@@ -12,89 +14,35 @@ from edd import TestCase
 from edd.load.resolver import TypeResolver
 from edd.load.tests import factory as load_factory
 from edd.profile.factory import UserFactory
-from jbei.rest.auth import HmacAuth
-from jbei.rest.clients.ice import IceApi, IceApiException
+from edd.search.registry import AdminRegistry, RegistryError, StrainRegistry
 from main import models
 from main.tests import factory
 
 faker = Faker()
 
 
-def user_to_ice_json(user):
-    # these fields are all required for ICE
-    return {
-        "firstName": user.first_name,
-        "lastName": user.last_name,
-        "initials": user.initials,
-        "description": "",
-        "institution": "",
-        "email": user.email,
-        "password": "",
-    }
-
-
-def ice_url(path):
-    if path[0] == "/":
-        path = path[1:]
-    return f"http://ice:8080/rest/{path}"
-
-
-class IceUserCheck:
-    user_url = ice_url("/users")
-
-    def __init__(self, ice):
-        self.ice = ice
-
-    def create(self, user):
-        """Create a user and return its ID."""
-        try:
-            response = self.ice.session.post(
-                self.user_url,
-                json=user_to_ice_json(user),
-                params={"sendEmail": "false"},
-            )
-            created = response.json()
-            return created["id"]
-        except ValueError as e:
-            raise AssertionError(f"Bad response: {response.content}") from e
-        except Exception as e:
-            raise AssertionError(f"Failed to create user {user}") from e
-
-    def exists(self, user):
-        """Return a user ID if exists, otherwise return None."""
-        try:
-            response = self.ice.session.get(
-                self.user_url, params={"filter": user.email}
-            )
-            info = response.json()
-            if info["resultCount"] != 0:
-                return info["users"][0]["id"]
-            return None
-        except ValueError as e:
-            raise AssertionError(f"Bad response: {response.content}") from e
-        except Exception as e:
-            raise AssertionError(f"Failed to check user {user}") from e
-
-
 @tag("integration")
 class IceIntegrationTests(TestCase):
     """Sets of tests to validate communication between EDD and ICE."""
 
+    def setUp(self):
+        self.registry = StrainRegistry()
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        auth = HmacAuth("edd", "Administrator")
-        ice = IceApi(auth)
-        try:
-            # make sure ICE has users matching EDD users
-            cls._ensureTestUsers(ice)
-            # populate ICE with some strains
-            cls._populateTestStrains(ice)
-            # add strains to a folder
-            cls._populateTestFolder(ice)
-        except Exception as e:
-            cls.tearDownClass()
-            raise e
+        registry = AdminRegistry()
+        with registry.login():
+            try:
+                # make sure ICE has users matching EDD users
+                cls._ensureTestUsers(registry)
+                # populate ICE with some strains
+                entries = cls._populateTestStrains(registry)
+                # add strains to a folder
+                cls._populateTestFolder(registry, entries)
+            except Exception as e:
+                cls.tearDownClass()
+                raise e
 
     @classmethod
     def setUpTestData(cls):
@@ -104,139 +52,126 @@ class IceIntegrationTests(TestCase):
         cls.none_ice_user = UserFactory(email="none@example.org")
 
     @classmethod
-    def _ensureTestUsers(cls, ice):
-        check = IceUserCheck(ice)
-        for user in [cls.admin_ice_user, cls.read_ice_user, cls.none_ice_user]:
-            user_id = check.exists(user)
+    def _ensureTestUsers(cls, registry):
+        # make an admin users
+        admin_id = registry.get_user_id(cls.admin_ice_user)
+        if admin_id is None:
+            admin_id = registry.create_admin(cls.admin_ice_user)
+        # stash the ICE user ID for later use in permissions
+        cls.admin_ice_user._ice_id = admin_id
+        # make regular users
+        for user in [cls.read_ice_user, cls.none_ice_user]:
+            user_id = registry.get_user_id(user)
             if user_id is None:
-                user_id = check.create(user)
+                user_id = registry.create_user(user)
+            # stash the ICE user ID for later use in permissions
             user._ice_id = user_id
-        # set the admin account type on admin_ice_user
-        acct = user_to_ice_json(cls.admin_ice_user)
-        acct.update(accountType="ADMIN")
-        ice.session.put(ice_url(f"/users/{cls.admin_ice_user._ice_id}"), json=acct)
 
     @classmethod
-    def _populateTestStrains(cls, ice):
-        # create a BulkUpload object
-        response = ice.session.put(ice_url("/uploads"), json={"type": "strain"})
-        upload_id = response.json()["id"]
-        # add file data to the BulkUpload
-        with factory.load_test_file("ice_entries.csv") as entries:
-            response = ice.session.post(
-                ice_url(f"/uploads/{upload_id}/file"),
-                files={"type": "strain", "file": entries},
-            )
-        # set upload to approved to create (click "submit" button)
-        response = ice.session.put(
-            ice_url(f"/uploads/{upload_id}/status"),
-            json={"id": upload_id, "status": "APPROVED"},
-        )
+    def _populateTestStrains(cls, registry):
+        with factory.load_test_file("ice_entries.csv") as entries_file:
+            registry.bulk_upload(entries_file)
         # fetch the part IDs
-        response = ice.session.get(
-            ice_url("/collections/available/entries"),
-            params={"sort": "created", "asc": "false"},
-        )
-        entries = response.json()["data"][:10]
-        cls.part_ids = [p["partId"] for p in reversed(entries)]
-        cls.db_ids = [p["id"] for p in reversed(entries)]
+        it = registry.iter_entries(sort="created", asc="false", limit=10)
+        entries = list(itertools.islice(it, 10))
         # set read permissions on some of the created strains
-        for idx in range(5):
-            response = ice.session.post(
-                ice_url(f"/parts/{cls.part_ids[idx]}/permissions"),
-                json={
-                    "article": "ACCOUNT",
-                    "articleId": cls.read_ice_user._ice_id,
-                    "type": "READ_ENTRY",
-                    "typeId": cls.db_ids[idx],
-                },
-            )
+        for entry in entries[:5]:
+            entry.set_permission(cls.read_ice_user._ice_id)
+        # stash the part IDs for use in tests
+        cls.entry_ids = [entry.part_id for entry in entries]
+        return entries
 
     @classmethod
-    def _populateTestFolder(cls, ice):
+    def _populateTestFolder(cls, registry, entries):
         # create folder
-        cls.folder_name = faker.catch_phrase()
-        response = ice.session.post(
-            ice_url("/folders"), json={"folderName": cls.folder_name}
-        )
-        cls.folder_id = response.json()["id"]
+        cls.folder = registry.create_folder(faker.catch_phrase())
         # set it to public
         # ice.session.put(ice_url(f"/folders/{cls.folder_id}/permissions/public"))
         # add our parts to it
-        ice.session.put(
-            ice_url("/folders/entries"),
-            json={
-                "all": False,
-                "destination": [{"id": cls.folder_id}],
-                "entries": cls.db_ids,
-            },
-        )
+        cls.folder.add_entries(entries)
+
+    @override_settings(ICE_URL=None)
+    def test_no_configured_ICE_raises_error(self):
+        with self.assertRaises(RegistryError):
+            self.registry.base_url
+
+    @override_settings(ICE_URL="https://example.com")
+    def test_configured_ICE_without_trailing_slash(self):
+        assert self.registry.base_url == "https://example.com"
+
+    @override_settings(ICE_URL="https://example.com/")
+    def test_configured_ICE_strips_trailing_slash(self):
+        assert self.registry.base_url == "https://example.com"
+
+    def test_action_without_login_throws_error(self):
+        with self.assertRaises(RegistryError):
+            self.registry.get_entry("42")
+
+    def test_action_after_logout_throws_error(self):
+        with self.registry.login(self.none_ice_user), self.assertRaises(RegistryError):
+            # force logout
+            self.registry.logout()
+            # this should trigger RegistryError following logout
+            self.registry.get_entry("42")
 
     def test_admin_find_parts(self):
-        admin_auth = HmacAuth("edd", self.admin_ice_user.email)
-        ice = IceApi(admin_auth)
-        # verify that admin user finds all parts
-        entries_url = ice_url("/collections/available/entries?sort=created&asc=false")
-        response = ice.session.get(entries_url)
-        payload = response.json()["data"]
-        entries = {p["partId"] for p in payload}
-        self.assertTrue(entries.issuperset(self.part_ids))
+        with self.registry.login(self.admin_ice_user):
+            # verify that admin user finds all parts
+            entries = self.registry.list_entries(sort="created", asc="false")
+            ids = {entry.part_id for entry in entries}
+            assert ids.issuperset(self.entry_ids)
 
     def test_admin_read_part(self):
-        admin_auth = HmacAuth("edd", self.admin_ice_user.email)
-        ice = IceApi(admin_auth)
-        # verify that admin user can load specific entry
-        entry = ice.get_entry(self.part_ids[0])
-        self.assertIsNotNone(entry)
-        entry = ice.get_entry(self.part_ids[5])
-        self.assertIsNotNone(entry)
+        with self.registry.login(self.admin_ice_user):
+            # verify that admin user can load specific entry
+            entry = self.registry.get_entry(self.entry_ids[0])
+            assert entry is not None
+            entry = self.registry.get_entry(self.entry_ids[5])
+            assert entry is not None
 
     def test_reader_find_parts(self):
-        reader_auth = HmacAuth("edd", self.read_ice_user.email)
-        ice = IceApi(reader_auth)
-        # verify that reader user finds the five parts with permissions set
-        entries_url = ice_url("/collections/available/entries?sort=created&asc=false")
-        response = ice.session.get(entries_url)
-        payload = response.json()["data"]
-        entries = {p["partId"] for p in payload}
-        self.assertTrue(entries.issuperset(self.part_ids[:5]))
-        self.assertEqual(len(entries.intersection(self.part_ids[5:])), 0)
+        with self.registry.login(self.read_ice_user):
+            # verify that reader user finds the five parts with permissions set
+            entries = self.registry.list_entries(sort="created", asc="false")
+            ids = {entry.part_id for entry in entries}
+            readable = set(self.entry_ids[:5])
+            unreadable = set(self.entry_ids[5:])
+            assert ids.issuperset(readable)
+            assert len(ids.intersection(unreadable)) == 0
 
     def test_reader_read_part(self):
-        reader_auth = HmacAuth("edd", self.read_ice_user.email)
-        ice = IceApi(reader_auth)
-        # verify that reader user can load specific entry with permission
-        entry = ice.get_entry(self.part_ids[0])
-        self.assertIsNotNone(entry)
-        # verify that reader user cannot load entry without permission
-        with self.assertRaises(IceApiException):
-            ice.get_entry(self.part_ids[5])
+        with self.registry.login(self.read_ice_user):
+            # verify that reader user can load specific entry with permission
+            entry = self.registry.get_entry(self.entry_ids[0])
+            assert entry is not None
+
+    def test_reader_cannot_read_part_without_permission(self):
+        with self.registry.login(self.read_ice_user):
+            # verify that reader user cannot load entry without permission
+            with self.assertRaises(RegistryError):
+                self.registry.get_entry(self.entry_ids[5])
 
     def test_none_find_parts(self):
-        none_auth = HmacAuth("edd", self.none_ice_user.email)
-        ice = IceApi(none_auth)
-        # verify that user with no permissions finds no parts
-        entries_url = ice_url("/collections/available/entries?sort=created&asc=false")
-        response = ice.session.get(entries_url)
-        payload = response.json()["data"]
-        entries = {p["partId"] for p in payload}
-        self.assertEqual(len(entries.intersection(self.part_ids)), 0)
+        with self.registry.login(self.none_ice_user):
+            # verify that user with no permissions finds no parts
+            entries = self.registry.list_entries(sort="created", asc="false")
+            ids = {entry.part_id for entry in entries}
+            assert len(ids.intersection(self.entry_ids)) == 0
 
     def test_none_read_part(self):
-        none_auth = HmacAuth("edd", self.none_ice_user.email)
-        ice = IceApi(none_auth)
-        # verify no permission user cannot load entries
-        with self.assertRaises(IceApiException):
-            ice.get_entry(self.part_ids[0])
-        with self.assertRaises(IceApiException):
-            ice.get_entry(self.part_ids[5])
+        with self.registry.login(self.none_ice_user):
+            # verify no permission user cannot load entries
+            with self.assertRaises(RegistryError):
+                self.registry.get_entry(self.entry_ids[0])
+            with self.assertRaises(RegistryError):
+                self.registry.get_entry(self.entry_ids[5])
 
     def test_upload_links_admin(self):
         admin_study = factory.StudyFactory()
         admin_study.userpermission_set.update_or_create(
             permission_type=models.StudyPermission.WRITE, user=self.admin_ice_user
         )
-        response = self._run_upload(self.part_ids, admin_study, self.admin_ice_user)
+        response = self._run_upload(self.entry_ids, admin_study, self.admin_ice_user)
         # should return OK from upload
         self.assertEqual(response.status_code, codes.ok)
         # there should be 10 strains on the study
@@ -253,11 +188,13 @@ class IceIntegrationTests(TestCase):
         )
         # should return 500 error on uploading admin-only strains
         # skip testing this until ICE-90 is resolved
-        # response = self._run_upload(self.part_ids, reader_study, self.read_ice_user)
+        # response = self._run_upload(self.entry_ids, reader_study, self.read_ice_user)
         # self.assertEqual(response.status_code, codes.server_error)
         # should return OK on uploading readable strains
-        response = self._run_upload(self.part_ids[:5], reader_study, self.read_ice_user)
-        self.assertEqual(response.status_code, codes.ok)
+        response = self._run_upload(
+            self.entry_ids[:5], reader_study, self.read_ice_user
+        )
+        self.assertEqual(response.status_code, codes.ok, response.content)
         # there should be 5 strains on the study
         self.assertEqual(
             models.Strain.objects.filter(line__study=reader_study).distinct().count(), 5
@@ -271,10 +208,10 @@ class IceIntegrationTests(TestCase):
             permission_type=models.StudyPermission.WRITE, user=self.none_ice_user
         )
         # should return 400 error on uploading admin-only strains
-        response = self._run_upload(self.part_ids, none_study, self.none_ice_user)
-        self.assertEqual(response.status_code, codes.bad_request)
+        response = self._run_upload(self.entry_ids, none_study, self.none_ice_user)
+        self.assertEqual(response.status_code, codes.bad_request, response.content)
         # should return 400 error on uploading reader-only strains
-        response = self._run_upload(self.part_ids[:5], none_study, self.none_ice_user)
+        response = self._run_upload(self.entry_ids[:5], none_study, self.none_ice_user)
         self.assertEqual(response.status_code, codes.bad_request)
         # there should be 0 strains on the study
         self.assertEqual(
@@ -282,100 +219,188 @@ class IceIntegrationTests(TestCase):
         )
 
     def test_get_folder_known_id_admin_user(self):
-        admin_auth = HmacAuth("edd", self.admin_ice_user.email)
-        ice = IceApi(admin_auth)
-        folder = ice.get_folder(self.folder_id)
-        self.assertIsNotNone(folder)
-        self.assertEqual(folder.id, self.folder_id)
-        self.assertEqual(folder.name, self.folder_name)
+        with self.registry.login(self.admin_ice_user):
+            folder = self.registry.get_folder(self.folder.folder_id)
+            assert folder is not None
+            assert folder.folder_id == self.folder.folder_id
+            assert folder.name == self.folder.name
 
     def test_get_folder_known_id_reader_user(self):
-        reader_auth = HmacAuth("edd", self.read_ice_user.email)
-        ice = IceApi(reader_auth)
-        with self.assertRaises(IceApiException):
-            ice.get_folder(self.folder_id)
+        with self.registry.login(self.read_ice_user):
+            with self.assertRaises(RegistryError):
+                self.registry.get_folder(self.folder.folder_id)
 
     def test_get_folder_known_id_none_user(self):
-        none_auth = HmacAuth("edd", self.none_ice_user.email)
-        ice = IceApi(none_auth)
-        with self.assertRaises(IceApiException):
-            ice.get_folder(self.folder_id)
+        with self.registry.login(self.none_ice_user):
+            with self.assertRaises(RegistryError):
+                self.registry.get_folder(self.folder.folder_id)
 
     def test_get_folder_known_bad_id(self):
-        admin_auth = HmacAuth("edd", self.admin_ice_user.email)
-        ice = IceApi(admin_auth)
-        folder = ice.get_folder(self.folder_id + 1)
-        self.assertIsNone(folder)
+        with self.registry.login(self.admin_ice_user):
+            with self.assertRaises(RegistryError):
+                self.registry.get_folder(self.folder.folder_id + 1)
 
     def test_get_folder_entries(self):
-        admin_auth = HmacAuth("edd", self.admin_ice_user.email)
-        ice = IceApi(admin_auth)
-        # set result_limit to a small number to exercise the generator on entries
-        ice.result_limit = 2
-        folder = ice.get_folder_entries(self.folder_id)
-        self.assertIsNotNone(folder)
-        self.assertEqual(folder.id, self.folder_id)
-        self.assertEqual(folder.name, self.folder_name)
-        self.assertEqual(len(list(folder.entries)), 10)
+        with self.registry.login(self.admin_ice_user):
+            folder = self.registry.get_folder(self.folder.folder_id)
+            entries = folder.list_entries()
+            assert len(list(entries)) == 10
 
-    def test_folder_from_url(self):
-        admin_auth = HmacAuth("edd", self.admin_ice_user.email)
-        ice = IceApi(admin_auth)
-        folder = ice.folder_from_url(f"{ice.base_url}/folders/{self.folder_id}/")
-        self.assertIsNotNone(folder)
-        self.assertEqual(folder.id, self.folder_id)
-        self.assertEqual(folder.name, self.folder_name)
+    def test_list_folders(self):
+        with self.registry.login(self.none_ice_user):
+            # we're not setting up any FEATURED folders
+            folders = self.registry.list_folders("FEATURED")
+            assert len(folders) == 0
+
+    def test_create_folder_upstream_failure(self):
+        with self.registry.login(
+            self.none_ice_user
+        ), self._request_failure(), self.assertRaises(RegistryError):
+            self.registry.create_folder("Special Folder")
+
+    def test_iter_entries_upstream_failure(self):
+        with self.registry.login(
+            self.none_ice_user
+        ), self._request_failure(), self.assertRaises(RegistryError):
+            # this is a generator, so must force iterate it to get Exception
+            next(self.registry.iter_entries())
+
+    def test_list_entries_upstream_failure(self):
+        with self.registry.login(
+            self.none_ice_user
+        ), self._request_failure(), self.assertRaises(RegistryError):
+            self.registry.list_entries()
+
+    def test_list_folders_upstream_failure(self):
+        with self.registry.login(
+            self.none_ice_user
+        ), self._request_failure(), self.assertRaises(RegistryError):
+            self.registry.list_folders()
 
     def test_search(self):
-        admin_auth = HmacAuth("edd", self.admin_ice_user.email)
-        ice = IceApi(admin_auth)
-        # pRS426 is one of the items in the ice_entries.csv file
-        results = ice.search("pRS426")
-        # multiple matching entries, check that one is found
-        # ceiling on number of results depends on how often test suite runs
-        self.assertNotEqual(len(results), 0)
+        with self.registry.login(self.admin_ice_user):
+            # pRS426 is one of the items in the ice_entries.csv file
+            results = self.registry.search("pRS426")
+            # multiple matching entries, check that one is found
+            next(results)
 
-    def test_write_protection(self):
-        admin_auth = HmacAuth("edd", self.admin_ice_user.email)
-        ice = IceApi(admin_auth)
-        with self.assertRaises(IceApiException):
-            ice.add_experiment_link(self.db_ids[0], "Error", "https://www.example.net/")
+    def test_search_upstream_failure(self):
+        with self.registry.login(
+            self.none_ice_user
+        ), self._request_failure(), self.assertRaises(RegistryError):
+            results = self.registry.search("pRS426")
+            # iterating results throws RegistryError
+            next(results)
+
+    def test_yield_paged_records_will_terminate(self):
+        # cover the branch where _yield_paged_records breaks after getting empty results
+        items = self.registry._yield_paged_records(lambda count: [])
+        assert len(list(items)) == 0
+
+    def test_set_permission_as_normal_user(self):
+        with self.registry.login(self.read_ice_user), self.assertRaises(RegistryError):
+            entry = self.registry.get_entry(self.entry_ids[0])
+            entry.set_permission(self.none_ice_user._ice_id)
+
+    def test_ice_admin_create_admin(self):
+        user = UserFactory()
+        admin_ice = AdminRegistry()
+        with admin_ice.login():
+            created_id = admin_ice.create_admin(user)
+            found_id = admin_ice.get_user_id(user)
+            assert created_id == found_id
+
+    def test_ice_admin_create_user(self):
+        user = UserFactory()
+        admin_ice = AdminRegistry()
+        with admin_ice.login():
+            created_id = admin_ice.create_user(user)
+            found_id = admin_ice.get_user_id(user)
+            assert created_id == found_id
+
+    def test_ice_admin_unknown_user(self):
+        user = UserFactory()
+        admin_ice = AdminRegistry()
+        with admin_ice.login():
+            found_id = admin_ice.get_user_id(user)
+            assert found_id is None
+
+    def test_ice_admin_get_user_upstream_failure(self):
+        admin_ice = AdminRegistry()
+        with admin_ice.login():
+            admin_failure = patch.object(
+                admin_ice.session, "send", side_effect=ValueError("Dummy Exception"),
+            )
+            with admin_failure, self.assertRaises(RegistryError):
+                admin_ice.get_user_id(self.admin_ice_user)
+
+    def test_ice_admin_create_user_twice(self):
+        admin_ice = AdminRegistry()
+        with admin_ice.login(), self.assertRaises(RegistryError):
+            admin_ice.create_user(self.admin_ice_user)
+
+    def test_ice_admin_bulk_upload_upstream_failure(self):
+        admin_ice = AdminRegistry()
+        with admin_ice.login():
+            admin_failure = patch.object(
+                admin_ice.session, "send", side_effect=ValueError("Dummy Exception"),
+            )
+            with admin_failure, self.assertRaises(RegistryError):
+                admin_ice.bulk_upload(BytesIO(b""))
 
     def test_add_remove_experiment_link(self):
-        admin_auth = HmacAuth("edd", self.admin_ice_user.email)
-        ice = IceApi(admin_auth)
-        ice.write_enabled = True
-        study = factory.StudyFactory()
-        study_url = f"https://edd.example.org/s/{study.slug}/"
-        for entry_id in self.db_ids:
-            ice.add_experiment_link(entry_id, study.name, study_url)
-        # verify link exists on a given entry
-        found_links = list(ice.fetch_experiment_links(self.db_ids[3]))
-        self.assertEqual(len(found_links), 1)
-        # verify that removal works
-        ice.unlink_entry_from_study(self.db_ids[3], study_url)
-        found_links = list(ice.fetch_experiment_links(self.db_ids[3]))
-        self.assertEqual(len(found_links), 0)
+        with self.registry.login(self.admin_ice_user):
+            study = factory.StudyFactory()
+            study_url = f"https://edd.example.org/s/{study.slug}/"
+            entry = self.registry.get_entry(self.entry_ids[3])
+            entry.add_link(study.name, study_url)
+            # verify link exists on a given entry
+            found_links = list(entry.list_links())
+            assert len(found_links) == 1
+            # verify that removal works
+            for link in found_links:
+                entry.remove_link(link[0])
+            found_links = list(entry.list_links())
+            assert len(found_links) == 0
+
+    def test_link_upstream_failures(self):
+        with self.registry.login(self.admin_ice_user):
+            entry = self.registry.get_entry(self.entry_ids[0])
+            with self._request_failure(), self.assertRaises(RegistryError):
+                entry.add_link("label", "url")
+            with self._request_failure(), self.assertRaises(RegistryError):
+                entry.remove_link("42")
+            with self._request_failure(), self.assertRaises(RegistryError):
+                # iterating results to throw RegistryError
+                next(entry.list_links())
+
+    def test_folder_add_list_entries_upstream_failure(self):
+        with self.registry.login(self.admin_ice_user):
+            folder = self.registry.get_folder(self.folder.folder_id)
+            with self._request_failure(), self.assertRaises(RegistryError):
+                folder.add_entries([])
+            with self._request_failure(), self.assertRaises(RegistryError):
+                folder.list_entries()
 
     def test_ice_protein_link(self):
         category = load_factory.CategoryFactory.build(
             type_group=models.MeasurementType.Group.PROTEINID,
         )
         resolver = TypeResolver(self.read_ice_user, category)
-        protein = resolver.lookup_type(self.part_ids[0])
+        protein = resolver.lookup_type(self.entry_ids[0])
         assert isinstance(protein, models.ProteinIdentifier)
-        assert protein.accession_id == self.part_ids[0]
+        assert protein.accession_id == self.entry_ids[0]
 
     def test_ice_protein_link_twice(self):
         category = load_factory.CategoryFactory.build(
             type_group=models.MeasurementType.Group.PROTEINID,
         )
         resolver = TypeResolver(self.read_ice_user, category)
-        protein = resolver.lookup_type(self.part_ids[0])
+        protein = resolver.lookup_type(self.entry_ids[0])
         # running lookup_type again does not throw ValidationError
-        resolver.lookup_type(self.part_ids[0])
+        resolver.lookup_type(self.entry_ids[0])
         assert isinstance(protein, models.ProteinIdentifier)
-        assert protein.accession_id == self.part_ids[0]
+        assert protein.accession_id == self.entry_ids[0]
 
     def _create_workbook(self, parts):
         upload = BytesIO()
@@ -395,8 +420,16 @@ class IceIntegrationTests(TestCase):
         upload.seek(0)
         return upload
 
-    def _run_upload(self, parts, study, user):
-        upload = self._create_workbook(parts)
+    def _request_failure(self):
+        """
+        Use this in a context manager to simulate a failed HTTP request to ICE.
+        """
+        return patch.object(
+            self.registry.session, "send", side_effect=ValueError("Dummy Exception")
+        )
+
+    def _run_upload(self, part_ids, study, user):
+        upload = self._create_workbook(part_ids)
         self.client.force_login(user)
         response = self.client.post(
             reverse("main:describe:describe", kwargs={"slug": study.slug}),
