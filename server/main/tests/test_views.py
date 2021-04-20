@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
 from django.http.request import HttpRequest
 from django.urls import reverse
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from faker import Faker
 from requests import codes
 
@@ -1117,7 +1117,7 @@ class AjaxPermissionViewTests(TestCase):
         response = self.client.get(self.url)
         # response is empty array
         self.assertEqual(response.status_code, codes.ok)
-        self.assertJSONEqual(force_text(response.content), [])
+        self.assertJSONEqual(force_str(response.content), [])
 
     def test_head_permissions(self):
         self._set_permission(models.StudyPermission.READ)
