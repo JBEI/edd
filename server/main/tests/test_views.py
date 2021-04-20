@@ -601,7 +601,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
         }
         response = self.client.post(self.url, data=payload, follow=True)
         self.assertTemplateUsed(response, "main/study-lines.html")
-        self.assertContains(response, f"Added Line &#39;{name}&#39;")
+        self.assertContains(response, f"Added Line &#x27;{name}&#x27;")
         assert self.target_study.line_set.filter(name=name).exists()
 
     def test_lines_add_line_with_invalid_form(self):
