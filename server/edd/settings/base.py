@@ -88,6 +88,7 @@ SECRET_KEY = env(
     ),
 )
 ALLOWED_HOSTS = ["localhost"]
+DEFAULT_EXCEPTION_REPORTER_FILTER = "edd.SafeExceptionReporterFilter"
 SITE_ID = 1
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
