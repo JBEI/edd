@@ -3,7 +3,6 @@
 import dataclasses
 import logging
 
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models import F, Func
 from django.utils.translation import gettext_lazy as _
@@ -331,8 +330,7 @@ class EDDMetadata(models.Model):
     class Meta:
         abstract = True
 
-    # migrate to using JSONB storage for metadata
-    metadata = JSONField(
+    metadata = models.JSONField(
         blank=True,
         help_text=_("JSON-based metadata dictionary."),
         default=dict,

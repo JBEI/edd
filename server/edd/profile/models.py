@@ -1,7 +1,6 @@
 import arrow
 from django.conf import settings
 from django.contrib.auth import models as auth_models
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -31,7 +30,7 @@ class UserProfile(models.Model):
     initials = VarCharField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     institutions = models.ManyToManyField(Institution, through="InstitutionID")
-    preferences = JSONField(blank=True, default=dict)
+    preferences = models.JSONField(blank=True, default=dict)
     approved = models.BooleanField(
         default=False,
         help_text=_("Flag showing if this account has been approved for login."),
