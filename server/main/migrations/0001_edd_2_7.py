@@ -5,7 +5,7 @@ import environ
 import libsbml
 from django.apps import apps as django_apps
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField, jsonb
+from django.contrib.postgres.fields import ArrayField
 from django.core.files.base import ContentFile
 from django.db import migrations, models
 
@@ -553,7 +553,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "metadata",
-                    jsonb.JSONField(
+                    models.JSONField(
                         blank=True,
                         default=dict,
                         help_text="JSON-based metadata dictionary.",
@@ -1384,7 +1384,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "metadata",
-                    jsonb.JSONField(
+                    models.JSONField(
                         blank=True,
                         default=dict,
                         help_text="JSON-based metadata dictionary.",
