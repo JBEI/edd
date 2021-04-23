@@ -139,15 +139,14 @@ function sortOnX(values: PlotValue[]): PlotValue[] {
 }
 
 /**
- * Find min/max values, altered for display such that:
- *  - minimum value is at least zero
- *  - maximum value is at least zero
- *  - maximum is at least one more than minimum
+ * Find min/max values on y-axis.
  */
 function yExtent(values: PlotValue[]): Extent {
-    const max = Math.max(d3.max(values, Values.byValueMax), 0);
-    const min = Math.min(d3.min(values, Values.byValueMin), 0);
-    if (max - min < 1) {
+    const max = d3.max(values, Values.byValueMax);
+    const min = d3.min(values, Values.byValueMin);
+    // make sure that min and max are not the same by forcing an epsilon
+    const span = max - min;
+    if (span === 0) {
         return [min, min + 1];
     }
     return [min, max];
