@@ -453,7 +453,8 @@ export class Graph {
         const organizer = new Organizer(strategy, this.access);
         // Use a dynamic limit for bar graphs,
         // to ensure bar widths are at least a few pixels
-        const points = limit(itemsToValues(items), Math.floor(Graph._width / 4));
+        const max_bars = Math.floor($(this.svg).width() / 4);
+        const points = limit(itemsToValues(items), max_bars);
         const unit_map = d3.group(points, Values.byUnit);
         const plot_height = Graph._height - Graph._axis_width - Graph._margin;
         const plot_width = Graph.plotWidth(unit_map.size);
