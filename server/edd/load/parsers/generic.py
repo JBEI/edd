@@ -95,3 +95,94 @@ class GenericExcelParser(ExcelParserMixin, GenericImportParser):
 
 class GenericCsvParser(CsvParserMixin, GenericImportParser):
     pass
+
+
+class AmbrExcelParser(ExcelParserMixin, CsvParserMixin):
+    def parse(self):
+        pass
+
+    def process_ambr_data(self):
+
+        units = {
+            "Temperature": "°C",
+            "Stir speed": "rpm",
+            "pH": "n/a",
+            "Air flow": "lpm",
+            "DO": "% maximum measured",
+            "Volume": "mL",
+            "OUR": "mM/L/h",
+            "CER": "mM/L/h",
+            "RQ": "n/a",
+            "Feed#1 volume pumped": "mL",
+            "Antifoam volume pumped": "mL",
+            "Acid volume pumped": "mL",
+            "Base volume pumped": "mL",
+            "Volume - sampled": "mL",
+        }
+
+        # Read in export file as pandas Dataframe
+        # Decimation- only keeping every tenth entry
+        t0 = time.time()
+        sheets_dict = pd.read_excel(
+            project_name, sheet_name=None, skiprows=lambda x: x % 10 > 0
+        )
+
+        t1 = time.time()
+        print("Import time: " + str(t1 - t0) + " seconds")
+
+        for bioreactor_name, sheet in sheets_dict.items():
+            second_ind = 2
+            # Iterate through every pair of columns
+            while second_ind <= len(sheet.columns) + 1:
+                df = sheet.iloc[:, second_ind - 2 : second_ind]
+                timestamps = df.iloc[:, 0].name
+                line_name = project + "_" + bioreactor_name
+                df = df.dropna(subset=[timestamps]).fillna(0)
+
+                reformatted_data = {}
+
+                # Catch "Volume of inocula" column (not included in google doc)
+                if df.columns[1] in units:
+                    unit = units[df.columns[1]]
+                else:
+                    second_ind += 2
+                    continue
+
+                # Hardcoded measurement type renaming for certain columns
+                measurement_type = df.columns[1]
+                if measurement_type == "Volume - sampled":
+                    measurement_type = "Volume sampled"
+                elif measurement_type == "Feed#1 volume pumped":
+                    measurement_type = "Feed volume pumped"
+                elif measurement_type == "Temperature":
+                    measurement_type = "Vessel temperature"
+                elif measurement_type == "Volume":
+                    measurement_type = "Working volume"
+
+                reformatted_data["Line Name"] = [
+                    line_name for _ in range(len(df.index))
+                ]
+                reformatted_data["Measurement Type"] = [
+                    measurement_type for _ in range(len(df.index))
+                ]
+                reformatted_data["Time"] = df.iloc[:, 0]
+                reformatted_data["Units"] = [unit for _ in range(len(df.index))]
+
+                # Convert "Air flow" data from mL/min to lpm
+                if measurement_type == "Air flow":
+                    reformatted_data["Value"] = df.iloc[:, 1].div(1000)
+                else:
+                    reformatted_data["Value"] = df.iloc[:, 1]
+
+                order = ["Line Name", "Measurement Type", "Time", "Value", "Units"]
+                reformatted_df = pd.DataFrame(data=reformatted_data)[order]
+
+                measurement_name = measurement_type.lower().replace(" ", "_")
+                # Export completed dataframe as .csv file
+                export_filename = line_name + "_" + measurement_name + ".csv"
+                reformatted_df.to_csv(export_filename, index=False)
+
+                second_ind += 2
+
+        t1 = time.time()
+        print("Export time: " + str(t1 - t0) + " seconds")
