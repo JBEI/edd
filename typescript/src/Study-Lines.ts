@@ -31,10 +31,15 @@ let hot: Handsontable;
 function computeHeight() {
     const container = $("#studyLinesTable");
     const actionsBar = $("#actionsBar");
+    // vertical size to leave enough space for actionsBar to display buttons
     const vertical = $window.height() - container.offset().top - actionsBar.height();
+    // also include a fudge factor:
+    // + 24 pixels for "Report a Bug", to not overlap on buttons
+    // + 10 + 10 for top/bottom margins around actionsBar
+    // = 44 total pixels
+    const fudge = 44;
     // always reserve at least 500 pixels
-    // also include a fudge factor of 20 pixels
-    return Math.max(500, vertical - 20);
+    return Math.max(500, vertical - fudge);
 }
 
 function defineSelectionInputs(lines?: LineRecord[]): JQuery {
