@@ -17,6 +17,7 @@ const EDDData = window.EDDData || ({} as EDDData);
 type TableMode = "table-assay" | "table-measurement";
 type BarGraphMode = "bar-line" | "bar-measurement" | "bar-time";
 type ViewingMode = "plot-line" | TableMode | BarGraphMode;
+type SelectionType = "study" | "line" | "assay" | "measurement";
 
 // default start on line graph
 let viewingMode: ViewingMode = "plot-line";
@@ -43,6 +44,11 @@ const _assayToInput = (assay: AssayRecord): JQuery =>
  */
 const _itemToInput = (item: Item): JQuery =>
     $(`<input type="hidden" name="measurementId" value="${item.measurement.id}" />`);
+/**
+ * Converts a Line ID to an HTML <INPUT> for a form.
+ */
+const _lineIdToInput = (id: number): JQuery =>
+    $(`<input type="hidden" name="lineId" value="${id}" />`);
 
 function _display(selector: string, mode: ViewingMode) {
     // highlight the active button
@@ -62,6 +68,22 @@ function computeHeight(): number {
     const vertical = $(window).height() - container.offset().top - 200;
     // always reserve at least 500 pixels for table
     return Math.max(500, vertical);
+}
+
+function defineSelectionInputs(selectionType: SelectionType = null): JQuery[] {
+    if (selectionType === "line") {
+        const lineIds = new Set<number>();
+        filter.assays().forEach((assay) => lineIds.add(assay.lid));
+        return Array.from(lineIds).map(_lineIdToInput);
+    } else if (viewingMode === "table-assay") {
+        return selectedAssays().map(_assayToInput);
+    } else if (selectionType === "assay") {
+        return filter.assays().map(_assayToInput);
+    } else if (viewingMode === "table-measurement") {
+        return selectedMeasurements().map(_itemToInput);
+    } else {
+        return filter.measurements().map(_itemToInput);
+    }
 }
 
 // Called when initial non-measurement data is loaded
@@ -116,6 +138,25 @@ function fetchMeasurements() {
             $.event.trigger("eddfilter");
         });
     });
+}
+
+/**
+ * Submits an export form. By default, uses selection of items from table
+ * views, or items filtered in graph. Pass true as second argument to select
+ * the entire study.
+ */
+function onExport(exportForm: JQuery, selectionType: SelectionType = null) {
+    const inputs = exportForm.find(".hidden-inputs").empty();
+    const selection = defineSelectionInputs(selectionType);
+    if (selection.length === 0) {
+        inputs.append(
+            `<input type="hidden" name="studyId" value="${EDDData.currentStudyID}"/>`,
+        );
+    } else {
+        inputs.append(selection);
+    }
+    exportForm.trigger("submit");
+    return false;
 }
 
 function refreshDisplay() {
@@ -178,6 +219,16 @@ function remakeMainGraphArea(items: Item[]) {
     $(".edd-value-truncated").toggleClass("hidden", !plot.isTruncated());
 }
 
+function selectedAssays(): AssayRecord[] {
+    const rows = assayTable.getSourceData() as AssayRecord[];
+    return rows.filter((assay) => assay?.selected);
+}
+
+function selectedMeasurements(): Item[] {
+    const rows = measureTable.getSourceData() as Item[];
+    return rows.filter((item) => item?.measurement?.selected);
+}
+
 function setupEvents(): void {
     // add refresh handler when filter event triggered
     $(document).on("eddfilter", Utl.debounce(refreshDisplay));
@@ -206,31 +257,14 @@ function setupEvents(): void {
         }
         return false;
     });
-    $(".edd-export-button").on("click", (event) => {
-        const form = $("#exportForm");
-        const inputs = form.find(".hidden-inputs").empty();
-        if (viewingMode === "table-assay") {
-            const rows = assayTable.getSourceData() as AssayRecord[];
-            const selected = rows.filter((assay) => assay?.selected);
-            // when nothing selected, act as if everything selected
-            const items = selected.length ? selected : rows;
-            // append IDs to export
-            inputs.append(...items.map(_assayToInput));
-        } else if (viewingMode === "table-measurement") {
-            const rows = measureTable.getSourceData() as Item[];
-            const selected = rows.filter((item) => item?.measurement?.selected);
-            // when nothing selected, act as if everything selected
-            const items = selected.length ? selected : rows;
-            // append IDs to export
-            inputs.append(...items.map(_itemToInput));
-        } else {
-            const items = filter.measurements();
-            // append IDs to export
-            inputs.append(...items.map(_itemToInput));
-        }
-        form.trigger("submit");
-        return false;
-    });
+    setupExportButtonEvents();
+}
+
+function setupExportButtonEvents() {
+    $(".edd-export-button").on("click", () => onExport($("#exportForm")));
+    $(".edd-new-study-button").on("click", () => onExport($("#newStudyForm"), "line"));
+    $(".edd-sbml-button").on("click", () => onExport($("#sbmlForm"), "line"));
+    $(".edd-worklist-button").on("click", () => onExport($("#worklistForm"), "assay"));
 }
 
 function setupModals(): void {

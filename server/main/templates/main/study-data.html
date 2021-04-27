@@ -142,14 +142,47 @@
       </div>
     </div>
     <div class="btn-toolbar">
-      <button
-        class="btn btn-primary edd-export-button"
-        title="{% trans 'Export data as CSV' %}"
-        type="button"
-      >
-        <span class="fas fa-cloud-download-alt"></span>
-        {% trans 'Export Data' %}
-      </button>
+      <div class="btn-group dropup">
+        <button
+          class="btn btn-primary edd-export-button"
+          title="{% trans 'Export data as CSV' %}"
+          type="button"
+        >
+          <span class="fas fa-cloud-download-alt"></span>
+          {% trans 'Export Data' %}
+        </button>
+        <button
+          aria-expanded="false"
+          aria-haspopup="true"
+          class="btn btn-primary dropdown-toggle"
+          data-toggle="dropdown"
+          type="button"
+        >
+          <span class="caret"></span>
+          <span class="sr-only">{% trans 'Toggle Menu' %}</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-right">
+          <li>
+            <a class="edd-new-study-button" href="#">
+              <span class="fas fa-copy"></span>
+              {% trans 'to New Study (Lines Only)' %}
+            </a>
+          </li>
+          <li>
+            <a class="edd-sbml-button" href="#">
+              <span class="fas fa-paper-plane"></span>
+              {% trans 'SBML Export' %}
+            </a>
+          </li>
+          <li role="separator" class="divider"></li>
+          <li>
+            <a class="edd-worklist-button" href="#">
+              <span class="fas fa-clipboard-list"></span>
+              {% trans 'Generate Worklist' %}
+            </a>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 </div>
@@ -240,6 +273,16 @@
 </div>
 
 <form action="{% url 'export:export' %}" class="hidden" id="exportForm" method="POST">
+  {% csrf_token %}
+  <div class="off hidden-inputs"></div>
+</form>
+
+<form action="{% url 'export:worklist' %}" class="hidden" id="worklistForm" method="POST">
+  {% csrf_token %}
+  <div class="off hidden-inputs"></div>
+</form>
+
+<form action="{% url 'main:create_study' %}" class="hidden" id="newStudyForm" method="POST">
   {% csrf_token %}
   <div class="off hidden-inputs"></div>
 </form>
