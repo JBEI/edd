@@ -182,6 +182,8 @@ The following configuration options are specific to EDD and may be overridden in
     (default False); if True, only superuser accounts may create new studies.
     If set to "permission", only users with the "Main | Study | Can Add Study"
     permission configured via the admin site may create new studies.
+-   `ICE_FOLDER_SEARCH_PAGE_SIZE` integer value; tunes the performance of part lookups in ICE
+    folders by controlling the page size for parts from a folder
 -   `ICE_KEY_ID` -- string value, the identifier of the shared key used to
     communicate with ICE.
 -   `ICE_SECRET_HMAC_KEY` -- string value, base64-encoded key used to sign
