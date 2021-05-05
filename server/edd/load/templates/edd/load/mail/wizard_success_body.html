@@ -2,7 +2,7 @@
 {% load i18n %}
 {% block body %}
   <h2>{% trans "Data saved!" %}</h2>
-  <p class="alert alert-danger">
+  <p class="alert alert-success">
     {% blocktrans %}
     The EDD has finished loading data into <a href="{{ study_uri }}">{{ study }}</a>.
     The loading process added {{ added }} and updated {{ updated }} values in the Study.
