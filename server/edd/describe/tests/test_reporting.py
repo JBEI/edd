@@ -1,9 +1,146 @@
+import uuid
 import warnings
+from unittest.mock import patch
 
 import pytest
 from django.test import override_settings
 
-from .. import exceptions
+from .. import exceptions, reporting
+
+
+class ExampleException(exceptions.ReportableDescribeError):
+    def __init__(self):
+        super().__init__(
+            category="Danger Will Robinson",
+            summary="Does not compute",
+            details="Divide by zero",
+        )
+
+
+def test_add_errors_with_string():
+    key = str(uuid.uuid4())
+    error = exceptions.ReportableDescribeError()
+    with reporting.tracker(key):
+        reporting.add_errors(key, error)
+        assert reporting.error_count(key, exceptions.ReportableDescribeError) == 1
+
+
+def test_add_errors_with_uuid():
+    key = uuid.uuid4()
+    error = exceptions.ReportableDescribeError()
+    with reporting.tracker(key):
+        reporting.add_errors(key, error)
+        assert reporting.error_count(key, exceptions.ReportableDescribeError) == 1
+
+
+def test_add_errors_without_tracking():
+    error = exceptions.ReportableDescribeError()
+    with pytest.raises(exceptions.ReportableDescribeError):
+        reporting.add_errors("", error)
+
+
+def test_warnings_with_string():
+    key = str(uuid.uuid4())
+    warning = exceptions.ReportableDescribeWarning()
+    with reporting.tracker(key):
+        reporting.warnings(key, warning)
+        assert reporting.warning_count(key, exceptions.ReportableDescribeWarning) == 1
+
+
+def test_warnings_with_uuid():
+    key = uuid.uuid4()
+    warning = exceptions.ReportableDescribeWarning()
+    with reporting.tracker(key):
+        reporting.warnings(key, warning)
+        assert reporting.warning_count(key, exceptions.ReportableDescribeWarning) == 1
+
+
+def test_warnings_without_tracking():
+    warning = exceptions.ReportableDescribeWarning()
+    # shouting into the void ...
+    reporting.warnings("", warning)
+
+
+def test_raise_errors_single_error():
+    key = uuid.uuid4()
+    error = exceptions.ReportableDescribeError()
+    with reporting.tracker(key):
+        with pytest.raises(exceptions.ReportableDescribeError):
+            reporting.raise_errors(key, error)
+        assert reporting.error_count(key, exceptions.ReportableDescribeError) == 1
+
+
+def test_raise_errors_multiple_errors():
+    key = uuid.uuid4()
+    error1 = exceptions.ReportableDescribeError()
+    error2 = exceptions.ReportableDescribeError()
+    error3 = ExampleException()
+    with reporting.tracker(key):
+        reporting.add_errors(key, error1)
+        reporting.add_errors(key, error2)
+        with pytest.raises(exceptions.ReportableDescribeError):
+            reporting.raise_errors(key, error3)
+        # same types get merged
+        assert reporting.error_count(key) == 2
+        assert (
+            reporting.error_count(key, ExampleException)
+            == 1
+        )
+
+
+def test_json_preserialize():
+    key = uuid.uuid4()
+    error1 = exceptions.ReportableDescribeError()
+    error2 = exceptions.ReportableDescribeError()
+    error3 = ExampleException()
+    warning = exceptions.ReportableDescribeWarning()
+    with reporting.tracker(key):
+        reporting.add_errors(key, error1)
+        reporting.add_errors(key, error2)
+        reporting.add_errors(key, error3)
+        reporting.warnings(key, warning)
+        summary = reporting.build_messages_summary(key)
+        assert summary == {
+            "errors": [
+                {"category": "Uncategorized Error", "summary": ""},
+                {
+                    "category": "Danger Will Robinson",
+                    "summary": "Does not compute",
+                    "detail": "Divide by zero",
+                },
+            ],
+            "warnings": [{"category": "Uncategorized Warning", "summary": ""}],
+        }
+
+
+def test_error_count_untracked():
+    key = str(uuid.uuid4())
+    with pytest.raises(exceptions.DescribeError):
+        reporting.error_count(key)
+
+
+def test_warning_count_untracked():
+    key = str(uuid.uuid4())
+    with pytest.raises(exceptions.DescribeError):
+        reporting.warning_count(key)
+
+
+def test_log_reported_errors_simulated_error():
+    key = str(uuid.uuid4())
+    # simulate an error inside signal handler
+    with patch("edd.load.reporting.MessageAggregator") as ma, reporting.tracker(key):
+        ma.return_value.add_errors.side_effect = AttributeError
+        reporting.log_reported_errors(ma, key, exceptions.ReportableDescribeWarning())
+    # exception was caught
+
+
+def test_log_reported_warnings_simulated_error():
+    key = str(uuid.uuid4())
+    # simulate an error inside signal handler
+    with patch("edd.load.reporting.MessageAggregator") as ma, reporting.tracker(key):
+        ma.return_value.add_warnings.side_effect = AttributeError
+        reporting.log_reported_warnings(ma, key, exceptions.ReportableDescribeWarning())
+    # exception was caught
 
 
 def test_MessagingMixin_no_details():
