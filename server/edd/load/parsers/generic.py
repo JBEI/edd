@@ -1,5 +1,9 @@
 from uuid import UUID
 
+import pandas as pd
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+
 from main.models import Measurement
 
 from ..reporting import raise_errors
@@ -99,9 +103,44 @@ class GenericCsvParser(CsvParserMixin, GenericImportParser):
 
 class AmbrExcelParser(ExcelParserMixin, CsvParserMixin):
     def parse(self):
-        pass
+        """
+        Overriding the parse function for ExcelParserMixin to enable processing multiple sheets
+        for Ambr250 data.
+        """
+        """
+        Parses the input as an Excel workbook.
 
-    def process_ambr_data(self):
+        :param file: a file-like object
+        :return: the ParseResult read from file, otherwise None
+        :raises OSError: if the file can't be opened
+        :raises EDDImportError: if the file format or content is bad
+        """
+        # wb = load_workbook(file, read_only=True, data_only=True)
+        # logger.debug("In parse(). workbook has %d sheets" % len(wb.worksheets))
+        # if len(wb.worksheets) > 1:
+        #     sheet_name = wb.sheetnames[0]
+        #     count = len(wb.worksheets) - 1
+        #     message = _(
+        #         'Only the first sheet in your workbook, "{sheet}", was processed. '
+        #         "All other sheets were ignored ({count})."
+        #     ).format(sheet=sheet_name, count=count)
+        #     reporting.warnings(
+        #         self.import_uuid, exceptions.IgnoredWorksheetWarning(details=[message])
+        #     )
+
+        # for worksheet in wb.worksheets:
+        sheets_dict = pd.read_excel(
+            file, sheet_name=None, skiprows=lambda x: x % 10 > 0
+        )
+        for bioreactor_name, sheet in sheets_dict.items():
+
+            # return self._parse_rows(worksheet.iter_rows())
+            # for each individual measurement type taken in the 
+            # ["Line Name", "Measurement Type", "Value", "Time", "Units"] format
+            for measurement_worksheet in self.process_ambr_data(bioreactor_name, sheet):
+                self._parse_rows(measurement_worksheet.iter_rows())
+
+    def process_ambr_data(self, bioreactor_name, sheet):
 
         units = {
             "Temperature": "°C",
@@ -120,69 +159,61 @@ class AmbrExcelParser(ExcelParserMixin, CsvParserMixin):
             "Volume - sampled": "mL",
         }
 
-        # Read in export file as pandas Dataframe
-        # Decimation- only keeping every tenth entry
-        t0 = time.time()
-        sheets_dict = pd.read_excel(
-            project_name, sheet_name=None, skiprows=lambda x: x % 10 > 0
-        )
+        # for bioreactor_name, sheet in sheets_dict.items():
+        second_ind = 2
+        # Iterate through every pair of columns for each measurement_type
+        while second_ind <= len(sheet.columns) + 1:
+            df = sheet.iloc[:, second_ind - 2 : second_ind]
+            timestamps = df.iloc[:, 0].name
+            line_name = bioreactor_name
+            df = df.dropna(subset=[timestamps]).fillna(0)
 
-        t1 = time.time()
-        print("Import time: " + str(t1 - t0) + " seconds")
+            reformatted_data = {}
 
-        for bioreactor_name, sheet in sheets_dict.items():
-            second_ind = 2
-            # Iterate through every pair of columns
-            while second_ind <= len(sheet.columns) + 1:
-                df = sheet.iloc[:, second_ind - 2 : second_ind]
-                timestamps = df.iloc[:, 0].name
-                line_name = project + "_" + bioreactor_name
-                df = df.dropna(subset=[timestamps]).fillna(0)
-
-                reformatted_data = {}
-
-                # Catch "Volume of inocula" column (not included in google doc)
-                if df.columns[1] in units:
-                    unit = units[df.columns[1]]
-                else:
-                    second_ind += 2
-                    continue
-
-                # Hardcoded measurement type renaming for certain columns
-                measurement_type = df.columns[1]
-                if measurement_type == "Volume - sampled":
-                    measurement_type = "Volume sampled"
-                elif measurement_type == "Feed#1 volume pumped":
-                    measurement_type = "Feed volume pumped"
-                elif measurement_type == "Temperature":
-                    measurement_type = "Vessel temperature"
-                elif measurement_type == "Volume":
-                    measurement_type = "Working volume"
-
-                reformatted_data["Line Name"] = [
-                    line_name for _ in range(len(df.index))
-                ]
-                reformatted_data["Measurement Type"] = [
-                    measurement_type for _ in range(len(df.index))
-                ]
-                reformatted_data["Time"] = df.iloc[:, 0]
-                reformatted_data["Units"] = [unit for _ in range(len(df.index))]
-
-                # Convert "Air flow" data from mL/min to lpm
-                if measurement_type == "Air flow":
-                    reformatted_data["Value"] = df.iloc[:, 1].div(1000)
-                else:
-                    reformatted_data["Value"] = df.iloc[:, 1]
-
-                order = ["Line Name", "Measurement Type", "Time", "Value", "Units"]
-                reformatted_df = pd.DataFrame(data=reformatted_data)[order]
-
-                measurement_name = measurement_type.lower().replace(" ", "_")
-                # Export completed dataframe as .csv file
-                export_filename = line_name + "_" + measurement_name + ".csv"
-                reformatted_df.to_csv(export_filename, index=False)
-
+            # Catch "Volume of inocula" column (not included in google doc)
+            if df.columns[1] in units:
+                unit = units[df.columns[1]]
+            else:
                 second_ind += 2
+                continue
 
-        t1 = time.time()
-        print("Export time: " + str(t1 - t0) + " seconds")
+            # Hardcoded measurement type renaming for certain columns
+            measurement_type = df.columns[1]
+            if measurement_type == "Volume - sampled":
+                measurement_type = "Volume sampled"
+            elif measurement_type == "Feed#1 volume pumped":
+                measurement_type = "Feed volume pumped"
+            elif measurement_type == "Temperature":
+                measurement_type = "Vessel temperature"
+            elif measurement_type == "Volume":
+                measurement_type = "Working volume"
+
+            reformatted_data["Line Name"] = [line_name for _ in range(len(df.index))]
+            reformatted_data["Measurement Type"] = [
+                measurement_type for _ in range(len(df.index))
+            ]
+            reformatted_data["Time"] = df.iloc[:, 0]
+            reformatted_data["Units"] = [unit for _ in range(len(df.index))]
+
+            # Convert "Air flow" data from mL/min to lpm
+            if measurement_type == "Air flow":
+                reformatted_data["Value"] = df.iloc[:, 1].div(1000)
+            else:
+                reformatted_data["Value"] = df.iloc[:, 1]
+
+            order = ["Line Name", "Measurement Type", "Time", "Value", "Units"]
+            reformatted_df = pd.DataFrame(data=reformatted_data)[order]
+
+            # convert pandas dataframe to openpyxl worksheet
+            wb = Workbook()
+            ws = wb.active
+            for r in dataframe_to_rows(reformatted_df, index=True, header=True):
+                ws.append(r)
+
+            second_ind += 2
+
+            yield ws
+            # measurement_name = measurement_type.lower().replace(" ", "_")
+            # # Export completed dataframe as .csv file
+            # export_filename = line_name + "_" + measurement_name + ".csv"
+            # reformatted_df.to_csv(export_filename, index=False)
