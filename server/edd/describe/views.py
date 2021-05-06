@@ -11,7 +11,7 @@ from main.tasks import create_ice_connection
 from main.views.study import StudyObjectMixin
 
 from . import constants, importer
-from .exceptions import DescriptionError
+from .exceptions.core import DescribeAbortError
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class DescribeView(StudyObjectMixin, generic.DetailView):
             errors = {
                 constants.BAD_FILE_CATEGORY: {constants.UNSUPPORTED_FILE_TYPE: summary}
             }
-            raise DescriptionError(
+            raise DescribeAbortError(
                 response_dict=importer._build_response_content(errors, {})
             )
         return extension
@@ -138,7 +138,7 @@ class DescribeView(StudyObjectMixin, generic.DetailView):
             if status_code == codes.ok:
                 self._finished_import(cc, options, reply_content)
                 return JsonResponse(reply_content)
-        except DescriptionError:
+        except DescribeAbortError:
             return JsonResponse(
                 importer._build_response_content(cc.errors, cc.warnings),
                 status=codes.bad_request,
