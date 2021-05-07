@@ -187,3 +187,12 @@ class DescribeAbortError(DescribeError):
             message = ""
         super().__init__(message)
         self.response_dict = response_dict
+
+
+class InvalidDescribeRequest(ReportableDescribeError):
+    def __init__(self, **kwargs):
+        super().__init__(
+            category=_("Invalid ID"),
+            summary=_("Describe experiment request was not found"),
+            **kwargs,
+        )
