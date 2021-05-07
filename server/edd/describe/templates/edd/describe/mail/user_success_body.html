@@ -1,0 +1,12 @@
+{% extends "edd/describe/mail/base.html" %}
+{% load i18n %}
+{% block body %}
+  <h2>{% trans "Add Lines Success!" %}</h2>
+  <p class="alert alert-success">
+    {% blocktrans %}
+    Adding lines to <a href="{{ study_uri }}">{{ study }}</a> succeeded.
+    {{ lines_created }} lines were created in {{ duration }}.
+    {% endblocktrans %}
+  </p>
+  {% include "edd/load/mail/_wizard_warnings.html" %}
+{% endblock body %}

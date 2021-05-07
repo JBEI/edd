@@ -1,0 +1,13 @@
+{% load i18n %}
+{% blocktrans %}
+Adding lines to "{{ study }}" was unsuccessful after {{ duration }}.
+The problem was "{{ message }}".
+
+You can retry adding lines after fixing the errors below, or contact EDD administrators for help.
+{% endblocktrans %}
+{% include "edd/load/mail/_wizard_errors.txt" %}
+{% include "edd/load/mail/_wizard_warnings.txt" %}
+{% blocktrans %}
+View the study at <{{ study_uri }}>.
+
+{% endblocktrans %}

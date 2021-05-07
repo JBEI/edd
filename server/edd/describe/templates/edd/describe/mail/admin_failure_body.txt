@@ -1,0 +1,7 @@
+{% load i18n %}
+{% blocktrans %}
+Add lines to study "{{ study }}" started by {{ user }} was unsuccessful after {{ duration }}.
+The problem was "{{ message }}".
+
+View the study at <{{ study_uri }}>.
+{% endblocktrans %}
