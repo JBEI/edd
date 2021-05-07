@@ -1,0 +1,8 @@
+{% load i18n %}
+{% trans "Add Lines Success!" %}
+{% blocktrans %}
+Adding lines to <a href="{{ study_uri }}">{{ study }}</a> succeeded. {{ lines_created }} lines were created in {{ duration }}.
+{% endblocktrans %}
+
+{% include "edd/load/mail/_wizard_warnings.txt" %}
+{% endblock body %}

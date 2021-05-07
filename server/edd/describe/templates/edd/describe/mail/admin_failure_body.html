@@ -1,0 +1,14 @@
+{% extends "edd/describe/mail/base.html" %}
+{% load i18n %}
+{% block body %}
+  <h2>{% trans "Add Lines Failed!" %}</h2>
+  <p class="alert alert-danger">
+    {% blocktrans %}
+    Add lines to <a href="{{ study_uri }}">{{ study }}</a> started by {{ user }} was
+    unsuccessful after {{ duration }}.  The problem was '{{ message }}'.
+    {% endblocktrans %}
+  </p>
+  <p>
+    {{ trace }}
+  </p>
+{% endblock body %}

@@ -1,0 +1,13 @@
+{% load i18n %}
+{% if warnings %}
+  {% trans "Warnings" %}
+  {% regroup warnings by category as messages %}
+  {% for category in messages %}
+    * {{ category.grouper }}
+    {% for message in category.list %}
+      {{ message.summary }}{% if message.subcategory %} - {{ message.subcategory }}{% endif %}
+      {{ message.detail }}
+      {{ message.resolution }}
+    {% endfor %}
+  {% endfor %}
+{% endif %}
