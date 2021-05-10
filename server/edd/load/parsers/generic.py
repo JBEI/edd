@@ -115,27 +115,17 @@ class AmbrExcelParser(ExcelParserMixin, CsvParserMixin):
         :raises OSError: if the file can't be opened
         :raises EDDImportError: if the file format or content is bad
         """
-        # wb = load_workbook(file, read_only=True, data_only=True)
-        # logger.debug("In parse(). workbook has %d sheets" % len(wb.worksheets))
-        # if len(wb.worksheets) > 1:
-        #     sheet_name = wb.sheetnames[0]
-        #     count = len(wb.worksheets) - 1
-        #     message = _(
-        #         'Only the first sheet in your workbook, "{sheet}", was processed. '
-        #         "All other sheets were ignored ({count})."
-        #     ).format(sheet=sheet_name, count=count)
-        #     reporting.warnings(
-        #         self.import_uuid, exceptions.IgnoredWorksheetWarning(details=[message])
-        #     )
 
-        # for worksheet in wb.worksheets:
+        # reading the excel sheet and decimating it by selecting every 10th record
         sheets_dict = pd.read_excel(
             file, sheet_name=None, skiprows=lambda x: x % 10 > 0
         )
+
+        # for each sheet in the excel sheet if the sheet has multiple sheets
         for bioreactor_name, sheet in sheets_dict.items():
 
             # return self._parse_rows(worksheet.iter_rows())
-            # for each individual measurement type taken in the 
+            # for each individual measurement type taken in the
             # ["Line Name", "Measurement Type", "Value", "Time", "Units"] format
             for measurement_worksheet in self.process_ambr_data(bioreactor_name, sheet):
                 self._parse_rows(measurement_worksheet.iter_rows())
@@ -211,9 +201,6 @@ class AmbrExcelParser(ExcelParserMixin, CsvParserMixin):
                 ws.append(r)
 
             second_ind += 2
-
+            
+            # yeilding each measurement type as a work sheet to be processed in the parse function
             yield ws
-            # measurement_name = measurement_type.lower().replace(" ", "_")
-            # # Export completed dataframe as .csv file
-            # export_filename = line_name + "_" + measurement_name + ".csv"
-            # reformatted_df.to_csv(export_filename, index=False)
