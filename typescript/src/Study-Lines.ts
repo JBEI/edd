@@ -367,16 +367,12 @@ function showLineEditDialog(lines: LineRecord[]): void {
         lineModal.find("[name=line-strains_1"),
         "strain",
     );
-    strainField.render(
-        (r): Pair => {
-            const list = r.strain || [];
-            const names = list.map((v) => Utl.lookup(EDDData.Strains, v).name || "--");
-            const uuids = list.map(
-                (v) => Utl.lookup(EDDData.Strains, v).registry_id || "",
-            );
-            return [names.join(", "), uuids.join(",")];
-        },
-    );
+    strainField.render((r): Pair => {
+        const list = r.strain || [];
+        const names = list.map((v) => Utl.lookup(EDDData.Strains, v).name || "--");
+        const uuids = list.map((v) => Utl.lookup(EDDData.Strains, v).registry_id || "");
+        return [names.join(", "), uuids.join(",")];
+    });
     const fields: { [name: string]: Forms.IFormField<any> } = {
         "name": new Forms.Field(lineModal.find("[name=line-name]"), "name"),
         "description": new Forms.Field(

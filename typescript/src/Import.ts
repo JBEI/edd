@@ -2483,7 +2483,8 @@ class TypeDisambiguationStep {
     }
 
     disableInputDuringProcessing(): void {
-        const hasRequiredInitialInputs = this.identifyStructuresStep.requiredInputsProvided();
+        const hasRequiredInitialInputs =
+            this.identifyStructuresStep.requiredInputsProvided();
         $("#emptyDisambiguationLabel").toggleClass("off", hasRequiredInitialInputs);
         $("#processingStep3Label").toggleClass("off", !hasRequiredInitialInputs);
         this.setAllInputsEnabled(false);
@@ -2493,7 +2494,8 @@ class TypeDisambiguationStep {
     // where the user can fill out additional information for the pasted table.
     reconfigure(): void {
         const mode = this.selectMajorKindStep.interpretationMode;
-        const hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
+        const hasRequiredInitialInput =
+            this.identifyStructuresStep.requiredInputsProvided();
 
         // Hide all the subsections by default
         $(".disambiguationSections > .sectionContent").addClass("off");
@@ -2536,7 +2538,8 @@ class TypeDisambiguationStep {
 
     private remakeTimestampSection() {
         const seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
-        const hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
+        const hasRequiredInitialInput =
+            this.identifyStructuresStep.requiredInputsProvided();
         const showMasterTimestamp = hasRequiredInitialInput && !seenAnyTimestamps;
         $("#masterTimestampDiv").toggleClass("off", !showMasterTimestamp);
         TypeDisambiguationStep.requireInput($("#masterTimestamp"), showMasterTimestamp);
@@ -2607,7 +2610,8 @@ class TypeDisambiguationStep {
         $("#disambiguateLinesTable").remove();
         this.lineObjSets = {};
         if (uniqueLineNames.length === 0) {
-            const hasRequiredInputs = this.identifyStructuresStep.requiredInputsProvided();
+            const hasRequiredInputs =
+                this.identifyStructuresStep.requiredInputsProvided();
             $("#masterLineDiv").toggleClass("off", !hasRequiredInputs);
             TypeDisambiguationStep.requireInput($("#masterLine"), hasRequiredInputs);
             return;
@@ -2786,11 +2790,12 @@ class TypeDisambiguationStep {
 
     remakeMeasurementSection(): void {
         const mode = this.selectMajorKindStep.interpretationMode;
-        const uniqueMeasurementNames = this.identifyStructuresStep
-            .uniqueMeasurementNames;
+        const uniqueMeasurementNames =
+            this.identifyStructuresStep.uniqueMeasurementNames;
         const seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
 
-        const hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
+        const hasRequiredInitialInput =
+            this.identifyStructuresStep.requiredInputsProvided();
 
         const parentDiv = $("#disambiguateMeasurementsSection");
 

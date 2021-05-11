@@ -1220,9 +1220,8 @@ class CreationManager {
      */
     addEmptyInput(lineProperty: LinePropertyDescriptor): void {
         let newInput: LinePropertyInput;
-        const autocompleteMetaItem = this.autocompleteLineMetaTypes[
-            lineProperty.jsonId
-        ];
+        const autocompleteMetaItem =
+            this.autocompleteLineMetaTypes[lineProperty.jsonId];
         if (autocompleteMetaItem) {
             newInput = new LinePropertyAutoInput({ "lineProperty": lineProperty });
         } else if (EddRest.CONTROL_META_UUID === lineProperty.metaUUID) {
@@ -2196,9 +2195,8 @@ class CreationManager {
                             // if no corresponding rows exist yet in the main form,
                             // restore this option to the line properties dialag
                             // so it can be added later
-                            const folderInput: any = this.getPropertyInput(
-                                ICE_FOLDER_JSON_ID,
-                            );
+                            const folderInput: any =
+                                this.getPropertyInput(ICE_FOLDER_JSON_ID);
                             if (!folderInput) {
                                 $("#lineProp" + ICE_FOLDER_JSON_ID)
                                     .removeClass("hide")

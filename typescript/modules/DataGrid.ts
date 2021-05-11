@@ -326,9 +326,8 @@ export class DataGrid {
         const hasCustomWidgets: boolean = this.optionsMenuWidgets().length > 0;
 
         // Check in the column groups and see if any are hide-able
-        const hasColumnsInVisibilityList: boolean = this._spec.tableColumnGroupSpec.some(
-            (group) => group.showInVisibilityList,
-        );
+        const hasColumnsInVisibilityList: boolean =
+            this._spec.tableColumnGroupSpec.some((group) => group.showInVisibilityList);
 
         // If none of the groups are allowed to be hidden,
         // and we don't have any custom option widgets,

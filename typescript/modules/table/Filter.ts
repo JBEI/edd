@@ -145,14 +145,12 @@ export class Filter extends FilterLayer {
      */
     update(payload: AssayValues): void {
         this.access.updateAssayValues(payload);
-        const categories = payload.measures.map(
-            (value): MeasurementClass => {
-                return {
-                    "compartment": this.access.findCompartment(value.comp),
-                    "measurementType": this.access.findMeasurementType(value.type),
-                };
-            },
-        );
+        const categories = payload.measures.map((value): MeasurementClass => {
+            return {
+                "compartment": this.access.findCompartment(value.comp),
+                "measurementType": this.access.findMeasurementType(value.type),
+            };
+        });
         // pass to measurementLayer so it can update its options
         this.measurementLayer.update(categories);
     }

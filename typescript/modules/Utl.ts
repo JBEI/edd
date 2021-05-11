@@ -163,9 +163,10 @@ export class JS {
 
     static utcToTodayString(utc: string): string {
         let timestamp: number;
-        const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.?(\d{1,6})?Z$/.exec(
-            utc,
-        );
+        // pattern for yyyy-mm-ddThh:MM:ss.SSSSSSZ ISO date string
+        const iso_pattern =
+            /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.?(\d{1,6})?Z$/;
+        const match = iso_pattern.exec(utc);
         if (match) {
             // get rid of overall match, we don't care
             match.shift();
