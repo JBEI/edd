@@ -248,21 +248,19 @@ export class DescriptionDropzone {
         if (template === null) {
             template = parent.find(`.alert-${alertType}`).first();
         }
-        return Object.entries(grouped).map(
-            ([category, items]): JQuery => {
-                const alert = template.clone();
-                alert
-                    .children("h4")
-                    .text(DescriptionDropzone.faultTitle(category, alertType));
-                items.forEach((fault) => {
-                    $("<p>")
-                        .addClass("alertWarning")
-                        .text(`${fault.summary}: ${fault.details}`)
-                        .appendTo(alert);
-                });
-                return alert.appendTo(parent).removeClass("off").show();
-            },
-        );
+        return Object.entries(grouped).map(([category, items]): JQuery => {
+            const alert = template.clone();
+            alert
+                .children("h4")
+                .text(DescriptionDropzone.faultTitle(category, alertType));
+            items.forEach((fault) => {
+                $("<p>")
+                    .addClass("alertWarning")
+                    .text(`${fault.summary}: ${fault.details}`)
+                    .appendTo(alert);
+            });
+            return alert.appendTo(parent).removeClass("off").show();
+        });
     }
 
     private static showUnknownAlert(parent: JQuery): JQuery[] {

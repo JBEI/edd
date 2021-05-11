@@ -281,9 +281,9 @@ declare let EDDData;
                 const table = $("#id_std_table");
                 // if this row was previously added, remove the old one
                 $(stdRows[rowId]).remove();
-                const tr = (stdRows[
-                    rowId
-                ] = (table[0] as HTMLTableElement).insertRow());
+                const tr = (stdRows[rowId] = (
+                    table[0] as HTMLTableElement
+                ).insertRow());
                 $((td = tr.insertCell())).addClass("top");
                 const label = [ui.item.name, targRow.find("td > div").text()].join(
                     " - ",
