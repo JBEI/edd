@@ -87,7 +87,7 @@ SECRET_KEY = env(
         "this only works for local variables",
     ),
 )
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost"]
 SITE_ID = 1
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
