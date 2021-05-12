@@ -277,6 +277,9 @@ with open("/edd.hash") as f:
     EDD_VERSION_HASH = f.read().strip()
 STATIC_ROOT = "/var/www/static"
 STATIC_URL = "/static/"
+STATICFILES_DIRS = [
+    "/usr/local/edd-static",
+]
 STATICFILES_MANIFEST = f"staticfiles.{EDD_VERSION_HASH}.json"
 STATICFILES_STORAGE = "edd.utilities.StaticFilesStorage"
 
