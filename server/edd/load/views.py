@@ -151,9 +151,6 @@ class ImportView(StudyObjectMixin, generic.DetailView):
         context = super().get_context_data(**kwargs)
         # enforce permissions check...
         self.check_write_permission(self.request)
-        limit_bytes = getattr(settings, "EDD_IMPORT_UPLOAD_LIMIT", 10 << 20)
-        context["upload_limit"] = limit_bytes
-        context["upload_limit_mb"] = round(limit_bytes / (1 << 20), 2)
         return context
 
 
@@ -179,6 +176,4 @@ class ImportHelpView(generic.TemplateView):
         context["include_scripts"] = (
             prot_scripts + format_scripts + mtype_scripts + unit_scripts
         )
-        limit_bytes = getattr(settings, "EDD_IMPORT_UPLOAD_LIMIT", 10 << 20)
-        context["upload_limit_mb"] = round(limit_bytes / 1048576, 2)
         return context

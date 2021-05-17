@@ -349,17 +349,6 @@
         <button id="request-units">{% trans "Request Units" %}</button>
         {% endif %}
       </p>
-      <a name="size"></a>
-      <h4>{% trans "Size Limitations" %}</h4>
-      <p>
-        {% blocktrans with limit=upload_limit_mb %}
-        For performance and security reasons, EDD must limit the size of files
-        uploaded in a single import. The maximum file size for import files is
-        {{ limit }} MB. If you need to upload larger files, EDD administrators
-        may be able to adjust the limit, weighing your needs with other
-        technical concerns.
-        {% endblocktrans %}
-      </p>
     </div>
     <a name="advanced"></a>
     <div class="helpSectionContent">
