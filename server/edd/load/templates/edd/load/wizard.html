@@ -144,7 +144,6 @@
   <div id="_step2">
     <span class="_title">{% trans "Upload" %}</span>
     <span class="_directions">{% trans "Click or drag-and-drop to upload a file." %}</span>
-    <input id="uploadSizeLimit" type="hidden" value="{{ upload_limit }}"/>
     <div class="_message" data-class="alert-info" id="_step2_wait">
       <span class="_title">{% trans "Checking file" %}</span>
       <p class="_message">
@@ -168,15 +167,6 @@
       <p class="_message">
         {% blocktrans %}
         Please retry your request or contact system administrators.
-        {% endblocktrans %}
-      </p>
-    </div>
-    <div class="_message" data-class="alert-danger" id="_step2_toobig">
-      <span class="_title">{% trans "File too large" %}</span>
-      <p class="_message">
-        {% blocktrans %}
-        The maximum size for uploaded files is {{ upload_limit_mb }} MB. Please
-        break your file into parts or contact system administrators.
         {% endblocktrans %}
       </p>
     </div>

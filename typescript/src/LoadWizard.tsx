@@ -176,8 +176,6 @@ function readStrings(root: JQuery): Props {
     const step4 = root.children("#_step4");
     const ackButtonLabel = root.children("span._ack").text();
     const actions = { "back": "", "next": "", "save": "" };
-    const limit_string = step2.children("#uploadSizeLimit").val() as string;
-    const limit = parseInt(limit_string, 10);
     root.children("#_actions")
         .children("label")
         .each((i, element) => {
@@ -202,7 +200,6 @@ function readStrings(root: JQuery): Props {
         "step2": {
             "ackButtonLabel": ackButtonLabel,
             "directions": step2.children("span._directions").text(),
-            "limit": limit,
             "messages": readMessageStrings(step2),
             "title": step2.children("span._title").text(),
         },

@@ -10,7 +10,6 @@ import * as Summary from "./Summary.tsx";
 
 export interface Strings extends StepBase.Strings {
     directions: string;
-    limit: number;
     messages: Summary.MessageLookup;
 }
 
@@ -78,7 +77,6 @@ export class Step extends React.Component<Props, unknown> {
                 <Dropzone
                     accept={accept}
                     disabled={false}
-                    maxSize={this.props.limit}
                     multiple={false}
                     onDrop={(...args) => this.onDrop(...args)}
                 >
@@ -155,14 +153,9 @@ export class Step extends React.Component<Props, unknown> {
             this.props.onUpdate("step2", { "file": accepted[0], "parseSent": false });
         }
         if (rejected.length) {
-            const reject = rejected[0];
-            const show: string[] = [];
-            if (reject.size > this.props.limit) {
-                show.push("toobig");
-            }
             // TODO: show message if rejected because MIME not in this.accept()
             // if (reject.type not in this.accept()) { Summary.ProblemMessage() }
-            this.setShowMessages(show);
+            this.setShowMessages(["error"]);
         }
     }
 

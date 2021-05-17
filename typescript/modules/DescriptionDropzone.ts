@@ -121,9 +121,6 @@ export class DescriptionDropzone {
         // handle errors based on HTTP status code
         const status = file.xhr.status;
         switch (status) {
-            case 413: // Request Entity Too Large
-                DescriptionDropzone.show413Alert(parent);
-                break;
             case 504: // Gateway Timeout
                 DescriptionDropzone.show504Alert(parent);
                 break;
@@ -203,21 +200,6 @@ export class DescriptionDropzone {
         window.setTimeout(() => {
             window.location.href = response.success_redirect;
         }, 1000);
-    }
-
-    private static show413Alert(parent: JQuery): JQuery[] {
-        return DescriptionDropzone.showAlerts(
-            parent,
-            [
-                {
-                    "category": "",
-                    "details": `Please contact system administrators or
-                        break your file into parts.`,
-                    "summary": "File too large",
-                },
-            ],
-            "danger",
-        );
     }
 
     private static show504Alert(parent: JQuery): JQuery[] {
