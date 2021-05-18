@@ -9,9 +9,11 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Sequence, Set, Tuple
 from uuid import UUID
 
+import pandas as pd
 from django.utils.translation import gettext_lazy as _
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.utils.cell import get_column_letter
+from openpyxl.utils.dataframe import dataframe_to_rows
 
 from .. import exceptions, reporting
 
@@ -639,6 +641,123 @@ class ExcelParserMixin:
         if isinstance(val, str):
             return val.strip().strip("\ufeff")
         return val
+
+
+class MultiSheetExcelParserMixin:
+    def parse(self, file):
+        """
+        Parses the input as a Pandas dataframe and then
+        converts it into an Excel workbook.
+
+        :param file: a file-like object
+        :return: the ParseResult read from file, otherwise None
+        :raises OSError: if the file can't be opened
+        :raises EDDImportError: if the file format or content is bad
+        """
+
+        wb = pd.read_excel(file, sheet_name=None)
+
+        # for each worksheet in the workbook
+        parsed_result = pd.DataFrame()
+
+        for name, sheet in wb.items():
+            # for every two columns in the worksheet
+            # corresponding to each measurement type in the sheet
+            for i in range(0, int(sheet.shape[1]), 2):
+                two_cols = sheet[sheet.columns[i : i + 2]]
+
+                # dropping all rows with nan values in the worksheet
+                two_cols = two_cols.dropna()
+                if not two_cols.dropna().empty:
+                    # decimate the data
+                    two_cols = two_cols.iloc[::10, :]
+                    # using mapper to map data into the EDD import format
+                    # and convert in to a pandas dataframe
+                    mapper = MeasurementMapper(name, two_cols)
+                    parsed_df = mapper.map_data()
+                    parsed_result = parsed_result.append(parsed_df)
+
+        # convert mapper.df into a openpyxl worksheet
+        # NOTE: work on using openpyxl for the manipulation
+        # in the mapper instead of pandas
+        wb = Workbook()
+        ws = wb.active
+        for r in dataframe_to_rows(parsed_result, index=True, header=True):
+            ws.append(r)
+
+        # passing the rows in the worksheet for verification
+        # and processing in database
+        return self._parse_rows(ws.iter_rows())
+
+    def _raw_cell_value(self, cell):
+        """
+        Gets the raw cell value in whatever format it was stored in the file.
+
+        :param cell: the cell
+        :return: the cell value, with leading and trailing whitespace stripped
+            if the content was a string
+        """
+        val = cell.value
+        if isinstance(val, str):
+            return val.strip()
+        return val
+
+
+class MeasurementMapper:
+
+    loa_name: str
+    parsed_df: pd.DataFrame
+    df: pd.DataFrame
+    units: Dict
+
+    def __init__(self, sheet_name, df):
+        self.loa_name = sheet_name
+        self.df = df
+        self.units = {
+            "Temperature": "°C",
+            "Stir speed": "rpm",
+            "pH": "n/a",
+            "Air flow": "lpm",
+            "DO": "% maximum measured",
+            "Volume": "mL",
+            "OUR": "mM/L/h",
+            "CER": "mM/L/h",
+            "RQ": "n/a",
+            "Feed#1 volume pumped": "mL",
+            "Antifoam volume pumped": "mL",
+            "Acid volume pumped": "mL",
+            "Base volume pumped": "mL",
+            "Volume - sampled": "mL",
+            "Volume of inocula": "mL",
+        }
+        self.mtypes = {
+            "DO": "Dissolved Oxygen",
+            "Feed#1 volume pumped": "Feed volume pumped",
+            "Volume - sampled": "Volume sampled",
+        }
+        # NOTE: Measurement types do not exist in EDD:
+        # Volume - sampled, Volume of inocula, DO, Feed#1 volume pumped
+        # Unsupported units: mM/L/h, rpm, % maximum measured, °C
+
+    def map_data(self):
+
+        mtype_name = self.df[self.df.columns[1:2]].columns.values[0]
+        self.df["Line Name"] = self.loa_name
+        self.df.columns.values[0] = "Time"
+        self.df.columns.values[1] = "Value"
+
+        # check measurement type to rename for EDD
+        if mtype_name in self.mtypes.keys():
+            self.df["Measurement Type"] = self.mtypes[mtype_name]
+        else:
+            self.df["Measurement Type"] = mtype_name
+
+        self.df["Units"] = self.units[mtype_name]
+        # dropping records with NaN values
+        self.df = self.df[self.df["Value"].notna()]
+        self.parsed_df = self.df
+
+        return self.parsed_df
 
 
 class CsvParserMixin:
