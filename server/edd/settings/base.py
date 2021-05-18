@@ -216,7 +216,7 @@ SWAGGER_SETTINGS = {
 
 
 # WebSockets / Channels
-ASGI_APPLICATION = "edd.routing.application"
+ASGI_APPLICATION = "edd.asgi.application"
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
