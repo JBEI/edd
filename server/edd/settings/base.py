@@ -173,6 +173,7 @@ WSGI_APPLICATION = "edd.wsgi.application"
 # Database configuration
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 DATABASES = {"default": env.db()}
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 
 # Cache configuration
