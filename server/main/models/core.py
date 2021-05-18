@@ -1375,3 +1375,14 @@ class MeasurementValue(models.Model):
             measurement__assay__protocol_id=protocol_id,
         )
         return active
+
+
+class DefaultUnit(models.Model):
+    measurement_type = models.ForeignKey(
+        MeasurementType, on_delete=models.deletion.CASCADE
+    )
+    unit = models.ForeignKey(MeasurementUnit, on_delete=models.deletion.CASCADE)
+    protocol = models.ForeignKey(
+        Protocol, blank=True, null=True, on_delete=models.deletion.CASCADE
+    )
+    parser = VarCharField(blank=True, null=True)
