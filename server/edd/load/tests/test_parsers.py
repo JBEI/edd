@@ -119,6 +119,19 @@ def test_GenericCsvParser_invalid_numeric_value():
     assert exc_info.value.details == ['"A" (D2)']
 
 
+def test_GenericCsvParser_starting_byte_order_mark():
+    # simulate a file with a starting BOM character
+    text = [
+        "\ufeffLine name, Measurement Type, Value, Time, Units",
+        "arcA           , Optical Density , 1    , 1   , n/a",
+    ]
+    parser = parsers.GenericCsvParser(uuid4())
+    results = parser.parse(text)
+    assert results is not None
+    assert results.line_or_assay_names == {"arcA"}
+    assert len(results.series_data) == 1
+
+
 def test_GenericExcelParser_parse_success():
     path = ("generic_import.xlsx",)
     parser = parsers.GenericExcelParser(uuid4())
