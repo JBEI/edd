@@ -637,7 +637,7 @@ class ExcelParserMixin:
         """
         val = cell.value
         if isinstance(val, str):
-            return val.strip()
+            return val.strip().strip("\ufeff")
         return val
 
 
@@ -655,7 +655,7 @@ class CsvParserMixin:
         return self._parse_rows(reader)
 
     def _raw_cell_value(self, cell):
-        return cell.strip()
+        return cell.strip().strip("\ufeff")
 
 
 def build_src_summary(sources, convert_ints=False):
