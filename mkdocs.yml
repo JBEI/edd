@@ -3,12 +3,18 @@ repo_url: https://github.com/jbei/edd
 nav:
   - Home: index.md
   - "User Guide":
+      - Tutorials: Tutorials.md
+      - "Frequently Asked Questions": FAQ.md
+  - "Admin Guide":
       - Administration: Administration.md
       - Configuration: Configuration.md
       - Deployment: Deployment.md
       - "Migration 2.5 to 2.6": Migration_2.5_to_2.6.md
       - "Migration 2.6 to 2.7": Migration_2.6_to_2.7.md
-      - Releasing: Releasing.md
+      - About:
+          - License: License.md
+          - Legal: Legal.md
+          - Contributing: Contributing.md
   - Development:
       - "Developer Setup":
           - "Developer Setup": Developer_Setup.md
@@ -17,12 +23,9 @@ nav:
           - "Running Development": Developer_Setup_Running.md
       - Contributing: Contributing.md
       - Troubleshooting: Troubleshooting.md
+      - Releasing: Releasing.md
       - "Use Cases": Use_Cases.md
       - "User Stories": User_Stories.md
-  - About:
-      - License: License.md
-      - Legal: Legal.md
-      - Contributing: Contributing.md
 theme: spacelab
 markdown_extensions:
   - codehilite:
