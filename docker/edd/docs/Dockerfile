@@ -1,6 +1,9 @@
 FROM library/python:3.8-slim-buster as build
 
-RUN pip install mkdocs mkdocs-bootswatch
+RUN pip install \
+        mkdocs \
+        mkdocs-bootswatch \
+        pygments
 
 WORKDIR /usr/local/edd
 
