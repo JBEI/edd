@@ -325,8 +325,6 @@ function setupTable() {
 function showLineEditDialog(lines: LineRecord[]): void {
     let titleText: string;
     let record: LineRecord;
-    let contact: Utl.EDDContact;
-    let experimenter: Utl.EDDContact;
 
     // Update the dialog title and fetch selection info
     if (lines.length === 0) {
@@ -338,8 +336,6 @@ function showLineEditDialog(lines: LineRecord[]): void {
             titleText = $("#edit_line_title").text();
         }
         record = access.mergeLines(lines);
-        contact = new Utl.EDDContact(record.contact);
-        experimenter = new Utl.EDDContact(record.experimenter);
     }
     lineModal.dialog({ "title": titleText });
 
@@ -353,15 +349,19 @@ function showLineEditDialog(lines: LineRecord[]): void {
         lineModal.find("[name=line-contact_1"),
         "contact",
     );
-    contactField.render((): Pair => [contact.display(), str(contact.id())]);
+    contactField.render((r: LineRecord): Pair => {
+        const contact = new Utl.EDDContact(r.contact);
+        return [contact.display(), str(contact.id())];
+    });
     const experimenterField = new Forms.Autocomplete(
         lineModal.find("[name=line-experimenter_0"),
         lineModal.find("[name=line-experimenter_1"),
         "experimenter",
     );
-    experimenterField.render(
-        (): Pair => [experimenter.display(), str(experimenter.id())],
-    );
+    experimenterField.render((r: LineRecord): Pair => {
+        const experimenter = new Utl.EDDContact(r.experimenter);
+        return [experimenter.display(), str(experimenter.id())];
+    });
     const strainField = new Forms.Autocomplete(
         lineModal.find("[name=line-strains_0"),
         lineModal.find("[name=line-strains_1"),

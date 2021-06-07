@@ -364,10 +364,10 @@ function showEditAssayDialog(items: AssayRecord[]): void {
         dialog.find("[name=assay-experimenter_1"),
         "experimenter",
     );
-    experimenterField.render((value: Utl.EDDContact): [string, string] => [
-        value?.display() || "",
-        str(value?.id() || ""),
-    ]);
+    experimenterField.render((r: AssayRecord): [string, string] => {
+        const experimenter = new Utl.EDDContact(r.experimenter);
+        return [experimenter.display(), str(experimenter?.id() || "")];
+    });
     const fields: Forms.IFormField<any>[] = [
         new Forms.Field(dialog.find("[name=assay-name]"), "name"),
         new Forms.Field(dialog.find("[name=assay-description]"), "description"),
