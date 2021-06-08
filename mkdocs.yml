@@ -1,5 +1,6 @@
 site_name: Experiment Data Depot
 repo_url: https://github.com/jbei/edd
+edit_uri: edit/trunk/docs/
 nav:
   - Home: index.md
   - "User Guide":
