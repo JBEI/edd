@@ -146,7 +146,6 @@ export function settingsForLineTable(
         "beforeStretchingColumnWidth": disableResizeFirstColumn,
         "colHeaders": columns.map((c) => c.header),
         "columns": columns,
-        "data": access.lines(),
         "dropdownMenu": [
             "alignment",
             // TODO: filter works off clipboard value, not rendered value

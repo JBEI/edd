@@ -3,7 +3,7 @@
 import "jquery";
 import Handsontable from "handsontable";
 
-import { Access } from "../modules/table/Access";
+import { Access, ReplicateFilter } from "../modules/table/Access";
 import * as Config from "../modules/table/Config";
 import { DescriptionDropzone } from "../modules/DescriptionDropzone";
 import * as Forms from "../modules/Forms";
@@ -24,6 +24,55 @@ let assayMetadataManager: Forms.FormMetadataManager;
 
 let access: Access;
 let hot: Handsontable;
+let viewOptions: LineTableViewOptions;
+
+class LineTableViewOptions {
+    private static readonly checked = "fa-toggle-on";
+    private static readonly unchecked = "fa-toggle-off";
+    private static readonly showDisabled = "showDisabledItem";
+    private static readonly groupReplicate = "groupReplicateItem";
+
+    private readonly menu: JQuery;
+
+    public constructor() {
+        this.menu = $(".table-filter-options");
+    }
+
+    public getTableData(source: Access): LineRecord[] {
+        const selected = this.menu.find(`.${LineTableViewOptions.checked}`).attr("id");
+        if (selected === LineTableViewOptions.showDisabled) {
+            return source.linesWithDisabled();
+        } else if (selected === LineTableViewOptions.groupReplicate) {
+            const rf = new ReplicateFilter(source.replicate_type());
+            return rf.process(source.lines());
+        }
+        return source.lines();
+    }
+
+    public setupEvents(table: Handsontable, source: Access): void {
+        this.menu.on("click", "a", (event) => {
+            const item = $(event.target);
+            const clicked_item_icon = item.find("svg");
+            this.menuUpdateIconStates(clicked_item_icon);
+            // refresh table data
+            table.loadData(this.getTableData(source));
+            Config.repositionSelectAllCheckbox(table);
+            return false;
+        });
+    }
+
+    private menuUpdateIconStates(icon: JQuery<SVGElement>): void {
+        const on = LineTableViewOptions.checked;
+        const off = LineTableViewOptions.unchecked;
+        const icon_was_off = icon.hasClass(off);
+        // uncheck everything
+        this.menu.find(`.${on}`).removeClass(on).addClass(off);
+        // turn on icon state, if it was off before
+        if (icon_was_off) {
+            icon.removeClass(off).addClass(on);
+        }
+    }
+}
 
 /**
  * Calculates pixel height available in page to keep the Action Bar visible.
@@ -67,6 +116,7 @@ function findSelectedLines(): LineRecord[] {
 // Called when the page loads the EDDData object
 function onDataLoad() {
     access = Access.initAccess(EDDData);
+    viewOptions = new LineTableViewOptions();
     // Show controls that depend on having some lines present to be useful
     const hasLines = access.lines().length !== 0;
     $("#loadingLinesDiv").addClass("hide");
@@ -239,38 +289,6 @@ function setupExportButtonEvents() {
     form.on("click", "#exportNewStudyButton", () => onExport($("#newStudyForm")));
 }
 
-function setupFilter() {
-    const menu = $(".table-filter-options");
-    const checked = "fa-toggle-on";
-    const unchecked = "fa-toggle-off";
-    const choose_data = (key, enabled) => {
-        if (enabled) {
-            switch (key) {
-                case "showDisabledItem":
-                    return access.linesWithDisabled();
-                case "groupReplicateItem":
-                    return access.replicates();
-            }
-        }
-        return access.lines();
-    };
-    menu.on("click", "a", (event) => {
-        const item = $(event.target);
-        const icon = item.find("svg");
-        const adding_check = icon.hasClass(unchecked);
-        // uncheck all items
-        menu.find(`.${checked}`).removeClass(checked).addClass(unchecked);
-        // change clicked item state
-        if (adding_check) {
-            icon.removeClass(unchecked).addClass(checked);
-        }
-        // refresh table data
-        hot.loadData(choose_data(item.attr("id"), adding_check));
-        Config.repositionSelectAllCheckbox(hot);
-        return false;
-    });
-}
-
 function setupModals() {
     // Set up jQuery modals
     lineModal.dialog(
@@ -294,6 +312,7 @@ function setupTable() {
         container,
         Object.assign(settings, {
             "afterInit": onLineTableLoad,
+            "data": viewOptions.getTableData(access),
             "height": computeHeight(),
         }),
     );
@@ -319,7 +338,7 @@ function setupTable() {
         $(".badge.selected-line-count").text(count ? count.toString() : "");
     });
     // handlers for filter bar
-    setupFilter();
+    viewOptions.setupEvents(hot, access);
 }
 
 function showLineEditDialog(lines: LineRecord[]): void {

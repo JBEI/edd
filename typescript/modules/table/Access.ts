@@ -178,11 +178,6 @@ export class Access {
         );
     }
 
-    replicates(conflict = null): LineRecord[] {
-        const rf = new ReplicateFilter(this.replicate_type(), conflict);
-        return rf.process(this.lines());
-    }
-
     strains(): StrainRecord[] {
         return Object.values(this._data.Strains);
     }
@@ -226,7 +221,7 @@ export class Access {
  * Processes an array of LineRecord objects to produce a list of merged
  * items where the replicate UUIDs match.
  */
-class ReplicateFilter {
+export class ReplicateFilter {
     private readonly lookup: Map<string, number> = new Map();
     private readonly replicates: LineRecord[] = [];
 
