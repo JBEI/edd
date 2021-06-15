@@ -179,46 +179,8 @@ export class Access {
     }
 
     replicates(conflict = null): LineRecord[] {
-        const replicates: LineRecord[] = [];
-        const lookup = {};
-        // find replicate metadata for Lines to do grouping
-        const replicate_type = this.replicate_type();
-        // scan all lines, merging those that are replicates
-        this.lines().forEach((line: LineRecord) => {
-            // create a copy of the line for replicates view
-            const copy = { ...line };
-            const replicate_id = copy.meta[replicate_type.id];
-            // TODO: better way to handle selection state when switching modes?
-            // this means switching between replicate and normal mode will clear selection
-            copy.selected = false;
-            if (replicate_id) {
-                // find any previous match
-                const match_index = lookup[replicate_id];
-                if (match_index !== undefined) {
-                    // merge with previous match
-                    const previous = replicates[match_index];
-                    const updated = mergeLines(previous, copy, conflict);
-                    // track the names, IDs, and selection state
-                    updated.replicate_ids = [...previous.replicate_ids, copy.id];
-                    updated.replicate_names = [...previous.replicate_names, copy.name];
-                    updated.selected = false;
-                    // keep the updated object
-                    replicates[match_index] = updated;
-                } else {
-                    // record index and add to lookup
-                    lookup[replicate_id] = replicates.length;
-                    // track names and IDs
-                    copy.replicate_ids = [copy.id];
-                    copy.replicate_names = [copy.name];
-                    // pass to list
-                    replicates.push(copy);
-                }
-            } else {
-                // if no replicate_id, pass directly to list
-                replicates.push(copy);
-            }
-        });
-        return replicates;
+        const rf = new ReplicateFilter(this.replicate_type(), conflict);
+        return rf.process(this.lines());
     }
 
     strains(): StrainRecord[] {
@@ -257,6 +219,81 @@ export class Access {
         } catch {
             return false;
         }
+    }
+}
+
+/**
+ * Processes an array of LineRecord objects to produce a list of merged
+ * items where the replicate UUIDs match.
+ */
+class ReplicateFilter {
+    private readonly lookup: Map<string, number> = new Map();
+    private readonly replicates: LineRecord[] = [];
+
+    public constructor(
+        private readonly replicate_type: MetadataTypeRecord,
+        private readonly conflict = null,
+    ) {}
+
+    public process(lines: LineRecord[]): LineRecord[] {
+        this.reset();
+        for (const line of lines) {
+            const copy = { ...line };
+            const replicate_id = this.getReplicateId(line);
+            if (replicate_id) {
+                this.checkForPriorReplicate(copy);
+            } else {
+                this.replicates.push(copy);
+            }
+        }
+        return this.replicates;
+    }
+
+    public reset(): void {
+        this.lookup.clear();
+    }
+
+    private checkForPriorReplicate(line: LineRecord): void {
+        const replicate_id = `${line.meta[this.replicate_type.id]}`;
+        const match_index = this.findPreviousIndex(replicate_id);
+        if (match_index !== undefined) {
+            this.mergeWithPrevious(line, match_index);
+        } else {
+            this.recordReplicateEntry(line, replicate_id);
+        }
+    }
+
+    private findPreviousIndex(replicate_id: string): number {
+        return this.lookup.get(replicate_id);
+    }
+
+    private getReplicateId(line: LineRecord): string {
+        const value = line.meta[this.replicate_type.id];
+        // could be anything, so either force to a string or force undefined
+        if (value) {
+            return `${value}`;
+        }
+        return undefined;
+    }
+
+    private mergeWithPrevious(line: LineRecord, match_index: number): void {
+        const previous = this.replicates[match_index];
+        const updated = mergeLines(previous, line, this.conflict);
+        // track the names, IDs, and selection state
+        updated.replicate_ids = [...previous.replicate_ids, line.id];
+        updated.replicate_names = [...previous.replicate_names, line.name];
+        updated.selected = false;
+        // keep the updated object
+        this.replicates[match_index] = updated;
+    }
+
+    private recordReplicateEntry(line: LineRecord, replicate_id: string): void {
+        this.lookup[replicate_id] = this.replicates.length;
+        // track names and IDs
+        line.replicate_ids = [line.id];
+        line.replicate_names = [line.name];
+        // pass to list
+        this.replicates.push(line);
     }
 }
 
