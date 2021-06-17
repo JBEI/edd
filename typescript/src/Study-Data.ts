@@ -11,9 +11,6 @@ import { Graph } from "../modules/table/Graph";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
 
-declare let window: StudyBase.EDDWindow;
-const EDDData = window.EDDData || ({} as EDDData);
-
 type TableMode = "table-assay" | "table-measurement";
 type BarGraphMode = "bar-line" | "bar-measurement" | "bar-time";
 type ViewingMode = "plot-line" | TableMode | BarGraphMode;
@@ -87,8 +84,8 @@ function defineSelectionInputs(selectionType: SelectionType = null): JQuery[] {
 }
 
 // Called when initial non-measurement data is loaded
-function onDataLoad() {
-    access = Access.initAccess(EDDData);
+function onDataLoad(event, data: EDDData): void {
+    access = Access.initAccess(data);
     filter = Filter.create(access);
     $("#mainFilterSection").append(filter.createElements());
     plot = Graph.create(document.getElementById("graphArea"), access);
@@ -128,7 +125,7 @@ function fetchDisplaySetting(): void {
 }
 
 function fetchMeasurements() {
-    EDDData.valueLinks.forEach((link: string) => {
+    access.valueLinks().forEach((link: string) => {
         $.ajax({
             "dataType": "json",
             "type": "GET",
@@ -150,7 +147,7 @@ function onExport(exportForm: JQuery, selectionType: SelectionType = null) {
     const selection = defineSelectionInputs(selectionType);
     if (selection.length === 0) {
         inputs.append(
-            `<input type="hidden" name="studyId" value="${EDDData.currentStudyID}"/>`,
+            `<input type="hidden" name="studyId" value="${access.studyPK()}"/>`,
         );
     } else {
         inputs.append(selection);

@@ -177,8 +177,7 @@ function prepareIt() {
         "processWarningFn": DescriptionDropzone.warning,
     });
     $(".dz-message").removeClass("hide");
+    preparePermissions();
 }
 
-// wait for edddata event to begin processing page
-$(document).on("edddata", prepareIt);
-$(window).on("load", preparePermissions);
+$(prepareIt);

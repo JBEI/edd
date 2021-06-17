@@ -182,6 +182,10 @@ export class Access {
         return Object.values(this._data.Strains);
     }
 
+    studyPK(): number {
+        return this._data.currentStudyID;
+    }
+
     updateAssayValues(payload: AssayValues): void {
         // update types with any new types in the payload
         Object.assign(this._data.MeasurementTypes, payload.types);
@@ -198,6 +202,10 @@ export class Access {
             this._data.Measurements[value.id] = value;
             assay.measurements.push(value);
         });
+    }
+
+    valueLinks(): string[] {
+        return this._data.valueLinks || [];
     }
 
     private isBasicContact(value): boolean {

@@ -9,13 +9,6 @@ import "jquery-ui/ui/widgets/tooltip";
 import * as EDDAuto from "./EDDAutocomplete";
 import * as EDDEditable from "./EDDEditableElement";
 
-export interface EDDWindow extends Window {
-    EDDData: EDDData;
-}
-
-declare let window: EDDWindow;
-window.EDDData = window.EDDData || ({} as EDDData);
-
 $(window).on("load", () => {
     // Shortcutting this to .load confuses jQuery
     EDDAuto.BaseAuto.initPreexisting();
@@ -34,8 +27,7 @@ $(window).on("load", () => {
                 $("#content").prepend(`<div class="noData">Error. Please reload</div>`);
             },
             "success": (data) => {
-                window.EDDData = $.extend(window.EDDData || {}, data);
-                $.event.trigger("edddata");
+                $.event.trigger("edddata", [data]);
             },
         });
     }

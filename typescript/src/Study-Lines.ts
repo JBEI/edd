@@ -10,8 +10,6 @@ import * as Forms from "../modules/Forms";
 import * as StudyBase from "../modules/Study";
 import * as Utl from "../modules/Utl";
 
-declare let window: StudyBase.EDDWindow;
-const EDDData = window.EDDData || ({} as EDDData);
 const $window = $(window);
 
 // define main form and assay modals
@@ -114,8 +112,8 @@ function findSelectedLines(): LineRecord[] {
 }
 
 // Called when the page loads the EDDData object
-function onDataLoad() {
-    access = Access.initAccess(EDDData);
+function onDataLoad(event, data: EDDData) {
+    access = Access.initAccess(data);
     viewOptions = new LineTableViewOptions();
     // Show controls that depend on having some lines present to be useful
     const hasLines = access.lines().length !== 0;
@@ -146,7 +144,7 @@ function onExport(exportForm: JQuery) {
     const selected = defineSelectionInputs();
     if (selected.length === 0) {
         inputs.append(
-            `<input type="hidden" name="studyId" value="${EDDData.currentStudyID}"/>`,
+            `<input type="hidden" name="studyId" value="${access.studyPK()}"/>`,
         );
     } else {
         inputs.append(selected);
@@ -388,8 +386,8 @@ function showLineEditDialog(lines: LineRecord[]): void {
     );
     strainField.render((r): Pair => {
         const list = r.strain || [];
-        const names = list.map((v) => Utl.lookup(EDDData.Strains, v).name || "--");
-        const uuids = list.map((v) => Utl.lookup(EDDData.Strains, v).registry_id || "");
+        const names = list.map((v) => access.findStrain(v).name || "--");
+        const uuids = list.map((v) => access.findStrain(v).registry_id || "");
         return [names.join(", "), uuids.join(",")];
     });
     const fields: { [name: string]: Forms.IFormField<any> } = {
