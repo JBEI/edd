@@ -1130,14 +1130,14 @@ class Measurement(EDDMetadata, EDDSerialize):
         MeasurementUnit,
         help_text=_("The units of the X-axis for this Measurement."),
         on_delete=models.PROTECT,
-        related_name="+",
+        related_name="measurement_x",
         verbose_name=_("X Units"),
     )
     y_units = models.ForeignKey(
         MeasurementUnit,
         help_text=_("The units of the Y-axis for this Measurement."),
         on_delete=models.PROTECT,
-        related_name="+",
+        related_name="measurement_y",
         verbose_name=_("Y Units"),
     )
     update_ref = models.ForeignKey(

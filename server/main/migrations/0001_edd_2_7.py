@@ -1468,7 +1468,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         help_text="The units of the X-axis for this Measurement.",
                         on_delete=models.deletion.PROTECT,
-                        related_name="+",
+                        related_name="measurement_x",
                         to="main.MeasurementUnit",
                         verbose_name="X Units",
                     ),
@@ -1478,7 +1478,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         help_text="The units of the Y-axis for this Measurement.",
                         on_delete=models.deletion.PROTECT,
-                        related_name="+",
+                        related_name="measurement_y",
                         to="main.MeasurementUnit",
                         verbose_name="Y Units",
                     ),
