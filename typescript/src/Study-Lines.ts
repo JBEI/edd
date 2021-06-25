@@ -537,9 +537,11 @@ function onPageLoad() {
 
 function setupDropzone() {
     const contentArea = $("#content");
-    const url = $("#addToLinesDropZone").attr("data-url");
+    const dropzoneDiv = $("#addToLinesDropZone");
+    const url = dropzoneDiv.attr("data-url");
     Utl.FileDropZone.create({
         "elementId": "addToLinesDropZone",
+        "fileInitFn": DescriptionDropzone.clearAlerts,
         "url": url,
         "processResponseFn": DescriptionDropzone.success,
         "processErrorFn": DescriptionDropzone.error,

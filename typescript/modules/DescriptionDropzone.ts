@@ -71,6 +71,8 @@ export class DescriptionDropzone {
      * Callback handler for successful uploads via Dropzone for Description files.
      */
     static success(file: Dropzone.DropzoneFile, response: DescriptionResponse): void {
+        DescriptionDropzone.clearAlerts();
+
         // display success message
         const p = $("<p>").text(`Success! ${response.lines_created} lines added!`);
         $("#linesAdded").removeClass("off").append(p);
@@ -82,6 +84,8 @@ export class DescriptionDropzone {
      * Callback handler for uploads with warnings via Dropzone for Description files.
      */
     static warning(file: Dropzone.DropzoneFile, response: DescriptionResponse): void {
+        const parent = DescriptionDropzone.clearAlerts();
+
         // display success message
         const p = $("<p>").text(`Success! ${response.lines_created} lines added!`);
         $("#linesAdded").removeClass("off").append(p);
@@ -92,8 +96,8 @@ export class DescriptionDropzone {
                 DescriptionDropzone.redirect(response);
                 return false;
             });
+
         // add alerts to the placeholder area
-        const parent = $("#alert_placeholder");
         const alerts = DescriptionDropzone.showAlerts(
             parent,
             response.warnings,
@@ -116,8 +120,7 @@ export class DescriptionDropzone {
         file: Dropzone.DropzoneFile,
         response?: DescriptionResponse,
     ): void {
-        // add alerts to the placeholder area
-        const parent = $("#alert_placeholder");
+        const parent = DescriptionDropzone.clearAlerts();
         // handle errors based on HTTP status code
         const status = file.xhr.status;
         switch (status) {
@@ -143,6 +146,13 @@ export class DescriptionDropzone {
                     DescriptionDropzone.showUnknownAlert(parent);
                 }
         }
+    }
+
+    // remove all visible (non-template) alerts from the DOM
+    static clearAlerts(): JQuery {
+        const parent = $("#alert_placeholder");
+        parent.children(".alert:visible").remove();
+        return parent;
     }
 
     private static checkForStrainError(

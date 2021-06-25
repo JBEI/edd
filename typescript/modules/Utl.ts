@@ -241,6 +241,7 @@ export class FileDropZone {
             }
         });
         this.dropzone.on("error", (file, msg) => {
+            this.dropzone.removeAllFiles();
             if (typeof this.options.processErrorFn === "function") {
                 try {
                     const response = JSON.parse(file.xhr.response);
@@ -252,6 +253,7 @@ export class FileDropZone {
             }
         });
         this.dropzone.on("success", (file) => {
+            this.dropzone.removeAllFiles();
             try {
                 const response = JSON.parse(file.xhr.response);
                 if (response.warnings) {

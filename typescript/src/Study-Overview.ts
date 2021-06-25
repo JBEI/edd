@@ -168,6 +168,7 @@ function prepareIt() {
     const url = dropzoneDiv.attr("data-url");
     Utl.FileDropZone.create({
         "elementId": "experimentDescDropZone",
+        "fileInitFn": DescriptionDropzone.clearAlerts,
         "url": url,
         "clickable": ".dz-browse-link",
         // must bind these functions; otherwise the function this will be the options object
