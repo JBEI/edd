@@ -56,9 +56,19 @@ interface LinePropertyInputOptions extends MultiValueInputOptions {
     supportsCombinations?: boolean;
 }
 
+// Omit special-case metadata types that don't make sense as user input options in this context:
+// 1) "Line Name": line names are computed from combinatorial metadata values
+// 2) "Description": combinatorial entry isn't really possible
+// 3) "Replicate": stores an ID, not the "# replicates" data useful as user input
+const OMITTED_LINE_META_TYPE_UUIDS = [
+    EddRest.LINE_NAME_META_UUID,
+    EddRest.LINE_DESCRIPTION_META_UUID,
+    EddRest.LINE_REPLICATE_META_UUID,
+];
+
 // special case JSON identifier for replicate count, which has no direct association to a line
 // metadata type
-const REPLICATE_COUNT_JSON_ID = "replicate_count";
+const N_REPLICATES_JSON_ID = "replicate_count";
 const REPLICATE_NUM_NAME_ID = "replicate_num";
 
 const ICE_FOLDER_JSON_ID = "ice_folder";
@@ -546,7 +556,7 @@ class LinePropertyInput extends MultiValueInput {
         // update step 2 naming elements for this line property... if valid values are provided
         // for combinatorial input, style the step 2 naming element to reflect that its
         // required to produce unique line names
-        if (this.lineProperty.jsonId === REPLICATE_COUNT_JSON_ID) {
+        if (this.lineProperty.jsonId === N_REPLICATES_JSON_ID) {
             // do special-case processing for replicate count input...though it's displayed
             // in step 1 as "apply to all lines", if > 1, then it's "combinatorial" from the
             // standpoint that replicate # is required input to computing unique line names
@@ -1226,7 +1236,7 @@ class CreationManager {
             newInput = new LinePropertyAutoInput({ "lineProperty": lineProperty });
         } else if (EddRest.CONTROL_META_UUID === lineProperty.metaUUID) {
             newInput = new BooleanInput({ "lineProperty": lineProperty, "maxRows": 1 });
-        } else if (REPLICATE_COUNT_JSON_ID === lineProperty.jsonId) {
+        } else if (N_REPLICATES_JSON_ID === lineProperty.jsonId) {
             newInput = new NumberInput({ "lineProperty": lineProperty });
         } else {
             newInput = new LinePropertyInput({ "lineProperty": lineProperty });
@@ -1967,15 +1977,8 @@ class CreationManager {
         this.strainMetaPk = -1;
         const lineProps: LinePropertyDescriptor[] = [];
         metadataTypes.forEach((meta) => {
-            // omit "Line Name" and "Description" metadata type from available options.
-            // Both options would be confusing for users,
-            // since the normal case for this GUI
-            // should be to compute line names from combinatorial metadata values,
-            // and combinatorial entry of line descriptions isn't really possible
-            if (
-                EddRest.LINE_NAME_META_UUID === meta.uuid ||
-                EddRest.LINE_DESCRIPTION_META_UUID === meta.uuid
-            ) {
+            // omit special-case metadata types that don't make sense in this context
+            if (OMITTED_LINE_META_TYPE_UUIDS.indexOf(meta.uuid) >= 0) {
                 return true; // keep looping!
             }
             // if this metadata type matches the name of one we have autocomplete inputs for
@@ -2057,8 +2060,8 @@ class CreationManager {
         // we can use non-integer alphanumeric strings for our special-case additions.
         lineProps.push(
             new LinePropertyDescriptor(
-                REPLICATE_COUNT_JSON_ID,
-                "Replicates",
+                N_REPLICATES_JSON_ID,
+                "# Replicates",
                 "Replicate #",
                 REPLICATE_NUM_NAME_ID,
             ),
@@ -2490,7 +2493,7 @@ class CreationManager {
             // do special-case processing of replicate count,
             // which isn't represented by a line metadata type
             if (REPLICATE_NUM_NAME_ID === input.lineProperty.nameEltJsonId) {
-                result[REPLICATE_COUNT_JSON_ID] = input.getValueJson();
+                result[N_REPLICATES_JSON_ID] = input.getValueJson();
                 return true; // keep looping
             }
             // do special-case processing of multivalued inputs
@@ -2542,7 +2545,7 @@ function onDocumentReady(): void {
     creationManager.buildStep3Inputs();
 
     // load line metadata types from the REST API. This allows us to display them more
-    // responsively if there are many, and also to show them in the
+    // responsively if there are many, and also to show them in the dialog
     loadAllLineMetadataTypes();
 
     // TODO: uncomment/fix or remove
