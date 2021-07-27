@@ -9,6 +9,8 @@ from openpyxl.workbook import Workbook
 from requests import codes
 
 from edd import TestCase
+from edd.load.resolver import TypeResolver
+from edd.load.tests import factory as load_factory
 from edd.profile.factory import UserFactory
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi, IceApiException
@@ -354,6 +356,26 @@ class IceIntegrationTests(TestCase):
         ice.unlink_entry_from_study(self.db_ids[3], study_url)
         found_links = list(ice.fetch_experiment_links(self.db_ids[3]))
         self.assertEqual(len(found_links), 0)
+
+    def test_ice_protein_link(self):
+        category = load_factory.CategoryFactory.build(
+            type_group=models.MeasurementType.Group.PROTEINID,
+        )
+        resolver = TypeResolver(self.read_ice_user, category)
+        protein = resolver.lookup_type(self.part_ids[0])
+        assert isinstance(protein, models.ProteinIdentifier)
+        assert protein.accession_id == self.part_ids[0]
+
+    def test_ice_protein_link_twice(self):
+        category = load_factory.CategoryFactory.build(
+            type_group=models.MeasurementType.Group.PROTEINID,
+        )
+        resolver = TypeResolver(self.read_ice_user, category)
+        protein = resolver.lookup_type(self.part_ids[0])
+        # running lookup_type again does not throw ValidationError
+        resolver.lookup_type(self.part_ids[0])
+        assert isinstance(protein, models.ProteinIdentifier)
+        assert protein.accession_id == self.part_ids[0]
 
     def _create_workbook(self, parts):
         upload = BytesIO()

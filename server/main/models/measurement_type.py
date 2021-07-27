@@ -624,18 +624,29 @@ class ProteinIdentifier(MeasurementType):
 
     @classmethod
     def _load_ice(cls, link):
-        part = link.strain.part
-        datasource = Datasource.objects.create(
-            name="Part Registry", url=link.strain.registry_url
+        # strain found in ICE, but may not yet be linked to EDD protein
+        existing = ProteinStrainLink.objects.filter(strain=link.strain)[:2]
+        if len(existing) == 1:
+            # existing link found, return the protein
+            return existing[0].protein
+        elif len(existing) == 0:
+            # no existing link found, create the protein and link
+            datasource = Datasource.objects.create(
+                name="Part Registry", url=link.strain.registry_url
+            )
+            protein = cls.objects.create(
+                type_name=link.strain.name,
+                type_source=datasource,
+                accession_id=link.strain.part.part_id,
+            )
+            link.protein = protein
+            link.save()
+            return protein
+        raise ValidationError(
+            _u("Multiple entries found for '{part_id}'.").format(
+                part_id=link.strain.part.part_id
+            )
         )
-        protein = cls.objects.create(
-            type_name=link.strain.name,
-            type_source=datasource,
-            accession_id=part.part_id,
-        )
-        link.protein = protein
-        link.save()
-        return protein
 
     @classmethod
     def load_or_create(cls, protein_name, user):
