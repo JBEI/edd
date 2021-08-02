@@ -585,7 +585,7 @@ class ProteinSection extends MeasurementFilterSection {
         const t = value.measurementType;
         let link = "";
         if (t.accession) {
-            link = `<a href="https://ebi10.uniprot.org/uniprot/${t.accession}"
+            link = `<a href="https://www.uniprot.org/uniprot/${t.accession}"
                 target="_blank">${t.accession}</a>`;
         }
         return `${value.compartment.code} ${t.name} ${link}`.trim();
