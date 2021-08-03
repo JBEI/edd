@@ -93,7 +93,7 @@ docker stack deploy --with-registry-auth -c stack.yml "${PROJECT}"
 # wait for ice to finish coming up
 ICE_IS_UP="false"
 until [ "${ICE_IS_UP}" == "true" ]; do
-    ICE_SERVICE_ID="$(docker service ls -f "label=org.jbei.jenkins.edd.ice" -q)"
+    ICE_SERVICE_ID="$(docker service ls -f "label=org.jbei.jenkins.edd.ice" -f "label=com.docker.stack.namespace=${PROJECT}" -q)"
     if [ -z "${ICE_SERVICE_ID}" ]; then
         echo "Waiting for services to deploy"
         sleep 10

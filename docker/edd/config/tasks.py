@@ -257,9 +257,8 @@ class ServiceComposer:
             postgres = self.define("postgres")
             # create edduser password to postgres
             db_password = password(18)
-            # nothing else needs the postgres user password
-            postgres.write_secret("POSTGRES_PASSWORD", password(18))
-            postgres.write_secret("EDD_PGPASS", db_password)
+            postgres.write_secret("POSTGRES_PASSWORD", db_password)
+            # add db URLs to other services
             db_url = f"postgresql://edduser:{db_password}@postgres:5432/edd"
             celery = f"db+postgresql://edduser:{db_password}@postgres:5432/edd"
             for service_name in ("http", "websocket", "worker"):
