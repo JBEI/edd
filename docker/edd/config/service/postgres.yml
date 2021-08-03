@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: jbei/edd-postgres:9.6
+    environment:
+      POSTGRES_DB: edd
+      POSTGRES_USER: edduser
+    image: library/postgres:11
     logging:
       driver: json-file
       options:
