@@ -43,11 +43,14 @@ INTERNAL_IPS = ["127.0.0.1", "::1"]
 
 
 # Uncomment this block to work around offsite LDAP authentication problems
-# NOTE: this backend ignores passwords,
-# and does immediate login for the provided username
+# NOTE: this backend ignores passwords, and only validates that the user exists.
 # AUTHENTICATION_BACKENDS = (
-#     'edd.account.LocalTestBackend',
+#     'edd.auth_backend.LocalTestBackend',
 # )
+
+# Uncomment this to print emails to the console/logs, rather than attempt
+# real SMTP connections
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Uncomment below to use DEBUG mode and include the debug toolbar
 # DEBUG = True
