@@ -46,7 +46,12 @@ class EDDObjectSerializer(serializers.ModelSerializer):
 class AssaySerializer(EDDObjectSerializer):
     class Meta:
         model = models.Assay
-        fields = EDDObjectSerializer.Meta.fields + ("experimenter", "line", "protocol")
+        fields = EDDObjectSerializer.Meta.fields + (
+            "experimenter",
+            "line",
+            "protocol",
+            "study",
+        )
 
 
 class MeasurementSerializer(serializers.ModelSerializer):
@@ -62,6 +67,7 @@ class MeasurementSerializer(serializers.ModelSerializer):
             "measurement_format",
             "measurement_type",
             "pk",
+            "study",
             "update_ref",
             "x_units",
             "y_units",
@@ -74,7 +80,7 @@ class MeasurementValueSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.MeasurementValue
-        fields = ("measurement", "pk", "updated", "x", "y")
+        fields = ("measurement", "pk", "study", "updated", "x", "y")
 
 
 class StudySerializer(EDDObjectSerializer):
@@ -89,7 +95,6 @@ class StudySerializer(EDDObjectSerializer):
             "contact",
             "contact_extra",
             "contact_id",
-            "metabolic_map",
             "slug",
         )
         read_only_fields = ("slug",)
@@ -107,7 +112,6 @@ class StudySerializer(EDDObjectSerializer):
 
 
 class LineSerializer(EDDObjectSerializer):
-    carbon_source = serializers.StringRelatedField(many=True)
     strains = serializers.SlugRelatedField(
         many=True, read_only=True, slug_field="registry_url"
     )
@@ -116,7 +120,6 @@ class LineSerializer(EDDObjectSerializer):
         model = models.Line
         depth = 0
         fields = EDDObjectSerializer.Meta.fields + (
-            "carbon_source",
             "contact",
             "control",
             "experimenter",
