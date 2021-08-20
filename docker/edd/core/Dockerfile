@@ -85,6 +85,22 @@ RUN git rev-parse --short HEAD > /tmp/edd.hash
 
 # ---
 
+FROM ${TARGET}-preinstall as staticfiles
+
+WORKDIR /usr/local/edd
+# Copy in python code
+COPY ./server /usr/local/edd
+# Copy in commit hash from configure image
+COPY --from=configure /tmp/edd.hash /edd.hash
+
+RUN python manage.py collectstatic \
+    --noinput \
+    --settings "edd.settings.build_collectstatic" \
+ && find /usr/local/edd/ -type d -name static -exec rm -rf \{\} \+ \
+ && find /usr/local/edd/ -type d -name __pycache__ -exec rm -rf \{\} \+
+
+# ---
+
 FROM ${TARGET}-preinstall as install
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
@@ -100,9 +116,10 @@ COPY ./docker/edd/core/tasks /usr/local/edd-invoke/tasks
 # Copy in entrypoint
 COPY ./docker/edd/core/entrypoint.sh /usr/local/bin/entrypoint.sh
 # Copy in python code
-COPY ./server /usr/local/edd/
-# Copy in code from node image
-COPY --from=node /run/dist /usr/local/edd/main/static/dist
+COPY --from=staticfiles /usr/local/edd /usr/local/edd
+# Copy in static assets
+COPY --from=staticfiles /usr/local/edd-static /usr/local/edd-static
+COPY --from=node /run/dist /usr/local/edd-static/dist
 # Copy in commit hash from configure image
 COPY --from=configure /tmp/edd.hash /edd.hash
 
@@ -110,12 +127,7 @@ COPY --from=configure /tmp/edd.hash /edd.hash
 RUN addgroup --gid 1000 --system edduser \
  && adduser --uid 1000 --system edduser --gid 1000 \
 # create log directory
- && mkdir -p /var/log/edd \
-# run collectstatic to set static assets in build
- && cd /usr/local/edd \
- && python manage.py collectstatic \
-    --noinput \
-    --settings "edd.settings.build_collectstatic"
+ && mkdir -p /var/log/edd
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["--list"]

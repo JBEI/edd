@@ -280,6 +280,11 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [
     "/usr/local/edd-static",
 ]
+# omit AppDirectoriesFinder for runtime settings
+# these will already be in /usr/local/edd-static during Docker build
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+]
 STATICFILES_MANIFEST = f"staticfiles.{EDD_VERSION_HASH}.json"
 STATICFILES_STORAGE = "edd.utilities.StaticFilesStorage"
 
