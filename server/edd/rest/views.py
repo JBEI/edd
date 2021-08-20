@@ -1,9 +1,5 @@
 """
 Defines views for EDD's REST API.
-
-Assuming Django REST Framework (DRF) will be adopted in EDD, new and existing views should be
-ported to this class over time. Several potential REST resources are currently defined in
-main/views.py, but are not accessible using the same URL scheme.
 """
 
 import logging
@@ -94,16 +90,6 @@ class StudyInternalsFilterMixin:
             queryset = queryset.filter(access).distinct()
         return queryset
 
-    def get_nested_filter(self):
-        study_id = self.kwargs.get("study_pk", None)
-        # try converting to UUID
-        try:
-            study_id = UUID(study_id)
-            return Q(**{self._filter_key("uuid"): study_id})
-        except ValueError:
-            pass
-        return Q(**{self._filter_key(self.lookup_field): study_id})
-
     def get_object(self):
         """
         Find the object if the parameter matches the primary key OR the UUID.
@@ -147,8 +133,6 @@ class LineFilter(EDDObjectFilter):
     strains__in = django_filters.CharFilter(
         field_name="strains", method="filter_strains"
     )
-    # TODO: filter on Carbon Source.  Note that 'in' filtering via Meta.fields doesn't work on
-    # m2m relationships
 
     class Meta:
         model = models.Line
@@ -182,23 +166,13 @@ class LineFilterMixin(StudyInternalsFilterMixin):
     def get_queryset(self):
         qs = models.Line.objects.order_by("pk")
         qs = qs.select_related("created", "updated")
-        return qs.prefetch_related("strains", "carbon_source")
+        return qs.prefetch_related("strains")
 
 
 class LinesViewSet(LineFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """API endpoint that allows Lines to be searched, viewed, and edited."""
+    """API endpoint that allows Lines to be searched, viewed."""
 
     pass
-
-
-class StudyLinesView(LineFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that allows Lines within a study to be searched, viewed,
-    and edited.
-    """
-
-    def get_queryset(self):
-        return super().get_queryset().filter(self.get_nested_filter())
 
 
 class AssayFilter(EDDObjectFilter):
@@ -222,19 +196,9 @@ class AssayFilterMixin(StudyInternalsFilterMixin):
 
 
 class AssaysViewSet(AssayFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """API endpoint that allows Assays to be searched, viewed, and edited."""
+    """API endpoint that allows Assays to be searched, viewed."""
 
     pass
-
-
-class StudyAssaysViewSet(AssayFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that allows Assays within a study to be searched, viewed,
-    and edited.
-    """
-
-    def get_queryset(self):
-        return super().get_queryset().filter(self.get_nested_filter())
 
 
 class MeasurementFilter(filters.FilterSet):
@@ -276,22 +240,9 @@ class MeasurementFilterMixin(StudyInternalsFilterMixin):
 
 
 class MeasurementsViewSet(MeasurementFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that allows Measurements to be searched, viewed, and edited.
-    """
+    """API endpoint that allows Measurements to be searched, viewed."""
 
     pass
-
-
-class StudyMeasurementsViewSet(MeasurementFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that allows Measurements within a study to be searched,
-    viewed, and edited.
-    """
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return qs.filter(self.get_nested_filter())
 
 
 export_via_lookup = {
@@ -509,16 +460,6 @@ class MeasurementValuesViewSet(ValuesFilterMixin, viewsets.ReadOnlyModelViewSet)
     """API endpoint that allows Values to be searched, viewed, and edited."""
 
     pass
-
-
-class StudyValuesViewSet(ValuesFilterMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that allows Values within a study to be searched, viewed,
-    and edited.
-    """
-
-    def get_queryset(self):
-        return super().get_queryset().filter(self.get_nested_filter())
 
 
 class MeasurementTypesFilter(filters.FilterSet):

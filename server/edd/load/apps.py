@@ -17,9 +17,9 @@ class LoadConfig(AppConfig):
 
         # plug into the REST API
         from .rest import views
-        from edd.rest.routers import base_rest_api_router, study_router
+        from edd.rest.routers import router, study_router
 
         study_router.register(r"load", views.LoadRequestViewSet, basename="study_load")
-        base_rest_api_router.register(
+        router.register(
             r"load_categories", views.CategoriesViewSet, basename="load_categories"
         )
