@@ -35,6 +35,21 @@ def schema_view(request):
     return response.Response(generator.get_schema(request=request))
 
 
+def filter_in_study(queryset, name, value):
+    q = Q(study__slug=value)
+    # try to convert to a PK
+    try:
+        q = q | Q(study_id=int(value))
+    except ValueError:
+        pass
+    # try to convert to a UUID
+    try:
+        q = q | Q(study__uuid=UUID(value))
+    except ValueError:
+        pass
+    return queryset.filter(q)
+
+
 class EDDObjectFilter(filters.FilterSet):
     active = django_filters.BooleanFilter(field_name="active")
     created_before = django_filters.IsoDateTimeFilter(
@@ -130,6 +145,11 @@ class StudiesViewSet(
 
 
 class LineFilter(EDDObjectFilter):
+    in_study = django_filters.CharFilter(
+        field_name="study",
+        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        method=filter_in_study,
+    )
     strain = django_filters.CharFilter(field_name="strains", method="filter_strain")
     strains__in = django_filters.CharFilter(
         field_name="strains", method="filter_strains"
@@ -138,7 +158,6 @@ class LineFilter(EDDObjectFilter):
     class Meta:
         model = models.Line
         fields = {
-            "study": ["exact", "in"],
             "control": ["exact"],
             "contact": ["exact"],
             "experimenter": ["exact"],
@@ -177,6 +196,12 @@ class LinesViewSet(LineFilterMixin, viewsets.ReadOnlyModelViewSet):
 
 
 class AssayFilter(EDDObjectFilter):
+    in_study = django_filters.CharFilter(
+        field_name="study",
+        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        method=filter_in_study,
+    )
+
     class Meta:
         model = models.Assay
         fields = {
@@ -212,6 +237,11 @@ class MeasurementFilter(filters.FilterSet):
     )
     compartment = django_filters.ChoiceFilter(
         field_name="compartment", choices=models.Measurement.Compartment.CHOICE
+    )
+    in_study = django_filters.CharFilter(
+        field_name="study",
+        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        method=filter_in_study,
     )
     line = django_filters.ModelChoiceFilter(
         field_name="assay__line", queryset=models.Line.objects.all()
@@ -276,6 +306,11 @@ class ExportFilter(filters.FilterSet):
     See <main.export.table.ExportSelection>.
     """
 
+    in_study = django_filters.CharFilter(
+        field_name="study",
+        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        method=filter_in_study,
+    )
     study_id = django_filters.ModelMultipleChoiceFilter(
         lookup_expr="in", field_name="study", queryset=export_queryset(models.Study)
     )
@@ -447,6 +482,11 @@ class MeasurementValueFilter(filters.FilterSet):
     )
     created_after = django_filters.IsoDateTimeFilter(
         field_name="updated__mod_time", lookup_expr="gte"
+    )
+    in_study = django_filters.CharFilter(
+        field_name="study",
+        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        method=filter_in_study,
     )
     line = django_filters.ModelChoiceFilter(
         field_name="measurement__assay__line", queryset=models.Line.objects.all()
