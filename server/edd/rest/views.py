@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import CharField, Q, Value
 from django.db.models.functions import Cast, Coalesce, Concat, NullIf
 from django.http import StreamingHttpResponse
+from django.utils.translation import gettext as _
 from django_filters import filters as django_filters
 from django_filters import rest_framework as filters
 from rest_framework import mixins, response, schemas, viewsets
@@ -22,15 +23,14 @@ from main import models
 from . import paginators, permissions, renderers, serializers
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 @api_view()
 @permission_classes([AllowAny])
 @renderer_classes([OpenAPIRenderer, SwaggerUIRenderer])
 def schema_view(request):
-    """
-    Auto-generated, web-browseable documentation for EDD's REST API.
-    """
+    """Auto-generated, web-browseable documentation for EDD's REST API."""
     generator = schemas.SchemaGenerator(title="Experiment Data Depot")
     return response.Response(generator.get_schema(request=request))
 
@@ -50,23 +50,49 @@ def filter_in_study(queryset, name, value):
     return queryset.filter(q)
 
 
+def try_uuid(value):
+    try:
+        return UUID(value)
+    except ValueError:
+        pass
+
+
 class EDDObjectFilter(filters.FilterSet):
-    active = django_filters.BooleanFilter(field_name="active")
+    active = django_filters.BooleanFilter(
+        field_name="active",
+        help_text=_(
+            "Filter on currently active/visible items (True/1/yes or false/0/no)"
+        ),
+    )
     created_before = django_filters.IsoDateTimeFilter(
-        field_name="created__mod_time", lookup_expr="lte"
+        field_name="created__mod_time",
+        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
+        lookup_expr="lte",
     )
     created_after = django_filters.IsoDateTimeFilter(
-        field_name="created__mod_time", lookup_expr="gte"
+        field_name="created__mod_time",
+        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
+        lookup_expr="gte",
     )
     description = django_filters.CharFilter(
-        field_name="description", lookup_expr="iregex"
+        field_name="description",
+        help_text=_("Runs a regular expression search on item description"),
+        lookup_expr="iregex",
     )
-    name = django_filters.CharFilter(field_name="name", lookup_expr="iregex")
+    name = django_filters.CharFilter(
+        field_name="name",
+        help_text=_("Runs a regular expression search on item name"),
+        lookup_expr="iregex",
+    )
     updated_before = django_filters.IsoDateTimeFilter(
-        field_name="updated__mod_time", lookup_expr="lte"
+        field_name="updated__mod_time",
+        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
+        lookup_expr="lte",
     )
     updated_after = django_filters.IsoDateTimeFilter(
-        field_name="updated__mod_time", lookup_expr="gte"
+        field_name="updated__mod_time",
+        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
+        lookup_expr="gte",
     )
 
     class Meta:
@@ -75,9 +101,20 @@ class EDDObjectFilter(filters.FilterSet):
 
 
 class StudyFilter(EDDObjectFilter):
+    contact = django_filters.ModelChoiceFilter(
+        field_name="contact",
+        help_text=_("ID of the user set as the Study contact"),
+        queryset=User.objects.all(),
+    )
+    slug = django_filters.CharFilter(
+        field_name="slug",
+        help_text=_("The exact value of the study URL slug"),
+        lookup_expr="exact",
+    )
+
     class Meta:
         model = models.Study
-        fields = ["slug", "contact", "metabolic_map"]
+        fields = []
 
 
 class StudyInternalsFilterMixin:
@@ -86,7 +123,7 @@ class StudyInternalsFilterMixin:
     linked to a visible study.
     """
 
-    filter_class = EDDObjectFilter
+    filterset_class = EDDObjectFilter
     _filter_joins = []
 
     @classmethod
@@ -134,9 +171,8 @@ class StudiesViewSet(
     viewsets.ReadOnlyModelViewSet,
 ):
     """
-    API endpoint that provides access to studies, subject to user/role read access
-    controls. Note that some privileged 'manager' users may have access to the
-    base study name, description, etc, but not to the contained lines or other data.
+    API endpoint that provides access to studies, subject to user/role read
+    access controls.
     """
 
     serializer_class = serializers.StudySerializer
@@ -145,37 +181,47 @@ class StudiesViewSet(
 
 
 class LineFilter(EDDObjectFilter):
+    contact = django_filters.ModelChoiceFilter(
+        field_name="contact",
+        help_text=_("ID of the user set as the Line contact"),
+        queryset=User.objects.all(),
+    )
+    control = django_filters.BooleanFilter(
+        field_name="control",
+        help_text=_("Filter on lines marked as controls (True/1/yes or false/0/no)"),
+    )
+    experimenter = django_filters.ModelChoiceFilter(
+        field_name="experimenter",
+        help_text=_("ID of the user set as the Line experimenter"),
+        queryset=User.objects.all(),
+    )
     in_study = django_filters.CharFilter(
         field_name="study",
-        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method=filter_in_study,
     )
-    strain = django_filters.CharFilter(field_name="strains", method="filter_strain")
-    strains__in = django_filters.CharFilter(
-        field_name="strains", method="filter_strains"
+    strain = django_filters.CharFilter(
+        field_name="strains",
+        help_text=_("Search on a strain UUID or registry URLs, separated by commas"),
+        method="filter_strains",
     )
 
     class Meta:
         model = models.Line
-        fields = {
-            "control": ["exact"],
-            "contact": ["exact"],
-            "experimenter": ["exact"],
-        }
-
-    def filter_strain(self, queryset, name, value):
-        return self.filter_strains(queryset, name, (value,))
+        fields = []
 
     def filter_strains(self, queryset, name, values):
         # split out multiple values similar to other django_filters 'in' param processing
-        values = values.split(",")
-        try:
-            return queryset.filter(
-                strains__registry_id__in=(UUID(value) for value in values)
-            )
-        except ValueError:
-            pass
-        return queryset.filter(strains__registry_url__in=values)
+        uuid_values, url_values = [], []
+        for value in values.split(","):
+            uuid_value = try_uuid(value)
+            if uuid_value:
+                uuid_values.append(uuid_value)
+            else:
+                url_values.append(value)
+        match_uuid = Q(strains__registry_id__in=uuid_values)
+        match_url = Q(strains__registry_url__in=url_values)
+        return queryset.filter(match_uuid | match_url)
 
 
 class LineFilterMixin(StudyInternalsFilterMixin):
@@ -196,9 +242,14 @@ class LinesViewSet(LineFilterMixin, viewsets.ReadOnlyModelViewSet):
 
 
 class AssayFilter(EDDObjectFilter):
+    experimenter = django_filters.ModelChoiceFilter(
+        field_name="experimenter",
+        help_text=_("ID of the user set as the Assay experimenter"),
+        queryset=User.objects.all(),
+    )
     in_study = django_filters.CharFilter(
         field_name="study",
-        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method=filter_in_study,
     )
 
@@ -207,12 +258,11 @@ class AssayFilter(EDDObjectFilter):
         fields = {
             "line": ["exact", "in"],
             "protocol": ["exact", "in"],
-            "experimenter": ["exact", "in"],
         }
 
 
 class AssayFilterMixin(StudyInternalsFilterMixin):
-    filter_class = AssayFilter
+    filterset_class = AssayFilter
     serializer_class = serializers.AssaySerializer
     _filter_joins = ["line", "study"]
 
@@ -228,32 +278,55 @@ class AssaysViewSet(AssayFilterMixin, viewsets.ReadOnlyModelViewSet):
 
 
 class MeasurementFilter(filters.FilterSet):
-    active = django_filters.BooleanFilter(field_name="active")
+    active = django_filters.BooleanFilter(
+        field_name="active",
+        help_text=_(
+            "Filter on currently active/visible items (True/1/yes or false/0/no)"
+        ),
+    )
+    assay = django_filters.ModelChoiceFilter(
+        field_name="assay",
+        help_text=_("ID of an assay to limit measurements"),
+        queryset=models.Assay.objects.all(),
+    )
     created_before = django_filters.IsoDateTimeFilter(
-        field_name="update_ref__mod_time", lookup_expr="lte"
+        field_name="created__mod_time",
+        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
+        lookup_expr="lte",
     )
     created_after = django_filters.IsoDateTimeFilter(
-        field_name="update_ref__mod_time", lookup_expr="gte"
+        field_name="created__mod_time",
+        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
+        lookup_expr="gte",
     )
     compartment = django_filters.ChoiceFilter(
-        field_name="compartment", choices=models.Measurement.Compartment.CHOICE
+        choices=models.Measurement.Compartment.CHOICE,
+        field_name="compartment",
+        help_text=_(
+            "One of the compartment codes, 0, 1, 2 for N/A, Intracellular, Extracellular"
+        ),
     )
     in_study = django_filters.CharFilter(
         field_name="study",
-        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method=filter_in_study,
     )
     line = django_filters.ModelChoiceFilter(
-        field_name="assay__line", queryset=models.Line.objects.all()
+        field_name="assay__line",
+        help_text=_("ID of a line to limit measurements"),
+        queryset=models.Line.objects.all(),
     )
     measurement_format = django_filters.ChoiceFilter(
-        field_name="measurement_format", choices=models.Measurement.Format.CHOICE
+        choices=models.Measurement.Format.CHOICE,
+        field_name="measurement_format",
+        help_text=_(
+            "One of the format codes; currently only '0' for Scalar format values is supported"
+        ),
     )
 
     class Meta:
         model = models.Measurement
         fields = {
-            "assay": ["exact", "in"],
             "measurement_type": ["exact", "in"],
             "x_units": ["exact", "in"],
             "y_units": ["exact", "in"],
@@ -261,7 +334,7 @@ class MeasurementFilter(filters.FilterSet):
 
 
 class MeasurementFilterMixin(StudyInternalsFilterMixin):
-    filter_class = MeasurementFilter
+    filterset_class = MeasurementFilter
     serializer_class = serializers.MeasurementSerializer
     _filter_joins = ["assay", "line", "study"]
 
@@ -308,25 +381,33 @@ class ExportFilter(filters.FilterSet):
 
     in_study = django_filters.CharFilter(
         field_name="study",
-        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method=filter_in_study,
     )
     study_id = django_filters.ModelMultipleChoiceFilter(
-        lookup_expr="in", field_name="study", queryset=export_queryset(models.Study)
+        field_name="study",
+        help_text=_("List of ID values, separated by commas, for studies to export"),
+        lookup_expr="in",
+        queryset=export_queryset(models.Study),
     )
     line_id = django_filters.ModelMultipleChoiceFilter(
-        lookup_expr="in",
         field_name="measurement__assay__line",
+        help_text=_("List of ID values, separated by commas, for lines to export"),
+        lookup_expr="in",
         queryset=export_queryset(models.Line),
     )
     assay_id = django_filters.ModelMultipleChoiceFilter(
-        lookup_expr="in",
         field_name="measurement__assay",
+        help_text=_("List of ID values, separated by commas, for assays to export"),
+        lookup_expr="in",
         queryset=export_queryset(models.Assay),
     )
     measure_id = django_filters.ModelMultipleChoiceFilter(
-        lookup_expr="in",
         field_name="measurement_id",
+        help_text=_(
+            "List of ID values, separated by commas, for measurements to export"
+        ),
+        lookup_expr="in",
         queryset=export_queryset(models.Measurement),
     )
 
@@ -475,21 +556,29 @@ class StreamingExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 class MeasurementValueFilter(filters.FilterSet):
     assay = django_filters.ModelChoiceFilter(
-        field_name="measurement__assay", queryset=models.Assay.objects.all()
+        field_name="measurement__assay",
+        help_text=_("ID of an assay to limit measurements"),
+        queryset=models.Assay.objects.all(),
     )
     created_before = django_filters.IsoDateTimeFilter(
-        field_name="updated__mod_time", lookup_expr="lte"
+        field_name="updated__mod_time",
+        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
+        lookup_expr="lte",
     )
     created_after = django_filters.IsoDateTimeFilter(
-        field_name="updated__mod_time", lookup_expr="gte"
+        field_name="updated__mod_time",
+        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
+        lookup_expr="gte",
     )
     in_study = django_filters.CharFilter(
         field_name="study",
-        help_text="An identifier for the study; can use ID, UUID, or Slug",
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method=filter_in_study,
     )
     line = django_filters.ModelChoiceFilter(
-        field_name="measurement__assay__line", queryset=models.Line.objects.all()
+        field_name="measurement__assay__line",
+        help_text=_("ID of a line to limit measurements"),
+        queryset=models.Line.objects.all(),
     )
     x__gt = django_filters.NumberFilter(field_name="x", lookup_expr="0__gte")
     x__lt = django_filters.NumberFilter(field_name="x", lookup_expr="0__lte")
@@ -502,7 +591,7 @@ class MeasurementValueFilter(filters.FilterSet):
 
 
 class ValuesFilterMixin(StudyInternalsFilterMixin):
-    filter_class = MeasurementValueFilter
+    filterset_class = MeasurementValueFilter
     serializer_class = serializers.MeasurementValueSerializer
     _filter_joins = ["measurement", "assay", "line", "study"]
 
@@ -517,9 +606,15 @@ class MeasurementValuesViewSet(ValuesFilterMixin, viewsets.ReadOnlyModelViewSet)
 
 
 class MeasurementTypesFilter(filters.FilterSet):
-    type_name = django_filters.CharFilter(field_name="type_name", lookup_expr="iregex")
-    type_group = django_filters.CharFilter(
-        field_name="type_group", lookup_expr="iregex"
+    type_name = django_filters.CharFilter(
+        field_name="type_name",
+        help_text=_("Runs a regular expression search on the measurement type name"),
+        lookup_expr="iregex",
+    )
+    type_group = django_filters.ChoiceFilter(
+        choices=models.MeasurementType.Group.GROUP_CHOICE,
+        field_name="type_group",
+        help_text=_("One of the measurement type codes: '_', 'm', 'g', 'p'"),
     )
 
     class Meta:
@@ -536,7 +631,7 @@ class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
     and ProteinIdentifiers ('p').
     """
 
-    filter_class = MeasurementTypesFilter
+    filterset_class = MeasurementTypesFilter
     permission_classes = [DjangoModelPermissions]
 
     model_lookup = {
@@ -570,7 +665,11 @@ class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class MetadataTypesFilter(filters.FilterSet):
-    group = django_filters.CharFilter(field_name="group__group_name")
+    group = django_filters.CharFilter(
+        field_name="group__group_name",
+        help_text=_("Runs a regular expression search on the metadata type group name"),
+        lookup_expr="iregex",
+    )
 
     class Meta:
         model = models.MetadataType
@@ -582,17 +681,14 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
     API endpoint that supports viewing and searching EDD's metadata types.
     """
 
-    filter_class = MetadataTypesFilter
+    filterset_class = MetadataTypesFilter
     permission_classes = [DjangoModelPermissions]
     queryset = models.MetadataType.objects.order_by("pk")
     serializer_class = serializers.MetadataTypeSerializer
 
 
 class MeasurementUnitFilter(filters.FilterSet):
-    unit_name = django_filters.CharFilter(field_name="unit_name", lookup_expr="iregex")
-    alternate_names = django_filters.CharFilter(
-        field_name="alternate_names", lookup_expr="iregex"
-    )
+    unit_name = django_filters.CharFilter(field_name="unit_name", lookup_expr="iregex",)
 
     class Meta:
         model = models.MeasurementUnit
@@ -600,7 +696,7 @@ class MeasurementUnitFilter(filters.FilterSet):
 
 
 class MeasurementUnitViewSet(viewsets.ReadOnlyModelViewSet):
-    filter_class = MeasurementUnitFilter
+    filterset_class = MeasurementUnitFilter
     queryset = models.MeasurementUnit.objects.order_by("pk")
     serializer_class = serializers.MeasurementUnitSerializer
     lookup_url_kwarg = "id"
@@ -613,7 +709,7 @@ class ProtocolFilter(EDDObjectFilter):
 
 
 class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
-    filter_class = ProtocolFilter
+    filterset_class = ProtocolFilter
     queryset = models.Protocol.objects.order_by("pk")
     serializer_class = serializers.ProtocolSerializer
 
