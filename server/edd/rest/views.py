@@ -13,6 +13,7 @@ from django_filters import filters as django_filters
 from django_filters import rest_framework as filters
 from rest_framework import mixins, response, schemas, viewsets
 from rest_framework.decorators import api_view, permission_classes, renderer_classes
+from rest_framework.negotiation import DefaultContentNegotiation
 from rest_framework.permissions import AllowAny, DjangoModelPermissions, IsAuthenticated
 from rest_framework_swagger.renderers import OpenAPIRenderer, SwaggerUIRenderer
 
@@ -361,9 +362,21 @@ class ExportFilter(filters.FilterSet):
         return form
 
 
+class ExportCsvContentNegotiation(DefaultContentNegotiation):
+    """
+    Forces adding text/csv to the list for the Accept header. This allows for
+    the Swagger UI generator to properly use the Export endpoints, as it
+    otherwise hard-codes only accepting application/json.
+    """
+
+    def get_accept_list(self, request):
+        return super().get_accept_list(request) + ["text/csv"]
+
+
 class ExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """API endpoint for running exports of data."""
 
+    content_negotiation_class = ExportCsvContentNegotiation
     filterset_class = ExportFilter
     pagination_class = paginators.LinkHeaderPagination
     renderer_classes = (renderers.ExportRenderer,)
@@ -406,6 +419,7 @@ class StreamingExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     knowing *EXACTLY* what you are doing.
     """
 
+    content_negotiation_class = ExportCsvContentNegotiation
     filter_class = ExportFilter
 
     def get_queryset(self):
