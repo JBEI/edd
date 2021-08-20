@@ -212,8 +212,17 @@ class ServiceComposer:
         # bundle ice when no url provided
         if url is None:
             ice = self.define("ice")
-            # TODO: generate password for ICE postgres database
             url = "http://ice:8080/"
+            db_password = password(18)
+            ice.write_property(
+                "services.ice_db.environment.POSTGRES_PASSWORD", db_password
+            )
+            opts = [
+                "-Dice.db.url=jdbc:postgresql://ice_db/ice",
+                "-Dice.db.user=iceuser",
+                f"-Dice.db.pass={db_password}",
+            ]
+            ice.write_env("CATALINA_OPTS", " ".join(opts))
             # existing HMAC code depends on canonical base64 encoding
             # cannot use the urlsafe variants
             hmac = password(63, urlsafe=False)
