@@ -9,9 +9,6 @@ services:
       - icenet
   ice:
     environment:
-      ICE_DB_URL: jdbc:postgresql://ice_db/ice
-      ICE_DB_USER: iceuser
-      ICE_DB_PASS: icepass
       VIRTUAL_STATIC: "true"
     healthcheck:
       test:
@@ -33,7 +30,6 @@ services:
   ice_db:
     environment:
       POSTGRES_DB: ice
-      POSTGRES_PASSWORD: icepass
       POSTGRES_USER: iceuser
     image: library/postgres:11
     networks:
