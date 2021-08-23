@@ -514,13 +514,13 @@ class ImportCacheCreator:
             "file_has_times": self.parsed.has_all_times,
             "file_has_units": self.parsed.has_all_units,
             "importId": self.load.request,
-            "loa_pks": [pk for pk in self.loa_name_to_pk.values()],
+            "loa_pks": {pk for pk in self.loa_name_to_pk.values()},
             "matched_assays": self.matched_assays,
             "total_vals": len(self.parsed.series_data),
             "totalPages": page_count,
             "use_assay_times": self.matched_assays and bool(self.assay_pk_to_time),
         }
-        redis.set_context(self.load.request, json.dumps(context))
+        redis.set_context(self.load.request, json.dumps(context, cls=JSONEncoder))
         return context
 
     def _compute_required_inputs(self, import_records_list) -> ConflictSummary:

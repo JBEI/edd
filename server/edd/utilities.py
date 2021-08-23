@@ -38,6 +38,7 @@ class JSONEncoder(json.JSONEncoder):
      * datetime.datetime
      * decimal.Decimal
      * uuid.UUID
+     * set
     """
 
     def default(self, o):
@@ -49,6 +50,8 @@ class JSONEncoder(json.JSONEncoder):
             return {TYPE: DATETIME, VALUE: o.isoformat()}
         elif isinstance(o, Promise):
             return force_text(o)
+        elif isinstance(o, set):
+            return list(o)
         return super().default(o)
 
     @staticmethod

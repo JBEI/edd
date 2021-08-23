@@ -10,6 +10,7 @@ from django.utils.module_loading import import_string
 from django.utils.translation import gettext as _
 from django_redis import get_redis_connection
 
+from edd.utilities import JSONEncoder
 from main import models, redis
 
 from . import exceptions, reporting
@@ -45,7 +46,7 @@ class ImportBroker:
         name = self._import_name(import_id)
         expires = getattr(settings, "EDD_IMPORT_CACHE_LENGTH", None)
         if not isinstance(context, (str, bytes)):
-            context = json.dumps(context)
+            context = json.dumps(context, cls=JSONEncoder)
         self.storage.save(context, name=name, expires=expires)
 
     def add_page(self, import_id, page):
