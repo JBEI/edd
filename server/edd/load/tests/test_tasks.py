@@ -366,7 +366,7 @@ class WizardLoadTaskTests(TestCase):
         broker.set_context(
             self.load.request,
             {
-                "loa_pks": [self.arcA.pk],
+                "loa_pks": {self.arcA.pk},
                 "matched_assays": False,
                 "use_assay_times": False,
             },

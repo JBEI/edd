@@ -163,7 +163,7 @@ class ImportExecutorRunningTests(TestCase):
         executor.start()
         executor.parse_context(
             {
-                "loa_pks": [self.BW1.pk, self.arcA.pk],
+                "loa_pks": {self.BW1.pk, self.arcA.pk},
                 "matched_assays": False,
                 "use_assay_times": False,
             }
@@ -184,7 +184,7 @@ class ImportExecutorRunningTests(TestCase):
         executor.start()
         executor.parse_context(
             {
-                "loa_pks": [self.BW1.pk, self.arcA.pk],
+                "loa_pks": {self.BW1.pk, self.arcA.pk},
                 "matched_assays": False,
                 "use_assay_times": False,
             }
@@ -212,7 +212,7 @@ class ImportExecutorRunningTests(TestCase):
         executor.start()
         executor.parse_context(
             {
-                "loa_pks": [assay_A.pk, assay_B.pk],
+                "loa_pks": {assay_A.pk, assay_B.pk},
                 "matched_assays": True,
                 "use_assay_times": True,
             }
@@ -242,7 +242,7 @@ class ImportExecutorRunningTests(TestCase):
         executor.parse_context(
             {
                 # 0 will never be an assay ID
-                "loa_pks": [0],
+                "loa_pks": {0},
                 "matched_assays": True,
                 "use_assay_times": False,
             }
@@ -257,7 +257,7 @@ class ImportExecutorRunningTests(TestCase):
         executor.parse_context(
             {
                 # 0 will never be a line ID
-                "loa_pks": [0],
+                "loa_pks": {0},
                 "matched_assays": False,
                 "use_assay_times": False,
             }
@@ -279,7 +279,7 @@ class ImportExecutorRunningTests(TestCase):
             executor.start()
             executor.parse_context(
                 {
-                    "loa_pks": [assay_A.pk, assay_B.pk],
+                    "loa_pks": {assay_A.pk, assay_B.pk},
                     "matched_assays": True,
                     "use_assay_times": True,
                 }
@@ -295,7 +295,7 @@ class ImportExecutorRunningTests(TestCase):
         executor.start()
         executor.parse_context(
             {
-                "loa_pks": [assay_A.pk, assay_B.pk],
+                "loa_pks": {assay_A.pk, assay_B.pk},
                 "matched_assays": True,
                 "use_assay_times": False,
             }
@@ -322,7 +322,7 @@ class ImportExecutorRunningTests(TestCase):
         executor.start()
         executor.parse_context(
             {
-                "loa_pks": [assay_A.pk, assay_B.pk],
+                "loa_pks": {assay_A.pk, assay_B.pk},
                 "matched_assays": True,
                 "use_assay_times": False,
             }
