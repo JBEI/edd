@@ -160,3 +160,11 @@ class MetadataTypeFactory(factory.django.DjangoModelFactory):
     for_context = factory.Iterator(
         (models.MetadataType.STUDY, models.MetadataType.LINE, models.MetadataType.ASSAY)
     )
+
+
+class StrainFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.Strain
+
+    registry_id = factory.Faker("uuid4")
+    registry_url = factory.Faker("url")
