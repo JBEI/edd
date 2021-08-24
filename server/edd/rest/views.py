@@ -126,10 +126,6 @@ class StudyInternalsFilterMixin:
     filterset_class = EDDObjectFilter
     _filter_joins = []
 
-    @classmethod
-    def _filter_key(cls, *args):
-        return "__".join(cls._filter_joins + list(args))
-
     def filter_queryset(self, queryset):
         """
         Overrides GenericAPIView's filter_queryset() to filter results to only
@@ -536,7 +532,8 @@ class StreamingExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
 
     content_negotiation_class = ExportCsvContentNegotiation
-    filter_class = ExportFilter
+    filterset_class = ExportFilter
+    pagination_class = None
 
     def get_queryset(self):
         return models.MeasurementValue.objects.order_by("pk")
@@ -546,7 +543,7 @@ class StreamingExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         renderer = renderers.StreamingExportRenderer()
         response = StreamingHttpResponse(
-            renderer.stream_csv(queryset), content_type="text/csv"
+            renderer.stream_csv(queryset), content_type="text/csv; charset=utf-8"
         )
         # TODO make sure to test with weird non-ascii names
         name = request.query_params.get("out", "export.csv")
