@@ -180,7 +180,7 @@ export function loadMeasurementTypes(options: MTypeOptions): void {
     let receivedSoFar = options.received_so_far || [];
 
     // query the REST API for requested metadata types
-    jQuery.ajax("/rest/measurement_types/", {
+    jQuery.ajax("/rest/types/", {
         "dataType": "json",
         "data": queryParams,
         "success": function (responseJson) {
@@ -238,7 +238,7 @@ export function loadMeasurementUnits(options: UnitOptions): void {
     insertSortOrderParam(options, queryParams);
     let receivedSoFar = options.received_so_far || [];
     // query the REST API for requested metadata types
-    jQuery.ajax("/rest/measurement_units/", {
+    jQuery.ajax("/rest/units/", {
         "dataType": "json",
         "data": queryParams,
         "success": function (responseJson) {
