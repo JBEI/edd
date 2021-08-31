@@ -316,7 +316,8 @@ class MeasurementFilter(filters.FilterSet):
         choices=models.Measurement.Format.CHOICE,
         field_name="measurement_format",
         help_text=_(
-            "One of the format codes; currently only '0' for Scalar format values is supported"
+            "One of the format codes; currently only '0' for Scalar "
+            "format values is supported"
         ),
     )
 
@@ -662,6 +663,14 @@ class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class MetadataTypesFilter(filters.FilterSet):
+    for_context = django_filters.ChoiceFilter(
+        choices=models.MetadataType.CONTEXT_SET,
+        field_name="for_context",
+        help_text=_(
+            "Context for metadata, 'S' for metadata on a Study, "
+            "'L' for metadata on a Line, 'A' for metadata on an Assay."
+        ),
+    )
     group = django_filters.CharFilter(
         field_name="group__group_name",
         help_text=_("Runs a regular expression search on the metadata type group name"),
@@ -670,7 +679,7 @@ class MetadataTypesFilter(filters.FilterSet):
 
     class Meta:
         model = models.MetadataType
-        fields = ["for_context", "type_i18n"]
+        fields = []
 
 
 class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -680,7 +689,7 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
 
     filterset_class = MetadataTypesFilter
     permission_classes = [DjangoModelPermissions]
-    queryset = models.MetadataType.objects.order_by("pk")
+    queryset = models.MetadataType.objects.select_related("group").order_by("pk")
     serializer_class = serializers.MetadataTypeSerializer
 
 
@@ -709,15 +718,6 @@ class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = ProtocolFilter
     queryset = models.Protocol.objects.order_by("pk")
     serializer_class = serializers.ProtocolSerializer
-
-
-class MetadataGroupViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that supports read-only access to EDD's metadata groups.
-    """
-
-    queryset = models.MetadataGroup.objects.order_by("pk")
-    serializer_class = serializers.MetadataGroupSerializer
 
 
 class UsersViewSet(viewsets.ReadOnlyModelViewSet):

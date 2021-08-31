@@ -129,9 +129,10 @@ class LineSerializer(EDDObjectSerializer):
 
 
 class MetadataTypeSerializer(serializers.ModelSerializer):
+    group = serializers.StringRelatedField()
+
     class Meta:
         model = models.MetadataType
-        depth = 0
         fields = (
             "default_value",
             "for_context",
@@ -220,13 +221,6 @@ class ProtocolSerializer(EDDObjectSerializer):
             "owned_by",
             "variant_of",
         )
-
-
-class MetadataGroupSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.MetadataGroup
-        depth = 0
-        fields = ("group_name",)
 
 
 class ExportEDDObjectSerializer(serializers.Serializer):
