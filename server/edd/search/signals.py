@@ -47,10 +47,13 @@ def load_users_index():
     return _users_index
 
 
-def _schedule(callback, item):
+def _schedule_solr_update(callback, item):
     # schedule the work for after the commit
     # or immediately if there's no transaction
-    connection.on_commit(functools.partial(callback, [item]))
+    try:
+        connection.on_commit(functools.partial(callback, [item]))
+    except Exception as e:
+        logger.warning(f"Solr update for {item} failed: {e}")
 
 
 class PrimaryKeyCache(namedtuple("PrimaryKeyCache", ["id"])):
@@ -107,7 +110,7 @@ def index_study(sender, study, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
         study_index = load_study_index()
-        _schedule(study_index.update, study)
+        _schedule_solr_update(study_index.update, study)
 
 
 @receiver(signals.type_modified)
@@ -115,7 +118,7 @@ def index_type(sender, measurement_type, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
         type_index = load_type_index()
-        _schedule(type_index.update, measurement_type)
+        _schedule_solr_update(type_index.update, measurement_type)
 
 
 @receiver(signals.user_modified)
@@ -123,7 +126,7 @@ def index_user(sender, user, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
         users_index = load_users_index()
-        _schedule(users_index.update, user)
+        _schedule_solr_update(users_index.update, user)
 
 
 @receiver(signals.study_removed)
@@ -131,7 +134,7 @@ def remove_study(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
         study_index = load_study_index()
-        _schedule(study_index.remove, doc)
+        _schedule_solr_update(study_index.remove, doc)
 
 
 @receiver(signals.type_removed)
@@ -139,7 +142,7 @@ def remove_type(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
         type_index = load_type_index()
-        _schedule(type_index.remove, doc)
+        _schedule_solr_update(type_index.remove, doc)
 
 
 @receiver(signals.user_removed)
@@ -147,7 +150,7 @@ def remove_user(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
     if using in settings.EDD_MAIN_SOLR:
         users_index = load_users_index()
-        _schedule(users_index.remove, doc)
+        _schedule_solr_update(users_index.remove, doc)
 
 
 __all__ = []
