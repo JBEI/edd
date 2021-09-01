@@ -5,6 +5,8 @@ from django_auth_ldap.config import GroupOfUniqueNamesType, LDAPSearch
 
 from .base import env
 
+AUTH_USER_MODEL = "profile.User"
+
 # LDAP Configuration
 # https://pythonhosted.org/django-auth-ldap/example.html
 AUTH_LDAP_SERVER_URI = "ldaps://identity.lbl.gov:636"

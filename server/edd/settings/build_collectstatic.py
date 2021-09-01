@@ -11,6 +11,9 @@ SECRET_KEY = "temporary"
 # must set default DATABASES key as well for Django init
 DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": "temporary"}}
 
+# must set AUTH_USER_MODEL so Django init does not detect improper configuration
+AUTH_USER_MODEL = "profile.User"
+
 # TODO: code in EDD is written assuming these settings are always available
 EDD_MAIN_SOLR = {}
 

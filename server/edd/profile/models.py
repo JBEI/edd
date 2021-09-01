@@ -71,57 +71,62 @@ class UserManager(auth_models.UserManager):
         return super().get_queryset().select_related("userprofile")
 
 
-def User_profile(self):
-    try:
-        return self.userprofile
-    except UserProfile.DoesNotExist:
-        first = (self.first_name or "")[:1]
-        last = (self.last_name or "")[:1]
-        return UserProfile.objects.create(user=self, initials=f"{first}{last}")
+class User(auth_models.AbstractUser):
+    class Meta:
+        db_table = "auth_user"
 
+    profiles = UserManager()
 
-def User_initials(self):
-    return self.profile.initials if self.profile else _("?")
+    @classmethod
+    def system_user(cls):
+        return cls.objects.get(username="system")
 
+    @property
+    def initials(self):
+        return self.profile.initials if self.profile else _("?")
 
-def User_institutions(self):
-    return self.profile.institutions.all()
+    @property
+    def institutions(self):
+        return self.profile.institutions.all()
 
+    @property
+    def profile(self):
+        try:
+            return self.userprofile
+        except UserProfile.DoesNotExist:
+            first = (self.first_name or "")[:1]
+            last = (self.last_name or "")[:1]
+            return UserProfile.objects.create(user=self, initials=f"{first}{last}")
 
-def User_to_json(self, depth=0):
-    return {
-        "id": self.pk,
-        "uid": self.username,
-        "email": self.email,
-        "initials": self.initials,
-        "name": self.get_full_name(),
-        "lastname": self.last_name,
-        "firstname": self.first_name,
-        "disabled": not self.is_active,
-    }
+    def to_json(self, depth=0):
+        return {
+            "id": self.pk,
+            "uid": self.username,
+            "email": self.email,
+            "initials": self.initials,
+            "name": self.get_full_name(),
+            "lastname": self.last_name,
+            "firstname": self.first_name,
+            "disabled": not self.is_active,
+        }
 
-
-def User_system_user(cls):
-    return cls.objects.get(username="system")
-
-
-def User_to_solr_json(self):
-    return {
-        "id": self.pk,
-        "username": self.username,
-        # TODO add full name to profile, to override default first+[SPACE]+last
-        "fullname": self.get_full_name(),
-        "name": [self.first_name, self.last_name],
-        "email": self.email,
-        "initials": self.initials,
-        "group": [f"{g.pk}@{g.name}" for g in self.groups.all()],
-        "institution": [f"{i.pk}@{i.institution_name}" for i in self.institutions],
-        "date_joined": format_solr_date(self.date_joined),
-        "last_login": format_solr_date(self.last_login),
-        "is_active": self.is_active,
-        "is_staff": self.is_staff,
-        "is_superuser": self.is_superuser,
-    }
+    def to_solr_json(self):
+        return {
+            "id": self.pk,
+            "username": self.username,
+            # TODO add full name to profile, to override default first+[SPACE]+last
+            "fullname": self.get_full_name(),
+            "name": [self.first_name, self.last_name],
+            "email": self.email,
+            "initials": self.initials,
+            "group": [f"{g.pk}@{g.name}" for g in self.groups.all()],
+            "institution": [f"{i.pk}@{i.institution_name}" for i in self.institutions],
+            "date_joined": format_solr_date(self.date_joined),
+            "last_login": format_solr_date(self.last_login),
+            "is_active": self.is_active,
+            "is_staff": self.is_staff,
+            "is_superuser": self.is_superuser,
+        }
 
 
 def format_solr_date(date):
@@ -129,13 +134,3 @@ def format_solr_date(date):
     if date:
         return arrow.get(date).to("utc").format("YYYY-MM-DDTHH:mm:ss.SSS") + "Z"
     return None
-
-
-def patch_user_model(User):
-    User.add_to_class("profile", property(User_profile))
-    User.add_to_class("profiles", UserManager())
-    User.add_to_class("to_json", User_to_json)
-    User.add_to_class("to_solr_json", User_to_solr_json)
-    User.add_to_class("initials", property(User_initials))
-    User.add_to_class("institutions", property(User_institutions))
-    User.system_user = classmethod(User_system_user)

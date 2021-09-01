@@ -17,7 +17,7 @@ env = environ.Env()
 
 def bootstrap(apps, schema_editor):
     # load the User model, create system user
-    User = apps.get_model("auth", "User")
+    User = apps.get_model("profile", "User")
     system = User.objects.create(
         email=env("EDD_EMAIL", default="root@localhost"),
         is_active=True,
