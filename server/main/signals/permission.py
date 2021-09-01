@@ -11,6 +11,5 @@ permissions = (models.UserPermission, models.GroupPermission, models.EveryonePer
 @receiver((post_save, post_delete), sender=permissions)
 def permission_change(sender, instance, using, raw=False, **kwargs):
     # raw save == database may be inconsistent; do not forward next signal
-    if raw:
-        return
-    study_modified.send(sender=sender, study=instance.study, using=using)
+    if not raw:
+        study_modified.send(sender=sender, study=instance.study, using=using)
