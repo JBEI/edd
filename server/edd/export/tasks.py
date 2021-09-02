@@ -66,10 +66,11 @@ def execute_export_table(broker, user, export_id, param_path):
     ).options
     # create and persist the export object
     export = TableExport(selection, options)
-    broker.save_export(export_id, selection.studies[0].name, export)
+    first_study = selection.studies[0]
+    broker.save_export(export_id, first_study.name, export)
     # no longer need the param data
     broker.clear_params(param_path)
-    return selection.studies[0].name
+    return first_study.name
 
 
 @shared_task(bind=True)
@@ -118,7 +119,8 @@ def execute_export_worklist(broker, user, export_id, param_path):
     worklist_def = forms.WorklistForm(data=params)
     # create worklist object
     export = WorklistExport(selection, worklist_def.options, worklist_def.worklist)
-    broker.save_export(export_id, selection.studies[0].name, export)
+    first_study = selection.studies[0]
+    broker.save_export(export_id, first_study.name, export)
     # no longer need the param data
     broker.clear_params(param_path)
-    return selection.studies[0].name
+    return first_study.name
