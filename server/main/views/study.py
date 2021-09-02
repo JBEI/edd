@@ -21,6 +21,7 @@ from edd.export import table
 from .. import forms as edd_forms
 from .. import models as edd_models
 from .. import redis
+from ..signals import study_described
 
 logger = logging.getLogger(__name__)
 
@@ -406,6 +407,12 @@ class StudyLinesView(StudyDetailBaseView):
             if clone.is_valid():
                 clone.save()
                 cloned += 1
+        study_described.send(
+            sender=self.__class__,
+            study=self.get_object(),
+            user=request.user,
+            count=cloned,
+        )
         messages.success(
             request,
             _("Cloned {count} of {total} Lines").format(
@@ -444,6 +451,12 @@ class StudyLinesView(StudyDetailBaseView):
                     #   deactivated lines.
                     form.selection.assays.update(active=active)
                     form.selection.measurements.update(active=active)
+                study_described.send(
+                    sender=self.__class__,
+                    study=self.get_object(),
+                    user=request.user,
+                    count=count if active else -count,
+                )
 
             action = _("Restored") if active else _("Deleted")
             messages.success(
@@ -498,6 +511,12 @@ class StudyLinesView(StudyDetailBaseView):
         form = edd_forms.LineForm(request.POST, prefix="line", study=self.get_object())
         if form.is_valid():
             form.save()
+            study_described.send(
+                sender=self.__class__,
+                study=self.get_object(),
+                user=request.user,
+                count=1,
+            )
             messages.success(
                 request, _("Added Line '{name}'").format(name=form["name"].value())
             )

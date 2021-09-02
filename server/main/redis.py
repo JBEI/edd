@@ -4,6 +4,8 @@ from uuid import uuid4
 from django.conf import settings
 from django_redis import get_redis_connection
 
+from .signals import study_viewed
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,11 +36,16 @@ class LatestViewedStudies:
         key = self._key()
         if study:
             # Don't want to put duplicates in the list
-            self._redis.lrem(key, 0, study.pk)
+            removed_count = self._redis.lrem(key, 0, study.pk)
             # Push study pk to front of list
             self._redis.lpush(key, study.pk)
             # Trim list to size
             self._redis.ltrim(key, 0, self._end)
+            # only signal a view if this user hasn't recently viewed the same study
+            if removed_count == 0:
+                study_viewed.send(
+                    sender=self.__class__, study=study, user=self._user,
+                )
 
 
 class ScratchStorage:
