@@ -66,22 +66,36 @@ class Update(models.Model, EDDSerialize):
         return f"{time} by {self.mod_by}"
 
     @classmethod
-    def load_update(cls, user=None, path=None):
+    def get_current_user(cls):
         """
-        Sometimes there will be actions happening outside the context of a request; use this
-        factory to create an Update object in those cases.
-        :param user: the user responsible for the update; None will be replaced with the
-            system user.
-        :param path: the path added to the update; it would be a good idea to put e.g. the
-            script name and arguments here.
-        :return: an Update instance persisted to the database
+        Inspect the threadlocal variable for the current request, and extract
+        the current user. If none is found, return the system user.
         """
         User = get_user_model()
+        request = get_current_request()
+        if request is not None:
+            current = request.user
+        if current is None:
+            return User.system_user()
+        return current
+
+    @classmethod
+    def load_update(cls, user=None, path=None):
+        """
+        Sometimes there will be actions happening outside the context of a
+        request; use this factory to create an Update object in those cases.
+
+        :param user: the user responsible for the update; None will be replaced
+            with the current request user, or the system user.
+        :param path: the path added to the update; it would be a good idea to
+            put e.g. the script name and arguments here.
+        :return: an Update instance persisted to the database
+        """
         request = get_current_request()
         if request is None:
             mod_by = user
             if mod_by is None:
-                mod_by = User.system_user()
+                mod_by = get_user_model().system_user()
             update = cls.objects.create(
                 mod_time=arrow.utcnow(), mod_by=mod_by, path=path, origin="localhost"
             )
