@@ -1,13 +1,15 @@
 """
 Models and related classes for dealing with Update objects.
 """
+from contextlib import contextmanager
 
 import arrow
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.http.request import HttpRequest
 from django.utils.translation import gettext_lazy as _
-from threadlocals.threadlocals import get_current_request
+from threadlocals.threadlocals import get_current_request, set_thread_variable
 
 from edd.fields import VarCharField
 
@@ -64,6 +66,21 @@ class Update(models.Model, EDDSerialize):
         except Exception:
             time = self.mod_time
         return f"{time} by {self.mod_by}"
+
+    @classmethod
+    @contextmanager
+    def fake_request(cls, user=None, path=None):
+        """
+        Context manager sets up a fake request, with a reference to an Update
+        object as if created by Update.load_update().
+        """
+        try:
+            fake_request = HttpRequest()
+            fake_request.update_obj = cls.load_update(user=user, path=path)
+            set_thread_variable("request", fake_request)
+            yield
+        finally:
+            set_thread_variable("request", None)
 
     @classmethod
     def get_current_user(cls):

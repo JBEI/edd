@@ -191,7 +191,9 @@ def wizard_execute_loading(request_uuid, user_id):
     with reporting.tracker(request_uuid):
         broker = ImportBroker()
         try:
-            with transaction.atomic(savepoint=True):
+            with transaction.atomic(savepoint=True), models.Update.fake_request(
+                user, "!edd.load.tasks.wizard_execute_loading"
+            ):
                 executor = ImportExecutor(load, user)
                 executor.start()
                 context = broker.json_context(request_uuid)
