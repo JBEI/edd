@@ -49,7 +49,6 @@ class ImportExecutor:
         # MeasurementValue counts resulting from this import
         self.total_added: int = 0
         self.total_updated: int = 0
-        self._transaction_cm = None
 
     def start(self):
         # not ready outside of these states
