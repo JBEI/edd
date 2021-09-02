@@ -30,6 +30,13 @@ class Permission:
         """
         return False
 
+    def get_selector(self):
+        """
+        Returns a string selector defining how permission should apply. Should
+        *not* reference any foreign keys.
+        """
+        return "?"
+
     def get_who_label(self):
         return "?"
 
@@ -96,6 +103,9 @@ class UserMixin(models.Model):
     def applies_to_user(self, user):
         return self.user == user
 
+    def get_selector(self):
+        return f"u:{self.user_id}"
+
     def get_who_label(self):
         return self.user.get_full_name()
 
@@ -131,6 +141,9 @@ class GroupMixin(models.Model):
     def applies_to_user(self, user):
         return user.groups.contains(self.group)
 
+    def get_selector(self):
+        return f"g:{self.group_id}"
+
     def get_who_label(self):
         return self.group.name
 
@@ -154,6 +167,9 @@ class EveryoneMixin:
 
     def applies_to_user(self, user):
         return True
+
+    def get_selector(self):
+        return "*"
 
     def get_who_label(self):
         return _("Everyone")
