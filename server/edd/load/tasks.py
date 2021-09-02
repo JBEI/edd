@@ -9,6 +9,7 @@ from django.utils.translation import gettext as _
 
 from edd.notify.backend import RedisBroker
 from main import models, query
+from main.signals import study_imported
 
 from . import exceptions, reporting
 from .broker import ImportBroker, LoadRequest
@@ -40,6 +41,17 @@ def import_table_task(study_id, user_id, import_id):
         try:
             processor.run()
             processor.send_notifications(notifications)
+            # legacy import technically supports importing using multiple protocols
+            # if any number other than one is used, just leave protocol blank/empty
+            study_imported.send(
+                sender=TableProcessor,
+                study=study,
+                user=user,
+                protocol=None
+                if len(processor.protocols) != 1
+                else processor.protocols[0],
+                count=len(processor.lines),
+            )
         except Exception as e:
             logger.exception("Failure in import_table_task", e)
             processor.send_errors(notifications, e)
@@ -205,6 +217,23 @@ def wizard_execute_loading(request_uuid, user_id):
             load.transition(LoadRequest.Status.COMPLETED, raise_errors=True)
             dispatch.wizard_complete(added=added, updated=updated)
             send_wizard_success_email.delay(request_uuid, user_id, added, updated)
+            # The loading / import process does not directly deal with lines;
+            # but, the metrics care about number of lines, so can try to query after.
+            # All the changing Assays should share a single Update record.
+            # So: query the study, then query the Lines that share same updated field.
+            study = load.study
+            lines_qs = models.Line.objects.filter(
+                study=study,
+                assay__protocol=load.protocol,
+                assay__updated_id=study.updated_id,
+            )
+            study_imported.send(
+                sender=ImportExecutor,
+                study=load.study,
+                user=user,
+                protocol=load.protocol,
+                count=lines_qs.distinct().count(),
+            )
         except Exception:
             load.transition(LoadRequest.Status.FAILED)
             send_wizard_failed_email.delay(request_uuid, user_id)

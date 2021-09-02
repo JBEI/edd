@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from edd.notify.backend import RedisBroker
+from main.signals import study_exported, study_worklist
 
 from . import forms
 from .broker import ExportBroker
@@ -70,6 +71,13 @@ def execute_export_table(broker, user, export_id, param_path):
     broker.save_export(export_id, first_study.name, export)
     # no longer need the param data
     broker.clear_params(param_path)
+    study_exported.send(
+        sender=TableExport,
+        study=first_study,
+        user=user,
+        count=selection.lines.count(),
+        cross=selection.studies.count() > 1,
+    )
     return first_study.name
 
 
@@ -123,4 +131,11 @@ def execute_export_worklist(broker, user, export_id, param_path):
     broker.save_export(export_id, first_study.name, export)
     # no longer need the param data
     broker.clear_params(param_path)
+    study_worklist.send(
+        sender=WorklistExport,
+        study=first_study,
+        user=user,
+        count=selection.lines.count(),
+        cross=selection.studies.count() > 1,
+    )
     return first_study.name
