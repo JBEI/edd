@@ -132,6 +132,7 @@ INSTALLED_APPS = (
     "edd.branding.apps.BrandingConfig",
     "edd.campaign.apps.CampaignConfig",
     "edd.search.apps.SearchConfig",
+    "edd.metric.apps.MetricConfig",
 )
 MIDDLEWARE = (
     "django.contrib.sessions.middleware.SessionMiddleware",

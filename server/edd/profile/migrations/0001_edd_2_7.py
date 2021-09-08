@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.models import UserManager
 from django.contrib.auth.validators import UnicodeUsernameValidator
-from django.contrib.postgres.fields import jsonb
 from django.db import migrations, models
 from django.utils import timezone
 
@@ -77,7 +76,7 @@ class Migration(migrations.Migration):
                 (
                     "first_name",
                     models.CharField(
-                        blank=True, max_length=30, verbose_name="first name"
+                        blank=True, max_length=150, verbose_name="first name"
                     ),
                 ),
                 (
@@ -202,7 +201,7 @@ class Migration(migrations.Migration):
                 ),
                 ("initials", VarCharField(blank=True, null=True)),
                 ("description", models.TextField(blank=True, null=True)),
-                ("preferences", jsonb.JSONField(blank=True, default=dict),),
+                ("preferences", models.JSONField(blank=True, default=dict),),
                 (
                     "approved",
                     models.BooleanField(
