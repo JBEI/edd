@@ -54,7 +54,7 @@ Signals made available to recieve for actions made in EDD.
 
 # The F401 error code is "imported but unused"
 # ignoring it here because this module is imported to register handlers in submodules
-from . import core, permission, sbml, user  # noqa: F401
+from . import core, metrics, permission, sbml, user  # noqa: F401
 from .signals import (
     study_created,
     study_described,
