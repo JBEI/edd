@@ -14,7 +14,6 @@ from django.core.exceptions import ValidationError
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.utils.translation import gettext as _
-from kombu.serialization import register
 from storages.backends import s3boto3
 
 DATETIME = "__datetime__"
@@ -111,16 +110,6 @@ class StaticFilesStorage(storage.ManifestStaticFilesStorage):
     """
 
     manifest_name = getattr(settings, "STATICFILES_MANIFEST", "staticfiles.json")
-
-
-# register serializers for JSON that handle UUIDs and datetime objects
-register(
-    name=getattr(settings, "EDD_SERIALIZE_NAME", "edd-json"),
-    encoder=JSONEncoder.dumps,
-    decoder=JSONDecoder.loads,
-    content_type="application/x-edd-json",
-    content_encoding="UTF-8",
-)
 
 
 class LBNLTemplate2Validator:
