@@ -1,4 +1,5 @@
 import logging
+import re
 from collections import namedtuple
 
 from django.db import transaction
@@ -6,8 +7,8 @@ from django.http import JsonResponse
 from django.views import View, generic
 from requests import codes
 
+from edd.search.registry import StrainRegistry
 from edd.utilities import guess_extension
-from main.tasks import create_ice_connection
 from main.views.study import StudyObjectMixin
 
 from . import constants, importer
@@ -29,35 +30,32 @@ class ICEFolderView(View):
     here is to test user input and provide helpful UI-level output.
     """
 
+    folder_url_pattern = re.compile(r"/folders/(\d+)/?$")
+
     def get(self, request, *args, **kwargs):
-        # TODO: uncovered code
         try:
-            ice = create_ice_connection(request.user.email)
-            folder = ice.folder_from_url(request.GET.get("url", None))
-            if folder is None:
-                return self._build_simple_err_response(
-                    constants.SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
-                    "Folder was not found",
-                    status=codes.not_found,
-                )
-            return JsonResponse(folder.to_json_dict())
+            input_url = request.GET.get("url", None)
+            match = self.folder_url_pattern.match(input_url)
+            if match:
+                folder_id = match.group(1)
+                registry = StrainRegistry()
+                with registry.login(request.user):
+                    folder = registry.get_folder(folder_id)
+            return JsonResponse({"id": folder.folder_id, "folderName": folder.name})
         except Exception as e:
             return self._build_simple_err_response(
                 constants.SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
                 "Failed to load ICE Folder",
                 detail=str(e),
             )
-        # END uncovered
 
     def _build_simple_err_response(
         self, category, title, status=codes.internal_server_error, detail=None
     ):
-        # TODO: uncovered code
         err = importer.ImportErrorSummary(category, title)
         if detail:
             err.add_occurrence(detail)
         return JsonResponse({"errors": [err.to_json_dict()]}, status=status)
-        # END uncovered
 
 
 class DescribeView(StudyObjectMixin, generic.DetailView):

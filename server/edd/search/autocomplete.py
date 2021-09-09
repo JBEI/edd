@@ -1,19 +1,17 @@
+import itertools
 import logging
 import operator
 import re
 from functools import reduce
 
-from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db.models import Q
 from django.http import JsonResponse
 from rest_framework.exceptions import ValidationError
 
-from jbei.rest.auth import HmacAuth
-from jbei.rest.clients.ice import IceApi
 from main import models as edd_models
 
-from . import solr
+from . import registry, solr
 
 DEFAULT_RESULT_COUNT = 20
 
@@ -201,11 +199,10 @@ def search_sbml_species(request):
 
 def search_strain(request):
     """Autocomplete delegates to ICE search API."""
-    auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=request.user.email)
-    ice = IceApi(auth=auth, verify_ssl_cert=settings.ICE_VERIFY_CERT)
-    ice.timeout = settings.ICE_REQUEST_TIMEOUT
-    term = request.GET.get("term", "")
-    results = ice.search(term)
+    ice = registry.StrainRegistry()
+    with ice.login(request.user):
+        search = ice.search(request.GET.get("term", ""))
+        results = list(itertools.islice(search, 20))
     return JsonResponse({"rows": results})
 
 

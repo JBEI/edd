@@ -4,39 +4,14 @@ Module contains tasks to be executed asynchronously by Celery worker nodes.
 
 from celery import shared_task
 from celery.utils.log import get_task_logger
-from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.db.models import F
-from requests.exceptions import RequestException
 
-from jbei.rest.auth import HmacAuth
-from jbei.rest.clients.ice import IceApi, IceApiException
+from edd.search.registry import AdminRegistry
 
 from . import models
 from .query import build_study_url
 
 logger = get_task_logger(__name__)
-User = get_user_model()
-
-
-def create_ice_connection(user_token):
-    """Creates an instance of the ICE API using common settings."""
-    # Use getattr to load settings without raising AttributeError
-    key_id = getattr(settings, "ICE_KEY_ID", None)
-    url = getattr(settings, "ICE_URL", None)
-    verify = getattr(settings, "ICE_VERIFY_CERT", False)
-    timeout = getattr(settings, "ICE_REQUEST_TIMEOUT", None)
-    if key_id and url:
-        try:
-            auth = HmacAuth(key_id=key_id, username=user_token)
-            ice = IceApi(auth=auth, base_url=url, verify_ssl_cert=verify)
-            if timeout:
-                ice.timeout = timeout
-            ice.write_enabled = True
-            return ice
-        except Exception as e:
-            logger.error("Failed to create ICE connection: %s", e)
-    return None
 
 
 def delay_calculation(task):
@@ -57,8 +32,7 @@ def link_ice_entry_to_study(self, strain, study):
     query = models.Strain.objects.filter(pk=strain, line__study__pk=study)
     if query.exists():
         try:
-            # always running as configured admin account
-            ice = create_ice_connection(settings.ICE_ADMIN_ACCOUNT)
+            # query the slug and name in use when this task runs
             record = (
                 query.annotate(
                     study_slug=F("line__study__slug"), study_name=F("line__study__name")
@@ -66,9 +40,12 @@ def link_ice_entry_to_study(self, strain, study):
                 .distinct()
                 .get()
             )
-            url = build_study_url(record.study_slug)
-            ice.add_experiment_link(record.registry_id, record.study_name, url)
-        except IceApiException as e:
+            # always running as configured admin account
+            ice = AdminRegistry()
+            with ice.login():
+                entry = ice.get_entry(record.registry_id)
+                entry.add_link(record.study_name, build_study_url(record.study_slug))
+        except Exception as e:
             # Retry when there are errors communicating with ICE
             raise self.retry(exc=e, countdown=delay_calculation(self), max_retries=10)
 
@@ -85,13 +62,18 @@ def unlink_ice_entry_from_study(self, strain, study):
     query = models.Strain.objects.filter(pk=strain, line__study__pk=study)
     if not query.exists():
         try:
-            # always running as configured admin account
-            ice = create_ice_connection(settings.ICE_ADMIN_ACCOUNT)
             record = models.Strain.objects.get(pk=strain)
             study_obj = models.Study.objects.get(pk=study)
             url = build_study_url(study_obj.slug)
-            ice.unlink_entry_from_study(record.registry_id, url)
-        except RequestException as e:
+            # always running as configured admin account
+            ice = AdminRegistry()
+            with ice.login():
+                entry = ice.get_entry(record.registry_id)
+                for link in entry.list_links():
+                    # first item is ID, third item is the link URL
+                    if link[2] == url:
+                        entry.remove_link(link[0])
+        except Exception as e:
             # Retry when there are errors communicating with ICE
             raise self.retry(exc=e, countdown=delay_calculation(self), max_retries=10)
 

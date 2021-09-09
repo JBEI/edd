@@ -1,5 +1,4 @@
 import io
-from unittest.mock import patch
 
 from django.urls import reverse
 from requests import codes
@@ -40,69 +39,6 @@ class ViewTests(TestCase):
         response = self.client.get(folder_url, follow=True)
         login_url = reverse("account_login")
         self.assertRedirects(response, f"{login_url}?next={folder_url}")
-
-    @patch("edd.describe.views.create_ice_connection")
-    def test_get_global_IceFolderView_found(self, connector):
-        self.client.force_login(self.user)
-        # to avoid populating testing ICE with specific data
-        # fake the connection
-        ice = connector.return_value
-        folder = ice.folder_from_url.return_value
-        folder.to_json_dict.return_value = {"id": 1234, "name": "fake"}
-        response = self.client.get(reverse("main:describe_flat:folder"))
-        self.assertEqual(response.status_code, codes.ok)
-
-    @patch("edd.describe.views.create_ice_connection")
-    def test_get_global_IceFolderView_missing(self, connector):
-        self.client.force_login(self.user)
-        # to avoid populating testing ICE with specific data
-        # fake the connection
-        ice = connector.return_value
-        ice.folder_from_url.return_value = None
-        response = self.client.get(reverse("main:describe_flat:folder"))
-        self.assertEqual(response.status_code, codes.not_found)
-
-    @patch("edd.describe.views.create_ice_connection")
-    def test_get_global_IceFolderView_error(self, connector):
-        self.client.force_login(self.user)
-        # to avoid triggering a real error
-        # fake the connection raising an error
-        connector.side_effect = ValueError()
-        response = self.client.get(reverse("main:describe_flat:folder"))
-        self.assertEqual(response.status_code, codes.internal_server_error)
-
-    @patch("edd.describe.views.create_ice_connection")
-    def test_get_scoped_IceFolderView_found(self, connector):
-        self.client.force_login(self.user)
-        # to avoid populating testing ICE with specific data
-        # fake the connection
-        ice = connector.return_value
-        folder = ice.folder_from_url.return_value
-        folder.to_json_dict.return_value = {"id": 1234, "name": "fake"}
-        url = reverse("main:describe:folder", kwargs=self.study_kwargs)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.ok)
-
-    @patch("edd.describe.views.create_ice_connection")
-    def test_get_scoped_IceFolderView_missing(self, connector):
-        self.client.force_login(self.user)
-        # to avoid populating testing ICE with specific data
-        # fake the connection
-        ice = connector.return_value
-        ice.folder_from_url.return_value = None
-        url = reverse("main:describe:folder", kwargs=self.study_kwargs)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.not_found)
-
-    @patch("edd.describe.views.create_ice_connection")
-    def test_get_scoped_IceFolderView_error(self, connector):
-        self.client.force_login(self.user)
-        # to avoid triggering a real error
-        # fake the connection raising an error
-        connector.side_effect = ValueError()
-        url = reverse("main:describe:folder", kwargs=self.study_kwargs)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.internal_server_error)
 
     def test_get_DescribeView_no_permission(self):
         other_user = UserFactory()
