@@ -1,6 +1,6 @@
+import itertools
 import logging
 
-from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model, hashers
 from django.contrib.auth.admin import UserAdmin
@@ -8,9 +8,8 @@ from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
+from edd.search.registry import StrainRegistry
 from edd.search.solr import UserSearch
-from jbei.rest.auth import HmacAuth
-from jbei.rest.clients.ice import IceApi, IceApiException
 
 from .models import Institution, InstitutionID, UserProfile
 
@@ -105,21 +104,22 @@ class EDDUserAdmin(UserAdmin):
         # intentionally throw error when multiple users selected
         user = queryset.get()
         context = self.admin_site.each_context(request)
-        auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=user.email)
-        ice = IceApi(auth=auth, verify_ssl_cert=settings.ICE_VERIFY_CERT)
-        ice.timeout = settings.ICE_REQUEST_TIMEOUT
-        results = []
-        term = request.POST.get("term", None)
-        if term is not None:
+        term = request.POST.get("term", "")
+        registry = StrainRegistry()
+        with registry.login(user):
             try:
-                results = ice.search(term)
-            except IceApiException:
+                results = registry.search(term)
+                context.update(
+                    ice=registry.base_url,
+                    results=list(itertools.islice(results, 20)),
+                    impersonate=user,
+                )
+            except Exception:
                 self.message_user(
                     request,
                     _("Failed to execute search in ICE, check the ICE logs."),
                     messages.ERROR,
                 )
-        context.update(ice=ice.base_url, results=results, impersonate=user)
         return render(request, "admin/strain_impersonate_search.html", context=context)
 
     search_ice_as_action.short_description = _("Search ICE as User")

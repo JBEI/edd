@@ -8,17 +8,15 @@ from io import BytesIO
 from pprint import pformat
 from typing import Any, Dict, List, Tuple
 
-import requests
 from django.conf import settings
 from django.core.mail import mail_admins, send_mail
 from django.db import transaction
 from django.urls import reverse
-from django.utils.translation import gettext as _
 from requests import codes
 
+from edd.search.registry import StrainRegistry
 from main.forms import RegistryValidator
 from main.models import Assay, Line, Strain
-from main.tasks import create_ice_connection
 
 # avoiding loading a ton of names to the module by only loading the namespace to constants
 from . import constants
@@ -36,7 +34,6 @@ from .constants import (
     ERROR_PRIORITY_ORDER,
     EXISTING_ASSAY_NAMES,
     EXISTING_LINE_NAMES,
-    FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
     GENERIC_ICE_RELATED_ERROR,
     ICE_FOLDERS_KEY,
     IGNORE_ICE_ACCESS_ERRORS_PARAM,
@@ -48,15 +45,13 @@ from .constants import (
     NON_UNIQUE_LINE_NAMES_CATEGORY,
     OMIT_STRAINS,
     PART_NUMBER_NOT_FOUND,
-    SINGLE_ENTRY_LOOKUP_ERRS,
-    SINGLE_FOLDER_LOOKUP_ERRS,
+    SINGLE_PART_ACCESS_ERROR_CATEGORY,
     STRAINS_REQUIRED_FOR_NAMES,
     STRAINS_REQUIRED_TITLE,
     SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
     UNPREDICTED_ERROR,
     WARNING_PRIORITY_ORDER,
     ZERO_REPLICATES,
-    IceErrCondition,
 )
 from .parsers import (
     ExperimentDescFileParser,
@@ -328,13 +323,8 @@ class IcePartResolver:
                 logger.info("Dropping all strain data per user request")
             return None
 
-        ice = create_ice_connection(self.importer.ice_username)
-        # avoid throwing errors if failed to build connection
-        if ice is None:
-            self._ice_config_error()
-            return None
-        ice.result_limit = getattr(settings, "ICE_FOLDER_SEARCH_PAGE_SIZE", 100)
-        return ice
+        registry = StrainRegistry()
+        return registry.login(self.importer.user)
 
     def _validate_strain_search_abort(self):
         # if we've detected one or more systemic ICE access errors during
@@ -363,7 +353,9 @@ class IcePartResolver:
                 for ice_entry in folder.entries:
                     use_ice_part_numbers = self.options.use_ice_part_numbers
                     ice_id = (
-                        ice_entry.part_id if use_ice_part_numbers else ice_entry.uuid
+                        ice_entry.part_id
+                        if use_ice_part_numbers
+                        else ice_entry.registry_id
                     )
                     edd_strain = edd_strains_by_ice_id[ice_id]
                     input_set.add_combinatorial_line_metadata(
@@ -415,7 +407,7 @@ class IcePartResolver:
         strains_by_pk = {}
         edd_strains_by_ice_id = {}
         for part_id, entry in self.parts_by_ice_id.items():
-            strain = Strain.objects.get(registry_id=entry.uuid)
+            strain = Strain.objects.get(registry_id=entry.registry_id)
             strains_by_pk[strain.pk] = strain
             edd_strains_by_ice_id[part_id] = strain
 
@@ -430,61 +422,6 @@ class IcePartResolver:
 
         return strains_by_pk
 
-    def _query_ice(self, ice, unique_ids, query_function, resource_type):
-        """
-        A workhorse method that queries ICE for parts or for folder contents, logging errors for
-        any resources that weren't found.
-
-        :param unique_ids: a dictionary whose keys are ids for resources to be queried
-            from ICE. Existing entries will be replaced with the values read from ICE, or keys
-            will be removed for those that aren't found in ICE.
-        :raises requests.exceptions.HTTPError if a systemic problem occurred that should prevent
-        further requests to ICE
-        """
-        if unique_ids:
-            logger.info(
-                f"Searching ICE for {len(unique_ids)} unique {resource_type}..."
-            )
-        else:
-            return  # return early if there are no items to query
-
-        for resource_id in unique_ids:
-            # query ICE for this resource
-            try:
-                resource = query_function(ice, resource_id)
-                if not resource:
-                    # aggregate errors that are helpful to detect on a per-resource basis
-                    self._add_ice_err_msg(resource_id, codes.not_found, resource_type)
-            except requests.exceptions.HTTPError as http_err:
-                if http_err.response.status_code == codes.forbidden:
-                    # aggregate errors that are helpful to detect on a per-resource basis
-                    self._add_ice_err_msg(resource_id, codes.forbidden, resource_type)
-                else:
-                    # other errors indicate bigger problems, abort early
-                    self._systemic_ice_access_error(unique_ids, resource_type)
-                    return
-
-    def _add_ice_err_msg(self, resource_id, err_code, resource_name):
-        # get error messages specific to the resource being looked up in ICE
-        err_messages = (
-            SINGLE_FOLDER_LOOKUP_ERRS
-            if resource_name == "folders"
-            else SINGLE_ENTRY_LOOKUP_ERRS
-        )
-        ignore_ice_access_errors = self.options.ignore_ice_access_errors
-
-        if self.combinatorial_strains:
-            err_condition = IceErrCondition.COMBINATORIAL_STRAINS
-        elif self.strains_required_for_naming:
-            err_condition = IceErrCondition.STRAIN_NAMES_REQUIRED
-        elif not ignore_ice_access_errors:
-            err_condition = IceErrCondition.GENERIC_ERR
-        else:
-            return
-
-        category, title = err_messages[err_code][err_condition]
-        self.importer.add_error(category, title, resource_id)
-
     def _query_ice_entries(self, ice):
         """
         Queries ICE for parts with the provided (locally-unique) numbers,
@@ -495,141 +432,63 @@ class IcePartResolver:
         an ICE entry.
         """
         self.individual_entries_found = 0
-        self._query_ice(ice, self.unique_part_ids, self._query_ice_entry, "strain")
+        with ice:
+            for entry_id in self.unique_part_ids:
+                if entry_id not in self.parts_by_ice_id:
+                    try:
+                        entry = ice.get_entry(entry_id)
+                        self._process_entry(entry_id, entry)
+                        self.individual_entries_found += 1
+                    except Exception:
+                        self.importer.add_error(
+                            SINGLE_PART_ACCESS_ERROR_CATEGORY,
+                            PART_NUMBER_NOT_FOUND,
+                            f"EDD could not find a reference to {entry_id}",
+                        )
 
     def _query_ice_folder_contents(self, ice):
         """
         Queries ICE for folders with the provided (locally-unique) numbers,
         logging errors for any that weren't found.
         """
-        self._query_ice(
-            ice, self.unique_folder_ids, self._query_folder_contents, "folders"
-        )
-
-    def _query_ice_entry(self, ice, entry_id):
-        # check the cache first to see whether this part is already found,
-        # e.g. by inclusion in a folder that's already been checked
-        entry = self.parts_by_ice_id.get(entry_id)
-        if entry:
-            return entry
-
-        entry = ice.get_entry(entry_id, suppress_errors=True)
-        if entry:
-            self._process_entry(entry_id, entry)
-            self.individual_entries_found += 1
-
-            # double-check for a coding error that occurred during testing. initial test
-            # parts had "JBX_*" part numbers that matched their numeric ID, but this isn't
-            # always the case!
-            use_part_numbers = self.options.use_ice_part_numbers
-            if (use_part_numbers and entry.part_id != entry_id) or (
-                (not use_part_numbers) and entry.uuid != str(entry_id)
-            ):
-                actual_id = entry.part_id if use_part_numbers else entry.uuid
-                logger.error(
-                    f'Couldn\'t locate ICE entry "{entry_id}" An ICE entry was '
-                    f"found by searching for ID {entry_id}, but its returned identifier "
-                    f"({entry.id}) didn't match the input"
+        with ice:
+            for folder_id in self.unique_folder_ids:
+                folder = ice.get_folder(folder_id)
+                filtered_entries = []
+                unfiltered_entry_count = 0
+                for entry in folder.list_entries():
+                    unfiltered_entry_count += 1
+                    entry_id = entry.registry_id
+                    if self.options.use_ice_part_numbers:
+                        entry_id = entry.part_id
+                    if entry.payload["type"] in self.ice_folder_to_filters[folder_id]:
+                        self._process_entry(entry_id, entry)
+                        filtered_entries.append(entry)
+                self.folders_by_ice_id[folder_id] = folder
+                self.total_filtered_entry_count += len(filtered_entries)
+                logger.info(
+                    f'Folder "{folder.name}": found {len(folder.entries)} entries. '
+                    f"{unfiltered_entry_count} passed the filters "
+                    f"({self.ice_folder_to_filters[folder_id]})"
                 )
-                self.importer.add_error(
-                    INTERNAL_EDD_ERROR_CATEGORY,
-                    FOUND_PART_NUMBER_DOESNT_MATCH_QUERY,
-                    actual_id,
-                )
-        return entry
+                folder_desc = f'"{folder.name}" ({folder_id})'
+                if not filtered_entries:
+                    self.importer.add_error(
+                        EMPTY_FOLDER_ERROR_CATEGORY,
+                        EMPTY_FOLDER_ERROR_TITLE,
+                        folder_desc,
+                    )
+                elif not unfiltered_entry_count:
+                    self.importer.add_error(
+                        NO_FILTERED_ENTRIES_ERROR_CATEGORY,
+                        NO_ENTRIES_TITLE,
+                        folder_desc,
+                    )
 
     def _process_entry(self, entry_id, entry):
         self.parts_by_ice_id[entry_id] = entry
         validator = RegistryValidator(existing_entry=entry)
-        validator(entry.uuid)
-
-    def _query_folder_contents(self, ice, folder_id):
-        """
-        Queries ICE to get all entries in a single folder, filtering the returned entries if
-        requested, then caches the results
-        """
-        folder = ice.get_folder_entries(folder_id, sort="created")
-        filtered_entries = []
-        unfiltered_entry_count = 0
-        self.total_filtered_entry_count = 0
-
-        if not folder:
-            return None
-
-        # cache entries from this folder so we don't look them up multiple times,
-        # e.g. if included in an explicit user request or in multiple folders
-        for entry in folder.entries:
-            # use the same ID scheme as user input (depends on input source)
-            entry_id = (
-                entry.part_id if self.options.use_ice_part_numbers else entry.uuid
-            )
-            unfiltered_entry_count += 1
-            if entry.JSON_TYPE in self.ice_folder_to_filters[folder_id]:
-                self._process_entry(entry_id, entry)
-                filtered_entries.append(entry)
-
-        # Cache the most recent folder description to reduce occurrence of race conditions,
-        # e.g. in case entries were added during our queries. Query above purposefully returns
-        # the most recent parts last.
-        folder.entries = filtered_entries
-        self.folders_by_ice_id[folder_id] = folder
-        self.total_filtered_entry_count += len(filtered_entries)
-        logger.info(
-            f'Folder "{folder.name}": found {len(folder.entries)} entries. '
-            f"{unfiltered_entry_count} passed the filters "
-            f"({self.ice_folder_to_filters[folder_id]})"
-        )
-        folder_desc = f'"{folder.name}" ({folder_id})'
-        if not folder.entries:
-            self.importer.add_error(
-                EMPTY_FOLDER_ERROR_CATEGORY, EMPTY_FOLDER_ERROR_TITLE, folder_desc
-            )
-        elif not unfiltered_entry_count:
-            self.importer.add_error(
-                NO_FILTERED_ENTRIES_ERROR_CATEGORY, NO_ENTRIES_TITLE, folder_desc
-            )
-
-        return folder
-
-    def _ice_config_error(self):
-        ignore_ice_access_errors = self.options.ignore_ice_access_errors
-        importer = self.importer
-
-        requested = ""
-        if self.unique_folder_ids:
-            requested = f"{len(self.unique_folder_ids)} ICE folders "
-        if self.unique_part_ids:
-            if requested:
-                requested += " and "
-            requested += f"{len(self.unique_part_ids)} unique ICE part IDs"
-
-        preamble = (
-            f"You've provided {requested}, but EDD isn't configured to connect to ICE."
-        )
-
-        if self.combinatorial_strains:
-            details = (
-                f"{preamble} EDD can't satisfy your request to create lines "
-                f"combinatorially from ICE entries until an ICE connection is configured."
-            )
-        elif self.strains_required_for_naming:
-            details = (
-                f"{preamble} EDD can't satisfy your request to name lines according to the "
-                f"included ICE entries until an ICE connection is configured."
-            )
-        elif ignore_ice_access_errors:
-            return
-        else:
-            details = _(
-                f"{preamble} You can go ahead with creating lines, but you'll have to omit "
-                f"ICE entry data from your study, and you will have to go back and add it to "
-                f"your lines ater on to make your study complete."
-            )
-        importer.add_error(
-            category_title=constants.SYSTEMIC_ICE_ACCESS_ERROR_CATEGORY,
-            subtitle=constants.ICE_NOT_CONFIGURED,
-            occurrence=details,
-        )
+        validator(entry.registry_id)
 
     def _systemic_ice_access_error(self, unique_ids, resource_name):
         """

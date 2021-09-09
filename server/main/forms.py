@@ -19,8 +19,7 @@ from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from jbei.rest.auth import HmacAuth
-from jbei.rest.clients.ice import IceApi
+from edd.search.registry import StrainRegistry
 
 from . import models
 from .models import (
@@ -199,14 +198,11 @@ class RegistryValidator:
             return self.existing_entry
         # using the Update to get the correct user for the search
         update = Update.load_update()
+        registry = StrainRegistry()
         user_email = update.mod_by.email
         try:
-            auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email)
-            verify = getattr(settings, "ICE_VERIFY_CERT", True)
-            ice = IceApi(auth=auth, verify_ssl_cert=verify)
-            ice.timeout = settings.ICE_REQUEST_TIMEOUT
-            entry = ice.get_entry(registry_id)
-            return entry
+            with registry.login(update.mod_by):
+                return registry.get_entry(registry_id)
         except Exception as e:
             raise ValidationError(
                 _("Failed to load strain %(uuid)s from ICE for user %(user)s"),
@@ -217,16 +213,16 @@ class RegistryValidator:
     def save_strain(self, entry):
         try:
             if entry and self.existing_strain:
-                self.existing_strain.registry_id = entry.uuid
-                self.existing_strain.registry_url = entry.url
+                self.existing_strain.name = entry.name
+                self.existing_strain.registry_id = entry.registry_id
+                self.existing_strain.registry_url = entry.registry_url
                 self.existing_strain.save()
             elif entry:
                 # not using get_or_create, so exception is raised if registry_id exists
                 Strain.objects.create(
                     name=entry.name,
-                    description=entry.short_description,
-                    registry_id=entry.uuid,
-                    registry_url=entry.url,
+                    registry_id=entry.registry_id,
+                    registry_url=entry.registry_url,
                 )
         except Exception as e:
             raise ValidationError(

@@ -18,6 +18,7 @@ from rdflib.term import URIRef
 
 from edd.celery import app
 from edd.fields import VarCharField
+from edd.search.registry import StrainRegistry
 
 from .common import EDDSerialize
 from .update import Datasource
@@ -421,7 +422,7 @@ class GeneIdentifier(MeasurementType):
         except cls.DoesNotExist:
             # actually check ICE
             link = GeneStrainLink()
-            if link.check_ice(user.email, identifier):
+            if link.check_ice(user, identifier):
                 # save link if found in ICE
                 datasource = Datasource.objects.create(
                     name="ICE Registry", url=link.strain.registry_url
@@ -429,7 +430,7 @@ class GeneIdentifier(MeasurementType):
                 gene = cls.objects.create(
                     type_name=identifier,
                     type_source=datasource,
-                    gene_length=link.strain.part.bp_count,
+                    gene_length=link.strain.part.payload.get("basePairCount", None),
                 )
                 link.gene = gene
                 link.save()
@@ -676,7 +677,7 @@ class ProteinIdentifier(MeasurementType):
                 # if it looks like a UniProt ID, look up in UniProt
                 accession_code = accession_match.group(1)
                 return cls._load_uniprot(accession_code, protein_name)
-            elif link.check_ice(user.email, protein_name):
+            elif link.check_ice(user, protein_name):
                 # if it is found in ICE, create based on ICE info
                 return cls._load_ice(link)
             elif getattr(settings, "REQUIRE_UNIPROT_ACCESSION_IDS", True):
@@ -736,30 +737,23 @@ def lookup_protein_in_uniprot(pk):
 class StrainLinkMixin:
     """Common code for objects linked to Strains."""
 
-    def check_ice(self, user_token, name):
-        from main.tasks import create_ice_connection
+    def check_ice(self, user, name):
         from .core import Strain
 
         try:
-            ice = create_ice_connection(user_token)
-            if not ice:
-                logger.warning("Unable to connect to ICE.  ICE is not configured.")
-                return False
-
-            part = ice.get_entry(name, suppress_errors=True)
-            if part:
-                url = f"{ice.base_url}/entry/{part.id}"
-                default = dict(
-                    name=part.name, description=part.short_description, registry_url=url
-                )
+            registry = StrainRegistry()
+            with registry.login(user):
+                entry = registry.get_entry(name)
+                url = f"{registry.base_url}/entry/{entry.db_id}"
+                default = dict(name=entry.name, registry_url=url)
                 self.strain, created = Strain.objects.get_or_create(
-                    registry_id=part.uuid, defaults=default
+                    registry_id=entry.registry_id, defaults=default
                 )
-                self.strain.part = part
+                self.strain.part = entry
                 return True
         except Exception:
             logger.warning(
-                f"Failed to load ICE information on `{name}` for `{user_token}`",
+                f"Failed to load ICE information on `{name}` for `{user.username}`",
                 exc_info=True,
             )
         return False

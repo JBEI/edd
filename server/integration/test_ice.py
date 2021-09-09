@@ -173,7 +173,7 @@ class IceIntegrationTests(TestCase):
         )
         response = self._run_upload(self.entry_ids, admin_study, self.admin_ice_user)
         # should return OK from upload
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, codes.ok, response.content)
         # there should be 10 strains on the study
         self.assertEqual(
             models.Strain.objects.filter(line__study=admin_study).distinct().count(), 10
