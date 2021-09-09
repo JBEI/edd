@@ -135,8 +135,24 @@ def monkey_patch_postgres_wrapper():
     )
 
 
+def monkey_patch_requests_timeout():
+    import requests
+
+    base_send = requests.Session.send
+
+    def send(*args, **kwargs):
+        # if no explicit timeout is set, use 10 seconds connect/read timeouts
+        if kwargs.get("timeout", None) is None:
+            kwargs["timeout"] = (10, 10)
+        return base_send(*args, **kwargs)
+
+    send.__doc__ = base_send.__doc__
+    requests.Session.send = send
+
+
 monkey_patch_mail()
 monkey_patch_postgres_wrapper()
+monkey_patch_requests_timeout()
 
 
 __all__ = ("celery_app", "receiver", "TestCase")
