@@ -125,15 +125,9 @@ class StudyViewTestCase(TestCase):
 
 
 class StudyAttachmentViewTests(StudyViewTestCase):
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        cls.filename = "ImportData_FBA_HPLC.xlsx"
-        cls.url = reverse("main:overview", kwargs={"slug": cls.target_study.slug})
-
     def setUp(self):
         super().setUp()
-        upload_attachment(self.client, self.target_study, self.filename)
+        upload_attachment(self.client, self.target_study, "ImportData_FBA_HPLC.xlsx")
         self.attachment = self.target_study.attachments.first()
         kwargs = {
             "slug": self.target_study.slug,
