@@ -90,9 +90,11 @@ class Update(models.Model, EDDSerialize):
         """
         User = get_user_model()
         request = get_current_request()
+        current = None
         if request is not None:
             current = request.user
-        if current is None:
+        if not isinstance(current, User):
+            # any None or AnonymousUser gets replaced with system user
             return User.system_user()
         return current
 
