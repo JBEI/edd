@@ -1,6 +1,9 @@
+import csv
 import decimal
+import io
 import math
 
+from django.http import QueryDict
 from django.urls import reverse
 
 from edd import TestCase
@@ -8,7 +11,7 @@ from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory
 
-from . import sbml, table
+from . import broker, sbml, table, tasks
 
 
 def bad_function(*args, **kwargs):
@@ -41,6 +44,100 @@ def test_columnchoice_lookup_exception_gives_empty_string():
     choice = table.ColumnChoice(None, None, None, bad_function)
     result = choice.get_value(None)
     assert result == ""
+
+
+class ExportTaskTests(TestCase):
+    """Tests that run the Celery tasks for exports/worklists."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = UserFactory()
+        # initialize study
+        cls.study = factory.StudyFactory()
+        cls.study.userpermission_set.update_or_create(
+            permission_type=models.StudyPermission.READ, user=cls.user
+        )
+        protocol = factory.ProtocolFactory()
+        mtypes = [factory.MeasurementTypeFactory() for _i in range(3)]
+        x_unit = factory.UnitFactory()
+        y_unit = factory.UnitFactory()
+        for _i in range(10):
+            line = factory.LineFactory(study=cls.study)
+            for _j in range(3):
+                assay = factory.AssayFactory(line=line, protocol=protocol)
+                for t in mtypes:
+                    measurement = factory.MeasurementFactory(
+                        assay=assay, measurement_type=t, x_units=x_unit, y_units=y_unit,
+                    )
+                    factory.ValueFactory(
+                        measurement=measurement,
+                        x=[12],  # keep everything same "time"
+                        y=[factory.fake.pyint()],
+                    )
+
+    def test_simple_export(self):
+        storage = broker.ExportBroker(self.user.id)
+        params = QueryDict(mutable=True)
+        params.update(studyId=self.study.id)
+        path = storage.save_params(params)
+        export_id = tasks.export_table_task.s(self.user.id, path).apply()
+        result = storage.load_export(export_id.result)
+
+        with io.TextIOWrapper(io.BytesIO(result), encoding="utf-8") as file:
+            rows = list(csv.reader(file))
+        # header row + (10 lines * 3 assays * 3 types) + blank row
+        assert len(rows) == 92
+        assert rows[91] == []
+        assert rows[0] == [
+            "Study ID",
+            "Study Name",
+            "Study Description",
+            "Study Contact",
+            "Line ID",
+            "Line Name",
+            "Line Description",
+            "Control",
+            "Strain(s)",
+            "Carbon Source(s)",
+            "Line Experimenter",
+            "Line Contact",
+            "Protocol ID",
+            "Protocol Name",
+            "Assay ID",
+            "Assay Name",
+            "Type",
+            "Formal Type ID",
+            "Measurement Updated",
+            "X Units",
+            "Y Units",
+            "12.0",
+        ]
+
+    def test_simple_worklist(self):
+        template = models.WorklistTemplate.objects.get(
+            uuid="49024cc1-8c48-4511-a529-fc5a8f3d7bd9",
+        )
+        storage = broker.ExportBroker(self.user.id)
+        params = QueryDict(mutable=True)
+        params.update(studyId=self.study.id, template=template.id)
+        path = storage.save_params(params)
+        export_id = tasks.export_worklist_task.s(self.user.id, path).apply()
+        result = storage.load_export(export_id.result)
+
+        print(result)
+        with io.TextIOWrapper(io.BytesIO(result), encoding="utf-8") as file:
+            rows = list(csv.reader(file))
+        # header row + 10 lines + blank row
+        assert len(rows) == 12
+        assert rows[11] == []
+        assert rows[0] == [
+            "Sample Name",
+            "Sample Position",
+            "Method-QQQ",
+            "Data File",
+            "Inj Vol (ul)",
+        ]
 
 
 class ExportViewPostTests(TestCase):
