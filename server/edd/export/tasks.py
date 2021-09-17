@@ -51,6 +51,7 @@ def export_table_task(self, user_id, param_path):
             )
             notifications.notify(message)
         notifications.mark_read(self.request.id)
+        return export_id
     except Exception as e:
         logger.exception("Failure in export_table_task: %s", e)
         raise RuntimeError(
@@ -114,6 +115,7 @@ def export_worklist_task(self, user_id, param_path):
             )
             notifications.notify(message)
         notifications.mark_read(self.request.id)
+        return export_id
     except Exception as e:
         logger.exception("Failure in export_worklist_task: %s", e)
         raise RuntimeError(
