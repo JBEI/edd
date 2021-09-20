@@ -58,23 +58,7 @@ class ExportTaskTests(TestCase):
         cls.study.userpermission_set.update_or_create(
             permission_type=models.StudyPermission.READ, user=cls.user
         )
-        protocol = factory.ProtocolFactory()
-        mtypes = [factory.MeasurementTypeFactory() for _i in range(3)]
-        x_unit = factory.UnitFactory()
-        y_unit = factory.UnitFactory()
-        for _i in range(10):
-            line = factory.LineFactory(study=cls.study)
-            for _j in range(3):
-                assay = factory.AssayFactory(line=line, protocol=protocol)
-                for t in mtypes:
-                    measurement = factory.MeasurementFactory(
-                        assay=assay, measurement_type=t, x_units=x_unit, y_units=y_unit,
-                    )
-                    factory.ValueFactory(
-                        measurement=measurement,
-                        x=[12],  # keep everything same "time"
-                        y=[factory.fake.pyint()],
-                    )
+        factory.create_fake_exportable_study(cls.study)
 
     def test_simple_export(self):
         storage = broker.ExportBroker(self.user.id)

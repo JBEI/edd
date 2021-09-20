@@ -580,6 +580,7 @@ class TableProcessor:
 
             self.protocols = list(importer._valid_protocol.values())
             self.lines = list(importer._line_by_id.values())
+            self.lines = self.lines + list(importer._line_lookup.values())
         finally:
             self._cleanup_update()
 

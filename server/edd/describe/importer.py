@@ -17,6 +17,7 @@ from requests import codes
 from edd.search.registry import StrainRegistry
 from main.forms import RegistryValidator
 from main.models import Assay, Line, Strain
+from main.signals import study_described
 
 # avoiding loading a ton of names to the module by only loading the namespace to constants
 from . import constants
@@ -1019,6 +1020,13 @@ class CombinatorialCreationImporter:
             "runtime_seconds": self.performance.total_time_delta.total_seconds(),
             "success_redirect": reverse("main:lines", kwargs={"slug": self.study.slug}),
         }
+
+        study_described.send(
+            sender=self.__class__,
+            study=self.study,
+            user=self.user,
+            count=total_line_count,
+        )
 
         return codes.ok, _build_response_content(self.errors, self.warnings, content)
 
