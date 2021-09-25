@@ -15,6 +15,8 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.utils.cell import get_column_letter
 from openpyxl.utils.dataframe import dataframe_to_rows
 
+from main.models.core import DefaultUnit
+
 from .. import exceptions, reporting
 
 logger = logging.getLogger(__name__)
@@ -659,6 +661,7 @@ class MultiSheetExcelParserMixin:
 
         # for each worksheet in the workbook
         parsed_result = pd.DataFrame()
+        mapper = MeasurementMapper()
 
         for name, sheet in wb.items():
             # for every two columns in the worksheet
@@ -671,9 +674,13 @@ class MultiSheetExcelParserMixin:
                 if not two_cols.dropna().empty:
                     # decimate the data
                     two_cols = two_cols.iloc[::10, :]
+
                     # using mapper to map data into the EDD import format
                     # and convert in to a pandas dataframe
-                    mapper = MeasurementMapper(name, two_cols)
+                    # set the line name and the dataframe with the two columns
+                    # with data for the next measurement type
+                    mapper.set_line_name(name)
+                    mapper.set_data(two_cols)
                     parsed_df = mapper.map_data()
                     parsed_result = parsed_result.append(parsed_df)
 
@@ -709,27 +716,13 @@ class MeasurementMapper:
     parsed_df: pd.DataFrame
     df: pd.DataFrame
     units: Dict
+    mes_unit_map: Dict
 
-    def __init__(self, sheet_name, df):
-        self.loa_name = sheet_name
+    def __init__(self, name=None, df=None):
+        self.loa_name = name
         self.df = df
-        self.units = {
-            "Temperature": "°C",
-            "Stir speed": "rpm",
-            "pH": "n/a",
-            "Air flow": "lpm",
-            "DO": "% maximum measured",
-            "Volume": "mL",
-            "OUR": "mM/L/h",
-            "CER": "mM/L/h",
-            "RQ": "n/a",
-            "Feed#1 volume pumped": "mL",
-            "Antifoam volume pumped": "mL",
-            "Acid volume pumped": "mL",
-            "Base volume pumped": "mL",
-            "Volume - sampled": "mL",
-            "Volume of inocula": "mL",
-        }
+        # maps naming format of Ambr measurement type to
+        # naming convention in EDD
         self.mtypes = {
             "DO": "Dissolved Oxygen",
             "Feed#1 volume pumped": "Feed volume pumped",
@@ -738,6 +731,18 @@ class MeasurementMapper:
         # NOTE: Measurement types do not exist in EDD:
         # Volume - sampled, Volume of inocula, DO, Feed#1 volume pumped
         # Unsupported units: mM/L/h, rpm, % maximum measured, °C
+
+        # get the defualt units for measurements from the database
+        self.mes_unit_map = {}
+        du_obj = DefaultUnit.objects.all()
+        for obj in du_obj:
+            self.mes_unit_map[obj.measurement_type.type_name] = obj.unit.unit_name
+
+    def set_line_name(self, name):
+        self.loa_name = name
+
+    def set_data(self, df):
+        self.df = df
 
     def map_data(self):
 
@@ -749,10 +754,11 @@ class MeasurementMapper:
         # check measurement type to rename for EDD
         if mtype_name in self.mtypes.keys():
             self.df["Measurement Type"] = self.mtypes[mtype_name]
+            mtype_name = self.mtypes[mtype_name]
         else:
             self.df["Measurement Type"] = mtype_name
 
-        self.df["Units"] = self.units[mtype_name]
+        self.df["Units"] = self.mes_unit_map[mtype_name]
         # dropping records with NaN values
         self.df = self.df[self.df["Value"].notna()]
         self.parsed_df = self.df

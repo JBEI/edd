@@ -837,9 +837,18 @@ class MeasurementUnitAdmin(admin.ModelAdmin):
     pass
 
 
+class DefaultUnitAdmin(admin.ModelAdmin):
+    def get_fields(self, request, obj=None):
+        return [("type_name", "short_name")]
+
+    def get_list_display(self, request):
+        return ["type_name", "short_name", "_study_count", "type_source"]
+
+
 admin.site.register(models.Assay, AssayAdmin)
 admin.site.register(models.Attachment, AttachmentAdmin)
 admin.site.register(models.CarbonSource, CarbonSourceAdmin)
+admin.site.register(models.DefaultUnit, DefaultUnitAdmin)
 admin.site.register(models.GeneIdentifier, GeneAdmin)
 admin.site.register(models.MeasurementType, MeasurementTypeAdmin)
 admin.site.register(models.MeasurementUnit, MeasurementUnitAdmin)
