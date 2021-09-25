@@ -1381,6 +1381,9 @@ class MeasurementValue(models.Model):
 
 
 class DefaultUnit(models.Model):
+    class Meta:
+        db_table = "default_unit"
+
     measurement_type = models.ForeignKey(
         MeasurementType, on_delete=models.deletion.CASCADE
     )
@@ -1389,3 +1392,13 @@ class DefaultUnit(models.Model):
         Protocol, blank=True, null=True, on_delete=models.deletion.CASCADE
     )
     parser = VarCharField(blank=True, null=True)
+
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "type_name": self.measurement_type.type_name,
+            "unit_name": self.unit.unit_name,
+        }
+
+    # def __str__(self):
+    #     return self.measurement_type

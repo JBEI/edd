@@ -1,9 +1,12 @@
 from uuid import uuid4
 
+import pytest
+
 from .. import parsers
 from . import factory
 
 
+@pytest.mark.django_db
 def test_AmbrExcelParser_success():
 
     path = "ambr_export_test_data.xlsx"
