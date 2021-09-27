@@ -169,12 +169,14 @@ function prepareIt() {
     Utl.FileDropZone.create({
         "elementId": "experimentDescDropZone",
         "url": url,
+        "clickable": ".dz-browse-link",
         // must bind these functions; otherwise the function this will be the options object
         // here, instead of the helper object
         "processResponseFn": DescriptionDropzone.success,
         "processErrorFn": DescriptionDropzone.error,
         "processWarningFn": DescriptionDropzone.warning,
     });
+    $(".dz-message").removeClass("hide");
 }
 
 // wait for edddata event to begin processing page

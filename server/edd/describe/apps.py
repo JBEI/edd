@@ -4,7 +4,7 @@ from django.apps import AppConfig
 class DescribeConfig(AppConfig):
     label = "describe"
     name = "edd.describe"
-    verbose_name = "Describe"
+    verbose_name = "Describe experiment"
 
     def ready(self):
         # The F401 error code is "imported but unused" warning;

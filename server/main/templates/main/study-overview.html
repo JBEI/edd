@@ -1,4 +1,5 @@
 {% extends "main/study.html" %}
+{% load describe %}
 {% load static %}
 {% load i18n %}
 
@@ -93,60 +94,106 @@
 
 
 {% if writable %}
-<div class="overviewDropZone">
-  <div
-    class="fd-zone excel"
-    id="experimentDescDropZone"
-    data-url="{% url 'main:describe:describe' slug=study.slug %}"
-  >
-    <div id="dz-title">
-      <span>{% trans 'Upload an Experiment Description file' %}</span>
-      <a href="{% url 'main:describe:help' slug=study.slug %}" target="_blank">
-        <div id="helpExperimentDescription" class="helpBadgeDiv">{% trans 'Help' %}
-          <div class="helpContent">
-            <p>
-              {% blocktrans trimmed %}
-              Drag-and-drop an Experiment description file into this grey box to
-              describe your experiment. Alternatively, you can click on the link below
-              to manually input your experiment description.
-              {% endblocktrans %}
-            </p>
-            <p>
-              {% blocktrans trimmed %}
-              Click on this icon for more information about Experiment Description files.
-              {% endblocktrans %}
-            </p>
+
+<div id="overviewWrapper">
+  <div class="row">
+    <div id="describeDirectionsDiv" class="column">
+      <span id="descriptionPromptTitle">{% trans 'Experiment Description' %}</span>
+        <p>
+        {% blocktrans trimmed %}
+          An experiment description file is an Excel file that describes your experiment: which
+          strains you are using (part ID from ICE), how they are being cultured (lines and
+          metadata), the procedure for processing samples (protocol), and which samples are being
+          taken (assays).
+        {% endblocktrans %}
+      </p>
+      <p>
+        <a href="{% url 'main:describe:help' slug=study.slug %}#column_options" target="_blank">
+          {% trans 'Click here for column options' %}
+        </a>
+      </p>
+    </div>
+    <div class="column overviewDropZone">
+      <div
+        class="fd-zone"
+        id="experimentDescDropZone"
+        data-url="{% url 'main:describe:describe' slug=study.slug %}"
+      >
+        <div id="dz-title">
+          <span id="experimentDescTitle">{% trans 'Experiment Description File' %}
+            <a href="{% url 'main:describe:help' slug=study.slug %}" target="_blank">
+                <div id="helpExperimentDescription" class="helpBadgeDiv">{% trans 'Help' %}
+                  <div class="helpContent">
+                    <p>
+                      {% trans "Click for help on Experiment Description files" %}
+                    </p>
+                  </div>
+                </div>
+              </a></span>
+        </div>
+        <div class="dz-message" data-dz-message>
+          <span>{% trans 'Drop file here to upload, or' %}</span>
+          <a href="#" class="dz-browse-link"><span>{% trans 'browse' %}</span></a>
+          <div>
+            <img id="describeExampleImage" src="{% describe_preview_img %}"
+               alt="{% trans 'Example description file preview' %}" />
+          </div>
+          <div>
+            <a href="{% describe_example_file %}"
+                class="sampleFileDownloadLink">
+              {% trans 'Example File' %} <span class="fas fa-download"></span>
+            </a>
           </div>
         </div>
-      </a>
+      </div>
     </div>
-    <a href="{% static 'main/example/sample_experiment_description.xlsx' %}"
-        class="sampleFileDownloadLink">
-      {% trans 'Example File' %} <span class="fas fa-download"></span>
-    </a>
+    <div id="describeButtonsColumn" class="column">
+      <div>
+        <p>
+          {% blocktrans %}
+          Other line creation options:
+          {% endblocktrans %}
+        </p>
+        <a class="dropLink" href="{% url 'main:describe:describe' slug=study.slug %}">
+          <button
+            class="btn btn-default combosButton"
+            id="combosButton"
+            name="action"
+            type="button"
+          >
+            <span class="fas fa-random"></span>
+            {% trans "Add Line Combo's" %}
+          </button>
+        </a>
+      </div>
+      <div>
+        <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">
+          <button
+            class="btn btn-default"
+            id="manualButton"
+            name="action"
+            type="button"
+          >
+            <span class="fas fa-pencil-alt"></span>
+            {% trans 'Enter Manually' %}
+          </button>
+        </a>
+      </div>
+      <div>
+        <a class="dropLink" href="#">
+          <button
+            class="btn btn-default dz-browse-link"
+            id="browseButton"
+            name="action"
+            type="button"
+          >
+            <span class="fas fa-folder-open"></span>
+            {% trans 'Browse for file' %}
+          </button>
+        </a>
+      </div>
+    </div>
   </div>
-  <a class="dropLink" href="{% url 'main:describe:describe' slug=study.slug %}">
-    <button
-      class="btn btn-primary combosButton"
-      id="combosButton"
-      name="action"
-      type="button"
-    >
-      <span class="fas fa-random"></span>
-      {% trans "Add Line Combo's" %}
-    </button>
-  </a>
-  <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">
-    <button
-      class="btn btn-primary manualButton"
-      id="manualButton"
-      name="action"
-      type="button"
-    >
-      <span class="fas fa-pencil-alt"></span>
-      {% trans 'Enter Manually' %}
-    </button>
-  </a>
 </div>
 
 <details class="clearfix">

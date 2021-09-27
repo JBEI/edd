@@ -1,4 +1,5 @@
 {% extends "main/study.html" %}
+{% load describe %}
 {% load static %}
 {% load i18n %}
 
@@ -38,7 +39,7 @@
       {% endblocktrans %}
       <a
         class="label label-info label-spaced"
-        href="{% static 'main/example/sample_experiment_description.xlsx' %}"
+        href="{% describe_example_file %}"
       >
         <span class="fas fa-download"></span>
         {% trans 'Example File' %}

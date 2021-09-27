@@ -1,10 +1,92 @@
 #experimentDescDropZone {
-    background-position-y: 65px;
+    background-color: rgb(238, 238, 238);
+    background-image: none;
+    border: none;
+    flex-grow: 1;
+    padding: 5px;
 }
-#experimentDescDropZone > #dz-title {
+
+#experimentDescDropZone > .dz-message a,
+#describeDirectionsDiv a {
+    color: grey;
+    text-decoration: underline;
+}
+
+#experimentDescDropZone #dz-title a,
+#experimentDescDropZone #dz-title span {
+    vertical-align: top;
+}
+
+#experimentDescDropZone #dz-title a {
+    display: inline-block;
+    margin-top: -0.25rem;
+}
+
+#describeExampleImage {
+    margin-top: 25px;
+}
+
+#describeButtonsColumn {
     display: flex;
+    flex-direction: column;
 }
-#experimentDescDropZone > #dz-title > span {
-    margin: 0 auto;
-    padding-left: 3em; /* compensate for width of help button */
+
+#describeButtonsColumn > div {
+    margin-top: 10px;
+    width: 100%;
+}
+
+#describeButtonsColumn .btn {
+    width: 100%;
+}
+
+div.row {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+    margin: 5px;
+}
+
+div.column {
+    display: flex;
+    flex-direction: column;
+    margin: 5px;
+}
+
+#overviewWrapper {
+    width: 100%;
+    display: flex;
+    flex-grow: 1;
+    flex-direction: row;
+}
+
+#overviewWrapper.column {
+    padding: 20px;
+}
+
+div.overviewDropZone {
+    flex-grow: 1;
+}
+
+/* override margin from dropzone.css */
+#experimentDescDropZone .dz-message {
+    margin-top: 2px;
+    margin-bottom: auto;
+}
+
+#experimentDescDropZone .dz-message span {
+    font-size: 85%;
+}
+#descriptionPromptTitle {
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+#describeDirectionsDiv {
+    color: grey;
+    width: 200px;
+}
+
+#describeDirectionsDiv ul {
+    margin-left: 10px;
 }

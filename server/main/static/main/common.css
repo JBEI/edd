@@ -1381,7 +1381,7 @@ summary.pageDivider {
 
 /** Remove distracting styling from the sample file download links*/
 .sampleFileDownloadLink {
-    text-decoration: none;
+    text-decoration: underline;
     font-size: 75%;
 }
 .sampleFileDownloadLink,
