@@ -212,7 +212,7 @@ mail subject: "${env.JOB_NAME} Build #${env.BUILD_NUMBER} ${status}",
 
 if (status == "SUCCESS" && git_branch == "trunk") {
     def edd_image = "cr.ese.lbl.gov/jbei/edd-core:trunk"
-    node("edd-test-swarm") {
+    node("swarm-stage") {
         stage('Deploy Test') {
             try {
                 timeout(5) {
