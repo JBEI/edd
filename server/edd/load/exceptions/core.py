@@ -1,6 +1,6 @@
-import collections
 import typing
 import warnings
+from collections.abc import Iterable
 
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
@@ -70,7 +70,7 @@ class MessagingMixin:
         if details:
             if isinstance(details, str):
                 self.details = [details]
-            elif isinstance(details, collections.Iterable):
+            elif isinstance(details, Iterable):
                 # account for sets, frozensets, etc that may be more convenient for client code
                 self.details = list(details)
             elif isinstance(details, int) or isinstance(details, float):

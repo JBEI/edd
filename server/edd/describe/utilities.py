@@ -1,8 +1,8 @@
-import collections
 import copy
 import logging
 import uuid
 from collections import defaultdict
+from collections.abc import Iterable as IterableObj
 from collections.abc import Sequence
 from typing import Any, Dict, Iterable, List, Tuple, Union
 
@@ -761,7 +761,7 @@ class CombinatorialDescriptionInput:
         # common metadata will at most be a list of identifiers
         values = self.common_line_metadata.get(line_meta_pk)
         if values:
-            if isinstance(values, collections.Iterable) and not isinstance(values, str):
+            if isinstance(values, IterableObj) and not isinstance(values, str):
                 result.update(values)
             else:
                 result.add(values)
@@ -772,9 +772,9 @@ class CombinatorialDescriptionInput:
         if not values:
             return result
 
-        if isinstance(values, collections.Iterable) and not isinstance(values, str):
+        if isinstance(values, IterableObj) and not isinstance(values, str):
             for elt in values:
-                if isinstance(elt, collections.Iterable) and not isinstance(elt, str):
+                if isinstance(elt, IterableObj) and not isinstance(elt, str):
                     for val in elt:
                         # can't do result.update(list)
                         result.add(val)
