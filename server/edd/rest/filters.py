@@ -31,13 +31,6 @@ def filter_in_study(queryset, name, value):
     return queryset.filter(q)
 
 
-def try_uuid(value):
-    try:
-        return UUID(value)
-    except ValueError:
-        pass
-
-
 class EDDObjectFilter(filters.FilterSet):
     active = django_filters.BooleanFilter(
         field_name="active",
@@ -137,10 +130,9 @@ class LineFilter(EDDObjectFilter):
         # split out multiple values similar to other django_filters 'in' param processing
         uuid_values, url_values = [], []
         for value in values.split(","):
-            uuid_value = try_uuid(value)
-            if uuid_value:
-                uuid_values.append(uuid_value)
-            else:
+            try:
+                uuid_values.append(UUID(value))
+            except ValueError:
                 url_values.append(value)
         match_uuid = Q(strains__registry_id__in=uuid_values)
         match_url = Q(strains__registry_url__in=url_values)
@@ -291,38 +283,10 @@ class ExportFilter(filters.FilterSet):
         model = models.MeasurementValue
         fields = []
 
-    @property
-    def qs(self):
-        if not hasattr(self, "_qs"):
-            # define filters for special handling
-            names = ["study_id", "line_id", "assay_id", "measure_id"]
-            special = {name: self.filters.get(name, None) for name in names}
-            fields = {name: f.field for name, f in special.items()}
-            # create a custom form for the filters with special handling
-            form = self._custom_form(fields)
-            if not form.is_valid():
-                return self.queryset.none()
-            # now do special handling to OR together the filters
-            id_filter = Q()
-            for name, filter_ in special.items():
-                if filter_ is not None:
-                    # when a value is found, OR together with others
-                    value = form.cleaned_data.get(name)
-                    if value:
-                        id_filter |= Q(
-                            **{f"{filter_.field_name}__{filter_.lookup_expr}": value}
-                        )
-            self._qs = self.queryset.filter(
-                id_filter,
-                study__active=True,
-                measurement__active=True,
-                measurement__assay__active=True,
-                measurement__assay__line__active=True,
-            )
-            # add in annotations to get formal type IDs
-            self._qs = self._add_formal_type_ids(self._qs)
-        # filter with the aggregated filter expression
-        return self._qs
+    def filter_queryset(self, queryset):
+        queryset = self._filter_ids_and_in_study(queryset)
+        queryset = self._add_formal_type_ids(queryset)
+        return queryset
 
     def _add_formal_type_ids(self, qs):
         # define the integer pubchem_cid field as CharField
@@ -344,45 +308,52 @@ class ExportFilter(filters.FilterSet):
         )
         return qs
 
-    def _custom_form(self, fields):
-        # create a custom form for the filters with special handling
-        Form = type(f"{self.__class__.__name__}IDForm", (self._meta.form,), fields)
-        if self.is_bound:
-            form = Form(self.data, prefix=self.form_prefix)
-        else:
-            form = Form(prefix=self.form_prefix)
-        return form
+    def _compose_id_filters(self):
+        # define filters for special handling
+        names = ["study_id", "line_id", "assay_id", "measure_id"]
+        # now do special handling to OR together the filters
+        id_filter = Q()
+        # create filter by OR together the ID fields
+        for name in names:
+            f = self.filters.get(name)
+            value = self.form.cleaned_data.get(name)
+            if value:
+                id_filter |= Q(**{f"{f.field_name}__{f.lookup_expr}": value})
+        return id_filter
+
+    def _filter_ids_and_in_study(self, queryset):
+        """
+        Filters the queryset by doing an OR-query on the ID types, plus an
+        AND-query on the in_study filter, if specified.
+        """
+        queryset = queryset.filter(self._compose_id_filters())
+        in_study = self.form.cleaned_data.get("in_study", None)
+        if in_study:
+            queryset = self.filters["in_study"].filter(queryset, in_study)
+        return queryset
 
 
-class ExportLineFilter(filters.FilterSet):
+class ExportLineFilter(ExportFilter):
     """
     FilterSet used to select lines used in an Export, for reporting.
     See <main.export.table.ExportSelection>.
     """
 
-    in_study = django_filters.CharFilter(
-        field_name="study",
-        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
-        method=filter_in_study,
-    )
-    study_id = django_filters.ModelMultipleChoiceFilter(
-        field_name="study",
-        help_text=_("List of ID values, separated by commas, for studies to export"),
-        lookup_expr="in",
-        queryset=export_queryset(models.Study),
-    )
+    # overriding to lookup based on Line instead of MeasurementValue
     line_id = django_filters.ModelMultipleChoiceFilter(
         field_name="id",
         help_text=_("List of ID values, separated by commas, for lines to export"),
         lookup_expr="in",
         queryset=export_queryset(models.Line),
     )
+    # overriding to lookup based on Line instead of MeasurementValue
     assay_id = django_filters.ModelMultipleChoiceFilter(
         field_name="assay",
         help_text=_("List of ID values, separated by commas, for assays to export"),
         lookup_expr="in",
         queryset=export_queryset(models.Assay),
     )
+    # overriding to lookup based on Line instead of MeasurementValue
     measure_id = django_filters.ModelMultipleChoiceFilter(
         field_name="assay__measurement",
         help_text=_(
@@ -396,45 +367,8 @@ class ExportLineFilter(filters.FilterSet):
         model = models.Line
         fields = []
 
-    @property
-    def qs(self):
-        if not hasattr(self, "_qs"):
-            # define filters for special handling
-            names = ["study_id", "line_id", "assay_id", "measure_id"]
-            special = {name: self.filters.get(name, None) for name in names}
-            fields = {name: f.field for name, f in special.items()}
-            # create a custom form for the filters with special handling
-            form = self._custom_form(fields)
-            if not form.is_valid():
-                return self.queryset.none()
-            # now do special handling to OR together the filters
-            id_filter = Q()
-            for name, filter_ in special.items():
-                if filter_ is not None:
-                    # when a value is found, OR together with others
-                    value = form.cleaned_data.get(name)
-                    if value:
-                        id_filter |= Q(
-                            **{f"{filter_.field_name}__{filter_.lookup_expr}": value}
-                        )
-            self._qs = self.queryset.filter(
-                id_filter,
-                active=True,
-                study__active=True,
-                assay__active=True,
-                assay__measurement__active=True,
-            )
-        # filter with the aggregated filter expression
-        return self._qs
-
-    def _custom_form(self, fields):
-        # create a custom form for the filters with special handling
-        Form = type(f"{self.__class__.__name__}IDForm", (self._meta.form,), fields)
-        if self.is_bound:
-            form = Form(self.data, prefix=self.form_prefix)
-        else:
-            form = Form(prefix=self.form_prefix)
-        return form
+    def filter_queryset(self, queryset):
+        return self._filter_ids_and_in_study(queryset)
 
 
 class MeasurementValueFilter(filters.FilterSet):

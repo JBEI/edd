@@ -438,6 +438,21 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
 
+    def test_export_as_normal_user_with_no_bound_data(self):
+        url = reverse("rest:export-list")
+        readonly_user = UserFactory()
+        self.study.userpermission_set.create(
+            user=readonly_user, permission_type=models.StudyPermission.READ
+        )
+        self.client.force_authenticate(user=readonly_user)
+        # request using slug instead of ID
+        response = self.client.get(url)
+        # validate
+        table = self._read_normal_response(response)
+        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
+        self._assert_row_is_header_row(table[0])
+
     def test_export_using_in_study_slug(self):
         url = reverse("rest:export-list")
         self.client.force_authenticate(user=self.admin)
