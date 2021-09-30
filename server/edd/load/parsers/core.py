@@ -15,7 +15,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.utils.cell import get_column_letter
 from openpyxl.utils.dataframe import dataframe_to_rows
 
-from main.models.core import DefaultUnit
+from edd.load.models import DefaultUnit
 
 from .. import exceptions, reporting
 
@@ -657,36 +657,14 @@ class MultiSheetExcelParserMixin:
         :raises EDDImportError: if the file format or content is bad
         """
 
+        parsed_result = pd.DataFrame()
         wb = pd.read_excel(file, sheet_name=None)
 
         # for each worksheet in the workbook
-        parsed_result = pd.DataFrame()
-        mapper = MeasurementMapper()
-
         for name, sheet in wb.items():
-            # for every two columns in the worksheet
-            # corresponding to each measurement type in the sheet
-            for i in range(0, int(sheet.shape[1]), 2):
-                two_cols = sheet[sheet.columns[i : i + 2]]
+            self.get_parsed_records(name, sheet, parsed_result)
 
-                # dropping all rows with nan values in the worksheet
-                two_cols = two_cols.dropna()
-                if not two_cols.dropna().empty:
-                    # decimate the data
-                    two_cols = two_cols.iloc[::10, :]
-
-                    # using mapper to map data into the EDD import format
-                    # and convert in to a pandas dataframe
-                    # set the line name and the dataframe with the two columns
-                    # with data for the next measurement type
-                    mapper.set_line_name(name)
-                    mapper.set_data(two_cols)
-                    parsed_df = mapper.map_data()
-                    parsed_result = parsed_result.append(parsed_df)
-
-        # convert mapper.df into a openpyxl worksheet
-        # NOTE: work on using openpyxl for the manipulation
-        # in the mapper instead of pandas
+        # convert parsed_result into a openpyxl worksheet
         wb = Workbook()
         ws = wb.active
         for r in dataframe_to_rows(parsed_result, index=True, header=True):
@@ -695,6 +673,29 @@ class MultiSheetExcelParserMixin:
         # passing the rows in the worksheet for verification
         # and processing in database
         return self._parse_rows(ws.iter_rows())
+
+    def get_parsed_records(self, name, sheet, parsed_result):
+
+        # for every two columns in the worksheet
+        # corresponding to each measurement type in the sheet
+        mapper = MeasurementMapper()
+        for i in range(0, int(sheet.shape[1]), 2):
+            two_cols = sheet[sheet.columns[i : i + 2]]
+
+            # dropping all rows with nan values in the worksheet
+            two_cols = two_cols.dropna()
+            if not two_cols.dropna().empty:
+                # decimate the data
+                two_cols = two_cols.iloc[::10, :]
+
+                # using mapper to map data into the EDD import format
+                # and convert in to a pandas dataframe
+                # set the line name and the dataframe with the two columns
+                # with data for the next measurement type
+                mapper.set_line_name(name)
+                mapper.set_data(two_cols)
+                parsed_df = mapper.map_data()
+                parsed_result = parsed_result.append(parsed_df)
 
     def _raw_cell_value(self, cell):
         """
@@ -713,7 +714,6 @@ class MultiSheetExcelParserMixin:
 class MeasurementMapper:
 
     loa_name: str
-    parsed_df: pd.DataFrame
     df: pd.DataFrame
     units: Dict
     mes_unit_map: Dict
@@ -761,9 +761,8 @@ class MeasurementMapper:
         self.df["Units"] = self.mes_unit_map[mtype_name]
         # dropping records with NaN values
         self.df = self.df[self.df["Value"].notna()]
-        self.parsed_df = self.df
 
-        return self.parsed_df
+        return self.df
 
 
 class CsvParserMixin:

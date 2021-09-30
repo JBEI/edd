@@ -67,5 +67,14 @@ class CategoryAdmin(admin.ModelAdmin):
         return []
 
 
+class DefaultUnitAdmin(admin.ModelAdmin):
+    def get_fields(self, request, obj=None):
+        return [("type_name", "short_name")]
+
+    def get_list_display(self, request):
+        return ["type_name", "short_name", "_study_count", "type_source"]
+
+
 admin.site.register(models.Category, CategoryAdmin)
 admin.site.register(models.Layout, LayoutAdmin)
+admin.site.register(models.DefaultUnit, DefaultUnitAdmin)
