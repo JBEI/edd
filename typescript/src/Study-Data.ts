@@ -1,6 +1,6 @@
 "use strict";
 
-import * as $ from "jquery";
+import "jquery";
 import Handsontable from "handsontable";
 
 import { Access, Item } from "../modules/table/Access";

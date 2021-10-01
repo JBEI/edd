@@ -1,8 +1,8 @@
 "use strict";
 
-import * as jQuery from "jquery";
+import "jquery";
 
-import * as Dropzone from "dropzone";
+import { default as Dropzone } from "dropzone";
 
 import * as EDDAuto from "../modules/EDDAutocomplete";
 import * as Utl from "../modules/Utl";

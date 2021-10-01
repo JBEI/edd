@@ -1,6 +1,6 @@
 "use strict";
 
-import * as $ from "jquery";
+import "jquery";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import StepZilla from "react-stepzilla";

@@ -1,4 +1,4 @@
-import * as $ from "jquery";
+import "jquery";
 import "jquery-ui/ui/effects/effect-bounce";
 import "jquery-ui/ui/widgets/button";
 import "jquery-ui/ui/widgets/dialog";

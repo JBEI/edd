@@ -1,6 +1,6 @@
 "use strict";
 
-import * as $ from "jquery";
+import "jquery";
 
 import { DescriptionDropzone } from "../modules/DescriptionDropzone";
 import * as EDDAuto from "../modules/EDDAutocomplete";

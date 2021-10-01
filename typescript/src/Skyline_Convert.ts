@@ -1,6 +1,6 @@
-import * as $ from "jquery";
+import "jquery";
 
-import * as Dropzone from "dropzone";
+import { default as Dropzone } from "dropzone";
 
 import "../modules/Styles";
 import * as Utl from "../modules/Utl";

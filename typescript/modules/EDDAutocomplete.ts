@@ -1,4 +1,4 @@
-import * as $ from "jquery";
+import "jquery";
 
 import * as MultiColumnAuto from "./MultiColumnAutocomplete";
 

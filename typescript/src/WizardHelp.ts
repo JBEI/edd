@@ -1,6 +1,6 @@
 "use strict";
 
-import * as $ from "jquery";
+import "jquery";
 
 import * as EDDRest from "../modules/EDDRest";
 

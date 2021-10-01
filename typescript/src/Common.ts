@@ -1,4 +1,4 @@
-import * as $ from "jquery";
+import "jquery";
 // including these here to make sure available on every page extending edd_base.html
 import "jquery-ui/ui/effects/effect-bounce";
 import "jquery-ui/ui/widgets/button";

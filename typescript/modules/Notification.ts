@@ -1,6 +1,6 @@
 "use strict";
 
-import * as $ from "jquery";
+import "jquery";
 
 import ReconnectingWebSocket from "reconnecting-websocket";
 import * as Utl from "./Utl";

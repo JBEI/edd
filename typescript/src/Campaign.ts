@@ -1,4 +1,4 @@
-import * as $ from "jquery";
+import "jquery";
 import "jquery-ui/ui/widgets/dialog";
 
 // called when the page loads

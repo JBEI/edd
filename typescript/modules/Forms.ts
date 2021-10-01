@@ -1,6 +1,6 @@
 "use strict";
 
-import * as $ from "jquery";
+import "jquery";
 import * as EDDAuto from "./EDDAutocomplete";
 
 type GenericRecord = Record<string, any>;

@@ -7,7 +7,7 @@
 // then triggers a callback function, announcing the availability of its own new data.
 // The callback function triggers the instance of the next step.
 
-import * as $ from "jquery";
+import "jquery";
 import "jquery-ui/ui/widgets/dialog";
 import "jquery-ui/ui/widgets/progressbar";
 

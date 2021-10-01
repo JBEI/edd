@@ -1,4 +1,4 @@
-import * as $ from "jquery";
+import "jquery";
 import * as EddRest from "../modules/EDDRest";
 
 // This module contains code for dynamically loading lists of metadata types into the help page

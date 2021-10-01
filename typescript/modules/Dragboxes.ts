@@ -1,7 +1,7 @@
 "use strict";
 // Code for supporting drag-select
 
-import * as $ from "jquery";
+import "jquery";
 
 let globalChecked: boolean = null;
 

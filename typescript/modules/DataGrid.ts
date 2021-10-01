@@ -1,4 +1,4 @@
-import * as $ from "jquery";
+import "jquery";
 
 import * as Dragboxes from "./Dragboxes";
 import * as Utl from "./Utl";

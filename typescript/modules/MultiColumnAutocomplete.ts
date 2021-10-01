@@ -1,4 +1,4 @@
-import * as jQuery from "jquery";
+import "jquery";
 import "jquery-ui/ui/widgets/autocomplete";
 import "jquery-ui/ui/widgets/menu";
 

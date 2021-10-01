@@ -1,8 +1,8 @@
 // This file contains various utility classes under the Utl module.
 
-import * as $ from "jquery";
+import "jquery";
 
-import * as Dropzone from "dropzone";
+import { default as Dropzone } from "dropzone";
 
 import "../modules/Styles";
 

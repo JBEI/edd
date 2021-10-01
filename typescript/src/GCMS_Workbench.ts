@@ -1,9 +1,9 @@
 "use strict";
 
 import * as d3 from "d3";
-import * as $ from "jquery";
+import "jquery";
 
-import * as Dropzone from "dropzone";
+import { default as Dropzone } from "dropzone";
 import Handsontable from "handsontable";
 
 import * as Utl from "../modules/Utl";

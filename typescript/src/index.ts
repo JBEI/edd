@@ -1,6 +1,6 @@
 "use strict";
 
-import * as $ from "jquery";
+import "jquery";
 import "jquery-ui/ui/widgets/dialog";
 import "jquery-ui/ui/widgets/tooltip";
 

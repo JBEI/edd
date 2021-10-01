@@ -1,4 +1,4 @@
-import * as jQuery from "jquery";
+import "jquery";
 
 export function setUp(): void {
     // add select/deselect controls
