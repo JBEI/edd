@@ -75,7 +75,7 @@ module.exports = {
     },
     "resolve": {
         "modules": [path.resolve("node_modules"), path.resolve(__dirname, "modules")],
-        "extensions": [".js", ".json", ".jsx", ".css", ".ts", ".vue"],
+        "extensions": [".js", ".json", ".jsx", ".css", ".ts", ".tsx", ".vue"],
         "alias": {
             "handsontable": path.resolve(
                 "node_modules/handsontable/dist/handsontable.full.js",

@@ -2,9 +2,9 @@
 
 import * as React from "react";
 
-import * as Inputs from "./Inputs.tsx";
+import * as Inputs from "./Inputs";
 import * as StepBase from "./StepBase";
-import * as Summary from "./Summary.tsx";
+import * as Summary from "./Summary";
 
 export interface Strings extends StepBase.Strings {
     categoryUrl: string;

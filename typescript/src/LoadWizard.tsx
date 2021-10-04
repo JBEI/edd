@@ -6,11 +6,11 @@ import * as ReactDOM from "react-dom";
 import StepZilla from "react-stepzilla";
 
 import * as Notification from "../modules/Notification";
-import * as Step1 from "../modules/load/Step1.tsx";
-import * as Step2 from "../modules/load/Step2.tsx";
-import * as Step3 from "../modules/load/Step3.tsx";
-import * as Step4 from "../modules/load/Step4.tsx";
-import * as Summary from "../modules/load/Summary.tsx";
+import * as Step1 from "../modules/load/Step1";
+import * as Step2 from "../modules/load/Step2";
+import * as Step3 from "../modules/load/Step3";
+import * as Step4 from "../modules/load/Step4";
+import * as Summary from "../modules/load/Summary";
 import * as Utl from "../modules/Utl";
 
 import "../modules/Styles";

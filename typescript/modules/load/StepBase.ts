@@ -1,6 +1,6 @@
 "use strict";
 
-import * as Summary from "./Summary.tsx";
+import * as Summary from "./Summary";
 
 /**
  * Common properties, loaded from miscellaneous sources.

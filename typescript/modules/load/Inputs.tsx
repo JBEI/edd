@@ -5,7 +5,7 @@
 import classNames from "classnames";
 import * as React from "react";
 
-import * as Summary from "./Summary.tsx";
+import * as Summary from "./Summary";
 
 interface MBSProps {
     options: Summary.Choice[];

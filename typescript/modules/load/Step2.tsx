@@ -5,8 +5,8 @@ import classNames from "classnames";
 import Dropzone from "react-dropzone";
 
 import * as StepBase from "./StepBase";
-import * as Step1 from "./Step1.tsx";
-import * as Summary from "./Summary.tsx";
+import * as Step1 from "./Step1";
+import * as Summary from "./Summary";
 
 export interface Strings extends StepBase.Strings {
     directions: string;

@@ -3,9 +3,9 @@
 import * as React from "react";
 
 import * as StepBase from "./StepBase";
-import * as Step1 from "./Step1.tsx";
-import * as Step2 from "./Step2.tsx";
-import * as Summary from "./Summary.tsx";
+import * as Step1 from "./Step1";
+import * as Step2 from "./Step2";
+import * as Summary from "./Summary";
 
 export interface Strings extends StepBase.Strings {
     directions: string;
