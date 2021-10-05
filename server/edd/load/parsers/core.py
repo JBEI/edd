@@ -15,7 +15,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.utils.cell import get_column_letter
 from openpyxl.utils.dataframe import dataframe_to_rows
 
-from edd.load.models import DefaultUnit
+from edd.load.models import DefaultUnit, MeasurementNameTransform
 
 from .. import exceptions, reporting
 
@@ -718,26 +718,24 @@ class MeasurementMapper:
     df: pd.DataFrame
     units: Dict
     mes_unit_map: Dict
+    mtype_map = Dict
 
     def __init__(self, name=None, df=None):
         self.loa_name = name
         self.df = df
-        # maps naming format of Ambr measurement type to
-        # naming convention in EDD
-        self.mtypes = {
-            "DO": "Dissolved Oxygen",
-            "Feed#1 volume pumped": "Feed volume pumped",
-            "Volume - sampled": "Volume sampled",
-        }
-        # NOTE: Measurement types do not exist in EDD:
-        # Volume - sampled, Volume of inocula, DO, Feed#1 volume pumped
-        # Unsupported units: mM/L/h, rpm, % maximum measured, °C
 
-        # get the defualt units for measurements from the database
+        # get the default units for measurements from the database
         self.mes_unit_map = {}
         du_obj = DefaultUnit.objects.all()
         for obj in du_obj:
             self.mes_unit_map[obj.measurement_type.type_name] = obj.unit.unit_name
+
+        # get the mapping between input measurement type names and expected
+        # edd measurement type names from database
+        self.mtype_map = {}
+        mtype_obj = MeasurementNameTransform.objects.all()
+        for obj in mtype_obj:
+            self.mtype_map[obj.input_type_name] = obj.edd_type_name
 
     def set_line_name(self, name):
         self.loa_name = name
@@ -753,9 +751,9 @@ class MeasurementMapper:
         self.df.columns.values[1] = "Value"
 
         # check measurement type to rename for EDD
-        if mtype_name in self.mtypes.keys():
-            self.df["Measurement Type"] = self.mtypes[mtype_name]
-            mtype_name = self.mtypes[mtype_name]
+        if mtype_name in self.mtype_map.keys():
+            self.df["Measurement Type"] = self.mtype_map[mtype_name]
+            mtype_name = self.mtype_map[mtype_name]
         else:
             self.df["Measurement Type"] = mtype_name
 

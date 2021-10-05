@@ -4,7 +4,12 @@ import pytest
 
 from .. import parsers
 from . import factory
-from .factory import DefaultUnitFactory, MeasurementTypeFactory, MeasurementUnitFactory
+from .factory import (
+    DefaultUnitFactory,
+    MeasurementNameTransformFactory,
+    MeasurementTypeFactory,
+    MeasurementUnitFactory,
+)
 
 
 @pytest.mark.django_db
@@ -34,10 +39,27 @@ def setup_default_units():
 
 
 @pytest.mark.django_db
+def setup_mtype_transform():
+    mtype_map = {
+        "DO": "Dissolved Oxygen",
+        "Feed#1 volume pumped": "Feed volume pumped",
+        "Volume - sampled": "Volume sampled",
+    }
+
+    for input_type_name, edd_type_name in mtype_map.items():
+        MeasurementNameTransformFactory.create(
+            input_type_name=input_type_name, edd_type_name=edd_type_name
+        )
+
+
+@pytest.mark.django_db
 def test_AmbrExcelParser_success():
     # setup default units in the test database to configure measurement types
     # and corresponding units in the ambr parser
     setup_default_units()
+    # setup measurement unit transform from input measurement type to
+    # expected edd type names
+    setup_mtype_transform()
 
     path = "ambr_export_test_data.xlsx"
     parser = parsers.AmbrExcelParser(uuid4())

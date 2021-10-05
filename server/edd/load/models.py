@@ -176,5 +176,24 @@ class DefaultUnit(models.Model):
             "unit_name": self.unit.unit_name,
         }
 
-    # def __str__(self):
-    #     return self.measurement_type
+
+class MeasurementNameTransform(models.Model):
+    class Meta:
+        db_table = "measurement_name_transform"
+
+    input_type_name = VarCharField(
+        help_text=_("Name of this Measurement Type in input."),
+        verbose_name=_("Input Measurement Type"),
+    )
+
+    edd_type_name = VarCharField(
+        help_text=_("Name of this Measurement Type in EDD."),
+        verbose_name=_("EDD Measurement Type"),
+    )
+
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "input_type_name": self.input_type_name,
+            "edd_type_name": self.edd_type_name,
+        }

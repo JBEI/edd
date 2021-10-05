@@ -78,3 +78,11 @@ class DefaultUnitFactory(factory.django.DjangoModelFactory):
 
     measurement_type = factory.SubFactory(LayoutFactory)
     unit = factory.SubFactory(LayoutFactory)
+
+
+class MeasurementNameTransformFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.MeasurementNameTransform
+
+    input_type_name = ""
+    edd_type_name = ""
