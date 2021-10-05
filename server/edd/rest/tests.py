@@ -646,6 +646,11 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         User = get_user_model()
         cls.admin = User.objects.get(username="system")
 
+    def test_docs_view_renders_correctly(self):
+        url = reverse("rest:docs")
+        response = self.client.get(url)
+        self._check_status(response, status.HTTP_200_OK)
+
     def test_metadata_types_list(self):
         url = reverse("rest:metadata_types-list")
         self.client.force_login(self.admin)

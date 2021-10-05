@@ -112,8 +112,8 @@ INSTALLED_APPS = (
     "django.contrib.postgres",
     "django_extensions",  # django-extensions in pip
     "rest_framework",  # djangorestframework in pip
-    "rest_framework_swagger",  # django-rest-swagger in pip
     "django_filters",  # django-filter in pip
+    "drf_yasg",  # drf-yasg in pip
     # django-allauth in pip; separate apps for each provider
     "allauth",
     "allauth.account",

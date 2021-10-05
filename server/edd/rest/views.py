@@ -5,11 +5,11 @@ from uuid import UUID
 
 from django.contrib.auth import get_user_model
 from django.http import StreamingHttpResponse
-from rest_framework import mixins, response, schemas, viewsets
-from rest_framework.decorators import api_view, permission_classes, renderer_classes
+from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
+from rest_framework import mixins, viewsets
 from rest_framework.negotiation import DefaultContentNegotiation
 from rest_framework.permissions import AllowAny, DjangoModelPermissions, IsAuthenticated
-from rest_framework_swagger.renderers import OpenAPIRenderer, SwaggerUIRenderer
 
 from main import models
 from main.signals import study_exported
@@ -19,14 +19,11 @@ from . import filters, paginators, permissions, renderers, serializers
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
-
-@api_view()
-@permission_classes([AllowAny])
-@renderer_classes([OpenAPIRenderer, SwaggerUIRenderer])
-def schema_view(request):
-    """Auto-generated, web-browseable documentation for EDD's REST API."""
-    generator = schemas.SchemaGenerator(title="Experiment Data Depot")
-    return response.Response(generator.get_schema(request=request))
+schema_view = get_schema_view(
+    openapi.Info(title="Experiment Data Depot", default_version="v1"),
+    public=True,
+    permission_classes=(AllowAny,),
+)
 
 
 class StudyInternalsFilterMixin:
@@ -209,6 +206,8 @@ class StreamingExportViewSet(BaseExportViewSet):
     """
 
     pagination_class = None
+    renderer_classes = (renderers.ExportRenderer,)
+    serializer_class = serializers.ExportSerializer
 
     def get_queryset(self):
         return models.MeasurementValue.objects.order_by("pk")
