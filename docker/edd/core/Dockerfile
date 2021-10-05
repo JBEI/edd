@@ -71,8 +71,8 @@ ENV EDD_VERSION="${EDD_VERSION}"
 WORKDIR /run/
 COPY ./typescript ./.prettierrc.js /run/
 
-# build the TypeScript code
-RUN ls -al && npm run build
+# build & test the TypeScript code
+RUN ls -al && yarn build
 
 # ---
 

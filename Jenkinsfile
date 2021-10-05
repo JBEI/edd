@@ -31,12 +31,25 @@ def version_tag = ""
 // set the properties
 properties(projectProperties)
 
+def container_registry_login() {
+    // ensure login before trying to build from registry images
+    withCredentials([
+        usernamePassword(
+            credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
+            passwordVariable: 'PASSWORD',
+            usernameVariable: 'USERNAME'
+        )
+    ]) {
+        sh('sudo docker login -u $USERNAME -p $PASSWORD cr.ese.lbl.gov')
+    }
+}
+
 try {
 
     node('docker') {
 
-        stage('Init') {
-            stage_name = "Init"
+        stage('Checkout') {
+            stage_name = "Checkout"
             // Probably not necessary, as each build should launch a new container
             // Yet, it does not hurt to be careful
             deleteDir()
@@ -63,7 +76,10 @@ try {
                 script: 'git tag --points-at HEAD',
                 returnStdout: true
             ).trim()
+        }
 
+        stage('Init') {
+            stage_name = "Init"
             // run initialization script, as described in EDD project README
             def create_config = $/#!/bin/bash -xe
                 export DOCKER_BUILDKIT=1
@@ -91,40 +107,33 @@ try {
             }
         }
 
+        stage('Node') {
+            stage_name = "Node"
+            timeout(5) {
+                container_registry_login()
+                sh("sudo bin/jenkins/build_node.sh '${image_version}'")
+            }
+        }
+
         stage('Build') {
             stage_name = "Build"
-            // build edd-node and edd-core images outside docker-compose to use --build-args!
-            // tag both with build-specific versions
-            // ensure edd-core builds off correct edd-node
-            // NOTE: sudo is required to execute docker commands
             timeout(15) {
-                // ensure login before trying to build from registry images
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
-                        passwordVariable: 'PASSWORD',
-                        usernameVariable: 'USERNAME'
-                    )
-                ]) {
-                    sh("sudo docker login -u $USERNAME -p $PASSWORD cr.ese.lbl.gov")
-                }
-                sh("sudo bin/jenkins/build_node.sh '${image_version}'")
+                container_registry_login()
                 sh("sudo bin/jenkins/build_core.sh '${image_version}'")
+            }
+        }
+
+        stage('Typescript Test') {
+            stage_name = "Typescript Test"
+            timeout(15) {
+                sh("sudo bin/jenkins/run_typescript_tests.sh '${image_version}'")
             }
         }
 
         stage('Publish Internal') {
             stage_name = "Publish Internal"
             timeout(5) {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
-                        passwordVariable: 'PASSWORD',
-                        usernameVariable: 'USERNAME'
-                    )
-                ]) {
-                    sh("sudo docker login -u $USERNAME -p $PASSWORD cr.ese.lbl.gov")
-                }
+                container_registry_login()
                 sh("sudo bin/jenkins/push_internal.sh '${image_version}' '${branch_tag}'")
             }
         }
@@ -217,15 +226,7 @@ if (status == "SUCCESS" && git_branch == "trunk") {
             try {
                 timeout(5) {
                     checkout scm
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: '2e7b1979-8dc7-4201-b230-a12658305f67',
-                            passwordVariable: 'PASSWORD',
-                            usernameVariable: 'USERNAME'
-                        )
-                    ]) {
-                        sh("sudo docker login -u $USERNAME -p $PASSWORD cr.ese.lbl.gov")
-                    }
+                    container_registry_login()
                     sh("sudo bin/jenkins/deploy.sh '${edd_image}'")
                 }
             } catch (exc) {
