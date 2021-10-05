@@ -123,6 +123,11 @@ class LineFilter(EDDObjectFilter):
         help_text=_("Search on a strain UUID or registry URLs, separated by commas"),
         method="filter_strains",
     )
+    study = django_filters.ModelChoiceFilter(
+        field_name="study",
+        help_text=_("ID of the study the Line(s) are linked to"),
+        queryset=models.Study.objects.all(),
+    )
 
     class Meta:
         model = models.Line
