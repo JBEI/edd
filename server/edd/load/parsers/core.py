@@ -662,7 +662,7 @@ class MultiSheetExcelParserMixin:
 
         # for each worksheet in the workbook
         for name, sheet in wb.items():
-            self.get_parsed_records(name, sheet, parsed_result)
+            parsed_result = self.get_parsed_records(name, sheet, parsed_result)
 
         # convert parsed_result into a openpyxl worksheet
         wb = Workbook()
@@ -696,6 +696,7 @@ class MultiSheetExcelParserMixin:
                 mapper.set_data(two_cols)
                 parsed_df = mapper.map_data()
                 parsed_result = parsed_result.append(parsed_df)
+        return parsed_result
 
     def _raw_cell_value(self, cell):
         """

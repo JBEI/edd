@@ -4,18 +4,40 @@ import pytest
 
 from .. import parsers
 from . import factory
+from .factory import DefaultUnitFactory, MeasurementTypeFactory, MeasurementUnitFactory
 
-# from django.core.management import call_command
 
+@pytest.mark.django_db
+def setup_default_units():
+    mes_map = {
+        "Temperature": "°C",
+        "Stir speed": "rpm",
+        "pH": "n/a",
+        "Air flow": "lpm",
+        "Dissolved Oxygen": "% maximum measured",
+        "Volume": "mL",
+        "OUR": "mM/L/h",
+        "CER": "mM/L/h",
+        "RQ": "n/a",
+        "Feed volume pumped": "mL",
+        "Antifoam volume pumped": "mL",
+        "Acid volume pumped": "mL",
+        "Base volume pumped": "mL",
+        "Volume sampled": "mL",
+        "Volume of inocula": "mL",
+    }
 
-# @pytest.fixture(scope='session')
-# def django_db_setup(django_db_setup, django_db_blocker):
-#     with django_db_blocker.unblock():
-#         call_command('loaddata', 'server/edd/load/tests/defaultunit_data.json')
+    for mes_type, mes_unit in mes_map.items():
+        mes_obj = MeasurementTypeFactory(type_name=mes_type)
+        unit_obj = MeasurementUnitFactory(unit_name=mes_unit)
+        DefaultUnitFactory.create(measurement_type=mes_obj, unit=unit_obj)
 
 
 @pytest.mark.django_db
 def test_AmbrExcelParser_success():
+    # setup default units in the test database to configure measurement types
+    # and corresponding units in the ambr parser
+    setup_default_units()
 
     path = "ambr_export_test_data.xlsx"
     parser = parsers.AmbrExcelParser(uuid4())
@@ -24,7 +46,7 @@ def test_AmbrExcelParser_success():
         parsed = parser.parse(file)
         if parsed:
             return
-    # verify_parse_result(parsed)
+    verify_parse_result(parsed)
 
 
 def verify_parse_result(parsed):
