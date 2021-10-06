@@ -673,6 +673,14 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         self._check_status(response, status.HTTP_200_OK)
         assert "count" in response.data
 
+    def test_metadata_types_list_in_study(self):
+        study = factory.StudyFactory()
+        url = reverse("rest:metadata_types-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url, {"in_study": study.slug})
+        self._check_status(response, status.HTTP_200_OK)
+        assert response.data["count"] == 0
+
     def test_types_list(self):
         url = reverse("rest:types-list")
         self.client.force_login(self.admin)
